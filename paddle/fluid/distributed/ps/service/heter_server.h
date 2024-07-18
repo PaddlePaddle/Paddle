@@ -80,14 +80,14 @@ class ServiceHandlerBase {
   virtual ~ServiceHandlerBase() {}
 
   void SetScope(const framework::Scope* scope) { scope_ = scope; }
-  void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
+  void SetDevCtx(const phi::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
 
   virtual int Handle(const MultiVarMsg* request,
                      MultiVarMsg* response,
                      brpc::Controller* cntl) = 0;
 
  protected:
-  const platform::DeviceContext* dev_ctx_;
+  const phi::DeviceContext* dev_ctx_;
   const framework::Scope* scope_;
 };
 
@@ -219,7 +219,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     std::unique_ptr<::paddle::framework::Scope> local_scope_ptr(
         new ::paddle::framework::Scope());
     auto& local_scope = *(local_scope_ptr.get());
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     phi::CPUPlace cpu_place;
     auto& cpu_dev_ctx = *pool.Get(cpu_place);
 

@@ -95,7 +95,7 @@ class RemoveShadowFeedPattern
         var_place =
             GetVarPlace<paddle::framework::VariableRefArray>(var, place_);
       } else {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "RemoveShadowFeedPattern only support output "
             "variable of type DenseTensor, SelectedRows or VariableRefArray"));
       }

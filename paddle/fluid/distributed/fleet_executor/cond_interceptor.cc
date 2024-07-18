@@ -63,39 +63,39 @@ void CondInterceptor::PrepareDeps() {
 bool CondInterceptor::GetCondResult() {
   PADDLE_ENFORCE_LT(cur_scope_id_,
                     microbatch_scopes_.size(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Step out of range. There are %ld "
                         "microbatch_scopes, but receive scope index %ld",
                         microbatch_scopes_.size(),
                         cur_scope_id_));
   auto* cond_var =
       microbatch_scopes_[cur_scope_id_]->FindVar(node_->cond_var());
-  PADDLE_ENFORCE(cond_var,
-                 platform::errors::NotFound(
-                     "Condition variable %s not exists in scope %ld",
-                     node_->cond_var(),
-                     cur_scope_id_));
+  PADDLE_ENFORCE(
+      cond_var,
+      phi::errors::NotFound("Condition variable %s not exists in scope %ld",
+                            node_->cond_var(),
+                            cur_scope_id_));
   const auto& cond_tensor = cond_var->Get<phi::DenseTensor>();
   bool res = false;
-  if (platform::is_gpu_place(cond_tensor.place())) {
+  if (phi::is_gpu_place(cond_tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::DenseTensor cpu_tensor;
     framework::TensorCopy(cond_tensor, phi::CPUPlace(), &cpu_tensor);
-    platform::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
+    phi::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
     res = cpu_tensor.data<bool>()[0];
 #endif
-  } else if (platform::is_custom_place(cond_tensor.place())) {
+  } else if (phi::is_custom_place(cond_tensor.place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DenseTensor cpu_tensor;
     framework::TensorCopy(cond_tensor, phi::CPUPlace(), &cpu_tensor);
-    platform::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
+    phi::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
     res = cpu_tensor.data<bool>()[0];
 #endif
-  } else if (platform::is_cpu_place(cond_tensor.place())) {
+  } else if (phi::is_cpu_place(cond_tensor.place())) {
     res = cond_tensor.data<bool>()[0];
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupport device for cond interceptor."));
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Unsupport device for cond interceptor."));
   }
   return res;
 }
@@ -139,7 +139,7 @@ void CondInterceptor::Compute(int64_t gen_step) {
   } else {
     PADDLE_ENFORCE_NE(scope_id_to_gen_step_.find(cur_scope_id_),
                       scope_id_to_gen_step_.end(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Can not find scope id %ld in scope_id_to_gen_step",
                           cur_scope_id_));
     VLOG(3) << "Finish loop in scope " << cur_scope_id_ << " with "
@@ -175,7 +175,7 @@ void CondInterceptor::Run(const InterceptorMessage& msg) {
     PADDLE_ENFORCE_NE(
         scope_id_to_gen_step_.find(scope_id),
         scope_id_to_gen_step_.end(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Can not find scope id %ld in scope_id_to_gen_step", scope_id));
     // Keep the message in order with scope_id
     // message with scope 3 never send before scope 1.
@@ -204,9 +204,9 @@ void CondInterceptor::Run(const InterceptorMessage& msg) {
           ready_scope_ids.emplace_back(iter->first);
         } else if (iter->second > gen_step) {
           PADDLE_THROW(
-              platform::errors::Fatal("Some error may occur. Scope %ld's "
-                                      "gen_step is much larger than previous.",
-                                      iter->first));
+              phi::errors::Fatal("Some error may occur. Scope %ld's "
+                                 "gen_step is much larger than previous.",
+                                 iter->first));
         } else {
           break;
         }

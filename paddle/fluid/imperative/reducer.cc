@@ -48,8 +48,8 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
 #ifdef PADDLE_WITH_HIP
     if (dtype_ == paddle::framework::proto::VarType_Type_BF16) {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Unsupport BF16 in DataParallel for now"));
+      PADDLE_THROW(
+          phi::errors::Fatal("Unsupport BF16 in DataParallel for now"));
     }
     framework::VisitDataTypeForHIP(
         dtype_,
@@ -116,7 +116,7 @@ static void ConcatTensorsWithType(
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP16:
-      ConcatTensorsForAllReduce<DeviceContext, platform::float16>(
+      ConcatTensorsForAllReduce<DeviceContext, phi::dtype::float16>(
           context, dense_tensors_, p_dense_contents);
       break;
     case framework::proto::VarType::FP32:
@@ -143,7 +143,7 @@ static void SplitTensorsWithType(const DeviceContext &context,
                                  framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP16:
-      SplitTensorsForAllReduce<DeviceContext, platform::float16>(
+      SplitTensorsForAllReduce<DeviceContext, phi::dtype::float16>(
           context, p_dense_contents, p_dense_tensors);
       break;
     case framework::proto::VarType::FP32:
