@@ -47,7 +47,9 @@ class ParameterChecks(unittest.TestCase):
             p = exe.run(main_program, fetch_list=[param])[0]
             np.testing.assert_array_equal(p, np.ones(shape) * val)
 
-            zero_dim_param = b.create_parameter(name='x', shape=[], dtype='float32')
+            zero_dim_param = b.create_parameter(
+                name='x', shape=[], dtype='float32'
+            )
             self.assertEqual(zero_dim_param.shape, ())
 
     def test_parambase(self):
