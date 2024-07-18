@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.nn.functional.input import embedding_renorm_
 
 paddle.disable_static()
 
@@ -62,8 +63,8 @@ class EmbeddingDygraph(unittest.TestCase):
         weight = np.random.random((10, 4)).astype(np.float32) * 10
         max_norm = 5.0
         norm_type = 2.0
-        y_ref = self.embedding_renorm_(x, weight, max_norm, norm_type)
-        paddle_result = paddle.nn.functional.embedding_renorm_(
+        y_ref = self.ref_embedding_renorm_(x, weight, max_norm, norm_type)
+        paddle_result = embedding_renorm_(
             paddle.to_tensor(x),
             paddle.to_tensor(weight),
             max_norm,
@@ -99,7 +100,7 @@ class EmbeddingDygraph(unittest.TestCase):
         out.backward()
         adam.step()
 
-    def embedding_renorm_(self, x, weight, max_norm, norm_type=2.0):
+    def ref_embedding_renorm_(self, x, weight, max_norm, norm_type=2.0):
         x = np.reshape(x, (-1,))
         x = np.unique(x)
         x = np.sort(x)

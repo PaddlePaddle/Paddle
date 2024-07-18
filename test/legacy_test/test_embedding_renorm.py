@@ -17,9 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.nn.functional.input import embedding_renorm_
 
 
-def embedding_renorm_(x, weight, max_norm, norm_type=2.0):
+def ref_embedding_renorm_(x, weight, max_norm, norm_type=2.0):
     weight = weight.copy()
     x = np.reshape(x, (-1,))
     x = np.unique(x)
@@ -39,7 +40,7 @@ class TestEmbeddingRenormOp(unittest.TestCase):
         self.dtype = self._init_dtype()
         x = np.array([[2, 1, 3], [4, 5, 6]]).astype("int64")
         weight = np.random.random((10, 4)).astype(self.dtype) * 10
-        y_ref = embedding_renorm_(x, weight, self.max_norm, self.norm_type)
+        y_ref = ref_embedding_renorm_(x, weight, self.max_norm, self.norm_type)
         self.inputs = {'X': x, 'Weight': weight}
         self.outputs = {'Out': y_ref}
         self.attrs = {'max_norm': self.max_norm, 'norm_type': self.norm_type}
@@ -52,7 +53,7 @@ class TestEmbeddingRenormOp(unittest.TestCase):
         self.norm_type = 2.0
 
     def test_check_output(self):
-        paddle_result = paddle.nn.functional.embedding_renorm_(
+        paddle_result = embedding_renorm_(
             paddle.to_tensor(self.inputs['X']),
             paddle.to_tensor(self.inputs['Weight']),
             self.max_norm,
