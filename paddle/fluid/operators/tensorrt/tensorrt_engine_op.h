@@ -783,7 +783,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #else
         auto dims = engine->engine()->getBindingDimensions(bind_index);
 #endif
-        ddim.push_back(runtime_batch);
         for (int i = 0; i < dims.nbDims; i++) {
           ddim.push_back(dims.d[i]);
         }
