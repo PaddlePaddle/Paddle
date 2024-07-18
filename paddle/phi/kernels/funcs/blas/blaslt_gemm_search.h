@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"
