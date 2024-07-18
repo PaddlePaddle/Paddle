@@ -122,10 +122,10 @@ int SaveLoadCombineOpTest(Place place) {
       attrs);
   save_combine_op->Run(scope, place);
 
-  auto target1 = GeneratePlaceholderBeforeLoad<Place>("out_var1", &scope);
-  auto target2 = GeneratePlaceholderBeforeLoad<Place>("out_var2", &scope);
-  auto target3 = GeneratePlaceholderBeforeLoad<Place>("out_var3", &scope);
-  auto target4 = GeneratePlaceholderBeforeLoad<Place>("out_var4", &scope);
+  auto target1 = GeneratePlaceholderBeforeLoad("out_var1", &scope);
+  auto target2 = GeneratePlaceholderBeforeLoad("out_var2", &scope);
+  auto target3 = GeneratePlaceholderBeforeLoad("out_var3", &scope);
+  auto target4 = GeneratePlaceholderBeforeLoad("out_var4", &scope);
 
   auto load_combine_op = paddle::framework::OpRegistry::CreateOp(
       "load_combine",
