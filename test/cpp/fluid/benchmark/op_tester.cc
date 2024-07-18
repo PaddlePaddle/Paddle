@@ -86,7 +86,7 @@ void OpTester::Run() {
       platform::SetDeviceId(config_.device_id);
 #else
       PADDLE_THROW(phi::errors::PermissionDenied(
-          "'CUDAPlace' is not supported in CPU only device."));
+          "'GPUPlace' is not supported in CPU only device."));
 #endif
     }
 

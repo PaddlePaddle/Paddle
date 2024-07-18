@@ -355,9 +355,9 @@ BKCLComm* BKCLCommContext::CreateComm(
 BKCLComm* BKCLCommContext::AssignBKCLComm(
     BKCLContext_t comm, int nranks, int rank, int dev_id, int ring_id) {
   std::unique_ptr<XPUDeviceContext> dev_ctx(
-      new XPUDeviceContext(XPUPlace(dev_id)));
+      new XPUDeviceContext(phi::XPUPlace(dev_id)));
   dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(XPUPlace(dev_id))
+                            .GetAllocator(phi::XPUPlace(dev_id))
                             .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -365,7 +365,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(XPUPlace(dev_id))
+          .GetZeroAllocator(phi::XPUPlace(dev_id))
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()

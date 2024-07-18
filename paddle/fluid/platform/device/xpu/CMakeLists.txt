@@ -18,7 +18,6 @@ cc_library(
        enforce
        xpulib
        device_context
-       place
        phi
        common
        dynload_xpti)

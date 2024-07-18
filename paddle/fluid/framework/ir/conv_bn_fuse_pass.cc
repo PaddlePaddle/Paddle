@@ -23,8 +23,8 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 
 namespace phi {
 class DenseTensor;

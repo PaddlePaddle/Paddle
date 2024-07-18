@@ -11,7 +11,8 @@ set(op_handle_srcs
 set(op_handle_deps
     pass
     operator
-    place
+    phi
+    common
     framework_proto
     node
     device_context

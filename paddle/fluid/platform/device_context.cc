@@ -117,8 +117,9 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
             "Failed to dynamic_cast dev_ctx into phi::CustomContext."));
 
     if (!disable_setting_default_stream_for_allocator) {
-      instance.SetDefaultStream(CustomPlace(p.GetDeviceType(), p.GetDeviceId()),
-                                custom_ctx->stream());
+      instance.SetDefaultStream(
+          phi::CustomPlace(p.GetDeviceType(), p.GetDeviceId()),
+          custom_ctx->stream());
     }
     dev_ctx->SetAllocator(instance.GetAllocator(p, custom_ctx->stream()).get());
     dev_ctx->SetGenerator(phi::DefaultCustomDeviceGenerator(p).get());

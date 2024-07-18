@@ -22,7 +22,7 @@
 
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {

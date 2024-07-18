@@ -14,7 +14,7 @@ add_subdirectory(custom_device)
 cc_library(
   event_node
   SRCS event_node.cc
-  DEPS enforce place common)
+  DEPS enforce phi common)
 cc_library(
   profiler_utils
   SRCS utils.cc

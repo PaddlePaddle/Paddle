@@ -82,7 +82,7 @@ if(WITH_GPU)
   nv_test(
     cuda_managed_memory_test
     SRCS cuda_managed_memory_test.cu
-    DEPS gpu_info place)
+    DEPS gpu_info phi common)
   nv_test(
     cuda_malloc_async_allocator_test
     SRCS cuda_malloc_async_allocator_test.cu
@@ -108,7 +108,7 @@ if(WITH_ROCM)
   hip_test(
     cuda_managed_memory_test
     SRCS cuda_managed_memory_test.cu
-    DEPS gpu_info place)
+    DEPS gpu_info phi common)
 endif()
 
 if(WITH_TESTING AND TEST cuda_managed_memory_test)
