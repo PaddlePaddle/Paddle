@@ -198,13 +198,16 @@ class CublasLtAlgoCache {
       if (infile.is_open()) {
         size_t workspace_size;
         float time;
+        char comma;
         while (!infile.eof()) {
           CublasLtAlgoConfig search_config;
-          infile >> search_config.m >> search_config.k >> search_config.n >>
-              search_config.algo_id >> search_config.swizzle >>
-              search_config.custom_option >> search_config.tile >>
-              search_config.split_k_val >> search_config.reduction_scheme >>
-              search_config.stages >> workspace_size >> time;
+          infile >> search_config.m >> comma >> search_config.k >> comma >>
+              search_config.n >> comma >> search_config.algo_id >> comma >>
+              search_config.swizzle >> comma >> search_config.custom_option >>
+              comma >> search_config.tile >> comma >>
+              search_config.split_k_val >> comma >>
+              search_config.reduction_scheme >> comma >> search_config.stages >>
+              comma >> workspace_size >> comma >> time;
           search_configs_.push_back(search_config);
         }
         infile.close();
