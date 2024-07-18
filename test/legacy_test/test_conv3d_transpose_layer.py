@@ -160,7 +160,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
 
         if base.core.is_compiled_with_cuda():
             place = base.CUDAPlace(0)
-            self._test_equivalence(place)
+            self._test_pir_equivalence(place)
 
 
 class Conv3DTransposeErrorTestCase(Conv3DTransposeTestCase):
