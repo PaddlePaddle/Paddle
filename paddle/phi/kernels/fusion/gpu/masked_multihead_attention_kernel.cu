@@ -502,7 +502,7 @@ __global__ void masked_multihead_attention_kernel(
   sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], sum);
 
   int bhsi = bhi * params.split_seq;
-  if (SPLIT && (tid == 0)) {
+  if (SPLIT && tid == 0) {
     float2 sum_max = {sum, qk_max};
     *reinterpret_cast<float2 *>(
         &params.qk_sum_max_split_seq[(bhsi + split_index) * 2]) = sum_max;
@@ -1095,8 +1095,7 @@ void DispatchWithDtype(const Context &dev_ctx,
     SPLIT = true;
   }
   if (SPLIT) {
-    // for shortSeq, we set steps_per_block=256 to avoid postProcessKernel
-    int steps_per_block = 128;
+    const int steps_per_block = 128;
     params.steps_per_block = steps_per_block;
     params.split_seq = (timestep - 1) / steps_per_block + 1;
     int split_seq = params.split_seq;
