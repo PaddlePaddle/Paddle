@@ -912,6 +912,7 @@ if(WITH_COVERAGE)
 endif()
 
 if(APPLE)
+  set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
   set_tests_properties(test_callback_reduce_lr_on_plateau PROPERTIES TIMEOUT
                                                                      300)
   set_tests_properties(test_vision_models PROPERTIES TIMEOUT 300)
