@@ -35,9 +35,62 @@ from converter_utils import (
     append_ones,
     broadcast,
     get_axes_for_reduce_op,
-    get_dynamic_dims,
     has_dynamic_shape,
+    get_dynamic_dims,
 )
+
+# def to_numpy(
+#     value: Optional[Union[torch.Tensor, np.ndarray, int, float]],
+#     dtype: Optional[Union[torch.dtype, np.dtype,trt.tensorrt.ITensor ]] = None,
+# ) -> Optional[np.ndarray]:
+#     """
+#     Convert a PyTorch Tensor, Numpy array, or scalar to a Numpy Array. If the tensor is
+#     quantized it will be dequantized first.
+
+#     Args:
+#         value (Optional[Union[torch.Tensor, np.ndarray, int, float]]):
+#             A PyTorch tensor, Numpy array, int, or float
+#         dtype (Optional[Union[torch.dtype, np.dtype, str]]):
+#             If a dtype is given, we will convert the type of the given `value` to this dtype.
+
+#     Returns:
+#         A Numpy array.
+#     """
+#     output = None
+
+#     if value is None or isinstance(value, np.ndarray):
+#         output = value
+
+#     elif isinstance(value, torch.Tensor):
+#         if value.is_quantized:
+#             value = value.dequantize()
+
+#         output = value.cpu().detach().contiguous().numpy()
+
+#     elif isinstance(value, int):
+#         output = np.array([value], dtype=np.int32)
+
+#     elif isinstance(value, float):
+#         output = np.array([value], dtype=np.float32)
+
+#     else:
+#         raise AssertionError(
+#             f"to_numpy can only be called on None, int, float, np.ndarray, or torch.Tensor, got: {value}"
+#         )
+
+#     return (
+#         output
+#         if dtype is None
+#         else output.astype(unified_dtype_converter(dtype, "NUMPY"))
+#     )
+
+# def create_constant(network,input_val,name,dtype=None):
+#     constant =network.add_constant(
+#         (1,) if isinstance(input_val,(int,float)) else input_val.shape,
+#         to_numpy(input_val,dtype)
+#     )
+#     constant.name =name
+#     return constant.get_output(0)
 
 # def get_trt_tensor(
 #     network, input_val, name, dtype=None
@@ -123,7 +176,13 @@ def full_int_array_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.reshape", trt_version="8.x")
 def reshape_converter(network, paddle_op, inputs):
     input_tensor, shape_tensor = inputs
+
+    output_shape = paddle_op.results()[1].shape
+    if network.has_implicit_batch_dimension:
+        output_shape = output_shape[1:]
+
     shuffle_layer = network.add_shuffle(input_tensor)
+
     try:
         reshape_dims = (
             paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
@@ -155,16 +214,21 @@ def full_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.scale", trt_version="8.x")
 def scale_converter(network, paddle_op, inputs):
-    scale = paddle_op.attrs()["scale"]
+    scale = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
     bias = paddle_op.attrs().get("bias", 0.0)
     power = paddle_op.attrs().get("power", 1.0)
+
+    # Convert scale, bias, and power to TensorRT weights
+    scale_weight = trt.Weights(np.array([scale], dtype=np.float32))
+    bias_weight = trt.Weights(np.array([bias], dtype=np.float32))
+    power_weight = trt.Weights(np.array([power], dtype=np.float32))
 
     scale_layer = network.add_scale(
         inputs[0],
         mode=trt.ScaleMode.UNIFORM,
-        shift=bias,
-        scale=scale,
-        power=power,
+        shift=bias_weight,
+        scale=scale_weight,
+        power=power_weight,
     )
     return scale_layer
 
