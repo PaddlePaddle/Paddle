@@ -270,13 +270,13 @@ void TensorAdd(const VarType& src, VarType* dst) {
     if (data_type == framework::DataTypeTrait<float>::DataType()) {
       XPUTensorAddFunctor<float>(place, src_tensor, dst_tensor);
     } else if (data_type ==
-               framework::DataTypeTrait<platform::float16>::DataType()) {
-      XPUTensorAddFunctor<platform::float16>(place, src_tensor, dst_tensor);
+               framework::DataTypeTrait<phi::dtype::float16>::DataType()) {
+      XPUTensorAddFunctor<phi::dtype::float16>(place, src_tensor, dst_tensor);
     } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
       XPUTensorAddFunctor<double>(place, src_tensor, dst_tensor);
     } else if (data_type ==
-               framework::DataTypeTrait<platform::bfloat16>::DataType()) {
-      XPUTensorAddFunctor<platform::bfloat16>(place, src_tensor, dst_tensor);
+               framework::DataTypeTrait<phi::dtype::bfloat16>::DataType()) {
+      XPUTensorAddFunctor<phi::dtype::bfloat16>(place, src_tensor, dst_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "
@@ -317,7 +317,7 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
 
 #define PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(dev_ctx_type, cpp_type)       \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {     \
-    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);          \
+    phi::DeviceContext* dev_ctx = pool.Get(place);                       \
     phi::funcs::SelectedRowsAddToTensor<dev_ctx_type, cpp_type> functor; \
     functor(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),                     \
             src_selected_rows,                                           \
@@ -438,7 +438,7 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
 
 #define PADDLE_SELECTED_ROWS_ADD(dev_ctx_type, cpp_type)             \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
-    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);      \
+    phi::DeviceContext* dev_ctx = pool.Get(place);                   \
     phi::funcs::scatter::MergeAdd<dev_ctx_type, cpp_type> merge_add; \
     merge_add(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),               \
               src_selected_rows,                                     \
