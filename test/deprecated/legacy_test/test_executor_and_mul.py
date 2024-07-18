@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
+
 
 class TestExecutor(unittest.TestCase):
     def test_mul(self):
@@ -39,6 +42,6 @@ class TestExecutor(unittest.TestCase):
         # 重新启用静态图模式（如果需要）
         paddle.enable_static()
 
+
 if __name__ == '__main__':
     unittest.main()
-
