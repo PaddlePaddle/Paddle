@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -55,7 +55,7 @@ class ParallelContext {
 
   virtual void Broadcast(framework::Variable* src, int ring_id) = 0;
 
-  virtual paddle::platform::DeviceContext* GetDeviceContext(int ring_id) = 0;
+  virtual phi::DeviceContext* GetDeviceContext(int ring_id) = 0;
 
   // comm_stream[ring_id] wait compute_stream.
   // if CPU, should do nothing.

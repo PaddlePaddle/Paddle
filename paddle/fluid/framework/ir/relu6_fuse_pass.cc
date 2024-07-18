@@ -94,8 +94,8 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
     float max_val_ = 0.f;
     float min_val_ = 1.f;
     if (tensor_type == phi::DataType::FLOAT16) {
-      auto* clip_max_t_fp16_ptr = clip_max_t.data<platform::float16>();
-      auto* clip_min_t_fp16_ptr = clip_min_t.data<platform::float16>();
+      auto* clip_max_t_fp16_ptr = clip_max_t.data<phi::dtype::float16>();
+      auto* clip_min_t_fp16_ptr = clip_min_t.data<phi::dtype::float16>();
       max_val_ = static_cast<float>(clip_max_t_fp16_ptr[0]);
       min_val_ = static_cast<float>(clip_min_t_fp16_ptr[0]);
     } else if (tensor_type == phi::DataType::FLOAT32) {
