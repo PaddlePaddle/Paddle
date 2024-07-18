@@ -19,11 +19,12 @@ from paddle.distributed.passes import PassContext, new_pass
 
 
 class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
         self.origin_flag = base.framework.get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]
+        # TODO(lizhiyu): Don't support 1f1b in pir mode temporarily.
         base.set_flags({'FLAGS_enable_pir_api': 0})
 
     def __del__(self):
