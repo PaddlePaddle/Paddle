@@ -2765,17 +2765,6 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
         void *output_ptr = nullptr;
         if (output_type == paddle_infer::DataType::FLOAT32) {
           output_ptr = GetOutputTensor(name)->data<float>(&place, &output_size);
-        } else if (output_type == paddle_infer::DataType::FLOAT16 ||
-                   output_type == paddle_infer::DataType::BFLOAT16) {
-          output_ptr =
-              GetOutputTensor(name)->data<float16>(&place, &output_size);
-        } else if (output_type == paddle_infer::DataType::INT8 ||
-                   output_type == paddle_infer::DataType::UINT8) {
-          output_ptr =
-              GetOutputTensor(name)->data<uint8_t>(&place, &output_size);
-        } else if (output_type == paddle_infer::DataType::FLOAT64) {
-          output_ptr =
-              GetOutputTensor(name)->data<double>(&place, &output_size);
         }
         infer_xpu_ctx->ClearL3Block(output_ptr);
       }
