@@ -152,7 +152,7 @@ __global__ void masked_multihead_attention_kernel(
   const int split_index = blockIdx.x;
   int start_seq = 0;
   int end_seq = act_time_step;
-  bool is_last_block = false;
+  bool is_last_block = (SPLIT == false);
   int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
   if constexpr (SPLIT) {
     if (split_index >= real_split_each_batch) return;
@@ -160,10 +160,11 @@ __global__ void masked_multihead_attention_kernel(
     start_seq = split_index * params.steps_per_block;
     end_seq = start_seq + params.steps_per_block;
     if (split_index == real_split_each_batch - 1) {
-      end_seq = act_time_step;
       is_last_block = true;
+      end_seq = act_time_step;
     }
   }
+  int curr_seq_section = end_seq - start_seq;
 
   // qkv [B, S=1, num_head + 2 * kv_num_head, head_dim]
   // this hi means the head index in query!
@@ -215,7 +216,7 @@ __global__ void masked_multihead_attention_kernel(
     // k = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
     //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_offset])
     //         : k;
-    if ((Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) && (!SPLIT || is_last_block)) {
+    if ((Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) && is_last_block) {
       load_func.template load<Qk_vec>(k,
                                       params.num_head * Dh + qk_offset -
                                           hi * Dh +
@@ -342,7 +343,7 @@ __global__ void masked_multihead_attention_kernel(
 
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
 
-    if (!SPLIT || is_last_block) {
+    if (is_last_block) {
       int co = tid / QK_VECS_IN_16B;
       int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
       int offset = kv_bhi * params.max_seq_length * Dh +
@@ -364,14 +365,14 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   // when QK_VECS_PER_WARP > WARP_SIZE, we need to reduce the qk in smem!
-  if (QK_VECS_PER_WARP > WARP_SIZE && (!SPLIT || is_last_block)) {
+  if (QK_VECS_PER_WARP > WARP_SIZE && is_last_block) {
     constexpr int WARPS_PER_RED =
         (QK_VECS_PER_WARP + WARP_SIZE - 1) / WARP_SIZE;
     qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
   }
 
   // Let only the last cuda TheradBlock compute the final q*k.
-  if (tid == 0 && (!SPLIT || is_last_block)) {
+  if (tid == 0 && is_last_block) {
     // NOTE(wangxi): mask must be 0.0
     // T mask = params.attn_mask[
     //    bi * (params.timestep + 1) + params.timestep];
@@ -411,7 +412,7 @@ __global__ void masked_multihead_attention_kernel(
 
   T *k_cache = &params.cache_kv[kv_bhi * params.max_seq_length * Dh + ki];
   T *k_cache_batch = &params.cache_kv[bbhi * params.max_seq_length * Dh + ki];
-  int ti_end = div_up(end_seq - start_seq, K_PER_WARP) * K_PER_WARP + start_seq;
+  int ti_end = div_up(curr_seq_section, K_PER_WARP) * K_PER_WARP + start_seq;
 
   const int *beam_offsets = params.beam_cache_offset
                                 ? &params.beam_cache_offset[bi_seq_len_offset]
@@ -486,10 +487,8 @@ __global__ void masked_multihead_attention_kernel(
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
-  int useful_smem_index = end_seq - start_seq;
-  if (SPLIT && !is_last_block) {
-    useful_smem_index = end_seq - start_seq - 1;
-  }
+  int useful_smem_index =
+      is_last_block ? curr_seq_section : curr_seq_section - 1;
   float sum = 0.f;
   for (int ti = tid; ti <= useful_smem_index; ti += THREADS_PER_BLOCK) {
     // bool is_mask = false;
@@ -577,7 +576,7 @@ __global__ void masked_multihead_attention_kernel(
   zero(v_bias);
   // now we process the last v.
   if (vo == (act_time_step % V_PER_ITER + start_seq) &&
-      (Dh == Dh_MAX || vi < Dh) && (!SPLIT || is_last_block)) {
+      (Dh == Dh_MAX || vi < Dh) && is_last_block) {
     // V_vec v = *reinterpret_cast<const V_vec *>(
     //     &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
     V_vec v;
