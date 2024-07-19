@@ -799,6 +799,35 @@ class FlattenOpPattern
     return true;
   }
 };
+class CastOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::CastOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::CastOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::CastOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      
+      return false;
+    }
+  
+#if !IS_TRT_VERSION_GE(7000)
+      return false;
+#endif
+    auto input_var_name = op.operand_source(0);
+    auto input_var_name_type = input_var_name.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto input_var_name_shape = input_var_name_type.dims();
+    if(input_var_name_shape.size()==0 || input_var_name_shape.size()==1){
+        VLOG(3) 
+        << " cast op does not support input's dim is 1 or 0 in tensorrt "
+           "static shape mode.";
+        return false;
+        
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
 
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
@@ -846,6 +875,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<SliceOpPattern>(context));
     ps.Add(std::make_unique<IndexSelectOpPattern>(context));
     ps.Add(std::make_unique<FlattenOpPattern>(context));
+    ps.Add(std::make_unique<CastOpPattern>(context));
     return ps;
   }
 };
