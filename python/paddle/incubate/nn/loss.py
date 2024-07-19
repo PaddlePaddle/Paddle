@@ -14,10 +14,13 @@
 
 from __future__ import annotations
 
-from paddle import Tensor, _C_ops
+from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 def identity_loss(x: Tensor, reduction: str | int | None = "none") -> Tensor:
