@@ -92,7 +92,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
             if not core.is_compiled_with_rocm():
                 dtype_list.append("float64")
             for dtype in dtype_list:
-                self.simple_net_float(is_sparse, dtype)
+                with paddle.pir_utils.OldIrGuard():
+                    self.simple_net_float(is_sparse, dtype)
 
     def simple_net_float(self, is_sparse, dtype):
         places = [base.CPUPlace()]

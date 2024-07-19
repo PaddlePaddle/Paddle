@@ -117,7 +117,8 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
             for iterable in [False, True]:
                 try:
                     with base.scope_guard(base.Scope()):
-                        self.main_impl(p, iterable)
+                        with paddle.pir_utils.OldIrGuard():
+                            self.main_impl(p, iterable)
 
                     self.assertTrue(not self.raise_exception)
                 except ReaderException:
