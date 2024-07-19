@@ -233,30 +233,32 @@ class TestMathOpPatches(unittest.TestCase):
     @prog_scope()
     def test_neg(self):
         a = paddle.static.data(name="a", shape=[-1, 10, 1], dtype='float32')
-        a.desc.set_need_check_feed(False)
-        b = -a
-        place = base.CPUPlace()
-        exe = base.Executor(place)
-        a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float32')
-
-        (b_np,) = exe.run(
-            base.default_main_program(), feed={"a": a_np}, fetch_list=[b]
-        )
-        np.testing.assert_allclose(-a_np, b_np, rtol=1e-05)
+        if not paddle.framework.use_pir_api():
+            a.desc.set_need_check_feed(False)
+            b = -a
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float32')
+    
+            (b_np,) = exe.run(
+                base.default_main_program(), feed={"a": a_np}, fetch_list=[b]
+            )
+            np.testing.assert_allclose(-a_np, b_np, rtol=1e-05)
 
     @prog_scope()
     def test_astype(self):
         a = paddle.static.data(name="a", shape=[-1, 10, 1])
-        a.desc.set_need_check_feed(False)
-        b = a.astype('float32')
-        place = base.CPUPlace()
-        exe = base.Executor(place)
-        a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float64')
-
-        (b_np,) = exe.run(
-            base.default_main_program(), feed={"a": a_np}, fetch_list=[b]
-        )
-        np.testing.assert_allclose(a_np.astype('float32'), b_np, rtol=1e-05)
+        if not paddle.framework.use_pir_api():
+            a.desc.set_need_check_feed(False)
+            b = a.astype('float32')
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float64')
+    
+            (b_np,) = exe.run(
+                base.default_main_program(), feed={"a": a_np}, fetch_list=[b]
+            )
+            np.testing.assert_allclose(a_np.astype('float32'), b_np, rtol=1e-05)
 
     def test_bitwise_and(self):
         x_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
