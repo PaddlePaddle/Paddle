@@ -1056,6 +1056,7 @@ set(STATIC_BUILD_TESTS
     test_batch_norm_op
     test_nce
     test_layer_norm_op
+    test_initializer_nn
     test_eigh_op
     test_matmul_v2_op
     test_paddle_save_load_binary
