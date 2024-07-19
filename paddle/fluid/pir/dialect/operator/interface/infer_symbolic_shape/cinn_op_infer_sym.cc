@@ -217,12 +217,13 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       paddle::dialect::slice_utils::SliceRawInferSymbolicShape(
-          infer_context->GetShapeOrDataForValue(op->operand_source(0)),
+          op->operand_source(0),
           starts,
           ends,
           axes_raw,
           infer_flags_raw,
-          decrease_axis_raw));
+          decrease_axis_raw,
+          infer_context));
 
   return true;
 }
