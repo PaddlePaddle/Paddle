@@ -239,7 +239,7 @@ class TestMathOpPatches(unittest.TestCase):
             place = base.CPUPlace()
             exe = base.Executor(place)
             a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float32')
-    
+
             (b_np,) = exe.run(
                 base.default_main_program(), feed={"a": a_np}, fetch_list=[b]
             )
@@ -254,7 +254,7 @@ class TestMathOpPatches(unittest.TestCase):
             place = base.CPUPlace()
             exe = base.Executor(place)
             a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float64')
-    
+
             (b_np,) = exe.run(
                 base.default_main_program(), feed={"a": a_np}, fetch_list=[b]
             )
