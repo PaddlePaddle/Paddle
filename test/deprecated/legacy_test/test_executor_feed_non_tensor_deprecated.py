@@ -38,106 +38,124 @@ class TestExecutor(unittest.TestCase):
         return paddle.to_tensor(lr), avg_cost
 
     def test_program_feed_float(self):
-        main_program = base.Program()
-        startup_program = base.Program()
-        scope = base.Scope()
-        with base.program_guard(main_program, startup_program):
-            with base.scope_guard(scope):
-                cpu = base.CPUPlace()
-                exe = base.Executor(cpu)
-                lr, cost = self.net()
-                exe.run(startup_program)
-                train_data = numpy.array([[1.0], [2.0], [3.0], [4.0]]).astype(
-                    'float32'
-                )
-                y_true = numpy.array([[2.0], [4.0], [6.0], [8.0]]).astype(
-                    'float32'
-                )
-                a = 0.01
-                _lr, _ = exe.run(
-                    feed={'x': train_data, 'y': y_true, 'lr': a},
-                    fetch_list=[lr, cost],
-                    return_numpy=False,
-                )
-            self.assertEqual(_lr._dtype(), lr.dtype)
-            self.assertEqual(_lr._dtype(), paddle.float32)
-            self.assertEqual(type(a), float)
-
-    def test_program_feed_int(self):
-        main_program = base.Program()
-        startup_program = base.Program()
-        scope = base.Scope()
-        with base.program_guard(main_program, startup_program):
-            with base.scope_guard(scope):
-                cpu = base.CPUPlace()
-                exe = base.Executor(cpu)
-                lr, cost = self.net()
-                exe.run(startup_program)
-                train_data = numpy.array([[1.0], [2.0], [3.0], [4.0]]).astype(
-                    'float32'
-                )
-                y_true = numpy.array([[2.0], [4.0], [6.0], [8.0]]).astype(
-                    'float32'
-                )
-                a = 0
-                _lr, _ = exe.run(
-                    feed={'x': train_data, 'y': y_true, 'lr': a},
-                    fetch_list=[lr, cost],
-                    return_numpy=False,
-                )
-            self.assertEqual(_lr._dtype(), lr.dtype)
-            self.assertEqual(_lr._dtype(), paddle.float32)
-            self.assertEqual(type(a), int)
-
-    def test_program_feed_list(self):
-        main_program = base.Program()
-        startup_program = base.Program()
-        scope = base.Scope()
-        with base.program_guard(main_program, startup_program):
-            with base.scope_guard(scope):
-                cpu = base.CPUPlace()
-                exe = base.Executor(cpu)
-                lr, cost = self.net()
-                exe.run(startup_program)
-                train_data = [[1.0], [2.0], [3.0], [4.0]]
-                y_true = [[2.0], [4.0], [6.0], [8.0]]
-                a = 0
-                _lr, _ = exe.run(
-                    feed={'x': train_data, 'y': y_true, 'lr': a},
-                    fetch_list=[lr, cost],
-                    return_numpy=False,
-                )
-            self.assertEqual(_lr._dtype(), lr.dtype)
-            self.assertEqual(_lr._dtype(), paddle.float32)
-            self.assertEqual(type(y_true), list)
-
-    def test_compiled_program_feed_scalar(self):
-        main_program = base.Program()
-        startup_program = base.Program()
-        scope = base.Scope()
-        with base.program_guard(main_program, startup_program):
-            with base.scope_guard(scope):
-                lr, cost = self.net()
-                cpu = base.CPUPlace()
-                exe = base.Executor(cpu)
-                exe.run(startup_program)
-                compiled_prog = base.CompiledProgram(main_program)
-                train_data = numpy.array([[1.0], [2.0], [3.0], [4.0]]).astype(
-                    'float32'
-                )
-                y_true = numpy.array([[2.0], [4.0], [6.0], [8.0]]).astype(
-                    'float32'
-                )
-                a = 0.01
-                _lr, _ = exe.run(
-                    compiled_prog,
-                    feed={'x': train_data, 'y': y_true, 'lr': a},
-                    fetch_list=[lr, cost],
-                    return_numpy=False,
-                )
+        with paddle.pir_utils.OldIrGuard():
+            if hasattr(self, "attrs"):
+                for k, v in self.attrs.items():
+                    if isinstance(v, paddle.base.core.DataType):
+                        self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
+            main_program = base.Program()
+            startup_program = base.Program()
+            scope = base.Scope()
+            with base.program_guard(main_program, startup_program):
+                with base.scope_guard(scope):
+                    cpu = base.CPUPlace()
+                    exe = base.Executor(cpu)
+                    lr, cost = self.net()
+                    exe.run(startup_program)
+                    train_data = numpy.array(
+                        [[1.0], [2.0], [3.0], [4.0]]
+                    ).astype('float32')
+                    y_true = numpy.array([[2.0], [4.0], [6.0], [8.0]]).astype(
+                        'float32'
+                    )
+                    a = 0.01
+                    _lr, _ = exe.run(
+                        feed={'x': train_data, 'y': y_true, 'lr': a},
+                        fetch_list=[lr, cost],
+                        return_numpy=False,
+                    )
                 self.assertEqual(_lr._dtype(), lr.dtype)
                 self.assertEqual(_lr._dtype(), paddle.float32)
                 self.assertEqual(type(a), float)
+
+    def test_program_feed_int(self):
+        with paddle.pir_utils.OldIrGuard():
+            if hasattr(self, "attrs"):
+                for k, v in self.attrs.items():
+                    if isinstance(v, paddle.base.core.DataType):
+                        self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
+            main_program = base.Program()
+            startup_program = base.Program()
+            scope = base.Scope()
+            with base.program_guard(main_program, startup_program):
+                with base.scope_guard(scope):
+                    cpu = base.CPUPlace()
+                    exe = base.Executor(cpu)
+                    lr, cost = self.net()
+                    exe.run(startup_program)
+                    train_data = numpy.array(
+                        [[1.0], [2.0], [3.0], [4.0]]
+                    ).astype('float32')
+                    y_true = numpy.array([[2.0], [4.0], [6.0], [8.0]]).astype(
+                        'float32'
+                    )
+                    a = 0
+                    _lr, _ = exe.run(
+                        feed={'x': train_data, 'y': y_true, 'lr': a},
+                        fetch_list=[lr, cost],
+                        return_numpy=False,
+                    )
+                self.assertEqual(_lr._dtype(), lr.dtype)
+                self.assertEqual(_lr._dtype(), paddle.float32)
+                self.assertEqual(type(a), int)
+
+    def test_program_feed_list(self):
+        with paddle.pir_utils.OldIrGuard():
+            if hasattr(self, "attrs"):
+                for k, v in self.attrs.items():
+                    if isinstance(v, paddle.base.core.DataType):
+                        self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
+            main_program = base.Program()
+            startup_program = base.Program()
+            scope = base.Scope()
+            with base.program_guard(main_program, startup_program):
+                with base.scope_guard(scope):
+                    cpu = base.CPUPlace()
+                    exe = base.Executor(cpu)
+                    lr, cost = self.net()
+                    exe.run(startup_program)
+                    train_data = [[1.0], [2.0], [3.0], [4.0]]
+                    y_true = [[2.0], [4.0], [6.0], [8.0]]
+                    a = 0
+                    _lr, _ = exe.run(
+                        feed={'x': train_data, 'y': y_true, 'lr': a},
+                        fetch_list=[lr, cost],
+                        return_numpy=False,
+                    )
+                self.assertEqual(_lr._dtype(), lr.dtype)
+                self.assertEqual(_lr._dtype(), paddle.float32)
+                self.assertEqual(type(y_true), list)
+
+    def test_compiled_program_feed_scalar(self):
+        with paddle.pir_utils.OldIrGuard():
+            if hasattr(self, "attrs"):
+                for k, v in self.attrs.items():
+                    if isinstance(v, paddle.base.core.DataType):
+                        self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
+            main_program = base.Program()
+            startup_program = base.Program()
+            scope = base.Scope()
+            with base.program_guard(main_program, startup_program):
+                with base.scope_guard(scope):
+                    lr, cost = self.net()
+                    cpu = base.CPUPlace()
+                    exe = base.Executor(cpu)
+                    exe.run(startup_program)
+                    train_data = numpy.array(
+                        [[1.0], [2.0], [3.0], [4.0]]
+                    ).astype('float32')
+                    y_true = numpy.array([[2.0], [4.0], [6.0], [8.0]]).astype(
+                        'float32'
+                    )
+                    a = 0.01
+                    _lr, _ = exe.run(
+                        feed={'x': train_data, 'y': y_true, 'lr': a},
+                        fetch_list=[lr, cost],
+                        return_numpy=False,
+                    )
+                    self.assertEqual(_lr._dtype(), lr.dtype)
+                    self.assertEqual(_lr._dtype(), paddle.float32)
+                    self.assertEqual(type(a), float)
 
 
 if __name__ == '__main__':
