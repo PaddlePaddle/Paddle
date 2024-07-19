@@ -48,7 +48,7 @@ class PassTest(unittest.TestCase):
             in ['1', 'true', 'on']
             or not paddle.is_compiled_with_cuda()
         ):
-            places.append[base.CPUPlace()]
+            places.append(base.CPUPlace())
         if paddle.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         return places

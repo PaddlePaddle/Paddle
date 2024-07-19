@@ -31,7 +31,7 @@ class TestExponentialMovingAverage(unittest.TestCase):
             in ['1', 'true', 'on']
             or not base.core.is_compiled_with_cuda()
         ):
-            self._places.append[base.CPUPlace()]
+            self._places.append(base.CPUPlace())
         if base.core.is_compiled_with_cuda():
             self._places.append(base.CUDAPlace(0))
         self._ema_decay = 0.999

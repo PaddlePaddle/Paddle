@@ -76,7 +76,7 @@ class TestExecutor(unittest.TestCase):
             in ['1', 'true', 'on']
             or not base.core.is_compiled_with_cuda()
         ):
-            places.append[base.CPUPlace()]
+            places.append(base.CPUPlace())
         if base.core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 

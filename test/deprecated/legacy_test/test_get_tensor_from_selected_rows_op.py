@@ -50,7 +50,7 @@ class TestGetTensorFromSelectedRows(unittest.TestCase):
             in ['1', 'true', 'on']
             or not core.is_compiled_with_cuda()
         ):
-            places.append[core.CPUPlace()]
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places

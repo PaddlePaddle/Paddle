@@ -35,7 +35,7 @@ class TestFleetStaticEMA(unittest.TestCase):
             in ['1', 'true', 'on']
             or not paddle.device.is_compiled_with_cuda()
         ):
-            self._places.append[paddle.CPUPlace()]
+            self._places.append(paddle.CPUPlace())
         if paddle.device.is_compiled_with_cuda():
             self._places.append(paddle.CUDAPlace(0))
         self._ema_decay = 0.999

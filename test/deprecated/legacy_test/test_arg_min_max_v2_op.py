@@ -172,7 +172,7 @@ def create_test_case(op_type):
                 in ['1', 'true', 'on']
                 or not paddle.is_compiled_with_cuda()
             ):
-                self.places.append[base.CPUPlace()]
+                self.places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 self.places.append(paddle.CUDAPlace(0))
             self.op = eval(f"paddle.{op_type}")

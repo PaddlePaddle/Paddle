@@ -379,7 +379,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
             in ['1', 'true', 'on']
             or not paddle.is_compiled_with_cuda()
         ):
-            places.append[core.CPUPlace()]
+            places.append(core.CPUPlace())
         if paddle.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 

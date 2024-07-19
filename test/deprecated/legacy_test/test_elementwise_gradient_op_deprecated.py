@@ -101,11 +101,11 @@ class TestElementWiseAddOp(unittest.TestCase):
             '1',
             'true',
             'on',
-        ] or (
-            not core.is_compiled_with_cuda()
-            and core.op_support_cpu('elementwise_add')
+        ] or not (
+            paddle.is_compiled_with_cuda()
+            and core.op_support_gpu('elementwise_add')
         ):
-            places.append[core.CPUPlace()]
+            places.append(core.CPUPlace())
         if paddle.is_compiled_with_cuda() and core.op_support_gpu(
             'elementwise_add'
         ):

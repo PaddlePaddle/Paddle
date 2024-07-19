@@ -205,7 +205,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
             in ['1', 'true', 'on']
             or not base.is_compiled_with_cuda()
         ):
-            p.append[base.CPUPlace()]
+            p.append(base.CPUPlace())
         if base.is_compiled_with_cuda():
             p.append(base.CUDAPlace(0))
         return p

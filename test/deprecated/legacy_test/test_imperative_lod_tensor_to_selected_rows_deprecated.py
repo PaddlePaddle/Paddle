@@ -93,7 +93,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
             in ['1', 'true', 'on']
             or not core.is_compiled_with_cuda()
         ):
-            places.append(base.CPUlace())
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 

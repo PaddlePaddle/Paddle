@@ -879,7 +879,7 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             in ['1', 'true', 'on']
             or not core.is_compiled_with_cuda()
         ):
-            places.np.append(base.CPUPlace())
+            places.append(base.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 
