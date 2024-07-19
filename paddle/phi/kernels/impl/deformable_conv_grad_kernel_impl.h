@@ -78,43 +78,30 @@ HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h,
 
   T weight = 0;
 
-  if (bp_dir == 0) {
-    weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
-                  ? -1 * (argmax_w_low + 1 - argmax_w) *
-                        im_data[argmax_h_low * data_width + argmax_w_low]
-                  : 0;
+  bool flag0 = (argmax_h_low >= 0 && argmax_w_low >= 0);
+  bool flag1 = (argmax_h_low >= 0 && argmax_w_high <= width - 1);
+  bool flag2 = (argmax_h_high <= height - 1 && argmax_w_low >= 0);
+  bool flag3 = (argmax_h_high <= height - 1 && argmax_w_high <= width - 1);
 
-    weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
-                  ? -1 * (argmax_w - argmax_w_low) *
-                        im_data[argmax_h_low * data_width + argmax_w_high]
-                  : 0;
+  T data0 = flag0 ? im_data[argmax_h_low * data_width + argmax_w_low] : (T)0;
+  T data1 = flag1 ? im_data[argmax_h_low * data_width + argmax_w_high] : (T)0;
+  T data2 = flag2 ? im_data[argmax_h_high * data_width + argmax_w_low] : (T)0;
+  T data3 = flag3 ? im_data[argmax_h_high * data_width + argmax_w_high] : (T)0;
 
-    weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
-                  ? (argmax_w_low + 1 - argmax_w) *
-                        im_data[argmax_h_high * data_width + argmax_w_low]
-                  : 0;
-    weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
-                  ? (argmax_w - argmax_w_low) *
-                        im_data[argmax_h_high * data_width + argmax_w_high]
-                  : 0;
-  } else if (bp_dir == 1) {
-    weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
-                  ? -1 * (argmax_h_low + 1 - argmax_h) *
-                        im_data[argmax_h_low * data_width + argmax_w_low]
-                  : 0;
-    weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
-                  ? (argmax_h_low + 1 - argmax_h) *
-                        im_data[argmax_h_low * data_width + argmax_w_high]
-                  : 0;
-    weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
-                  ? -1 * (argmax_h - argmax_h_low) *
-                        im_data[argmax_h_high * data_width + argmax_w_low]
-                  : 0;
-    weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
-                  ? (argmax_h - argmax_h_low) *
-                        im_data[argmax_h_high * data_width + argmax_w_high]
-                  : 0;
-  }
+  T bp_dir_xor = (T)((bp_dir ^ 1) & 0x1);
+  T bp_dir_raw = (T)(bp_dir & 0x1);
+
+  //FMA，There is a small precision difference between fma and add
+  weight += (((-1 * (argmax_w_low + 1 - argmax_w)) * bp_dir_xor) + ((-1 * (argmax_h_low + 1 - argmax_h)) * bp_dir_raw)) * data0;
+  weight += (((-1 * (argmax_w - argmax_w_low)) * bp_dir_xor) + ((argmax_h_low + 1 - argmax_h) * bp_dir_raw)) * data1;
+  weight += (((argmax_w_low + 1 - argmax_w) * bp_dir_xor) + ((-1 * (argmax_h - argmax_h_low)) * bp_dir_raw)) * data2;
+  weight += (((argmax_w - argmax_w_low) * bp_dir_xor) + ((argmax_h - argmax_h_low) * bp_dir_raw)) * data3;
+
+  //ADD
+  // weight += flag0 ? (((-1 * (argmax_w_low + 1 - argmax_w)) * bp_dir_xor) + ((-1 * (argmax_h_low + 1 - argmax_h)) * bp_dir_raw)) * data0 : 0;
+  // weight += flag1 ? (((-1 * (argmax_w - argmax_w_low)) * bp_dir_xor) + ((argmax_h_low + 1 - argmax_h) * bp_dir_raw)) * data1 : 0;
+  // weight += flag2 ? (((argmax_w_low + 1 - argmax_w) * bp_dir_xor) + ((-1 * (argmax_h - argmax_h_low)) * bp_dir_raw)) * data2 : 0;
+  // weight += flag3 ? (((argmax_w - argmax_w_low) * bp_dir_xor) + ((argmax_h - argmax_h_low) * bp_dir_raw)) * data3 : 0;
 
   return weight;
 }
