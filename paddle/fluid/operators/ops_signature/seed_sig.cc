@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/phi/common/complex.h"
+namespace phi {
 
-namespace paddle {
-namespace platform {
-template <typename T>
-using complex = phi::dtype::complex<T>;
+KernelSignature SeedOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature(
+      "seed", {}, {"seed", "deterministic", "rng_name", "force_cpu"}, {"Out"});
+}
 
-using namespace phi::dtype;  // NOLINT
+}  // namespace phi
 
-}  // namespace platform
-}  // namespace paddle
+PD_REGISTER_ARG_MAPPING_FN(seed, phi::SeedOpArgumentMapping);

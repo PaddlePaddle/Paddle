@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/seed_kernel_impl.h"
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/tensor_node.h"
-
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_node.h"
-
-namespace cinn {
-namespace dialect {
-namespace ir {
-
-OpNode TensorNode::producer() const { return OpNode(node_data_.defining_op()); }
-
-OpNode TensorNode::ConsumerOpListView::Iterator::operator*() const {
-  return OpNode(iter_.owner());
-}
-
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+PD_REGISTER_KERNEL(seed, CPU, ALL_LAYOUT, phi::CPUSeedKernel, int) {}

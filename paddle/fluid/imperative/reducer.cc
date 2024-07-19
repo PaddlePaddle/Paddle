@@ -33,7 +33,7 @@ namespace imperative {
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
 // div the nranks
-void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
+void Group::DivNRanks(const phi::DeviceContext &context, int64_t nranks) {
   phi::DenseTensor *tensor =
       is_sparse_
           ? sparse_contents_->GetMutable<phi::SelectedRows>()->mutable_value()
@@ -116,7 +116,7 @@ static void ConcatTensorsWithType(
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP16:
-      ConcatTensorsForAllReduce<DeviceContext, platform::float16>(
+      ConcatTensorsForAllReduce<DeviceContext, phi::dtype::float16>(
           context, dense_tensors_, p_dense_contents);
       break;
     case framework::proto::VarType::FP32:
@@ -143,7 +143,7 @@ static void SplitTensorsWithType(const DeviceContext &context,
                                  framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP16:
-      SplitTensorsForAllReduce<DeviceContext, platform::float16>(
+      SplitTensorsForAllReduce<DeviceContext, phi::dtype::float16>(
           context, p_dense_contents, p_dense_tensors);
       break;
     case framework::proto::VarType::FP32:
@@ -224,7 +224,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 }
 #endif
 
-void Group::ConcatTensors(const platform::DeviceContext &context) {
+void Group::ConcatTensors(const phi::DeviceContext &context) {
   auto place = context.GetPlace();
   if (phi::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -260,7 +260,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
   }
 }
 
-void Group::SplitTensors(const platform::DeviceContext &context) {
+void Group::SplitTensors(const phi::DeviceContext &context) {
   auto place = context.GetPlace();
   if (phi::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

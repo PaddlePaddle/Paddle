@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/selected_rows/impl/get_tensor_from_selected_rows_kernel_impl.h"
 
-#include "paddle/phi/common/bfloat16.h"
-
-namespace paddle {
-namespace platform {
-using bfloat16 = phi::dtype::bfloat16;
-using namespace phi::dtype;  // NOLINT
-}  // namespace platform
-}  // namespace paddle
+PD_REGISTER_KERNEL(get_tensor_from_selected_rows,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sr::GetTensorFromSelectedRowsKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
