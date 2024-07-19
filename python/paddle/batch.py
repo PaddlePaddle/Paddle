@@ -14,12 +14,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, Sequence
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
 __all__ = []
 
 
-def batch(reader: Iterable[Any],
-          batch_size: int,
-          drop_last: bool = False
+def batch(
+    reader: Iterable[Any], batch_size: int, drop_last: bool = False
 ) -> Generator[List[Any], None, None]:
     """
     This operator creates a batched reader which combines the data from the
