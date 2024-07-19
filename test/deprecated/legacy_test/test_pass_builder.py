@@ -109,7 +109,6 @@ class TestPassBuilder(unittest.TestCase):
         self.assertEqual(origin_len + 1, len(pass_builder.all_passes()))
         with paddle.pir_utils.OldIrGuard():
             with tempfile.TemporaryDirectory(prefix="dot_path_") as tmpdir:
-                
                 graph_viz_path = os.path.join(tmpdir, 'test_viz_pass.dot')
                 viz_pass.set("graph_viz_path", graph_viz_path)
 
