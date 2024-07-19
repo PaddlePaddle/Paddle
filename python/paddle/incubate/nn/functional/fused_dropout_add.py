@@ -28,7 +28,9 @@ def fused_dropout_add(
     y: Tensor,
     p: float = 0.5,
     training: bool = True,
-    mode: Literal['upscale_in_train', 'downscale_in_infer'] = 'upscale_in_train',
+    mode: Literal[
+        'upscale_in_train', 'downscale_in_infer'
+    ] = 'upscale_in_train',
     name: str | None = None,
 ) -> Tensor:
     r"""
