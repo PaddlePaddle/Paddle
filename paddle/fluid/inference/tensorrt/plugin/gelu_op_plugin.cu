@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/inference/tensorrt/plugin/gelu_op_plugin.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace inference {

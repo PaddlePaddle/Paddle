@@ -392,7 +392,6 @@ function(parallel_bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type_deprecated)
-list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op_deprecated)
 list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
@@ -577,13 +576,9 @@ if(WIN32)
   py_test_modules(
     test_feed_data_check_shape_type_deprecated MODULES
     test_feed_data_check_shape_type_deprecated ENVS CUDA_VISIBLE_DEVICES=0)
-  py_test_modules(test_fetch_lod_tensor_array MODULES
-                  test_fetch_lod_tensor_array ENVS CUDA_VISIBLE_DEVICES=0)
 else()
   py_test_modules(test_feed_data_check_shape_type_deprecated MODULES
                   test_feed_data_check_shape_type_deprecated)
-  py_test_modules(test_fetch_lod_tensor_array MODULES
-                  test_fetch_lod_tensor_array)
 endif()
 
 py_test_modules(test_data_norm_op_deprecated MODULES
@@ -654,7 +649,6 @@ set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dygraph_multi_forward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_regularizer_deprecated PROPERTIES TIMEOUT 150)
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
@@ -712,7 +706,6 @@ set(STATIC_BUILD_TESTS
     test_arg_min_max_op
     test_batch_norm_op_deprecated
     test_decoupled_py_reader_deprecated
-    test_fetch_lod_tensor_array
     test_fuse_bn_act_pass_deprecated
     test_layer_norm_op_deprecated
     test_lookup_table_v2_op_deprecated
