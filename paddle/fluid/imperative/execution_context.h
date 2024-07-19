@@ -33,7 +33,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
  public:
   DygraphExecutionContext(const framework::OperatorBase& op,
                           const framework::Scope& scope,
-                          const platform::DeviceContext& device_context,
+                          const phi::DeviceContext& device_context,
                           const framework::RuntimeContext& ctx,
                           const NameVarMap<VarType>& var_map_in,
                           const NameVarMap<VarType>& var_map_out,

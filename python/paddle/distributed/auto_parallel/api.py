@@ -1327,6 +1327,14 @@ class ShardingStage3(_ShardingStageBase):
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
             if 'beta' not in key:
                 placements = param.placements
+                if all(
+                    isinstance(placement, dist.Replicate)
+                    for placement in placements
+                ):
+                    placements = get_placement_with_sharding(
+                        param, self._sharding_mesh_axis
+                    )
+
             else:
                 placements = [
                     dist.Replicate()
@@ -2799,8 +2807,12 @@ class ShardDataloader:
             if self._all_inputs_in_one_mesh is False:
                 assert len(self._input_keys) == len(self._meshes)
             dist_batch_data = {}
-            for i in range(len(self._input_keys)):
-                key = self._input_keys[i]
+            input_keys = (
+                batch_data.keys()
+                if self._input_keys is None
+                else self._input_keys
+            )
+            for i, key in enumerate(input_keys):
                 input_data = batch_data[key]
                 if isinstance(input_data, (list, tuple)):
                     (
