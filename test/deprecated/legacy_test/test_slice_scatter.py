@@ -92,7 +92,6 @@ class TestSliceScatterApi(unittest.TestCase):
                 value = paddle.static.data(
                     'value', self.value_shape, self.dtype
                 )
-
                 out = paddle.slice_scatter(
                     x,
                     value,
@@ -171,28 +170,31 @@ class TestSliceScatterApiInt32(TestSliceScatterApi):
 class TestSliceScatterApiInt16(TestSliceScatterApi):
     def init_dtype(self):
         # old ir `set_value` not support this dtype
-        if paddle.framework.in_dynamic_or_pir_mode():
-            self.dtype = 'int16'
-        else:
-            self.dtype = 'float64'
+        with paddle.pir_utils.OldIrGuard():
+            if paddle.framework.in_dynamic_or_pir_mode():
+                self.dtype = 'int16'
+            else:
+                self.dtype = 'float64'
 
 
 class TestSliceScatterApiInt8(TestSliceScatterApi):
     def init_dtype(self):
         # old ir `set_value` not support this dtype
-        if paddle.framework.in_dynamic_or_pir_mode():
-            self.dtype = 'int8'
-        else:
-            self.dtype = 'float64'
+        with paddle.pir_utils.OldIrGuard():
+            if paddle.framework.in_dynamic_or_pir_mode():
+                self.dtype = 'int8'
+            else:
+                self.dtype = 'float64'
 
 
 class TestSliceScatterApiUint8(TestSliceScatterApi):
     def init_dtype(self):
         # old ir `set_value` not support this dtype
-        if paddle.framework.in_dynamic_or_pir_mode():
-            self.dtype = 'uint8'
-        else:
-            self.dtype = 'float64'
+        with paddle.pir_utils.OldIrGuard():
+            if paddle.framework.in_dynamic_or_pir_mode():
+                self.dtype = 'uint8'
+            else:
+                self.dtype = 'float64'
 
 
 class TestSliceScatterApiBool(TestSliceScatterApi):
@@ -203,10 +205,11 @@ class TestSliceScatterApiBool(TestSliceScatterApi):
 class TestSliceScatterApiBfloat16(TestSliceScatterApi):
     def init_dtype(self):
         # old ir `set_value` not support this dtype
-        if paddle.framework.in_dynamic_or_pir_mode():
-            self.dtype = 'bfloat16'
-        else:
-            self.dtype = 'float64'
+        with paddle.pir_utils.OldIrGuard():
+            if paddle.framework.in_dynamic_or_pir_mode():
+                self.dtype = 'bfloat16'
+            else:
+                self.dtype = 'float64'
 
 
 class TestSliceScatterApiFloat16(TestSliceScatterApi):
