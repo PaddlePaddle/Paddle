@@ -1004,6 +1004,7 @@ set(TEST_CINN_OPS
     test_scatter_op
     test_reverse_op
     test_roll_op
+    test_metrics
     test_meshgrid_op
     test_index_select_op
     test_mean_op
