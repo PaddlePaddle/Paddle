@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
+import paddle
 from paddle import _C_ops
 from paddle.base import core
 from paddle.common_ops_import import default_main_program
@@ -20,8 +22,13 @@ from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
 def fused_dropout_add(
-    x, y, p=0.5, training=True, mode='upscale_in_train', name=None
-):
+    x: paddle.Tensor,
+    y: paddle.Tensor,
+    p: float = 0.5,
+    training: bool = True,
+    mode: str = 'upscale_in_train',
+    name: str | None = None,
+) -> paddle.Tensor:
     r"""
     Fused Dropout and Add.
 
