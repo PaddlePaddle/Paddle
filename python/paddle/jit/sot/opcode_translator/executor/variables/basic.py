@@ -24,7 +24,13 @@ import numpy as np
 import paddle
 from paddle.framework import core
 
-from ....infer_meta import MetaInfo, SymbolicInt, SymbolicValue
+from ....infer_meta import (
+    MetaInfo,
+    SymbolicBool,
+    SymbolicFloat,
+    SymbolicInt,
+    SymbolicValue,
+)
 from ....symbolic.statement_ir import Symbol
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
@@ -638,6 +644,7 @@ class SymbolicVariable(VariableBase):
     """
 
     var_name_generator = NameGenerator("symint_")
+    value: int | SymbolicValue
 
     def __init__(
         self,
@@ -648,7 +655,26 @@ class SymbolicVariable(VariableBase):
         super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
         if isinstance(value_or_meta, MetaInfo):
-            self.value: int | SymbolicValue = SymbolicValue()
+            assert len(value_or_meta.shape) == 0
+            if value_or_meta.dtype in [paddle.bool]:
+                self.value = SymbolicBool()
+            elif value_or_meta.dtype in [
+                paddle.int8,
+                paddle.int16,
+                paddle.int32,
+                paddle.int64,
+            ]:
+                self.value = SymbolicInt()
+            elif value_or_meta.dtype in [
+                paddle.float16,
+                paddle.float32,
+                paddle.float64,
+            ]:
+                self.value = SymbolicFloat()
+            else:
+                raise InnerError(
+                    f"Unsupported dtype {value_or_meta.dtype} for SymbolicVariable"
+                )
             self.meta = value_or_meta
         else:
             self.value = value_or_meta
