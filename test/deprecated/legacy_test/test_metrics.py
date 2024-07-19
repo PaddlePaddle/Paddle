@@ -84,8 +84,7 @@ class TestAccuracy(unittest.TestCase):
         self.assertEqual(m.update(correct), 0.75)
         self.assertEqual(m.accumulate(), 0.75)
 
-        x = paddle.to_tensor(
-            np.array(
+        x = np.array(
                 [
                     [0.1, 0.2, 0.3, 0.4],
                     [0.1, 0.3, 0.4, 0.2],
@@ -93,8 +92,7 @@ class TestAccuracy(unittest.TestCase):
                     [0.1, 0.2, 0.3, 0.4],
                 ]
             )
-        )
-        y = paddle.to_tensor(np.array([[0], [1], [2], [3]]))
+        y = np.array([[0], [1], [2], [3]])
         correct = m.compute(x, y)
         # check results
         self.assertEqual(m.update(correct), 0.5)
@@ -199,40 +197,40 @@ class TestAccuracyStatic(TestAccuracyDynamic):
 
     def test_main(self):
         paddle.enable_static()
+        with paddle.pir_utils.OldIrGuard():
+            main_prog = base.Program()
+            startup_prog = base.Program()
+            paddle.seed(1024)
+            with base.program_guard(main_prog, startup_prog):
+                pred = paddle.static.data(
+                    name='pred', shape=[None, self.class_num], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[None, 1], dtype='int64'
+                )
+                acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
+                state = acc.compute(pred, label)
 
-        main_prog = base.Program()
-        startup_prog = base.Program()
-        paddle.seed(1024)
-        with base.program_guard(main_prog, startup_prog):
-            pred = paddle.static.data(
-                name='pred', shape=[None, self.class_num], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[None, 1], dtype='int64'
-            )
-            acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
-            state = acc.compute(pred, label)
+            exe = base.Executor(base.CPUPlace())
+            compiled_main_prog = base.CompiledProgram(main_prog)
 
-        exe = base.Executor(base.CPUPlace())
-        compiled_main_prog = base.CompiledProgram(main_prog)
-
-        for _ in range(10):
-            label, pred = self.random_pred_label()
-            state_ret = exe.run(
-                compiled_main_prog,
-                feed={'pred': pred, 'label': label},
-                fetch_list=to_list(state),
-                return_numpy=True,
-            )
-            acc.update(*state_ret)
-            res_m = acc.accumulate()
-            res_f = accuracy(pred, label, self.topk)
-            assert np.all(
-                np.isclose(np.array(res_m), np.array(res_f), rtol=1e-3)
-            ), f"Accuracy precision error: {res_m} != {res_f}"
-            acc.reset()
-            assert np.sum(acc.total) == 0
-            assert np.sum(acc.count) == 0
+            for _ in range(10):
+                label, pred = self.random_pred_label()
+                state_ret = exe.run(
+                    compiled_main_prog,
+                    feed={'pred': pred, 'label': label},
+                    fetch_list=to_list(state),
+                    return_numpy=True,
+                )
+                acc.update(*state_ret)
+                res_m = acc.accumulate()
+                res_f = accuracy(pred, label, self.topk)
+                assert np.all(
+                    np.isclose(np.array(res_m), np.array(res_f), rtol=1e-3)
+                ), f"Accuracy precision error: {res_m} != {res_f}"
+                acc.reset()
+                assert np.sum(acc.total) == 0
+                assert np.sum(acc.count) == 0
 
         paddle.disable_static()
 
@@ -256,8 +254,8 @@ class TestPrecision(unittest.TestCase):
         r = m.accumulate()
         self.assertAlmostEqual(r, 2.0 / 3.0)
 
-        x = paddle.to_tensor(np.array([0.1, 0.5, 0.6, 0.7, 0.2]))
-        y = paddle.to_tensor(np.array([1, 0, 1, 1, 1]))
+        x = np.array([0.1, 0.5, 0.6, 0.7, 0.2])
+        y = np.array([1, 0, 1, 1, 1])
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 4.0 / 6.0)
@@ -294,8 +292,8 @@ class TestRecall(unittest.TestCase):
         r = m.accumulate()
         self.assertAlmostEqual(r, 2.0 / 3.0)
 
-        x = paddle.to_tensor(np.array([0.1, 0.5, 0.6, 0.7]))
-        y = paddle.to_tensor(np.array([1, 0, 0, 1]))
+        x = np.array([0.1, 0.5, 0.6, 0.7])
+        y = np.array([1, 0, 0, 1])
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 3.0 / 5.0)
@@ -331,8 +329,7 @@ class TestAuc(unittest.TestCase):
         self.assertEqual(m.accumulate(), 0.0)
 
     def test_auc_tensor(self):
-        x = paddle.to_tensor(
-            np.array(
+        x = np.array(
                 [
                     [0.78, 0.22],
                     [0.62, 0.38],
@@ -344,8 +341,7 @@ class TestAuc(unittest.TestCase):
                     [0.16, 0.84],
                 ]
             )
-        )
-        y = paddle.to_tensor(np.array([[0], [1], [1], [0], [1], [0], [0], [1]]))
+        y = np.array([[0], [1], [1], [0], [1], [0], [0], [1]])
         m = paddle.metric.Auc()
         m.update(x, y)
         r = m.accumulate()
