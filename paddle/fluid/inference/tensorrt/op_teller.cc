@@ -2808,8 +2808,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       auto indices_var_name = desc.Input("indices")[0];
       auto* indices_var_desc = block->FindVarRecursive(indices_var_name);
-      // const auto value_shape =
-      // block->FindVarRecursive(desc.Input("value")[0])->GetShape();
 
       auto dtype = indices_var_desc->GetDataType();
       if (dtype != framework::proto::VarType::BOOL) {

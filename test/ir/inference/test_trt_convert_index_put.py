@@ -28,7 +28,7 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        # self.trt_param.workspace_size = 1073741824
+        self.trt_param.workspace_size = 1073741824
 
         def generate_input1():
             return np.random.random([1, 80, 2]).astype(np.float32)
