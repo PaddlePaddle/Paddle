@@ -18,8 +18,10 @@
 
 int main(int argc, char* argv[]) {
   if (argc == 2) {
+    // make eager_legacy_op_function_generator.cc
     run_legacy_generator(argc, argv);
   } else if (argc == 3) {
+    // make eager_generator.cc
     run_generator(argc, argv);
   } else {
     std::cerr << "argc must be 2 or 3" << std::endl;

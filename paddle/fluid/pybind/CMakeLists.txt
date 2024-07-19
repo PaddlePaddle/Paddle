@@ -365,11 +365,9 @@ if(WITH_PYTHON)
     set(EAGER_CODEGEN_DEPS eager_generator)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
       set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}")
-      message(1111, ${eager_generator_path})
     else()
       set(eager_generator_path
           "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
-      message(2222, ${eager_generator_path})
     endif()
 
     if(WITH_SHARED_PHI)
@@ -577,7 +575,7 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${eager_impl_file}
         COMMAND
-          ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/eager_generator_retry.bat
+          ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/eager_legacy_op_function_generator_retry.bat
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file}
                 ${eager_impl_file}
         COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
