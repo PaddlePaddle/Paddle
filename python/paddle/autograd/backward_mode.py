@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import paddle
 from paddle.base import core, framework
 from paddle.base.backward import gradients_with_optimizer  # noqa: F401
@@ -20,7 +22,11 @@ __all__ = []
 
 
 @framework.dygraph_only
-def backward(tensors, grad_tensors=None, retain_graph=False):
+def backward(
+    tensors: list[paddle.Tensor],
+    grad_tensors: list[paddle.Tensor] | None = None,
+    retain_graph: bool | None = False,
+) -> None:
     """
     Compute the backward gradients of given tensors.
 
@@ -32,7 +38,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
             If None, all the gradients of the ``tensors`` is the default value which is filled with 1.0.
             Defaults to None.
 
-        retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
+        retain_graph(bool|False, optional): If False, the graph used to compute grads will be freed. If you would
             like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
             :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
             Defaults to False.
@@ -80,7 +86,9 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
     """
 
-    def check_tensors(in_out_list, name):
+    def check_tensors(
+        in_out_list: list[paddle.Tensor], name: str
+    ) -> list[paddle.Tensor]:
         assert in_out_list is not None, f"{name} should not be None"
 
         if isinstance(in_out_list, (list, tuple)):
