@@ -35,18 +35,18 @@ from .auto_cast import amp_global_state
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle.static.amp.decorator import OptimizerWithMixedPrecision
     from python.paddle.optimizer.optimizer import Optimizer
 
-
-class _ScaleStateDict(TypedDict):
-    scale: Tensor
-    incr_ratio: float
-    decr_ratio: float
-    incr_every_n_steps: int
-    decr_every_n_nan_or_inf: int
-    incr_count: int
-    decr_count: int
-    use_dynamic_loss_scaling: bool
+    class _ScaleStateDict(TypedDict):
+        scale: Tensor
+        incr_ratio: float
+        decr_ratio: float
+        incr_every_n_steps: int
+        decr_every_n_nan_or_inf: int
+        incr_count: int
+        decr_count: int
+        use_dynamic_loss_scaling: bool
 
 
 class OptimizerState(Enum):
@@ -107,25 +107,6 @@ class AmpScaler:
             ...     scaled.backward()
             ...     scaler.minimize(optimizer, scaled)
     """
-
-    _enable: bool
-    _use_dynamic_loss_scaling: bool
-    _init_loss_scaling: float
-    _scale: Tensor
-    _incr_ratio: float
-    _decr_ratio: float
-    _incr_every_n_steps: int
-    _decr_every_n_nan_or_inf: int
-    _incr_count: int
-    _decr_count: int
-    _use_dynamic_loss_scaling: bool
-    _found_inf: Tensor
-    _temp_found_inf_value_false: Tensor
-    _temp_found_inf_fp16: Tensor
-    _temp_found_inf_bf16: Tensor
-    _temp_found_inf_fp32: Tensor
-    _cache_founf_inf: bool
-    _optimizer_states: dict[str, int]
 
     def __init__(
         self,
@@ -266,7 +247,10 @@ class AmpScaler:
         return var * self._scale
 
     def minimize(
-        self, optimizer: Optimizer, *args: Any, **kwargs: Any
+        self,
+        optimizer: Optimizer | OptimizerWithMixedPrecision,
+        *args: Any,
+        **kwargs: Any,
     ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
         """
         This function is similar as `Optimizer.minimize()`, which performs parameters updating.
@@ -763,7 +747,10 @@ class GradScaler(AmpScaler):
         return super().scale(var)
 
     def minimize(
-        self, optimizer: Optimizer, *args: Any, **kwargs: Any
+        self,
+        optimizer: Optimizer | OptimizerWithMixedPrecision,
+        *args: Any,
+        **kwargs: Any,
     ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
         """
         This function is similar as `optimizer.minimize()`, which performs parameters updating.
