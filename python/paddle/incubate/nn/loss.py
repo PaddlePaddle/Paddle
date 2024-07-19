@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
