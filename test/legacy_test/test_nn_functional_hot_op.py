@@ -202,7 +202,6 @@ class BadInputTestOnehotV2(unittest.TestCase):
                 self.assertRaises(TypeError, test_bad_x)
 
 
-
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
