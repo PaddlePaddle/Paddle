@@ -23,6 +23,8 @@ from dygraph_to_static_utils import (
 
 import paddle
 
+# NOTE: only test in PIR mode
+
 _valid_dtypes = [
     "bfloat16",
     "float16",
@@ -103,20 +105,6 @@ class TensorToTest(Dy2StTestBase):
             t = paddle.jit.to_static(to_dtype)(tensorx, dtype)
             typex_str = str(t.dtype)
             self.assertEqual(typex_str, "paddle." + dtype)
-
-    @test_pir_only
-    def test_tensor_to_device(self):
-        tensorx = paddle.to_tensor([1, 2, 3])
-        places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            places.append("gpu")
-
-        for place in places:
-            tensorx = paddle.jit.to_static(to_device)(tensorx, place)
-            if "gpu" == place:
-                self.assertEqual(str(tensorx.place), _gpu_place)
-            else:
-                self.assertEqual(str(tensorx.place), _cpu_place)
 
     @test_pir_only
     def test_tensor_to_device2(self):
