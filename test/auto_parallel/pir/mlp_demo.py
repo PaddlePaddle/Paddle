@@ -28,9 +28,9 @@ from paddle.distributed import ParallelEnv
 from paddle.distributed.fleet import auto
 
 BATCH_SIZE = 4
-BATCH_NUM = 2
-IMAGE_SIZE = 3
-CLASS_NUM = 4
+BATCH_NUM = 4
+IMAGE_SIZE = 16
+CLASS_NUM = 8
 np.random.seed(2024)
 paddle.seed(2024)
 
