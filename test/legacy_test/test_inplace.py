@@ -1221,22 +1221,23 @@ class TestDygraphInplaceLdexp(TestDygraphInplaceWithContinuous):
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-        with paddle.base.dygraph.guard():
-            var_a = paddle.to_tensor(self.input_var_numpy).astype("float64")
-            var_a.stop_gradient = False
+        with paddle.pir_utils.OldIrGuard():
+            with paddle.base.dygraph.guard():
+                var_a = paddle.to_tensor(self.input_var_numpy).astype("float64")
+                var_a.stop_gradient = False
 
-            var_b = var_a**2
+                var_b = var_a**2
 
-            # Here, the gradient computation will use the value of var_b
-            var_c = var_b**2
-            self.inplace_api_processing(var_b)
+                # Here, the gradient computation will use the value of var_b
+                var_c = var_b**2
+                self.inplace_api_processing(var_b)
 
-            loss = paddle.nn.functional.relu(var_c)
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "received tensor_version:2 != wrapper_version_snapshot:0",
-            ):
-                loss.backward()
+                loss = paddle.nn.functional.relu(var_c)
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "received tensor_version:2 != wrapper_version_snapshot:0",
+                ):
+                    loss.backward()
 
     def test_error(self):
         x = 1
