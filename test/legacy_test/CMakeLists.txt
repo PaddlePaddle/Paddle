@@ -620,7 +620,7 @@ if(WITH_DISTRIBUTE)
 
   if(NOT APPLE)
     if(NOT WIN32)
-    
+
       py_test_modules(test_auto_parallel_reshard_serial MODULES
                       test_auto_parallel_reshard_serial ENVS ${dist_ENVS})
 
@@ -786,7 +786,7 @@ set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_flash_attention PROPERTIES TIMEOUT 420)
 if(NOT WIN32)
   set_tests_properties(test_multiprocess_reader_exception
-                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   if(WITH_NV_JETSON)
     set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 1200)
   endif()
