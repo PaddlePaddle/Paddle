@@ -23,6 +23,7 @@ from paddle.distributed.communication import stream
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
 
 def gather(
