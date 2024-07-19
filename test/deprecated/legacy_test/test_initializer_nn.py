@@ -45,16 +45,17 @@ class TestConstantInitializer(unittest.TestCase):
         self, init_inst, dtype="float32", value_target=0.0
     ):
         paddle.enable_static()
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=init_inst,
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=init_inst,
+                )
         num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -65,15 +66,17 @@ class TestConstantInitializer(unittest.TestCase):
 
     def test_constant_initializer_default_value_static(self, dtype="float32"):
         """Test the constant initializer with default value in static graph"""
-        block = self.static_test_constant_initializer_common(
-            init_inst=initializer.Constant(), dtype=dtype, value_target=0.0
-        )
+        with paddle.pir_utils.OldIrGuard():
+            block = self.static_test_constant_initializer_common(
+                init_inst=initializer.Constant(), dtype=dtype, value_target=0.0
+            )
         return block
 
     def test_constant_initializer_default_value_dygraph(self, dtype="float32"):
         """Test constant initializer with supplied value in dygraph"""
-        with base.dygraph.guard():
-            linear = nn.Linear(2, 4, weight_attr=nn.initializer.Constant())
+        with paddle.pir_utils.OldIrGuard():
+            with base.dygraph.guard():
+                linear = nn.Linear(2, 4, weight_attr=nn.initializer.Constant())
             mat_target = np.ones((2, 4), dtype=dtype) * 0.0
             mat_linear = linear.weight.numpy()
             mismatch = np.sum(
@@ -83,17 +86,21 @@ class TestConstantInitializer(unittest.TestCase):
 
     def test_constant_initializer_static(self, dtype="float32"):
         """Test constant initializer with supplied value in static graph"""
-        block = self.static_test_constant_initializer_common(
-            init_inst=initializer.Constant(2.3), dtype=dtype, value_target=2.3
-        )
+        with paddle.pir_utils.OldIrGuard():
+            block = self.static_test_constant_initializer_common(
+                init_inst=initializer.Constant(2.3),
+                dtype=dtype,
+                value_target=2.3,
+            )
         return block
 
     def test_constant_initializer_dygraph(self, dtype="float32"):
         """Test constant initializer with supplied value in dygraph"""
-        with base.dygraph.guard():
-            linear = nn.Linear(
-                2, 4, weight_attr=nn.initializer.Constant(value=2.0)
-            )
+        with paddle.pir_utils.OldIrGuard():
+            with base.dygraph.guard():
+                linear = nn.Linear(
+                    2, 4, weight_attr=nn.initializer.Constant(value=2.0)
+                )
             mat_target = np.ones((2, 4), dtype=dtype) * 2.0
             mat_linear = linear.weight.numpy()
             mismatch = np.sum(
@@ -112,10 +119,11 @@ class TestConstantInitializer(unittest.TestCase):
         """Test constant initializer with bfloat16
         No cast operator has been added here
         """
-        self.test_constant_initializer_default_value_static(
-            "uint16"
-        )  # bfloat16
-        self.test_constant_initializer_static("uint16")  # bfloat16
+        with paddle.pir_utils.OldIrGuard():
+            self.test_constant_initializer_default_value_static(
+                "uint16"
+            )  # bfloat16
+            self.test_constant_initializer_static("uint16")  # bfloat16
 
 
 class TestKaimingInitializer(unittest.TestCase):
@@ -123,17 +131,18 @@ class TestKaimingInitializer(unittest.TestCase):
         self, init_inst, dtype="float32", uniform=False, is_conv=False
     ):
         paddle.enable_static()
-        program = framework.Program()
-        block = program.global_block()
-        shape_mat = [5, 10, 15, 20] if is_conv else [5, 10]
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=shape_mat,
-                lod_level=0,
-                name="param",
-                initializer=init_inst,
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            shape_mat = [5, 10, 15, 20] if is_conv else [5, 10]
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=shape_mat,
+                    lod_level=0,
+                    name="param",
+                    initializer=init_inst,
+                )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         if uniform:
@@ -214,18 +223,18 @@ class TestUniform(unittest.TestCase):
     def test_uniform_common(self, dtype="float32", seed=0):
         """Test the uniform initializer with default value"""
         paddle.enable_static()
-
-        program = framework.Program()
-        program.random_seed = seed
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Uniform(),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            program.random_seed = seed
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.Uniform(),
+                )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -243,18 +252,18 @@ class TestUniform(unittest.TestCase):
     ):
         """Test the uniform initializer with default value"""
         paddle.enable_static()
-
-        program = framework.Program()
-        program.random_seed = seed
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Uniform(),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            program.random_seed = seed
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.Uniform(),
+                )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -272,18 +281,18 @@ class TestUniform(unittest.TestCase):
     ):
         """Test uniform initializer with supplied attributes"""
         paddle.enable_static()
-
-        program = framework.Program()
-        program.random_seed = seed
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Uniform(min_value, max_value),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            program.random_seed = seed
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.Uniform(min_value, max_value),
+                )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -300,18 +309,18 @@ class TestUniform(unittest.TestCase):
     ):
         """Test uniform initializer with supplied attributes"""
         paddle.enable_static()
-
-        program = framework.Program()
-        program.random_seed = seed
-        block = program.global_block()
-        for i in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Uniform(min_value, float(i)),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            program.random_seed = seed
+            block = program.global_block()
+            for i in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.Uniform(min_value, float(i)),
+                )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op0 = block.ops[0]
@@ -364,17 +373,17 @@ class TestNormal(unittest.TestCase):
     def test_normal_initializer_default_value(self):
         """Test the normal initializer with default value"""
         paddle.enable_static()
-
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Normal(),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.Normal(),
+                )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -387,17 +396,17 @@ class TestNormal(unittest.TestCase):
     def test_normal_initializer(self, dtype="float32"):
         """Test normal initializer with supplied attributes"""
         paddle.enable_static()
-
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Normal(2.3, 1.9),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.Normal(2.3, 1.9),
+                )
         num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -412,16 +421,17 @@ class TestNormal(unittest.TestCase):
     def test_normal_initializer_complex(self, dtype="complex64"):
         """Test normal initializer with complex dtype"""
         with static_guard():
-            program = framework.Program()
-            block = program.global_block()
-            for _ in range(2):
-                block.create_parameter(
-                    dtype=dtype,
-                    shape=[5, 10],
-                    lod_level=0,
-                    name="param",
-                    initializer=initializer.Normal(2.3 + 2.3j, 1.9),
-                )
+            with paddle.pir_utils.OldIrGuard():
+                program = framework.Program()
+                block = program.global_block()
+                for _ in range(2):
+                    block.create_parameter(
+                        dtype=dtype,
+                        shape=[5, 10],
+                        lod_level=0,
+                        name="param",
+                        initializer=initializer.Normal(2.3 + 2.3j, 1.9),
+                    )
             num_ops = 1
             self.assertEqual(len(block.ops), num_ops)
             init_op = block.ops[0]
@@ -466,17 +476,17 @@ class TestTruncatedNormal(unittest.TestCase):
     def test_truncated_normal_initializer_default_value(self):
         """Test the truncated normal initializer with default value"""
         paddle.enable_static()
-
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.TruncatedNormal(),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.TruncatedNormal(),
+                )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'truncated_gaussian_random')
@@ -491,17 +501,17 @@ class TestTruncatedNormal(unittest.TestCase):
     def test_truncated_normal_initializer(self, dtype="float32"):
         """Test truncated normal initializer with supplied attributes"""
         paddle.enable_static()
-
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.TruncatedNormal(2.3, 1.9),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.TruncatedNormal(2.3, 1.9),
+                )
         num_ops = 2 if dtype in ["float16", "uint16"] else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
@@ -580,17 +590,17 @@ class TestXavierUniform(unittest.TestCase):
         for matrix multiply.
         """
         paddle.enable_static()
-
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.XavierUniform(),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.XavierUniform(),
+                )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -606,17 +616,17 @@ class TestXavierUniform(unittest.TestCase):
         for convolutions.
         """
         paddle.enable_static()
-
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10, 15, 20],
-                lod_level=0,
-                name="param",
-                initializer=initializer.XavierUniform(),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10, 15, 20],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.XavierUniform(),
+                )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -645,17 +655,17 @@ class TestXavierNormal(unittest.TestCase):
         for matrix multiply.
         """
         paddle.enable_static()
-
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.XavierNormal(),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.XavierNormal(),
+                )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -671,17 +681,17 @@ class TestXavierNormal(unittest.TestCase):
         for convolutions.
         """
         paddle.enable_static()
-
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10, 15, 20],
-                lod_level=0,
-                name="param",
-                initializer=initializer.XavierNormal(),
-            )
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10, 15, 20],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.XavierNormal(),
+                )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -713,24 +723,29 @@ class TestAssign(unittest.TestCase):
 
         import numpy
 
-        program = framework.Program()
-        block = program.global_block()
-        np_array = numpy.random.random(10000).astype(dtype)
-        for _ in range(2):
-            block.create_parameter(
-                dtype=np_array.dtype,
-                shape=np_array.shape,
-                lod_level=0,
-                name="param",
-                initializer=initializer.Assign(np_array),
-            )
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'assign_value')
-        values = framework.extract_plain_list(init_op.attr('values'))
-        assert values == np_array.ravel().tolist()
-        paddle.disable_static()
+        with paddle.pir_utils.OldIrGuard():
+            if hasattr(self, "attrs"):
+                for k, v in self.attrs.items():
+                    if isinstance(v, paddle.base.core.DataType):
+                        self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
+            program = framework.Program()
+            block = program.global_block()
+            np_array = numpy.random.random(10000).astype(dtype)
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=np_array.dtype,
+                    shape=np_array.shape,
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.Assign(np_array),
+                )
+            num_ops = 2 if dtype in ["float16", "uint16"] else 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'assign_value')
+            values = framework.extract_plain_list(init_op.attr('values'))
+            assert values == np_array.ravel().tolist()
+            paddle.disable_static()
 
         return block
 
