@@ -176,29 +176,31 @@ class TestPrintOpGPUBFP16(TestPrintOpCPU):
 
 class TestPrintOpBackward(unittest.TestCase):
     def check_backward(self, use_cuda):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
+        with paddle.pir_utils.OldIrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
 
-        with program_guard(main, startup):
-            loss = simple_fc_net()
-            loss = paddle.static.Print(loss)
-            paddle.optimizer.Adam().minimize(loss)
+            with paddle.static.program_guard(main, startup):
+                loss = simple_fc_net()
+                loss = paddle.static.Print(loss)
+                paddle.optimizer.Adam().minimize(loss)
 
-        print_ops = [op for op in main.blocks[0].ops if op.type == 'print']
-        assert len(print_ops) == 2, "The number of print op should be 2"
+            print_ops = [op for op in main.blocks[0].ops if op.type == 'print']
+            assert len(print_ops) == 2, "The number of print op should be 2"
 
-        place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup)
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup)
 
-        binary = paddle.static.CompiledProgram(main)
+            binary = paddle.static.CompiledProgram(main)
 
-        img, label = init_data()
-        feed_dict = {"image": img, "label": label}
-        exe.run(binary, feed_dict)
+            img, label = init_data()
+            feed_dict = {"image": img, "label": label}
+            exe.run(binary, feed_dict)
 
     # fc is not supported in pir
     # @test_with_pir_api
+
     def test_fw_bw(self):
         if paddle.is_compiled_with_cuda():
             self.check_backward(use_cuda=True)
