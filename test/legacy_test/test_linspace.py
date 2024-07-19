@@ -161,10 +161,13 @@ class TestLinspaceAPI(unittest.TestCase):
             with paddle_static_guard():
                 out_1 = paddle.linspace(0, 10, 5, dtype='float32')
                 out_2 = paddle.linspace(0, 10, 5, dtype=np.float32)
-                out_3 = paddle.linspace(0, 10, 5, dtype=core.VarDesc.VarType.FP32)
+                out_3 = paddle.linspace(
+                    0, 10, 5, dtype=core.VarDesc.VarType.FP32
+                )
                 exe = base.Executor(place=base.CPUPlace())
                 res_1, res_2, res_3 = exe.run(
-                    base.default_main_program(), fetch_list=[out_1, out_2, out_3]
+                    base.default_main_program(),
+                    fetch_list=[out_1, out_2, out_3],
                 )
                 np.testing.assert_array_equal(res_1, res_2)
 
@@ -194,24 +197,30 @@ class TestLinspaceOpError(unittest.TestCase):
         with paddle.pir_utils.OldIrGuard():
             with paddle_static_guard():
                 with program_guard(Program(), Program()):
+
                     def test_dtype():
                         paddle.linspace(0, 10, 1, dtype="int8")
+
                     self.assertRaises(TypeError, test_dtype)
 
                     def test_dtype1():
                         paddle.linspace(0, 10, 1.33, dtype="int32")
+
                     self.assertRaises(TypeError, test_dtype1)
 
                     def test_start_type():
                         paddle.linspace([0], 10, 1, dtype="float32")
+
                     self.assertRaises(TypeError, test_start_type)
 
                     def test_end_type():
                         paddle.linspace(0, [10], 1, dtype="float32")
+
                     self.assertRaises(TypeError, test_end_type)
 
                     def test_step_dtype():
                         paddle.linspace(0, 10, [0], dtype="float32")
+
                     self.assertRaises(TypeError, test_step_dtype)
 
                     def test_start_dtype():
@@ -219,6 +228,7 @@ class TestLinspaceOpError(unittest.TestCase):
                             shape=[1], dtype="float64", name="start"
                         )
                         paddle.linspace(start, 10, 1, dtype="float32")
+
                     self.assertRaises(ValueError, test_start_dtype)
 
                     def test_end_dtype():
@@ -226,6 +236,7 @@ class TestLinspaceOpError(unittest.TestCase):
                             shape=[1], dtype="float64", name="end"
                         )
                         paddle.linspace(0, end, 1, dtype="float32")
+
                     self.assertRaises(ValueError, test_end_dtype)
 
                     def test_num_dtype():
@@ -233,6 +244,7 @@ class TestLinspaceOpError(unittest.TestCase):
                             shape=[1], dtype="int32", name="step"
                         )
                         paddle.linspace(0, 10, num, dtype="float32")
+
                     self.assertRaises(TypeError, test_step_dtype)
 
 
