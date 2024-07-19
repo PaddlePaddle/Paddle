@@ -672,6 +672,7 @@ set_tests_properties(test_model PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
 
 if(APPLE)
+
 endif()
 
 set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT

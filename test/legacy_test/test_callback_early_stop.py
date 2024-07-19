@@ -60,7 +60,9 @@ class TestCallbacks(unittest.TestCase):
                 paddle.enable_static() if not dynamic else None
                 device = paddle.set_device('cpu')
                 sample_num = 100
-                train_dataset = MnistDataset(mode='train', sample_num=sample_num)
+                train_dataset = MnistDataset(
+                    mode='train', sample_num=sample_num
+                )
                 val_dataset = MnistDataset(mode='test', sample_num=sample_num)
 
                 net = LeNet()
@@ -121,7 +123,12 @@ class TestCallbacks(unittest.TestCase):
                     save_dir=self.save_dir,
                     epochs=10,
                     verbose=0,
-                    callbacks=[callbacks_0, callbacks_1, callbacks_2, callbacks_3],
+                    callbacks=[
+                        callbacks_0,
+                        callbacks_1,
+                        callbacks_2,
+                        callbacks_3,
+                    ],
                 )
                 # Test for no val_loader
                 model.fit(
