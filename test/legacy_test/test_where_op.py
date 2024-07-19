@@ -158,10 +158,14 @@ class TestWhereAPI(unittest.TestCase):
                         result.stop_gradient = False
                         append_backward(paddle.mean(result))
                         for use_cuda in [False, True]:
-                            if use_cuda and (not base.core.is_compiled_with_cuda()):
+                            if use_cuda and (
+                                not base.core.is_compiled_with_cuda()
+                            ):
                                 break
                             place = (
-                                base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                                base.CUDAPlace(0)
+                                if use_cuda
+                                else base.CPUPlace()
                             )
                             exe = base.Executor(place)
                             fetch_list = [result, result.grad_name]
@@ -171,7 +175,11 @@ class TestWhereAPI(unittest.TestCase):
                                 fetch_list.append(y.grad_name)
                             out = exe.run(
                                 paddle.static.default_main_program(),
-                                feed={'cond': self.cond, 'x': self.x, 'y': self.y},
+                                feed={
+                                    'cond': self.cond,
+                                    'x': self.x,
+                                    'y': self.y,
+                                },
                                 fetch_list=fetch_list,
                             )
                             np.testing.assert_array_equal(out[0], self.out)
@@ -760,7 +768,9 @@ class TestWhereDygraphAPI(unittest.TestCase):
         if not paddle.framework.use_pir_api():
             data = np.array([[True, False], [False, True]])
             with program_guard(Program(), Program()):
-                x = paddle.static.data(name='x', shape=[(-1), 2], dtype='float32')
+                x = paddle.static.data(
+                    name='x', shape=[(-1), 2], dtype='float32'
+                )
                 x.desc.set_need_check_feed(False)
                 y = paddle.where(x)
                 self.assertEqual(type(y), tuple)
