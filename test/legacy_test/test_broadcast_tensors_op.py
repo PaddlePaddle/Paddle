@@ -356,8 +356,12 @@ class TestRaiseBroadcastTensorsError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_type)
         self.assertRaises(TypeError, test_dtype)
-        self.assertRaises(TypeError, test_bcast_semantics)
-        self.assertRaises(TypeError, test_bcast_semantics_complex64)
+        if paddle.base.framework.in_pir_mode():
+            self.assertRaises(ValueError, test_bcast_semantics)
+            self.assertRaises(ValueError, test_bcast_semantics_complex64)
+        else:
+            self.assertRaises(TypeError, test_bcast_semantics)
+            self.assertRaises(TypeError, test_bcast_semantics_complex64)
 
 
 class TestRaiseBroadcastTensorsErrorDyGraph(unittest.TestCase):
