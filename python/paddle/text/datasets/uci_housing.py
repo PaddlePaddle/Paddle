@@ -24,7 +24,7 @@ from paddle.io import Dataset
 if TYPE_CHECKING:
     import numpy.typing as npt
 
-    from paddle import dtype
+    from paddle._typing.dtype_like import _DTypeLiteral
 
     _UciHousingDataSetMode = Literal["train", "test"]
 __all__ = []
@@ -104,7 +104,7 @@ class UCIHousing(Dataset):
 
     mode: _UciHousingDataSetMode
     data_file: str | None
-    dtype: dtype
+    dtype: _DTypeLiteral
 
     def __init__(
         self,
