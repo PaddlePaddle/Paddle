@@ -149,44 +149,45 @@ class TestCase4(TestTDMChildOp):
 class TestTDMChildShape(unittest.TestCase):
     def test_shape(self):
         with paddle_static_guard():
-            x = paddle.static.data(
-                name='x', shape=[-1, 1], dtype='int32', lod_level=1
-            )
-            tdm_tree_info = create_tdm_tree()
-            tree_info_np = np.array(tdm_tree_info).astype('int32')
+            with paddle.pir_utils.OldIrGuard():
+                x = paddle.static.data(
+                    name='x', shape=[-1, 1], dtype='int32', lod_level=1
+                )
+                tdm_tree_info = create_tdm_tree()
+                tree_info_np = np.array(tdm_tree_info).astype('int32')
 
-            child, leaf_mask = tdm_child(
-                x=x,
-                node_nums=26,
-                child_nums=2,
-                param_attr=base.ParamAttr(
-                    initializer=paddle.nn.initializer.Assign(tree_info_np)
-                ),
-            )
+                child, leaf_mask = tdm_child(
+                    x=x,
+                    node_nums=26,
+                    child_nums=2,
+                    param_attr=base.ParamAttr(
+                        initializer=paddle.nn.initializer.Assign(tree_info_np)
+                    ),
+                )
 
-            place = base.CPUPlace()
-            exe = base.Executor(place=place)
-            exe.run(base.default_startup_program())
+                place = base.CPUPlace()
+                exe = base.Executor(place=place)
+                exe.run(base.default_startup_program())
 
-            feed = {
-                'x': np.array(
-                    [
-                        [1],
-                        [2],
-                        [3],
-                        [4],
-                        [5],
-                        [6],
-                        [7],
-                        [8],
-                        [9],
-                        [10],
-                        [11],
-                        [12],
-                    ]
-                ).astype('int32')
-            }
-            exe.run(feed=feed)
+                feed = {
+                    'x': np.array(
+                        [
+                            [1],
+                            [2],
+                            [3],
+                            [4],
+                            [5],
+                            [6],
+                            [7],
+                            [8],
+                            [9],
+                            [10],
+                            [11],
+                            [12],
+                        ]
+                    ).astype('int32')
+                }
+                exe.run(feed=feed)
 
 
 if __name__ == "__main__":
