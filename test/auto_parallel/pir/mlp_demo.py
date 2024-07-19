@@ -187,8 +187,6 @@ class TestMLPPipelineParallel(unittest.TestCase):
             loss = dist_model(image, label)
             if loss0 is None:
                 loss0 = loss
-            print("==== step%d loss ====" % batch_id)
-            print(loss)
         return loss0
 
     def split_program(self, schedule_mode="FThenB", accumulate_steps=1):
@@ -219,8 +217,6 @@ class TestMLPPipelineParallel(unittest.TestCase):
             loss = dist_model(image, label)
             if loss0 is None:
                 loss0 = loss
-            print("==== step%d loss ====" % batch_id)
-            print(loss)
         if accumulate_steps > 1 and loss0 is not None:
             loss0 = np.mean(loss0)
         return loss0
