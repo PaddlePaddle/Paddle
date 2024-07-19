@@ -32,6 +32,7 @@ from .utils import (
 class ReadItem:
     local_tensor_index: LocalTensorIndex
     rank: int
+    dtype: str
     cur_offset: Tuple[int]
     storage_offset: Tuple[int]
     lengths: Tuple[int]
@@ -331,7 +332,7 @@ def get_read_items(path, state_dict, process_group, use_dist):
                 global_offset = (
                     tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
                 )
-            cur_chunk_metadata = LocalTensorMetadata(global_offset, local_shape)
+            cur_chunk_metadata = LocalTensorMetadata(global_offset, local_shape, str(val.dtype).split(".")[1])
             assert (
                 tensor_key in storage_state_dict_metadata
             ), f"tensor_key:{tensor_key} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
@@ -353,6 +354,7 @@ def get_read_items(path, state_dict, process_group, use_dist):
                     ReadItem(
                         storage_local_tensor_index,
                         paddle.distributed.get_rank(),
+                        storage_local_tensor_metadata.dtype,
                         tuple(cur_offsets),
                         tuple(storage_offsets),
                         tuple(lengths),
@@ -437,6 +439,15 @@ def load_state_dict(
         rank_to_files, missing_keys = get_rank_to_files(
             path, flat_state_dict, process_group, use_dist
         )
+        
+        gloabl_rank_to_files = []
+        paddle.distributed.all_gather_object(
+            gloabl_rank_to_files, rank_to_files[paddle.distributed.get_rank()], process_group
+        )
+
+        for key in rank_to_files:
+            rank_to_files[key] = gloabl_rank_to_files[key]
+
         if len(missing_keys) > 0:
             logger.warning(
                 f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
@@ -533,14 +544,13 @@ def load_state_dict(
             else:
                 cur_chunk_tensor = paddle.zeros(
                     item.lengths,
-                    dtype=flat_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ].dtype,
+                    item.dtype,
                 )
 
             if src_rank == item.rank:
-                # assign value locally
-                paddle.assign(storage_chunk_tensor, cur_chunk_tensor)
+                if src_rank == paddle.distributed.get_rank():
+                    # assign value locally
+                    paddle.assign(storage_chunk_tensor, cur_chunk_tensor)
             else:
                 # assign value remotely
                 if src_rank == paddle.distributed.get_rank():
