@@ -320,8 +320,8 @@ class TestScaleTripleGradCheck(unittest.TestCase):
 
 
 class TestScaleOpZeroNumelVariable(unittest.TestCase):
-    with paddle.pir_utils.OldIrGuard():
-        def test_check_zero_numel_cpu(self):
+    def test_check_zero_numel_cpu(self):
+        with paddle.pir_utils.OldIrGuard():
             paddle.set_device('cpu')
             data = paddle.ones([0, 1])
             out = paddle.scale(data, 2)
