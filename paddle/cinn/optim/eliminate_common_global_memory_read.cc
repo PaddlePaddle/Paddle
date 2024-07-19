@@ -149,7 +149,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         [&](const std::vector<IndicesAndExtent>& indice_and_extent) -> bool {
       if (indice_and_extent.size() <= 1) return false;
       if (IndiceContainsLoad(indice_and_extent[0])) return false;
-      // if (IndiceComplexExpr(indice_and_extent[0])) return false;
+      if (contains_select_) return false;
       return AllIndiceAndExtentEqual(indice_and_extent);
     };
 
@@ -225,11 +225,17 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
     ir::IRMutator<>::Visit(op, expr);
   }
 
+  void Visit(const ir::Select* op, ir::Expr* expr) override {
+    contains_select_ = true;
+    ir::IRMutator<>::Visit(op, expr);
+  }
+
   std::vector<ForVarExtent> for_var_extents_;
   std::unordered_map<ir::Var, ir::Expr> var_to_sb_expr_;
   std::unordered_map<std::string, std::vector<IndicesAndExtent>>
       buffer_to_indice_and_extent_;
   std::unordered_set<std::string> global_store_buffer_names_;
+  bool contains_select_ = false;
 };
 
 struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {

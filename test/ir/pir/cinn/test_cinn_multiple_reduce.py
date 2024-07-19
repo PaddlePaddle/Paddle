@@ -48,7 +48,7 @@ class TestGroupNormSubGraph(unittest.TestCase):
         net = utils.apply_to_static(net, use_cinn=use_cinn)
         net.eval()
         out = net(self.x)
-        
+
         core._set_prim_all_enabled(False)
         return out
 
@@ -56,6 +56,7 @@ class TestGroupNormSubGraph(unittest.TestCase):
         cinn_out = self.eval(use_cinn=True, use_prim=True)
         dy_out = self.eval(use_cinn=False, use_prim=True)
         np.testing.assert_allclose(cinn_out, dy_out, atol=1e-2)
+
 
 if __name__ == '__main__':
     unittest.main()
