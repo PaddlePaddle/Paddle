@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.nn
 
 paddle.enable_static()
 from paddle import base
@@ -34,15 +35,23 @@ class TRTTunedDynamicShapeTest(unittest.TestCase):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            conv_out = paddle.static.nn.conv2d(
-                input=data,
-                num_filters=3,
-                filter_size=3,
+            conv_out = paddle.nn.Conv2D(
+                in_channels=data.shape[1],
+                out_channels=3,
+                kernel_size=3,
                 groups=1,
                 padding=0,
                 bias_attr=False,
-                act=None,
-            )
+            )(data)
+            # conv_out = paddle.static.nn.conv2d(
+            #     input=data,
+            #     num_filters=3,
+            #     filter_size=3,
+            #     groups=1,
+            #     padding=0,
+            #     bias_attr=False,
+            #     act=None,
+            # )
         exe.run(startup_program)
         serialized_program = paddle.static.serialize_program(
             data, conv_out, program=main_program

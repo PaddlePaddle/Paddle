@@ -25,6 +25,7 @@ from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
+import paddle.nn
 from paddle import base
 
 
@@ -209,7 +210,12 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             with base.program_guard(train_prog, startup):
                 with base.unique_name.guard():
                     data = paddle.static.data(name="data", shape=shape)
-                    conv = paddle.static.nn.conv2d(data, 8, 3)
+                    conv = paddle.nn.Conv2D(
+                        in_channels=3,
+                        out_channels=8,
+                        kernel_size=3,
+                    )(data)
+                    # conv = paddle.static.nn.conv2d(data, 8, 3)
                     loss = paddle.mean(conv)
 
                     beta1 = paddle.static.create_global_var(

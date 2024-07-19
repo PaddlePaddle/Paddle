@@ -75,9 +75,15 @@ class TestBase(IPUOpTest):
                     shape=[1, 3, 10, 10], is_bias=True, dtype='float32'
                 )
                 add1 = image + bias
-                conv1 = paddle.static.nn.conv2d(
-                    add1, num_filters=3, filter_size=3, bias_attr=False
-                )
+                conv1 = paddle.nn.Conv2D(
+                    in_channels=add1.shape[1],
+                    out_channels=3,
+                    kernel_size=3,
+                    bias_attr=False,
+                )(add1)
+                # conv1 = paddle.static.nn.conv2d(
+                #     add1, num_filters=3, filter_size=3, bias_attr=False
+                # )
 
                 loss = paddle.mean(conv1)
                 opt = paddle.optimizer.Lamb(
