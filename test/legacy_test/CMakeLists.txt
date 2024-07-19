@@ -976,7 +976,6 @@ if(WITH_CUDNN_FRONTEND)
 endif()
 
 set(TEST_CINN_OPS
-    test_psroi_pool_op
     test_assign_op
     test_reduce_op
     test_scatter_nd_op
@@ -1055,6 +1054,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_bincount_op
     test_batch_norm_op
+    test_psroi_pool_op
     test_nce
     test_layer_norm_op
     test_eigh_op
