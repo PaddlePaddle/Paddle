@@ -116,6 +116,7 @@ if(NOT WITH_NCCL)
 endif()
 
 if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
   list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
@@ -1226,3 +1227,5 @@ py_test_modules(test_install_check_pir MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
 set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
+set_tests_properties(test_multiprocess_reader_exception
+                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
