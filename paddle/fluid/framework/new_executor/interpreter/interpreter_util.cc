@@ -173,19 +173,19 @@ bool IsCommunicationOp(const ::pir::Operation* op) {
 }
 
 bool IsCpuOp(const Instruction& instr) {
-  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+  return phi::is_cpu_place(instr.DeviceContext().GetPlace());
 }
 
 bool IsCpuOp(Instruction* instr) {
-  return platform::is_cpu_place(instr->DeviceContext().GetPlace());
+  return phi::is_cpu_place(instr->DeviceContext().GetPlace());
 }
 
 bool IsCpuOp(const paddle::framework::InstructionBase& instr) {
-  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+  return phi::is_cpu_place(instr.DeviceContext().GetPlace());
 }
 
 bool IsCpuOp(paddle::framework::InstructionBase* instr) {
-  return platform::is_cpu_place(instr->DeviceContext().GetPlace());
+  return phi::is_cpu_place(instr->DeviceContext().GetPlace());
 }
 
 bool IsGradOp(const std::string& op_name) {
@@ -193,8 +193,8 @@ bool IsGradOp(const std::string& op_name) {
 }
 
 bool IsSupportedHeterPlace(const phi::Place& place) {
-  return platform::is_gpu_place(place) || platform::is_xpu_place(place) ||
-         platform::is_ipu_place(place) || platform::is_custom_place(place);
+  return phi::is_gpu_place(place) || phi::is_xpu_place(place) ||
+         phi::is_ipu_place(place) || phi::is_custom_place(place);
 }
 
 bool IsMemcpyD2H(const Instruction& instr) {
@@ -306,8 +306,8 @@ GetUnusedVars(const BlockDesc& block,
 }
 
 OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
-                             const platform::Place& place) {
-  if (platform::is_cpu_place(place)) {
+                             const phi::Place& place) {
+  if (phi::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
 
@@ -321,7 +321,7 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
   // and so that they would be dispatched to host thread.
   std::shared_ptr<OperatorBase> op = op_func_node.operator_base_;
   if (op->Type() == kCoalesceTensor &&
-      (!platform::is_xpu_place(place) ||
+      (!phi::is_xpu_place(place) ||
        op->Attr<bool>("persist_output") == false) &&
       op->Attr<bool>("set_constant") == false &&
       op->Attr<bool>("copy_data") == false) {
@@ -329,7 +329,7 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
   }
 
   // for memcpy explicitly called by user
-  if (platform::is_gpu_place(place) && op->Type() == interpreter::kMemcpyD2H) {
+  if (phi::is_gpu_place(place) && op->Type() == interpreter::kMemcpyD2H) {
     return OpFuncType::kGpuSync;
   }
 
@@ -416,25 +416,25 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
 }
 
 void ApplyDeviceGuard(const OperatorBase* op_base,
-                      const platform::Place& place,
+                      const phi::Place& place,
                       OpKernelType* expected_kernel_key) {
   bool need_change_place =
       (op_base->HasAttr("op_device") &&
        (op_base->Attr<std::string>("op_device").length() > 0));
   if (need_change_place) {
     auto& op_device = op_base->Attr<std::string>("op_device");
-    if (op_device == "cpu" || platform::is_cpu_place(place)) {
+    if (op_device == "cpu" || phi::is_cpu_place(place)) {
       VLOG(3) << "Switch into CPUPlace by device_guard.";
-      expected_kernel_key->place_ = platform::CPUPlace();
+      expected_kernel_key->place_ = phi::CPUPlace();
     } else if (op_device.find("gpu") != std::string::npos &&
-               platform::is_gpu_place(place)) {
+               phi::is_gpu_place(place)) {
       // when the Op that does not have GPUKernel is assigned to GPU, the
       // CPUKernel will be executed and a warning will be given at the same
       // time.
       if (op_base->SupportGPU()) {
         expected_kernel_key->place_ = place;
       } else {
-        expected_kernel_key->place_ = platform::CPUPlace();
+        expected_kernel_key->place_ = phi::CPUPlace();
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << op_base->Type()
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
@@ -442,21 +442,21 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
     } else if (op_device.find("xpu") != std::string::npos &&
-               platform::is_xpu_place(place)) {
+               phi::is_xpu_place(place)) {
       // when the Op that does not have XPUKernel is assigned to XPU, the
       // CPUKernel will be executed and a warning will be given at the same
       // time.
       if (op_base->SupportXPU()) {
         expected_kernel_key->place_ = place;
       } else {
-        expected_kernel_key->place_ = platform::CPUPlace();
+        expected_kernel_key->place_ = phi::CPUPlace();
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << op_base->Type()
             << ") has no XPU implementation. It will be assigned to CPUPlace.";
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
-    } else if (platform::is_custom_place(place)) {
+    } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
       bool is_custom_device_op = false;
@@ -483,7 +483,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       if (op_base->SupportCustomDevice()) {
         expected_kernel_key->place_ = place;
       } else {
-        expected_kernel_key->place_ = platform::CPUPlace();
+        expected_kernel_key->place_ = phi::CPUPlace();
         LOG_FIRST_N(WARNING, 1) << "Op(" << op_base->Type()
                                 << ") has no Custom Place implementation. It "
                                    "will be assigned to CPUPlace.";
@@ -498,8 +498,8 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
 }
 
 platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
-                                                const platform::Place& place) {
-  auto& pool = platform::DeviceContextPool::Instance();
+                                                const phi::Place& place) {
+  auto& pool = phi::DeviceContextPool::Instance();
   auto* default_dev_ctx = pool.Get(place);
 
   // Replace the default_dev_ctx according to dst_place_type for memcpy op if
@@ -530,7 +530,7 @@ platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
   //    into the kernel API through arguments. (3) So we have no way to
   //    construct a CUDAPlace() in the memcpy kernel and then pass it
   //     to the phi::Copy(...) api.
-  if (!platform::is_gpu_place(place)) {
+  if (!phi::is_gpu_place(place)) {
     const auto& op_type = op->Type();
     if (op_type == "memcpy") {
       int dst_place_type = op->Attr<int>("dst_place_type");
@@ -548,13 +548,13 @@ platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
 }
 
 void HandleOperatorBase(
-    const platform::Place& place,
+    const phi::Place& place,
     std::shared_ptr<OperatorBase> op,
     OpFuncNode* op_func_node,
     Scope* scope,
     bool static_build,
     std::vector<std::shared_ptr<OperatorBase>> following_ops) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op;
@@ -573,7 +573,7 @@ void HandleOperatorBase(
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
-void BuildOpFuncList(const platform::Place& place,
+void BuildOpFuncList(const phi::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
@@ -613,7 +613,7 @@ void BuildOpFuncList(const platform::Place& place,
   }
   auto unused_var_map = GetUnusedVars(block, ops);
 
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
 
   bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
@@ -780,8 +780,8 @@ void BuildOpFuncList(const platform::Place& place,
         VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
         // change device by the device_guard()
         ApplyDeviceGuard(op, place, &expected_kernel_key);
-        if (platform::places_are_same_class(exec_ctx.GetPlace(),
-                                            expected_kernel_key.place_)) {
+        if (phi::places_are_same_class(exec_ctx.GetPlace(),
+                                       expected_kernel_key.place_)) {
           expected_kernel_key.place_ = exec_ctx.GetPlace();
         }
 
@@ -1448,14 +1448,14 @@ const std::vector<std::string> GetInstructionCallStack(
     auto attr = iter->second;
     PADDLE_ENFORCE(
         attr.isa<pir::ArrayAttribute>(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "%s: Callstack attributes of %s is not ArrayAttribute type", type));
     pir::ArrayAttribute array_attribute = attr.dyn_cast<pir::ArrayAttribute>();
     std::vector<pir::Attribute> vec_attr = array_attribute.AsVector();
     for (auto value : vec_attr) {
       PADDLE_ENFORCE(
           value.isa<pir::StrAttribute>(),
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "%s: Callstack attributes of %s is not StrAttribute type", type));
       vec_str.emplace_back(value.dyn_cast<pir::StrAttribute>().AsString());
     }

@@ -2175,7 +2175,7 @@ def margin_cross_entropy(
     scale: float = ...,
     group=...,
     return_softmax: Literal[True] = ...,
-    reduction: _ReduceMode = ...,
+    reduction: _ReduceMode | None = ...,
 ) -> tuple[Tensor, Tensor]:
     ...
 
@@ -2190,7 +2190,7 @@ def margin_cross_entropy(
     scale: float = ...,
     group=...,
     return_softmax: Literal[False] = ...,
-    reduction: _ReduceMode = ...,
+    reduction: _ReduceMode | None = ...,
 ) -> Tensor:
     ...
 
@@ -2205,7 +2205,7 @@ def margin_cross_entropy(
     scale: float = ...,
     group=...,
     return_softmax: bool = ...,
-    reduction: _ReduceMode = ...,
+    reduction: _ReduceMode | None = ...,
 ) -> Tensor | tuple[Tensor, Tensor]:
     ...
 
@@ -4516,15 +4516,13 @@ def adaptive_log_softmax_with_loss(
         if input.dim() != 2:
             raise ValueError(
                 '1D label tensor expects 2D input tensors, '
-                'but found inputs with size',
-                input.shape,
+                f'but found inputs with size {input.shape}'
             )
     elif targt_dim == 0:
         if input.dim() != 1:
             raise ValueError(
                 '0D label tensor expects 1D input tensors, '
-                'but found inputs with size',
-                input.shape,
+                f'but found inputs with size {input.shape}'
             )
     else:
         raise ValueError(

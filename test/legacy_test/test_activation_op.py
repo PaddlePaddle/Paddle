@@ -2593,17 +2593,22 @@ class TestRound(TestActivation):
         self.python_api = paddle.round
         self.init_dtype()
         self.init_shape()
+        self.init_decimals()
 
         np.random.seed(1024)
-        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        out = np.round(x)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype) * 100
+        out = np.round(x, decimals=self.decimals)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
+        self.attrs = {'decimals': self.decimals}
         self.convert_input_output()
 
     def init_shape(self):
         self.shape = [10, 12]
+
+    def init_decimals(self):
+        self.decimals = 0
 
     def test_check_output(self):
         self.check_output(
@@ -2617,6 +2622,33 @@ class TestRound(TestActivation):
 class TestRound_ZeroDim(TestRound):
     def init_shape(self):
         self.shape = []
+
+
+class TestRound_decimals1(TestRound):
+    def init_decimals(self):
+        self.decimals = 2
+
+    def test_round_api(self):
+        with dynamic_guard():
+            for device in devices:
+                if device == 'cpu' or (
+                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                ):
+                    x_np = (
+                        np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+                        * 100
+                    )
+                    out_expect = np.round(x_np, decimals=self.decimals)
+                    x_paddle = paddle.to_tensor(
+                        x_np, dtype=self.dtype, place=device
+                    )
+                    y = paddle.round(x_paddle, decimals=self.decimals)
+                    np.testing.assert_allclose(y.numpy(), out_expect, rtol=1e-3)
+
+
+class TestRound_decimals2(TestRound_decimals1):
+    def init_decimals(self):
+        self.decimals = -1
 
 
 class TestRelu(TestActivation):
@@ -5569,10 +5601,7 @@ create_test_act_fp16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestCELU, check_pir=True)
 create_test_act_fp16_class(TestReciprocal, check_pir=True)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
-if core.is_compiled_with_rocm():
-    create_test_act_fp16_class(TestLog2, check_pir=True)
-else:
-    create_test_act_fp16_class(TestLog2, check_pir=True)
+create_test_act_fp16_class(TestLog2, check_pir=True)
 create_test_act_fp16_class(TestLog10, check_pir=True)
 create_test_act_fp16_class(TestLog1p, check_pir=True)
 create_test_act_fp16_class(TestSquare, check_pir=True, check_prim_pir=True)
@@ -5741,10 +5770,7 @@ create_test_act_bf16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestCELU, check_pir=True)
 create_test_act_bf16_class(TestReciprocal, check_pir=True)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)
-if core.is_compiled_with_rocm():
-    create_test_act_bf16_class(TestLog2, check_pir=True)
-else:
-    create_test_act_bf16_class(TestLog2, check_pir=True)
+create_test_act_bf16_class(TestLog2, check_pir=True)
 create_test_act_bf16_class(TestLog10, check_pir=True)
 create_test_act_bf16_class(TestLog1p, check_pir=True)
 create_test_act_bf16_class(TestSquare, check_pir=True, check_prim_pir=True)

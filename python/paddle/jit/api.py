@@ -27,6 +27,7 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from types import ModuleType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Protocol,
@@ -44,7 +45,6 @@ from typing_extensions import (
 )
 
 import paddle
-from paddle._typing import NestedStructure
 from paddle.base import core, dygraph
 from paddle.base.compiler import (
     BuildStrategy,
@@ -63,7 +63,6 @@ from paddle.base.framework import (
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import use_pir_api
 from paddle.nn import Layer
-from paddle.static import InputSpec
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
@@ -87,6 +86,10 @@ from .translated_layer import (
     INFER_PROPERTY_SUFFIX,
     TranslatedLayer,
 )
+
+if TYPE_CHECKING:
+    from paddle._typing import NestedStructure
+    from paddle.static import InputSpec
 
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 
@@ -928,6 +931,19 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
         f.write(meta.serialize_to_string())
 
 
+def _get_function_names_from_layer(layer: Layer) -> list[str]:
+    cls = layer.__class__
+    return [
+        member_name
+        for member_name, member in inspect.getmembers(cls)
+        if (
+            inspect.isfunction(member)
+            or inspect.ismethod(member)
+            or inspect.ismethoddescriptor(member)
+        )
+    ]
+
+
 @_run_save_pre_hooks
 @switch_to_static_graph
 def save(
@@ -998,7 +1014,7 @@ def save(
             >>> CLASS_NUM = 10
 
             >>> # define a random dataset
-            >>> class RandomDataset(paddle.io.Dataset):
+            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -1121,11 +1137,11 @@ def save(
     inner_input_spec = None
     if input_spec is not None:
         if isinstance(layer, Layer):
-            for attr_func in dir(inner_layer):
-                static_func = getattr(inner_layer, attr_func, None)
+            for member_name in _get_function_names_from_layer(inner_layer):
+                static_func = getattr(inner_layer, member_name, None)
                 if (
                     isinstance(static_func, StaticFunction)
-                    and 'forward' != attr_func
+                    and 'forward' != member_name
                 ):
                     raise ValueError(
                         f"If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is {type(input_spec)}."
@@ -1161,15 +1177,13 @@ def save(
     scope = core.Scope()
     extra_var_info = {}
     if isinstance(layer, Layer):
-        functions = list(set(dir(inner_layer)))
+        functions = list(set(_get_function_names_from_layer(inner_layer)))
         functions = sorted(functions)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
             with_hook = True
     else:
         # layer is function
-        functions = [
-            layer,
-        ]
+        functions = [layer]
 
     combine_vars = {}
     combine_program = []
@@ -1556,7 +1570,7 @@ def load(
                 >>> CLASS_NUM = 10
 
                 >>> # define a random dataset
-                >>> class RandomDataset(paddle.io.Dataset):
+                >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
                 ...
@@ -1649,7 +1663,7 @@ def load(
                 >>> CLASS_NUM = 10
 
                 >>> # define a random dataset
-                >>> class RandomDataset(paddle.io.Dataset):
+                >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
                 ...

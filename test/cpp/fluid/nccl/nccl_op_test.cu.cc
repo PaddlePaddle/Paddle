@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 USE_NO_KERNEL_OP(ncclInit);
 USE_OP_ITSELF(ncclAllReduce);
@@ -66,7 +66,7 @@ class NCCLTester : public ::testing::Test {
   }
 
   void NCCLInitOp() {
-    paddle::platform::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     std::unique_ptr<f::OpDesc> op1(new f::OpDesc);
 
     op1->SetType("ncclInit");
@@ -109,10 +109,9 @@ class NCCLTester : public ::testing::Test {
 
     lk.unlock();
 
-    PADDLE_ENFORCE_EQ(
-        send_tensor->numel(),
-        common::product(kDims),
-        paddle::platform::errors::InvalidArgument("Tensor numel not match!"));
+    PADDLE_ENFORCE_EQ(send_tensor->numel(),
+                      common::product(kDims),
+                      phi::errors::InvalidArgument("Tensor numel not match!"));
 
     auto op = f::OpRegistry::CreateOp(*op1);
 

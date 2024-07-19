@@ -352,6 +352,28 @@ class TestPool1D_API(unittest.TestCase):
 
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+    def check_max_pool_return_mask_ceil(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([1, 3, 6]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            result, _ = F.max_pool1d(
+                input,
+                kernel_size=5,
+                stride=5,
+                padding=0,
+                ceil_mode=True,
+                return_mask=True,
+            )
+            result_np = max_pool1D_forward_naive(
+                input_np,
+                ksize=[5],
+                strides=[5],
+                paddings=[0],
+                ceil_mode=True,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+            self.assertEqual(result.shape, list(result_np.shape))
+
     @test_with_pir_api
     def check_lp_static_results(self, place):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -626,6 +648,7 @@ class TestPool1D_API(unittest.TestCase):
             self.check_avg_dygraph_padding_same(place)
             self.check_max_dygraph_return_index_results(place)
             self.check_avg_static_results_fp16(place)
+            self.check_max_pool_return_mask_ceil(place)
             self.check_lp_static_results(place)
             self.check_lp_dygraph_results(place)
             self.check_lp_static_results_fp16(place)

@@ -215,27 +215,5 @@ absl::flat_hash_map<std::string, ir::Tensor> TensorGroup::AllocateBuffers() {
   return name_to_tensor_;
 }
 
-void StageMapShareMemory(const poly::StageMap& stages) {
-  absl::flat_hash_map<std::string, ir::_Tensor_*> tensor_map;
-  for (auto& stage : stages) {
-    tensor_map[stage.second->tensor()->name] = stage.second->tensor();
-  }
-  for (auto& stage : stages) {
-    if (!stage.second->tensor()->buffer.defined() &&
-        !stage.second->meta.tensors_to_share_buffer_with.empty()) {
-      for (auto& str : stage.second->meta.tensors_to_share_buffer_with) {
-        if (tensor_map[str]->buffer.defined()) {
-          auto edited_shape = tensor_map[str]->buffer->shape;
-          stage.second->tensor()->Bind(tensor_map[str]->buffer);
-          tensor_map[str]->buffer->shape = edited_shape;
-          VLOG(3) << "Stage Tensor " << stage.second->tensor()->name
-                  << " bind buffer to " << tensor_map[str]->name << " , "
-                  << tensor_map[str]->buffer->name;
-        }
-      }
-    }
-  }
-}
-
 }  // namespace ast_gen_ius
 }  // namespace cinn

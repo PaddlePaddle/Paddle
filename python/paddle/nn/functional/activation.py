@@ -16,12 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from paddle import Tensor
-
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle._typing import DataLayout2D, DTypeLike
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -31,6 +27,10 @@ from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
 from ...tensor.math import tanh, tanh_  # noqa: F401
 from ...tensor.ops import sigmoid
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DataLayout2D, DTypeLike
 
 __all__ = []
 
@@ -146,9 +146,7 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     Please refer to :ref:`api_paddle_nn_functional_elu`.
     """
     assert alpha >= 0.0, "elu_ only support alpha >= 0, please use elu instead."
-    if in_dynamic_mode():
-        return _C_ops.elu_(x, alpha)
-    return _legacy_C_ops.elu_(x, 'alpha', alpha)
+    return _C_ops.elu_(x, alpha)
 
 
 def gelu(
@@ -929,7 +927,7 @@ def maxout(
         if axis not in [1, -1, 3]:
             raise ValueError(
                 "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "
-                "Attr(axis): %s." % str(axis)
+                f"Attr(axis): {axis}."
             )
         if axis == -1:
             axis = 3

@@ -36,12 +36,11 @@ std::vector<int> GetValueIds(pir::Value value,
 platform::DeviceContext* ParseDeviceContext(
     pir::Operation* op,
     platform::DeviceContext* origin_dev_ctx,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::string& execution_stream,
     const int stream_priority);
 
-OpFuncType AnalyseOpFuncType(::pir::Operation* op,
-                             const platform::Place& place);
+OpFuncType AnalyseOpFuncType(::pir::Operation* op, const phi::Place& place);
 
 void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,
@@ -65,5 +64,10 @@ void InsertInplacedExternalInputsToOuts(
 
 bool GetCondData(const phi::DenseTensor& cond);
 
+void HandleForInplaceOp(pir::Operation* op,
+                        const ValueExecutionInfo* value_exe_info,
+                        InstructionBase* instr);
+
+void ShareVarBuffer(const Variable* src_var, Variable* dst_var);
 }  // namespace framework
 }  // namespace paddle

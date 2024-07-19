@@ -18,10 +18,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/parameter.h"
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::Value builtin_combine(const std::vector<pir::Value>& x) {
   auto combine_op =
@@ -292,5 +292,29 @@ pir::Value array_pop(pir::Value input, int index) {
   }
 }
 
-}  // namespace dialect
-}  // namespace paddle
+std::vector<pir::Value> tensorrt_engine(
+    const std::vector<pir::Value>& inputs,
+    paddle::platform::EngineParams trt_params,
+    std::vector<std::string> input_names,
+    std::vector<std::string> output_names,
+    std::vector<std::vector<int64_t>> outputs_shape,
+    std::vector<phi::DataType> outputs_dtype,
+    const std::string& converter_debug_info) {
+  auto x =
+      ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(inputs).out();
+  paddle::dialect::TensorRTEngineOp tensorrt_engine_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::TensorRTEngineOp>(x,
+                                                     trt_params,
+                                                     input_names,
+                                                     output_names,
+                                                     outputs_shape,
+                                                     outputs_dtype,
+                                                     converter_debug_info);
+  auto out_split_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>(
+      tensorrt_engine_op.result(0));
+  return out_split_op.outputs();
+}
+
+}  // namespace paddle::dialect

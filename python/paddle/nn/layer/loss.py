@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Callable
 
 import paddle
@@ -25,8 +24,10 @@ from .. import functional as F
 from .layers import Layer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
-    from paddle.base.param_attr import ParamAttr
+    from paddle._typing import ParamAttrLike
 
     from ..functional.loss import _ReduceMode
 
@@ -535,8 +536,8 @@ class HSigmoidLoss(Layer):
         self,
         feature_size: int,
         num_classes: int,
-        weight_attr: ParamAttr | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         is_custom: bool = False,
         is_sparse: bool = False,
         name: str | None = None,
@@ -2491,8 +2492,8 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
     in_features: int
     n_classes: int
     cutoffs: Sequence[int]
-    weight_attr: ParamAttr | None
-    bias_attr: ParamAttr | bool | None
+    weight_attr: ParamAttrLike | None
+    bias_attr: ParamAttrLike | None
     div_value: float
     head_bias: Tensor | None
     head_weight: Tensor
@@ -2504,8 +2505,8 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         in_features: int,
         n_classes: int,
         cutoffs: Sequence[int],
-        weight_attr: ParamAttr | None = None,
-        bias_attr: ParamAttr | bool | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
         div_value: float = 4.0,
         head_bias: bool = False,
         name: str | None = None,

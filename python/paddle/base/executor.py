@@ -487,8 +487,7 @@ def _add_feed_fetch_ops(
                 )
             else:
                 warnings.warn(
-                    "The variable %s is not found in program. It is not declared or is pruned."
-                    % name
+                    f"The variable {name} is not found in program. It is not declared or is pruned."
                 )
 
     if use_fetch_v2:
@@ -606,12 +605,8 @@ def _to_name_str(var):
             return var.desc.name()
         elif isinstance(var, str):
             return var
-        elif isinstance(var, str):
-            return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
-        elif isinstance(var, Value):
-            return str(var)
         elif isinstance(var, Value):
             return str(var)
         else:
@@ -726,11 +721,7 @@ def _as_lodtensor(data, place, dtype=None):
         assert (
             dtype is not None
         ), 'The dtype should be given when feed data is not np.ndarray'
-        dtype = (
-            convert_dtype(dtype)
-            if isinstance(dtype, core.VarDesc.VarType)
-            else dtype
-        )
+        dtype = convert_dtype(dtype)
         if np.isscalar(data):
             data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
@@ -1124,6 +1115,9 @@ class _ExecutorCache:
         place,
         scope,
     ):
+        _add_pir_fetch_ops(
+            program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
+        )
         return self._get_cached_program_and_executor_pir_mode(
             self._CachedData(
                 program,
@@ -1144,10 +1138,6 @@ class _ExecutorCache:
         fetch_var_name = cached_data.fetch_var_name
         place = cached_data.place
         scope = cached_data.scope
-
-        _add_pir_fetch_ops(
-            program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
-        )
 
         default_job = core.Job("default")
         type_to_program = {"default": program}
@@ -1420,8 +1410,7 @@ class Executor:
             if feed_name not in feed_target_names:
                 feed.pop(feed_name)
                 warnings.warn(
-                    "The value %s is not found in program. It is not declared or is pruned."
-                    % feed_name
+                    f"The value {feed_name} is not found in program. It is not declared or is pruned."
                 )
 
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
@@ -1461,8 +1450,7 @@ class Executor:
                 _fetch_list.append(item)
             else:
                 raise TypeError(
-                    "The item in fetch_list should be str, variable or optimize_op, but received %s.",
-                    type(item),
+                    f"The item in fetch_list should be str, variable or optimize_op, but received {type(item)}.",
                 )
 
         for index, item in enumerate(fetch_list):
@@ -1578,8 +1566,7 @@ class Executor:
                 if not global_block.has_var(feed_name):
                     feed.pop(feed_name)
                     warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % feed_name
+                        f"The variable {feed_name} is not found in program. It is not declared or is pruned."
                     )
 
         elif isinstance(feed, (list, tuple)):
@@ -1588,8 +1575,7 @@ class Executor:
                     if not global_block.has_var(feed_name):
                         each.pop(feed_name)
                         warnings.warn(
-                            "The variable %s is not found in program. It is not declared or is pruned."
-                            % feed_name
+                            f"The variable {feed_name} is not found in program. It is not declared or is pruned."
                         )
         return feed
 
@@ -1945,8 +1931,7 @@ class Executor:
                 feed = feed[0]
             if not isinstance(feed, dict):
                 raise TypeError(
-                    "feed requires dict as its Parameter. But you passed in %s"
-                    % (type(feed))
+                    f"feed requires dict as its Parameter. But you passed in {type(feed)}"
                 )
             feed = self._update_feed(program, feed)
 
@@ -2037,7 +2022,7 @@ class Executor:
                     and varobj.belong_to_optimizer is False
                     and varname not in feed
                 ):
-                    raise ValueError('Need feed data for variable %s' % varname)
+                    raise ValueError(f'Need feed data for variable {varname}')
 
         acp._auto_checkpoint(self, program)
 
@@ -2094,8 +2079,7 @@ class Executor:
             feed = feed[0]
         if not isinstance(feed, dict):
             raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
+                f"feed requires dict as its Parameter. But you passed in {type(feed)}"
             )
 
         (
@@ -2974,8 +2958,7 @@ class Executor:
                     )
                 else:
                     warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % name
+                        f"The variable {name} is not found in program. It is not declared or is pruned."
                     )
 
         return tmp_program
@@ -3141,7 +3124,7 @@ class Executor:
                 >>> dataset.set_use_var([x, y])
                 >>> dataset.set_thread(1)
                 >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-                >>> filelist = []
+                >>> filelist = [] # type: ignore[var-annotated]
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
                 >>> exe.infer_from_dataset(program=paddle.static.default_main_program(),
@@ -3263,7 +3246,7 @@ class Executor:
                 >>> dataset.set_use_var([x, y])
                 >>> dataset.set_thread(1)
                 >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-                >>> filelist = []
+                >>> filelist = [] # type: ignore[var-annotated]
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
                 >>> exe.train_from_dataset(program=paddle.static.default_main_program(),

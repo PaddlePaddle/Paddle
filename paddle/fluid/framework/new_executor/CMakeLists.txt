@@ -14,6 +14,11 @@ if(NOT WITH_ONEDNN)
     ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_mixed_instruction.cc)
 endif()
 
+if(NOT TENSORRT_FOUND OR NOT WITH_TENSORRT)
+  list(REMOVE_ITEM standalone_executor_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/instruction/tensorrt_engine_instruction.cc)
+endif()
+
 set(standalone_executor_deps
     pir
     program_translator
@@ -36,6 +41,10 @@ if(WITH_CINN)
       device_context
       op_registry
       ${DEVICE_EVENT_LIBS})
+endif()
+
+if(TENSORRT_FOUND AND WITH_TENSORRT)
+  set(standalone_executor_deps ${standalone_executor_deps} trt_engine)
 endif()
 
 if(WITH_CUSTOM_DEVICE)

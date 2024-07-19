@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-from collections import defaultdict
 from types import MethodType
 from typing import Callable, List, Tuple, Union
 
@@ -30,6 +29,7 @@ from paddle.base.framework import (
     Variable,
     default_main_program,
     in_pir_mode,
+    use_pir_api,
 )
 from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
@@ -56,6 +56,7 @@ from paddle.io.dataloader.batch_sampler import (
     DistributedBatchSampler,
     _InfiniteIterableSampler,
 )
+from paddle.optimizer import Optimizer
 
 from .placement_type import check_placements_equal, get_shard_spec
 from .random import determinate_rng, rng_state
@@ -850,7 +851,7 @@ def get_placement_with_sharding(param, sharding_mesh_axis):
     return new_placements
 
 
-class _ShardOptimizer:
+class _ShardOptimizer(Optimizer):
     def __init__(self, optimizer, shard_fn=None):
         assert (
             optimizer is not None
@@ -859,12 +860,13 @@ class _ShardOptimizer:
             optimizer, (paddle.optimizer.AdamW, paddle.optimizer.SGD)
         ), "`paddle.distributed.ShardOptimizer` only supports AdamW and SGD optimizer for now."
 
-        self.target_block = (
-            paddle.base.framework.default_main_program().global_block()
-        )
+        # self.target_block = (
+        #     paddle.base.framework.default_main_program().global_block()
+        # )
         optimizer.helper = paddle.base.layer_helper.LayerHelper(
             optimizer.__class__.__name__
         )
+        self.__dict__["_inner_opt"] = optimizer
         self._shard_clip = False
         if (
             hasattr(optimizer, "_grad_clip")
@@ -872,7 +874,6 @@ class _ShardOptimizer:
             and isinstance(optimizer._grad_clip, paddle.nn.ClipGradByGlobalNorm)
         ):
             self._shard_clip = True
-        self._inner_opt = optimizer
         self._shard_fn = shard_fn
         self._sharding_mesh_axis = None
         self._sharding_degree = None
@@ -935,9 +936,6 @@ class _ShardOptimizer:
         ), "The sharding degree is None in ShardOptimizer"
 
     def _shard_accumulator(self, param):
-        # create the accumulators
-        self._inner_opt._create_accumulators(self.target_block, [param])
-
         target_name = param.name
         if param.name in self._inner_opt._master_weights.keys():
             target_name = self._inner_opt._master_weights[param.name].name
@@ -970,14 +968,19 @@ class _ShardOptimizer:
                         mesh=param.process_mesh,
                         placements=placements,
                     )
-
-            self._inner_opt._accumulators[key][target_name].name = (
-                target_name + "_" + key
-            )
+            if not isinstance(
+                self._inner_opt._accumulators[key][target_name], pir.Value
+            ):
+                self._inner_opt._accumulators[key][target_name].name = (
+                    target_name + "_" + key
+                )
 
     def _reset_placements(self, param):
-        if param.is_dist():
-            if isinstance(self._shard_fn, (ShardingStage1, ShardingStage2)):
+        if param.is_dist() and isinstance(
+            self._shard_fn, (ShardingStage1, ShardingStage2)
+        ):
+            # in pir mode, reshard pass will automatically handle inplace case, so no extra work is required here.
+            if not isinstance(param, pir.Value):
                 new_placement = param.placements
                 new_placement[self._sharding_mesh_axis] = dist.Replicate()
                 out_param = dist.reshard(
@@ -985,49 +988,22 @@ class _ShardOptimizer:
                 )
                 param.get_tensor()._share_data_with(out_param.get_tensor())
 
-    def step(self):
-        if not isinstance(self._inner_opt._parameter_list[0], dict):
-            params_grads = []
-            for param in self._inner_opt._parameter_list:
-                if param.stop_gradient:
-                    continue
-                if param._grad_ivar() is not None:
-                    grad_var = param._grad_ivar()
-                    params_grads.append((param, grad_var))
-            for p, g in params_grads:
-                self._shard_accumulator(p)
-            self._inner_opt._apply_optimize(
-                loss=None, startup_program=None, params_grads=params_grads
-            )
+    def _create_accumulators(self, block, parameters):
+        self._inner_opt._create_accumulators(block, parameters)
+        if isinstance(parameters, dict):
+            parameters = parameters.get('params')
+        for p in parameters:
+            self._shard_accumulator(p)
 
-            # reset the parameter and grad to right placements
-            for p, _ in params_grads:
+    def _finish_update(self, block, parameters_and_grads):
+        self._inner_opt._finish_update(block, parameters_and_grads)
+        if isinstance(parameters_and_grads, list):
+            for p, _ in parameters_and_grads:
                 self._reset_placements(p)
         else:
-            for param_group in self._inner_opt._param_groups:
-                params_grads = defaultdict(lambda: [])
-                for param in param_group['params']:
-                    if param.stop_gradient:
-                        continue
-                    if param._grad_ivar() is not None:
-                        grad_var = param._grad_ivar()
-                        params_grads['params'].append((param, grad_var))
-
-                params_grads.update(
-                    {k: v for k, v in param_group.items() if k != 'params'}
-                )
-                for p, g in params_grads['params']:
-                    self._shard_accumulator(p)
-                self._inner_opt._apply_optimize(
-                    loss=None, startup_program=None, params_grads=params_grads
-                )
-
-                # reset the parameter and grad to right placements
-                for p, _ in params_grads['params']:
-                    self._reset_placements(p)
-
-            # only generate once.
-            self._generate_flag = True
+            # reset the parameter and grad to right placements
+            for p, _ in parameters_and_grads['params']:
+                self._reset_placements(p)
 
     def state_dict(self):
         """
@@ -1106,8 +1082,22 @@ class _ShardOptimizer:
 
         return self._inner_opt.state_dict()
 
+    def _append_optimize_op(self, block, param_and_grad):
+        return self._inner_opt._append_optimize_op(block, param_and_grad)
+
     def __getattr__(self, item):
-        return getattr(self._inner_opt, item)
+        if "_inner_opt" in self.__dict__:
+            if item == "_inner_opt":
+                return self.__dict__[item]
+            return getattr(self.__dict__["_inner_opt"], item)
+        else:
+            raise AttributeError
+
+    def __setattr__(self, item, value):
+        if item == '_inner_opt':
+            msg = f'{type(self).__name__}._inner_opt is READ ONLY'
+            raise AttributeError(msg)
+        return setattr(self._inner_opt, item, value)
 
 
 class _ShardingStageBase:
@@ -1337,6 +1327,14 @@ class ShardingStage3(_ShardingStageBase):
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
             if 'beta' not in key:
                 placements = param.placements
+                if all(
+                    isinstance(placement, dist.Replicate)
+                    for placement in placements
+                ):
+                    placements = get_placement_with_sharding(
+                        param, self._sharding_mesh_axis
+                    )
+
             else:
                 placements = [
                     dist.Replicate()
@@ -2098,7 +2096,7 @@ class DistModel:
         if len(feed_name_list) != len(data_list):
             raise ValueError(
                 "The input data and feed_list are not consistent."
-                "The model takes %s as input" % (str(feed_name_list))
+                f"The model takes {feed_name_list} as input"
             )
 
         def _to_lodtensor(tensor: paddle.Tensor):
@@ -2196,9 +2194,7 @@ class DistModel:
         for feed_item in list(args):
             if isinstance(feed_item, (list, tuple)):
                 feed_list += list(feed_item)
-            elif isinstance(feed_item, paddle.Tensor):
-                feed_list += [feed_item]
-            elif isinstance(feed_item, core.LoDTensor):
+            elif isinstance(feed_item, (paddle.Tensor, core.LoDTensor)):
                 feed_list += [feed_item]
             else:
                 raise TypeError(
@@ -2388,7 +2384,7 @@ def to_static(
             >>> BATCH_NUM = 4
             >>> IMAGE_SIZE = 16
             >>> CLASS_NUM = 8
-            >>> class RandomDataset(paddle.io.Dataset):
+            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self, images, labels, num_samples):
             ...         self.images = images
             ...         self.labels = labels
@@ -2467,7 +2463,7 @@ def to_static(
             >>> # export CUDA_VISIBLE_DEVICES=0,1
             >>> # python -m paddle.distributed.launch {test_case}.py
     """
-    if isinstance(optimizer, _ShardOptimizer):
+    if isinstance(optimizer, _ShardOptimizer) and not use_pir_api():
         shard_fn = optimizer._shard_fn
         sharding_degree = optimizer._sharding_degree
         optimizer = optimizer._inner_opt
@@ -2811,8 +2807,12 @@ class ShardDataloader:
             if self._all_inputs_in_one_mesh is False:
                 assert len(self._input_keys) == len(self._meshes)
             dist_batch_data = {}
-            for i in range(len(self._input_keys)):
-                key = self._input_keys[i]
+            input_keys = (
+                batch_data.keys()
+                if self._input_keys is None
+                else self._input_keys
+            )
+            for i, key in enumerate(input_keys):
                 input_data = batch_data[key]
                 if isinstance(input_data, (list, tuple)):
                     (
@@ -2895,7 +2895,7 @@ def shard_dataloader(
 
             >>> paddle.seed(1024)
             >>> np.random.seed(1024)
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset): # type: ignore[type-arg]
             >>>     def __init__(self, seq_len, hidden, num_samples=8):
             ...         super().__init__()
             ...         self.seq_len = seq_len
@@ -2914,10 +2914,10 @@ def shard_dataloader(
             ...     def __init__(self):
             ...         super(MlpModel, self).__init__()
             ...         self.w0 = dist.shard_tensor(
-            ...             self.create_parameter(shape=[HIDDLE_SIZE, HIDDLE_SIZE]),
+            ...             self.create_parameter(shape=[8, 8]),
             ...             mesh0, [dist.Replicate(), dist.Shard(1)])
             ...         self.w1 = dist.shard_tensor(
-            ...             self.create_parameter(shape=[HIDDLE_SIZE, HIDDLE_SIZE]),
+            ...             self.create_parameter(shape=[8, 8]),
             ...             mesh1, [dist.Replicate(), dist.Shard(0)])
 
             ...     def forward(self, x):
@@ -2988,7 +2988,7 @@ def shard_dataloader(
             >>> import numpy as np
             >>> mesh0 = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['dp', 'mp'])
             >>> mesh1 = dist.ProcessMesh([[4, 5], [6, 7]], dim_names=['dp', 'mp'])
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset): # type: ignore[type-arg]
             ...     def __init__(self, seq_len, hidden, num_samples=8):
             ...         super().__init__()
             ...         self.seq_len = seq_len
