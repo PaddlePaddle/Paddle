@@ -82,7 +82,7 @@ TimeDuration PerformanceReporter::TrimMean(
   int top_count = durations.size();
   if (top_count == 0) return TimeDuration::zero();
   auto top_k = TopK(durations, top_count);
-  int remove_num = top_count / 10;
+  int remove_num = top_count / 5;
   auto avg_time = std::accumulate(top_k.begin() + remove_num,
                                   top_k.end() - remove_num,
                                   TimeDuration::zero());
