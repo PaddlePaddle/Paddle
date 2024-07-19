@@ -15,9 +15,19 @@
 
 from paddle import framework
 from paddle.distributed.communication import stream
+from __future__ import annotations
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
 
-
-def gather(tensor, gather_list=None, dst=0, group=None, sync_op=True):
+def gather(
+        tensor: Tensor,
+        gather_list: list = None, 
+        dst: int = 0, 
+        group: Group | None = None,
+        sync_op: bool = True,
+        ) -> task | None:
     """
 
     Gather tensors from all participators.
