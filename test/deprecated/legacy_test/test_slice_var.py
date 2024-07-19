@@ -14,6 +14,7 @@
 
 import random
 import unittest
+
 import paddle
 from paddle import base
 from paddle.distributed.transpiler.distribute_transpiler import slice_variable
