@@ -979,6 +979,7 @@ set(TEST_CINN_OPS
     test_assign_op
     test_reduce_op
     test_scatter_nd_op
+    test_scale_op
     test_layer_norm_op
     test_atan2_op
     test_cast_op
