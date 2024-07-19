@@ -84,14 +84,16 @@ class TestAccuracy(unittest.TestCase):
         self.assertEqual(m.update(correct), 0.75)
         self.assertEqual(m.accumulate(), 0.75)
 
-        x = paddle.to_tensor(np.array(
-            [
-                [0.1, 0.2, 0.3, 0.4],
-                [0.1, 0.3, 0.4, 0.2],
-                [0.1, 0.2, 0.4, 0.3],
-                [0.1, 0.2, 0.3, 0.4],
-            ]
-        ))
+        x = paddle.to_tensor(
+            np.array(
+                [
+                    [0.1, 0.2, 0.3, 0.4],
+                    [0.1, 0.3, 0.4, 0.2],
+                    [0.1, 0.2, 0.4, 0.3],
+                    [0.1, 0.2, 0.3, 0.4],
+                ]
+            )
+        )
         y = paddle.to_tensor(np.array([[0], [1], [2], [3]]))
         correct = m.compute(x, y)
         # check results
