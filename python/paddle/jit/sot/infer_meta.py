@@ -31,6 +31,7 @@ from paddle.utils import flatten, is_sequence
 from .utils import Cache, Singleton, map_if_extend, meta_str
 
 DynamicSymbolT = TypeVar("DynamicSymbolT")
+SOT_INFER_META_INNER_VAR = "___SOT_INFER_META_INNER_VAR"
 
 
 class SymbolicInt(metaclass=Singleton):
@@ -144,10 +145,7 @@ class MetaInfo:
 
     @staticmethod
     def from_value(value) -> MetaInfo:
-        if isinstance(value, paddle.pir.Value):
-            name = "Value@NoName"
-        else:
-            name = value.name
+        name = SOT_INFER_META_INNER_VAR
         dtype = MetaInfo._handle_legacy_ir_amp_dtype(value.dtype)
         shape = [SymbolicInt() if dim == -1 else dim for dim in value.shape]
         return MetaInfo(
@@ -159,6 +157,9 @@ class MetaInfo:
             value.type,
             value.place,
         )
+
+    def is_inner_var(self):
+        return self.name == SOT_INFER_META_INNER_VAR
 
     def is_dynamic_shape(self):
         """
@@ -202,7 +203,7 @@ class VariableCreator(metaclass=Singleton):
         # self.var_cache = {}
         # self.main_program = paddle.static.Program()
         # self.startup_program = paddle.static.Program()
-        self.var_name_generator = UniqueNameGenerator("infer_meta_variable_")
+        self.var_name_generator = UniqueNameGenerator(SOT_INFER_META_INNER_VAR)
 
     def gen_name(self, meta):
         name = f"{meta.dtype}_{meta.stop_gradient}"
