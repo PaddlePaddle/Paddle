@@ -93,3 +93,23 @@ def get_default_dtype() -> _DTypeLiteral:
             >>> paddle.get_default_dtype()
     """
     return LayerHelperBase.get_default_dtype()
+
+def to_dtype(var_type):
+    if var_type == core.VarDesc.VarType.FP32:
+        return core.DataType.FLOAT32
+    elif var_type == core.VarDesc.VarType.FP16:
+        return core.DataType.FLOAT16
+    elif var_type == core.VarDesc.VarType.BF16:
+        return core.DataType.BFLOAT16
+    elif var_type == core.VarDesc.VarType.FP64:
+        return core.DataType.FLOAT64
+    elif var_type == core.VarDesc.VarType.INT32:
+        return core.DataType.INT32
+    elif var_type == core.VarDesc.VarType.INT64:
+        return core.DataType.INT64
+    elif var_type == core.VarDesc.VarType.BOOL:
+        return core.DataType.BOOL
+    else:
+        raise ValueError(f"Unsupported VarType: {var_type}")
+
+core.VarDesc.VarType.to_dtype = to_dtype
