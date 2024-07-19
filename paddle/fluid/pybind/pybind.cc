@@ -76,9 +76,9 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
@@ -95,7 +95,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -133,6 +132,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
@@ -205,6 +205,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_interface.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp_vjp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -493,13 +494,13 @@ struct finfo {
   explicit finfo(const framework::proto::VarType::Type &type) {
     switch (type) {
       case framework::proto::VarType::FP16:
-        eps = std::numeric_limits<paddle::platform::float16>::epsilon();
-        min = std::numeric_limits<paddle::platform::float16>::lowest();
-        max = std::numeric_limits<paddle::platform::float16>::max();
-        smallest_normal = std::numeric_limits<paddle::platform::float16>::min();
+        eps = std::numeric_limits<phi::dtype::float16>::epsilon();
+        min = std::numeric_limits<phi::dtype::float16>::lowest();
+        max = std::numeric_limits<phi::dtype::float16>::max();
+        smallest_normal = std::numeric_limits<phi::dtype::float16>::min();
         tiny = smallest_normal;
-        resolution = std::pow(
-            10, -std::numeric_limits<paddle::platform::float16>::digits10);
+        resolution =
+            std::pow(10, -std::numeric_limits<phi::dtype::float16>::digits10);
         bits = 16;
         dtype = "float16";
         break;
@@ -526,14 +527,13 @@ struct finfo {
         dtype = "float64";
         break;
       case framework::proto::VarType::BF16:
-        eps = std::numeric_limits<paddle::platform::bfloat16>::epsilon();
-        min = std::numeric_limits<paddle::platform::bfloat16>::lowest();
-        max = std::numeric_limits<paddle::platform::bfloat16>::max();
-        smallest_normal =
-            std::numeric_limits<paddle::platform::bfloat16>::min();
+        eps = std::numeric_limits<phi::dtype::bfloat16>::epsilon();
+        min = std::numeric_limits<phi::dtype::bfloat16>::lowest();
+        max = std::numeric_limits<phi::dtype::bfloat16>::max();
+        smallest_normal = std::numeric_limits<phi::dtype::bfloat16>::min();
         tiny = smallest_normal;
-        resolution = std::pow(
-            10, -std::numeric_limits<paddle::platform::bfloat16>::digits10);
+        resolution =
+            std::pow(10, -std::numeric_limits<phi::dtype::bfloat16>::digits10);
         bits = 16;
         dtype = "bfloat16";
         break;
@@ -940,6 +940,23 @@ void BindVjp(pybind11::module *m) {
             for (size_t j = 0; j < inputs[idx].size(); ++j) {
               if (vjp_res[grad_index][j]) {
                 // The grad_type must equal to forward type.
+                if (auto fwd_type =
+                        inputs[idx][j]
+                            .type()
+                            .dyn_cast<dialect::DistTypeInterface>()) {
+                  if (auto bwd_type =
+                          vjp_res[grad_index][j]
+                              .type()
+                              .dyn_cast<dialect::DistTypeInterface>()) {
+                    auto fwd_attr = fwd_type.tensor_dist_attr();
+                    auto bwd_attr = bwd_type.tensor_dist_attr();
+                    if (fwd_attr.process_mesh_attr() ==
+                            bwd_attr.process_mesh_attr() &&
+                        fwd_attr.dims_mapping() == bwd_attr.dims_mapping()) {
+                      continue;
+                    }
+                  }
+                }
                 vjp_res[grad_index][j].set_type(inputs[idx][j].type());
               }
             }
@@ -1920,32 +1937,31 @@ All parameter, weight, gradient are variables in Paddle.
       .def("empty", []() { return kEmptyVarName; })
       .def("temp", []() { return kTempVarName; });
 
-  py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
+  py::class_<phi::DeviceContext>(m, "DeviceContext")
+      .def_static("create",
+                  [](phi::CPUPlace &place) -> phi::DeviceContext * {
+                    auto *context = new phi::CPUContext();
+                    context->SetAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(place)
+                            .get());
+                    context->SetHostAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(phi::CPUPlace())
+                            .get());
+                    context->SetZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(place)
+                            .get());
+                    context->SetHostZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(phi::CPUPlace())
+                            .get());
+                    return context;
+                  })
       .def_static(
           "create",
-          [](phi::CPUPlace &place) -> paddle::platform::DeviceContext * {
-            auto *context = new phi::CPUContext();
-            context->SetAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetAllocator(place)
-                    .get());
-            context->SetHostAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetAllocator(phi::CPUPlace())
-                    .get());
-            context->SetZeroAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetZeroAllocator(place)
-                    .get());
-            context->SetHostZeroAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetZeroAllocator(phi::CPUPlace())
-                    .get());
-            return context;
-          })
-      .def_static(
-          "create",
-          [](phi::XPUPlace &place) -> paddle::platform::DeviceContext * {
+          [](phi::XPUPlace &place) -> phi::DeviceContext * {
 #ifndef PADDLE_WITH_XPU
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use XPUPlace in CPU/GPU version, "
@@ -1971,21 +1987,20 @@ All parameter, weight, gradient are variables in Paddle.
             return context;
 #endif
           })
-      .def_static(
-          "create",
-          [](phi::CustomPlace &place) -> paddle::platform::DeviceContext * {
+      .def_static("create",
+                  [](phi::CustomPlace &place) -> phi::DeviceContext * {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-            PADDLE_THROW(platform::errors::PermissionDenied(
-                "Cannot use CustomPlace in CPU/GPU/XPU version, "
-                "Please recompile or reinstall Paddle with "
-                "CustomDevice support."));
+                    PADDLE_THROW(platform::errors::PermissionDenied(
+                        "Cannot use CustomPlace in CPU/GPU/XPU version, "
+                        "Please recompile or reinstall Paddle with "
+                        "CustomDevice support."));
 #else
             return new paddle::platform::CustomDeviceContext(place);
 #endif
-          })
+                  })
       .def_static(
           "create",
-          [](phi::GPUPlace &place) -> paddle::platform::DeviceContext * {
+          [](phi::GPUPlace &place) -> phi::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use CUDAPlace in CPU only version, "
@@ -2017,8 +2032,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
           })
       .def_static(
-          "create",
-          [](phi::GPUPinnedPlace &place) -> paddle::platform::DeviceContext * {
+          "create", [](phi::GPUPinnedPlace &place) -> phi::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
             PADDLE_THROW(platform::errors::PermissionDenied(
                 "Cannot use CUDAPinnedPlace in CPU only version, "

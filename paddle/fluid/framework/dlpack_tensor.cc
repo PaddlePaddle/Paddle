@@ -24,12 +24,12 @@ namespace internal {
 template <typename T>
 static ::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
-  if (std::is_same<T, platform::complex<float>>::value ||
-      std::is_same<T, platform::complex<double>>::value) {
+  if (std::is_same<T, phi::dtype::complex<float>>::value ||
+      std::is_same<T, phi::dtype::complex<double>>::value) {
     dtype.code = kDLComplex;
-  } else if (std::is_same<T, platform::bfloat16>::value) {
+  } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
     dtype.code = kDLBfloat;
-  } else if (std::is_same<T, platform::float16>::value ||
+  } else if (std::is_same<T, phi::dtype::float16>::value ||
              std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
   } else if (std::is_unsigned<T>::value) {

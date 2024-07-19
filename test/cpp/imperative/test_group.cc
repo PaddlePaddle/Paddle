@@ -144,20 +144,20 @@ TEST(TestGroup, TestConcatSplit) {
   int size = 3;
   GroupConcatSplit<float>(cpu_place, size);
   GroupConcatSplit<double>(cpu_place, size);
-  GroupConcatSplit<platform::float16>(cpu_place, size);
+  GroupConcatSplit<phi::dtype::float16>(cpu_place, size);
 
   GroupConcatSplit<float>(cuda_place, size);
   GroupConcatSplit<double>(cuda_place, size);
-  GroupConcatSplit<platform::float16>(cuda_place, size);
+  GroupConcatSplit<phi::dtype::float16>(cuda_place, size);
 
   size = 15;
   GroupConcatSplit<float>(cpu_place, size);
   GroupConcatSplit<double>(cpu_place, size);
-  GroupConcatSplit<platform::float16>(cpu_place, size);
+  GroupConcatSplit<phi::dtype::float16>(cpu_place, size);
 
   GroupConcatSplit<float>(cuda_place, size);
   GroupConcatSplit<double>(cuda_place, size);
-  GroupConcatSplit<platform::float16>(cuda_place, size);
+  GroupConcatSplit<phi::dtype::float16>(cuda_place, size);
 }
 
 TEST(TestGroup, TestConcatSplitException) {

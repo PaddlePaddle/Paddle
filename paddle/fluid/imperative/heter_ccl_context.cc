@@ -23,7 +23,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -175,8 +175,7 @@ void HeterParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   PADDLE_THROW(platform::errors::Unimplemented("Unimplemented function."));
 }
 
-paddle::platform::DeviceContext *HeterParallelContext::GetDeviceContext(
-    int ring_id) {
+phi::DeviceContext *HeterParallelContext::GetDeviceContext(int ring_id) {
   // directly call the implementation of target parallel ctx.
   return node_parallel_ctx_->GetDeviceContext(ring_id);
 }

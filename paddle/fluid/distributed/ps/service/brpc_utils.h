@@ -55,42 +55,42 @@ void SerializeToMultiVarMsgAndIOBuf(
     const std::string& message_name,
     const std::vector<std::string>& send_var_name_val,
     const std::vector<std::string>& recv_var_name_val,
-    const platform::DeviceContext& ctx,
+    const phi::DeviceContext& ctx,
     const framework::Scope* scope,
     MultiVarMsg* var_msg,
     butil::IOBuf* iobuf);
 
 void SerializeLodTensor(framework::Variable* var,
-                        const platform::DeviceContext& ctx,
+                        const phi::DeviceContext& ctx,
                         VarMsg* var_msg,
                         butil::IOBuf* iobuf);
 
 void SerializeSelectedRows(framework::Variable* var,
-                           const platform::DeviceContext& ctx,
+                           const phi::DeviceContext& ctx,
                            VarMsg* request,
                            butil::IOBuf* iobuf);
 
 // Deserialize for Server
 void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
                                         const butil::IOBuf* iobuf,
-                                        const platform::DeviceContext& ctx,
+                                        const phi::DeviceContext& ctx,
                                         framework::Scope* scope);
 
 // Deserialize for Client
 void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
                                         const butil::IOBuf* iobuf,
-                                        const platform::DeviceContext& ctx,
+                                        const phi::DeviceContext& ctx,
                                         const framework::Scope* scope);
 
 void DeserializeLodTensor(framework::Variable* var,
                           const VarMsg& msg,
                           butil::IOBufBytesIterator& iobuf,  // NOLINT
-                          const platform::DeviceContext& ctx);
+                          const phi::DeviceContext& ctx);
 
 void DeserializeSelectedRows(framework::Variable* var,
                              const VarMsg& msg,
                              butil::IOBufBytesIterator& iobuf,  // NOLINT
-                             const platform::DeviceContext& ctx);
+                             const phi::DeviceContext& ctx);
 
 std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port);
 

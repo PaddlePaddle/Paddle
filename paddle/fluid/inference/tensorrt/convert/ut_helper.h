@@ -47,7 +47,7 @@ float random(float low, float high) {
 
 void RandomizeTensor(phi::DenseTensor* tensor,
                      const phi::Place& place,
-                     const platform::DeviceContext& ctx) {
+                     const phi::DeviceContext& ctx) {
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
   PADDLE_ENFORCE_GT(

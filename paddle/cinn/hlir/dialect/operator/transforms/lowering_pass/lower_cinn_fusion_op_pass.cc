@@ -28,6 +28,8 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
+PD_DECLARE_bool(cinn_bc_branch_optimize);
+
 namespace cinn::dialect::ir::details {
 
 pir::Operation* ProcessDyShapeGroup(const OpLoweringGroupPtr& group,
@@ -39,7 +41,7 @@ pir::Operation* ProcessDyShapeGroup(const OpLoweringGroupPtr& group,
   GroupDimExprInfo group_dim_expr_info = GetGroupDimExprInfo(group);
   const auto& leaves = group_dim_expr_info.all_value_dim_exprs;
   // has multiple branch
-  if (NeedBroadcastWithCF(leaves)) {
+  if (FLAGS_cinn_bc_branch_optimize && NeedBroadcastWithCF(leaves)) {
     const auto& value_to_dim_expr_idx =
         group_dim_expr_info.value_to_dim_expr_idx;
     const std::shared_ptr<BroadcastTree> broadcast_tree =
