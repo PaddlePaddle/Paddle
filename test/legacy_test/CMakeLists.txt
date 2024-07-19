@@ -48,6 +48,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
 list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
+list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
@@ -148,6 +149,14 @@ endif()
 
 if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
+endif()
+
+if(WIN32)
+  py_test_modules(test_fetch_lod_tensor_array MODULES
+                  test_fetch_lod_tensor_array ENVS CUDA_VISIBLE_DEVICES=0)
+else()
+  py_test_modules(test_fetch_lod_tensor_array MODULES
+                  test_fetch_lod_tensor_array)
 endif()
 
 if(WIN32)
@@ -1059,6 +1068,7 @@ set(STATIC_BUILD_TESTS
     test_eigh_op
     test_matmul_v2_op
     test_paddle_save_load_binary
+    test_fetch_lod_tensor_array
     test_assign_pos_op
     test_bucketize_api
     test_c_embedding_op
@@ -1129,7 +1139,7 @@ foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
   message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
 endforeach()
 
-set(PIR_ONLY_TEST_FILES test_pir_translated_layer)
+set(PIR_ONLY_TEST_FILES test_pir_translated_layer test_prune)
 foreach(ITEST ${PIR_ONLY_TEST_FILES})
   if(TEST ${ITEST})
     set_tests_properties(${ITEST} PROPERTIES ENVIRONMENT
@@ -1172,6 +1182,7 @@ set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES TIMEOUT 120)
 set_tests_properties(test_crop_tensor_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 300)
+set_tests_properties(test_dygraph_multi_forward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_elementwise_mul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 120)

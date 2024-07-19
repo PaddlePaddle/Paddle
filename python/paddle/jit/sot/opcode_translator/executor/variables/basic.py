@@ -32,8 +32,8 @@ from ....utils import (
     ConstTypes,
     FallbackError,
     NameGenerator,
+    get_tensor_methods,
     log,
-    paddle_tensor_methods,
     printable,
 )
 from ....utils.exceptions import HasNoAttributeError, InnerError
@@ -564,11 +564,18 @@ class TensorVariable(VariableBase):
             "is_integer": paddle.is_integer,
             "is_floating_point": paddle.is_floating_point,
         }
-        if name in ["dtype", "type", "name", "persistable", "stop_gradient"]:
-            if name == "name" and self.meta.name.startswith(
-                "infer_meta_variable_tmp"
-            ):
-                raise BreakGraphError(f"{self.meta.name} is a middle tensor.")
+        if name in ["name", "place", "type"] and self.meta.is_inner_var():
+            raise BreakGraphError(
+                f"{self.meta.name} is a middle tensor. get {name} property."
+            )
+        if name in [
+            "dtype",
+            "type",
+            "name",
+            "persistable",
+            "stop_gradient",
+            "place",
+        ]:
             return VariableFactory.from_value(
                 getattr(self.meta, name),
                 self.graph,
@@ -585,7 +592,7 @@ class TensorVariable(VariableBase):
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
             ).bind(self, name)
-        elif name in paddle_tensor_methods:
+        elif name in get_tensor_methods():
             from .callable import TensorFunctionVariable
 
             fn_var = TensorFunctionVariable(

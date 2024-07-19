@@ -300,6 +300,43 @@ struct FlowGraph {
       }
     }
 
+    // (%397) = "pd_op.isinf" (%398)
+    // (%401) = "pd_op.if" (%400)
+    //     (%402) = "pd_op.clip" (%397, %3, %2) {}
+    //     () = "cf.yield" (%402) {}
+    // } else {
+    //     () = "cf.yield" (%1) {}
+    // }
+    // just like the example above, we cannot build full
+    // dependency while graph containing control flow
+    // so we need a special process
+    for (auto& op : *(program.block())) {
+      auto layout_transform_iface =
+          op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
+      const auto& relevate_outputs =
+          layout_transform_iface ? layout_transform_iface.RelevantOutputs(&op)
+                                 : op.results();
+
+      for (const auto& op_result : relevate_outputs) {
+        Node op_result_node(op_result);
+        for (auto it = op_result.use_begin(); it != op_result.use_end(); ++it) {
+          auto user_op = it->owner();
+          while (user_op->GetParentProgram()->block() != user_op->GetParent()) {
+            user_op = user_op->GetParentOp();
+          }
+          // if user_op is in main block, no additional process
+          if (user_op == it->owner()) {
+            continue;
+          }
+          // else user_op in main_block, link it with its producer
+          Node user_op_node(user_op);
+          VLOG(10) << "[PreProcess] control flow link:" << op_result_node
+                   << " -> " << user_op_node;
+          AddEdge(op_result_node, user_op_node, 1.0f, 1.0f, true);
+        }
+      }
+    }
+
     // Since VarDesc doesn't store layout, in pir we set all layout to
     // NCHW after translation. However, we need the real layout to decide
     // if we need to alter the operation and value. Here we start from the
@@ -751,8 +788,18 @@ class TransferLayoutPass : public pir::Pass {
             pir::StrAttribute::get(transpose_op->ir_context(),
                                    "transfer_layout_pass"));
         auto replace_uses_in_cut_set = [&](pir::OpOperand arg) {
-          return (operation_set.find(arg.owner()) != operation_set.end()) &&
-                 (arg.owner() != transpose_op.operation());
+          bool is_arg_in_cut_set =
+              operation_set.find(arg.owner()) != operation_set.end();
+          auto cur_op = arg.owner();
+          if (auto parent = cur_op->GetParentOp();
+              parent && !is_arg_in_cut_set) {
+            is_arg_in_cut_set =
+                operation_set.find(parent) != operation_set.end();
+            VLOG(10) << "[replace_uses_in_cut_set]" << parent << " "
+                     << is_arg_in_cut_set;
+            cur_op = parent;
+          }
+          return is_arg_in_cut_set && (arg.owner() != transpose_op.operation());
         };
         pir::SetNewLayoutForValue(transpose_op.out(), new_layout);
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
