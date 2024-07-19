@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
+from __future__ import annotations
+
+from paddle import Tensor, _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
 
-def identity_loss(x, reduction="none"):
+def identity_loss(x: Tensor, reduction: str | int | None = "none") -> Tensor:
     r"""Marks a tensor as being part of the loss calculation for IPU.
 
     This operator is used to handle on the (final) loss of a model so that
