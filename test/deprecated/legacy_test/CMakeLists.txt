@@ -663,7 +663,6 @@ set_tests_properties(test_dataloader_keep_order_deprecated PROPERTIES TIMEOUT
                                                                       120)
 set_tests_properties(test_dataloader_unkeep_order_deprecated PROPERTIES TIMEOUT
                                                                         120)
-set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
 set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
