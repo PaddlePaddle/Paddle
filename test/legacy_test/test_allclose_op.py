@@ -131,11 +131,14 @@ class TestAllcloseDygraph(unittest.TestCase):
 class TestAllcloseError(unittest.TestCase):
     def test_input_dtype(self):
         with paddle.pir_utils.OldIrGuard():
+
             def test_x_dtype():
                 with paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
                 ):
-                    x = paddle.static.data(name='x', shape=[10, 10], dtype='int32')
+                    x = paddle.static.data(
+                        name='x', shape=[10, 10], dtype='int32'
+                    )
                     y = paddle.static.data(
                         name='y', shape=[10, 10], dtype='float64'
                     )
@@ -150,7 +153,9 @@ class TestAllcloseError(unittest.TestCase):
                     x = paddle.static.data(
                         name='x', shape=[10, 10], dtype='float64'
                     )
-                    y = paddle.static.data(name='y', shape=[10, 10], dtype='int32')
+                    y = paddle.static.data(
+                        name='y', shape=[10, 10], dtype='int32'
+                    )
                     result = paddle.allclose(x, y)
 
             self.assertRaises(TypeError, test_y_dtype)

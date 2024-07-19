@@ -372,7 +372,9 @@ class TestArgMaxOpFp16(unittest.TestCase):
         with paddle.pir_utils.OldIrGuard():
             x_np = np.random.random((10, 16)).astype('float16')
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+                x = paddle.static.data(
+                    shape=[10, 16], name='x', dtype='float16'
+                )
                 out = paddle.argmax(x)
                 if core.is_compiled_with_cuda():
                     place = paddle.CUDAPlace(0)
@@ -386,7 +388,9 @@ class TestArgMinOpFp16(unittest.TestCase):
         with paddle.pir_utils.OldIrGuard():
             x_np = np.random.random((10, 16)).astype('float16')
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+                x = paddle.static.data(
+                    shape=[10, 16], name='x', dtype='float16'
+                )
                 out = paddle.argmin(x)
                 if core.is_compiled_with_cuda():
                     place = paddle.CUDAPlace(0)
