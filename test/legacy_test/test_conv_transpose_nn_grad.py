@@ -405,6 +405,7 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
         if core.is_compiled_with_rocm():
             dtype = np.float32
         x = paddle.static.data('x', shape, dtype)
+
         y = paddle.nn.Conv2DTranspose(
             in_channels=2,
             out_channels=2,

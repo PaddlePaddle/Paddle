@@ -142,6 +142,12 @@ class _ConvNd(Layer):
                 padding, channel_last, dims
             )
 
+        if groups <= 0:
+            raise ValueError(
+                "the groups of input must be greater than 0, "
+                f"but received the groups of input is {groups}"
+            )
+
         if transposed:
             filter_shape = [
                 self._in_channels,

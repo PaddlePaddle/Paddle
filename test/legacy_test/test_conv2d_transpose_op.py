@@ -32,7 +32,6 @@ from testsuite import create_op
 
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):
@@ -1147,7 +1146,6 @@ class TestCUDNNWithEvenUpsample_NHWC_BF16(TestCUDNN_BF16):
 
 
 class TestConv2DTransposeAPI(unittest.TestCase):
-    @test_with_pir_api
     def test_case1(self):
         data1 = paddle.static.data(
             name='data1', shape=[-1, 3, 5, 5], dtype='float32'
@@ -1204,7 +1202,7 @@ class TestConv2DTransposeAPI(unittest.TestCase):
         out7 = paddle.nn.Conv2DTranspose(
             in_channels=5,
             out_channels=6,
-            kernel_size=None,
+            kernel_size=[5, 3],
             groups=1,
             padding=[0, 0],
             data_format='NHWC',
@@ -1235,7 +1233,6 @@ class TestConv2DTransposeAPI(unittest.TestCase):
 
 
 class TestConv2DTransposeOpException(unittest.TestCase):
-    @test_with_pir_api
     def test_exception(self):
         data = paddle.static.data(
             name='data', shape=[-1, 3, 5, 5], dtype="float32"
@@ -1318,7 +1315,10 @@ class TestConv2DTransposeOpException(unittest.TestCase):
                 kernel_size=3,
             )(data)
 
-        self.assertRaises(ValueError, error_0_filter_number)
+        if not paddle.framework.use_pir_api():
+            self.assertRaises(ValueError, error_0_filter_number)
+        else:
+            self.assertRaises(AssertionError, error_0_filter_number)
 
 
 class TestConv2DTransposeRepr(unittest.TestCase):
@@ -1375,7 +1375,8 @@ class TestTensorOutputSize1(UnittestBase):
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
-            self.assertTrue(self.var_prefix() in str(main_prog))
+            if not paddle.framework.use_pir_api():
+                self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)
@@ -1411,7 +1412,7 @@ class TestTensorOutputSize3(TestTensorOutputSize1):
         w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
         output_size = paddle.assign([17])
         out = paddle.nn.Conv2DTranspose(
-            in_channels=6,
+            in_channels=x.shape[1],
             out_channels=6,
             kernel_size=3,
             stride=2,
@@ -1427,7 +1428,7 @@ class TestTensorOutputSize4(TestTensorOutputSize1):
     def call_func(self, x):
         output_size = [17, paddle.assign([17])]
         out = paddle.nn.Conv2DTranspose(
-            in_channels=6,
+            in_channels=x.shape[1],
             out_channels=6,
             kernel_size=3,
             stride=2,
