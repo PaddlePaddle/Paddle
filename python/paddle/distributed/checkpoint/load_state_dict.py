@@ -559,9 +559,11 @@ def load_state_dict(
                         storage_chunk_tensor, src=src_rank, group=process_group
                     )
                 else:
+                    tmp_tensor = paddle.assign(cur_chunk_tensor)
                     paddle.distributed.broadcast(
-                        cur_chunk_tensor, src=src_rank, group=process_group
+                        tmp_tensor, src=src_rank, group=process_group
                     )
+                    paddle.assign(tmp_tensor, cur_chunk_tensor)
 
         for k, v in flat_state_dict.items():
             if k in state_dict_in_cpu:
