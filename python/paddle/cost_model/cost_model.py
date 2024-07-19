@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import json
 import os
 
@@ -26,7 +28,7 @@ class CostModel:
     def __init__(self):
         pass
 
-    def build_program(self):
+    def build_program(self) -> tuple[static.Program, static.Program]:
         paddle.enable_static()
 
         main_program = static.Program()
@@ -47,11 +49,11 @@ class CostModel:
 
     def profile_measure(
         self,
-        startup_program,
-        main_program,
-        device='gpu',
-        fetch_cost_list=['time'],
-    ):
+        startup_program: static.Program,
+        main_program: static.Program,
+        device: str = 'gpu',
+        fetch_cost_list: list[str] = ['time'],
+    ) -> None:
         place = paddle.set_device('gpu')
         x = np.random.random(size=(10, 1)).astype('float32')
         exe = paddle.static.Executor(place)
@@ -64,7 +66,7 @@ class CostModel:
         cost_model = core.CostModel()
         cost_data = cost_model.ProfileMeasure(device)
 
-    def static_cost_data(self):
+    def static_cost_data(self) -> dict[str, any]:
         static_cost_data_path = os.path.join(
             os.path.dirname(__file__), "static_op_benchmark.json"
         )
@@ -74,7 +76,9 @@ class CostModel:
         # return all static cost data
         return load_dict
 
-    def get_static_op_time(self, op_name, forward=True, dtype="float32"):
+    def get_static_op_time(
+        self, op_name: str, forward: bool = True, dtype: str = "float32"
+    ) -> dict[str, any]:
         # if forward is True, return op forward time, otherwise return op backward time.
         if op_name is None:
             raise ValueError(
