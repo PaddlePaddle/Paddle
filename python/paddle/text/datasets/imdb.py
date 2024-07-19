@@ -140,7 +140,7 @@ class Imdb(Dataset):
         word_idx['<unk>'] = len(words)
         return word_idx
 
-    def _tokenize(self, pattern: Pattern) -> list[list[str]]:
+    def _tokenize(self, pattern: Pattern[str]) -> list[list[str]]:
         data = []
         with tarfile.open(self.data_file) as tarf:
             tf = tarf.next()
@@ -176,7 +176,7 @@ class Imdb(Dataset):
 
     def __getitem__(
         self, idx: int
-    ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_],]:
+    ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         return (np.array(self.docs[idx]), np.array([self.labels[idx]]))
 
     def __len__(self) -> int:
