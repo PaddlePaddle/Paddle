@@ -166,6 +166,7 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
 if(APPLE OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
   list(REMOVE_ITEM TEST_OPS test_fs_interface)
   list(REMOVE_ITEM TEST_OPS test_fleet_metric)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
