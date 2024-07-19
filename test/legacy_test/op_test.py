@@ -2873,8 +2873,18 @@ class OpTest(unittest.TestCase):
                     return []
             else:
                 return []
-        places = [base.CPUPlace()]
+        places = []
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda()
+            and core.op_support_gpu(self.op_type)
+            and not cpu_only
+        ):
+            places.append(base.CPUPlace())
         if (
             core.is_compiled_with_cuda()
             and core.op_support_gpu(self.op_type)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+import os
 import unittest
 
 import numpy as np
@@ -228,7 +229,13 @@ class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.base.core.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:
@@ -284,7 +291,13 @@ class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         paddle.disable_static()
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.base.core.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:
@@ -381,7 +394,13 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
         expect_out = calc_psroi_pool(
             self.x, self.boxes, self.boxes_num, 10, 1.0, 7, 7
         )
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -427,7 +446,13 @@ class TestPSROIPoolStaticAPI_NOLOD(unittest.TestCase):
                 expect_out = calc_psroi_pool(
                     self.x, self.boxes, self.boxes_num, 10, 1.0, 7, 7
                 )
-                places = [paddle.CPUPlace()]
+                places = []
+                if (
+                    os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                    in ['1', 'true', 'on']
+                    or not paddle.base.core.is_compiled_with_cuda()
+                ):
+                    places.append(paddle.CPUPlace())
                 if paddle.base.core.is_compiled_with_cuda():
                     places.append(paddle.CUDAPlace(0))
                 for place in places:

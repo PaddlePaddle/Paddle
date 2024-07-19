@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import random
 import unittest
 from itertools import product
@@ -36,7 +37,13 @@ class TestCartesianProdAPIBase(unittest.TestCase):
         self.c_np = np.random.random(self.c_shape).astype(self.dtype_np)
         self.d_np = np.empty(0, self.dtype_np)
 
-        self.place = ['cpu']
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
 

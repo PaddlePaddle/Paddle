@@ -373,9 +373,14 @@ class TestBatchNormOpTraining(unittest.TestCase):
                 self.__assert_close(var_dict[name], out[id], name)
             print("op test forward passed: ", str(place), data_layout)
 
-        places = [core.CPUPlace()]
-
-        if core.is_compiled_with_cuda():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append[core.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
         for place in places:

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextlib
+import os
 import unittest
 
 import numpy as np
@@ -392,7 +393,13 @@ class TestProgramPruneBackward(unittest.TestCase):
 
         self.program_compare(test_prog_orig, test_prog_prune)
 
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 

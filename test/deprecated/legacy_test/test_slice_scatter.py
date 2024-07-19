@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import os
 import unittest
 
 import numpy as np
@@ -67,7 +68,13 @@ class TestSliceScatterApi(unittest.TestCase):
         self.value_np = np.random.random(self.value_shape).astype(
             'uint16' if self.dtype == 'bfloat16' else self.dtype
         )
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 

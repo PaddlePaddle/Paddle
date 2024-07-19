@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -95,9 +96,18 @@ class TestElementWiseAddOp(unittest.TestCase):
                 self.__assert_close(x_grad, out[0], "x@GRAD")
                 self.__assert_close(y_grad, out[1], "y@GRAD", atol=1.4)
 
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-            "elementwise_add"
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or (
+            not core.is_compiled_with_cuda()
+            and core.op_support_cpu('elementwise_add')
+        ):
+            places.append[core.CPUPlace()]
+        if paddle.is_compiled_with_cuda() and core.op_support_gpu(
+            'elementwise_add'
         ):
             places.append(core.CUDAPlace(0))
 

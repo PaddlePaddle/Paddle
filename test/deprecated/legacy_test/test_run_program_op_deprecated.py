@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextlib
+import os
 import unittest
 
 import numpy as np
@@ -75,7 +76,13 @@ class RunProgramOpTest(unittest.TestCase):
         )
 
     def check_output(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
@@ -84,7 +91,13 @@ class RunProgramOpTest(unittest.TestCase):
             self.check_output_with_place(place)
 
     def check_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
@@ -429,7 +442,13 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
     def test_check_grad(self):
         # NOTE: fetch not support SelectedRows, cannot compare
         # sparse gradients with static mode, only run dygraph
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:

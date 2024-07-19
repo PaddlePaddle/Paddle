@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -413,7 +414,13 @@ class TestSparseMomentumOp(unittest.TestCase):
         pass
 
     def test_sparse_momentum(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
@@ -866,7 +873,13 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
         )
 
     def test_vs(self, place=base.CPUPlace()):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.np.append(base.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 
@@ -974,7 +987,13 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
         return output, model.parameters()
 
     def _get_places(self):
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
         return places

@@ -199,7 +199,13 @@ class DatasetLoaderTestBase(unittest.TestCase):
             self.assertTrue(has_complete_batch)
 
     def get_all_places(self):
-        p = [base.CPUPlace()]
+        p = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.is_compiled_with_cuda()
+        ):
+            p.append[base.CPUPlace()]
         if base.is_compiled_with_cuda():
             p.append(base.CUDAPlace(0))
         return p

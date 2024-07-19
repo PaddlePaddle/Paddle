@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import os
 import unittest
 
 import numpy as np
@@ -60,7 +61,13 @@ class TestWeightNormalization(unittest.TestCase):
 
     def run_program(self):
         outputs = []
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+import os
 import unittest
 
 import numpy as np
@@ -204,7 +205,13 @@ class TestSparseAdagradOp(unittest.TestCase):
         )
 
     def test_sparse_adagrad(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
@@ -247,7 +254,13 @@ class TestAdagradOpMultiPrecision(unittest.TestCase):
     def _get_places(self):
         import paddle
 
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
         return places

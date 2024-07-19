@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -568,7 +569,13 @@ class TestDropoutOpError(unittest.TestCase):
 class TestDropoutFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -904,7 +911,13 @@ class TestDropoutFAPIError(unittest.TestCase):
 class TestDropoutCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -925,7 +938,13 @@ class TestDropoutCAPI(unittest.TestCase):
 class TestDropout2DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1011,7 +1030,13 @@ class TestDropout2DFAPIError(unittest.TestCase):
 class TestDropout2DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1057,7 +1082,13 @@ class TestDropout2DCAPI(unittest.TestCase):
 class TestDropout3DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1143,7 +1174,13 @@ class TestDropout3DFAPIError(unittest.TestCase):
 class TestDropout3DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1164,7 +1201,13 @@ class TestDropout3DCAPI(unittest.TestCase):
 class TestAlphaDropoutFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1276,7 +1319,13 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
 class TestAlphaDropoutCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1325,7 +1374,13 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
         paddle.framework.random.set_random_seed_generator('seed1', 123)
         rng0 = paddle.framework.random.get_random_seed_generator('seed0')
         rng1 = paddle.framework.random.get_random_seed_generator('seed1')
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -1372,7 +1427,13 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
 class TestDropoutBackward(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1510,7 +1571,13 @@ class TestRandomValue(unittest.TestCase):
         paddle.enable_static()
 
 
-places = [paddle.CPUPlace()]
+places = []
+if (
+    os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+    in ['1', 'true', 'on']
+    or not paddle.is_compiled_with_cuda()
+):
+    places.append(paddle.CPUPlace())
 if paddle.is_compiled_with_cuda():
     places.append(paddle.CUDAPlace(0))
 

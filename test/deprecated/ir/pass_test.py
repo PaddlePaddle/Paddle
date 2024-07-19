@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 import warnings
@@ -41,8 +42,14 @@ class PassTest(unittest.TestCase):
         random.seed(124)
 
     def _get_places(self):
-        places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append[base.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         return places
 
