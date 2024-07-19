@@ -170,29 +170,38 @@ class TestSliceScatterApiInt32(TestSliceScatterApi):
 
 class TestSliceScatterApiInt16(TestSliceScatterApi):
     def init_dtype(self):
-        # old ir `set_value` not support this dtype
-        if paddle.framework.in_dynamic_or_pir_mode():
-            self.dtype = 'int16'
-        else:
-            self.dtype = 'float64'
+        self.dtype = 'int16'
+
+    @test_with_pir_api
+    def test_api_static(self):
+        pass
+
+    def test_api_dygraph(self):
+        super().test_api_dygraph()
 
 
 class TestSliceScatterApiInt8(TestSliceScatterApi):
     def init_dtype(self):
-        # old ir `set_value` not support this dtype
-        if paddle.framework.in_dynamic_or_pir_mode():
-            self.dtype = 'int8'
-        else:
-            self.dtype = 'float64'
+        self.dtype = 'int8'
+
+    @test_with_pir_api
+    def test_api_static(self):
+        pass
+
+    def test_api_dygraph(self):
+        super().test_api_dygraph()
 
 
 class TestSliceScatterApiUint8(TestSliceScatterApi):
     def init_dtype(self):
-        # old ir `set_value` not support this dtype
-        if paddle.framework.in_dynamic_or_pir_mode():
-            self.dtype = 'uint8'
-        else:
-            self.dtype = 'float64'
+        self.dtype = 'uint8'
+
+    @test_with_pir_api
+    def test_api_static(self):
+        pass
+
+    def test_api_dygraph(self):
+        super().test_api_dygraph()
 
 
 class TestSliceScatterApiBool(TestSliceScatterApi):
@@ -202,11 +211,7 @@ class TestSliceScatterApiBool(TestSliceScatterApi):
 
 class TestSliceScatterApiBfloat16(TestSliceScatterApi):
     def init_dtype(self):
-        # old ir `set_value` not support this dtype
-        if paddle.framework.in_dynamic_or_pir_mode():
-            self.dtype = 'bfloat16'
-        else:
-            self.dtype = 'float64'
+        self.dtype = 'bfloat16'
 
 
 class TestSliceScatterApiFloat16(TestSliceScatterApi):
