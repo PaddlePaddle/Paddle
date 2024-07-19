@@ -976,6 +976,7 @@ if(WITH_CUDNN_FRONTEND)
 endif()
 
 set(TEST_CINN_OPS
+    test_psroi_pool_op
     test_assign_op
     test_reduce_op
     test_scatter_nd_op
