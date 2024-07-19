@@ -65,9 +65,7 @@ class TestBase(IPUOpTest):
                 kernel_size=3,
                 bias_attr=False,
             )(x)
-            # conv1 = paddle.static.nn.conv2d(
-            #     x, num_filters=3, filter_size=3, bias_attr=False, name='conv2d'
-            # )
+
             loss = paddle.mean(conv1)
             # apply optimizer
             self.optimizer().minimize(loss)

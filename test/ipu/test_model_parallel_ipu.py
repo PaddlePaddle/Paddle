@@ -68,9 +68,7 @@ class TestBase(IPUOpTest):
                         kernel_size=3,
                         bias_attr=False,
                     )(image)
-                    # conv1 = paddle.static.nn.conv2d(
-                    #     image, num_filters=3, filter_size=3, bias_attr=False
-                    # )
+
                 with paddle.static.ipu_shard_guard(index=1):
                     conv2 = paddle.nn.Conv2D(
                         in_channels=conv1.shape[1],
@@ -78,9 +76,7 @@ class TestBase(IPUOpTest):
                         kernel_size=3,
                         bias_attr=False,
                     )(conv1)
-                    # conv2 = paddle.static.nn.conv2d(
-                    #     conv1, num_filters=3, filter_size=3, bias_attr=False
-                    # )
+
                     # should consider influence of bs
                     loss = paddle.mean(conv2)
 

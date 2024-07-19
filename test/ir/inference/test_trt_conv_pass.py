@@ -41,16 +41,7 @@ class TensorRTSubgraphPassConvTest(InferencePassTest):
                 padding=self.conv_padding,
                 bias_attr=False,
             )(data)
-            # conv_out = paddle.static.nn.conv2d(
-            #     input=data,
-            #     num_filters=self.conv_num_filters,
-            #     filter_size=self.conv_filter_size,
-            #     groups=self.conv_groups,
-            #     padding=self.conv_padding,
-            #     bias_attr=False,
-            #     use_cudnn=self.use_cudnn,
-            #     act=None,
-            # )
+
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
@@ -227,17 +218,7 @@ class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
                 bias_attr=False,
                 stride=self.stride,
             )(data)
-            # conv_out = paddle.static.nn.conv2d(
-            #     input=data,
-            #     num_filters=self.conv_num_filters,
-            #     filter_size=self.conv_filter_size,
-            #     groups=self.conv_groups,
-            #     padding=self.conv_padding,
-            #     bias_attr=False,
-            #     use_cudnn=self.use_cudnn,
-            #     stride=self.stride,
-            #     act=None,
-            # )
+
         self.feeds = {
             "data": np.random.random([32, 6, 64, 64]).astype("float32"),
         }

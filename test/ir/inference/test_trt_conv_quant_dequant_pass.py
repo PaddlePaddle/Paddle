@@ -45,16 +45,7 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
                 padding=self.conv_padding,
                 bias_attr=False,
             )(data_reshape)
-            # conv_out = paddle.static.nn.conv2d(
-            #     input=data_reshape,
-            #     num_filters=self.conv_num_filters,
-            #     filter_size=self.conv_filter_size,
-            #     groups=self.conv_groups,
-            #     padding=self.conv_padding,
-            #     bias_attr=False,
-            #     use_cudnn=self.use_cudnn,
-            #     act=None,
-            # )
+
             if self.conv_padding == [1, 1]:
                 cout = paddle.reshape(conv_out, shape=[1, 1, 10816])
             elif self.conv_padding == 'VALID':
@@ -167,16 +158,7 @@ class DynamicShapeQuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
                 padding=self.conv_padding,
                 bias_attr=False,
             )(data_reshape)
-            # conv_out = paddle.static.nn.conv2d(
-            #     input=data_reshape,
-            #     num_filters=self.conv_num_filters,
-            #     filter_size=self.conv_filter_size,
-            #     groups=self.conv_groups,
-            #     padding=self.conv_padding,
-            #     bias_attr=False,
-            #     use_cudnn=self.use_cudnn,
-            #     act=None,
-            # )
+
             cout = paddle.reshape(conv_out, shape=[1, 1, 10816])
             result = F.relu(cout)
             loss = paddle.nn.functional.cross_entropy(

@@ -66,9 +66,7 @@ class TestBase(IPUOpTest):
                     kernel_size=3,
                     bias_attr=False,
                 )(image)
-                # conv1 = paddle.static.nn.conv2d(
-                #     image, num_filters=3, filter_size=3, bias_attr=False
-                # )
+
                 loss = paddle.mean(conv1)
 
                 weight_decay = self.attrs['weight_decay']

@@ -215,7 +215,6 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                         out_channels=8,
                         kernel_size=3,
                     )(data)
-                    # conv = paddle.static.nn.conv2d(data, 8, 3)
                     loss = paddle.mean(conv)
 
                     beta1 = paddle.static.create_global_var(

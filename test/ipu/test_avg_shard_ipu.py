@@ -60,27 +60,19 @@ class TestBase(IPUOpTest):
             kernel_size=3,
             bias_attr=False,
         )(x)
-        # x = paddle.static.nn.conv2d(
-        #     x, num_filters=3, filter_size=3, bias_attr=False
-        # )
         x = paddle.nn.Conv2D(
             in_channels=x.shape[1],
             out_channels=3,
             kernel_size=3,
             bias_attr=False,
         )(x)
-        # x = paddle.static.nn.conv2d(
-        #     x, num_filters=3, filter_size=3, bias_attr=False
-        # )
         x = paddle.nn.Conv2D(
             in_channels=x.shape[1],
             out_channels=3,
             kernel_size=3,
             bias_attr=False,
         )(x)
-        # x = paddle.static.nn.conv2d(
-        #     x, num_filters=3, filter_size=3, bias_attr=False
-        # )
+
         self.fetch_list = [x]
 
     def run_model(self, exec_mode):

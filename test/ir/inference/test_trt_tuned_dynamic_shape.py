@@ -43,15 +43,7 @@ class TRTTunedDynamicShapeTest(unittest.TestCase):
                 padding=0,
                 bias_attr=False,
             )(data)
-            # conv_out = paddle.static.nn.conv2d(
-            #     input=data,
-            #     num_filters=3,
-            #     filter_size=3,
-            #     groups=1,
-            #     padding=0,
-            #     bias_attr=False,
-            #     act=None,
-            # )
+
         exe.run(startup_program)
         serialized_program = paddle.static.serialize_program(
             data, conv_out, program=main_program

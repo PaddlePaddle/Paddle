@@ -31,9 +31,7 @@ f = paddle.nn.Conv2D(
     dilation=1,
     padding=0,
 )(d)
-# f = static.nn.conv2d(
-#     input=d, num_filters=960, filter_size=1, stride=1, padding=0, dilation=1
-# )
+
 g = paddle.nn.Conv2D(
     in_channels=f.shape[1],
     out_channels=160,
@@ -42,9 +40,6 @@ g = paddle.nn.Conv2D(
     dilation=1,
     padding=0,
 )(f)
-# g = static.nn.conv2d(
-#     input=f, num_filters=160, filter_size=1, stride=1, padding=0, dilation=1
-# )
 i = paddle.nn.Conv2D(
     in_channels=g.shape[1],
     out_channels=960,
@@ -53,9 +48,6 @@ i = paddle.nn.Conv2D(
     dilation=1,
     padding=0,
 )(g)
-# i = static.nn.conv2d(
-#     input=g, num_filters=960, filter_size=1, stride=1, padding=0, dilation=1
-# )
 j1 = paddle.scale(i, scale=2.0, bias=0.5)
 j = paddle.scale(j1, scale=2.0, bias=0.5)
 temp7 = paddle.nn.functional.relu(j)
