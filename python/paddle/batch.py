@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 __all__ = []
 
 
-def batch(reader, batch_size, drop_last=False):
+def batch(reader: Iterable[Any],
+          batch_size: int,
+          drop_last: bool = False
+) -> Generator[List[Any], None, None]:
     """
     This operator creates a batched reader which combines the data from the
     input reader to batched data.
