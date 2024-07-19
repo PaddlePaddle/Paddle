@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -59,14 +58,14 @@ PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
                          false,
                          "Whether to print the message of gpu memory usage "
                          "at exit, mainly used for UT and CI.");
-PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
-                            true,
-                            "Whether to print the message of gpu memory usage "
-                            "MB as a unit of measurement.");
-PADDLE_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
-                              ULLONG_MAX,
-                              "Amount of reserved memory in bytes to hold onto "
-                              "before trying to release memory back to the OS");
+PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
+                         true,
+                         "Whether to print the message of gpu memory usage "
+                         "MB as a unit of measurement.");
+PHI_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
+                           ULLONG_MAX,
+                           "Amount of reserved memory in bytes to hold onto "
+                           "before trying to release memory back to the OS");
 
 namespace paddle::platform {
 

@@ -21,7 +21,6 @@
 #include <unordered_set>
 #include <vector>
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/flags.h"
 
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
