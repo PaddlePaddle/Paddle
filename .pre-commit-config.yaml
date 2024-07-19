@@ -41,7 +41,7 @@ repos:
     hooks:
     -   id: copyright_checker
         name: copyright_checker
-        entry: python ./tools/codestyle/copyright.py
+        entry: python3.9 ./tools/codestyle/copyright.py
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|pyi|sh)$
         exclude: |
@@ -90,7 +90,7 @@ repos:
     -   id: clang-tidy
         name: clang-tidy
         description: Parallel clang-tidy runner.
-        entry: python ./tools/codestyle/clang-tidy.py
+        entry: python3.9 ./tools/codestyle/clang-tidy.py
         language: system
         files: \.(c|cc|cxx|cpp|h|hpp|hxx)$
         args:
@@ -147,7 +147,7 @@ repos:
     -   id: sort-txt-file
         name: sort-txt-file
         description: Sorts each line string in a text file
-        entry: python ./tools/codestyle/sort_txt_file.py
+        entry: python3.9 ./tools/codestyle/sort_txt_file.py
         language: python
         files: test/white_list/pir_op_test_white_list
         args: []
