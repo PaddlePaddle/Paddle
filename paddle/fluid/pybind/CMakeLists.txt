@@ -123,6 +123,7 @@ set(PYBIND_SRCS
     inference_api.cc
     control_flow_api.cc
     pir.cc
+    pir_utils.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc

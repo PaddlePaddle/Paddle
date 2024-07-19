@@ -16,7 +16,7 @@
 #include "paddle/pir/include/core/program.h"
 namespace paddle {
 
-std::vector<std::string> GetFeedTargetNames(pir::Program *prog);
-std::vector<std::string> GetFetchTargetNames(pir::Program *prog);
+IR_API std::vector<std::string> GetFeedTargetNames(pir::Program *prog);
+IR_API std::vector<std::string> GetFetchTargetNames(pir::Program *prog);
 
 }  // namespace paddle
