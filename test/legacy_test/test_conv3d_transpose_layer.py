@@ -82,12 +82,12 @@ class Conv3DTransposeTestCase(unittest.TestCase):
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
         )
-        if self.no_bias:
-            self.bias = None
-        else:
+        if not self.no_bias:
             self.bias = np.random.uniform(
                 -1, 1, size=(self.num_filters,)
             ).astype(self.dtype)
+        else:
+            self.bias = None
 
     def functional(self, place):
         paddle.enable_static()
@@ -106,9 +106,12 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                 w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = paddle.static.data(
-                    "bias", (self.num_filters,), dtype=self.dtype
-                )
+                if not self.no_bias:
+                    b_var = paddle.static.data(
+                        "bias", (self.num_filters,), dtype=self.dtype
+                    )
+                else:
+                    b_var = None
                 if self.output_padding != 0:
                     output_size = None
                 else:
@@ -116,7 +119,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                 y_var = F.conv3d_transpose(
                     x_var,
                     w_var,
-                    None if self.no_bias else b_var,
+                    b_var,
                     output_size=output_size,
                     padding=self.padding,
                     output_padding=self.output_padding,
