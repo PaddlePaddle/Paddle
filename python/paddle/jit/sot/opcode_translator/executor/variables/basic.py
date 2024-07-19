@@ -629,7 +629,12 @@ class TensorVariable(VariableBase):
 
 class SymbolicVariable(VariableBase):
     """
-    TODO
+    SymbolicVariable is a subclass of VariableBase used to wrap a symbolic value.
+
+    Args:
+        value_or_meta (int | SymbolicInt | MetaInfo): The symbolic value  to be wrapped or metadata.
+        graph (FunctionGraph): The FunctionGraph object that this variable is associated with.
+        tracker (Tracker): The Tracker object that tracks the information of this variable.
     """
 
     var_name_generator = NameGenerator("symint_")
