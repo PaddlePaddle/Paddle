@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the functions to manipulate devices
 
 from __future__ import annotations
 
@@ -36,11 +35,14 @@ from . import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
-    from paddle import IPUPlace, XPUPlace
+    from types import TracebackType
+
+    from paddle import IPUPlace as _IPUPlace, XPUPlace as _XPUPlace
     from paddle._typing.device_like import PlaceLike
 
     _InitStreamBase = Union[core.CUDAStream, core.CustomDeviceStream]
     _InitEventBase = Union[core.CUDAEvent, core.CustomDeviceEvent]
+
 __all__ = [
     'get_cudnn_version',
     'set_device',
@@ -107,7 +109,7 @@ def is_compiled_with_ipu() -> bool:
     return core.is_compiled_with_ipu()
 
 
-def IPUPlace() -> IPUPlace:
+def IPUPlace() -> _IPUPlace:
     """
 
     Return a Graphcore IPU Place
@@ -142,7 +144,7 @@ def is_compiled_with_xpu() -> bool:
     return core.is_compiled_with_xpu()
 
 
-def XPUPlace(dev_id: int) -> XPUPlace:
+def XPUPlace(dev_id: int) -> _XPUPlace:
     """
 
     Return a Baidu Kunlun Place
@@ -997,7 +999,12 @@ class stream_guard:
         else:
             set_stream(cur_stream)
 
-    def __exit__(self, *args) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         cur_stream = self.stream
         if cur_stream is None:
             return
