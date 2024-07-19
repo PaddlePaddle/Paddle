@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -125,38 +125,6 @@ COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
-std::vector<std::string> GetFeedTargetNames(pir::Program *prog) {
-  std::vector<std::string> feed_target;
-  for (auto &op : *(prog->block())) {
-    if (op.isa<paddle::dialect::DataOp>()) {
-      auto name = op.attribute<StrAttribute>("name").AsString();
-      feed_target.push_back(name);
-      continue;
-    } else if (op.isa<paddle::dialect::FeedOp>()) {
-      auto name = op.attribute<StrAttribute>("name").AsString();
-      feed_target.push_back(name);
-      continue;
-    }
-  }
-  return feed_target;
-}
-
-std::vector<std::string> GetFetchTargetNames(pir::Program *prog) {
-  std::vector<std::string> fetch_target;
-  for (auto &op : *(prog->block())) {
-    if (op.isa<paddle::dialect::FetchOp>()) {
-      auto name = op.attribute<StrAttribute>("name").AsString();
-      fetch_target.push_back(name);
-      continue;
-    } else if (op.isa<pir::ShadowOutputOp>()) {
-      auto name = op.attribute<StrAttribute>("output_name").AsString();
-      fetch_target.push_back(name);
-      continue;
-    }
-  }
-  return fetch_target;
-}
-
 namespace pybind {
 
 PyTypeObject *g_ir_value_pytype = nullptr;

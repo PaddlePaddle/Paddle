@@ -15,7 +15,7 @@
 #include "paddle/fluid/jit/function_schema.h"
 
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/pybind/pir.h"
+#include "paddle/fluid/pybind/pir_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/program.h"
 
