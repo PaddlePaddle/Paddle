@@ -20,6 +20,7 @@
 #include "paddle/pir/include/core/value.h"
 
 namespace paddle {
+
 namespace pybind {
 using pir::Value;
 void BindPir(pybind11::module *m);

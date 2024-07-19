@@ -62,6 +62,7 @@
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/ir_mapping.h"
 #include "paddle/pir/include/core/parser/ir_parser.h"
+#include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/core/visitors.h"
