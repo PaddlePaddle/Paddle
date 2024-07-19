@@ -134,8 +134,8 @@ static const phi::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<phi::GPUPinnedPlace>();
   } else if (py::isinstance<phi::IPUPlace>(place_obj)) {
     return place_obj.cast<phi::IPUPlace>();
-  } else if (py::isinstance<platform::Place>(place_obj)) {
-    return place_obj.cast<platform::Place>();
+  } else if (py::isinstance<phi::Place>(place_obj)) {
+    return place_obj.cast<phi::Place>();
   } else if (py::isinstance<phi::CustomPlace>(place_obj)) {
     return place_obj.cast<phi::CustomPlace>();
   } else {
@@ -178,17 +178,17 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   InitVarBaseOnly(self, name, persistable, stop_gradient);
   auto *tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
   VLOG(4) << "zero_copy: " << zero_copy;
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     SetTensorFromPyArray<phi::CPUPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
     SetTensorFromPyArray<phi::XPUPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
     SetTensorFromPyArray<phi::GPUPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_cuda_pinned_place(place)) {
+  } else if (phi::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<phi::GPUPinnedPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_ipu_place(place)) {
+  } else if (phi::is_ipu_place(place)) {
     SetTensorFromPyArray<phi::IPUPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
     SetTensorFromPyArray<phi::CustomPlace>(tensor, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -301,7 +301,7 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
   // Same place, share data directly
-  if (platform::is_same_place(place, tensor.place())) {
+  if (phi::is_same_place(place, tensor.place())) {
     new_tensor->ShareDataWith(tensor);
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
@@ -720,7 +720,7 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::Place>(obj)) {
+            } else if (py::isinstance<phi::Place>(obj)) {
               auto p = obj.cast<phi::Place *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
@@ -834,7 +834,7 @@ void BindImperative(py::module *m_ptr) {
             self.nrings_ = nrings;
           });
 
-  m.def("varbase_copy", &VarBaseCopy<platform::Place>);
+  m.def("varbase_copy", &VarBaseCopy<phi::Place>);
   m.def("varbase_copy", &VarBaseCopy<phi::CPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::GPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::XPUPlace>);
@@ -993,9 +993,8 @@ void BindImperative(py::module *m_ptr) {
           SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
         } else if (py::isinstance<py::array_t<int16_t>>(array)) {
           SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
-        } else if (py::isinstance<py::array_t<paddle::platform::float16>>(
-                       array)) {
-          SetUVATensorFromPyArray<paddle::platform::float16>(
+        } else if (py::isinstance<py::array_t<phi::dtype::float16>>(array)) {
+          SetUVATensorFromPyArray<phi::dtype::float16>(
               new_tensor, array, device_id);
         } else if (py::isinstance<py::array_t<bool>>(array)) {
           SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
@@ -1050,26 +1049,26 @@ void BindImperative(py::module *m_ptr) {
          const imperative::VarBase &offset,
          const imperative::VarBase &count) {
         PADDLE_ENFORCE_EQ(
-            platform::is_gpu_place(src.Place()),
+            phi::is_gpu_place(src.Place()),
             true,
             platform::errors::InvalidArgument(
                 "Required `src` device should be CUDAPlace, but received %d. ",
                 src.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cuda_pinned_place(dst.Place()),
+            phi::is_cuda_pinned_place(dst.Place()),
             true,
             platform::errors::InvalidArgument(
                 "Required `dst` device should be CUDAPinnedPlace, "
                 "but received %d. ",
                 dst.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cpu_place(offset.Place()),
+            phi::is_cpu_place(offset.Place()),
             true,
             platform::errors::InvalidArgument("Required `offset` device should "
                                               "be CPUPlace, but received %d. ",
                                               offset.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cpu_place(count.Place()),
+            phi::is_cpu_place(count.Place()),
             true,
             platform::errors::InvalidArgument(
                 "Required `count` device should be CPUPlace, but received %d. ",
@@ -1196,39 +1195,39 @@ void BindImperative(py::module *m_ptr) {
          imperative::VarBase &buffer,
          const imperative::VarBase &offset,
          const imperative::VarBase &count) {
-        PADDLE_ENFORCE_EQ(platform::is_cuda_pinned_place(src.Place()),
+        PADDLE_ENFORCE_EQ(phi::is_cuda_pinned_place(src.Place()),
                           true,
                           platform::errors::InvalidArgument(
                               "Required `src` device should be "
                               "CUDAPinnedPlace, but received %d.",
                               src.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_gpu_place(dst.Place()),
+            phi::is_gpu_place(dst.Place()),
             true,
             platform::errors::InvalidArgument(
                 "Required `dst` device should be CUDAPlace, but received %d.",
                 dst.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cpu_place(index.Place()),
+            phi::is_cpu_place(index.Place()),
             true,
             platform::errors::InvalidArgument(
                 "Required `index` device should be CPUPlace, but received %d.",
                 index.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cuda_pinned_place(buffer.Place()),
+            phi::is_cuda_pinned_place(buffer.Place()),
             true,
             platform::errors::InvalidArgument(
                 "Required `buffer` device should be CUDAPinnedPlace, "
                 "but received %d.",
                 buffer.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cpu_place(offset.Place()),
+            phi::is_cpu_place(offset.Place()),
             true,
             platform::errors::InvalidArgument(
                 "Required `offset` device should be CPUPlace, but received %d.",
                 offset.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cpu_place(count.Place()),
+            phi::is_cpu_place(count.Place()),
             true,
             platform::errors::InvalidArgument(
                 "Required `count` device should be CPUPlace, but received %d.",

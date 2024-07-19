@@ -27,7 +27,7 @@
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace inference {

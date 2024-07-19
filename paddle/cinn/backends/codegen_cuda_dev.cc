@@ -282,8 +282,6 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
   if (output_kind == OutputKind::CHeader) {
     GenerateHeaderFile(module);
   } else if (output_kind == OutputKind::CImpl) {
-    PrintIncludes();
-
     if (for_nvrtc_) {
       str_ += "\nextern \"C\" {\n\n";
     }

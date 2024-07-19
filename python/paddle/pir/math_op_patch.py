@@ -853,30 +853,32 @@ def monkey_patch_value():
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
-
         Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
-
         Returns:
             ndarray: The numpy value of current Variable.
-
         Returns type:
             ndarray: dtype is same as current Variable
-
         Examples:
             .. code-block:: python
-
                 >>> import paddle
                 >>> import paddle.base as base
                 >>> from paddle.nn import Linear
                 >>> import numpy as np
-
                 >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 >>> with base.dygraph.guard():
                 ...     linear = Linear(32, 64)
                 ...     data_tensor = paddle.to_tensor(data)
                 ...     x = linear(data_tensor)
                 ...     print(x.numpy())
+        """
+        pass
 
+    @fake_interface_only
+    def register_hook(self):
+        """
+        Value don't have 'register_hook' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a error here.
         """
         pass
 
@@ -907,6 +909,7 @@ def monkey_patch_value():
         ("_to", _to),
         ("to", to),
         ("numpy", numpy),
+        ("register_hook", register_hook),
         # For basic operators
         (
             '__add__',

@@ -64,7 +64,7 @@ void OutputProcess(framework::ir::Graph *graph,
   } else if (precision == phi::DataType::FLOAT32) {
     return;
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "mixed_precision currently not supported dtype %d, we now only support "
         "fp16 and bf16.",
         static_cast<int>(precision)));

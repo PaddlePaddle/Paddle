@@ -48,7 +48,7 @@ std::shared_ptr<Cipher> CipherFactory::CreateCipher(
     ret->Init(cipher_name, iv_size, tag_size);
     return ret;
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Invalid cipher name is specified. "
         "Please check you have specified valid cipher"
         " name in CryptoProperties."));

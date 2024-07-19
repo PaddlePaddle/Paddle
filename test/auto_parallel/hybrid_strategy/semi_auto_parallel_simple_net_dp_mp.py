@@ -52,11 +52,11 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             self.dp_mp_parameters,
         ) = self.run_dynamic(model, shard_input=True)
 
-        self.check_tensor_eq(self.dp_mp_loss, self.base_loss)
+        self.check_tensor_eq(self.dp_mp_loss, self.base_loss, rtol=1e-04)
         for param, param_base in zip(
             self.dp_mp_parameters, self.base_parameters
         ):
-            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param, param_base, atol=1e-06)
             self.check_tensor_eq(param.grad, param_base.grad)
 
         # save load

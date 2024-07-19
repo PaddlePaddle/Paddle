@@ -210,25 +210,26 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
 NCCLComm* NCCLCommContext::AssignNCCLComm(
     ncclComm_t comm, int nranks, int rank, int dev_id, int ring_id) {
   std::unique_ptr<phi::GPUContext> dev_ctx(
-      new phi::GPUContext(CUDAPlace(dev_id)));
-  dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(CUDAPlace(dev_id), dev_ctx->stream())
-                            .get());
+      new phi::GPUContext(phi::GPUPlace(dev_id)));
+  dev_ctx->SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPlace(dev_id), dev_ctx->stream())
+          .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(CUDAPlace(dev_id))
+          .GetZeroAllocator(phi::GPUPlace(dev_id))
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetPinnedAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .GetAllocator(phi::GPUPinnedPlace())
           .get());
   dev_ctx->PartialInitWithAllocator();
 
@@ -360,7 +361,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
                             .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -368,7 +369,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   BKCLCommImpl* c = new BKCLCommImpl;
   c->set_ring_id(ring_id);
@@ -385,7 +386,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
   comm_map_mutex_.unlock();
   if (ring_id == 0) {
     auto* dev_ctx = static_cast<platform::XPUDeviceContext*>(
-        phi::DeviceContextPool::Instance().Get(platform::XPUPlace(dev_id)));
+        phi::DeviceContextPool::Instance().Get(phi::XPUPlace(dev_id)));
     dev_ctx->SetBkclContext(comm);
   }
   VLOG(3) << "add bkcl comm: " << comm_map_[ring_id][dev_id].get()
@@ -569,14 +570,14 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
 
 XCCLComm* XCCLCommContext::AssignXCCLComm(
     phi::ccl::CCLComm comm, int nranks, int rank, int dev_id, int ring_id) {
-  auto place = CustomPlace(device_type_, dev_id);
+  auto place = phi::CustomPlace(device_type_, dev_id);
   std::unique_ptr<phi::CustomContext> dev_ctx(new phi::CustomContext(place));
   dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(place)
                             .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -584,11 +585,11 @@ XCCLComm* XCCLCommContext::AssignXCCLComm(
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .GetZeroAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetPinnedAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
+          .GetAllocator(phi::CPUPlace())
           .get());
   // dev_ctx->PartialInitWithAllocator();
 

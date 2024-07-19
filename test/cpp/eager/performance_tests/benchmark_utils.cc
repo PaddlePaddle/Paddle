@@ -166,8 +166,7 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place == phi::GPUPlace()) {
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
@@ -184,7 +183,7 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
   VLOG(6) << "Tensor Value: " << t_ptr[0] << ", Expected Value: " << value;
   PADDLE_ENFORCE(
       t_ptr[0] == value,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Detected numerical Error, Expected %f but got %f", value, t_ptr[0]));
 }
 
@@ -198,8 +197,7 @@ static void FluidCheckGradTensorValue(
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place == phi::GPUPlace()) {
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
@@ -216,7 +214,7 @@ static void FluidCheckGradTensorValue(
   VLOG(6) << "Tensor Value: " << g_ptr[0] << ", Expected Value: " << value;
   PADDLE_ENFORCE(
       g_ptr[0] == value,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Detected numerical Error, Expected %f but got %f", value, g_ptr[0]));
 }
 

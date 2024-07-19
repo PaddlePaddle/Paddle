@@ -66,7 +66,6 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'placements',
         'process_mesh',
         'reconstruct_from_',
-        'register_hook',
         'retain_grads',
         'rows',
         'set_string_list',

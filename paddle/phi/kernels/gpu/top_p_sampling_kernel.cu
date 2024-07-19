@@ -1125,18 +1125,18 @@ void TopPSamplingKernel(const Context& dev_ctx,
   if (infer_seed) {
     setup_kernel<<<1, 256, 0, cu_stream>>>(states, infer_seed, bs);
   } else {
-    if (seed == -1) {
+    if (seed_now == -1) {
       need_batch_random = true;
       auto gen_cuda = dev_ctx.GetGenerator();
       uint64_t increment = ps.numel() * 4;
       auto seed_offset = gen_cuda->IncrementOffset(increment);
-      seed = seed_offset.first;
+      seed_now = seed_offset.first;
       offset = seed_offset.second;
       setup_kernel<<<1, 256, 0, cu_stream>>>(
-          states, seed, offset, bs, need_batch_random);
+          states, seed_now, offset, bs, need_batch_random);
     } else {
       setup_kernel<<<1, 256, 0, cu_stream>>>(
-          states, seed, offset, bs, need_batch_random);
+          states, seed_now, offset, bs, need_batch_random);
     }
   }
 
@@ -1151,7 +1151,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
   T* threshold_data = SafeGetTensorPtr<T>(threshold);
 
   constexpr int TopKMaxLength = 2;
-  constexpr int TopPBeamTopK = 5;
+  constexpr int TopPBeamTopK = 20;
 
   DispatchKeMatrixTopPBeamTopK<T, Context, TopKMaxLength, TopPBeamTopK>(
       dev_ctx,

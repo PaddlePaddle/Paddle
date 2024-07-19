@@ -286,7 +286,8 @@ class XPUTestDiagV2Op(XPUOpTestWrapper):
             np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
             np.testing.assert_allclose(res1, self.expected1, rtol=1e-05)
             np.testing.assert_allclose(res2, self.expected2, rtol=1e-05)
-            self.assertTrue('aaa' in result3.name)
+            if not paddle.framework.use_pir_api():
+                self.assertTrue('aaa' in result3.name)
             np.testing.assert_allclose(res4, self.expected3, rtol=1e-05)
             np.testing.assert_allclose(res5, self.expected4, rtol=1e-05)
             np.testing.assert_allclose(res6, self.expected5, rtol=1e-05)

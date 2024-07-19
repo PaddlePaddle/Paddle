@@ -1874,9 +1874,9 @@ class Resharder:
         for rank_id in op_desc_seq:
             op_desc_list = op_desc_seq[rank_id]
             for op_desc in op_desc_list:
-                if isinstance(op_desc, AllGatherOpDesc):
-                    new_process_group(op_desc.group)
-                elif isinstance(op_desc, AllGatherConcatOpDesc):
+                if isinstance(
+                    op_desc, (AllGatherOpDesc, AllGatherConcatOpDesc)
+                ):
                     new_process_group(op_desc.group)
                 elif isinstance(op_desc, SendOpDesc):
                     new_process_group(
@@ -2703,9 +2703,11 @@ class Resharder:
                     idx + 2,
                     type='cast',
                     inputs={
-                        'X': [recv_cast_out]
-                        if reset_lod_out is None
-                        else [reset_lod_out]
+                        'X': (
+                            [recv_cast_out]
+                            if reset_lod_out is None
+                            else [reset_lod_out]
+                        )
                     },
                     outputs={'Out': [var]},
                     attrs={
