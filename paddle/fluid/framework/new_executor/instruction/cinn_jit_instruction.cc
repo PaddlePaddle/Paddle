@@ -20,6 +20,7 @@
 #include "paddle/common/errors.h"
 #include "paddle/common/performance_statistician.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #endif
@@ -74,32 +75,42 @@ class CinnJitInstruction::FnPtrImpl {
       ::common::PerformanceStatistician& ps =
           ::common::PerformanceStatistician::Instance();
       auto data_p = static_cast<void*>(func_args_.data());
-      cudaStream_t stream;
-      cudaStreamCreate(&stream);
-      cudaDeviceSynchronize();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      phi::gpuStream_t stream;
+      phi::InitStream(&stream);
+      phi::GpuDeviceSync();
+#endif
+      ps.Start(FLAGS_cinn_kernel_execution_label);
       if (is_gpu) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         ps.SetGraphNodesNum(25);
         int graph_nodes_num = ps.GetGraphNodesNum();
-        cudaGraph_t graph;
-        cudaGraphExec_t instance;
-        cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+        phi::gpuGraph_t graph;
+        phi::gpuGraphExec_t instance;
+        phi::gpuStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
         for (int ikrnl = 0; ikrnl < graph_nodes_num; ikrnl++) {
           ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
               static_cast<void*>(func_args_.data()), func_args_.size(), stream);
         }
-        cudaStreamEndCapture(stream, &graph);
-        cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+        phi::gpuStreamEndCapture(stream, &graph);
+        phi::gpuGraphInstantiate(&instance, graph, NULL, NULL, 0);
         ps.CudaStart(FLAGS_cinn_kernel_execution_label);
-        cudaGraphLaunch(instance, stream);
+        phi::gpuGraphLaunch(instance, stream);
         ps.CudaEnd(FLAGS_cinn_kernel_execution_label);
-        cudaGraphDestroy(graph);
-        cudaGraphExecDestroy(instance);
-        cudaStreamDestroy(stream);
+        phi::gpuGraphDestroy(graph);
+        phi::gpuGraphExecDestroy(instance);
+        phi::DestoryStream(stream);
+#else
+        PADDLE_THROW(::common::errors::InvalidArgument(
+            "Please recompile with flag WITH_GPU or WITH_ROCM."));
+#endif
       } else {
         ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       }
-      cudaDeviceSynchronize();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      phi::GpuDeviceSync();
+#endif
     } else {
       if (is_gpu) {
         ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
@@ -226,7 +237,7 @@ CinnJitInstruction::CinnJitInstruction(
 }
 
 void CinnJitInstruction::Run() {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void* running_stream = nullptr;
   bool is_gpu = false;
 
@@ -247,8 +258,8 @@ void CinnJitInstruction::Run() {
   // 2. exexute kernel
   fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
 #else
-  VLOG(0) << "Not Supported: cinn jit instruction currently does not "
-             "support non-CUDA kernel";
+  VLOG(0) << "Not Supported: cinn jit instruction currently only "
+             "support CUDA/HIP kernel";
 #endif
 }
 
