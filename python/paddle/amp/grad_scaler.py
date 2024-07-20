@@ -11,10 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import warnings
 from collections import defaultdict
 from enum import Enum
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    TypedDict,
+)
 
 import numpy as np
 
@@ -22,10 +28,25 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base import core, unique_name
 from paddle.base.data_feeder import check_type
-from paddle.base.framework import _dygraph_tracer, in_pir_mode
+from paddle.base.framework import Operator, _dygraph_tracer, in_pir_mode
 from paddle.framework import in_dynamic_mode
 
 from .auto_cast import amp_global_state
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.static.amp.decorator import OptimizerWithMixedPrecision
+    from python.paddle.optimizer.optimizer import Optimizer
+
+    class _ScaleStateDict(TypedDict):
+        scale: Tensor
+        incr_ratio: float
+        decr_ratio: float
+        incr_every_n_steps: int
+        decr_every_n_nan_or_inf: int
+        incr_count: int
+        decr_count: int
+        use_dynamic_loss_scaling: bool
 
 
 class OptimizerState(Enum):
@@ -89,14 +110,14 @@ class AmpScaler:
 
     def __init__(
         self,
-        enable=True,
-        init_loss_scaling=2.0**15,
-        incr_ratio=2.0,
-        decr_ratio=0.5,
-        incr_every_n_steps=1000,
-        decr_every_n_nan_or_inf=1,
-        use_dynamic_loss_scaling=True,
-    ):
+        enable: bool = True,
+        init_loss_scaling: float = 2.0**15,
+        incr_ratio: float = 2.0,
+        decr_ratio: float = 0.5,
+        incr_every_n_steps: int = 1000,
+        decr_every_n_nan_or_inf: int = 1,
+        use_dynamic_loss_scaling: bool = True,
+    ) -> None:
         if in_dynamic_mode():
             tracer = _dygraph_tracer()
             if not tracer:
@@ -163,7 +184,7 @@ class AmpScaler:
                 self._cache_founf_inf = None
                 self._optimizer_states = defaultdict(_refresh_optimizer_state)
 
-    def scale(self, var):
+    def scale(self, var: Tensor) -> Tensor:
         """
         Multiplies a Tensor by the scale factor and returns scaled outputs.
         If this instance of :class:`AmpScaler` is not enabled, output are returned unmodified.
@@ -225,7 +246,12 @@ class AmpScaler:
 
         return var * self._scale
 
-    def minimize(self, optimizer, *args, **kwargs):
+    def minimize(
+        self,
+        optimizer: Optimizer | OptimizerWithMixedPrecision,
+        *args: Any,
+        **kwargs: Any,
+    ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
         """
         This function is similar as `Optimizer.minimize()`, which performs parameters updating.
 
@@ -236,7 +262,7 @@ class AmpScaler:
 
         Args:
             optimizer(Optimizer):  The optimizer used to update parameters.
-            args:  Arguments, which will be forward to `optimizer.minimize()`.
+            args:  Arguments, which will be forward to `Optimizer.minimize()`.
             kwargs: Keyword arguments, which will be forward to `Optimizer.minimize()`.
 
         Examples:
@@ -442,7 +468,7 @@ class AmpScaler:
 
         return
 
-    def is_enable(self):
+    def is_enable(self) -> bool:
         """
         Enable loss scaling or not.
 
@@ -451,7 +477,7 @@ class AmpScaler:
         """
         return self._enable
 
-    def is_use_dynamic_loss_scaling(self):
+    def is_use_dynamic_loss_scaling(self) -> bool:
         """
         Whether to use dynamic loss scaling.
 
@@ -460,7 +486,7 @@ class AmpScaler:
         """
         return self._use_dynamic_loss_scaling
 
-    def get_init_loss_scaling(self):
+    def get_init_loss_scaling(self) -> float:
         """
         Return the initial loss scaling factor.
 
@@ -469,7 +495,7 @@ class AmpScaler:
         """
         return self._init_loss_scaling
 
-    def set_init_loss_scaling(self, new_init_loss_scaling):
+    def set_init_loss_scaling(self, new_init_loss_scaling: int) -> None:
         """
         Set the initial loss scaling factor by `new_init_loss_scaling`.
 
@@ -481,7 +507,7 @@ class AmpScaler:
             np.array([self._init_loss_scaling]).astype(np.float32)
         )
 
-    def get_incr_ratio(self):
+    def get_incr_ratio(self) -> float:
         """
         Return the multiplier to use when increasing the loss scaling.
 
@@ -490,7 +516,7 @@ class AmpScaler:
         """
         return self._incr_ratio
 
-    def set_incr_ratio(self, new_incr_ratio):
+    def set_incr_ratio(self, new_incr_ratio: float) -> None:
         """
         Set the multiplier to use when increasing the loss scaling by `new_incr_ratio`, `new_incr_ratio` should > 1.0.
 
@@ -500,7 +526,7 @@ class AmpScaler:
         assert new_incr_ratio > 1.0, "The new_incr_ratio must be > 1.0."
         self._incr_ratio = new_incr_ratio
 
-    def get_decr_ratio(self):
+    def get_decr_ratio(self) -> float:
         """
         Get the less-than-one-multiplier to use when decreasing the loss scaling.
 
@@ -509,7 +535,7 @@ class AmpScaler:
         """
         return self._decr_ratio
 
-    def set_decr_ratio(self, new_decr_ratio):
+    def set_decr_ratio(self, new_decr_ratio: float) -> None:
         """
         Set the less-than-one-multiplier to use when decreasing the loss scaling by `new_incr_ratio`, `new_decr_ratio` should < 1.0.
 
@@ -519,7 +545,7 @@ class AmpScaler:
         assert new_decr_ratio < 1.0, "The new_decr_ratio must be < 1.0."
         self._decr_ratio = new_decr_ratio
 
-    def get_incr_every_n_steps(self):
+    def get_incr_every_n_steps(self) -> int:
         """
         Return the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
 
@@ -528,7 +554,7 @@ class AmpScaler:
         """
         return self._incr_every_n_steps
 
-    def set_incr_every_n_steps(self, new_incr_every_n_steps):
+    def set_incr_every_n_steps(self, new_incr_every_n_steps: int) -> None:
         """
         Set the num `n` by `new_incr_every_n_steps`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
 
@@ -537,7 +563,7 @@ class AmpScaler:
         """
         self._incr_every_n_steps = new_incr_every_n_steps
 
-    def get_decr_every_n_nan_or_inf(self):
+    def get_decr_every_n_nan_or_inf(self) -> int:
         """
         Return the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
 
@@ -546,7 +572,9 @@ class AmpScaler:
         """
         return self._decr_every_n_nan_or_inf
 
-    def set_decr_every_n_nan_or_inf(self, new_decr_every_n_nan_or_inf):
+    def set_decr_every_n_nan_or_inf(
+        self, new_decr_every_n_nan_or_inf: int
+    ) -> None:
         """
         Set the num `n` by `new_decr_every_n_nan_or_inf`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
 
@@ -555,7 +583,7 @@ class AmpScaler:
         """
         self._decr_every_n_nan_or_inf = new_decr_every_n_nan_or_inf
 
-    def state_dict(self):
+    def state_dict(self) -> _ScaleStateDict:
         """
         Returns the state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
 
@@ -585,12 +613,12 @@ class AmpScaler:
             else {}
         )
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict: _ScaleStateDict) -> None:
         """
         Loads the scaler state.
 
         Args:
-           state_dict(dict): scaler state.  Should be an object returned from a call to `AmpScaler.state_dict()`.
+           state_dict(dict): scaler state. Should be an object returned from a call to `AmpScaler.state_dict()`.
         """
         if not self._enable:
             return
@@ -668,14 +696,14 @@ class GradScaler(AmpScaler):
 
     def __init__(
         self,
-        enable=True,
-        init_loss_scaling=2.0**16,
-        incr_ratio=2.0,
-        decr_ratio=0.5,
-        incr_every_n_steps=2000,
-        decr_every_n_nan_or_inf=1,
-        use_dynamic_loss_scaling=True,
-    ):
+        enable: bool = True,
+        init_loss_scaling: float = 2.0**16,
+        incr_ratio: float = 2.0,
+        decr_ratio: float = 0.5,
+        incr_every_n_steps: int = 2000,
+        decr_every_n_nan_or_inf: int = 1,
+        use_dynamic_loss_scaling: bool = True,
+    ) -> None:
         super().__init__(
             enable,
             init_loss_scaling,
@@ -686,7 +714,7 @@ class GradScaler(AmpScaler):
             use_dynamic_loss_scaling,
         )
 
-    def scale(self, var):
+    def scale(self, var: Tensor) -> Tensor:
         """
         Multiplies a Tensor by the scale factor and returns scaled outputs.
         If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
@@ -718,7 +746,12 @@ class GradScaler(AmpScaler):
         """
         return super().scale(var)
 
-    def minimize(self, optimizer, *args, **kwargs):
+    def minimize(
+        self,
+        optimizer: Optimizer | OptimizerWithMixedPrecision,
+        *args: Any,
+        **kwargs: Any,
+    ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
         """
         This function is similar as `optimizer.minimize()`, which performs parameters updating.
 
@@ -754,7 +787,7 @@ class GradScaler(AmpScaler):
         """
         return super().minimize(optimizer, *args, **kwargs)
 
-    def step(self, optimizer):
+    def step(self, optimizer: Optimizer) -> None:
         """
         This function is similar as `optimizer.step()`, which performs parameters updating.
 
@@ -814,7 +847,7 @@ class GradScaler(AmpScaler):
         if not self._use_dynamic_loss_scaling:
             self._optimizer_states = defaultdict(_refresh_optimizer_state)
 
-    def update(self):
+    def update(self) -> None:
         """
         Updates the loss_scaling.
 
@@ -881,7 +914,7 @@ class GradScaler(AmpScaler):
         """
         return super()._unscale(optimizer)
 
-    def is_enable(self):
+    def is_enable(self) -> bool:
         """
         Enable loss scaling or not.
 
@@ -908,7 +941,7 @@ class GradScaler(AmpScaler):
         """
         return super().is_enable()
 
-    def is_use_dynamic_loss_scaling(self):
+    def is_use_dynamic_loss_scaling(self) -> bool:
         """
         Whether to use dynamic loss scaling.
 
@@ -935,7 +968,7 @@ class GradScaler(AmpScaler):
         """
         return super().is_use_dynamic_loss_scaling()
 
-    def get_init_loss_scaling(self):
+    def get_init_loss_scaling(self) -> float:
         """
         Return the initial loss scaling factor.
 
@@ -962,7 +995,7 @@ class GradScaler(AmpScaler):
         """
         return super().get_init_loss_scaling()
 
-    def set_init_loss_scaling(self, new_init_loss_scaling):
+    def set_init_loss_scaling(self, new_init_loss_scaling: int) -> None:
         """
         Set the initial loss scaling factor by `new_init_loss_scaling`.
 
@@ -992,7 +1025,7 @@ class GradScaler(AmpScaler):
         """
         super().set_init_loss_scaling(new_init_loss_scaling)
 
-    def get_incr_ratio(self):
+    def get_incr_ratio(self) -> float:
         """
         Return the multiplier to use when increasing the loss scaling.
 
@@ -1019,7 +1052,7 @@ class GradScaler(AmpScaler):
         """
         return super().get_incr_ratio()
 
-    def set_incr_ratio(self, new_incr_ratio):
+    def set_incr_ratio(self, new_incr_ratio: float) -> None:
         """
         Set the multiplier to use when increasing the loss scaling by `new_incr_ratio`, `new_incr_ratio` should > 1.0.
 
@@ -1049,7 +1082,7 @@ class GradScaler(AmpScaler):
         """
         super().set_incr_ratio(new_incr_ratio)
 
-    def get_decr_ratio(self):
+    def get_decr_ratio(self) -> float:
         """
         Get the less-than-one-multiplier to use when decreasing the loss scaling.
 
@@ -1076,7 +1109,7 @@ class GradScaler(AmpScaler):
         """
         return super().get_decr_ratio()
 
-    def set_decr_ratio(self, new_decr_ratio):
+    def set_decr_ratio(self, new_decr_ratio: float) -> None:
         """
         Set the less-than-one-multiplier to use when decreasing the loss scaling by `new_incr_ratio`, `new_decr_ratio` should < 1.0.
 
@@ -1106,7 +1139,7 @@ class GradScaler(AmpScaler):
         """
         super().set_decr_ratio(new_decr_ratio)
 
-    def get_incr_every_n_steps(self):
+    def get_incr_every_n_steps(self) -> int:
         """
         Return the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
 
@@ -1133,7 +1166,7 @@ class GradScaler(AmpScaler):
         """
         return super().get_incr_every_n_steps()
 
-    def set_incr_every_n_steps(self, new_incr_every_n_steps):
+    def set_incr_every_n_steps(self, new_incr_every_n_steps: int) -> None:
         """
         Set the num `n` by `new_incr_every_n_steps`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
 
@@ -1163,7 +1196,7 @@ class GradScaler(AmpScaler):
         """
         super().set_incr_every_n_steps(new_incr_every_n_steps)
 
-    def get_decr_every_n_nan_or_inf(self):
+    def get_decr_every_n_nan_or_inf(self) -> int:
         """
         Return the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
 
@@ -1190,7 +1223,9 @@ class GradScaler(AmpScaler):
         """
         return super().get_decr_every_n_nan_or_inf()
 
-    def set_decr_every_n_nan_or_inf(self, new_decr_every_n_nan_or_inf):
+    def set_decr_every_n_nan_or_inf(
+        self, new_decr_every_n_nan_or_inf: int
+    ) -> None:
         """
         Set the num `n` by `new_decr_every_n_nan_or_inf`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
 
@@ -1220,7 +1255,7 @@ class GradScaler(AmpScaler):
         """
         super().set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
 
-    def state_dict(self):
+    def state_dict(self) -> _ScaleStateDict:
         """
         Returns the state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
 
@@ -1256,7 +1291,7 @@ class GradScaler(AmpScaler):
         """
         return super().state_dict()
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict: _ScaleStateDict) -> None:
         """
         Loads the scaler state.
 
