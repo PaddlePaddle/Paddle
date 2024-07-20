@@ -282,7 +282,7 @@ void InferXPUContext::L3CacheAutotune() {
   }
 }
 
-void InferXPUContext::SetOutHolder(Allocation* holder) {
+void InferXPUContext::SetOutHolder(phi::Allocation* holder) {
   output_holder_set_.insert(holder);
 }
 #endif

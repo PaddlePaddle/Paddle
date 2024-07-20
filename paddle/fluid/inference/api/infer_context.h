@@ -18,6 +18,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_l3_strategy.h"
 #endif
+#include <unordered_set>
 
 namespace paddle {
 

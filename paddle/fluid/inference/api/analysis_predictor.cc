@@ -2753,9 +2753,12 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
       config_.xpu_config_.l3_autotune_size > 0) {
     static std::once_flag set_output_holder_map;
     std::call_once(set_output_holder_map, [&]() {
+      auto scope = executor_->GetScope();
       VLOG(4) << "Set ouput tensor's holder.";
       for (auto name : GetOutputNames()) {
-        phi::DenseTensor *out_tensor = GetOutputTensor(name);
+        // auto out_tensor = GetOutputTensor(name);
+        auto out_tensor = scope->FindVar(name)->GetMutable<phi::DenseTensor>();
+
         phi::Allocation *holder =
             reinterpret_cast<phi::DenseTensor *>(out_tensor)->Holder().get();
         infer_xpu_ctx->SetOutHolder(holder);
