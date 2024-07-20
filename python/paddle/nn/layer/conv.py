@@ -38,6 +38,7 @@ if TYPE_CHECKING:
         DataLayout2D,
         DataLayout3D,
         DataLayoutND,
+        DTypeLike,
         ParamAttrLike,
         Size1,
         Size2,
@@ -88,6 +89,7 @@ class _ConvNd(Layer):
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayoutND = "NCHW",
+        dtype: DTypeLike = 'float32',
     ) -> None:
         super().__init__()
         assert (
@@ -99,6 +101,7 @@ class _ConvNd(Layer):
         self._in_channels = in_channels
         self._out_channels = out_channels
         self._data_format = data_format
+        self._dtype = dtype
 
         valid_padding_modes = {'zeros', 'reflect', 'replicate', 'circular'}
         if padding_mode not in valid_padding_modes:
@@ -183,10 +186,14 @@ class _ConvNd(Layer):
         self.weight = self.create_parameter(
             shape=filter_shape,
             attr=self._param_attr,
+            dtype=self._dtype,
             default_initializer=_get_default_param_initializer(),
         )
         self.bias = self.create_parameter(
-            attr=self._bias_attr, shape=[self._out_channels], is_bias=True
+            attr=self._bias_attr,
+            dtype=self._dtype,
+            shape=[self._out_channels],
+            is_bias=True,
         )
 
         cudnn_version = get_cudnn_version()
@@ -888,6 +895,7 @@ class Conv2DTranspose(_ConvNd):
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout2D = "NCHW",
+        dtype: DTypeLike = 'float32',
     ) -> None:
         super().__init__(
             in_channels,
@@ -903,6 +911,7 @@ class Conv2DTranspose(_ConvNd):
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format,
+            dtype=dtype,
         )
 
     def forward(self, x: Tensor, output_size: Size2 | None = None) -> Tensor:
