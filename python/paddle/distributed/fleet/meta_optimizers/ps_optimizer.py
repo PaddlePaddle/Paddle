@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import copy
 import os
 import platform
 import re
@@ -162,12 +163,20 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         parameter_list=None,
         no_grad_set=None,
     ):
+        self.inner_opts = [self.inner_opt]
+        for idx, loss in enumerate(losses):
+            if idx == 0:
+                continue
+            tmp_opt = copy.deepcopy(self.inner_opt)
+            self.inner_opts.append(tmp_opt)
         if parameter_list is None:
             parameter_list = [None] * len(losses)
         for idx, loss in enumerate(losses):
             startup_prog = startup_program[idx]
             parameters = parameter_list[idx]
-            self.inner_opt.minimize(loss, startup_prog, parameters, no_grad_set)
+            self.inner_opts[idx].minimize(
+                loss, startup_prog, parameters, no_grad_set
+            )
         self._set_origin_programs(losses)
         for idx, loss in enumerate(losses):
             print("ps_optimizer idx loss:", idx, loss)

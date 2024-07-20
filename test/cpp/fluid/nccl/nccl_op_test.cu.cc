@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 USE_NO_KERNEL_OP(ncclInit);
 USE_OP_ITSELF(ncclAllReduce);

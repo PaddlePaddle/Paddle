@@ -18,7 +18,7 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle_infer::contrib {
 
@@ -102,14 +102,14 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
         break;
       case PaddleDType::FLOAT16:
         src.CopyToCpuImpl(
-            dst.mutable_data<paddle::platform::float16>(PlaceType::kCPU),
+            dst.mutable_data<phi::dtype::float16>(PlaceType::kCPU),
             exec_stream,
             cb,
             cb_params);
         break;
       case PaddleDType::BFLOAT16:
         src.CopyToCpuImpl(
-            dst.mutable_data<paddle::platform::bfloat16>(PlaceType::kCPU),
+            dst.mutable_data<phi::dtype::bfloat16>(PlaceType::kCPU),
             exec_stream,
             cb,
             cb_params);
@@ -174,16 +174,16 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
         break;
       case PaddleDType::FLOAT16:
         dst_data = static_cast<void*>(
-            dst.mutable_data<paddle::platform::float16>(PlaceType::kGPU));
+            dst.mutable_data<phi::dtype::float16>(PlaceType::kGPU));
         src_data = static_cast<void*>(
-            src.data<paddle::platform::float16>(&src_place, &data_size));
+            src.data<phi::dtype::float16>(&src_place, &data_size));
         data_len = data_size * 2;
         break;
       case PaddleDType::BFLOAT16:
         dst_data = static_cast<void*>(
-            dst.mutable_data<paddle::platform::bfloat16>(PlaceType::kGPU));
+            dst.mutable_data<phi::dtype::bfloat16>(PlaceType::kGPU));
         src_data = static_cast<void*>(
-            src.data<paddle::platform::bfloat16>(&src_place, &data_size));
+            src.data<phi::dtype::bfloat16>(&src_place, &data_size));
         data_len = data_size * 2;
         break;
       default:

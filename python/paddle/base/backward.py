@@ -2669,6 +2669,10 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         If an input does not affect targets, the corresponding gradient Tensor
         will be None
     """
+    if framework.in_pir_mode():
+        return paddle.autograd.ir_backward.calc_gradient(
+            targets, inputs, target_gradients, no_grad_set
+        )
 
     # NOTE: If you want to modify the logic of calc_gradient, please modify
     # it inside the calc_gradient_helper and _get_grad_vars functions

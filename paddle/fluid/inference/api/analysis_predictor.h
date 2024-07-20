@@ -29,8 +29,8 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/utils/string/printf.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -48,7 +48,7 @@
 #include "paddle/pir/include/core/program.h"
 
 namespace paddle_infer {
-using float16 = paddle::platform::float16;
+using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 namespace experimental {
 class InternalUtils;
