@@ -68,15 +68,16 @@ class TestClipGradNorm(unittest.TestCase):
         self.assertRaises(RuntimeError, TestRuntimeError)
 
         def TestRuntimeErrorStaticMode():
-            paddle.enable_static()
-            input_pd = paddle.to_tensor(
-                np.random.random([1, 2]).astype(np.float32)
-            )
-            input_pd.grad = paddle.to_tensor(
-                np.random.random([1, 2]).astype(np.float32)
-            )
-            clip_grad_norm_(input_pd, max_norm=2, norm_type=float("inf"))
-            paddle.disable_static()
+            with paddle.pir_utils.OldIrGuard():
+                paddle.enable_static()
+                input_pd = paddle.to_tensor(
+                    np.random.random([1, 2]).astype(np.float32)
+                )
+                input_pd.grad = paddle.to_tensor(
+                    np.random.random([1, 2]).astype(np.float32)
+                )
+                clip_grad_norm_(input_pd, max_norm=2, norm_type=float("inf"))
+                paddle.disable_static()
 
         self.assertRaises(RuntimeError, TestRuntimeErrorStaticMode)
 
