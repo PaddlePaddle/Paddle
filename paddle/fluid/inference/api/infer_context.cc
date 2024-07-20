@@ -264,8 +264,8 @@ void InferXPUContext::L3CacheAutotune() {
         holder_map_[holder] = std::make_pair(l3_holder, true);
 
         if (output_holder_set_.find(holder) != output_holder_set_.end()) {
-          VLOG(4) << "Insert output tensor's l3 holder:"
-                  << l3_holder->ptr() SetOutHolder(l3_holder);
+          VLOG(4) << "Insert output tensor's l3 holder:" << l3_holder->ptr();
+          SetOutHolder(l3_holder);
         }
       }
     }
