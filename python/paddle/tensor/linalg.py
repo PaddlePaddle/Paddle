@@ -5187,7 +5187,7 @@ def matrix_exp(x: Tensor, name: str | None = None) -> Tensor:
         return paddle.static.nn.cond(
             is_finite,
             lambda: paddle.less_than(i, max_squaring),
-            lambda: paddle.full((), False),
+            lambda: paddle.full((), False, dtype=paddle.bool),
         )
 
     def body(i, result):

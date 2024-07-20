@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle::framework {
 class Scope;
