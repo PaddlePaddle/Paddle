@@ -126,6 +126,7 @@ class Transform:
         * _inverse_shape
 
     """
+
     _type = Type.INJECTION
 
     def __init__(self) -> None:
@@ -312,12 +313,12 @@ class Transform:
         return self._inverse_shape(shape)
 
     @property
-    def _domain(self):
+    def _domain(self) -> variable.Variable:
         """The domain of this transformation"""
         return variable.real
 
     @property
-    def _codomain(self):
+    def _codomain(self) -> variable.Variable:
         """The codomain of this transformation"""
         return variable.real
 
@@ -421,6 +422,7 @@ class AbsTransform(Transform):
                     0.))
 
     """
+
     _type = Type.SURJECTION
 
     def _forward(self, x: Tensor) -> Tensor:
@@ -434,11 +436,11 @@ class AbsTransform(Transform):
         return zero, zero
 
     @property
-    def _domain(self) -> Tensor:
+    def _domain(self) -> variable.Real:
         return variable.real
 
     @property
-    def _codomain(self) -> Tensor:
+    def _codomain(self) -> variable.Positive:
         return variable.positive
 
 
@@ -469,6 +471,7 @@ class AffineTransform(Transform):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                     0.)
     """
+
     _type = Type.BIJECTION
 
     def __init__(self, loc: Tensor, scale: Tensor) -> None:
@@ -520,11 +523,11 @@ class AffineTransform(Transform):
         )
 
     @property
-    def _domain(self) -> Tensor:
+    def _domain(self) -> variable.Real:
         return variable.real
 
     @property
-    def _codomain(self) -> Tensor:
+    def _codomain(self) -> variable.Real:
         return variable.real
 
 
@@ -614,7 +617,7 @@ class ChainTransform(Transform):
         return value.sum(list(range(-n, 0))) if n > 0 else value
 
     @property
-    def _domain(self):
+    def _domain(self) -> variable.Independent:
         domain = self.transforms[0]._domain
 
         # Compute the lower bound of input dimensions for chain transform.
@@ -642,7 +645,7 @@ class ChainTransform(Transform):
         return variable.Independent(domain, event_rank - domain.event_rank)
 
     @property
-    def _codomain(self):
+    def _codomain(self) -> variable.Independent:
         codomain = self.transforms[-1]._codomain
 
         event_rank = self.transforms[0]._domain.event_rank
@@ -679,17 +682,18 @@ class ExpTransform(Transform):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [ 0.        , -0.69314718, -1.09861231])
     """
+
     _type = Type.BIJECTION
 
     def __init__(self) -> None:
         super().__init__()
 
     @property
-    def _domain(self) -> Tensor:
+    def _domain(self) -> variable.Real:
         return variable.real
 
     @property
-    def _codomain(self) -> Tensor:
+    def _codomain(self) -> variable.Positive:
         return variable.positive
 
     def _forward(self, x: Tensor) -> Tensor:
@@ -785,13 +789,13 @@ class IndependentTransform(Transform):
         return self._base.inverse_shape(shape)
 
     @property
-    def _domain(self):
+    def _domain(self) -> variable.Independent:
         return variable.Independent(
             self._base._domain, self._reinterpreted_batch_rank
         )
 
     @property
-    def _codomain(self):
+    def _codomain(self) -> variable.Independent:
         return variable.Independent(
             self._base._codomain, self._reinterpreted_batch_rank
         )
@@ -823,6 +827,7 @@ class PowerTransform(Transform):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [0.69314718, 1.38629436])
     """
+
     _type = Type.BIJECTION
 
     def __init__(self, power: Tensor) -> None:
@@ -840,11 +845,11 @@ class PowerTransform(Transform):
         return self._power
 
     @property
-    def _domain(self) -> Tensor:
+    def _domain(self) -> variable.Real:
         return variable.real
 
     @property
-    def _codomain(self) -> Tensor:
+    def _codomain(self) -> variable.Positive:
         return variable.positive
 
     def _forward(self, x: Tensor) -> Tensor:
@@ -896,6 +901,7 @@ class ReshapeTransform(Transform):
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.])
     """
+
     _type = Type.BIJECTION
 
     def __init__(
@@ -934,11 +940,11 @@ class ReshapeTransform(Transform):
         return self._out_event_shape
 
     @property
-    def _domain(self):
+    def _domain(self) -> variable.Independent:
         return variable.Independent(variable.real, len(self._in_event_shape))
 
     @property
-    def _codomain(self):
+    def _codomain(self) -> variable.Independent:
         return variable.Independent(variable.real, len(self._out_event_shape))
 
     def _forward(self, x: Tensor) -> Tensor:
@@ -1014,11 +1020,11 @@ class SigmoidTransform(Transform):
     """
 
     @property
-    def _domain(self) -> Tensor:
+    def _domain(self) -> variable.Real:
         return variable.real
 
     @property
-    def _codomain(self):
+    def _codomain(self) -> variable.Variable:
         return variable.Variable(False, 0, constraint.Range(0.0, 1.0))
 
     def _forward(self, x: Tensor) -> Tensor:
@@ -1055,14 +1061,15 @@ class SoftmaxTransform(Transform):
                     [[-1.09861231, -1.09861231, -1.09861231],
                      [-1.09861231, -1.09861231, -1.09861231]])
     """
+
     _type = Type.OTHER
 
     @property
-    def _domain(self):
+    def _domain(self) -> variable.Independent:
         return variable.Independent(variable.real, 1)
 
     @property
-    def _codomain(self):
+    def _codomain(self) -> variable.Variable:
         return variable.Variable(False, 1, constraint.simplex)
 
     def _forward(self, x: Tensor) -> Tensor:
@@ -1197,11 +1204,11 @@ class StackTransform(Transform):
             )
 
     @property
-    def _domain(self):
+    def _domain(self) -> variable.Stack:
         return variable.Stack([t._domain for t in self._transforms], self._axis)
 
     @property
-    def _codomain(self):
+    def _codomain(self) -> variable.Stack:
         return variable.Stack(
             [t._codomain for t in self._transforms], self._axis
         )
@@ -1265,11 +1272,11 @@ class StickBreakingTransform(Transform):
         return shape[:-1] + (shape[-1] - 1,)
 
     @property
-    def _domain(self):
+    def _domain(self) -> variable.Independent:
         return variable.Independent(variable.real, 1)
 
     @property
-    def _codomain(self):
+    def _codomain(self) -> variable.Variable:
         return variable.Variable(False, 1, constraint.simplex)
 
 
@@ -1305,14 +1312,15 @@ class TanhTransform(Transform):
                      [6.61441946 , 8.61399269 , 10.61451530]])
             >>> # doctest: -SKIP
     """
+
     _type = Type.BIJECTION
 
     @property
-    def _domain(self) -> Tensor:
+    def _domain(self) -> variable.Real:
         return variable.real
 
     @property
-    def _codomain(self):
+    def _codomain(self) -> variable.Variable:
         return variable.Variable(False, 0, constraint.Range(-1.0, 1.0))
 
     def _forward(self, x: Tensor) -> Tensor:
