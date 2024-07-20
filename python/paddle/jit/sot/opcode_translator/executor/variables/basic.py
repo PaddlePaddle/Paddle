@@ -698,10 +698,10 @@ class SymbolicVariable(VariableBase):
         return self.value
 
     def get_py_type(self):
-        if isinstance(self.value, (SymbolicInt, int)):
+        if isinstance(self.value, int):
             return int
-        # TODO(zrr1999): infer type from tracker
-        return super().get_py_type()
+        else:
+            return self.value.get_py_type()
 
     def get_symbol(self) -> Symbol:
         return Symbol(self.var_name)

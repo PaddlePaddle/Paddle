@@ -39,20 +39,32 @@ class SymbolicValue(metaclass=Singleton):
     def __str__(self) -> str:
         return "SymbolicValue()"
 
+    def get_py_type(self) -> type:
+        raise NotImplementedError("get_py_type is not implemented.")
+
 
 class SymbolicBool(SymbolicValue):
     def __str__(self) -> str:
         return "SymbolicBool()"
+
+    def get_py_type(self) -> type:
+        return bool
 
 
 class SymbolicInt(SymbolicValue):
     def __str__(self) -> str:
         return "SymbolicInt()"
 
+    def get_py_type(self) -> type:
+        return int
+
 
 class SymbolicFloat(SymbolicValue):
     def __str__(self) -> str:
         return "SymbolicFloat()"
+
+    def get_py_type(self) -> type:
+        return float
 
 
 class MetaInfo:
