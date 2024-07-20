@@ -356,7 +356,8 @@ void Compiler::RegisterCudaModuleSymbol() {
 void Compiler::RegisterHipModuleSymbol() {
 #ifdef CINN_WITH_HIP
   hiprtc::Compiler compiler;
-  std::string source_code = CodeGenHIP_Dev::GetSourceHeader() + device_fn_code_;
+  std::string source_code =
+      hip::CodeGenHIP_Dev::GetSourceHeader() + device_fn_code_;
   std::string hsaco = compiler(source_code);
   PADDLE_ENFORCE_EQ(
       !hsaco.empty(),
@@ -379,6 +380,7 @@ void Compiler::RegisterHipModuleSymbol() {
     symbols.RegisterVar(kernel_fn_name + "_ptr_",
                         reinterpret_cast<void*>(fn_kernel));
   }
+  engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
 #else
   CINN_NOT_IMPLEMENTED
 #endif

@@ -15,6 +15,7 @@
 #include "paddle/cinn/runtime/hip/hip_module.h"
 
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/utils/profiler.h"
 
 namespace cinn {
 namespace runtime {
