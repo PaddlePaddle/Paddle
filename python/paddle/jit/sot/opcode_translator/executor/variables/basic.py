@@ -703,8 +703,7 @@ class SymbolicVariable(VariableBase):
     def get_py_type(self):
         if isinstance(self.value, int):
             return int
-        else:
-            return self.value.get_static_type()
+        return self.value.get_static_type()
 
     def get_symbol(self) -> Symbol:
         return Symbol(self.var_name)
