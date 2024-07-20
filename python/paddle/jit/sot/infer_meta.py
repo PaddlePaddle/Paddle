@@ -34,7 +34,7 @@ SOT_INFER_META_INNER_VAR = "___SOT_INFER_META_INNER_VAR"
 
 class SymbolicValue(metaclass=Singleton):
     def __repr__(self) -> str:
-        return repr(self)
+        return str(self)
 
     def __str__(self) -> str:
         return "SymbolicValue()"
