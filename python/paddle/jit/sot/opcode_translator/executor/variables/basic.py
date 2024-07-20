@@ -633,6 +633,27 @@ class TensorVariable(VariableBase):
         return None
 
 
+def get_symbolic_from_meta(meta: MetaInfo) -> SymbolicValue:
+    if meta.dtype in [paddle.bool]:
+        value = SymbolicBool()
+    elif meta.dtype in [
+        paddle.int8,
+        paddle.int16,
+        paddle.int32,
+        paddle.int64,
+    ]:
+        value = SymbolicInt()
+    elif meta.dtype in [
+        paddle.float16,
+        paddle.float32,
+        paddle.float64,
+    ]:
+        value = SymbolicFloat()
+    else:
+        raise InnerError(f"Unsupported dtype {meta.dtype} for SymbolicVariable")
+    return value
+
+
 class SymbolicVariable(VariableBase):
     """
     SymbolicVariable is a subclass of VariableBase used to wrap a symbolic value.
@@ -656,25 +677,7 @@ class SymbolicVariable(VariableBase):
         self.var_name = self.var_name_generator.next()
         if isinstance(value_or_meta, MetaInfo):
             assert len(value_or_meta.shape) == 0
-            if value_or_meta.dtype in [paddle.bool]:
-                self.value = SymbolicBool()
-            elif value_or_meta.dtype in [
-                paddle.int8,
-                paddle.int16,
-                paddle.int32,
-                paddle.int64,
-            ]:
-                self.value = SymbolicInt()
-            elif value_or_meta.dtype in [
-                paddle.float16,
-                paddle.float32,
-                paddle.float64,
-            ]:
-                self.value = SymbolicFloat()
-            else:
-                raise InnerError(
-                    f"Unsupported dtype {value_or_meta.dtype} for SymbolicVariable"
-                )
+            self.value = get_symbolic_from_meta(value_or_meta)
             self.meta = value_or_meta
         else:
             self.value = value_or_meta
@@ -701,7 +704,7 @@ class SymbolicVariable(VariableBase):
         if isinstance(self.value, int):
             return int
         else:
-            return self.value.get_py_type()
+            return self.value.get_static_type()
 
     def get_symbol(self) -> Symbol:
         return Symbol(self.var_name)
