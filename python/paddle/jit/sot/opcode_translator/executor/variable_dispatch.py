@@ -893,6 +893,7 @@ fallback_tensor_unary_method = {
 Dispatcher.register(tensor_numel, ("TensorVariable",), lambda x: x.numel())
 
 for unary_fn in UNARY_OPS:
+    # TODO(zrr1999): SymbolicVariable should have special dispatch for fallback_tensor_unary_method
     if unary_fn in fallback_tensor_unary_method:
         Dispatcher.register(
             unary_fn,

@@ -525,7 +525,7 @@ inline void PirRunProgramAPI(
         global_inner_scope,
         place_hash_key);
     // Step 3. get all eager gc vars (skip_names = backward_inputs -
-    // no_need_buffers)
+    // no_need_buffers + outputs)
     std::vector<std::string> skip_names;
     // update interpretercore skip_gc_var
     std::vector<pir::Value> kwargs_values;
