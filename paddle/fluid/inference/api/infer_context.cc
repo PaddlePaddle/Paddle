@@ -282,7 +282,9 @@ void InferXPUContext::L3CacheAutotune() {
   }
 }
 
-void SetOutHolder(Allocation* holder) { output_holder_set_.insert(holder); }
+void InferXPUContext::SetOutHolder(Allocation* holder) {
+  output_holder_set_.insert(holder);
+}
 #endif
 
 }  // namespace paddle
