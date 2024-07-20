@@ -24,7 +24,7 @@ import numpy as np
 import paddle
 from paddle.framework import core
 
-from ....infer_meta import MetaInfo, SymbolicInt
+from ....infer_meta import MetaInfo, SymbolicInt, SymbolicValue
 from ....symbolic.statement_ir import Symbol
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
@@ -32,8 +32,8 @@ from ....utils import (
     ConstTypes,
     FallbackError,
     NameGenerator,
+    get_tensor_methods,
     log,
-    paddle_tensor_methods,
     printable,
 )
 from ....utils.exceptions import HasNoAttributeError, InnerError
@@ -564,11 +564,18 @@ class TensorVariable(VariableBase):
             "is_integer": paddle.is_integer,
             "is_floating_point": paddle.is_floating_point,
         }
-        if name in ["dtype", "type", "name", "persistable", "stop_gradient"]:
-            if name == "name" and self.meta.name.startswith(
-                "infer_meta_variable_tmp"
-            ):
-                raise BreakGraphError(f"{self.meta.name} is a middle tensor.")
+        if name in ["name", "place", "type"] and self.meta.is_inner_var():
+            raise BreakGraphError(
+                f"{self.meta.name} is a middle tensor. get {name} property."
+            )
+        if name in [
+            "dtype",
+            "type",
+            "name",
+            "persistable",
+            "stop_gradient",
+            "place",
+        ]:
             return VariableFactory.from_value(
                 getattr(self.meta, name),
                 self.graph,
@@ -585,7 +592,7 @@ class TensorVariable(VariableBase):
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
             ).bind(self, name)
-        elif name in paddle_tensor_methods:
+        elif name in get_tensor_methods():
             from .callable import TensorFunctionVariable
 
             fn_var = TensorFunctionVariable(
@@ -622,24 +629,29 @@ class TensorVariable(VariableBase):
 
 class SymbolicVariable(VariableBase):
     """
-    TODO
+    SymbolicVariable is a subclass of VariableBase used to wrap a symbolic value.
+
+    Args:
+        value_or_meta (int | SymbolicInt | MetaInfo): The symbolic value  to be wrapped or metadata.
+        graph (FunctionGraph): The FunctionGraph object that this variable is associated with.
+        tracker (Tracker): The Tracker object that tracks the information of this variable.
     """
 
     var_name_generator = NameGenerator("symint_")
 
     def __init__(
         self,
-        value: int | SymbolicInt | MetaInfo,
+        value_or_meta: int | SymbolicInt | MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
         super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
-        if isinstance(value, MetaInfo):
-            self.value = SymbolicInt()
-            self.meta = value
+        if isinstance(value_or_meta, MetaInfo):
+            self.value: int | SymbolicValue = SymbolicValue()
+            self.meta = value_or_meta
         else:
-            self.value = value
+            self.value = value_or_meta
             self.meta = MetaInfo(
                 [], paddle.int64, True, self.var_name, False, None, None
             )
@@ -647,7 +659,7 @@ class SymbolicVariable(VariableBase):
 
     def get_py_value(self, allow_tensor=False):
         self.need_guard_value = True
-        if isinstance(self.value, SymbolicInt):
+        if isinstance(self.value, SymbolicValue):
             assert isinstance(
                 self.tracker, SymbolicOperationTracker
             ), f"self.value is None, but tracker is not SymbolicOperationTracker. tracker: {self.tracker}"
@@ -660,9 +672,9 @@ class SymbolicVariable(VariableBase):
         return self.value
 
     def get_py_type(self):
-        # TODO(zrr1999): not need to use value to get type
-        if isinstance(self.value, SymbolicInt):
+        if isinstance(self.value, (SymbolicInt, int)):
             return int
+        # TODO(zrr1999): infer type from tracker
         return super().get_py_type()
 
     def get_symbol(self) -> Symbol:
@@ -696,9 +708,10 @@ class SymbolicVariable(VariableBase):
         assert frame_value_tracer.inlined_expr in symbolic_inputs
 
         # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
-        symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
-        symbolic_input.setdefault(self.value, 0)
-        symbolic_input[self.value] += 1
+        if isinstance(self.value, int):
+            symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
+            symbolic_input.setdefault(self.value, 0)
+            symbolic_input[self.value] += 1
         if self.need_guard_value:
             return super().make_stringified_guard()
         return [

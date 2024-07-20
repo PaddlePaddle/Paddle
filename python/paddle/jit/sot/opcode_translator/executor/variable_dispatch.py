@@ -180,6 +180,15 @@ Dispatcher.register(
 )
 
 
+# type
+Dispatcher.register(
+    type,
+    ("ConstantVariable | SymbolicVariable",),
+    lambda var: VariableFactory.from_value(
+        var.get_py_type(), graph=var.graph, tracker=DummyTracker([var])
+    ),
+)
+
 # dict
 Dispatcher.register(
     dict,
