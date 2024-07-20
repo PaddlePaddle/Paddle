@@ -75,6 +75,8 @@ message MpConfig {
     optional bool need_broadcast_data = 8 [default = true];
     // Recompute AllGather in forward of ColumnSequenceParallelLinear to reduce the memory usage.
     optional bool recompute_allgather = 9 [default = false];
+    // Enable scale of bias so that the addition of bias can be fused to matmul, but it may conflict with some optimization such as fused_linear_param_grad_add.
+    optional bool enable_mp_scale_bias = 10 [default = false];
 }
 
 message PpConfig {

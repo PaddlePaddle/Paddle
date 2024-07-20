@@ -643,6 +643,9 @@ class RowSequenceParallelLinear(Layer):
         self.linear = F.linear
 
         self.mp_scale = None
+        mp_configs = fleet.fleet._user_defined_strategy.hybrid_configs[
+            "mp_configs"
+        ]
         if fuse_matmul_bias:
             if not is_fused_matmul_bias_supported():
                 raise NotImplementedError(
@@ -654,7 +657,7 @@ class RowSequenceParallelLinear(Layer):
             from paddle.incubate.nn.functional import fused_linear
 
             self.linear = fused_linear
-            if self.is_mp and has_bias:
+            if self.is_mp and has_bias and mp_configs.enable_mp_scale_bias:
                 self.mp_scale = MPScale.apply
 
     def forward(self, x):
