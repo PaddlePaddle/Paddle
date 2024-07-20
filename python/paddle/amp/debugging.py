@@ -151,7 +151,7 @@ def check_layer_numerics(
     return wrapper
 
 
-def set_checked_op_list(checked_op_list: Sequence[str]) -> None:
+def set_checked_op_list(checked_op_list: Sequence[str] | None) -> None:
     # check checked_op_list
     if checked_op_list is not None:
         if isinstance(checked_op_list, (list, tuple)):
@@ -161,7 +161,7 @@ def set_checked_op_list(checked_op_list: Sequence[str]) -> None:
             raise ValueError("checked_op_list must be list or tuple")
 
 
-def set_skipped_op_list(skipped_op_list: Sequence[str]) -> None:
+def set_skipped_op_list(skipped_op_list: Sequence[str] | None) -> None:
     # check skipped_op_list
     if skipped_op_list is not None:
         if isinstance(skipped_op_list, (list, tuple)):
@@ -216,7 +216,8 @@ class TensorCheckerConfig:
     """
 
     # For module debugging
-    current_step_id = 0
+    current_step_id: int = 0
+
     enable: bool
     debug_mode: DebugMode
     output_dir: str | None
@@ -224,8 +225,8 @@ class TensorCheckerConfig:
     skipped_op_list: Sequence[str] | None
     debug_step: Sequence[int] | None
     stack_height_limit: int
-    start_step: Sequence[int]
-    end_step: Sequence[int]
+    start_step: int | None
+    end_step: int | None
     seed: int
     initial_seed: int
 
