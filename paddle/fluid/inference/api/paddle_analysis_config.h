@@ -1182,7 +1182,7 @@ struct PD_INFER_DECL AnalysisConfig {
   void DeletePass(const std::vector<std::string>& passes);
 
   ///
-  /// \brief Set pir Optimization level.
+  /// \brief Set pir optimization level.
   /// \param opt_level The optimization level
   /// The optimization Level in range [0,4], Default 2.
   /// Higher optimization level allows the predictor to apply more passes.
@@ -1190,8 +1190,8 @@ struct PD_INFER_DECL AnalysisConfig {
   /// If 1, Additional support for functional pass.
   /// If 2, Additional support the fusion logical pass,maybe affect precision
   /// and speed.
-  /// If 3, support layout pass, etc.
-  /// If 4, add the radicaloptimization, maybe affect precision, etc.
+  /// If 3, Support layout pass, etc.
+  /// If 4, Additional support radicaloptimization, maybe affect precision, etc.
   ///
   void SetOptimizationLevel(int opt_level);
 
