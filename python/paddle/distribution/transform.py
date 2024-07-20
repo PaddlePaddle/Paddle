@@ -428,10 +428,10 @@ class AbsTransform(Transform):
     def _forward(self, x: Tensor) -> Tensor:
         return x.abs()
 
-    def _inverse(self, y: Tensor) -> Tensor:
+    def _inverse(self, y: Tensor) -> tuple[Tensor, Tensor]:
         return -y, y
 
-    def _inverse_log_det_jacobian(self, y: Tensor) -> Tensor:
+    def _inverse_log_det_jacobian(self, y: Tensor) -> tuple[Tensor, Tensor]:
         zero = paddle.zeros([], dtype=y.dtype)
         return zero, zero
 
@@ -506,7 +506,7 @@ class AffineTransform(Transform):
     def _forward_log_det_jacobian(self, x: Tensor) -> Tensor:
         return paddle.abs(self._scale).log()
 
-    def _forward_shape(self, shape: Sequence[int]) -> tuple[Sequence[int]]:
+    def _forward_shape(self, shape: Sequence[int]) -> Sequence[int]:
         return tuple(
             paddle.broadcast_shape(
                 paddle.broadcast_shape(shape, self._loc.shape),
@@ -514,7 +514,7 @@ class AffineTransform(Transform):
             )
         )
 
-    def _inverse_shape(self, shape: Sequence[int]) -> tuple[Sequence[int]]:
+    def _inverse_shape(self, shape: Sequence[int]) -> Sequence[int]:
         return tuple(
             paddle.broadcast_shape(
                 paddle.broadcast_shape(shape, self._loc.shape),
@@ -861,10 +861,10 @@ class PowerTransform(Transform):
     def _forward_log_det_jacobian(self, x: Tensor) -> Tensor:
         return (self._power * x.pow(self._power - 1)).abs().log()
 
-    def _forward_shape(self, shape: Sequence[int]) -> tuple[Sequence[int]]:
+    def _forward_shape(self, shape: Sequence[int]) -> Sequence[int]:
         return tuple(paddle.broadcast_shape(shape, self._power.shape))
 
-    def _inverse_shape(self, shape: Sequence[int]) -> tuple[Sequence[int]]:
+    def _inverse_shape(self, shape: Sequence[int]) -> Sequence[int]:
         return tuple(paddle.broadcast_shape(shape, self._power.shape))
 
 
@@ -959,7 +959,7 @@ class ReshapeTransform(Transform):
             + self._in_event_shape
         )
 
-    def _forward_shape(self, shape: Sequence[int]) -> tuple[Sequence[int]]:
+    def _forward_shape(self, shape: Sequence[int]) -> Sequence[int]:
         if len(shape) < len(self._in_event_shape):
             raise ValueError(
                 f"Expected length of 'shape' is not less than {len(self._in_event_shape)}, but got {len(shape)}"
@@ -974,7 +974,7 @@ class ReshapeTransform(Transform):
             tuple(shape[: -len(self._in_event_shape)]) + self._out_event_shape
         )
 
-    def _inverse_shape(self, shape: Sequence[int]) -> tuple[Sequence[int]]:
+    def _inverse_shape(self, shape: Sequence[int]) -> Sequence[int]:
         if len(shape) < len(self._out_event_shape):
             raise ValueError(
                 f"Expected 'shape' length is not less than {len(self._out_event_shape)}, but got {len(shape)}"
@@ -1191,7 +1191,7 @@ class StackTransform(Transform):
             self._axis,
         )
 
-    def _check_size(self, v: Tensor) -> Tensor:
+    def _check_size(self, v: Tensor) -> None:
         if not (-v.dim() <= self._axis < v.dim()):
             raise ValueError(
                 f'Input dimensions {v.dim()} should be grater than stack '
@@ -1264,12 +1264,12 @@ class StickBreakingTransform(Transform):
     def _forward_shape(self, shape: Sequence[int]) -> Sequence[int]:
         if not shape:
             raise ValueError(f"Expected 'shape' is not empty, but got {shape}")
-        return shape[:-1] + (shape[-1] + 1,)
+        return (*shape[:-1], shape[-1] + 1)
 
     def _inverse_shape(self, shape: Sequence[int]) -> Sequence[int]:
         if not shape:
             raise ValueError(f"Expected 'shape' is not empty, but got {shape}")
-        return shape[:-1] + (shape[-1] - 1,)
+        return (*shape[:-1], shape[-1] - 1)
 
     @property
     def _domain(self) -> variable.Independent:
