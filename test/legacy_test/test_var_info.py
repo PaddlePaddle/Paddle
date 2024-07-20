@@ -29,11 +29,12 @@ class TestVarInfo(unittest.TestCase):
     def test_var_info(self):
         """Testcase for get and set info for variable."""
         value = np.random.randn(1)
-        var = paddle.static.create_global_var([1], value, "float32")
-        var._set_info("name", "test")
-        ret = var._get_info("name")
+        var = paddle.to_tensor(value, 'float32')
+        var_info = {}
+        var_info[var] = {"name": "test"}
+        ret = var_info[var].get("name")
         assert ret == "test"
-        ret = var._get_info("not_exist")
+        ret = var_info[var].get("not_exist")
         assert ret is None
 
 
