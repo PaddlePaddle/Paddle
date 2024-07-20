@@ -405,6 +405,7 @@ def paddle_inference_decorator(function=None, **kwargs):
 
     Examples:
         .. code-block:: python
+            >>> # doctest: +SKIP('`paddle.jit.paddle_inference_decorator` can not run in xdoctest')
             >>> import paddle
             >>> from paddle.jit import paddle_inference_decorator
             >>> class ExampleLayer(paddle.nn.Layer):
