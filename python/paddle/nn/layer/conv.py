@@ -89,7 +89,7 @@ class _ConvNd(Layer):
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayoutND = "NCHW",
-        dtype: DTypeLike = 'float32',
+        dtype: DTypeLike | None = None,
     ) -> None:
         super().__init__()
         assert (
@@ -101,6 +101,8 @@ class _ConvNd(Layer):
         self._in_channels = in_channels
         self._out_channels = out_channels
         self._data_format = data_format
+        if dtype is None:
+            self._dtype = self._helper.get_default_dtype()
         self._dtype = dtype
 
         valid_padding_modes = {'zeros', 'reflect', 'replicate', 'circular'}
@@ -895,7 +897,7 @@ class Conv2DTranspose(_ConvNd):
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout2D = "NCHW",
-        dtype: DTypeLike = 'float32',
+        dtype: DTypeLike | None = None,
     ) -> None:
         super().__init__(
             in_channels,
