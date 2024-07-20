@@ -1106,7 +1106,7 @@ def decorate(
     level: _AmpLevelLiteral = ...,
     dtype: _DTypeLiteral = ...,
     master_weight: bool | None = ...,
-    save_dtype: str | None = ...,
+    save_dtype: _DTypeLiteral | None = ...,
     master_grad: bool = ...,
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
@@ -1122,7 +1122,7 @@ def decorate(
     level: _AmpLevelLiteral = ...,
     dtype: _DTypeLiteral = ...,
     master_weight: bool | None = ...,
-    save_dtype: str | None = ...,
+    save_dtype: _DTypeLiteral | None = ...,
     master_grad: bool = ...,
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
