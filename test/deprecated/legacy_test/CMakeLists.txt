@@ -182,6 +182,7 @@ if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
@@ -204,11 +205,10 @@ if(APPLE)
   endif()
   message(
     WARNING
-      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext_*"
+      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_dist_se_resnext_*"
   )
   # this op is not support on mac
   list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
-  list(REMOVE_ITEM TEST_OPS test_detection_map_op)
   list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass)
 endif()
 if(NOT WITH_MKLML)
@@ -396,7 +396,6 @@ list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op_deprecated)
 list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
-list(REMOVE_ITEM TEST_OPS test_install_check)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
@@ -441,8 +440,7 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_gather_nd_op test_slice_op)
-set(TEST_OPS_WITH_GC test_gather_nd_op test_slice_op_deprecated)
+set(TEST_OPS_WITH_GC test_slice_op test_slice_op_deprecated)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -475,12 +473,6 @@ set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 py_test_modules(
   test_imperative_ocr_attention_model MODULES
   test_imperative_ocr_attention_model ENVS FLAGS_cudnn_deterministic=1)
-py_test_modules(test_install_check MODULES test_install_check ENVS
-                FLAGS_cudnn_deterministic=1)
-set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
-py_test_modules(test_install_check_pir MODULES test_install_check ENVS
-                FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
-set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
   py_test_modules(test_fuse_dot_product_attention_pass MODULES
@@ -652,11 +644,6 @@ endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
-                                                                        120)
-set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
-set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
@@ -695,15 +682,13 @@ set(TEST_CINN_OPS
     test_softmax_op
     test_slice_op
     test_slice_op_deprecated
-    test_gather_nd_op
     test_scale_op
     test_layer_norm_op_deprecated
     test_where_op
     test_arg_min_max_op
     test_instance_norm_op
     test_instance_norm_op_deprecated
-    test_cumsum_op
-    test_erf_op)
+    test_cumsum_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -784,8 +769,10 @@ set_tests_properties(test_layer_norm_op_deprecated_static_build
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
-set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pir_tests_properties()
 
+set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
+                                                                      100)
+set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)

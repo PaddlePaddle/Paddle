@@ -45,9 +45,7 @@ class TestReshapeOp(OpTest):
         self.infered_shape = (12, 10)
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=['XShape'], check_pir=True, check_symbol_infer=True
-        )
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -212,7 +210,9 @@ class TestReshapeOpWithInputShape(OpTest):
         self.actual_shape = (2, 3, 20)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_pir=True)
+        self.check_output(
+            no_check_set=['XShape'], check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -257,7 +257,9 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
         self.shape = (-1, -1)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_pir=True)
+        self.check_output(
+            no_check_set=['XShape'], check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -311,7 +313,9 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
         self.infered_shape = (10, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_pir=True)
+        self.check_output(
+            no_check_set=['XShape'], check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(

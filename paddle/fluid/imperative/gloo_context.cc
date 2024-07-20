@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -196,8 +196,7 @@ void GLOOParallelContext::Broadcast(framework::Variable *src, int ring_id) {
       "Unimplemented inter-broadcast for CPU now."));
 }
 
-paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(
-    int ring_id) {
+phi::DeviceContext *GLOOParallelContext::GetDeviceContext(int ring_id) {
   // return the CPUContext
   return device_.get();
 }

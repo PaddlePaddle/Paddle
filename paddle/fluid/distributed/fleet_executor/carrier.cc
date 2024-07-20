@@ -66,7 +66,7 @@ void Carrier::Init(
     const framework::ProgramDesc& program,
     framework::Scope* scope,
     int64_t num_micro_batches,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::vector<std::string>& inference_root_scope_vars,
     const std::vector<framework::Scope*>& micro_scope_list) {
   rank_ = rank;
@@ -74,12 +74,12 @@ void Carrier::Init(
   interceptor_id_to_node_ = interceptor_id_to_node;
   place_ = place;
   root_scope_ = scope;
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
   bool need_create_scope = micro_scope_list.empty();
 
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,
-      platform::errors::InvalidArgument("root_scope can not be nullptr"));
+      phi::errors::InvalidArgument("root_scope can not be nullptr"));
 
   if (need_create_scope) {
     minibatch_scope_ = &root_scope_->NewScope();
@@ -153,7 +153,7 @@ bool Carrier::EnqueueInterceptorMessage(
   PADDLE_ENFORCE_EQ(
       interceptor_message.ctrl_message(),
       false,
-      platform::errors::Fatal(
+      phi::errors::Fatal(
           "Control message should be only send inter rank using message bus."));
   int64_t dst_id = interceptor_message.dst_id();
   Interceptor* dst_interceptor = GetInterceptor(dst_id);
@@ -165,7 +165,7 @@ Interceptor* Carrier::GetInterceptor(int64_t interceptor_id) {
   auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);
   PADDLE_ENFORCE_NE(iter,
                     interceptor_idx_to_interceptor_.end(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Cannot find interceptor instance for interceptor "
                         "id %lld. Wrong dst? Call before init?",
                         interceptor_id));
@@ -183,10 +183,10 @@ void Carrier::WakeUp() {
 }
 
 void Carrier::Start() {
-  PADDLE_ENFORCE_EQ(is_init_,
-                    true,
-                    platform::errors::PreconditionNotMet(
-                        "Using carrier before initialized."));
+  PADDLE_ENFORCE_EQ(
+      is_init_,
+      true,
+      phi::errors::PreconditionNotMet("Using carrier before initialized."));
   InterceptorMessage start_msg;
   start_msg.set_dst_id(SOURCE_ID);
   start_msg.set_src_id(SOURCE_ID);
@@ -215,8 +215,8 @@ int64_t Carrier::GetRank(int64_t interceptor_id) const {
   PADDLE_ENFORCE_NE(
       interceptor_id_to_rank_.find(interceptor_id),
       interceptor_id_to_rank_.end(),
-      platform::errors::NotFound("Cannot find rank for interceptor id %lld.",
-                                 interceptor_id));
+      phi::errors::NotFound("Cannot find rank for interceptor id %lld.",
+                            interceptor_id));
   return interceptor_id_to_rank_.at(interceptor_id);
 }
 
@@ -234,10 +234,10 @@ bool Carrier::Send(const InterceptorMessage& msg) {
   PADDLE_ENFORCE_EQ(
       src_rank,
       rank_,
-      platform::errors::Fatal("The source rank id %lld, which is not equal to "
-                              "the carrier rank id %lld.",
-                              src_rank,
-                              rank_));
+      phi::errors::Fatal("The source rank id %lld, which is not equal to "
+                         "the carrier rank id %lld.",
+                         src_rank,
+                         rank_));
   if (src_rank == dst_rank) {
     VLOG(3) << "Send a message from interceptor " << src_id
             << " to interceptor " << dst_id << ", which are in the same ranks.";
@@ -253,7 +253,7 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
   auto iter = interceptor_idx_to_interceptor_.find(interceptor_id);
   PADDLE_ENFORCE_EQ(iter,
                     interceptor_idx_to_interceptor_.end(),
-                    platform::errors::AlreadyExists(
+                    phi::errors::AlreadyExists(
                         "The interceptor id %lld has already been created! "
                         "The interceptor id should be unique.",
                         interceptor_id));
@@ -262,8 +262,8 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
   // TODO(fleet_exe dev): get loop
   auto* loop =
       thread_pool_.GetLoop(static_cast<int>(interceptor_id % thread_num_));
-  PADDLE_ENFORCE_NOT_NULL(
-      loop, platform::errors::Fatal("thread task loop must not null"));
+  PADDLE_ENFORCE_NOT_NULL(loop,
+                          phi::errors::Fatal("thread task loop must not null"));
   interceptor->RegisterTaskLoop(loop);
 
   auto* ptr = interceptor.get();
@@ -273,12 +273,12 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
 }
 
 static std::shared_ptr<framework::GarbageCollector> GetGC(
-    const platform::Place& place) {
+    const phi::Place& place) {
   int64_t max_memory_size = framework::GetEagerDeletionThreshold();
   std::shared_ptr<framework::GarbageCollector> gc;
   if (max_memory_size >= 0) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(place)) {
+    if (phi::is_gpu_place(place)) {
       if (framework::IsFastEagerDeletionModeEnabled()) {
         gc.reset(new framework::UnsafeFastGPUGarbageCollector(place,
                                                               max_memory_size));
@@ -286,7 +286,7 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
     }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (platform::is_custom_place(place)) {
+    if (phi::is_custom_place(place)) {
       if (framework::IsFastEagerDeletionModeEnabled()) {
         gc.reset(new framework::CustomDeviceUnsafeFastGarbageCollector(
             place, max_memory_size));
@@ -345,18 +345,18 @@ void Carrier::CreateInterceptors(
     PADDLE_ENFORCE_LT(
         task_node->run_at_offset(),
         task_node->run_per_steps(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Interceptor's run_at_offset must < run_per_steps, must now "
             "run_at_offset=%ld run_per_steps=%ld",
             task_node->run_at_offset(),
             task_node->run_per_steps()));
 
     std::unique_ptr<Interceptor> interceptor;
-    PADDLE_ENFORCE_NE(task_node->type().empty(),
-                      true,
-                      platform::errors::NotFound(
-                          "Cannot found type for task node with id %lld",
-                          task_node->task_id()));
+    PADDLE_ENFORCE_NE(
+        task_node->type().empty(),
+        true,
+        phi::errors::NotFound("Cannot found type for task node with id %lld",
+                              task_node->task_id()));
     interceptor = InterceptorFactory::Create(
         task_node->type(), interceptor_id, task_node);
     interceptor->SetPlace(place_);
@@ -414,11 +414,11 @@ void Carrier::CreateInterceptors(
     PADDLE_ENFORCE_EQ(
         task_node->upstream().empty(),
         false,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "There should not have normal nodes as source nodes"));
     PADDLE_ENFORCE_EQ(task_node->downstream().empty(),
                       false,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "There should not have normal nodes as sink nodes"));
   }
 }

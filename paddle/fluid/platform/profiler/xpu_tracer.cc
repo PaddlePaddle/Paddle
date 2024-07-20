@@ -41,7 +41,7 @@ void XPUTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::UNINITED || state_ == TracerState::STOPED,
       true,
-      platform::errors::PreconditionNotMet("XPUTracer must be UNINITED"));
+      phi::errors::PreconditionNotMet("XPUTracer must be UNINITED"));
 #ifdef PADDLE_WITH_XPTI
   XPTI_CALL(dynload::xptiActivityEnable());
   VLOG(3) << "enable xpti activity";
@@ -53,7 +53,7 @@ void XPUTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::READY,
       true,
-      platform::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
+      phi::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
 #ifdef PADDLE_WITH_XPTI
   XPTI_CALL(dynload::xptiStartTracing());
 #endif
@@ -62,10 +62,9 @@ void XPUTracer::StartTracing() {
 }
 
 void XPUTracer::StopTracing() {
-  PADDLE_ENFORCE_EQ(
-      state_,
-      TracerState::STARTED,
-      platform::errors::PreconditionNotMet("Tracer must be STARTED"));
+  PADDLE_ENFORCE_EQ(state_,
+                    TracerState::STARTED,
+                    phi::errors::PreconditionNotMet("Tracer must be STARTED"));
 #ifdef PADDLE_WITH_XPTI
   XPTI_CALL(dynload::xptiStopTracing());
   XPTI_CALL(dynload::xptiActivityDisable());
@@ -156,10 +155,9 @@ void AddMemcpyRecord(const baidu::xpu::xpti::XPTIEventMem* memcpy,
 #endif
 
 void XPUTracer::CollectTraceData(TraceEventCollector* collector) {
-  PADDLE_ENFORCE_EQ(
-      state_,
-      TracerState::STOPED,
-      platform::errors::PreconditionNotMet("Tracer must be STOPED"));
+  PADDLE_ENFORCE_EQ(state_,
+                    TracerState::STOPED,
+                    phi::errors::PreconditionNotMet("Tracer must be STOPED"));
 #ifdef PADDLE_WITH_XPTI
   XPTI_CALL(dynload::xptiActivityFlushAll());
   baidu::xpu::xpti::XPTIEvent* record = nullptr;

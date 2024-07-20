@@ -163,8 +163,7 @@ class Pad3dOpConverter : public OpConverter {
       slice_layer->setMode(nvinfer1::SliceMode::kCLAMP);
 #endif
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("Unsupported mode: %s",
-                                                   padding_mode));
+      PADDLE_THROW(phi::errors::Fatal("Unsupported mode: %s", padding_mode));
     }
 
     auto output_name = op_desc.Output("Out")[0];

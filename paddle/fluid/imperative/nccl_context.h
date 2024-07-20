@@ -44,13 +44,13 @@ namespace imperative {
 class NCCLParallelContext : public ParallelContext {
  public:
   explicit NCCLParallelContext(const ParallelStrategy& strategy,
-                               const platform::Place& place)
+                               const phi::Place& place)
       : ParallelContext(strategy, place) {}
 
   ~NCCLParallelContext() override = default;
 
-  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,
-                   int root,  // NOLINT
+  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,  // NOLINT
+                   int root,                             // NOLINT
                    int server_fd);
 
   void Init() override;
@@ -64,7 +64,7 @@ class NCCLParallelContext : public ParallelContext {
 
   void Broadcast(framework::Variable* src, int ring_id) override;
 
-  paddle::platform::DeviceContext* GetDeviceContext(int ring_id) override;
+  phi::DeviceContext* GetDeviceContext(int ring_id) override;
 
   void WaitCompute(int ring_id) override;
 

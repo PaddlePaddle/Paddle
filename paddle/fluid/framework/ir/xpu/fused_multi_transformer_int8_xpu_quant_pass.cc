@@ -401,7 +401,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
     std::vector<std::vector<std::string>> old_weight_max_names_vec(4);
 
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     auto attr2weight = [&](const std::string& src_name,
                            std::vector<Node*>* input_max_node,
                            std::vector<std::string>* input_max_name) {

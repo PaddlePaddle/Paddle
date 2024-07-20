@@ -245,6 +245,7 @@ from .math import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     broadcast_shape,
+    cartesian_prod,
     ceil,
     ceil_,
     clip,

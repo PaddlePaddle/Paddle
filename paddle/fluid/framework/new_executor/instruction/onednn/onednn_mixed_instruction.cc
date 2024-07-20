@@ -45,7 +45,7 @@ namespace framework {
 
 OneDNNMixedPhiKernelInstruction::OneDNNMixedPhiKernelInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo* value_exec_info)
     : OneDNNPhiKernelInstruction(id, place, op, value_exec_info) {

@@ -51,6 +51,7 @@ USE_PIR_PASS(fused_rotary_position_embedding_pass);
 USE_PIR_PASS(depthwise_conv_onednn_pass);
 USE_PIR_PASS(squeeze_transpose_onednn_fuse_pass);
 USE_PIR_PASS(conv2d_bn_onednn_fuse_pass);
+USE_PIR_PASS(conv2d_bias_bn_onednn_fuse_pass);
 USE_PIR_PASS(conv2d_bias_fuse_pass);
 USE_PIR_PASS(conv2d_transpose_bias_fuse_pass);
 USE_PIR_PASS(conv3d_bias_fuse_pass);
@@ -77,6 +78,7 @@ USE_PIR_PASS(operator_reshape_onednn_fuse_pass);
 USE_PIR_PASS(onednn_placement_pass);
 USE_PIR_PASS(conv2d_transpose_bn_fuse_pass);
 USE_PIR_PASS(conv2d_transpose_bias_bn_fuse_pass);
+USE_PIR_PASS(matmul_reshape_add_fuse_pass);
 #endif
 
 #ifdef PADDLE_WITH_XPU
