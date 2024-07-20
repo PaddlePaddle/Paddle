@@ -65,6 +65,10 @@ def to_device(tensorx, device):
     return tensorx.to(device)
 
 
+def to__device(tensorx, device):
+    return tensorx._to(device)
+
+
 def to_device_dtype(tensorx, device, dtype):
     return tensorx.to(device, dtype)
 
@@ -95,6 +99,10 @@ def to_kwargs_other(tensorx, other):
 
 def to_invalid_key_error(tensorx, device, dtype, test_key):
     return tensorx.to(device, dtype, test_key=test_key)
+
+
+def to_many_key_error(tensorx, device, dtype):
+    return tensorx.to(device, dtype, device, dtype)
 
 
 class TensorToTest(Dy2StTestBase):
@@ -192,13 +200,31 @@ class TensorToTest(Dy2StTestBase):
             "The device must be a string which is like"
             in str(context1.exception)
         )
+        # no matching signature error
+        with self.assertRaises(ValueError) as context2:
+            paddle.jit.to_static(to_device)(tensorx, int)
+        self.assertTrue(
+            "No matching signature found" in str(context2.exception)
+        )
         # invalid key error
-        with self.assertRaises(TypeError) as context2:
+        with self.assertRaises(TypeError) as context3:
             paddle.jit.to_static(to_invalid_key_error)(
                 tensorx, "cpu", "int32", test_key=False
             )
         self.assertTrue(
-            "to() got an unexpected keyword argument" in str(context2.exception)
+            "to() got an unexpected keyword argument" in str(context3.exception)
+        )
+        # device value error
+        with self.assertRaises(ValueError) as context4:
+            paddle.jit.to_static(to__device)(tensorx, int)
+        self.assertTrue(
+            "device value error, must be str" in str(context4.exception)
+        )
+        # too many key error
+        with self.assertRaises(TypeError) as context5:
+            paddle.jit.to_static(to_many_key_error)(tensorx, "cpu", "int32")
+        self.assertTrue(
+            "to() received too many arguments" in str(context5.exception)
         )
 
     @test_sot_only
@@ -212,13 +238,31 @@ class TensorToTest(Dy2StTestBase):
             "The device must be a string which is like"
             in str(context1.exception)
         )
-        # invalid key error
+        # no matching signature error
         with self.assertRaises(Exception) as context2:
+            paddle.jit.to_static(to_device)(tensorx, int)
+        self.assertTrue(
+            "No matching signature found" in str(context2.exception)
+        )
+        # invalid key error
+        with self.assertRaises(Exception) as context3:
             paddle.jit.to_static(to_invalid_key_error)(
                 tensorx, "cpu", "int32", test_key=False
             )
         self.assertTrue(
-            "to() got an unexpected keyword argument" in str(context2.exception)
+            "to() got an unexpected keyword argument" in str(context3.exception)
+        )
+        # device value error
+        with self.assertRaises(Exception) as context4:
+            paddle.jit.to_static(to__device)(tensorx, int)
+        self.assertTrue(
+            "device value error, must be str" in str(context4.exception)
+        )
+        # too many key error
+        with self.assertRaises(Exception) as context5:
+            paddle.jit.to_static(to_many_key_error)(tensorx, "cpu", "int32")
+        self.assertTrue(
+            "to() received too many arguments" in str(context5.exception)
         )
 
 
