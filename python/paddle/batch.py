@@ -12,10 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Generator, List, TypeVar
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
+T = TypeVar('T')
 __all__ = []
 
-
-def batch(reader, batch_size, drop_last=False):
+def batch(
+    reader: Generator[T, None, None], batch_size: int, drop_last: bool = False
+) -> Generator[List[T], None, None]:
     """
     This operator creates a batched reader which combines the data from the
     input reader to batched data.
