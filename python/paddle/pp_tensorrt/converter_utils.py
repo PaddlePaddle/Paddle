@@ -15,6 +15,9 @@
 import logging
 import os
 import sys
+from enum import Enum
+import tensorrt as trt
+import torch
 
 import numpy as np
 
@@ -29,6 +32,11 @@ from paddle.base.log_helper import get_logger
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+
+class Frameworks(Enum):
+    NUMPY = "numpy"
+    TORCH = "torch"
+    TRT = "trt"
 
 
 def has_dynamic_shape(shape):
@@ -90,28 +98,28 @@ def get_axes_for_reduce_op(
     return axes
 
 
-# def get_trt_tensor(network, input_val, name, dtype):
-#     if isinstance(input_val, bool):
-#         input_val = int(input_val)
+def get_trt_tensor(network, input_val, name, dtype):
+    if isinstance(input_val, bool):
+        input_val = int(input_val)
 
-#     if isinstance(input_val, torch.Tensor) and (
-#         input_val.dtype == torch.bool or input_val.dtype == torch.int64
-#     ):
-#         input_val = input_val.to(torch.int32)
-#     elif isinstance(input_val, np.ndarray) and (
-#         input_val.dtype == np.bool_ or input_val.dtype == np.int64
-#     ):
-#         input_val = input_val.to(np.int32)
+    if isinstance(input_val, torch.Tensor) and (
+        input_val.dtype == torch.bool or input_val.dtype == torch.int64
+    ):
+        input_val = input_val.to(torch.int32)
+    elif isinstance(input_val, np.ndarray) and (
+        input_val.dtype == np.bool_ or input_val.dtype == np.int64
+    ):
+        input_val = input_val.to(np.int32)
 
-#     if isinstance(input_val, (torch.Tensor, np.ndarray, int, float)):
-#         return create_constant(network, input_val, name, dtype)
-#     elif isinstance(input_val, trt.tensorrt.ITensor):
-#         return input_val
+    if isinstance(input_val, (torch.Tensor, np.ndarray, int, float)):
+        return create_constant(network, input_val, name, dtype)
+    elif isinstance(input_val, trt.tensorrt.ITensor):
+        return input_val
 
-#     raise RuntimeError(
-#         f"Received input {input_val} of name {name} that "
-#         "is not part of the TensorRT region!"
-#     )
+    raise RuntimeError(
+        f"Received input {input_val} of name {name} that "
+        "is not part of the TensorRT region!"
+    )
 
 
 def get_dynamic_dims(shape):
@@ -132,3 +140,27 @@ def get_dynamic_dims(shape):
         if s == -1:
             dynamic_dims.append(i)
     return dynamic_dims
+
+
+# def unified_dtype_converter(dtype,to_framework):
+#     assert to_framework in Frameworks,f"Expected valid Framework for translation, got {to_framework}" 
+#     trt_major_version=int(trt.__version__.split("."[0]))
+#     if dtype in (np.int8,torch.int8,trt,int8):
+#         return DataTypeEquivalence[trt.int8][to_framework]
+#     elif dtype in (np.bool_, torch.bool, trt.bool):
+#         return DataTypeEquivalence[trt.bool][to_framework]
+    
+        
+        
+    
+
+# def add_binary_elementwise_layer( network,lhs_val,rhs_val,op_type):
+#     lhs_dtype=None
+#     rhs_dtype=None
+#     is_lhs_trt_tensor=False
+#     is_rhs_trt_tensor=False
+    
+#     if isinstance(lhs_val,trt.tensorrt.ITensor):
+#         lhs_dtype=unified_dtype_converter(lhs_val.dtype,Framework.TORCH)
+    
+    

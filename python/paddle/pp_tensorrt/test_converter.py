@@ -16,6 +16,7 @@ import numpy as np
 from converter import PaddleToTensorRTConverter
 from util import (
     forbid_op_lower_trt,
+    enforce_op_lower_trt,
     get_bert_program,
     get_dummy_program,
     get_r50_program,
@@ -152,9 +153,12 @@ def test_paddle_to_tensorrt_conversion_r50():
     # enforce_op_lower_trt(program, "pd_op.conv2d")
     # enforce_op_lower_trt(program, "pd_op.relu")
     # enforce_op_lower_trt(program, "pd_op.pool2d")
+    # enforce_op_lower_trt(program,"pd_op.add")
     # enforce_op_lower_trt(program, "pd_op.batch_norm_")
     # enforce_op_lower_trt(program, "pd_op.flatten")
-    forbid_op_lower_trt(program, "pd_op.flatten")
+    # forbid_op_lower_trt(program,"pd_op.matmul")
+    # forbid_op_lower_trt(program,"pd_op.flatten")
+    # forbid_op_lower_trt(program,"pd_op.add")
 
     # Step4: run trt_sub_graph_extract_pass()
     program_with_pir = run_pir_pass(program, partition_mode=True)
