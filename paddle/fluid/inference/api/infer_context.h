@@ -80,6 +80,8 @@ class InferXPUContext : public phi::XPUContext {
                          const phi::Place& place);
   void SetContextOption(const char* name, const char* value);
 
+  void SetOutHolder(phi::Allocation* holder);
+
  private:
   size_t l3_size_{0};
   void* l3_ptr_{nullptr};
@@ -91,6 +93,8 @@ class InferXPUContext : public phi::XPUContext {
   mutable std::unordered_map<phi::Allocation*,
                              std::pair<phi::Allocation*, bool>>
       holder_map_;
+
+  mutable std::unordered_set<phi::Allocation*> output_holder_set_;
   phi::XPUL3Planner l3_plan_;
 };
 #endif
