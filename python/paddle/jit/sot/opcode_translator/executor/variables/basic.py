@@ -24,7 +24,13 @@ import numpy as np
 import paddle
 from paddle.framework import core
 
-from ....infer_meta import MetaInfo, SymbolicInt, SymbolicValue
+from ....infer_meta import (
+    MetaInfo,
+    SymbolicBool,
+    SymbolicFloat,
+    SymbolicInt,
+    SymbolicValue,
+)
 from ....symbolic.statement_ir import Symbol
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
@@ -627,6 +633,27 @@ class TensorVariable(VariableBase):
         return None
 
 
+def get_symbolic_from_meta(meta: MetaInfo) -> SymbolicValue:
+    if meta.dtype in [paddle.bool]:
+        value = SymbolicBool()
+    elif meta.dtype in [
+        paddle.int8,
+        paddle.int16,
+        paddle.int32,
+        paddle.int64,
+    ]:
+        value = SymbolicInt()
+    elif meta.dtype in [
+        paddle.float16,
+        paddle.float32,
+        paddle.float64,
+    ]:
+        value = SymbolicFloat()
+    else:
+        raise InnerError(f"Unsupported dtype {meta.dtype} for SymbolicVariable")
+    return value
+
+
 class SymbolicVariable(VariableBase):
     """
     SymbolicVariable is a subclass of VariableBase used to wrap a symbolic value.
@@ -638,6 +665,7 @@ class SymbolicVariable(VariableBase):
     """
 
     var_name_generator = NameGenerator("symint_")
+    value: int | SymbolicValue
 
     def __init__(
         self,
@@ -648,7 +676,8 @@ class SymbolicVariable(VariableBase):
         super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
         if isinstance(value_or_meta, MetaInfo):
-            self.value: int | SymbolicValue = SymbolicValue()
+            assert len(value_or_meta.shape) == 0
+            self.value = get_symbolic_from_meta(value_or_meta)
             self.meta = value_or_meta
         else:
             self.value = value_or_meta
@@ -672,10 +701,9 @@ class SymbolicVariable(VariableBase):
         return self.value
 
     def get_py_type(self):
-        if isinstance(self.value, (SymbolicInt, int)):
+        if isinstance(self.value, int):
             return int
-        # TODO(zrr1999): infer type from tracker
-        return super().get_py_type()
+        return self.value.get_static_type()
 
     def get_symbol(self) -> Symbol:
         return Symbol(self.var_name)
