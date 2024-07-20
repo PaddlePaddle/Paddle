@@ -43,6 +43,7 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
             kernel_size=1,
             groups=1,
             bias_attr=False,
+            dtype=dtype,
         )(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
@@ -142,6 +143,7 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
             kernel_size=1,
             padding=[1, 0, 0, 1],
             bias_attr=False,
+            dtype=dtype,
         )(x)
 
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -232,6 +234,7 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
             kernel_size=1,
             padding="SAME",
             bias_attr=False,
+            dtype=dtype,
         )(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
@@ -321,6 +324,7 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
             kernel_size=1,
             padding="VALID",
             bias_attr=False,
+            dtype=dtype,
         )(x)
 
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -414,6 +418,7 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
             groups=1,
             bias_attr=False,
             data_format="NHWC",
+            dtype=dtype,
         )(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
