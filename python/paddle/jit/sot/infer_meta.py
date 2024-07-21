@@ -34,18 +34,25 @@ SOT_INFER_META_INNER_VAR = "___SOT_INFER_META_INNER_VAR"
 
 class SymbolicValue(metaclass=Singleton):
     def __repr__(self) -> str:
-        return "SymbolicValue()"
+        return f"{self.__class__.__name__}()"
 
-    def __str__(self) -> str:
-        return "SymbolicValue()"
+    def get_static_type(self) -> type:
+        raise NotImplementedError("get_py_type is not implemented.")
+
+
+class SymbolicBool(SymbolicValue):
+    def get_static_type(self) -> type:
+        return bool
 
 
 class SymbolicInt(SymbolicValue):
-    def __repr__(self) -> str:
-        return "SymbolicInt()"
+    def get_static_type(self) -> type:
+        return int
 
-    def __str__(self) -> str:
-        return "SymbolicInt()"
+
+class SymbolicFloat(SymbolicValue):
+    def get_static_type(self) -> type:
+        return float
 
 
 class MetaInfo:
