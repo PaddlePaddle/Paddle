@@ -79,12 +79,12 @@ def detach_variable(inputs):
 def check_recompute_necessary(inputs):
     necessary_for_each_input = []
     for input_ in inputs:
-        if isinstance(input_, (core.eager.Tensor, paddle.Tensor)):
+        if isinstance(input_, paddle.Tensor):
             necessary_for_each_input.append(input_.stop_gradient)
         elif type(input_) is tuple:
             for i in input_:
                 # traverse all tensors in the tuple
-                if isinstance(i, (core.eager.Tensor, paddle.Tensor)):
+                if isinstance(i, paddle.Tensor):
                     necessary_for_each_input.append(i.stop_gradient)
     if all(necessary_for_each_input):
         logger.warning(
