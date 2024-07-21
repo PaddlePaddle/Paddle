@@ -26,7 +26,9 @@ if TYPE_CHECKING:
 
     from paddle import Tensor
 
-    _ReduceMode: TypeAlias = Literal['mean', 'sum', 'none']
+    _ReduceModeStringLiteral: TypeAlias = Literal['mean', 'sum', 'none']
+    _ReduceModeNumberLiteral: TypeAlias = Literal[0, 1, 2]
+    _ReduceMode: TypeAlias = Union[_ReduceModeStringLiteral, _ReduceModeNumberLiteral]
 
 
 def identity_loss(x: Tensor, reduction: _ReduceMode = "none") -> Tensor:
