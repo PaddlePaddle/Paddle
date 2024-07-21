@@ -1855,10 +1855,11 @@ def check_submodules():
             sys.exit(1)
 
 
-def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
-    print('-' * 2, 'Generate stub file tensor.pyi ... ')
+def generate_stub_files(paddle_binary_dir, paddle_source_dir):
     script_path = paddle_source_dir + '/tools/'
     sys.path.append(script_path)
+
+    print('-' * 2, 'Generate stub file tensor.pyi ... ')
     import gen_tensor_stub
 
     gen_tensor_stub.generate_stub_file(
@@ -1872,6 +1873,13 @@ def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
         paddle_source_dir + '/python/paddle/tensor/tensor.pyi',
     )
     print('-' * 2, 'End Generate stub file tensor.pyi ... ')
+
+    print('-' * 2, 'Generate stub file for pybind11 ... ')
+    import gen_pybind11_stub
+
+    gen_pybind11_stub.generate_stub_file(output_dir=paddle_binary_dir)
+
+    print('-' * 2, 'End Generate stub for pybind11 ... ')
 
 
 def main():
@@ -1962,7 +1970,7 @@ def main():
         'on',
         '1',
     ]:
-        generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
+        generate_stub_files(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,
