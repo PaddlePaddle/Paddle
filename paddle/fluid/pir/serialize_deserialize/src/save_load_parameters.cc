@@ -51,11 +51,11 @@ const phi::DenseTensor CastTensorType(const phi::DeviceContext* dev_ctx,
                                       const phi::DenseTensor& x,
                                       phi::DataType out_dtype) {
   auto place = x.place();
-  if (paddle::platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     auto out = phi::funcs::TransDataType(
         reinterpret_cast<const phi::CPUContext&>(*dev_ctx), x, out_dtype);
     return out;
-  } else if (paddle::platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     return phi::funcs::TransDataType(
         reinterpret_cast<const phi::GPUContext&>(*dev_ctx), x, out_dtype);

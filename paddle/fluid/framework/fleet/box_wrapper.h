@@ -441,7 +441,7 @@ class BoxWrapper {
       for (int i = 0; i < platform::GetGPUDeviceCount(); ++i) {
         VLOG(3) << "before get context i[" << i << "]";
         phi::GPUContext* context = dynamic_cast<phi::GPUContext*>(
-            platform::DeviceContextPool::Instance().Get(phi::GPUPlace(i)));
+            phi::DeviceContextPool::Instance().Get(phi::GPUPlace(i)));
         stream_list_[i] = context->stream();
         stream_list.push_back(&stream_list_[i]);
       }

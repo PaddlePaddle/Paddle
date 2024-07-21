@@ -37,6 +37,7 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
 #endif
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 
 namespace paddle::dialect {
 
@@ -388,6 +389,9 @@ void OperatorDialect::initialize() {
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.cc"  // NOLINT
       >();
 #endif
+
+  RegisterOps<TensorRTEngineOp>();
+
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
@@ -643,7 +647,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         inputs.size(),
         fwd_inputs_name.size(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Custom op: %s inputs size should be %d, but now is %d.",
             pir_op_name,
             fwd_inputs_name.size(),
@@ -651,7 +655,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         fwd_outputs_name.size(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Custom op: %s outputs size should be %d, but now is %d.",
             pir_op_name,
             fwd_outputs_name.size(),
@@ -660,7 +664,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         out_grads.size(),
         fwd_outputs_name.size(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Custom op: %s outputs grad size should be %d, but now is %d.",
             pir_op_name,
             fwd_outputs_name.size(),
@@ -709,13 +713,13 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
               std::distance(fwd_outputs_name.begin(), fwd_outputs_name_iter);
           return std::make_pair(2, index);
         } else {
-          PADDLE_THROW(paddle::platform::errors::NotFound(
+          PADDLE_THROW(phi::errors::NotFound(
               "Can't find the grad op input:%s, please check your register "
               "grad op whether has correct input name",
               grad_op_input_name));
         }
       } else {
-        PADDLE_THROW(paddle::platform::errors::NotFound(
+        PADDLE_THROW(phi::errors::NotFound(
             "Can't find the grad op input:%s, please check your register grad "
             "op whether has correct input name",
             grad_op_input_name));
@@ -952,7 +956,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
         PADDLE_ENFORCE_NE(
             fwd_inputs_name_iter,
             fwd_inputs_name.end(),
-            paddle::platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Custom op: %s output %s is a Vec output. It should have the "
                 "forward input that need calculate gradients.",
                 pir_op_name,
@@ -1053,6 +1057,7 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func,
                                verify_func);
 }
+
 }  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)

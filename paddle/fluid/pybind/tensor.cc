@@ -79,7 +79,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -110,6 +109,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -763,7 +763,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              auto *holder = dynamic_cast<memory::allocation::Allocation *>(
                  self.Holder().get());
              PADDLE_ENFORCE_EQ(
-                 platform::is_gpu_place(holder->place()), true,
+                 phi::is_gpu_place(holder->place()), true,
                  platform::errors::InvalidArgument(
                      "Tensor is not on GPU. share_cuda only support GPU "
                      "Tensor, share_filename is for CPU tensor."));
@@ -870,8 +870,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
              auto holder = self.Holder();
              PADDLE_ENFORCE_EQ(
-                 platform::is_cpu_place(holder->place()) ||
-                     platform::is_cuda_pinned_place(holder->place()),
+                 phi::is_cpu_place(holder->place()) ||
+                     phi::is_cuda_pinned_place(holder->place()),
                  true, platform::errors::InvalidArgument(
                            "Tensor is not on CPU. share_filename only "
                            "support CPU Tensor."));
@@ -907,7 +907,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                        handle, shared_fd, flags, data_size, find_id);
 
                // copy data & reset holder
-               if (platform::is_cuda_pinned_place(holder->place())) {
+               if (phi::is_cuda_pinned_place(holder->place())) {
 #ifdef PADDLE_WITH_CUDA
                  memory::Copy(phi::CPUPlace(), shared_holder->ptr(),
                               phi::GPUPinnedPlace(), data_ptr, data_size);
@@ -1022,7 +1022,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def(py::pickle(
           [](const phi::DenseTensor &t) {  // __getstate__
             auto holder = t.Holder();
-            PADDLE_ENFORCE_EQ(platform::is_cpu_place(holder->place()), true,
+            PADDLE_ENFORCE_EQ(phi::is_cpu_place(holder->place()), true,
                               platform::errors::PreconditionNotMet(
                                   "Tensor is not on CPU."
                                   "Now only Tensor on CPU can be serialized."));

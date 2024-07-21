@@ -115,7 +115,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
                    SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
   char* data_ptr = const_cast<char*>(req_data->data());
 
-  if (platform::is_cpu_place(tensor->place())) {
+  if (phi::is_cpu_place(tensor->place())) {
     memcpy(data_ptr,
            tensor->data(),
            tensor->numel() *

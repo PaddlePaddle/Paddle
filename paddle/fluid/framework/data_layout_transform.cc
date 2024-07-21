@@ -41,7 +41,7 @@ template <typename T>
 void CastDataLayout::apply() {
   auto place = ctx_->GetPlace();
 
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     phi::funcs::Transpose<phi::CPUContext, T, 4> trans4;
     auto* context = static_cast<const phi::CPUContext*>(ctx_);
     trans4(*context, in_, out_, axis_);
@@ -81,7 +81,7 @@ void TransDataLayout(DataLayout from_layout,
           "Input dimension arity only can be 4, the input dimension is %s.",
           in.dims()));
 
-  auto& pool = platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
 
   auto src_dim = in.dims();
   std::vector<int64_t> dst_dim;

@@ -79,7 +79,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -110,6 +109,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -374,7 +374,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   m.def("is_bfloat16_supported", [](const phi::GPUPlace &place) -> bool {
   // Only GPUs with Compute Capability >= 80 support bfloat16
 #ifdef PADDLE_WITH_HIP
-    return false;
+    return true;
 #else
     return platform::GetGPUComputeCapability(place.device) >= 80;
 #endif
@@ -608,18 +608,17 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<phi::Place, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::Place, phi::CustomPlace>)
       .def("is_gpu_place",
-           [](phi::Place &self) { return platform::is_gpu_place(self); })
+           [](phi::Place &self) { return phi::is_gpu_place(self); })
       .def("is_cpu_place",
-           [](phi::Place &self) { return platform::is_cpu_place(self); })
+           [](phi::Place &self) { return phi::is_cpu_place(self); })
       .def("is_xpu_place",
-           [](phi::Place &self) { return platform::is_xpu_place(self); })
+           [](phi::Place &self) { return phi::is_xpu_place(self); })
       .def("is_ipu_place",
-           [](phi::Place &self) { return platform::is_ipu_place(self); })
-      .def(
-          "is_cuda_pinned_place",
-          [](phi::Place &self) { return platform::is_cuda_pinned_place(self); })
+           [](phi::Place &self) { return phi::is_ipu_place(self); })
+      .def("is_cuda_pinned_place",
+           [](phi::Place &self) { return phi::is_cuda_pinned_place(self); })
       .def("is_custom_place",
-           [](phi::Place &self) { return platform::is_custom_place(self); })
+           [](phi::Place &self) { return phi::is_custom_place(self); })
       .def("gpu_device_id", [](phi::Place &self) { return self.device; })
       .def("xpu_device_id", [](phi::Place &self) { return self.device; })
       .def("ipu_device_id", [](phi::Place &self) { return self.device; })
