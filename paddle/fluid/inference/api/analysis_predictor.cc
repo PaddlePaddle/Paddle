@@ -2756,7 +2756,6 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
       auto scope = executor_->GetScope();
       VLOG(4) << "Set ouput tensor's holder.";
       for (auto name : GetOutputNames()) {
-        // auto out_tensor = GetOutputTensor(name);
         auto out_tensor = scope->FindVar(name)->GetMutable<phi::DenseTensor>();
 
         phi::Allocation *holder =
