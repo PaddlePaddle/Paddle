@@ -14,17 +14,19 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 
+#include <utility>
+
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
 namespace interpreter {
 
-Plan::Plan(const std::vector<std::shared_ptr<Job>>& job_list,
-           const std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>&
+Plan::Plan(std::vector<std::shared_ptr<Job>> job_list,
+           std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>
                type_to_program)
-    : job_list_(job_list),
-      type_to_program_(type_to_program),
+    : job_list_(std::move(job_list)),
+      type_to_program_(std::move(type_to_program)),
       micro_batch_num_(1) {
   for (size_t i = 0; i < job_list_.size(); ++i) {
     const auto& job = job_list_[i];
@@ -40,12 +42,11 @@ Plan::Plan(const std::vector<std::shared_ptr<Job>>& job_list,
   }
 }
 
-Plan::Plan(
-    const std::vector<std::shared_ptr<Job>>& job_list,
-    const std::unordered_map<std::string, std::shared_ptr<::pir::Program>>&
-        type_to_ir_program)
-    : job_list_(job_list),
-      type_to_ir_program_(type_to_ir_program),
+Plan::Plan(std::vector<std::shared_ptr<Job>> job_list,
+           std::unordered_map<std::string, std::shared_ptr<::pir::Program>>
+               type_to_ir_program)
+    : job_list_(std::move(job_list)),
+      type_to_ir_program_(std::move(type_to_ir_program)),
       micro_batch_num_(1) {
   for (size_t i = 0; i < job_list_.size(); ++i) {
     const auto& job = job_list_[i];

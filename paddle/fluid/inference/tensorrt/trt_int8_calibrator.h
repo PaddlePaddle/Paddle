@@ -42,7 +42,7 @@ class TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
                     std::string engine_name,
                     const phi::Place place);
 
-  explicit TRTInt8Calibrator(const std::string& calibration_data);
+  explicit TRTInt8Calibrator(std::string calibration_data);
   ~TRTInt8Calibrator() override;
 
   int getBatchSize() const TRT_NOEXCEPT override;

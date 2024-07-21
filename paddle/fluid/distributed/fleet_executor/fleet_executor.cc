@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/global.h"
@@ -41,8 +42,13 @@ FleetExecutor::FleetExecutor(const std::string& exe_desc_str) : carrier_ids_() {
   InitMessageBus();
 }
 
+<<<<<<< HEAD
+FleetExecutor::FleetExecutor(FleetExecutorDesc exe_desc)
+    : exe_desc_(std::move(exe_desc)) {
+=======
 FleetExecutor::FleetExecutor(const FleetExecutorDesc& exe_desc)
     : exe_desc_(exe_desc), carrier_ids_() {
+>>>>>>> 8b808f1ca1f3b066d25661279d07b83806836d58
   // Message bus will be created and inited only once
   GlobalVal<MessageBus>::Create();
   InitMessageBus();

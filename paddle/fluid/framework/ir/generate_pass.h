@@ -27,7 +27,7 @@ class GeneratePass : public Pass {
   explicit GeneratePass(const std::string& binary_str,
                         const std::string& pass_type = "");
   // from PassDesc/MultiPassDesc
-  explicit GeneratePass(const proto::MultiPassDesc& multi_pass_desc,
+  explicit GeneratePass(proto::MultiPassDesc multi_pass_desc,
                         const std::string& pass_type = "");
 
  protected:
@@ -56,7 +56,7 @@ class VarHelper {
   enum class Type { kInput, kOutput };
 
   explicit VarHelper(const char* name);
-  VarHelper(const std::string& name, Type type);
+  VarHelper(std::string name, Type type);
 
   std::string name_;
   Type type_;

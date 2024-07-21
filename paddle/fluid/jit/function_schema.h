@@ -28,7 +28,7 @@ namespace jit {
 
 class Argument {
  public:
-  explicit Argument(const std::string& name, bool is_out = false);
+  explicit Argument(std::string name, bool is_out = false);
 
   const std::string& Name() const;
 
@@ -58,8 +58,8 @@ class FunctionSchema {
 
 class FunctionInfo {
  public:
-  FunctionInfo(const std::string& func_name,
-               const std::vector<std::string>& param_names,
+  FunctionInfo(std::string func_name,
+               std::vector<std::string> param_names,
                const framework::ProgramDesc& program_desc);
 
   const std::string& FunctionName() const;

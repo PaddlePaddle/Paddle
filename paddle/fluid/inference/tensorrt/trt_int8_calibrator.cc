@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 
+#include <utility>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -28,11 +30,19 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     const std::unordered_map<std::string, size_t>& buffers,
     int batch_size,
     std::string engine_name,
+<<<<<<< HEAD
+    const platform::Place place)
+<<<<<<< HEAD
+    : batch_size_(batch_size), engine_name_(std::move(engine_name)) {
+=======
+=======
     const phi::Place place)
+>>>>>>> 8b808f1ca1f3b066d25661279d07b83806836d58
     : batch_size_(batch_size),
       data_buffers_(),
       data_tensors_(),
       engine_name_(engine_name) {
+>>>>>>> 0d3fe4e7a356c78a77882666211f15a53847830f
   VLOG(4) << "Init a new calibrator: " << engine_name_;
   for (const auto& it : buffers) {
     phi::DenseTensor temp_tensor;
@@ -48,14 +58,18 @@ TRTInt8Calibrator::TRTInt8Calibrator(
   }
 }
 
-TRTInt8Calibrator::TRTInt8Calibrator(const std::string& calib_data)
+TRTInt8Calibrator::TRTInt8Calibrator(std::string calib_data)
     : batch_size_(0),
       calib_running_(false),
       data_is_set_(false),
       done_(true),
+<<<<<<< HEAD
+      calibration_table_(std::move(calib_data)) {}
+=======
       data_buffers_(),
       data_tensors_(),
       calibration_table_(calib_data) {}
+>>>>>>> 0d3fe4e7a356c78a77882666211f15a53847830f
 
 void TRTInt8Calibrator::waitAndSetDone() {
   std::unique_lock<std::mutex> lk(mut_);

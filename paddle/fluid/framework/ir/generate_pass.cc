@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/ir/generate_pass.h"
 
+#include <utility>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/value.h"
@@ -470,9 +472,9 @@ GeneratePass::GeneratePass(const std::string& binary_str,
   VerifyDesc();
 }
 
-GeneratePass::GeneratePass(const proto::MultiPassDesc& multi_pass_desc,
+GeneratePass::GeneratePass(proto::MultiPassDesc multi_pass_desc,
                            const std::string& pass_type)
-    : multi_pass_desc_(multi_pass_desc) {
+    : multi_pass_desc_(std::move(multi_pass_desc)) {
   RegisterType(pass_type);
   VerifyDesc();
 }
@@ -509,8 +511,8 @@ bool GeneratePass::VerifyGraph(const Graph& graph) {
 namespace paddle::framework::ir::generate_pass {
 
 VarHelper::VarHelper(const char* name) : name_(name), type_(Type::kInput) {}
-VarHelper::VarHelper(const std::string& name, Type type)
-    : name_(name), type_(type) {}
+VarHelper::VarHelper(std::string name, Type type)
+    : name_(std::move(name)), type_(type) {}
 
 OpHelper::OpHelper(const char* type, SubgraphHelper* subgraph_helper)
     : type_(type), subgraph_helper_(subgraph_helper) {

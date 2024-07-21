@@ -23,6 +23,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace paddle::flags {
@@ -64,9 +65,9 @@ class Flag {
        FlagType type,
        const void* default_value,
        void* value)
-      : name_(name),
-        description_(description),
-        file_(file),
+      : name_(std::move(name)),
+        description_(std::move(description)),
+        file_(std::move(file)),
         type_(type),
         default_value_(default_value),
         value_(value) {}

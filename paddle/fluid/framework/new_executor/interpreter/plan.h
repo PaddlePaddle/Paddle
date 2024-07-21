@@ -30,11 +30,11 @@ namespace interpreter {
 
 class Plan final {
  public:
-  Plan(const std::vector<std::shared_ptr<Job>>& job_list,
-       const std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>&
+  Plan(std::vector<std::shared_ptr<Job>> job_list,
+       std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>
            type_to_program);
-  Plan(const std::vector<std::shared_ptr<Job>>& job_list,
-       const std::unordered_map<std::string, std::shared_ptr<::pir::Program>>&
+  Plan(std::vector<std::shared_ptr<Job>> job_list,
+       std::unordered_map<std::string, std::shared_ptr<::pir::Program>>
            type_to_ir_program);
 
   ~Plan() = default;

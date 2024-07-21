@@ -43,9 +43,9 @@ using FunctionInfoMap =
 
 class Layer {
  public:
-  Layer(const std::shared_ptr<VariableMap>& params_map,
-        const std::shared_ptr<VariableMap>& attrs_map_,
-        const FunctionInfoMap& info_map,
+  Layer(std::shared_ptr<VariableMap> params_map,
+        std::shared_ptr<VariableMap> attrs_map_,
+        FunctionInfoMap info_map,
         const phi::Place& place);
 
   jit::Function Function(const std::string& name) const;

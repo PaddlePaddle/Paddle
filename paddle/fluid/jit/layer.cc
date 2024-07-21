@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/jit/layer.h"
 
+#include <utility>
+
 #include "paddle/common/errors.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/enforce.h"
@@ -25,13 +27,13 @@
 
 namespace paddle::jit {
 
-Layer::Layer(const std::shared_ptr<VariableMap>& params_map,
-             const std::shared_ptr<VariableMap>& attrs_map,
-             const FunctionInfoMap& info_map,
+Layer::Layer(std::shared_ptr<VariableMap> params_map,
+             std::shared_ptr<VariableMap> attrs_map,
+             FunctionInfoMap info_map,
              const phi::Place& place)
-    : params_map_(params_map),
-      attrs_map_(attrs_map),
-      info_map_(info_map),
+    : params_map_(std::move(params_map)),
+      attrs_map_(std::move(attrs_map)),
+      info_map_(std::move(info_map)),
       place_(place) {
   unit_.reset(new CompilationUnit());
 }
