@@ -227,30 +227,28 @@ void SourceCodePrint::write(const std::string& source_code) {
   }
 }
 
-void Compiler::Build(const Module& module,
-                     const std::string& code,
-                     const bool end) {
-  auto PatternMatch = adt::match{
+void Compiler::Build(const Module& module, const std::string& code) {
+  target_.arch.Match(
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { CompileX86Module(module); },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) { CompileCudaModule(module, code); },
-      [&](common::HygonDCUArchHIP) { CompileHipModule(module, code); }};
-  std::visit(PatternMatch, target_.arch.variant());
-  if (end) {
-    RegisterDeviceModuleSymbol();
-    engine_->AddSelfModule();
-  }
+      [&](common::HygonDCUArchHIP) { CompileHipModule(module, code); });
 }
 
-void Compiler::AppendCX86(const Module& module, const bool end) {
+void Compiler::AppendCX86(const Module& module) {
   VLOG(3) << "Start Compiler::BuildCX86" << module;
   CompileX86Module(module);
-  if (end) {
-    RegisterDeviceModuleSymbol();
-    engine_->AddSelfModule();
-  }
   VLOG(3) << "Over Compiler::BuildCX86";
+}
+
+void Compiler::AppendBroadcastSwitchModule(const ir::Module& module) {
+  engine_->Link<CodeGenSwitchHost>(module);
+}
+
+void Compiler::EndCompile() {
+  RegisterDeviceModuleSymbol();
+  engine_->AddSelfModule();
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
@@ -305,13 +303,12 @@ std::string GetFileContent(const std::string& path) {
 }  // namespace
 
 void Compiler::RegisterDeviceModuleSymbol() {
-  auto PatternMatch =
-      adt::match{[&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                 [&](common::X86Arch) { return; },
-                 [&](common::ARMArch) { return; },
-                 [&](common::NVGPUArch) { RegisterCudaModuleSymbol(); },
-                 [&](common::HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED; }};
-  return std::visit(PatternMatch, target_.arch.variant());
+  return target_.arch.Match(
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { return; },
+      [&](common::ARMArch) { return; },
+      [&](common::NVGPUArch) { RegisterCudaModuleSymbol(); },
+      [&](common::HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED; });
 }
 
 void Compiler::RegisterCudaModuleSymbol() {

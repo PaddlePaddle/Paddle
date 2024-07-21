@@ -175,8 +175,7 @@ void HeterParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   PADDLE_THROW(platform::errors::Unimplemented("Unimplemented function."));
 }
 
-paddle::platform::DeviceContext *HeterParallelContext::GetDeviceContext(
-    int ring_id) {
+phi::DeviceContext *HeterParallelContext::GetDeviceContext(int ring_id) {
   // directly call the implementation of target parallel ctx.
   return node_parallel_ctx_->GetDeviceContext(ring_id);
 }
