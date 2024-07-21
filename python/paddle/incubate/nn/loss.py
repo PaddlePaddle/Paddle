@@ -22,13 +22,15 @@ from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
-    from typing import Literal, TypeAlias
+    from typing import Literal, TypeAlias, Union
 
     from paddle import Tensor
 
     _ReduceModeStringLiteral: TypeAlias = Literal['mean', 'sum', 'none']
     _ReduceModeNumberLiteral: TypeAlias = Literal[0, 1, 2]
-    _ReduceMode: TypeAlias = Union[_ReduceModeStringLiteral, _ReduceModeNumberLiteral]
+    _ReduceMode: TypeAlias = Union[
+        _ReduceModeStringLiteral, _ReduceModeNumberLiteral
+    ]
 
 
 def identity_loss(x: Tensor, reduction: _ReduceMode = "none") -> Tensor:
