@@ -16,6 +16,10 @@ import atexit
 import os
 import platform
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from . import libpaddle_stub as libpaddle  # noqa: F401
 
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepaddle without -U option
