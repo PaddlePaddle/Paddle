@@ -22,6 +22,8 @@ import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 from paddle import base
 
+paddle.enable_static()
+
 
 class TestFunctionalConv3DTransposeError(TestCase):
     batch_size = 4
