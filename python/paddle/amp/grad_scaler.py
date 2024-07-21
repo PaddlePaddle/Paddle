@@ -196,7 +196,7 @@ class AmpScaler:
         check_type(
             var,
             "var",
-            (core.eager.Tensor, paddle.pir.Value),
+            (paddle.Tensor, paddle.pir.Value),
             'AmpScaler.scale()',
         )
 
