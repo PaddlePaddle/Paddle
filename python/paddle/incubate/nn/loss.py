@@ -22,10 +22,14 @@ from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
+    from typing import Literal, TypeAlias
+
     from paddle import Tensor
 
+    _ReduceMode: TypeAlias = Literal['mean', 'sum', 'none']
 
-def identity_loss(x: Tensor, reduction: str | int | None = "none") -> Tensor:
+
+def identity_loss(x: Tensor, reduction: _ReduceMode = "none") -> Tensor:
     r"""Marks a tensor as being part of the loss calculation for IPU.
 
     This operator is used to handle on the (final) loss of a model so that
