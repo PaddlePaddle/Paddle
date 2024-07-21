@@ -1118,23 +1118,7 @@ def decorate(
 @overload
 def decorate(
     models: _ModelsT,
-    optimizers: None,
-    level: _AmpLevelLiteral = ...,
-    dtype: _DTypeLiteral = ...,
-    master_weight: bool | None = ...,
-    save_dtype: _DTypeLiteral | None = ...,
-    master_grad: bool = ...,
-    excluded_layers: (
-        Layer | list[Layer | type[Layer]] | type[Layer] | None
-    ) = ...,
-) -> _ModelsT:
-    ...
-
-
-@overload
-def decorate(
-    models: _ModelsT,
-    *,
+    optimizers: None = ...,
     level: _AmpLevelLiteral = ...,
     dtype: _DTypeLiteral = ...,
     master_weight: bool | None = ...,
