@@ -2254,10 +2254,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "clip") {
-      if (!with_dynamic_shape) {
-        VLOG(3) << "the clip does not support static shape yet";
-        return false;
-      }
       // Paddle-TRT does not support the input tensors: Min and Max
       auto clip_inputs = desc.Inputs();
       if (clip_inputs.find("Min") != clip_inputs.end()) {
@@ -2282,9 +2278,15 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
 
-      if (x_shape.empty()) {
+      auto dtype = x_var_desc->GetDataType();
+      if (dtype != framework::proto::VarType::FP32 &&
+          dtype != framework::proto::VarType::INT32) {
+        return false;
+      }
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.empty())) {
         VLOG(3) << op_type
-                << " op does not support input's dim is 0 in tensorrt.";
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
         return false;
       }
     }
