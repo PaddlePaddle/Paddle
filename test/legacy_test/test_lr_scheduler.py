@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+import os
 import unittest
 
 import numpy as np
@@ -70,7 +71,13 @@ class TestReduceOnPlateauDecay:
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.ReduceOnPlateau(learning_rate=0.5).step("test")
 
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
 
@@ -288,7 +295,13 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                 T_mult=1.0,
             )
 
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
 
@@ -1292,7 +1305,13 @@ class TestLRScheduler(unittest.TestCase):
         ]
 
         for python_func, paddle_api, kwarg in func_api_kwargs:
-            places = [paddle.CPUPlace()]
+            places = []
+            if (
+                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                in ['1', 'true', 'on']
+                or not core.is_compiled_with_cuda()
+            ):
+                places.append(paddle.CPUPlace())
             if core.is_compiled_with_cuda():
                 places.append(paddle.CUDAPlace(0))
 

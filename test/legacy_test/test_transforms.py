@@ -818,7 +818,13 @@ class TestFunctional(unittest.TestCase):
         np_img_gray = (np.random.rand(28, 28, 1) * 255).astype('uint8')
         tensor_img_gray = F.to_tensor(np_img_gray)
 
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.device.is_compiled_with_cuda():
             places.append('gpu')
 
@@ -957,7 +963,13 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_equal(np.array(pil_result), expected)
 
         np_data = np.random.rand(3, 28, 28).astype('float32')
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.device.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:

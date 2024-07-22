@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 from functools import partial
 
@@ -832,7 +833,13 @@ class TestAdamWOpMultiPrecision(unittest.TestCase):
                 optimizer.clear_grad()
 
     def _get_places(self):
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_xpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_xpu()
+        ):
+            places.append('cpu')
         if paddle.is_compiled_with_xpu():
             places.append('xpu')
         return places

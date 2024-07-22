@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 
@@ -175,8 +176,14 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         self.index_shape = [1, 3]
         self.index_np = np.array([[0, 1, 2]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.axis = 0
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -232,8 +239,14 @@ class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
             'int64'
         )
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.axis = 0
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -245,8 +258,14 @@ class TestTakeAlongAxisAPICase2(unittest.TestCase):
         self.index_shape = [1, 3]
         self.index_np = np.array([[0, 1, 2]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.axis = 0
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
