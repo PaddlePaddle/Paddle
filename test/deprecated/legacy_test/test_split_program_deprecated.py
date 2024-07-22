@@ -50,15 +50,15 @@ class TestSplitProgram(unittest.TestCase):
         return main, startup, image, label
 
     def find_startup_vars(self, main_prog, startup_prog):
-        with paddle.pir_utils.OldIrGuard():
-            self.assertEqual(startup_prog.num_blocks, 1)
-            startup_vars = []
-            for op in startup_prog.global_block().ops:
-                for var_name in op.output_arg_names:
-                    var = main_prog.global_block().var(var_name)
-                    if var.persistable:
-                        startup_vars.append(var_name)
-            return startup_vars
+        # with paddle.pir_utils.OldIrGuard():
+        self.assertEqual(startup_prog.num_blocks, 1)
+        startup_vars = []
+        for op in startup_prog.global_block().ops:
+            for var_name in op.output_arg_names:
+                var = main_prog.global_block().var(var_name)
+                if var.persistable:
+                    startup_vars.append(var_name)
+        return startup_vars
 
     def test_split_program(self):
         for p in self.get_places():
@@ -86,79 +86,77 @@ class TestSplitProgram(unittest.TestCase):
         return values
 
     def check_split_program(self, place, use_split=True, seed=100, batch_num=5):
-        with paddle.pir_utils.OldIrGuard():
-            batch_size = 2
+        # with paddle.pir_utils.OldIrGuard():
+        batch_size = 2
 
-            np.random.seed(seed)
-            paddle.seed(seed)
+        np.random.seed(seed)
+        paddle.seed(seed)
 
-            main_prog, startup_prog, image, label = self.get_model(batch_size)
-            startup_vars = self.find_startup_vars(main_prog, startup_prog)
-            exe = paddle.static.Executor(place)
+        main_prog, startup_prog, image, label = self.get_model(batch_size)
+        startup_vars = self.find_startup_vars(main_prog, startup_prog)
+        exe = paddle.static.Executor(place)
 
-            image_np = np.random.random(size=image.shape).astype('float32')
-            label_np = np.random.randint(
-                low=0, high=1000, dtype='int64', size=label.shape
-            )
+        image_np = np.random.random(size=image.shape).astype('float32')
+        label_np = np.random.randint(
+            low=0, high=1000, dtype='int64', size=label.shape
+        )
 
-            scope = paddle.static.Scope()
-            if not use_split:
-                with paddle.static.scope_guard(scope):
-                    exe.run(startup_prog)
-                    for _ in range(batch_num):
-                        exe.run(
-                            main_prog,
-                            feed={image.name: image_np, label.name: label_np},
-                        )
-                return self.get_var_values(scope, startup_vars)
-
-            op_num = len(main_prog.global_block().ops)
-            split_op_indices = [int(op_num / 3.0), int(op_num * 3 / 4.0)]
-            programs, input_vars, output_vars = split_program(
-                main_prog, split_op_indices
-            )
-            op_nums = [0] + split_op_indices + [op_num]
-            op_nums = [
-                op_nums[i + 1] - op_nums[i] for i in range(len(op_nums) - 1)
-            ]
-            num_split = len(split_op_indices) + 1
-            self.assertEqual(len(programs), num_split)
-            self.assertEqual(len(input_vars), num_split)
-            self.assertEqual(len(output_vars), num_split)
-            self.assertEqual(len(programs), len(op_nums))
-            for p, n in zip(programs, op_nums):
-                self.assertEqual(len(p.global_block().ops), n)
-
+        scope = paddle.static.Scope()
+        if not use_split:
             with paddle.static.scope_guard(scope):
                 exe.run(startup_prog)
                 for _ in range(batch_num):
-                    tmp_vars = {image.name: image_np, label.name: label_np}
-                    for i, program in enumerate(programs):
-                        feed_dict = {}
-                        for in_name in input_vars[i]:
-                            if in_name in startup_vars:
-                                continue
-                            self.assertTrue(in_name in tmp_vars)
-                            if tmp_vars[in_name] is not None:
-                                feed_dict[in_name] = tmp_vars[in_name]
-
-                        output_var_values = exe.run(
-                            program,
-                            feed=feed_dict,
-                            fetch_list=output_vars[i],
-                            return_numpy=False,
-                        )
-                        for out_name, out_value in zip(
-                            output_vars[i], output_var_values
-                        ):
-                            if not out_value._is_initialized():
-                                tmp_vars[out_name] = np.ndarray(
-                                    out_value._get_dims()
-                                ).astype('float32')
-                            else:
-                                tmp_vars[out_name] = np.array(out_value)
-
+                    exe.run(
+                        main_prog,
+                        feed={image.name: image_np, label.name: label_np},
+                    )
             return self.get_var_values(scope, startup_vars)
+
+        op_num = len(main_prog.global_block().ops)
+        split_op_indices = [int(op_num / 3.0), int(op_num * 3 / 4.0)]
+        programs, input_vars, output_vars = split_program(
+            main_prog, split_op_indices
+        )
+        op_nums = [0] + split_op_indices + [op_num]
+        op_nums = [op_nums[i + 1] - op_nums[i] for i in range(len(op_nums) - 1)]
+        num_split = len(split_op_indices) + 1
+        self.assertEqual(len(programs), num_split)
+        self.assertEqual(len(input_vars), num_split)
+        self.assertEqual(len(output_vars), num_split)
+        self.assertEqual(len(programs), len(op_nums))
+        for p, n in zip(programs, op_nums):
+            self.assertEqual(len(p.global_block().ops), n)
+
+        with paddle.static.scope_guard(scope):
+            exe.run(startup_prog)
+            for _ in range(batch_num):
+                tmp_vars = {image.name: image_np, label.name: label_np}
+                for i, program in enumerate(programs):
+                    feed_dict = {}
+                    for in_name in input_vars[i]:
+                        if in_name in startup_vars:
+                            continue
+                        self.assertTrue(in_name in tmp_vars)
+                        if tmp_vars[in_name] is not None:
+                            feed_dict[in_name] = tmp_vars[in_name]
+
+                    output_var_values = exe.run(
+                        program,
+                        feed=feed_dict,
+                        fetch_list=output_vars[i],
+                        return_numpy=False,
+                    )
+                    for out_name, out_value in zip(
+                        output_vars[i], output_var_values
+                    ):
+                        if not out_value._is_initialized():
+                            tmp_vars[out_name] = np.ndarray(
+                                out_value._get_dims()
+                            ).astype('float32')
+                        else:
+                            tmp_vars[out_name] = np.array(out_value)
+
+        return self.get_var_values(scope, startup_vars)
 
 
 if __name__ == "__main__":
