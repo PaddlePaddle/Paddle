@@ -179,6 +179,10 @@ bool UnimplementOps(const ::pir::Operation& op) {
 
 bool HaveUnkDim(const ::pir::Operation& op) {
   auto HasNegDim = [](const ::pir::Type& type) {
+    if (!type.isa<::pir::DenseTensorType>()) {
+      // TODO(Hongqing-work): check if tensor array is needed
+      return false;
+    }
     auto tensor_type = type.dyn_cast<::pir::DenseTensorType>();
 
     if (tensor_type) {
@@ -313,6 +317,81 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
   return OpRegistry::Global()->Find(CompatibleInfo::OpName(op)) != nullptr;
 }
 
+std::unordered_set<std::string> CollectValueShapeSymbols(
+    const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  std::unordered_set<std::string> res;
+  const auto& CollectVectorDimExprSymbols =
+      [&](const std::vector<symbol::DimExpr>& dim_exprs) {
+        for (const auto& dim_expr : dim_exprs) {
+          const auto& single_dim_expr_symbols =
+              symbol::CollectDimExprSymbols(dim_expr);
+          res.insert(single_dim_expr_symbols.begin(),
+                     single_dim_expr_symbols.end());
+        }
+      };
+
+  const auto& CollectTensorDimExprSymbols =
+      [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
+        CollectVectorDimExprSymbols(tensor_shape_or_data.shape());
+        if (tensor_shape_or_data.data()) {
+          CollectVectorDimExprSymbols(tensor_shape_or_data.data().value());
+        }
+      };
+
+  shape_or_data.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs& impl) {
+        CollectTensorDimExprSymbols(impl);
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs& impl) {
+        for (const auto& tensor_shape_or_data : impl) {
+          CollectTensorDimExprSymbols(tensor_shape_or_data);
+        }
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs& impl) {
+        // Tensor array no need to collect symbols.
+        return;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr& impl) { return; });
+
+  return res;
+}
+
+bool IsShapeSupported(const ::pir::Operation& op) {
+  if (FLAGS_disable_dyshape_in_train) {
+    return true;
+  }
+  if (!HaveUnkDim(op)) {
+    return true;
+  }
+  auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
+      const_cast<::pir::Operation&>(op).GetParentProgram());
+  std::unordered_set<std::string> input_exprs = [&]() {
+    std::unordered_set<std::string> res;
+    for (const auto& input_value : op.operands_source()) {
+      const auto& single_value_symbol = CollectValueShapeSymbols(
+          shape_analysis.GetShapeOrDataForValue(input_value));
+      input_exprs.insert(single_value_symbol.begin(),
+                         single_value_symbol.end());
+    }
+    return res;
+  }();
+
+  bool outputs_have_new_symbol = [&]() {
+    for (const auto& output_value : op.results()) {
+      const auto& single_value_symbol = CollectValueShapeSymbols(
+          shape_analysis.GetShapeOrDataForValue(output_value));
+      for (const auto& symbol : single_value_symbol) {
+        if (input_exprs.find(symbol) == input_exprs.end()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }();
+
+  return !outputs_have_new_symbol;
+}
+
 #define PD_OP_NAME(op) paddle::dialect::op::name()
 // For op supports AttributeTensor but has handled in
 // pd_to_cinn_pass. Such as cinn_op.reshape, except pd_op.reshape;
@@ -347,10 +426,12 @@ bool IsSupportInCinn(const ::pir::Operation& op) {
   const bool is_denied = IsDeniedInCinn(op);
   const bool is_registered = IsRegisteredInCINN(op);
   const bool is_handled = HasHandledInPass(op);
+  const bool is_shape_supported = IsShapeSupported(op);
   VLOG(5) << op.name() << ": IsDeniedInCinn = " << is_denied
           << ", IsRegisteredInCINN = " << is_registered
-          << ", HasHandledInPass = " << is_handled;
-  return !is_denied && is_registered && is_handled;
+          << ", HasHandledInPass = " << is_handled
+          << ", IsShapeSupported = " << is_shape_supported;
+  return !is_denied && is_registered && is_handled && is_shape_supported;
 }
 }  // namespace
 
@@ -361,77 +442,12 @@ bool CompatibleInfo::IsDeniedForCinn(const ::pir::Operation& op) {
   return flag;
 }
 
-namespace {
-std::unordered_set<std::string> CollectValueShapeSymbols(
-    const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  std::unordered_set<std::string> res;
-  const auto& CollectVectorDimExprSymbols =
-      [&](const std::vector<symbol::DimExpr>& dim_exprs) {
-        for (const auto& dim_expr : dim_exprs) {
-          const auto& single_dim_expr_symbols =
-              symbol::CollectDimExprSymbols(dim_expr);
-          res.insert(single_dim_expr_symbols.begin(),
-                     single_dim_expr_symbols.end());
-        }
-      };
-
-  shape_or_data.Match(
-      [&](const symbol::TensorShapeOrDataDimExprs& impl) {
-        CollectVectorDimExprSymbols(impl.shape());
-      },
-      [&](const symbol::TensorListShapeOrDataDimExprs& impl) {
-        for (const auto& tensor_shape : impl) {
-          CollectVectorDimExprSymbols(tensor_shape.shape());
-        }
-      },
-      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs& impl) {
-        // Tensor array no need to collect symbols.
-        return;
-      },
-      [&](const symbol::NullShapeOrDataDimExpr& impl) { return; });
-
-  return res;
-}
-}  // namespace
-
 bool CompatibleInfo::IsSupportForCinn(const ::pir::Operation& op) {
   const bool not_builtin_op = op.dialect()->name() != "builtin";
-  bool flag = IsSupportInCinn(op) && not_builtin_op;
+  const bool flag = IsSupportInCinn(op) && not_builtin_op;
 
   VLOG(4) << "CompatibleInfo::IsSupportForCinn of " << op.name()
           << " is: " << flag;
-
-  if (flag) {
-    auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
-        const_cast<::pir::Operation&>(op).GetParentProgram());
-    std::unordered_set<std::string> input_exprs = [&]() {
-      std::unordered_set<std::string> res;
-      for (const auto& input_value : op.operands_source()) {
-        const auto& single_value_symbol = CollectValueShapeSymbols(
-            shape_analysis.GetShapeOrDataForValue(input_value));
-        input_exprs.insert(single_value_symbol.begin(),
-                           single_value_symbol.end());
-      }
-      return res;
-    }();
-
-    bool outputs_have_new_symbol = [&]() {
-      for (const auto& output_value : op.results()) {
-        const auto& single_value_symbol = CollectValueShapeSymbols(
-            shape_analysis.GetShapeOrDataForValue(output_value));
-        for (const auto& symbol : single_value_symbol) {
-          if (input_exprs.find(symbol) == input_exprs.end()) {
-            return true;
-          }
-        }
-      }
-      return false;
-    }();
-
-    flag = !outputs_have_new_symbol;
-    VLOG(4) << "CompatibleInfo::IsSupportForCinn of " << op.name()
-            << " with shape dialect is: " << flag;
-  }
   return flag;
 }
 
