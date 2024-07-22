@@ -964,7 +964,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,
-      platform::errors::NotFound(
+      phi::errors::NotFound(
           "Root scope should be set before creating thread scope."));
 
   thread_scope_ = &root_scope_->NewScope();
@@ -1199,7 +1199,7 @@ bool HogwildWorker::CheckBatchNum(int flag) {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -1210,7 +1210,7 @@ bool HogwildWorker::CheckBatchNum(int flag) {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
     } else {

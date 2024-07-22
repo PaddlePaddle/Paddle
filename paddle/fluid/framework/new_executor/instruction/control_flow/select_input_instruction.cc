@@ -106,7 +106,7 @@ class AssignFunctor {
     PADDLE_ENFORCE_EQ(
         true,
         false,
-        platform::errors::PermissionDenied(
+        phi::errors::PermissionDenied(
             "Not support type for assign op with type %s", typeid(T).name()));
   }
 

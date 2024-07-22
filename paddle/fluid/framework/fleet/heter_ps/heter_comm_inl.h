@@ -1512,19 +1512,19 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_EQ(
+      r,
+      XPU_SUCCESS,
+      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
+                            r,
+                            XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r2,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r2,
-                        XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_EQ(
+      r2,
+      XPU_SUCCESS,
+      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
+                            r2,
+                            XPUAPIErrorMsg[r2]));
 #endif
 
   auto accessor_wrapper_ptr =
@@ -1692,19 +1692,19 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_EQ(
+      r,
+      XPU_SUCCESS,
+      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
+                            r,
+                            XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r2,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r2,
-                        XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_EQ(
+      r2,
+      XPU_SUCCESS,
+      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
+                            r2,
+                            XPUAPIErrorMsg[r2]));
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
@@ -1895,19 +1895,19 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_normal_sparse(
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_EQ(
+      r,
+      XPU_SUCCESS,
+      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
+                            r,
+                            XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r2,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r2,
-                        XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_EQ(
+      r2,
+      XPU_SUCCESS,
+      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
+                            r2,
+                            XPUAPIErrorMsg[r2]));
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
@@ -2070,19 +2070,19 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_EQ(
+      r,
+      XPU_SUCCESS,
+      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
+                            r,
+                            XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r2,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r2,
-                        XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_EQ(
+      r2,
+      XPU_SUCCESS,
+      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
+                            r2,
+                            XPUAPIErrorMsg[r2]));
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));

@@ -66,7 +66,7 @@ std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(Scope* scope) {
 void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
   auto* var = scope_->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound("Cannot find %s in scope.", var_name));
+      var, phi::errors::NotFound("Cannot find %s in scope.", var_name));
 
   if (value_2_var_name_.count(value) == 0) {
     value_2_var_name_.emplace(value, var_name);
@@ -320,8 +320,8 @@ void DeepCopyVariable(const Variable* src_var,
         (*dst_var) = nullptr;
         return;
       } else {
-        PADDLE_THROW(platform::errors::PermissionDenied(
-            "DenseTensor shouldn't be null"));
+        PADDLE_THROW(
+            phi::errors::PermissionDenied("DenseTensor shouldn't be null"));
       }
     }
     framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
@@ -341,8 +341,8 @@ void DeepCopyVariable(const Variable* src_var,
         (*dst_var) = nullptr;
         return;
       } else {
-        PADDLE_THROW(platform::errors::PermissionDenied(
-            "SelectedRows shouldn't be null"));
+        PADDLE_THROW(
+            phi::errors::PermissionDenied("SelectedRows shouldn't be null"));
       }
     }
     framework::TensorCopy(src_t, src_t.place(), dst_t);
@@ -354,8 +354,8 @@ void DeepCopyVariable(const Variable* src_var,
         (*dst_var) = nullptr;
         return;
       } else {
-        PADDLE_THROW(platform::errors::PermissionDenied(
-            "TensorArray shouldn't be null"));
+        PADDLE_THROW(
+            phi::errors::PermissionDenied("TensorArray shouldn't be null"));
       }
     }
     dst_tensor_array->resize(src_tensor_array.size());
