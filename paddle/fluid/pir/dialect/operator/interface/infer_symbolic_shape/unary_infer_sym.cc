@@ -325,6 +325,10 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   }();
 
   const auto &restore_ind = [&]() {
+    if (op->operand_source(1)) {
+      return symbol::TensorShapeOrDataDimExprs(
+          {infer_context->GetNextSymName(), 1});
+    }
     return symbol::TensorShapeOrDataDimExprs({num_rois, 1});
   }();
 

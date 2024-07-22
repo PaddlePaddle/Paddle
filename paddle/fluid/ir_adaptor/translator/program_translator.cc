@@ -77,13 +77,13 @@ const TCValue& TranslationContext::at(const TCKey& key) const {
   }
   PADDLE_ENFORCE_NE(it,
                     container_.end(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "param %s should exists in TranslationContext", key));
   const auto& values = it->second;
   PADDLE_ENFORCE_NE(
       values.size(),
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "param %s should have size > 0, but get:%d", key, values.size()));
   return values.back();
 }
@@ -103,7 +103,7 @@ size_t TranslationContext::count(const TCKey& key) const {
   PADDLE_ENFORCE_NE(
       values.size(),
       0u,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "param %s should have size > 0, but get:%d", key, values.size()));
   return values.size();
 }
@@ -199,7 +199,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
   VLOG(8) << "=============>start to translate a block: " << &src_block;
   PADDLE_ENFORCE(
       (src_block.OpSize() >= end_id) && (start_id <= end_id),
-      platform::errors::NotFound(
+      phi::errors::NotFound(
           "Translation of Block needs to meet the requirements of start_id <= "
           "end_id <= block_size, but get start_id=%d, end_id=%d, block_size=%d",
           start_id,
@@ -213,7 +213,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
 
     PADDLE_ENFORCE_EQ(unsupported_ops.count(op->Type()),
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Not support translated %s op", op->Type()));
 
     if (op->Type() == "conditional_block") {
