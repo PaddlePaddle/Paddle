@@ -677,12 +677,19 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
   // TODO(GhostScreaming): Inplace outputs are initialized, just set their
   // dist_attr.
   if (out->size() == out_size) {
-    VLOG(3) << "Outputs are inplace vector Tensors, just set their dist_attrs "
-            << "according to InferSPMD output result.";
+    VLOG(3) << "Outputs are inplace vector Tensors, SKIP set dist_attr for out "
+            << "to avoid changing the inplaced input";
     for (size_t i = 0; i < out_size; ++i) {
       results[i] =
           static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
-      results[i]->unsafe_set_dist_attr(dist_attrs[i]);
+      continue;
+      // auto t =
+      //     static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+      // auto dist_t = std::make_shared<phi::distributed::DistTensor>(
+      //     t->shared_value(), t->dims(), dist_attrs[i]);
+      // out->at(i) = Tensor();
+      // out->at(i).set_impl(dist_t);
+      // results[i] = dist_t.get();
     }
   } else {
     out->reserve(out_size);
