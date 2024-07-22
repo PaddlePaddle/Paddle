@@ -146,7 +146,8 @@ platform::DeviceContext* ParseDeviceContext(
               static_cast<phi::distributed::NCCLCommContext*>(comm_context)
                   ->GetDevContext());
           dev_ctx->SetCommContext(comm_context);
-          if (op_name.compare(paddle::dialect::CReducescatterOp::name()) == 0) {
+          if (op_name.compare(paddle::dialect::CReducescatterOp::name()) == 0 ||
+              op_name.compare(paddle::dialect::CBroadcastOp::name()) == 0) {
             return dev_ctx;
           }
         } else {
