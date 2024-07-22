@@ -194,7 +194,7 @@ def transpose_converter(network, paddle_op, inputs):
     return transposed_tensor
 
 
-@converter_registry.register("pd_op.full")
+@converter_registry.register("pd_op.full", trt_version="8.x")
 def full_converter(network, paddle_op, inputs):
     shape = paddle_op.attrs()["shape"]
     value = paddle_op.attrs().get("value", 1.0)  # 默认值为1.0

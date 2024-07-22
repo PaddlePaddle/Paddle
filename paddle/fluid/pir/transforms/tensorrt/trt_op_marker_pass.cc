@@ -629,8 +629,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     
 
 #undef ADD_PATTERN
-    ps.Add(std::make_unique<Pool2dOpPattern>(context));
-    ps.Add(std::make_unique<Conv2dOpPattern>(context));
+    // ps.Add(std::make_unique<Pool2dOpPattern>(context));
+    // ps.Add(std::make_unique<Conv2dOpPattern>(context));
     ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
     ps.Add(std::make_unique<FusedConv2dAddActOpPattern>(context));
     ps.Add(std::make_unique<DepthwiseConv2dOpPattern>(context));
