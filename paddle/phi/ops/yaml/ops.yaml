@@ -643,6 +643,16 @@
     func : box_coder
   optional : prior_box_var
 
+- op : broadcast
+  args : (Tensor x, int ring_id = 0, int root = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistBroadcastInferMeta
+    param: [x]
+  kernel :
+    func : broadcast
+    param: [x, root]
+
 - op : broadcast_tensors
   args: (Tensor[] input)
   output: Tensor[]{input.size()}
