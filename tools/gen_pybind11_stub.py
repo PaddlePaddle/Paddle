@@ -14,10 +14,15 @@
 
 from __future__ import annotations
 
+import argparse
 import functools
 import inspect
 import keyword
 import logging
+import os
+import shutil
+import tempfile
+from pathlib import Path
 
 from pybind11_stubgen import (
     CLIArgs,
@@ -30,7 +35,7 @@ from pybind11_stubgen import (
 
 
 def patch_pybind11_stubgen_printer():
-    # patch name with suffix '_' if `name` is a keyword like `in`
+    # patch name with suffix '_' if `name` is a keyword like `in` to `in_`
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -48,7 +53,7 @@ def patch_pybind11_stubgen_printer():
         if inspect.isfunction(value) and name.startswith('print_'):
             setattr(Printer, name, decorator(getattr(Printer, name)))
 
-    # patch invalid exp with `"` as a `typing.Any`
+    # patch invalid exp with `"xxx"` as a `typing.Any`
     def print_invalid_exp(self, invalid_expr) -> str:
         if self.invalid_expr_as_ellipses:
             return "..."
@@ -57,7 +62,7 @@ def patch_pybind11_stubgen_printer():
     Printer.print_invalid_exp = print_invalid_exp
 
 
-def main(
+def gen_stub(
     output_dir: str, module_name: str, ignore_all_errors: bool = False
 ) -> None:
     logging.basicConfig(
@@ -106,11 +111,65 @@ def main(
     )
 
 
-if __name__ == '__main__':
-    patch_pybind11_stubgen_printer()
+def parse_args():
+    parser = argparse.ArgumentParser()
 
-    main(
-        output_dir='/home/shun/venv38dev/lib/python3.8/site-packages/',
-        module_name='paddle.base.core',
-        ignore_all_errors=True,
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        type=str,
+        default="python/paddle/",
     )
+    parser.add_argument(
+        "-m",
+        "--module-name",
+        type=str,
+        default="",
+    )
+
+    parser.add_argument(
+        "--is-dir",
+        default=False,
+        action="store_true",
+        help="If generate a dir instead of a file",
+    )
+
+    parser.add_argument(
+        "--ignore-all-errors",
+        default=False,
+        action="store_true",
+        help="Ignore all errors during module parsing",
+    )
+
+    args = parser.parse_args()
+
+    return args
+
+
+def main():
+    patch_pybind11_stubgen_printer()
+    args = parse_args()
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        gen_stub(
+            output_dir=tmpdirname,  # like: 'Paddle/python/',
+            module_name=args.module_name,  # like: 'paddle.base.libpaddle',
+            ignore_all_errors=args.ignore_all_errors,
+        )
+        paths = args.module_name.split('.')
+
+        if args.is_dir:
+            _path_dst = Path(args.output_dir).joinpath(paths[-1])
+            if _path_dst.exists():
+                shutil.rmtree(str(_path_dst))
+        else:
+            paths[-1] += '.pyi'
+            _path_dst = Path(args.output_dir).joinpath(paths[-1])
+            if _path_dst.exists():
+                os.remove(str(_path_dst))
+
+        shutil.move(str(Path(tmpdirname).joinpath(*paths)), args.output_dir)
+
+
+if __name__ == '__main__':
+    main()
