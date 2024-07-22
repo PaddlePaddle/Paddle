@@ -34,12 +34,6 @@ _int_dtype_ = [
     core.VarDesc.VarType.INT32,
     core.VarDesc.VarType.INT64,
     core.VarDesc.VarType.BOOL,
-    core.DataType.UINT8,
-    core.DataType.INT8,
-    core.DataType.INT16,
-    core.DataType.INT32,
-    core.DataType.INT64,
-    core.DataType.BOOL,
 ]
 
 
