@@ -362,7 +362,6 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16})},
-      {"embedding_sparse_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"equal",
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,

@@ -107,7 +107,9 @@ std::shared_ptr<::pir::Program> BuildReduceSumProgram(int spatial_size,
 // Get the tile size configuration for the given dimension lower bound
 // dynamically.
 int get_tile_size_config(int dimension_lower) {
-  if (dimension_lower < 128) {
+  if (dimension_lower < 32) {
+    return 30;
+  } else if (dimension_lower < 128) {
     return 32;
   } else if (dimension_lower < 512) {
     return 128;
@@ -137,18 +139,23 @@ TEST(ConfigSearcher, TestReducePipeline) {
   constexpr int kMaxThreadsPerBlock = 1024;
 
   // Define the search space bounds and sampling probabilities.
-  constexpr int spatial_left_bound = 32;
-  constexpr int spatial_right_bound = 32;
-  constexpr int reduce_left_bound = 32;
-  constexpr int reduce_right_bound = 32;
-  constexpr bool is_spatial_dynamic = false;
+  constexpr int spatial_left_bound = 2;
+  constexpr int spatial_right_bound = 2;
+  constexpr int reduce_left_bound = 2;
+  constexpr int reduce_right_bound = 2;
+  constexpr bool is_spatial_dynamic = true;
   constexpr bool is_reduce_dynamic = true;
   // now each has the same weight
   constexpr double s_w = 0.05;
   constexpr double r_w = 0.05;
   constexpr double sampling_prob = 1.0;
   constexpr int kMaxSamplingTimes = 560;
-  constexpr int kRepeats = 32;
+  constexpr int kGraphNum = 25;
+  constexpr int kRepeats = 5;
+  constexpr int kInnerTestNum = 1;
+  constexpr int kOuterTestNum = 3;
+  constexpr int kMaxTestNum = 3;
+  constexpr float kEarlyStopThreshold = 1.2;
 
   // Define the initial grid size for the spatial and reduction dimensions
   int spatial_tile_config = 0, reduce_tile_config = 0;
@@ -279,30 +286,90 @@ TEST(ConfigSearcher, TestReducePipeline) {
             ::common::errors::Unavailable("Not found the best candidate."));
       }
 
-      // Use the config in group_tile_config.cc
-      cinn::ir::search::ScoreType best_score = 0;
-      cinn::ir::search::CandidateType default_candidate;
-      cinn::ir::search::ScoreType baseline_score = 0;
-      for (int i = 0; i < 5; i++) {
-        FLAGS_tile_config_policy = "default";
-        cinn::ir::search::ScoreType temp_baseline_score =
-            (*obj_func)(default_candidate);
-        FLAGS_tile_config_policy = "search";
-        cinn::ir::search::ScoreType temp_best_score =
-            (*obj_func)(best_candidate);
-        best_score = (best_score == 0) ? temp_best_score
-                                       : std::min(best_score, temp_best_score);
-        baseline_score = (baseline_score == 0)
-                             ? temp_baseline_score
-                             : std::min(baseline_score, temp_baseline_score);
-      }
-      LOG(INFO) << "Best score: " << best_score;
-      LOG(INFO) << "Baseline score: " << baseline_score;
+      cinn::ir::search::ScoreType record_baseline_score;
+      cinn::ir::search::ScoreType record_best_score;
+      double record_best_variance = 0;
+      // start test loop
+      for (int current_test_num = 0; current_test_num < kMaxTestNum;
+           ++current_test_num) {
+        std::vector<cinn::ir::search::ScoreType> vec_best;
+        std::vector<cinn::ir::search::ScoreType> vec_baseline;
+        // start outer loop
+        for (int i = 0; i < kOuterTestNum; ++i) {
+          cinn::ir::search::CandidateType default_candidate;
+          std::vector<cinn::ir::search::ScoreType> vec_best_score;
+          std::vector<cinn::ir::search::ScoreType> vec_baseline_score;
+          int compute_size = 1;
+          for (int i = 0; i < iter_space_type.size(); ++i) {
+            compute_size *= bucket_info.space[i].lower_bound;
+          }
+          // start inner loop
+          for (int i = 0; i < kInnerTestNum; i++) {
+            FLAGS_tile_config_policy = "default";
+            cinn::ir::search::ScoreType temp_baseline_score =
+                (*obj_func)(default_candidate);
+            FLAGS_tile_config_policy = "search";
+            cinn::ir::search::ScoreType temp_best_score =
+                (*obj_func)(best_candidate);
+            vec_best_score.push_back(temp_best_score);
+            vec_baseline_score.push_back(temp_baseline_score);
+          }
+          float best_total_time = std::accumulate(
+              vec_best_score.begin(), vec_best_score.end(), 0.0);
+          float baseline_total_time = std::accumulate(
+              vec_baseline_score.begin(), vec_baseline_score.end(), 0.0);
+          float best_avg_time = best_total_time / kInnerTestNum;
+          float baseline_avg_time = baseline_total_time / kInnerTestNum;
+          vec_best.push_back(best_avg_time);
+          vec_baseline.push_back(baseline_avg_time);
+        }
+        cinn::ir::search::ScoreType best_mean =
+            std::accumulate(vec_best.begin(), vec_best.end(), 0.0) /
+            kOuterTestNum;
+        cinn::ir::search::ScoreType baseline_mean =
+            std::accumulate(vec_baseline.begin(), vec_baseline.end(), 0.0) /
+            kOuterTestNum;
+        double best_variance = 0.0;
+        double baseline_variance = 0.0;
+
+        for (int i = 0; i < kOuterTestNum; i++) {
+          best_variance = best_variance + pow(vec_best[i] - best_mean, 2);
+          baseline_variance =
+              baseline_variance + pow(vec_baseline[i] - baseline_mean, 2);
+        }
+        best_variance = pow(best_variance / kOuterTestNum, 0.5);
+        baseline_variance = pow(baseline_variance / kOuterTestNum, 0.5);
+
+        if ((best_variance < kEarlyStopThreshold) &&
+            (baseline_variance < kEarlyStopThreshold)) {
+          record_baseline_score = baseline_mean;
+          record_best_score = best_mean;
+          record_best_variance = best_variance + baseline_variance;
+          break;
+        } else {
+          if (record_best_variance == 0) {
+            record_best_variance = best_variance + baseline_variance;
+            record_baseline_score = baseline_mean;
+            record_best_score = best_mean;
+          } else if ((best_variance + baseline_variance) <
+                     record_best_variance) {
+            record_best_variance = best_variance + baseline_variance;
+            record_baseline_score = baseline_mean;
+            record_best_score = best_mean;
+          }
+        }
+      }  // end of test_num loop
+
+      cinn::ir::search::ScoreType optim_percentage =
+          (1 / (record_best_score)-1 / record_baseline_score) *
+          record_baseline_score;
+      LOG(INFO) << "Best score: " << record_best_score / kGraphNum;
+      LOG(INFO) << "Baseline score: " << record_baseline_score / kGraphNum;
+      LOG(INFO) << "variance: " << (record_best_variance / 2);
+      LOG(INFO) << "optim percentage: " << optim_percentage;
       LOG(INFO) << "Best candidate: " << best_candidate[0] << " "
                 << best_candidate[1] << " " << best_candidate[2];
       // Write to csv file
-      cinn::ir::search::ScoreType optim_percentage =
-          (1 / best_score - 1 / baseline_score) * baseline_score;
       std::stringstream ss;
       ss << " { ";
       for (int i = 0; i < iter_space_type.size(); ++i) {
@@ -312,9 +379,10 @@ TEST(ConfigSearcher, TestReducePipeline) {
       }
       ss << "} ";
       os << ss.str() << " \t ";
-      os << std::setprecision(3) << "  " << baseline_score << " \t "
-         << best_score << " \t " << optim_percentage << "\n";
-    }
-  }
+      os << std::setprecision(3) << "  " << record_baseline_score / kGraphNum
+         << " \t " << record_best_score / kGraphNum << " \t "
+         << optim_percentage << "\n";
+    }  // end of r_dimension_lower loop
+  }    // end of s_dimention_lower loop
   os.close();
 }
