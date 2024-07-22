@@ -888,6 +888,7 @@ set_tests_properties(test_imperative_resnet PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES TIMEOUT
                                                                        200)
 set_tests_properties(test_imperative_se_resnext PROPERTIES TIMEOUT 200)
+set_tests_properties(test_stride PROPERTIES TIMEOUT 120)
 set_tests_properties(test_strided_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_translated_layer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pir_translated_layer PROPERTIES TIMEOUT 120)
@@ -1020,6 +1021,7 @@ set(TEST_CINN_OPS
     test_elementwise_min_op
     test_take_along_axis_op
     test_transpose_op
+    test_stride
     test_strided_slice_op
     test_pad_op
     test_pool2d_op
