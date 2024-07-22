@@ -668,18 +668,18 @@ class Engine:
                         )
                         self._optimizer = paddle.static.amp.decorator.OptimizerWithMixedPrecision(
                             optimizer=self._optimizer,
-                            amp_lists=amp_lists,
+                            amp_lists=None,
                             level=self._strategy.amp.level,
                             dtype=self._strategy.amp.dtype,
-                            init_loss_scaling=self._strategy.amp.init_loss_scaling,
-                            incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
-                            decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
-                            incr_ratio=self._strategy.amp.incr_ratio,
-                            decr_ratio=self._strategy.amp.decr_ratio,
-                            use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
-                            use_amp_guard=self._strategy.amp.use_fp16_guard,
-                            use_master_grad=self._strategy.amp.use_dynamic_loss_scaling,
-                            use_promote=self._strategy.amp.use_promote,
+                            init_loss_scaling=1.0,
+                            incr_every_n_steps=None,
+                            decr_every_n_nan_or_inf=None,
+                            incr_ratio=None,
+                            decr_ratio=None,
+                            use_dynamic_loss_scaling=False,
+                            use_amp_guard=None,
+                            use_master_grad=self._strategy.amp.use_master_grad,
+                            use_promote=None,
                         )
                         # bfloat16 needs no scaler
                         scaler = paddle.amp.GradScaler(
@@ -695,6 +695,8 @@ class Engine:
                         scaled = scaler.scale(loss)
                         scaler.minimize(self._optimizer, scaled)
                         # print('after minimize', dist_program, flush=1)
+
+                        # self._optimizer.minimize(loss, startup_program=startup_program)
 
                     else:
                         params_grads = (

@@ -166,17 +166,25 @@ class TestSimpleNetForSemiAutoParallel:
                     level=self._amp_level,
                     dtype=self._amp_dtype,
                     enable=self._amp,
+                    use_promote=False,
                 ):
                     out = layer(image)
                     loss = loss_fn(out, label)
                 scaled = scaler.scale(loss)
                 # if paddle.distributed.get_rank() == 0:
                 #     print('dy_loss', loss, loss._md5sum(), flush=1)
+
                 loss_list.append(loss.numpy())
                 scaled.backward()
                 scaler.step(opt)
                 scaler.update()
                 opt.clear_grad()
+
+                # loss_list.append(loss.numpy())
+                # loss.backward()
+                # opt.step()
+                # opt.clear_grad()
+
         return np.array(loss_list)
 
     def test_mp_demo_net(self):
@@ -186,14 +194,14 @@ class TestSimpleNetForSemiAutoParallel:
 
         self.set_random_seed(self._seed)
         dy_layer = DemoNet(self.mesh)
-        dy_opt = paddle.optimizer.SGD(
+        dy_opt = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=dy_layer.parameters()
         )
 
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
         self.set_random_seed(self._seed)
         dy2static_layer = DemoNet(self.mesh)
-        dy2static_opt = paddle.optimizer.SGD(
+        dy2static_opt = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=dy2static_layer.parameters()
         )
         dist_dataloader = dist.shard_dataloader(
@@ -214,14 +222,14 @@ class TestSimpleNetForSemiAutoParallel:
 
         self.set_random_seed(self._seed)
         dy_layer = DPDemoNet(self.mesh)
-        dy_opt = paddle.optimizer.SGD(
+        dy_opt = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=dy_layer.parameters()
         )
 
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
         self.set_random_seed(self._seed)
         dy2static_layer = DPDemoNet(self.mesh)
-        dy2static_opt = paddle.optimizer.SGD(
+        dy2static_opt = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=dy2static_layer.parameters()
         )
         dist_dataloader = dist.shard_dataloader(
@@ -257,14 +265,14 @@ class TestSimpleNetForSemiAutoParallel:
 
         self.set_random_seed(self._seed)
         dy_layer = PPDemoNet(mesh1, mesh2)
-        dy_opt = paddle.optimizer.SGD(
+        dy_opt = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=dy_layer.parameters()
         )
 
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
         self.set_random_seed(self._seed)
         dy2static_layer = PPDemoNet(mesh1, mesh2)
-        dy2static_opt = paddle.optimizer.SGD(
+        dy2static_opt = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=dy2static_layer.parameters()
         )
         dist_dataloader = dist.shard_dataloader(
