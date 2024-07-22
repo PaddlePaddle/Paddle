@@ -79,9 +79,13 @@ class TestLoDTensorArrayStack(unittest.TestCase):
         self.output_vars = [output]
 
     def run_check(self, executor, scope):
-        result = executor.run(self.program, fetch_list=self.output_vars, scope=scope)
+        result = executor.run(
+            self.program, fetch_list=self.output_vars, scope=scope
+        )
         for i, output in enumerate(self.outputs):
-            np.allclose(result[i], output, atol=0)
+            np.allclose(
+                result[i], output, atol=0
+            )
 
     def test_cpu(self):
         scope = core.Scope()
