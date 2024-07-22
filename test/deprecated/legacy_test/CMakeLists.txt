@@ -467,7 +467,6 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
-set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 
 py_test_modules(
   test_imperative_ocr_attention_model MODULES
@@ -609,7 +608,6 @@ if(NOT WIN32)
 endif()
 
 # setting timeout value as 15S
-set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_lod_tensor_to_selected_rows_deprecated
                      PROPERTIES TIMEOUT 200)
 
@@ -709,7 +707,6 @@ set(STATIC_BUILD_TESTS
     test_fuse_bn_act_pass_deprecated
     test_layer_norm_op_deprecated
     test_lookup_table_v2_op_deprecated
-    test_momentum_op
     test_momentum_op_deprecated
     test_nce_deprecated
     test_sparse_conv_op

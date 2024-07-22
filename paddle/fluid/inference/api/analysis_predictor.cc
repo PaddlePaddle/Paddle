@@ -2746,7 +2746,20 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   inference::DisplayMemoryInfo(place_, "after run");
 
 #ifdef PADDLE_WITH_XPU
-  if (config_.use_xpu_ && infer_xpu_ctx != nullptr) {
+  if (config_.use_xpu_ && infer_xpu_ctx != nullptr &&
+      config_.xpu_config_.l3_autotune_size > 0) {
+    static std::once_flag set_output_holder_map;
+    std::call_once(set_output_holder_map, [&]() {
+      auto scope = executor_->GetScope();
+      VLOG(4) << "Set ouput tensor's holder.";
+      for (auto name : GetOutputNames()) {
+        auto out_tensor = scope->FindVar(name)->GetMutable<phi::DenseTensor>();
+
+        phi::Allocation *holder =
+            reinterpret_cast<phi::DenseTensor *>(out_tensor)->Holder().get();
+        infer_xpu_ctx->SetOutHolder(holder);
+      }
+    });
     infer_xpu_ctx->L3CacheAutotune();
   }
 #endif

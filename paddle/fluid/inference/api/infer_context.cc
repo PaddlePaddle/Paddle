@@ -260,18 +260,28 @@ void InferXPUContext::L3CacheAutotune() {
         phi::Allocation* l3_holder =
             new phi::Allocation(l3_block->data(), l3_block->size(), place);
         holder_map_[holder] = std::make_pair(l3_holder, true);
+
+        if (output_holder_set_.find(holder) != output_holder_set_.end()) {
+          VLOG(4) << "Insert output tensor's l3 holder:" << l3_holder->ptr();
+          SetOutHolder(l3_holder);
+        }
       }
     }
   } else {
     for (auto& holders : holder_map_) {
       auto* holder = holders.first;
       auto& holder_pair = holders.second;
-      if (!holder_pair.second) {
+      if (!holder_pair.second &&
+          output_holder_set_.find(holder) == output_holder_set_.end()) {
         swap(*holder, *(holder_pair.first));
         holder_pair.second = true;
       }
     }
   }
+}
+
+void InferXPUContext::SetOutHolder(phi::Allocation* holder) {
+  output_holder_set_.insert(holder);
 }
 #endif
 
