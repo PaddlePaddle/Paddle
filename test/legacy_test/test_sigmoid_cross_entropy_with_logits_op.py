@@ -351,7 +351,10 @@ class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
                     [[1, 1, 1, 1]],
                     base.CPUPlace(),
                 )
-                paddle.nn.functional.binary_cross_entropy_with_logits(x1, lab1)
+                with paddle.pir_utils.OldIrGuard():
+                    paddle.nn.functional.binary_cross_entropy_with_logits(
+                        x1, lab1
+                    )
 
             self.assertRaises(TypeError, test_Variable)
 
