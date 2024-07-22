@@ -1063,6 +1063,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_bincount_op
     test_batch_norm_op
+    test_psroi_pool_op
     test_nce
     test_layer_norm_op
     test_eigh_op

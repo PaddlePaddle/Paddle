@@ -16,8 +16,6 @@ from __future__ import annotations
 from functools import cached_property
 from typing import TypeVar
 
-from typing_extensions import Self
-
 import paddle
 from paddle.amp.auto_cast import amp_state
 from paddle.base.data_feeder import convert_dtype
@@ -34,12 +32,27 @@ DynamicSymbolT = TypeVar("DynamicSymbolT")
 SOT_INFER_META_INNER_VAR = "___SOT_INFER_META_INNER_VAR"
 
 
-class SymbolicInt(metaclass=Singleton):
+class SymbolicValue(metaclass=Singleton):
     def __repr__(self) -> str:
-        return "SymbolicInt()"
+        return f"{self.__class__.__name__}()"
 
-    def __str__(self) -> str:
-        return "SymbolicInt()"
+    def get_static_type(self) -> type:
+        raise NotImplementedError("get_py_type is not implemented.")
+
+
+class SymbolicBool(SymbolicValue):
+    def get_static_type(self) -> type:
+        return bool
+
+
+class SymbolicInt(SymbolicValue):
+    def get_static_type(self) -> type:
+        return int
+
+
+class SymbolicFloat(SymbolicValue):
+    def get_static_type(self) -> type:
+        return float
 
 
 class MetaInfo:
@@ -72,7 +85,7 @@ class MetaInfo:
             for dim in self.shape
         ]
 
-    def with_dynamic_axes(self, dynamic_axes: list[int]) -> Self:
+    def with_dynamic_axes(self, dynamic_axes: list[int]) -> MetaInfo:
         shape = [
             SymbolicInt() if i in dynamic_axes else dim
             for i, dim in enumerate(self.shape)
