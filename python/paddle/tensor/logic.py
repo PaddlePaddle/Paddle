@@ -495,7 +495,24 @@ def allclose(
             True)
     """
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.allclose(x, y, rtol, atol, equal_nan)
+    elif in_pir_mode():
+        check_variable_and_dtype(
+            x, "input", ['float16', 'float32', 'float64'], 'allclose'
+        )
+        check_variable_and_dtype(
+            y, "input", ['float16', 'float32', 'float64'], 'allclose'
+        )
+        if not isinstance(rtol, (float, paddle.pir.Value)):
+            raise TypeError(
+                f"Type of input rtol must be float, but received type {type(rtol)}"
+            )
+        if not isinstance(atol, (float, paddle.pir.Value)):
+            raise TypeError(
+                f"Type of input atol must be float, but received type {type(atol)}"
+            )
+        check_type(equal_nan, 'equal_nan', bool, 'allclose')
         return _C_ops.allclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(
