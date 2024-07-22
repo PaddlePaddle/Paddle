@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 TEST(Device, DeviceContextWithCUDAGraph) {
-  using paddle::platform::DeviceContext;
+  using phi::DeviceContext;
   using phi::DeviceContextPool;
   using phi::GPUContext;
   using phi::GPUPlace;

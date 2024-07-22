@@ -37,7 +37,7 @@ class FutureWrapper {
     PADDLE_ENFORCE_EQ(
         PyGILState_Check(),
         false,
-        platform::errors::Fatal(
+        phi::errors::Fatal(
             "GIL must be released before fut.wait(), otherwise fut_.get() "
             "blocking will cause the service to fail to "
             "process RPC requests, leading to deadlock"));

@@ -110,6 +110,10 @@ def mean_all_net1(x):
     return paddle._C_ops.mean_all(x)
 
 
+def lerp_net(x, y, weight):
+    return paddle.lerp(x, y, weight)
+
+
 group_norm1 = paddle.nn.GroupNorm(num_channels=128, num_groups=32)
 
 
@@ -647,6 +651,127 @@ class TestPrimMeanAll(TestPrimBase):
         self.net = mean_all_net1
         self.necessary_ops = "pd_op.mean_all"
         self.enable_cinn = False
+
+
+class TestPrimThree(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [300, 2048]
+        self.shape_y = [300, 2048]
+        self.shape_z = [1]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, 2048]
+        self.init_y_shape = [None, 2048]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = lerp_net
+        self.necessary_ops = "pd_op.lerp"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+    def base_net(self, flag=None):
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        z = paddle.to_tensor(self.z)
+        if flag == "prim":
+            core._set_prim_all_enabled(True)
+            fn = apply_to_static(
+                self.net,
+                use_cinn=self.enable_cinn,
+                input_spec=[
+                    InputSpec(shape=self.init_x_shape, dtype=self.dtype_x),
+                    InputSpec(shape=self.init_y_shape, dtype=self.dtype_y),
+                    InputSpec(shape=self.init_z_shape, dtype=self.dtype_z),
+                ],
+            )
+            fn.eval()
+        else:
+            fn = self.net
+        res = fn(x, y, z)
+
+        if flag == "prim":
+            ops = [
+                op.name()
+                for op in fn.program_cache.last()[-1][-1]
+                .infer_program.program.global_block()
+                .ops
+            ]
+            assert self.necessary_ops not in ops
+            core._set_prim_all_enabled(False)
+        return res
+
+    def test_prim_all_dynamic(self):
+        res_ref = self.base_net()
+        res = self.base_net("prim")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=self.tol)
+
+
+class TestPrimLerp1(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [10, 1, 10, 5, 5]
+        self.shape_y = [10, 5, 1, 5, 5]
+        self.shape_z = [1]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None, None, 5, 5]
+        self.init_y_shape = [None, None, None, 5, 5]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = lerp_net
+        self.necessary_ops = "pd_op.lerp"
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimLerp2(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [10, 10, 5, 5]
+        self.shape_y = [10, 10, 5, 5]
+        self.shape_z = [5]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None, 5, 5]
+        self.init_y_shape = [None, None, 5, 5]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = lerp_net
+        self.necessary_ops = "pd_op.lerp"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimLerp3(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [10, 5, 10, 1, 5]
+        self.shape_y = [10, 5, 10, 5, 1]
+        self.shape_z = [1]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None, None, 1, 5]
+        self.init_y_shape = [None, None, None, 5, 1]
+        self.init_z_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = lerp_net
+        self.necessary_ops = "pd_op.lerp"
+        self.enable_cinn = False
+        self.tol = 1e-5
 
 
 class TestPrimLogLoss1(TestPrimTwo):

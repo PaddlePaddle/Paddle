@@ -271,141 +271,146 @@ class XPUOpTest(OpTest):
         user_defined_grad_outputs=None,
         check_dygraph=False,
     ):
-        self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else {}
-        op_outputs = self.outputs if hasattr(self, "outputs") else {}
-        op_attrs = self.attrs if hasattr(self, "attrs") else {}
+        with paddle.pir_utils.OldIrGuard():
+            self.scope = core.Scope()
+            op_inputs = self.inputs if hasattr(self, "inputs") else {}
+            op_outputs = self.outputs if hasattr(self, "outputs") else {}
+            op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
-        self._check_grad_helper()
-        if (
-            self.dtype == np.float64
-            and self.op_type
-            not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
-        ):
-            numeric_grad_delta = 1e-5
-            max_relative_error = 1e-7
-
-        cache_list = None
-        if hasattr(self, "cache_name_list"):
-            cache_list = self.cache_name_list
-
-        # oneDNN numeric gradient should use CPU kernel
-        use_onednn = False
-        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
-            op_attrs["use_mkldnn"] = False
-            use_onednn = True
-
-        mean_grad_op_types = get_xpu_op_support_types('mean')
-        mean_grad_op_types_np = []
-        for mtype in mean_grad_op_types:
-            mean_grad_op_types_np.append(type_dict_str_to_numpy[mtype])
-
-        self.op = create_op(
-            self.scope,
-            self.op_type,
-            op_inputs,
-            op_outputs,
-            op_attrs,
-            cache_list=cache_list,
-        )
-
-        if use_onednn:
-            op_attrs["use_mkldnn"] = True
-
-        if no_grad_set is None:
-            no_grad_set = set()
-        else:
+            self._check_grad_helper()
             if (
-                (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST)
-                and (
-                    self.op_type not in no_grad_set_white_list.NOT_CHECK_OP_LIST
-                )
-                and (not self.is_bfloat16_op())
+                self.dtype == np.float64
+                and self.op_type
+                not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
             ):
-                raise AssertionError(
-                    "no_grad_set must be None, op_type is "
-                    + self.op_type
-                    + " Op."
+                numeric_grad_delta = 1e-5
+                max_relative_error = 1e-7
+
+            cache_list = None
+            if hasattr(self, "cache_name_list"):
+                cache_list = self.cache_name_list
+
+            # oneDNN numeric gradient should use CPU kernel
+            use_onednn = False
+            if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
+                op_attrs["use_mkldnn"] = False
+                use_onednn = True
+
+            mean_grad_op_types = get_xpu_op_support_types('mean')
+            mean_grad_op_types_np = []
+            for mtype in mean_grad_op_types:
+                mean_grad_op_types_np.append(type_dict_str_to_numpy[mtype])
+
+            self.op = create_op(
+                self.scope,
+                self.op_type,
+                op_inputs,
+                op_outputs,
+                op_attrs,
+                cache_list=cache_list,
+            )
+
+            if use_onednn:
+                op_attrs["use_mkldnn"] = True
+
+            if no_grad_set is None:
+                no_grad_set = set()
+            else:
+                if (
+                    (
+                        self.op_type
+                        not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
+                    )
+                    and (
+                        self.op_type
+                        not in no_grad_set_white_list.NOT_CHECK_OP_LIST
+                    )
+                    and (not self.is_bfloat16_op())
+                ):
+                    raise AssertionError(
+                        "no_grad_set must be None, op_type is "
+                        + self.op_type
+                        + " Op."
+                    )
+
+            for input_to_check in inputs_to_check:
+                set_input(self.scope, self.op, self.inputs, place)
+
+            if type(output_names) is not list:
+                output_names = [output_names]
+
+            if self.dtype not in mean_grad_op_types_np:
+                prog = Program()
+                block = prog.global_block()
+                scope = core.Scope()
+                self._append_ops(block)
+
+                inputs = self._get_inputs(block)
+                outputs = self._get_outputs(block)
+                feed_dict = self.feed_var(inputs, place)
+                cast_inputs = list(map(block.var, output_names))
+                cast_outputs = block.create_var(
+                    dtype="float32", shape=cast_inputs[0].shape
+                )
+                cast_op = block.append_op(
+                    type="cast",
+                    inputs={"X": cast_inputs},
+                    outputs={"Out": cast_outputs},
+                    attrs={
+                        "in_dtype": convert_np_dtype_to_dtype_(self.dtype),
+                        "out_dtype": core.VarDesc.VarType.FP32,
+                    },
+                )
+                cast_op.desc.infer_var_type(block.desc)
+                cast_op.desc.infer_shape(block.desc)
+
+                output_names = [cast_outputs.name]
+
+                loss = append_loss_ops(block, output_names)
+                loss_names = [loss.name]
+                recast_inputs = list(map(block.var, loss_names))
+                recast_loss = block.create_var(
+                    dtype=self.dtype, shape=recast_inputs[0].shape
                 )
 
-        for input_to_check in inputs_to_check:
-            set_input(self.scope, self.op, self.inputs, place)
-
-        if type(output_names) is not list:
-            output_names = [output_names]
-
-        if self.dtype not in mean_grad_op_types_np:
-            prog = Program()
-            block = prog.global_block()
-            scope = core.Scope()
-            self._append_ops(block)
-
-            inputs = self._get_inputs(block)
-            outputs = self._get_outputs(block)
-            feed_dict = self.feed_var(inputs, place)
-            cast_inputs = list(map(block.var, output_names))
-            cast_outputs = block.create_var(
-                dtype="float32", shape=cast_inputs[0].shape
-            )
-            cast_op = block.append_op(
-                type="cast",
-                inputs={"X": cast_inputs},
-                outputs={"Out": cast_outputs},
-                attrs={
-                    "in_dtype": convert_np_dtype_to_dtype_(self.dtype),
-                    "out_dtype": core.VarDesc.VarType.FP32,
-                },
-            )
-            cast_op.desc.infer_var_type(block.desc)
-            cast_op.desc.infer_shape(block.desc)
-
-            output_names = [cast_outputs.name]
-
-            loss = append_loss_ops(block, output_names)
-            loss_names = [loss.name]
-            recast_inputs = list(map(block.var, loss_names))
-            recast_loss = block.create_var(
-                dtype=self.dtype, shape=recast_inputs[0].shape
-            )
-
-            recast_op = block.append_op(
-                type="cast",
-                inputs={"X": recast_inputs},
-                outputs={"Out": recast_loss},
-                attrs={
-                    "in_dtype": core.VarDesc.VarType.FP32,
-                    "out_dtype": convert_np_dtype_to_dtype_(self.dtype),
-                },
-            )
-            recast_op.desc.infer_var_type(block.desc)
-            recast_op.desc.infer_shape(block.desc)
-
-            param_grad_list = append_backward(
-                loss=recast_loss,
-                parameter_list=[input_to_check],
-                no_grad_set=no_grad_set,
-            )
-            fetch_list = [g for p, g in param_grad_list]
-
-            executor = base.Executor(place)
-            return list(
-                map(
-                    np.array,
-                    executor.run(
-                        prog,
-                        feed_dict,
-                        fetch_list,
-                        scope=scope,
-                        return_numpy=False,
-                    ),
+                recast_op = block.append_op(
+                    type="cast",
+                    inputs={"X": recast_inputs},
+                    outputs={"Out": recast_loss},
+                    attrs={
+                        "in_dtype": core.VarDesc.VarType.FP32,
+                        "out_dtype": convert_np_dtype_to_dtype_(self.dtype),
+                    },
                 )
-            )
+                recast_op.desc.infer_var_type(block.desc)
+                recast_op.desc.infer_shape(block.desc)
 
-        analytic_grads = self._get_gradient(
-            inputs_to_check,
-            place,
-            output_names,
-            no_grad_set,
-            user_defined_grad_outputs=user_defined_grad_outputs,
-        )
-        return analytic_grads
+                param_grad_list = append_backward(
+                    loss=recast_loss,
+                    parameter_list=[input_to_check],
+                    no_grad_set=no_grad_set,
+                )
+                fetch_list = [g for p, g in param_grad_list]
+
+                executor = base.Executor(place)
+                return list(
+                    map(
+                        np.array,
+                        executor.run(
+                            prog,
+                            feed_dict,
+                            fetch_list,
+                            scope=scope,
+                            return_numpy=False,
+                        ),
+                    )
+                )
+
+            analytic_grads = self._get_gradient(
+                inputs_to_check,
+                place,
+                output_names,
+                no_grad_set,
+                user_defined_grad_outputs=user_defined_grad_outputs,
+            )
+            return analytic_grads
