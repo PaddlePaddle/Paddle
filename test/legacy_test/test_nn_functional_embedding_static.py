@@ -18,6 +18,9 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.framework import (
+    in_dynamic_or_pir_mode,
+)
 from paddle.nn import functional
 
 
@@ -38,9 +41,17 @@ class EmbeddingStatic(unittest.TestCase):
                     trainable=True,
                 )
 
-                weight = prog.global_block().create_parameter(
-                    (128, 100), attr=param_attr, dtype="float32"
-                )
+                if in_dynamic_or_pir_mode():
+                    weight = paddle.pir.core.create_parameter(
+                        shape=(128, 100),
+                        attr=param_attr,
+                        dtype="float32",
+                        initializer=initializer,
+                    )
+                else:
+                    weight = prog.global_block().create_parameter(
+                        (128, 100), attr=param_attr, dtype="float32"
+                    )
 
                 label = paddle.static.data(
                     name="label",
@@ -70,9 +81,17 @@ class EmbeddingStatic(unittest.TestCase):
                     trainable=True,
                 )
 
-                weight = prog.global_block().create_parameter(
-                    (128, 100), attr=param_attr, dtype="float32"
-                )
+                if in_dynamic_or_pir_mode():
+                    weight = paddle.pir.core.create_parameter(
+                        shape=(128, 100),
+                        attr=param_attr,
+                        dtype="float32",
+                        initializer=initializer,
+                    )
+                else:
+                    weight = prog.global_block().create_parameter(
+                        (128, 100), attr=param_attr, dtype="float32"
+                    )
 
                 label = paddle.static.data(
                     name="label",
