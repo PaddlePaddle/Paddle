@@ -21,6 +21,13 @@
 namespace paddle {
 namespace dialect {
 
+ProcessMeshAttribute MergeMeshes(const ProcessMeshAttribute& mesh1,
+                                 const ProcessMeshAttribute& mesh2);
+
+ProcessMeshAttribute MergeInputMeshes(const std::vector<pir::Value>& inputs);
+
+ProcessMeshAttribute CreateGlobalMesh(const std::vector<pir::Value>& inputs);
+
 bool HasDistInput(const std::vector<pir::Value>& inputs,
                   ProcessMeshAttribute* p_mesh_attr = nullptr);
 bool AllInputAreDist(const std::vector<pir::Value>& inputs);
