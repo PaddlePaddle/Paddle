@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import partial
+from functools import partial, reduce
 
 import numpy as np
 
@@ -72,34 +72,30 @@ def multi_head_attention(
         """
         Add linear projection to queries, keys, and values.
         """
-        q = paddle.static.nn.fc(
-            x=queries,
-            size=d_key * n_head,
+        q = paddle.nn.Linear(
+            in_features=reduce(lambda x, y: x * y, queries.shape[2:]),
+            out_features=d_key * n_head,
             weight_attr=paddle.nn.initializer.XavierNormal(
                 fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
-            num_flatten_dims=2,
-        )
-        k = paddle.static.nn.fc(
-            x=keys,
-            size=d_key * n_head,
+        )(queries)
+        k = paddle.nn.Linear(
+            in_features=reduce(lambda x, y: x * y, keys.shape[2:]),
+            out_features=d_key * n_head,
             weight_attr=paddle.nn.initializer.XavierNormal(
                 fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
-            num_flatten_dims=2,
-        )
-        v = paddle.static.nn.fc(
-            x=values,
-            size=d_value * n_head,
+        )(keys)
+        v = paddle.nn.Linear(
+            in_features=reduce(lambda x, y: x * y, values.shape[2:]),
+            out_features=d_value * n_head,
             weight_attr=paddle.nn.initializer.XavierNormal(
-                fan_in=d_model * d_value,
-                fan_out=n_head * d_value,
+                fan_in=d_model * d_value, fan_out=n_head * d_value
             ),
             bias_attr=False,
-            num_flatten_dims=2,
-        )
+        )(values)
         return q, k, v
 
     def __split_heads(x, n_head):
@@ -182,13 +178,12 @@ def multi_head_attention(
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
-    proj_out = paddle.static.nn.fc(
-        x=out,
-        size=d_model,
+    proj_out = paddle.nn.Linear(
+        in_features=reduce(lambda x, y: x * y, out.shape[2:]),
+        out_features=d_model,
         weight_attr=paddle.nn.initializer.XavierNormal(),
         bias_attr=False,
-        num_flatten_dims=2,
-    )
+    )(out)
     return proj_out
 
 
@@ -198,23 +193,22 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
-    hidden = paddle.static.nn.fc(
-        x,
-        size=d_inner_hid,
-        num_flatten_dims=2,
+    hidden_l = paddle.nn.Linear(
+        in_features=reduce(lambda x, y: x * y, x.shape[2:]),
+        out_features=d_inner_hid,
         weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_hid**-0.5), high=(d_hid**-0.5)
         ),
-        activation="relu",
-    )
-    out = paddle.static.nn.fc(
-        x=hidden,
-        size=d_hid,
-        num_flatten_dims=2,
+        bias_attr=paddle.nn.initializer.Constant(0.0),
+    )(x)
+    hidden = paddle.nn.ReLU()(hidden_l)
+    out = paddle.nn.Linear(
+        in_features=reduce(lambda x, y: x * y, hidden.shape[1:]),
+        out_features=d_hid,
         weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_inner_hid**-0.5), high=(d_inner_hid**-0.5)
         ),
-    )
+    )(hidden)
     return out
 
 
@@ -230,12 +224,11 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
         if cmd == "a":  # add residual connection
             out = out + prev_out if prev_out else out
         elif cmd == "n":  # add layer normalization
-            out = paddle.static.nn.layer_norm(
-                out,
-                begin_norm_axis=len(out.shape) - 1,
-                param_attr=paddle.nn.initializer.Constant(1.0),
+            out = paddle.nn.LayerNorm(
+                out.shape[-1:],
+                weight_attr=paddle.nn.initializer.Constant(1.0),
                 bias_attr=paddle.nn.initializer.Constant(0.0),
-            )
+            )(out)
         elif cmd == "d":  # add dropout
             if dropout:
                 out = paddle.nn.functional.dropout(out, p=dropout)
@@ -581,13 +574,12 @@ def transformer(
     # TODO(guosheng): Share the weight matrix between the embedding layers and
     # the pre-softmax linear transformation.
     predict = paddle.reshape(
-        x=paddle.static.nn.fc(
-            x=dec_output,
-            size=trg_vocab_size,
+        x=paddle.nn.Linear(
+            in_features=reduce(lambda x, y: x * y, dec_output.shape[2:]),
+            out_features=trg_vocab_size,
             weight_attr=paddle.nn.initializer.XavierNormal(),
             bias_attr=False,
-            num_flatten_dims=2,
-        ),
+        )(dec_output),
         shape=[-1, trg_vocab_size],
     )
     predict = paddle.nn.functional.softmax(predict)
