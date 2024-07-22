@@ -16,9 +16,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Generator, List, TypeVar
 
-if TYPE_CHECKING:
-    from types import ModuleType
-
 _T = TypeVar('_T')
 __all__ = []
 
