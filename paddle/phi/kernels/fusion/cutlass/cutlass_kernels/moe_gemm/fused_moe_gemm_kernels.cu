@@ -20,7 +20,6 @@
 
 namespace phi {
 
-template class MoeGemmRunner<__nv_bfloat16, __nv_bfloat16>;
 template class MoeGemmRunner<half, half>;
 template class MoeGemmRunner<float, float>;
 
