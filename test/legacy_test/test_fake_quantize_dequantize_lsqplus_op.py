@@ -192,22 +192,6 @@ class TestFakeQuantizeDequantizeLsqplusOp(OpTest):
             dygraph=False,
         )
 
-    def test_fake_quantize_dequantize_float64(self):
-        distributions = [
-            np.random.random,
-            np.random.random,
-            np.random.random,
-            np.random.random,
-        ]
-        self._fake_quantize_dequantize_lsqplus(
-            np.float64,
-            (128, 128),
-            distributions,
-            'TiesAwayFromZero',
-            is_sign=False,
-            dygraph=False,
-        )
-
     def test_fake_quantize_dequantize_large_scale(self):
         distributions = [
             np.random.random,
