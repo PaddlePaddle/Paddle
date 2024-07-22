@@ -104,16 +104,16 @@ def lsqplus(x, alpha, beta, g_scale, bit_length, is_sign, round_type):
     helper.append_op(
         type='fake_quantize_dequantize_lsqplus',
         inputs={
-            'X': [x],
-            'Alpha': [alpha],
-            'Beta': [beta],
-            'GScale': [g_scale],
+            'x': [x],
+            'alpha': [alpha],
+            'beta': [beta],
+            'g_scale': [g_scale],
         },
         attrs={
             'bit_length': bit_length,
             'is_sign': is_sign,
             'round_type': round_type,
         },
-        outputs={'Out': [out]},
+        outputs={'out': [out]},
     )
     return out

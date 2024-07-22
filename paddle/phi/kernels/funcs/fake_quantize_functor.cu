@@ -216,7 +216,6 @@ __global__ void LsqplusQuantDequantKernel(const T *in,
       x = x > max_bound ? max_bound : x;
       x = x < min_bound ? min_bound : x;
       out[i] = static_cast<T>((x * s) + b);
-      // out[i] = static_cast<T>(x);
     } else {
       auto sp = Qp_t * s + b;
       auto sn = Qn_t * s + b;
@@ -226,7 +225,6 @@ __global__ void LsqplusQuantDequantKernel(const T *in,
       x = x * inv_s;
       x = round(x);
       out[i] = static_cast<T>((x * s) + b);
-      // out[i] = static_cast<T>(x);
     }
   }
 }

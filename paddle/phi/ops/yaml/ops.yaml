@@ -4930,7 +4930,7 @@
   optional: seq_length
 
 - op: fake_quantize_dequantize_lsqplus
-  args: (Tensor x, Tensor alpha, Tensor beta, Tensor g_scale, int bit_length, bool is_sign, int round_type)
+  args: (Tensor x, Tensor alpha, Tensor beta, Tensor g_scale, int bit_length = 8, bool is_sign = true, int round_type = 1)
   output: Tensor(out)
   infer_meta:
     func: FakeQuantizeDequantizeLsqplusInferMeta

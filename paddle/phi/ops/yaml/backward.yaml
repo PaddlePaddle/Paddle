@@ -3580,8 +3580,8 @@
     data_type: out_grad
 
 - backward_op: fake_quantize_dequantize_lsqplus_grad
-  forward: fake_quantize_dequantize_lsqplus (Tensor x, Tensor alpha, Tensor beta, Tensor g_scale, int bit_length, bool is_sign, int round_type) -> Tensor(out)
-  args: (Tensor x, Tensor alpha, Tensor beta, Tensor g_scale, Tensor out_grad, int bit_length, bool is_sign, int round_type)
+  forward: fake_quantize_dequantize_lsqplus (Tensor x, Tensor alpha, Tensor beta, Tensor g_scale, int bit_length = 8, bool is_sign = true, int round_type = 1) -> Tensor(out)
+  args: (Tensor x, Tensor alpha, Tensor beta, Tensor g_scale, Tensor out_grad, int bit_length = 8, bool is_sign = true, int round_type = 1)
   output: Tensor(x_grad), Tensor(alpha_grad), Tensor(beta_grad)
   infer_meta:
     func: FakeQuantizeDequantizeLsqplusGradInferMeta
