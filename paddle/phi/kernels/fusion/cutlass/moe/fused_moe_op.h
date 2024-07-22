@@ -17,7 +17,6 @@
 #define _FUSED_MOE_OP_H_
 
 #include <cuda.h>
-#include <cuda_bf16.h>
 #include <cuda_fp16.h>
 
 #include "paddle/fluid/framework/op_registry.h"
@@ -831,16 +830,6 @@ template void topk_gating_softmax_kernelLauncher(const half*,
                                                  const int,
                                                  const int,
                                                  cudaStream_t);
-template void topk_gating_softmax_kernelLauncher(const __nv_bfloat16*,
-                                                 const bool*,
-                                                 __nv_bfloat16*,
-                                                 __nv_bfloat16*,
-                                                 int*,
-                                                 int*,
-                                                 const int,
-                                                 const int,
-                                                 const int,
-                                                 cudaStream_t);
 // ===================== Specializations for init routing
 // =========================
 template void initialize_moe_routing_kernelLauncher(const float*,
@@ -854,15 +843,6 @@ template void initialize_moe_routing_kernelLauncher(const float*,
                                                     cudaStream_t);
 template void initialize_moe_routing_kernelLauncher(const half*,
                                                     half*,
-                                                    const int*,
-                                                    int*,
-                                                    const int,
-                                                    const int,
-                                                    const int,
-                                                    const int,
-                                                    cudaStream_t);
-template void initialize_moe_routing_kernelLauncher(const __nv_bfloat16*,
-                                                    __nv_bfloat16*,
                                                     const int*,
                                                     int*,
                                                     const int,
@@ -894,18 +874,6 @@ template void finalize_moe_routing_kernelLauncher(const half*,
                                                   const int,
                                                   const int,
                                                   cudaStream_t);
-template void finalize_moe_routing_kernelLauncher(const __nv_bfloat16*,
-                                                  __nv_bfloat16*,
-                                                  const __nv_bfloat16*,
-                                                  const float*,
-                                                  const int*,
-                                                  const int*,
-                                                  const int,
-                                                  const int,
-                                                  const int,
-                                                  const int,
-                                                  cudaStream_t);
-
 template void compute_total_rows_before_expert(
     int*, const half*, const int, const int, int64_t*, cudaStream_t stream);
 
