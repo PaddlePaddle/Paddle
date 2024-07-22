@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-#include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -150,44 +149,7 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
 
   for (ir::Node *node : sorted_ops) {
     // This op runs on all devices
-    if (IsScaleLossOp(node)) {
-      // user can customize loss@grad if not use_default_grad_scale_
-      // InsertScaleLossGradOp(&result, node);
-    } else {
-      CreateComputationalOps(&result, node, places_.size());
-    }
-  }
-}
-
-void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
-    ir::Graph *result, const ir::Node *node) const {
-  // user can customize loss@grad if not use_default_grad_scale_
-  size_t loss_scale = 0;
-  switch (this->strategy_.gradient_scale_) {
-    case details::BuildStrategy::GradientScaleStrategy::kOne:
-      loss_scale = 1;
-      break;
-    case details::BuildStrategy::GradientScaleStrategy::kCoeffNumDevice:
-      loss_scale = Get<size_t>(details::kNRanks);
-      break;
-    case details::BuildStrategy::GradientScaleStrategy::kCustomized:
-      loss_scale = 0;
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unknown gradient scale strategy. Now only supports One, "
-          "CoeffNumDevice and Customized strategies."));
-      break;
-  }
-
-  VLOG(3) << "loss_scale: " << loss_scale;
-
-  if (loss_scale) {
-    // TODO(paddle-dev): Why is there no input for this op_handle?
-    auto loss_grad_name = node->Op()->OutputArgumentNames()[0];
-    auto out_dtype = this->all_vars_.at(loss_grad_name)->GetDataType();
-    this->CreateScaleLossGradOp(
-        result, loss_grad_name, node->outputs[0], loss_scale, out_dtype);
+    CreateComputationalOps(&result, node, places_.size());
   }
 }
 
@@ -222,38 +184,6 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
   }
 }
 
-void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
-    ir::Graph *result,
-    const std::string &loss_grad_name,
-    ir::Node *out_var_node,
-    size_t loss_scale,
-    proto::VarType::Type dtype) const {
-  for (size_t i = 0; i < places_.size(); ++i) {
-    auto *dev_ctx = phi::DeviceContextPool::Instance().Get(places_[i]);
-    auto *op_handle = new details::ScaleLossGradOpHandle(
-        result->CreateEmptyNode("scale_loss_grad", ir::Node::Type::kOperation),
-        loss_scale,
-        local_scopes_[i],
-        places_[i],
-        dev_ctx,
-        dtype);
-    result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
-
-    // FIXME: Currently ScaleLossGradOp only use device_count as scale
-    // factor. So it does not depend on any other operators.
-    // VarHandle *loss = GetVarHandle(loss_var_name, place);
-    // loss->pending_ops_.emplace_back(op_handle);
-    // op_handle->inputs_.emplace_back(loss);
-
-    CreateOpOutput(result,
-                   op_handle,
-                   result->CreateVarNode(out_var_node->Var(),
-                                         out_var_node->GetVarNodeBlockId()),
-                   places_[i],
-                   i);
-  }
-}
-
 void MultiDevSSAGraphBuilderBase::CreateComputationalOps(
     ir::Graph *result, ir::Node *node, size_t num_places) const {
   for (size_t scope_idx = 0; scope_idx < num_places; ++scope_idx) {
@@ -264,15 +194,6 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOps(
             result->CreateOpNode(node->Op()), s, p, scope_idx));
     CreateOpHandleIOs(result, node, scope_idx);
   }
-}
-
-bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
-  return !loss_var_name_.empty() && node->Op() &&
-         PADDLE_GET_CONST(
-             int,
-             node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-             (static_cast<int>(OpRole::kBackward) |
-              static_cast<int>(OpRole::kLoss));
 }
 
 void MultiDevSSAGraphBuilderBase::CreateIsolatedVarNode(

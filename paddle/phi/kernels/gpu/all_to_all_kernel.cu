@@ -73,8 +73,7 @@ void AllToAllKernel(const Context& dev_ctx,
   }
   comm_ctx->GroupEnd();
 #else
-  PADDLE_THROW(
-      platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+  PADDLE_THROW(phi::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
 #else
   PADDLE_THROW(
