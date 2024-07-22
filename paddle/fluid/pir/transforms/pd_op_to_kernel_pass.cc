@@ -2915,11 +2915,11 @@ std::vector<pir::Value> BuildInputs(
                                 &expected_kernel_key);
 
         bool check_dtype_transfer = NeedTransformDataType(
-            expected_kernel_key.dtype(), kernel_dtype_for_var);
+            kernel_dtype_for_var, (*fake_tensors[0]).dtype());
         if (check_dtype_transfer) {
           VLOG(4) << "trans input: " << var_name << "'s dtype from "
-                  << kernel_dtype_for_var << " to "
-                  << expected_kernel_key.dtype();
+                  << (*fake_tensors[0]).dtype() << " to "
+                  << kernel_dtype_for_var;
 
           auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
           new_in = AddDtypeTransferOp(new_in,
