@@ -57,3 +57,4 @@ endif()
 
 add_subdirectory(plugin)
 add_subdirectory(convert)
+add_subdirectory(pir)

@@ -37,12 +37,14 @@ class ProgramReader {
   void RecoverProgram(Json* program_json,
                       pir::Program* recover_program,
                       pir::PatchBuilder* builder);
+  pir::Type RecoverType(Json* type_json);
+  pir::AttributeMap RecoverOpAttributesMap(Json* attrs_json);
   ~ProgramReader() = default;
 
  private:
   uint64_t current_version;
   std::map<int64_t, pir::Value> id_value_map;
-  pir::PatchBuilder* patch_builder;
+  pir::PatchBuilder* patch_builder = nullptr;
 
   void ReadProgram(Json* program_json, pir::Program* program);
   void ReadRegion(Json* region_json, pir::Region* region);

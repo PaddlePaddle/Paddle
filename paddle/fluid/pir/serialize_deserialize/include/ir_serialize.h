@@ -34,6 +34,9 @@ class ProgramWriter {
 
   /** GetProgramJson is used by writeModulde api*/
   Json GetProgramJson(const pir::Program* program);
+  Json GetTypeJson(const pir::Type& type);
+  Json GetAttributesMapJson(const AttributeMap& attr_map);
+
   ~ProgramWriter() = default;
 
  private:

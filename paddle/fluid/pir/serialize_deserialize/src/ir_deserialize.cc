@@ -24,6 +24,16 @@ void ProgramReader::RecoverProgram(Json* program_json,
   VLOG(6) << "Finish json to program.";
   return;
 }
+
+pir::Type ProgramReader::RecoverType(Json* type_json) {
+  return ReadType(type_json);
+}
+
+pir::AttributeMap ProgramReader::RecoverOpAttributesMap(Json* attrs_json) {
+  Json empty_json = Json::array();
+  return ReadAttributesMap(attrs_json, &empty_json);
+}
+
 void ProgramReader::ReadProgram(Json* program_json, pir::Program* program) {
   auto top_level_op = program->module_op();
   PADDLE_ENFORCE_EQ(
@@ -159,7 +169,7 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
 pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   // deal with patches
   auto op_name = op_json->at(ID).template get<std::string>();
-  if (patch_builder->HasOpPatch(op_name)) {
+  if (patch_builder && patch_builder->HasOpPatch(op_name)) {
     VLOG(8) << op_name << " brefore: " << *op_json;
     Json op_patch = patch_builder->GetJsonOpPatch(op_name);
     patch_builder->ApplyOpPatches(op_name, op_json, op_patch);
