@@ -1001,7 +1001,7 @@ def launch():
                 mem_allnodes = [i[0].decode() for i in result]
 
                 for mem in mem_allnodes:
-                    if mem is None:
+                    if mem is None or cur_cfg["max_mem_usage"] is None:
                         continue
                     if mem == "OOM":
                         cur_cfg["max_mem_usage"] = mem
