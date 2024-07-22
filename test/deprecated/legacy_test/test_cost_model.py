@@ -25,13 +25,14 @@ device = "gpu" if core.is_compiled_with_cuda() else "cpu"
 
 class TestCostModel(unittest.TestCase):
     def test_profiler_measure_empty_program(self):
-        cost_model = core.CostModel()
-        empty_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        cost_data = cost_model.profile_measure(
-            empty_program, startup_program, device, ["time"]
-        )
-        self.assertEqual(cost_data.get_whole_time_ms(), 0)
+        with paddle.pir_utils.OldIrGuard():
+            cost_model = core.CostModel()
+            empty_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            cost_data = cost_model.profile_measure(
+                empty_program, startup_program, device, ["time"]
+            )
+            self.assertEqual(cost_data.get_whole_time_ms(), 0)
 
     def test_static_op_benchmark_cost_model(self):
         op_name = "abs"
