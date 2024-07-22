@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base import core
@@ -23,6 +23,7 @@ __all__ = []
 
 if TYPE_CHECKING:
     from paddle import Tensor
+
 
 def with_metaclass(meta, *bases):
     class impl(meta):
