@@ -18,7 +18,7 @@ limitations under the License. */
 
 namespace paddle::inference::tensorrt {
 
-using half = paddle::platform::float16;
+using half = phi::dtype::float16;
 class PrelnResidualBiasOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,

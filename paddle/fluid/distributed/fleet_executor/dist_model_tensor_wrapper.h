@@ -16,8 +16,8 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace distributed {
@@ -43,7 +43,7 @@ constexpr DistModelDataType DistModelGetDtype<float>() {
 }
 
 template <>
-constexpr DistModelDataType DistModelGetDtype<platform::float16>() {
+constexpr DistModelDataType DistModelGetDtype<phi::dtype::float16>() {
   return DistModelDataType::FLOAT16;
 }
 

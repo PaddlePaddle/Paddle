@@ -26,7 +26,7 @@
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -202,12 +202,10 @@ void BKCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
                     platform::errors::Unavailable("bkcl_broadcast failed"));
 }
 
-paddle::platform::DeviceContext *BKCLParallelContext::GetDeviceContext(
-    int ring_id) {
-  return static_cast<platform::DeviceContext *>(
-      platform::BKCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context());
+phi::DeviceContext *BKCLParallelContext::GetDeviceContext(int ring_id) {
+  return static_cast<phi::DeviceContext *>(platform::BKCLCommContext::Instance()
+                                               .Get(ring_id, place_)
+                                               ->dev_context());
 }
 
 void BKCLParallelContext::WaitCompute(int ring_id) {

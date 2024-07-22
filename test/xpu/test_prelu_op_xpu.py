@@ -24,7 +24,6 @@ from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle import base
-from paddle.base import Program
 
 paddle.enable_static()
 
@@ -175,26 +174,28 @@ class TestModeError(unittest.TestCase):
         self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
 
     def test_mode_error(self):
-        main_program = Program()
-        with base.program_guard(main_program, Program()):
-            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
-            try:
-                y = prelu_t(x, 'any')
-            except Exception as e:
-                assert e.args[0].find('InvalidArgument') != -1
+        with paddle.pir_utils.OldIrGuard():
+            main_program = paddle.base.Program()
+            with base.program_guard(main_program, paddle.base.Program()):
+                x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
+                try:
+                    y = prelu_t(x, 'any')
+                except Exception as e:
+                    assert e.args[0].find('InvalidArgument') != -1
 
     def test_data_format_error1(self):
-        main_program = Program()
-        with base.program_guard(main_program, Program()):
-            x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
-            try:
-                y = prelu_t(x, 'channel', data_format='N')
-            except Exception as e:
-                assert e.args[0].find('InvalidArgument') != -1
+        with paddle.pir_utils.OldIrGuard():
+            main_program = paddle.base.Program()
+            with base.program_guard(main_program, paddle.base.Program()):
+                x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
+                try:
+                    y = prelu_t(x, 'channel', data_format='N')
+                except Exception as e:
+                    assert e.args[0].find('InvalidArgument') != -1
 
     def test_data_format_error2(self):
-        main_program = Program()
-        with base.program_guard(main_program, Program()):
+        main_program = paddle.base.Program()
+        with base.program_guard(main_program, paddle.base.Program()):
             x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = paddle.static.nn.prelu(x, 'channel', data_format='N')

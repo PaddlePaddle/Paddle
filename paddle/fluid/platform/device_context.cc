@@ -20,9 +20,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/expect.h"
 #include "paddle/phi/core/generator.h"
@@ -229,7 +229,7 @@ void EmplaceDeviceContexts(
           /*unused*/ stream_priority);
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
-          "CUDAPlace is not supported. Please re-compile with WITH_GPU "
+          "GPUPlace is not supported. Please re-compile with WITH_GPU "
           "option."));
 #endif
     } else if (phi::is_ipu_place(place)) {

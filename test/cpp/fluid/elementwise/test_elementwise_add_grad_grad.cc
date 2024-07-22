@@ -15,7 +15,7 @@
 #include "gtest/gtest.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "test/cpp/fluid/elementwise/test_elementwise_op_grad_grad.h"
 

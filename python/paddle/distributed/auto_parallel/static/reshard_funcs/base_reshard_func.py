@@ -59,10 +59,9 @@ def is_partial(dist_attr):
 
 def is_replicated(dist_attr):
     dims_mapping_set = set(dist_attr.dims_mapping)
-    if (
-        len(dist_attr.partial_status) == 0
-        and len(dims_mapping_set) == 1
-        and -1 in dims_mapping_set
+    if len(dist_attr.partial_status) == 0 and (
+        len(dims_mapping_set) == 0
+        or (len(dims_mapping_set) == 1 and -1 in dims_mapping_set)
     ):
         return True
     return False

@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -210,9 +210,8 @@ void XCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
                                    *stream);
 }
 
-paddle::platform::DeviceContext *XCCLParallelContext::GetDeviceContext(
-    int ring_id) {
-  return static_cast<platform::DeviceContext *>(
+phi::DeviceContext *XCCLParallelContext::GetDeviceContext(int ring_id) {
+  return static_cast<phi::DeviceContext *>(
       platform::XCCLCommContext::Instance(place_.GetDeviceType())
           .Get(ring_id, place_)
           ->dev_context());
