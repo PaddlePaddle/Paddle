@@ -583,18 +583,6 @@ Dispatcher.register(
     ),
 )
 
-# bool
-Dispatcher.register(
-    bool,
-    ("ContainerVariable | SymbolicVariable",),
-    lambda var: var.bool(),
-)
-Dispatcher.register(
-    operator.truth,
-    ("ConstantVariable | SymbolicVariable",),
-    lambda var: var.bool(),
-)
-
 # str
 Dispatcher.register(
     str,
@@ -981,16 +969,20 @@ for binary_fn in BINARY_OPS:
                     ),
                 )
 # Symbolic
-Dispatcher.register(
-    float,
-    ("SymbolicVariable",),
-    lambda var: var.float(),
-)
-Dispatcher.register(
-    int,
-    ("SymbolicVariable",),
-    lambda var: var.int(),
-)
+for unary_fn in fallback_tensor_unary_method:
+    Dispatcher.register(
+        unary_fn,
+        ("SymbolicVariable",),
+        partial(
+            lambda fn, var: VariableFactory.from_value(
+                fn(var.get_py_value()),
+                var.graph,
+                tracker=DummyTracker([var]),
+            ),
+            unary_fn,
+        ),
+    )
+
 for binary_fn in BINARY_OPS:
     for magic_method in magic_method_builtin_dispatch(binary_fn):
         if magic_method.name not in get_tensor_methods():
