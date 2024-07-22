@@ -147,10 +147,13 @@ class TestRealAPI(unittest.TestCase):
                     np.testing.assert_array_equal(np_res, res_t)
 
     def test_name_argument(self):
-        with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=self._shape, dtype=self.dtypes[0])
-            out = paddle_apis[self.api](x, name="real_res")
-            self.assertTrue("real_res" in out.name)
+        with paddle.pir_utils.OldIrGuard():
+            with static.program_guard(static.Program()):
+                x = static.data(
+                    name="x", shape=self._shape, dtype=self.dtypes[0]
+                )
+                out = paddle_apis[self.api](x, name="real_res")
+                self.assertTrue("real_res" in out.name)
 
     @test_with_pir_api
     def test_dtype_static_error(self):

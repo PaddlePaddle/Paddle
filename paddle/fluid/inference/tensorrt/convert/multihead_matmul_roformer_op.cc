@@ -86,13 +86,12 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
 
     if (engine_->with_dynamic_shape()) {
       if (flag_varseqlen) {
-        PADDLE_THROW(
-            platform::errors::Fatal("roformer not support varseqlen yet"));
+        PADDLE_THROW(phi::errors::Fatal("roformer not support varseqlen yet"));
       } else {
         PADDLE_ENFORCE_EQ(
             input->getDimensions().nbDims,
             3,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The Input dim of the MultiheadMatMul should be 3, "
                 "but it's (%d) now.",
                 input->getDimensions().nbDims));
@@ -134,7 +133,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("fc_out_threshold"),
               true,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "must have out threshold in multihead layers in int8 mode"));
           float out_scale =
               PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
@@ -200,7 +199,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("fc_out_threshold"),
               true,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "must have out threshold in multihead layers in int8 mode"));
           float out_scale =
               PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
@@ -234,7 +233,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 4, plugin);
       }
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "You are running the Ernie(Bert) model in static shape mode, which "
           "is not supported for the time being.\n"
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "

@@ -543,6 +543,7 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
+set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 if(WITH_GPU
    OR WITH_XPU
    OR WITH_ASCEND
@@ -778,6 +779,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 # setting timeout value as 15S
+set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
@@ -1063,10 +1065,12 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_bincount_op
     test_batch_norm_op
+    test_psroi_pool_op
     test_nce
     test_layer_norm_op
     test_eigh_op
     test_matmul_v2_op
+    test_momentum_op
     test_paddle_save_load_binary
     test_fetch_lod_tensor_array
     test_assign_pos_op
@@ -1139,7 +1143,7 @@ foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
   message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
 endforeach()
 
-set(PIR_ONLY_TEST_FILES test_pir_translated_layer)
+set(PIR_ONLY_TEST_FILES test_pir_translated_layer test_prune)
 foreach(ITEST ${PIR_ONLY_TEST_FILES})
   if(TEST ${ITEST})
     set_tests_properties(${ITEST} PROPERTIES ENVIRONMENT

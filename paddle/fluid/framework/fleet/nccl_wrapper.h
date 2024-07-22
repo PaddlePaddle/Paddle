@@ -31,7 +31,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
-#include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+#include "paddle/common/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace framework {

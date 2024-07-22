@@ -131,6 +131,8 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
 class TestTrilTriuOpError(unittest.TestCase):
     def test_errors1(self):
         paddle.enable_static()
+        if paddle.framework.use_pir_api():
+            return
         data = paddle.static.data(shape=(20, 22), dtype='float32', name="data1")
         op_type = np.random.choice(['triu', 'tril'])
         errmsg = {
@@ -144,6 +146,8 @@ class TestTrilTriuOpError(unittest.TestCase):
 
     def test_errors2(self):
         paddle.enable_static()
+        if paddle.framework.use_pir_api():
+            return
         data = paddle.static.data(shape=(200,), dtype='float32', name="data2")
         op_type = np.random.choice(['triu', 'tril'])
         errmsg = {

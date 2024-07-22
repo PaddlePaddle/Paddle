@@ -388,7 +388,7 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
         out = paddle.vision.ops.psroi_pool(
             self.x_placeholder,
             self.boxes_placeholder,
-            self.boxes_num,
+            paddle.to_tensor(self.boxes_num),
             output_size,
         )
         expect_out = calc_psroi_pool(
@@ -411,7 +411,7 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
             (out_res,) = exe.run(
                 paddle.static.default_main_program(),
                 feed={'x': self.x, 'boxes': boxes_lod_data},
-                fetch_list=[out.name],
+                fetch_list=[out],
             )
             np.testing.assert_allclose(out_res, expect_out, rtol=1e-05)
 
