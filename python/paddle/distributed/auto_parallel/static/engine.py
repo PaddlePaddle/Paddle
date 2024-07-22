@@ -678,7 +678,7 @@ class Engine:
                             decr_ratio=self._strategy.amp.decr_ratio,
                             use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
                             use_amp_guard=self._strategy.amp.use_fp16_guard,
-                            use_master_grad=self._strategy.amp.use_dynamic_loss_scaling,
+                            use_master_grad=self._strategy.amp.use_master_grad,
                             use_promote=self._strategy.amp.use_promote,
                         )
                         # bfloat16 needs no scaler
@@ -1144,9 +1144,7 @@ class Engine:
             # 4. lazy init adaption
             # 5. amp init adaption
             # 6. vpp init adaption
-            self.program_helper.init_pir(
-                self._pir_dist_main_progs[mode], self._place
-            )
+
             # self._init_lr(self._pir_dense_main_progs[mode])
             self.program_helper.init_pir(
                 self._pir_dist_main_progs[mode], self._place
