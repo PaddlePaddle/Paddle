@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence
+
 import paddle
 from paddle.base import core
 
 __all__ = []
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 def with_metaclass(meta, *bases):
     class impl(meta):
@@ -52,7 +58,7 @@ class PyLayerContext:
             ...         return grad
     """
 
-    def save_for_backward(self, *tensors):
+    def save_for_backward(self, *tensors: list[Tensor]) -> None:
         """
         Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
 
@@ -90,7 +96,7 @@ class PyLayerContext:
         """
         self.container = tensors
 
-    def saved_tensor(self):
+    def saved_tensor(self) -> list[Tensor] | None:
         """
         Get the tensors stored by ``save_for_backward``.
 
@@ -122,7 +128,7 @@ class PyLayerContext:
         """
         return self.container
 
-    def mark_not_inplace(self, *args):
+    def mark_not_inplace(self, *args: tuple) -> None:
         """
         Marks inputs as not inplace.
         This should be called at most once, only from inside the `forward` method,
@@ -163,7 +169,7 @@ class PyLayerContext:
         """
         self.not_inplace_tensors = args
 
-    def mark_non_differentiable(self, *args):
+    def mark_non_differentiable(self, *args: tuple) -> None:
         """
         Marks outputs as non-differentiable.
         This should be called at most once, only from inside the `forward` method,
@@ -203,7 +209,7 @@ class PyLayerContext:
         """
         self.non_differentiable = args
 
-    def set_materialize_grads(self, value: bool):
+    def set_materialize_grads(self, value: bool = True) -> None:
         """
         Sets whether to materialize output grad tensors. Default is True.
 
@@ -322,7 +328,7 @@ class PyLayer(with_metaclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
     """
 
     @staticmethod
-    def forward(ctx, *args, **kwargs):
+    def forward(ctx, *args: tuple, **kwargs: dict) -> Tensor | list[Tensor]:
         """
         It is to be overloaded by subclasses. It must accept a object of :ref:`api_paddle_autograd_PyLayerContext` as
         the first argument, followed by any number of arguments (tensors or other types).
@@ -361,7 +367,7 @@ class PyLayer(with_metaclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
         )
 
     @staticmethod
-    def backward(ctx, *args):
+    def backward(ctx, *args: tuple) -> Tensor | list[Tensor]:
         """
         This is a function to calculate the gradient. It is to be overloaded by subclasses.
         It must accept a object of :ref:`api_paddle_autograd_PyLayerContext` as the first
