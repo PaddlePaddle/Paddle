@@ -17,7 +17,7 @@
 #pragma once
 #include <cuda_bf16.h>
 #include <cuda_runtime_api.h>
-#include <cstring>
+#include <string>
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_extensions/ft_gemm_configs.h"
 
 namespace phi {
