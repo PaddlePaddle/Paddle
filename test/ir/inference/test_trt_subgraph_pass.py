@@ -188,9 +188,9 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
                 name='instance_norm_b',
                 initializer=paddle.nn.initializer.Constant(value=0.0),
             )
-            out = paddle.static.nn.instance_norm(
-                input=data, param_attr=param_attr, bias_attr=bias_attr
-            )
+            out = paddle.nn.InstanceNorm2D(
+                num_features=3, weight_attr=param_attr, bias_attr=bias_attr
+            )(data)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
