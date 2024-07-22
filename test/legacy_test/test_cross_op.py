@@ -215,18 +215,19 @@ class TestCrossAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_cross_api1(self):
-        self.input_data()
+        with paddle.pir_utils.OldIrGuard():
+            self.input_data()
 
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
 
-        # case 1:
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=[-1, 3], dtype="float32")
-            y = paddle.static.data(name='y', shape=[-1, 3], dtype='float32')
+            # case 1:
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(name="x", shape=[-1, 3], dtype="float32")
+                y = paddle.static.data(name='y', shape=[-1, 3], dtype='float32')
 
-            y_1 = paddle.cross(x, y, name='result')
-            self.assertEqual(('result' in y_1.name), True)
+                y_1 = paddle.cross(x, y, name='result')
+                self.assertEqual(('result' in y_1.name), True)
 
     def test_dygraph_api(self):
         self.input_data()
