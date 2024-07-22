@@ -120,7 +120,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
     assert (
         global_data_files_set & global_necessary_files_set
         == global_necessary_files_set
-    ), f"The checkpoint files are not complete. Please check the checkpoint directory:{path}.global_data_files_set:{global_data_files_set}, necessary_data_files_set:{necessary_data_files_set}"
+    ), f"The checkpoint files are not complete. Please check the checkpoint directory:{path}.global_data_files_set:{global_data_files_set}, necessary_data_files_set:{global_necessary_files_set}"
     missing_keys = set(state_dict.keys()) - set(tensor_key_list)
     if len(missing_keys) > 0:
         logger.warning(
