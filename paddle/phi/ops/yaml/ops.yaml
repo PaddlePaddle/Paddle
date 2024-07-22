@@ -1573,6 +1573,16 @@
     data_type : x
   optional : iter, out_scales
 
+- op : fake_quantize_dequantize_lsq
+  args : (Tensor x, Tensor scale, float lsq_factor = 1.0, int bit_length = 8, int round_type = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : FakeQuantizeLSQInferMeta
+  kernel :
+    func : fake_quantize_dequantize_lsq
+    data_type : x
+  backward : fake_quantize_dequantize_lsq_grad
+
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
   output : Tensor

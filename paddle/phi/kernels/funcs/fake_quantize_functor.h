@@ -158,5 +158,17 @@ class ClipAndFakeQuantDequantFunctor {
                   DenseTensor *out);
 };
 
+template <typename Context, typename T> 
+class FakeQuantizeDequantizeLSQFunctor {
+ public:
+  void operator()(const Context &dev_ctx,
+                  const DenseTensor &x,
+                  const DenseTensor &scale,
+                  const float lsq_factor,
+                  const int bin_cnt,
+                  const int round_type,
+                  DenseTensor *out);
+};
+
 }  // namespace funcs
 }  // namespace phi
