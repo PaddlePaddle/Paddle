@@ -834,14 +834,14 @@ class MultiThread(GradAllReduce):
                         )
                         offset += 1
 
-                    # As we search ops reversely, we should insert c_allgather
+                    # As we search ops reversely, we should insert all_gather
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(
                         offset,
-                        type='c_allgather',
-                        inputs={'X': grad},
-                        outputs={'Out': new_grad_var},
+                        type='all_gather',
+                        inputs={'x': grad},
+                        outputs={'out': new_grad_var},
                         attrs={
                             'nranks': self.allgather_ranks,
                             'ring_id': ring_id,

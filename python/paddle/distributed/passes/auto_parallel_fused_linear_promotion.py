@@ -63,6 +63,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "scale",
             "c_allgather",
             "matmul_v2_grad",
+            "all_gather",
         ],
     },
     {  # DP + MP
@@ -84,6 +85,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "scale",
             "c_allgather",
             "matmul_v2_grad",
+            "all_gather",
         ],
     },
     # amp_level == 'o1'
@@ -98,6 +100,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "c_allreduce_sum",
             "scale",
             "c_allgather",
+            "all_gather",
             "matmul_v2_grad",
         ],
     },
@@ -120,6 +123,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "scale",
             "c_allgather",
             "matmul_v2_grad",
+            "all_gather",
         ],
     },
 ]

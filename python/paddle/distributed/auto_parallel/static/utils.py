@@ -2430,6 +2430,7 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
                 "concat",
                 "c_allgather",
                 "slice",
+                "all_gather",
             ]
             if op.desc.type() in reshard_op_types:
                 input_names = op.desc.input_names()
@@ -2439,8 +2440,12 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
                         if "X" in input_names
                         else op.desc.input("Input")
                     )
+                elif "x" in input_names:
+                    inputs = op.desc.input("x")
                 if "Out" in op.desc.output_names():
                     outputs = op.desc.output("Out")
+                elif "out" in op.desc.output_names():
+                    outputs = op.desc.output("out")
                 if inputs[0] in grad_var_to_var.keys():
                     for output in outputs:
                         grad_var_to_var[output] = grad_var_to_var[inputs[0]]

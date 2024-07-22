@@ -667,8 +667,8 @@ class Inserter:
         group = new_process_group(ranks)
         idx_offset = 0
 
-        # insert c_allgather op
-        op_type = 'c_allgather'
+        # insert all_gather op
+        op_type = 'all_gather'
         # to avoid name conflict with framework
         helper = LayerHelper(op_type + "@RESHARD", **locals())
         insert_operation = (
@@ -3204,6 +3204,15 @@ class Resharder:
                     allgather_desc = build_comm_desc(
                         "c_allgather", group_ranks, dtype, shape
                     )
+
+                    # def build_comm_desc(op_type, group_ranks, dtype, shape, attrs=None):
+                    #     """Build a comm desc directly."""
+                    #     desc = {}
+                    #     desc["op"] = op_type
+                    #     desc["group_ranks"] = group_ranks
+                    #     desc["inputs"] = {"X": [(dtype, shape)]}
+                    #     desc["attrs"] = attrs
+                    #     return desc
                     split_inputs_shape = []
                     for idx, dim in enumerate(shape):
                         if idx == 0:

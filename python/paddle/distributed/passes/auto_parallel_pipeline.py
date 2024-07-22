@@ -380,7 +380,12 @@ class PipelinePass(PassBase):
                             # HACKCODE: the varname of send_v2 op, cast op should be recorded for brpc comm
                             if (
                                 op.type
-                                not in ["recv_2", "assign", "c_allgather"]
+                                not in [
+                                    "recv_2",
+                                    "assign",
+                                    "c_allgather",
+                                    "all_gather",
+                                ]
                                 and op.has_attr('op_namescope')
                                 and "/auto_parallel/reshard"
                                 in op.attr('op_namescope')
