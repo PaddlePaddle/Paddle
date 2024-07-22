@@ -381,7 +381,7 @@ class TestFp16Guard(AmpTestBase):
             )
             self.assertEqual(
                 paddle.static.global_scope()
-                .find_var("fc_0.b_0")
+                .find_var("linear_0.b_0")
                 .get_tensor()
                 ._dtype(),
                 paddle.float32,
