@@ -32,7 +32,7 @@ class TEST_API OperatorDialect : public pir::Dialect {
   pir::Attribute ParseAttribute(pir::IrParser& parser) override;  // NOLINT
 
   void PrintType(pir::Type type, std::ostream& os) const override;
-  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
+  void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
 
   pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
 
@@ -43,6 +43,11 @@ class TEST_API OperatorDialect : public pir::Dialect {
 inline bool IsCustomOp(pir::Operation* op) {
   std::string op_name = op->name();
   return op_name.find("custom_op") != op_name.npos;
+}
+
+inline bool IsTensorRTOp(pir::Operation* op) {
+  std::string op_name = op->name();
+  return op_name == "pd_op.tensorrt_engine";
 }
 
 class CustomOpDialect : public pir::Dialect {

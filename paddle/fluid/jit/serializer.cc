@@ -98,7 +98,7 @@ void Deserializer::ReadTensorData(
     std::shared_ptr<VariableMap> params_dict) const {
   VLOG(3) << "ReadTensorData from: " << file_name;
   std::ifstream fin(file_name, std::ios::binary);
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(place);
   for (const auto& item : var_name) {
     VLOG(3) << "load Tensor: " << item;

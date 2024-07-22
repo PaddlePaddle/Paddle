@@ -19,12 +19,12 @@ paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
     paddle::dialect::ExpandOp, paddle::dialect::CreateArrayOp,
     paddle::dialect::CreateArrayLikeOp, paddle::dialect::ArrayLengthOp,
     paddle::dialect::ArrayReadOp, paddle::dialect::ArrayWrite_Op,
-    paddle::dialect::SliceArrayOp, paddle::dialect::SliceArrayDenseOp,
-    paddle::dialect::AssignArrayOp, paddle::dialect::AssignArray_Op,
-    paddle::dialect::ArrayToTensorOp, paddle::dialect::TensorToArrayOp,
-    paddle::dialect::IncrementOp, paddle::dialect::Increment_Op,
-    paddle::dialect::ShapeBroadcastOp, paddle::dialect::MemcpyD2hMultiIoOp,
-    paddle::dialect::ArrayPopOp
+    paddle::dialect::FetchOp, paddle::dialect::SliceArrayOp,
+    paddle::dialect::SliceArrayDenseOp, paddle::dialect::AssignArrayOp,
+    paddle::dialect::AssignArray_Op, paddle::dialect::ArrayToTensorOp,
+    paddle::dialect::TensorToArrayOp, paddle::dialect::IncrementOp,
+    paddle::dialect::Increment_Op, paddle::dialect::ShapeBroadcastOp,
+    paddle::dialect::MemcpyD2hMultiIoOp, paddle::dialect::ArrayPopOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -57,6 +57,231 @@ paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #endif
 
 namespace paddle::dialect {
+void FetchOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::UnchangedInferMetaIncludingTensorArray);
+  fn(infer_meta);
+}
+
+std::vector<pir::Type> FetchOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
+  (void)attributes;
+
+  PADDLE_ENFORCE_EQ(input_values.size() == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
+
+  pir::Value x_ = input_values[0];
+  (void)x_;
+  VLOG(4) << "Builder construction outputs";
+  bool is_from_tensor = false;
+  (void)is_from_tensor;
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_type = x_.type();
+
+  // Auto Parallel condition
+#ifdef PADDLE_WITH_DISTRIBUTE
+  ProcessMeshAttribute op_mesh;
+  if (HasDistInput(input_values, &op_mesh)) {
+    CvtAllInputsToDist(input_values, op_mesh);
+    auto ctx = pir::IrContext::Instance();
+    std::vector<pir::Attribute> dist_operand_attrs, dist_result_attrs;
+    auto dist_meta_x =
+        CvtToDistMetaTensor(x_.type().dyn_cast<DistDenseTensorType>());
+    auto spmd_info =
+        phi::distributed::VariadicReplicatedInferSpmdDynamic(dist_meta_x);
+    PADDLE_ENFORCE_EQ(
+        spmd_info.first.size(),
+        1u,
+        common::errors::Unavailable(
+            "Size of spmd_info.first for op[FetchOp]is unexpected."));
+    for (auto &arg_dist : spmd_info.first) {
+      dist_operand_attrs.push_back(CvtToPirAttr(arg_dist));
+    }
+
+    auto dist_attr_out = CreateReplicatedDistAttr(out_type, op_mesh);
+
+    dist_result_attrs.push_back(dist_attr_out);
+    argument_outputs.push_back(CvtToPirDistType(out_type, dist_attr_out));
+
+    attributes[kAttrOpDistAttr] = OperationDistAttribute::get(
+        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
+    return argument_outputs;
+  }
+#endif
+
+  argument_outputs.push_back(out_type);
+
+  return argument_outputs;
+}
+
+const char *FetchOp::attributes_name[2] = {"name", "col"};
+
+OpInfoTuple FetchOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false, false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("name", "pir::StrAttribute", ""),
+      paddle::dialect::OpAttributeInfo("col", "pir::Int32Attribute", "")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
+      "UnchangedInferMeta", {"x"}, "fetch", {"x"}, {}, {}, {}, {});
+  return std::make_tuple(inputs, attributes, outputs, run_time_info, "fetch");
+}
+
+void FetchOp::Build(pir::Builder &builder,
+                    pir::OperationArgument &argument,
+                    pir::Value x_,
+                    const std::string &name,
+                    int col) {
+  VLOG(4) << "Start build FetchOp";
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+  pir::Attribute attr_name =
+      pir::StrAttribute::get(pir::IrContext::Instance(), name);
+  argument_attributes.insert({"name", attr_name});
+  pir::Attribute attr_col =
+      pir::Int32Attribute::get(pir::IrContext::Instance(), col);
+  argument_attributes.insert({"col", attr_col});
+
+  std::vector<pir::Type> argument_outputs =
+      FetchOp::InferMeta(argument_inputs, &argument_attributes);
+  argument.AddAttributes(argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void FetchOp::Build(pir::Builder &builder,
+                    pir::OperationArgument &argument,
+                    pir::Value x_,
+                    pir::AttributeMap attributes) {
+  VLOG(4) << "Start build FetchOp";
+
+  PADDLE_ENFORCE_NE(attributes.find("name"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'name' Attribute is expected for FetchOp. "));
+  std::string name =
+      attributes.at("name").dyn_cast<pir::StrAttribute>().AsString();
+
+  PADDLE_ENFORCE_NE(attributes.find("col"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'col' Attribute is expected for FetchOp. "));
+  int col = attributes.at("col").dyn_cast<pir::Int32Attribute>().data();
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+  pir::Attribute attr_name =
+      pir::StrAttribute::get(pir::IrContext::Instance(), name);
+  argument_attributes.insert({"name", attr_name});
+  pir::Attribute attr_col =
+      pir::Int32Attribute::get(pir::IrContext::Instance(), col);
+  argument_attributes.insert({"col", attr_col});
+
+  std::vector<pir::Type> argument_outputs =
+      FetchOp::InferMeta(argument_inputs, &argument_attributes);
+  argument.AddAttributes(argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void FetchOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: FetchOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(input_size,
+                      1,
+                      common::errors::InvalidArgument(
+                          "The size of inputs must be equal to 1."));
+    PADDLE_ENFORCE_EQ((*this)->operand_source(0)
+                              .type()
+                              .isa<paddle::dialect::DenseTensorType>() ||
+                          (*this)
+                              ->operand_source(0)
+                              .type()
+                              .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    PADDLE_ENFORCE_GT(attributes.count("name"),
+                      0,
+                      phi::errors::InvalidArgument("name does not exist."));
+    PADDLE_ENFORCE_EQ(attributes.at("name").isa<pir::StrAttribute>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type of attribute: name is not pir::StrAttribute."));
+
+    PADDLE_ENFORCE_GT(attributes.count("col"),
+                      0,
+                      phi::errors::InvalidArgument("col does not exist."));
+    PADDLE_ENFORCE_EQ(
+        attributes.at("col").isa<pir::Int32Attribute>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type of attribute: col is not pir::Int32Attribute."));
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(output_size,
+                      1,
+                      common::errors::InvalidArgument(
+                          "The size of outputs must be equal to 1."));
+    PADDLE_ENFORCE_EQ(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>() ||
+            (*this)
+                ->result(0)
+                .type()
+                .isa<paddle::dialect::DenseTensorArrayType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
+  }
+  VLOG(4) << "End Verifying for: FetchOp.";
+}
+
+phi::DataType FetchOp::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: FetchOp";
+
+  return expected_kernel_dtype;
+}
+
+bool FetchOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  VLOG(4) << "Infer symbolic shape for op: FetchOp";
+  return FetchOpInferSymbolicShape(this->operation(), infer_context);
+}
+
 OpInfoTuple AddN_Op::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
@@ -1257,6 +1482,16 @@ std::vector<pir::Type> CreateArrayOp::InferMeta(
   return argument_outputs;
 }
 
+bool CreateArrayOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      out(),
+      symbol::ShapeOrDataDimExprs{symbol::RankedTensorArrayShapeOrDataDimExprs(
+          std::vector<symbol::DimExpr>{})});
+
+  return true;
+}
+
 const char *CreateArrayLikeOp::attributes_name[1] = {"val"};  // NOLINT
 
 OpInfoTuple CreateArrayLikeOp::GetOpInfo() {
@@ -1513,6 +1748,16 @@ std::vector<pir::Type> ArrayLengthOp::InferMeta(
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
+}
+
+bool ArrayLengthOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      out(),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({symbol::DimExpr{1}})});
+
+  return true;
 }
 
 OpInfoTuple ArrayReadOp::GetOpInfo() {
@@ -1879,6 +2124,17 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
   return argument_outputs;
 }
 
+bool ArrayWrite_Op::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape = infer_context->GetShapeOrDataForValue(x()).shape();
+  infer_context->SetShapeOrDataForValue(
+      out(),
+      symbol::ShapeOrDataDimExprs{
+          symbol::RankedTensorArrayShapeOrDataDimExprs(x_shape)});
+
+  return true;
+}
+
 const char *ArrayToTensorOp::attributes_name[2] = {"axis",
                                                    "use_stack"};  //  NOLINT
 
@@ -2070,6 +2326,45 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
       dense_out_index.offset());
   argument_outputs.push_back(out_index_dense_tensor_type);
   return argument_outputs;
+}
+
+bool ArrayToTensorOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  int axis =
+      this->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
+  bool use_stack =
+      this->attributes().at("use_stack").dyn_cast<pir::BoolAttribute>().data();
+  const auto &x_shape_data =
+      infer_context->GetShapeOrDataForValue(x())
+          .dyn_cast<symbol::RankedTensorArrayShapeOrDataDimExprs>();
+
+  const auto &UseStackInfer = [&]() {
+    std::vector<symbol::DimExpr> result_shape = x_shape_data.GetShapeHint();
+    result_shape.insert(result_shape.begin() + axis,
+                        symbol::DimExpr{infer_context->GetNextSymName()});
+    return symbol::ShapeOrDataDimExprs(
+        symbol::TensorShapeOrDataDimExprs(result_shape));
+  };
+
+  const auto &UseConcatInfer = [&]() {
+    std::vector<symbol::DimExpr> result_shape = x_shape_data.GetShapeHint();
+    result_shape[axis] = symbol::DimExpr{infer_context->GetNextSymName()};
+    return symbol::ShapeOrDataDimExprs(
+        symbol::TensorShapeOrDataDimExprs(result_shape));
+  };
+  if (use_stack) {
+    infer_context->SetShapeOrDataForValue(out(), UseStackInfer());
+  } else {
+    infer_context->SetShapeOrDataForValue(out(), UseConcatInfer());
+  }
+
+  std::vector<symbol::DimExpr> out_index_shape{
+      symbol::DimExpr{infer_context->GetNextSymName()}};
+  infer_context->SetShapeOrDataForValue(
+      out_index(),
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs(out_index_shape)));
+  return true;
 }
 
 const char *TensorToArrayOp::attributes_name[2] = {"axis",
@@ -3031,19 +3326,15 @@ bool ExpandOp::InferSymbolicShape(
       const auto &dims_list =
           expand_shape_shape_or_data
               .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-      for (const auto &shape_data : dims_list) {
-        const auto &dim_expr = shape_data.data().has_value()
-                                   ? shape_data.data().value()[0]
-                                   : shape_data.shape()[0];
-        dims.emplace_back(dim_expr);
+      if (dims_list.size() == 1) {
+        dims = dims_list.at(0).data().value();
+      } else {
+        for (const auto &shape_data : dims_list) {
+          dims.emplace_back(shape_data.data()->at(0));
+        }
       }
     } else {
-      dims = expand_shape_shape_or_data.data().has_value()
-                 ? expand_shape_shape_or_data.data().value()
-                 : expand_shape_shape_or_data.shape();
-    }
-    if (dims.empty()) {
-      dims = std::vector<symbol::DimExpr>(x_dims.size(), -1);
+      dims = expand_shape_shape_or_data.data().value();
     }
     return dims;
   }();
@@ -3172,8 +3463,9 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       auto shape_item = shape.defining_op()
                             ->dyn_cast<paddle::dialect::FullOp>()
                             .attribute("value")
-                            .dyn_cast<pir::FloatAttribute>()
-                            .data();
+                            .dyn_cast<paddle::dialect::ScalarAttribute>()
+                            .data()
+                            .to<double>();
       vec_shape = {static_cast<int64_t>(shape_item)};
     } else if (shape.isa<pir::OpResult>() &&
                shape.defining_op()->isa<paddle::dialect::StackOp>()) {
@@ -3223,11 +3515,13 @@ std::vector<pir::Type> ExpandOp::InferMeta(
               vec_shape.push_back(value);
 
             } else if (shape.defining_op()->isa<paddle::dialect::FullOp>()) {
-              auto shape_item = shape.defining_op()
-                                    ->dyn_cast<paddle::dialect::FullOp>()
-                                    .attribute("value")
-                                    .dyn_cast<pir::FloatAttribute>()
-                                    .data();
+              auto shape_item =
+                  shape.defining_op()
+                      ->dyn_cast<paddle::dialect::FullOp>()
+                      .attribute("value")
+                      .dyn_cast<paddle::dialect::ScalarAttribute>()
+                      .data()
+                      .to<double>();
               vec_shape.push_back(static_cast<int64_t>(shape_item));
 
             } else {
@@ -4417,6 +4711,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignOut_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FetchOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayLikeOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)

@@ -303,7 +303,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullImpl(
   int device_id = place.GetDeviceId();
   platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    paddle::platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto buf_value = memory::Alloc(place, values.size() * sizeof(float*));
   float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
@@ -338,7 +338,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
   int device_id = place.GetDeviceId();
   platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    paddle::platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto slot_lengths_lod = slot_lengths;
   for (int i = 1; i < slot_lengths_lod.size(); i++) {
@@ -405,7 +405,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullDedupImpl(
   int device_id = place.GetDeviceId();
   platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    paddle::platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   size_t N = total_length * hidden_size;
   PullDedupCopy<<<CUDA_BLOCK(N), stream>>>(N,
@@ -441,7 +441,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
   int device_id = place.GetDeviceId();
   platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    paddle::platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   cudaMemsetAsync(
       total_grad_values_gpu, 0, dedup_length * grad_value_size, stream);
@@ -485,7 +485,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
   int device_id = place.GetDeviceId();
   platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    paddle::platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   // merge all grad to one
   size_t N = dedup_length * hidden_size;

@@ -80,7 +80,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -111,6 +110,7 @@
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -219,12 +219,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
       .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
       .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce)
       .value("_NoReduce", BuildStrategy::ReduceStrategy::kNoReduce);
-  py::enum_<BuildStrategy::GradientScaleStrategy>(build_strategy,
-                                                  "GradientScaleStrategy")
-      .value("CoeffNumDevice",
-             BuildStrategy::GradientScaleStrategy::kCoeffNumDevice)
-      .value("One", BuildStrategy::GradientScaleStrategy::kOne)
-      .value("Customized", BuildStrategy::GradientScaleStrategy::kCustomized);
 
   build_strategy.def(py::init())
       .def("_clear_finalized", &BuildStrategy::ClearFinalized)
@@ -259,59 +253,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
                         >>> build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
           )DOC")
       .def_property(
-          "gradient_scale_strategy",
-          [](const BuildStrategy &self) { return self.gradient_scale_; },
-          [](BuildStrategy &self,
-             BuildStrategy::GradientScaleStrategy strategy) {
-            PADDLE_ENFORCE_NE(self.IsFinalized(),
-                              true,
-                              platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finalized, cannot be "
-                                  "configured again."));
-            self.gradient_scale_ = strategy;
-          },
-          R"DOC((paddle.static.BuildStrategy.GradientScaleStrategy, optional): there are three
-                ways of defining :math:`loss@grad` in CompiledProgram, that is, CoeffNumDevice,
-                One and Customized. By default, CompiledProgram sets the :math:`loss@grad`
-                according to the number of devices. If you want to customize :math:`loss@grad`,
-                you can choose Customized. Default is 'CoeffNumDevice'.
-
-                Examples:
-                    .. code-block:: python
-
-                        >>> import numpy
-                        >>> import paddle
-                        >>> import paddle.static as static
-
-                        >>> paddle.enable_static()
-
-                        >>> use_cuda = paddle.device.is_compiled_with_cuda
-                        >>> place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-                        >>> exe = static.Executor(place)
-
-                        >>> data = static.data(name='X', shape=[None, 1], dtype='float32')
-                        >>> hidden = static.nn.fc(data, size=10)
-                        >>> loss = paddle.mean(hidden)
-                        >>> paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
-
-                        >>> exe.run(static.default_startup_program())
-
-                        >>> build_strategy = static.BuildStrategy()
-                        >>> build_strategy.gradient_scale_strategy = \
-                        ...             static.BuildStrategy.GradientScaleStrategy.Customized
-                        >>> compiled_prog = static.CompiledProgram(
-                        ...             static.default_main_program(),
-                        ...             build_strategy=build_strategy,
-                        >>> )
-
-                        >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-                        >>> loss_grad = numpy.ones((1)).astype("float32") * 0.01
-                        >>> loss_grad_name = loss.name+"@GRAD"
-                        >>> loss_data = exe.run(compiled_prog,
-                        ...                         feed={"X": x, loss_grad_name : loss_grad},
-                        ...                         fetch_list=[loss.name, loss_grad_name])
-          )DOC")
-      .def_property(
           "debug_graphviz_path",
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
@@ -336,33 +277,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
 
                         >>> build_strategy = static.BuildStrategy()
                         >>> build_strategy.debug_graphviz_path = "./graph"
-          )DOC")
-      .def_property(
-          "remove_unnecessary_lock",
-          [](const BuildStrategy &self) {
-            return self.remove_unnecessary_lock_;
-          },
-          [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_NE(self.IsFinalized(),
-                              true,
-                              platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finalized, cannot be "
-                                  "configured again."));
-            self.remove_unnecessary_lock_ = b;
-          },
-          R"DOC((bool, optional): If set True, some locks in GPU ops would be
-                released and CompiledProgram would run faster. Default is True.
-
-                Examples:
-                    .. code-block:: python
-
-                        >>> import paddle
-                        >>> import paddle.static as static
-
-                        >>> paddle.enable_static()
-
-                        >>> build_strategy = static.BuildStrategy()
-                        >>> build_strategy.remove_unnecessary_lock = True
           )DOC")
       .def_property(
           "num_trainers",
@@ -945,7 +859,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
                 optimization passes should be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
 
-  cp.def(py::init<const std::vector<platform::Place> &,
+  cp.def(py::init<const std::vector<phi::Place> &,
                   const std::vector<std::string> &,
                   const std::string &,
                   Scope *,

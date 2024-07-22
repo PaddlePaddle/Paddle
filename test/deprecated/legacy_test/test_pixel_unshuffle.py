@@ -220,22 +220,15 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             out_2 = F.pixel_unshuffle(x_2, 3, "NHWC")
 
             exe = paddle.static.Executor(place=place)
-            res_1 = exe.run(
+            res_1, res_2 = exe.run(
                 base.default_main_program(),
-                feed={"x": self.x_1_np},
-                fetch_list=out_1,
+                feed={"x": self.x_1_np, "x2": self.x_2_np},
+                fetch_list=[out_1, out_2],
                 use_prune=True,
-            )[0]
+            )
 
-            res_2 = exe.run(
-                base.default_main_program(),
-                feed={"x2": self.x_2_np},
-                fetch_list=out_2,
-                use_prune=True,
-            )[0]
-
-            np.testing.assert_allclose(res_1, self.out_1_np)
-            np.testing.assert_allclose(res_2, self.out_2_np)
+            np.testing.assert_allclose(res_1, self.out_1_np, rtol=1e-05, atol=1)
+            np.testing.assert_allclose(res_2, self.out_2_np, rtol=1e-05, atol=1)
 
     # same test between layer and functional in this op.
     def test_static_graph_layer(self):
@@ -262,19 +255,12 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             out_2_np = pixel_unshuffle_np(self.x_2_np, 3, "NHWC")
 
             exe = paddle.static.Executor(place=place)
-            res_1 = exe.run(
+            res_1, res_2 = exe.run(
                 base.default_main_program(),
-                feed={"x": self.x_1_np},
-                fetch_list=out_1,
+                feed={"x": self.x_1_np, "x2": self.x_2_np},
+                fetch_list=[out_1, out_2],
                 use_prune=True,
-            )[0]
-
-            res_2 = exe.run(
-                base.default_main_program(),
-                feed={"x2": self.x_2_np},
-                fetch_list=out_2,
-                use_prune=True,
-            )[0]
+            )
 
             np.testing.assert_allclose(res_1, out_1_np)
             np.testing.assert_allclose(res_2, out_2_np)

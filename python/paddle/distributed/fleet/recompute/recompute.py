@@ -79,12 +79,12 @@ def detach_variable(inputs):
 def check_recompute_necessary(inputs):
     necessary_for_each_input = []
     for input_ in inputs:
-        if isinstance(input_, (core.eager.Tensor, paddle.Tensor)):
+        if isinstance(input_, paddle.Tensor):
             necessary_for_each_input.append(input_.stop_gradient)
         elif type(input_) is tuple:
             for i in input_:
                 # traverse all tensors in the tuple
-                if isinstance(i, (core.eager.Tensor, paddle.Tensor)):
+                if isinstance(i, paddle.Tensor):
                     necessary_for_each_input.append(i.stop_gradient)
     if all(necessary_for_each_input):
         logger.warning(
@@ -346,29 +346,40 @@ def _recompute_without_reentrant(
 
                 if holder_list[unpack_counter - 1]() is None:
                     return
-
-                if inner_x.is_dist():
-                    # TODO(jeff41404): it seems better to use `tmp_tensor = core.eager.Tensor(inner_x)`,
-                    # but other errors will be triggered during the current period, and can be modified after resolution
-                    tmp_tensor = core.eager.Tensor(
-                        inner_x.dtype,
-                        inner_x.shape,
-                        inner_x.name + "cpy",
-                        core.VarDesc.VarType.LOD_TENSOR,
-                        inner_x.persistable,
-                        inner_x.process_mesh,
-                        inner_x.placements,
-                    )
+                if inner_x is None:
+                    storage[holder_list[unpack_counter - 1]()] = None
+                    return
+                if hasattr(inner_x, "main_grad"):
+                    storage[holder_list[unpack_counter - 1]()] = inner_x
                 else:
-                    tmp_tensor = core.eager.Tensor(
-                        inner_x.dtype,
-                        inner_x.shape,
-                        inner_x.name + "cpy",
-                        core.VarDesc.VarType.LOD_TENSOR,
-                        inner_x.persistable,
-                    )
-                inner_x._unsafe_share_buffer_to(tmp_tensor)
-                storage[holder_list[unpack_counter - 1]()] = tmp_tensor
+                    if inner_x.is_dist():
+                        # TODO(jeff41404): it seems better to use `tmp_tensor = core.eager.Tensor(inner_x)`,
+                        # but other errors will be triggered during the current period, and can be modified after resolution
+                        tmp_tensor = core.eager.Tensor(
+                            inner_x.dtype,
+                            inner_x.shape,
+                            inner_x.name + "cpy",
+                            core.VarDesc.VarType.LOD_TENSOR,
+                            inner_x.persistable,
+                            inner_x.process_mesh,
+                            inner_x.placements,
+                        )
+                    else:
+                        if isinstance(inner_x.dtype, paddle.base.core.DataType):
+                            inner_x_dtype = paddle.pir.core.datatype_to_vartype[
+                                inner_x.dtype
+                            ]
+                        else:
+                            inner_x_dtype = inner_x.dtype
+                        tmp_tensor = core.eager.Tensor(
+                            inner_x_dtype,
+                            inner_x.shape,
+                            inner_x.name + "cpy",
+                            core.VarDesc.VarType.LOD_TENSOR,
+                            inner_x.persistable,
+                        )
+                    inner_x._unsafe_share_buffer_to(tmp_tensor)
+                    storage[holder_list[unpack_counter - 1]()] = tmp_tensor
                 return
 
             def inner_unpack(inner_x):

@@ -33,7 +33,7 @@ namespace operators {
 class MemcpyH2DFunctor {
  public:
   MemcpyH2DFunctor(framework::Variable *out,
-                   const platform::DeviceContext &dev_ctx,
+                   const phi::DeviceContext &dev_ctx,
                    const int dst_place_type)
       : out_(out), dev_ctx_(dev_ctx), dst_place_type_(dst_place_type) {}
 
@@ -76,7 +76,7 @@ class MemcpyH2DFunctor {
 
  private:
   framework::Variable *out_;
-  const platform::DeviceContext &dev_ctx_;
+  const phi::DeviceContext &dev_ctx_;
   const int dst_place_type_;
 };
 

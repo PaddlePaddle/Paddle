@@ -20,6 +20,7 @@
 #include <unordered_set>
 
 #include "paddle/common/flags.h"
+#include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -36,12 +37,12 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/place.h"
@@ -60,7 +61,7 @@ COMMON_DECLARE_bool(use_mkldnn);
 #endif
 
 COMMON_DECLARE_bool(print_ir);
-// COMMON_DECLARE_string(pir_onednn_kernel_blacklist);
+COMMON_DECLARE_bool(enable_collect_shape);
 
 namespace paddle::dialect {
 
@@ -91,7 +92,7 @@ pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
     }
     return pir::VectorType::get(ctx, vec_target_type);
   }
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(phi::errors::Unimplemented(
       "Not support op type %s in ConvertOpTypeToKernelType.", op_type));
 }
 
@@ -1025,6 +1026,11 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
       kernel_fn_str = "add_n_sr";
     }
   }
+  if (op_item->isa<FetchOp>()) {
+    if (op_item->result(0).type().isa<DenseTensorArrayType>()) {
+      kernel_fn_str = "fetch_array";
+    }
+  }
   return kernel_fn_str;
 }
 
@@ -1060,7 +1066,7 @@ bool SupportsMKLDNN(const std::string& kernel_name,
                           const paddle::framework::ExecutionContext&)>,
                       paddle::framework::OpKernelType::Hash>::const_reference
                           kern_pair) {
-            return platform::is_cpu_place(kern_pair.first.place_) &&
+            return phi::is_cpu_place(kern_pair.first.place_) &&
                    kern_pair.first.library_type_ ==
                        paddle::framework::LibraryType::kMKLDNN &&
                    kern_pair.first.data_type_ ==
@@ -1099,8 +1105,8 @@ bool SupportsCPUBF16(const std::string& kernel_name) {
               std::function<void(const paddle::framework::ExecutionContext&)>,
               paddle::framework::OpKernelType::Hash>::const_reference
                  kern_pair) {
-            return platform::is_cpu_place(kern_pair.first.place_) &&
-                   kern_pair.first.place_ == platform::CPUPlace() &&
+            return phi::is_cpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.place_ == phi::CPUPlace() &&
                    kern_pair.first.data_type_ ==
                        paddle::framework::proto::VarType::Type::
                            VarType_Type_BF16;
@@ -1120,10 +1126,23 @@ phi::KernelKey GetKernelKey(
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
     VLOG(6) << "FeedOp doesn't need a kernel. Backend: CPU, DataLayout: ANY";
-    return {phi::Backend::CPU,
-            phi::DataLayout::ANY,
-            TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+    pir::Type dtype;
+    if (op->result(0).type().isa<paddle::dialect::DenseTensorArrayType>()) {
+      dtype = op->result(0)
+                  .type()
+                  .dyn_cast<paddle::dialect::DenseTensorArrayType>()
+                  .dtype();
+    } else if (op->result(0).type().isa<paddle::dialect::DenseTensorType>()) {
+      dtype = op->result(0)
+                  .type()
+                  .dyn_cast<paddle::dialect::DenseTensorType>()
+                  .dtype();
+    } else {
+      PADDLE_THROW(
+          "FeedOp, FetchOp, ArrayLengthOp can only output a densetensor or "
+          "dense tensor array.");
+    }
+    return {phi::Backend::CPU, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
   }
 
   if (op->isa<DataOp>()) {
@@ -1315,7 +1334,7 @@ phi::KernelKey GetKernelKey(
   // case that place from (not GPU) to GPU.
   // We handle this special case by following code to fix up the problem.
   // This could be further improved if we had another method.
-  if (!platform::is_gpu_place(place)) {
+  if (!phi::is_gpu_place(place)) {
     if (op->isa<MemcpyOp>()) {
       VLOG(6) << "MemcpyOp need a special handle";
       int dst_place_type = op->attribute("dst_place_type")
@@ -1704,7 +1723,7 @@ void AddShadowFeedForTuplePopOp(
   }
 
   // if value place not gpu, add shadow feed op
-  if (platform::is_gpu_place(place) && add_shadow_feed) {
+  if (phi::is_gpu_place(place) && add_shadow_feed) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       AddShadowFeedForValue(i,
                             op_item,
@@ -2310,6 +2329,68 @@ void HandleForCustomOp(
   block->push_back(op);
 }
 
+void HandleForTensorRTOp(
+    pir::IrContext* ctx,
+    pir::Operation* op_item,
+    const phi::KernelKey& kernel_key,
+    const phi::Place place,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair,
+    pir::Block* block) {
+  // Prepare output types
+  std::vector<pir::Type> op_output_types;
+
+  for (size_t i = 0; i < op_item->num_results(); ++i) {
+    phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
+    PushBackOutputTypes(ctx,
+                        op_item,
+                        op_item->result(i).type(),
+                        out_place,
+                        kernel_key,
+                        &op_output_types);
+  }
+
+  // Prepare input
+  std::vector<pir::Value> vec_inputs;
+
+  for (size_t i = 0; i < op_item->num_operands(); ++i) {
+    auto cur_in = op_item->operand_source(i);
+    PADDLE_ENFORCE_EQ(
+        map_value_pair->count(cur_in),
+        true,
+        phi::errors::PreconditionNotMet(
+            "[%d]'s input of [%s] op MUST in map pair", i, op_item->name()));
+
+    auto new_in = map_value_pair->at(cur_in);
+
+    vec_inputs.push_back(new_in);
+  }
+
+  // Prepare attr
+  std::unordered_map<std::string, pir::Attribute> op_attribute;
+  auto op_attr_map = op_item->attributes();
+  for (auto& map_item : op_attr_map) {
+    op_attribute.emplace(map_item.first, map_item.second);
+  }
+  op_attribute["op_name"] = pir::StrAttribute::get(ctx, op_item->name());
+
+  pir::OpInfo trt_op_info = ctx->GetRegisteredOpInfo(TensorRTEngineOp::name());
+
+  pir::Operation* op = nullptr;
+  op = pir::Operation::Create(
+      vec_inputs, op_attribute, op_output_types, trt_op_info);
+
+  (*map_op_pair)[op_item] = op;
+
+  // only deal with single output
+  if (op_item->num_results() > 0) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      (*map_value_pair)[op_item->result(i)] = op->result(i);
+    }
+  }
+  block->push_back(op);
+}
+
 std::vector<pir::Type> BuildOutputs(
     pir::Operation* op_item,
     const std::string& kernel_fn_str,
@@ -2866,9 +2947,9 @@ void AddShadowFeedOpForDataOrFeed(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
   bool feed_op_add_shadow_feed =
-      (op_item->isa<FeedOp>()) && platform::is_gpu_place(place);
+      (op_item->isa<FeedOp>()) && phi::is_gpu_place(place);
   bool data_op_add_shadow_feed =
-      (op_item->isa<DataOp>()) && platform::is_gpu_place(place) &&
+      (op_item->isa<DataOp>()) && phi::is_gpu_place(place) &&
       (kernel_op->attributes()
            .at("place")
            .dyn_cast<PlaceAttribute>()
@@ -3087,7 +3168,7 @@ void ProcessBlock(
           AllocatedDenseTensorType::get(ctx, phi::Place(), dense_tensor_type));
     }
   }
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
     for (auto& [keyword, arg] : block->kwargs()) {
       if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
         auto dtype = dense_tensor_type.dtype();
@@ -3153,6 +3234,17 @@ void ProcessBlock(
                         map_op_pair,
                         map_value_pair,
                         new_block);
+      continue;
+    }
+
+    if (paddle::dialect::IsTensorRTOp(op_item)) {
+      HandleForTensorRTOp(ctx,
+                          op_item,
+                          kernel_key,
+                          place,
+                          map_op_pair,
+                          map_value_pair,
+                          new_block);
       continue;
     }
 
@@ -3252,6 +3344,11 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
 
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
+
+  if (FLAGS_enable_collect_shape) {
+    paddle::framework::CollectShapeManager::Instance().SetValueMap(
+        map_value_pair);
+  }
 
   if (FLAGS_print_ir) {
     std::cout << "IR after lowering = " << *program << std::endl;

@@ -58,9 +58,9 @@ static framework::VariableNameMap CreateVarNameMap(
       PADDLE_ENFORCE_EQ(
           var.dispensable(),
           true,
-          platform::errors::NotFound("Variable %s is not dispensable and "
-                                     "there are no such var in inputs",
-                                     var.name()));
+          phi::errors::NotFound("Variable %s is not dispensable and "
+                                "there are no such var in inputs",
+                                var.name()));
       result[var.name()] = {};
     } else {
       auto& var_vector = it->second;
@@ -85,7 +85,7 @@ TEST(test_prepare_op, test_prepare_op) {
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   vin->MutableVar()->GetMutable<phi::DenseTensor>()->mutable_data<float>(place);
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -127,8 +127,8 @@ TEST(test_prepare_op, test_prepare_data) {
       new imperative::VarBase(false, "vout"));
 
   framework::OpDesc desc;
-  platform::CPUPlace cpu_place;
-  platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> dims = {2, 5};
 
@@ -172,8 +172,8 @@ TEST(test_prepare_op, test_prepare_data) {
       gpu_place);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
-      ASSERT_TRUE(platform::is_same_place(
-          vb->Var().Get<phi::DenseTensor>().place(), gpu_place));
+      ASSERT_TRUE(phi::is_same_place(vb->Var().Get<phi::DenseTensor>().place(),
+                                     gpu_place));
     }
   }
 }
@@ -186,7 +186,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
       new imperative::VarBase(false, "vout"));
 
   framework::OpDesc desc;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> dims = {2, 5};
 
@@ -230,8 +230,8 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
       cpu_place);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
-      ASSERT_TRUE(platform::is_same_place(
-          vb->Var().Get<phi::DenseTensor>().place(), cpu_place));
+      ASSERT_TRUE(phi::is_same_place(vb->Var().Get<phi::DenseTensor>().place(),
+                                     cpu_place));
     }
   }
 }

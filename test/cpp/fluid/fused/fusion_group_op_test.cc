@@ -27,7 +27,7 @@ using CPUKernelFunc = std::function<void(size_t n, std::vector<void*> args)>;
 
 template <typename T>
 phi::DenseTensor* CreateTensor(framework::Scope* scope,
-                               const platform::Place& place,
+                               const phi::Place& place,
                                const std::string& name,
                                const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
@@ -173,7 +173,7 @@ void TestMain(const std::vector<std::string>& input_names,
 
   fusion_group_op->Run(scope, place);
 
-  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   dev_ctx->Wait();
 
   // Check the output.

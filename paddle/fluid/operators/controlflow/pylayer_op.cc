@@ -37,9 +37,9 @@ void PyLayerOp::CreateInterpreter(
     const framework::BlockDesc &block,
     framework::Scope *cur_scope,
     const std::vector<std::string> &skip_vars) const {
-  if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+  if (!core_ || !phi::is_same_place(core_->GetPlace(), dev_place)) {
     VLOG(10) << "[interpreterCore cache]" << core_.get();
-    VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(), dev_place);
+    VLOG_IF(10, core_) << phi::is_same_place(core_->GetPlace(), dev_place);
 
     framework::interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;

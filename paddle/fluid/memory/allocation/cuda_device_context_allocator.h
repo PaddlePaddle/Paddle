@@ -24,7 +24,7 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace memory {
@@ -161,7 +161,7 @@ class GPUContextAllocatorPool {
     for (int i : devices) {
       auto place = phi::GPUPlace(i);
       auto compute_stream =
-          platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
+          phi::DeviceContextPool::Instance().GetByPlace(place)->stream();
       auto allocator = std::shared_ptr<GPUContextAllocator>(
           new GPUContextAllocator(place, compute_stream));
       allocators_.insert(make_pair(place, allocator));

@@ -4437,7 +4437,16 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.expand_as(x, None, y.shape)
+    elif in_pir_mode():
+        if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
+            raise ValueError(
+                "When the data type of input 'x' for expand_as is bool, "
+                "you must set its stop_gradient to be False by "
+                "some_var.stop_gradient = True, supporting "
+                "some_var as the input 'x'."
+            )
         return _C_ops.expand_as(x, None, y.shape)
     else:
         check_variable_and_dtype(
