@@ -32,6 +32,7 @@ from .utils import (
 class ReadItem:
     local_tensor_index: LocalTensorIndex
     rank: int
+    dtype: str
     cur_offset: Tuple[int]
     storage_offset: Tuple[int]
     lengths: Tuple[int]
@@ -331,7 +332,9 @@ def get_read_items(path, state_dict, process_group, use_dist):
                 global_offset = (
                     tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
                 )
-            cur_chunk_metadata = LocalTensorMetadata(global_offset, local_shape)
+            cur_chunk_metadata = LocalTensorMetadata(
+                global_offset, local_shape, str(val.dtype).split(".")[1]
+            )
             assert (
                 tensor_key in storage_state_dict_metadata
             ), f"tensor_key:{tensor_key} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
@@ -353,6 +356,7 @@ def get_read_items(path, state_dict, process_group, use_dist):
                     ReadItem(
                         storage_local_tensor_index,
                         paddle.distributed.get_rank(),
+                        storage_local_tensor_metadata.dtype,
                         tuple(cur_offsets),
                         tuple(storage_offsets),
                         tuple(lengths),
@@ -504,16 +508,21 @@ def load_state_dict(
                 assert (
                     item.local_tensor_index.tensor_key in flat_state_dict
                 ), f"item:{item}, state_dict:{flat_state_dict}"
-                cur_local_tensor = (
-                    flat_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ]._local_value()
-                    if use_dist
+
+                if (
+                    use_dist
                     and flat_state_dict[
                         item.local_tensor_index.tensor_key
                     ].is_dist()
-                    else flat_state_dict[item.local_tensor_index.tensor_key]
-                )
+                ):
+                    cur_local_tensor = flat_state_dict[
+                        item.local_tensor_index.tensor_key
+                    ]._local_value()
+                else:
+                    cur_local_tensor = flat_state_dict[
+                        item.local_tensor_index.tensor_key
+                    ]
+
                 cur_offsets = item.cur_offset
                 cur_lengths = item.lengths
                 cur_ends = [
@@ -533,14 +542,13 @@ def load_state_dict(
             else:
                 cur_chunk_tensor = paddle.zeros(
                     item.lengths,
-                    dtype=flat_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ].dtype,
+                    item.dtype,
                 )
 
             if src_rank == item.rank:
                 # assign value locally
-                paddle.assign(storage_chunk_tensor, cur_chunk_tensor)
+                if src_rank == paddle.distributed.get_rank():
+                    paddle.assign(storage_chunk_tensor, cur_chunk_tensor)
             else:
                 # assign value remotely
                 if src_rank == paddle.distributed.get_rank():
@@ -549,10 +557,15 @@ def load_state_dict(
                         storage_chunk_tensor, src=src_rank, group=process_group
                     )
                 else:
+                    tmp_tensor = paddle.assign(cur_chunk_tensor)
                     paddle.distributed.broadcast(
-                        cur_chunk_tensor, src=src_rank, group=process_group
+                        tmp_tensor, src=src_rank, group=process_group
                     )
+                    paddle.assign(tmp_tensor, cur_chunk_tensor)
 
         for k, v in flat_state_dict.items():
             if k in state_dict_in_cpu:
-                state_dict[k] = v.cpu()
+                paddle.assign(
+                    v.cpu(),
+                    state_dict['optimizer'][k.removeprefix('optimizer.')],
+                )

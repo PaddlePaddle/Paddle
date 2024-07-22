@@ -161,7 +161,6 @@ def save_state_dict(
         if use_dist:
             check_file_name(file_name, process_group)
             # the parameter_name and order in state_dict should be the same
-            check_state_dict(flat_state_dict, process_group)
         metadata = Metadata()
         local_state_dict = {}
         local_state_dict_metadata = {}
@@ -172,6 +171,9 @@ def save_state_dict(
                 if not val._is_initialized():
                     continue
                 if val.is_dist():
+                    local_tensor = val._local_value()
+                    # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
+                    local_tensor.name = val.name
                     # when val is scalar, the shape is []
                     (
                         local_shape,
@@ -187,9 +189,11 @@ def save_state_dict(
                     )
                     if local_shape is None or global_offset is None:
                         continue
-                    local_tensor = val._local_value()
-                    # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
-                    local_tensor.name = val.name
+                    if (
+                        paddle.distributed.get_rank()
+                        not in val.process_mesh.process_ids
+                    ):
+                        continue
                 else:
                     local_shape = tuple(val.shape)
                     global_offset = (
@@ -199,8 +203,9 @@ def save_state_dict(
                     )
                     local_tensor = val
                 local_state_dict[key] = local_tensor
+                local_tenosr_dtype = str(local_tensor.dtype).split('.')[1]
                 local_state_dict_metadata[key] = LocalTensorMetadata(
-                    global_offset, local_shape
+                    global_offset, local_shape, local_tenosr_dtype
                 )
                 local_storage_metadata[
                     LocalTensorIndex(key, tuple(global_offset))
