@@ -94,7 +94,7 @@ class TestPullBoxSparseOP(unittest.TestCase):
 
     def test_pull_box_sparse_op(self):
         paddle.enable_static()
-        program = base.Program()
+        program = paddle.static.Program()
         with base.program_guard(program):
             x = paddle.static.data(
                 name='x', shape=[-1, 1], dtype='int64', lod_level=0
