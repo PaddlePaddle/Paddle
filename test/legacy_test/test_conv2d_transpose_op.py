@@ -1315,10 +1315,7 @@ class TestConv2DTransposeOpException(unittest.TestCase):
                 kernel_size=3,
             )(data)
 
-        if not paddle.framework.use_pir_api():
-            self.assertRaises(ValueError, error_0_filter_number)
-        else:
-            self.assertRaises(AssertionError, error_0_filter_number)
+        self.assertRaises(AssertionError, error_0_filter_number)
 
 
 class TestConv2DTransposeRepr(unittest.TestCase):
