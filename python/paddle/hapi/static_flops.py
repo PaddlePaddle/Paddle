@@ -22,7 +22,7 @@ __all__ = []
 
 
 class VarWrapper:
-    def __init__(self, var: Variable | None, graph: 'GraphWrapper') -> None:
+    def __init__(self, var: Variable, graph: 'GraphWrapper') -> None:
         assert isinstance(var, Variable)
         assert isinstance(graph, GraphWrapper)
         self._var = var
