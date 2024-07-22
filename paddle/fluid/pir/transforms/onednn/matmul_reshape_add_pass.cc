@@ -115,26 +115,24 @@ class MatmulReshapeElementwiseAddFusePattern
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &in_num_col_dims_attr =
         res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
-          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-          auto reshape_x_dims = match_ctx.Attr<std::vector<int64_t>>("value");
-          int target = reshape_x_dims[1];
-          for (size_t i = x_dims.size() - 1; i > 0; i--) {
-            target /= x_dims[i];
-            if (target == 1) {
-              return static_cast<int>(i);
-            }
-          }
-          return static_cast<int>(reshape_x_dims.size()) - 1;
+          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("reshape_x"));
+          return static_cast<int>(x_dims.size()) - 1;
         });
 
+    const auto &full_1 = res.Op(paddle::dialect::FullIntArrayOp::name(),
+                                {{"value", pat.Attr("value")},
+                                 {"dtype", pat.Attr("dtype")},
+                                 {"place", pat.Attr("place")}});
+    const auto &reshape = res.Op(paddle::dialect::ReshapeOp::name());
+    reshape({&res.Tensor("x"), &full_1()},
+            {&res.Tensor("reshape_x"), &res.Tensor("reshape_x_xshape")});
     const auto &fc_op = res.Op(fused_matmul_name_,
                                {{
                                    {"in_num_col_dims", in_num_col_dims_attr},
                                    {"activation_type", res.StrAttr("")},
                                    {"padding_weights", res.BoolAttr(false)},
                                }});
-
-    fc_op({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
+    fc_op({&res.Tensor("reshape_x"), &res.Tensor("w"), &res.Tensor("y")},
           {&res.Tensor("add_out")});
   }
 };
