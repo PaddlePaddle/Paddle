@@ -81,7 +81,9 @@ class TestInstanceNormDoubleGradCheckWithoutParamBias(
             eps = 0.005
             atol = 1e-4
             x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
-            z = paddle.nn.InstanceNorm2D(3, bias_attr=False)(x)
+            z = paddle.nn.InstanceNorm2D(3, weight_attr=False, bias_attr=False)(
+                x
+            )
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             gradient_checker.double_grad_check(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
