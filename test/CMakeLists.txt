@@ -190,6 +190,10 @@ if(WITH_TESTING)
   if(WITH_XPU)
     add_subdirectory(xpu)
   endif()
+
+  # add tests for scripts from `Paddle/tools`
+  add_subdirectory(tools)
+
 endif()
 
 if(WITH_CPP_DIST)
