@@ -722,7 +722,7 @@ class SymbolicVariable(VariableBase):
         return ConstantVariable(int(self), self.graph, DummyTracker([self]))
 
     def __float__(self) -> float:
-        return int(self.get_py_value())
+        return float(self.get_py_value())
 
     def float(self):
         return ConstantVariable(float(self), self.graph, DummyTracker([self]))

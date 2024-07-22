@@ -22,6 +22,7 @@ from test_case_base import (
 )
 
 import paddle
+from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import (
     with_allow_dynamic_shape_guard,
 )
@@ -129,9 +130,9 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
         with with_allow_dynamic_shape_guard(
             True
         ), test_instruction_translator_cache_context() as ctx:
-            func1 = lambda n: bool(n)
-            func2 = lambda n: int(n)
-            func3 = lambda n: float(n)
+            func1 = check_no_breakgraph(lambda n: bool(n))
+            func2 = check_no_breakgraph(lambda n: int(n))
+            func3 = check_no_breakgraph(lambda n: float(n))
             for func in [func1, func2, func3]:
                 self.assert_results(func, 1)
                 self.assert_results(func, 2)
