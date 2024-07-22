@@ -18,7 +18,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/phi/api/profiler/host_event_recorder.h"
 

@@ -50,10 +50,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
+#include "paddle/common/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/accessor.h"
