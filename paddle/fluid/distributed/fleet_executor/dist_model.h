@@ -18,11 +18,11 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/fleet_executor/dist_model_tensor_wrapper.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/common/place.h"
 
 namespace paddle {

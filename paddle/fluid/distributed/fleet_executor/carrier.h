@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
 #include "paddle/fluid/distributed/fleet_executor/task_loop_thread_pool.h"
@@ -29,7 +30,6 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/common/place.h"
 
 namespace paddle {

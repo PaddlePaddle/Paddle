@@ -20,8 +20,8 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/common/place.h"
 
 namespace paddle {
