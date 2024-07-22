@@ -407,7 +407,9 @@ class TestUnbindAxisError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
 
-        with paddle.base.program_guard(paddle.base.Program(), paddle.base.Program()):
+        with paddle.base.program_guard(
+            paddle.base.Program(), paddle.base.Program()
+        ):
             x = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x')
 
             def test_table_Variable():
