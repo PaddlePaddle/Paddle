@@ -21,12 +21,12 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/flags.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
