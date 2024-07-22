@@ -219,12 +219,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
       .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
       .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce)
       .value("_NoReduce", BuildStrategy::ReduceStrategy::kNoReduce);
-  py::enum_<BuildStrategy::GradientScaleStrategy>(build_strategy,
-                                                  "GradientScaleStrategy")
-      .value("CoeffNumDevice",
-             BuildStrategy::GradientScaleStrategy::kCoeffNumDevice)
-      .value("One", BuildStrategy::GradientScaleStrategy::kOne)
-      .value("Customized", BuildStrategy::GradientScaleStrategy::kCustomized);
 
   build_strategy.def(py::init())
       .def("_clear_finalized", &BuildStrategy::ClearFinalized)
@@ -257,59 +251,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
 
                         >>> build_strategy = static.BuildStrategy()
                         >>> build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
-          )DOC")
-      .def_property(
-          "gradient_scale_strategy",
-          [](const BuildStrategy &self) { return self.gradient_scale_; },
-          [](BuildStrategy &self,
-             BuildStrategy::GradientScaleStrategy strategy) {
-            PADDLE_ENFORCE_NE(self.IsFinalized(),
-                              true,
-                              phi::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finalized, cannot be "
-                                  "configured again."));
-            self.gradient_scale_ = strategy;
-          },
-          R"DOC((paddle.static.BuildStrategy.GradientScaleStrategy, optional): there are three
-                ways of defining :math:`loss@grad` in CompiledProgram, that is, CoeffNumDevice,
-                One and Customized. By default, CompiledProgram sets the :math:`loss@grad`
-                according to the number of devices. If you want to customize :math:`loss@grad`,
-                you can choose Customized. Default is 'CoeffNumDevice'.
-
-                Examples:
-                    .. code-block:: python
-
-                        >>> import numpy
-                        >>> import paddle
-                        >>> import paddle.static as static
-
-                        >>> paddle.enable_static()
-
-                        >>> use_cuda = paddle.device.is_compiled_with_cuda
-                        >>> place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-                        >>> exe = static.Executor(place)
-
-                        >>> data = static.data(name='X', shape=[None, 1], dtype='float32')
-                        >>> hidden = static.nn.fc(data, size=10)
-                        >>> loss = paddle.mean(hidden)
-                        >>> paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
-
-                        >>> exe.run(static.default_startup_program())
-
-                        >>> build_strategy = static.BuildStrategy()
-                        >>> build_strategy.gradient_scale_strategy = \
-                        ...             static.BuildStrategy.GradientScaleStrategy.Customized
-                        >>> compiled_prog = static.CompiledProgram(
-                        ...             static.default_main_program(),
-                        ...             build_strategy=build_strategy,
-                        >>> )
-
-                        >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-                        >>> loss_grad = numpy.ones((1)).astype("float32") * 0.01
-                        >>> loss_grad_name = loss.name+"@GRAD"
-                        >>> loss_data = exe.run(compiled_prog,
-                        ...                         feed={"X": x, loss_grad_name : loss_grad},
-                        ...                         fetch_list=[loss.name, loss_grad_name])
           )DOC")
       .def_property(
           "debug_graphviz_path",

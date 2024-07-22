@@ -261,7 +261,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 # pack as LoDTensorArray
                 array = core.LoDTensorArray()
                 for slot in batch:
-                    if isinstance(slot, (paddle.Tensor, core.eager.Tensor)):
+                    if isinstance(slot, paddle.Tensor):
                         slot = slot.value().get_tensor()
                     elif not isinstance(slot, core.LoDTensor):
                         tmp = core.LoDTensor()
@@ -633,9 +633,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                             # LoDTensor not in shared memory is not
                             # serializable, cannot be create in workers
                             for slot in batch:
-                                if isinstance(
-                                    slot, (paddle.Tensor, core.eager.Tensor)
-                                ):
+                                if isinstance(slot, paddle.Tensor):
                                     slot = slot.get_tensor()
                                 elif not isinstance(slot, core.LoDTensor):
                                     tmp = core.LoDTensor()

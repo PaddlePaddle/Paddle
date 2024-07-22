@@ -27,7 +27,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"
 #include "pybind11/pybind11.h"
 
