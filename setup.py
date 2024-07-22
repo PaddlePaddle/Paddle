@@ -1402,6 +1402,24 @@ def get_package_data_and_package_dir():
     package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + [
         'tensor.pyi'
     ]
+    package_data['paddle._typing'] = package_data.get('paddle._typing', []) + [
+        '*.pyi'
+    ]
+    package_data['paddle._typing.libs'] = package_data.get(
+        'paddle._typing.libs', []
+    ) + ['*.pyi', '*.md']
+    package_data['paddle._typing.libs.libpaddle'] = package_data.get(
+        'paddle._typing.libs.libpaddle', []
+    ) + ['*.pyi']
+    package_data['paddle._typing.libs.libpaddle.pir'] = package_data.get(
+        'paddle._typing.libs.libpaddle.pir', []
+    ) + ['*.pyi']
+    package_data['paddle._typing.libs.libpaddle.eager'] = package_data.get(
+        'paddle._typing.libs.libpaddle.eager', []
+    ) + ['*.pyi']
+    package_data['paddle._typing.libs.libpaddle.eager.ops'] = package_data.get(
+        'paddle._typing.libs.libpaddle.eager.ops', []
+    ) + ['*.pyi']
 
     return package_data, package_dir, ext_modules
 
@@ -1725,6 +1743,11 @@ def get_setup_parameters():
         'paddle.pir',
         'paddle.decomposition',
         'paddle._typing',
+        'paddle._typing.libs',
+        'paddle._typing.libs.libpaddle',
+        'paddle._typing.libs.libpaddle.pir',
+        'paddle._typing.libs.libpaddle.eager',
+        'paddle._typing.libs.libpaddle.eager.ops',
     ]
 
     paddle_bins = ''
@@ -1875,9 +1898,25 @@ def generate_stub_files(paddle_binary_dir, paddle_source_dir):
     print('-' * 2, 'End Generate stub file tensor.pyi ... ')
 
     print('-' * 2, 'Generate stub file for pybind11 ... ')
+    from pathlib import Path
+
     import gen_pybind11_stub
 
-    gen_pybind11_stub.generate_stub_file(output_dir=paddle_binary_dir)
+    gen_pybind11_stub.generate_stub_file(
+        output_dir=paddle_binary_dir + '/python/paddle/_typing/libs/',
+        module_name='paddle.base.libpaddle',
+        ignore_all_errors=True,
+        is_dir=True,
+    )
+
+    libpaddle_dst = paddle_source_dir + '/python/paddle/_typing/libs/libpaddle'
+    if Path(libpaddle_dst).exists():
+        shutil.rmtree(libpaddle_dst)
+
+    shutil.copytree(
+        paddle_binary_dir + '/python/paddle/_typing/libs/libpaddle',
+        libpaddle_dst,
+    )
 
     print('-' * 2, 'End Generate stub for pybind11 ... ')
 

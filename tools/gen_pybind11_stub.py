@@ -146,29 +146,43 @@ def parse_args():
     return args
 
 
-def main():
+def generate_stub_file(
+    output_dir,
+    module_name,
+    ignore_all_errors: bool = False,
+    is_dir: bool = False,
+):
     patch_pybind11_stubgen_printer()
-    args = parse_args()
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         gen_stub(
             output_dir=tmpdirname,  # like: 'Paddle/python/',
-            module_name=args.module_name,  # like: 'paddle.base.libpaddle',
-            ignore_all_errors=args.ignore_all_errors,
+            module_name=module_name,  # like: 'paddle.base.libpaddle',
+            ignore_all_errors=ignore_all_errors,
         )
-        paths = args.module_name.split('.')
+        paths = module_name.split('.')
 
-        if args.is_dir:
-            _path_dst = Path(args.output_dir).joinpath(paths[-1])
+        if is_dir:
+            _path_dst = Path(output_dir).joinpath(paths[-1])
             if _path_dst.exists():
                 shutil.rmtree(str(_path_dst))
         else:
             paths[-1] += '.pyi'
-            _path_dst = Path(args.output_dir).joinpath(paths[-1])
+            _path_dst = Path(output_dir).joinpath(paths[-1])
             if _path_dst.exists():
                 os.remove(str(_path_dst))
 
-        shutil.move(str(Path(tmpdirname).joinpath(*paths)), args.output_dir)
+        shutil.move(str(Path(tmpdirname).joinpath(*paths)), output_dir)
+
+
+def main():
+    args = parse_args()
+    generate_stub_file(
+        output_dir=args.output_dir,
+        module_name=args.module_name,
+        ignore_all_errors=args.ignore_all_errors,
+        is_dir=args.is_dir,
+    )
 
 
 if __name__ == '__main__':
