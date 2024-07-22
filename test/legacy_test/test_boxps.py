@@ -19,6 +19,7 @@ from paddle import base
 from paddle.base import core
 from paddle.distributed.transpiler import collective
 from paddle.incubate.layers.nn import _pull_box_sparse
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestTranspile(unittest.TestCase):
@@ -92,10 +93,12 @@ class TestRunCmd(unittest.TestCase):
 class TestPullBoxSparseOP(unittest.TestCase):
     """TestCases for _pull_box_sparse op"""
 
+    @test_with_pir_api
     def test_pull_box_sparse_op(self):
         paddle.enable_static()
         program = paddle.static.Program()
-        with base.program_guard(program):
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(program, startup):
             x = paddle.static.data(
                 name='x', shape=[-1, 1], dtype='int64', lod_level=0
             )
