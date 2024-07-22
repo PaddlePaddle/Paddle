@@ -41,17 +41,17 @@ class SymbolicValue(metaclass=Singleton):
 
 
 class SymbolicBool(SymbolicValue):
-    def get_static_type(self) -> type:
+    def get_static_type(self) -> type[bool]:
         return bool
 
 
 class SymbolicInt(SymbolicValue):
-    def get_static_type(self) -> type:
+    def get_static_type(self) -> type[int]:
         return int
 
 
 class SymbolicFloat(SymbolicValue):
-    def get_static_type(self) -> type:
+    def get_static_type(self) -> type[float]:
         return float
 
 

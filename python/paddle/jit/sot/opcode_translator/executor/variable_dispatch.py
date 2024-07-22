@@ -893,11 +893,10 @@ fallback_tensor_unary_method = {
 Dispatcher.register(tensor_numel, ("TensorVariable",), lambda x: x.numel())
 
 for unary_fn in UNARY_OPS:
-    # TODO(zrr1999): SymbolicVariable should have special dispatch for fallback_tensor_unary_method
     if unary_fn in fallback_tensor_unary_method:
         Dispatcher.register(
             unary_fn,
-            ("TensorVariable | SymbolicVariable",),
+            ("TensorVariable",),
             raise_break_graph_fn,
         )
         continue
@@ -982,6 +981,16 @@ for binary_fn in BINARY_OPS:
                     ),
                 )
 # Symbolic
+Dispatcher.register(
+    float,
+    ("SymbolicVariable",),
+    lambda var: var.float(),
+)
+Dispatcher.register(
+    int,
+    ("SymbolicVariable",),
+    lambda var: var.int(),
+)
 for binary_fn in BINARY_OPS:
     for magic_method in magic_method_builtin_dispatch(binary_fn):
         if magic_method.name not in get_tensor_methods():
