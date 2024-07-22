@@ -88,7 +88,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
             np.allclose(
                 result[i],
                 output,
-                atol=0
+                atol=0,
             )
 
     def test_cpu(self):
