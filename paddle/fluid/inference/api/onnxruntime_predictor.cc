@@ -35,8 +35,8 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 
@@ -205,7 +205,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kONNXRuntime>(
   PADDLE_ENFORCE_EQ(
       config.is_valid(),
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Note: Each config can only be used for one predictor."));
 
   VLOG(3) << "create ONNXRuntimePredictor";
@@ -262,7 +262,7 @@ bool ONNXRuntimePredictor::FindONNXDesc(const std::string &name,
 std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
     const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(scope_->FindVar(name),
-                          platform::errors::PreconditionNotMet(
+                          phi::errors::PreconditionNotMet(
                               "The in variable named %s is not found in the "
                               "ONNXPredictor.",
                               name));
@@ -283,7 +283,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
     const std::string &name) {
   PADDLE_ENFORCE_EQ(FindONNXDesc(name, false),
                     true,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "The out variable named %s is not found in the "
                         "ONNXPredictor.",
                         name));
@@ -378,8 +378,7 @@ ONNXRuntimePredictor::~ONNXRuntimePredictor() {
 
 const void *ONNXRuntimePredictor::GetDeviceContexts() const {
   // TODO(inference): Support private device contexts.
-  paddle::platform::DeviceContextPool &pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   const auto &dev_ctxs = pool.device_contexts();
   return &const_cast<
       std::map<phi::Place,

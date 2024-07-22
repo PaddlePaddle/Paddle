@@ -31,7 +31,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle::framework {
 class Variable;
@@ -133,7 +133,7 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
   PADDLE_ENFORCE_EQ(
       phi::is_gpu_place(place_),
       true,
-      platform::errors::Unimplemented(
+      phi::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
   AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
 }
@@ -153,29 +153,27 @@ void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
       src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));
 }
 
-paddle::platform::DeviceContext *NCCLParallelContext::GetDeviceContext(
-    int ring_id) {
-  return static_cast<platform::DeviceContext *>(
-      platform::NCCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context());
+phi::DeviceContext *NCCLParallelContext::GetDeviceContext(int ring_id) {
+  return static_cast<phi::DeviceContext *>(platform::NCCLCommContext::Instance()
+                                               .Get(ring_id, place_)
+                                               ->dev_context());
 }
 
 void NCCLParallelContext::WaitCompute(int ring_id) {
   PADDLE_ENFORCE_GE(
       ring_id,
       0,
-      platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(ring_id,
-                    compute_events_.size(),
-                    platform::errors::OutOfRange(
-                        "ring id must < compute events size,"
-                        "but got ring id = %d, compute events size = %d",
-                        ring_id,
-                        compute_events_.size()));
+      phi::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(
+      ring_id,
+      compute_events_.size(),
+      phi::errors::OutOfRange("ring id must < compute events size,"
+                              "but got ring id = %d, compute events size = %d",
+                              ring_id,
+                              compute_events_.size()));
 
   auto compute_stream = static_cast<phi::GPUContext *>(
-                            platform::DeviceContextPool::Instance().Get(place_))
+                            phi::DeviceContextPool::Instance().Get(place_))
                             ->stream();
   auto comm_stream =
       platform::NCCLCommContext::Instance().Get(ring_id, place_)->stream();
@@ -195,17 +193,17 @@ void NCCLParallelContext::WaitComm(int ring_id) {
   PADDLE_ENFORCE_GE(
       ring_id,
       0,
-      platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(ring_id,
-                    comm_events_.size(),
-                    platform::errors::OutOfRange(
-                        "ring id must < comm events size,"
-                        "but got ring id = %d, comm events size = %d",
-                        ring_id,
-                        comm_events_.size()));
+      phi::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(
+      ring_id,
+      comm_events_.size(),
+      phi::errors::OutOfRange("ring id must < comm events size,"
+                              "but got ring id = %d, comm events size = %d",
+                              ring_id,
+                              comm_events_.size()));
 
   auto compute_stream = static_cast<phi::GPUContext *>(
-                            platform::DeviceContextPool::Instance().Get(place_))
+                            phi::DeviceContextPool::Instance().Get(place_))
                             ->stream();
   auto comm_stream =
       platform::NCCLCommContext::Instance().Get(ring_id, place_)->stream();
@@ -223,7 +221,7 @@ void NCCLParallelContext::WaitComm(int ring_id) {
 
 void NCCLParallelContext::SynchronizeCompute() {
   auto *compute_dev_ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(place_));
+      phi::DeviceContextPool::Instance().Get(place_));
   compute_dev_ctx->Wait();
 }
 

@@ -51,18 +51,14 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceAvg_Op::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
-    CReducescatterOp::name(),
     CAllreduceMax_Op::name(),
+    CAllreduceMaxOp::name(),
     CAllreduceMin_Op::name(),
     CAllgatherOp::name(),
     CSoftmaxWithCrossEntropyOp::name(),
     CSoftmaxWithCrossEntropyGradOp::name(),
     CSplitOp::name(),
     PushDenseOp::name(),
-    SeedOp::name(),
-    GetTensorFromSelectedRowsOp::name(),
-    RowConvOp::name(),
-    RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
     NceOp::name(),
@@ -446,8 +442,9 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
     auto shape_item = shape.defining_op()
                           ->dyn_cast<paddle::dialect::FullOp>()
                           .attribute("value")
-                          .dyn_cast<pir::FloatAttribute>()
-                          .data();
+                          .dyn_cast<paddle::dialect::ScalarAttribute>()
+                          .data()
+                          .to<double>();
     vec_shape = {static_cast<int64_t>(shape_item)};
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::StackOp>()) {

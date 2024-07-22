@@ -287,11 +287,10 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph,
             "Scope in QuantDequantFuse pass should not be null."));
     const phi::DenseTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(input_scale_tensor.place()),
-        true,
-        platform::errors::InvalidArgument(
-            "Input scale tensor's place should be CPU."));
+    PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
     float in_scale = input_scale_data[0];
     float scale_value = in_scale;
@@ -411,11 +410,10 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
               scales_name.size()));
       const phi::DenseTensor& channel_scale_tensor =
           scope->FindVar(scales_name[0])->Get<phi::DenseTensor>();
-      PADDLE_ENFORCE_EQ(
-          paddle::platform::is_cpu_place(channel_scale_tensor.place()),
-          true,
-          platform::errors::InvalidArgument(
-              "Channel scale tensor's place should be CPU."));
+      PADDLE_ENFORCE_EQ(phi::is_cpu_place(channel_scale_tensor.place()),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Channel scale tensor's place should be CPU."));
       const float* channel_scale_data = channel_scale_tensor.data<float>();
       for (int i = 0; i < channel_scale_tensor.numel(); i++) {
         weight_scale.push_back(channel_scale_data[i] /

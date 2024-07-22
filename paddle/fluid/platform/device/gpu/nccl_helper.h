@@ -34,10 +34,10 @@
 #endif
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 
 #define NCCL_ID_VARNAME "NCCLID"
 
@@ -61,7 +61,8 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclUint8;
   } else if (type == framework::proto::VarType::BOOL) {
     return ncclUint8;
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
   } else if (type == framework::proto::VarType::BF16) {
     return ncclBfloat16;
 #endif
@@ -88,7 +89,8 @@ inline ncclDataType_t ToNCCLDataType(phi::DataType type) {
     return ncclInt8;
   } else if (type == phi::DataType::BOOL) {
     return ncclUint8;
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
   } else if (type == phi::DataType::BFLOAT16) {
     return ncclBfloat16;
 #endif
@@ -126,25 +128,25 @@ struct NCCLContext {
   ncclComm_t comm_;
 
   explicit NCCLContext(int dev_id) : comm_{nullptr} {
-    ctx_.reset(new phi::GPUContext(CUDAPlace(dev_id)));
+    ctx_.reset(new phi::GPUContext(phi::GPUPlace(dev_id)));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(CUDAPlace(dev_id), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(dev_id), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(CUDAPlace(dev_id))
+            .GetZeroAllocator(phi::GPUPlace(dev_id))
             .get());
     ctx_->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(paddle::platform::CPUPlace())
+            .GetZeroAllocator(phi::CPUPlace())
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
   }
@@ -160,7 +162,7 @@ class NCCLContextMap {
   std::unordered_map<int, NCCLContext> contexts_;
   std::vector<int> order_;
 
-  explicit NCCLContextMap(const std::vector<platform::Place> &places,
+  explicit NCCLContextMap(const std::vector<phi::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
                           size_t num_trainers = 1,
                           size_t trainer_id = 0) {
@@ -220,9 +222,9 @@ class NCCLContextMap {
 
   phi::GPUContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
-  phi::GPUContext *DevCtx(platform::Place p) const { return DevCtx(p.device); }
+  phi::GPUContext *DevCtx(phi::Place p) const { return DevCtx(p.device); }
 
-  const NCCLContext &at(platform::Place p) const { return this->at(p.device); }
+  const NCCLContext &at(phi::Place p) const { return this->at(p.device); }
 
   const NCCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
 
@@ -285,8 +287,8 @@ class NCCLCommunicator {
    *create a new nccl comm for sync_batch_norm_op. And these codes should be
    *polished with a unified nccl management.
    */
-  NCCLContextMap *GetSyncBatchNormCtx(
-      framework::Scope *scope, const std::vector<platform::Place> &places) {
+  NCCLContextMap *GetSyncBatchNormCtx(framework::Scope *scope,
+                                      const std::vector<phi::Place> &places) {
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
     if (nccl_id_var != nullptr) {
       return DefaultFlatCtx();
@@ -298,7 +300,7 @@ class NCCLCommunicator {
     return sync_batch_norm_ctx_.get();
   }
 
-  void InitFlatCtxs(const std::vector<platform::Place> &places,
+  void InitFlatCtxs(const std::vector<phi::Place> &places,
                     const std::vector<ncclUniqueId *> &nccl_ids,
                     size_t trainers_num,
                     size_t trainer_id) {
@@ -330,7 +332,7 @@ class NCCLCommunicator {
     }
   }
 
-  void InitHierarchicalCtxs(const std::vector<platform::Place> &places,
+  void InitHierarchicalCtxs(const std::vector<phi::Place> &places,
                             const std::vector<ncclUniqueId *> &inter_nccl_ids,
                             const std::vector<ncclUniqueId *> &exter_nccl_ids,
                             size_t trainers_num,

@@ -6346,6 +6346,8 @@ def diff(
             attrs_2 = ()
 
             dim_len = new_input.shape[axis]
+            if dim_len < 0:
+                dim_len = paddle.shape(new_input)[axis]
 
             starts_1 = [0]
             attrs_1 += ('starts', starts_1)
@@ -7614,7 +7616,7 @@ def bitwise_left_shift(
                 [[2  , 8  , 32 , 128],
                     [64 , 136, 128, 130]])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_left_shift(x, y, is_arithmetic)
     return _bitwise_op(
         op_name="bitwise_left_shift",
@@ -7701,7 +7703,7 @@ def bitwise_right_shift(
                 [[123, 59 , 27 , 11 ],
                     [60 , 29 , 56 , 95 ]])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_right_shift(x, y, is_arithmetic)
 
     return _bitwise_op(
@@ -8446,7 +8448,7 @@ def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
 
     Args:
         x (list[Tensor]|tuple[Tensor]): Any number of 1-D input Tensors. Supported data types: bfloat16, float16, float32, float64, int32, int64, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out (Tensor), cartesian product of input tensors with the same data type.

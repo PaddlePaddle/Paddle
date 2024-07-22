@@ -177,9 +177,10 @@
   kernel :
     func : all
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : allclose
-  args : (Tensor x, Tensor y, Scalar rtol="1e-5", Scalar atol="1e-8", bool equal_nan=false)
+  args : (Tensor x, Tensor y, Scalar(double) rtol=1e-5, Scalar(double) atol=1e-8, bool equal_nan=false)
   output : Tensor(out)
   infer_meta :
     func : AllValueCompareInferMeta
@@ -187,6 +188,7 @@
   kernel :
     func : allclose
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -196,6 +198,7 @@
   kernel :
     func : amax
   backward : amax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : amin
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -205,6 +208,7 @@
   kernel :
     func : amin
   backward : amin_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : angle
   args : (Tensor x)
@@ -224,6 +228,7 @@
   kernel :
     func : any
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : apply_per_channel_scale
   args: (Tensor x, Tensor scales)
@@ -754,6 +759,16 @@
   kernel :
     func : c_sync_comm_stream
   inplace : (x -> out)
+
+- op : calc_reduced_attn_scores
+  args : (Tensor q, Tensor k, Tensor softmax_lse)
+  output : Tensor(reduced_scores)
+  infer_meta :
+    func : CalcReducedAttnScoresInferMeta
+    param : [q, k, softmax_lse]
+  kernel :
+    func : calc_reduced_attn_scores
+    data_type : q
 
 - op : cast
   args : (Tensor x, DataType dtype)
@@ -1705,7 +1720,7 @@
   backward : fft_r2c_grad
 
 - op : fill
-  args : (Tensor x, Scalar value=0)
+  args : (Tensor x, Scalar(double) value=0)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -1914,7 +1929,7 @@
     data_type: param
 
 - op : full
-  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (IntArray shape, Scalar(double) value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
     func : CreateInferMeta
@@ -1927,7 +1942,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : full_
-  args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (Tensor output, IntArray shape, Scalar(double) value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
   inplace : (output -> out)
   infer_meta :
@@ -1940,7 +1955,7 @@
     backend : place
 
 - op : full_batch_size_like
-  args : (Tensor input, int[] shape, DataType dtype, Scalar value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
+  args : (Tensor input, int[] shape, DataType dtype, Scalar(double) value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
     func : FullBatchSizeLikeInferMeta
@@ -2082,6 +2097,7 @@
   output : Tensor(out)
   infer_meta :
     func : GatherNdInferMeta
+    spmd_rule : GatherNdInferSpmd
   kernel :
     func : gather_nd
     data_type : x
@@ -4250,6 +4266,7 @@
   output : Tensor(out)
   infer_meta :
     func : SquaredL2NormInferMeta
+    spmd_rule : SquaredL2NormInferSpmd
   kernel :
     func : squared_l2_norm
   backward : squared_l2_norm_grad

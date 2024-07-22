@@ -86,7 +86,7 @@ class TensorWrapper {
             dist_tensor->value().meta());
         intermidiate_tensor_.set_impl(no_buffer_dist_tensor);
       } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal(
+        PADDLE_THROW(phi::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));
       }
     } else {
@@ -164,8 +164,8 @@ class TensorWrapper {
                                ->unsafe_mutable_value();
       } else {
         PADDLE_THROW(
-            paddle::platform::errors::Fatal("Unrecognized tensor_unpacked type "
-                                            "for egr::TensorWrapper::recover"));
+            phi::errors::Fatal("Unrecognized tensor_unpacked type "
+                               "for egr::TensorWrapper::recover"));
       }
 
       if (intermidiate_tensor_.is_dense_tensor()) {
@@ -179,9 +179,9 @@ class TensorWrapper {
             ->unsafe_mutable_value()
             ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
       } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal(
-            "Unrecognized intermidiate_tensor_ type for "
-            "egr::TensorWrapper::recover"));
+        PADDLE_THROW(
+            phi::errors::Fatal("Unrecognized intermidiate_tensor_ type for "
+                               "egr::TensorWrapper::recover"));
       }
     } else {
 #endif
@@ -246,7 +246,7 @@ class TensorWrapper {
       PADDLE_ENFORCE_EQ(
           tensor_version,
           wrapper_version_snapshot,
-          paddle::platform::errors::PermissionDenied(
+          phi::errors::PermissionDenied(
               "Tensor '%s' used in gradient computation has been "
               "modified by an inplace operation. "
               "Its version is %d but the expected version is %d. "

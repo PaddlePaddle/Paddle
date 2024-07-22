@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
@@ -74,7 +74,7 @@ class StreamSafeXPUAllocator
   void ProcessUnfreedAllocations();
   uint64_t ProcessUnfreedAllocationsAndRelease();
 
-  static std::map<platform::Place, std::vector<StreamSafeXPUAllocator *>>
+  static std::map<phi::Place, std::vector<StreamSafeXPUAllocator *>>
       allocator_map_;
   static SpinLock allocator_map_lock_;
 

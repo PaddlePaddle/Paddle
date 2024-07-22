@@ -45,7 +45,7 @@ static const phi::Place &GetVarPlace(const framework::Variable &src) {
     return src.Get<phi::SelectedRows>().value().place();
 #endif
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Cannot get unsupported variable type %s for imperative allreduce, "
         "only "
         "LoDTensor and SelectedRows are supported.",
@@ -61,7 +61,7 @@ static void AllReduce(const phi::DenseTensor &src,
   PADDLE_ENFORCE_EQ(
       phi::is_gpu_place(place),
       true,
-      platform::errors::Unimplemented(
+      phi::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
   const void *src_ptr = src.data();
@@ -90,13 +90,13 @@ static void AllReduce(const phi::SelectedRows &src,
   PADDLE_ENFORCE_EQ(
       phi::is_gpu_place(place),
       true,
-      platform::errors::Unimplemented(
+      phi::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
   auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
   auto nccl_dtype = platform::ToNCCLDataType(dtype);
   auto *dev_ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
 
   bool use_calc_stream = (dev_ctx->stream() == stream);
   VLOG(4) << "Is use calculate stream: " << use_calc_stream;
@@ -221,7 +221,7 @@ void AllReduce(const framework::Variable &src,
                bool use_calc_stream) {
   const auto &place = GetVarPlace(src);
   auto *dev_ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   platform::NCCLComm *comm =
       platform::NCCLCommContext::Instance().Get(ring_id, place);
   gpuStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());
@@ -259,7 +259,7 @@ void AllReduce(const framework::Variable &src,
     }
 #endif
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
         "LoDTensor and SelectedRows are supported.",
         platform::demangle(framework::ToTypeName(src.Type()))));

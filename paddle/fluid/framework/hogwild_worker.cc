@@ -236,7 +236,7 @@ void HogwildWorker::OffLoadVarInfo::BackUpInputs(Scope *root_scope,
     } else {
       auto root_tensor = root_var->GetMutable<phi::DenseTensor>();
       if (root_tensor->IsInitialized() &&
-          !platform::is_gpu_place(root_tensor->place())) {
+          !phi::is_gpu_place(root_tensor->place())) {
         copyer->Copy(src_tensor, root_tensor->place(), root_tensor);
       }
     }
@@ -1060,7 +1060,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
                            holder->ptr(),
                            holder->size(),
                            stream);
-              CHECK(platform::is_gpu_place(root_tensor->place()));
+              CHECK(phi::is_gpu_place(root_tensor->place()));
               ++persist_reset;
             }
           } else {

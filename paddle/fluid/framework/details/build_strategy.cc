@@ -18,7 +18,6 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
@@ -57,18 +56,13 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
-    AppendAddReaderDependencyPass();
     AppendMultiDevPass();
     AppendPassToSetMkldnnAttr("onednn_placement_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
     // all original and fused operators. But no operators can be enabled this
     // attr if putting it after MultiDevPass.
-    AppendPassWithCheck(strategy_.cache_runtime_context_,
-                        "runtime_context_cache_pass");
-    AppendPassWithCheck(strategy_.remove_unnecessary_lock_,
-                        "modify_op_lock_and_record_event_pass");
-
-    SetCollectiveContext();
+    // AppendPassWithCheck(strategy_.cache_runtime_context_,
+    //                     "runtime_context_cache_pass");
   }
 
   void ResolveOptionConfliction() {
@@ -171,37 +165,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #endif
   }
 
-  void SetCollectiveContext() const {
-    CollectiveContext *context = CollectiveContext::GetInstance();
-    context->endpoints_ = strategy_.trainers_endpoints_;
-    context->trainer_id_ = strategy_.trainer_id_;
-    PADDLE_ENFORCE_GE(
-        strategy_.trainer_id_,
-        0,
-        platform::errors::InvalidArgument(
-            "The trainer_id_ of strategy_ must be greater than or equal to 0, "
-            "but received strategy_.trainer_id_ = %d.",
-            strategy_.trainer_id_));
-
-    if (strategy_.trainer_id_ > 0 && !strategy_.trainers_endpoints_.empty()) {
-      PADDLE_ENFORCE_LT(
-          static_cast<size_t>(strategy_.trainer_id_),
-          strategy_.trainers_endpoints_.size(),
-          platform::errors::InvalidArgument(
-              "The trainer_id_ of strategy_ must be less than the "
-              "size of vector strategy_.trainers_endpoints_, "
-              "but received strategy_.trainer_id_ = %d, "
-              "the size of strategy_.trainers_endpoints_ is %d.",
-              static_cast<size_t>(strategy_.trainer_id_),
-              strategy_.trainers_endpoints_.size()));
-    }
-    VLOG(1) << "CollectiveContext:" << context->String();
-  }
-
-  void AppendAddReaderDependencyPass() {
-    AppendPass("add_reader_dependency_pass");
-  }
-
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass() {
     ir::Pass *multi_devices_pass = nullptr;
@@ -209,9 +172,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       case BuildStrategy::ReduceStrategy::kAllReduce:
         multi_devices_pass =
             AppendPass("all_reduce_mode_multi_devices_pass").get();
-        break;
-      case BuildStrategy::ReduceStrategy::kReduce:
-        multi_devices_pass = AppendPass("reduce_mode_multi_devices_pass").get();
         break;
       default:
         PADDLE_THROW(
@@ -284,7 +244,7 @@ bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
 }
 
 ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
-                                const std::vector<platform::Place> &places,
+                                const std::vector<phi::Place> &places,
                                 const std::string &loss_var_name,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
@@ -311,7 +271,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     VLOG(1) << "BuildStrategy::Apply pass:" << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
-      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
+      pass->SetNotOwned<const std::vector<phi::Place>>(kPlaces, &places);
       pass->Erase(ir::kLossVarName);
       pass->SetNotOwned<const std::string>(ir::kLossVarName, &loss_var_name);
       pass->Erase(kLocalScopes);
@@ -387,17 +347,12 @@ USE_PASS(fuse_bn_act_pass);
 USE_PASS(fuse_bn_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
-USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(all_reduce_mode_multi_devices_pass);
-USE_PASS(modify_op_lock_and_record_event_pass);
-USE_PASS(lock_free_optimize_pass);
 USE_PASS(coalesce_grad_tensor_pass);
-USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
 USE_PASS(runtime_context_cache_pass);
-USE_PASS(add_reader_dependency_pass);
 USE_PASS(delete_dropout_op_x_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_attention_pass);

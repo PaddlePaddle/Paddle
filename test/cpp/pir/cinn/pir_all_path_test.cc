@@ -80,7 +80,7 @@ static void RunAndCheckResult(::pir::Program* program,
 
   CHECK_EQ(stage_2_pm.Run(program), true);
 
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  phi::Place place = phi::GPUPlace(0);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(program, place);
 

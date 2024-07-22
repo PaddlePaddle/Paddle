@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/gpu/cudnn_bn_stats_finalize.cu.h"
@@ -378,7 +378,7 @@ class CudnnBNAddReluTester {
               << "] act_type=" << act_type_ << ", fuse_add=" << fuse_add_
               << ", has_shortcut=" << has_shortcut_;
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
     auto select = [&](phi::DenseTensor *in) {
       return has_shortcut_ ? in : nullptr;
@@ -463,7 +463,7 @@ class CudnnBNAddReluTester {
 
   void CheckBackward(float diff, bool is_relative_atol = false) {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
     phi::DenseTensor cpu_dx_base;
     phi::DenseTensor cpu_dz_base;
@@ -908,7 +908,7 @@ TEST(CudnnBNAddReluFp16, BNAdd) {
   bool has_shortcut = false;
   FLAGS_cudnn_batchnorm_spatial_persistent = true;
   for (auto fuse_add : {false, true}) {
-    CudnnBNAddReluTester<paddle::platform::float16> test(
+    CudnnBNAddReluTester<phi::dtype::float16> test(
         batch_size, height, width, channels, act_type, fuse_add, has_shortcut);
     test.CheckForward(2e-3);
   }
@@ -923,7 +923,7 @@ TEST(CudnnBNAddReluFp16, BNAddRelu) {
   bool has_shortcut = false;
   FLAGS_cudnn_batchnorm_spatial_persistent = true;
   for (auto fuse_add : {false, true}) {
-    CudnnBNAddReluTester<paddle::platform::float16> test(
+    CudnnBNAddReluTester<phi::dtype::float16> test(
         batch_size, height, width, channels, act_type, fuse_add, has_shortcut);
     test.CheckForward(2e-3);
     if (fuse_add) {
@@ -941,7 +941,7 @@ TEST(CudnnBNAddReluFp16, HasShortcut) {
   bool fuse_add = false;
   bool has_shortcut = true;
   FLAGS_cudnn_batchnorm_spatial_persistent = true;
-  CudnnBNAddReluTester<paddle::platform::float16> test(
+  CudnnBNAddReluTester<phi::dtype::float16> test(
       batch_size, height, width, channels, act_type, fuse_add, has_shortcut);
   test.CheckForward(5e-3);
 }

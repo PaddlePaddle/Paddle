@@ -28,9 +28,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_HIP
@@ -240,6 +240,7 @@ class RecordedGpuMallocHelper {
                                size,
                                platform::TracerMemEventType::ReservedAllocate);
 #ifdef PADDLE_WITH_TESTING
+      std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
       gpu_ptrs.insert(*ptr);
 #endif
 
@@ -308,6 +309,7 @@ class RecordedGpuMallocHelper {
                                size,
                                platform::TracerMemEventType::ReservedAllocate);
 #ifdef PADDLE_WITH_TESTING
+      std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
       gpu_ptrs.insert(*ptr);
 #endif
 
@@ -358,6 +360,7 @@ class RecordedGpuMallocHelper {
                                     // hipErrorDeinitialized
     }
 #ifdef PADDLE_WITH_TESTING
+    std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
     gpu_ptrs.erase(ptr);
 #endif
   }
@@ -393,6 +396,7 @@ class RecordedGpuMallocHelper {
                                     // hipErrorDeinitialized
     }
 #ifdef PADDLE_WITH_TESTING
+    std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
     gpu_ptrs.erase(ptr);
 #endif
 
@@ -403,6 +407,7 @@ class RecordedGpuMallocHelper {
   }
   void *GetBasePtr(void *ptr) {
 #ifdef PADDLE_WITH_TESTING
+    std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
     auto it = gpu_ptrs.upper_bound(ptr);
     if (it == gpu_ptrs.begin()) {
       return nullptr;
@@ -434,7 +439,7 @@ class RecordedGpuMallocHelper {
     }
 
     if (NeedRecord()) {
-      std::lock_guard<std::mutex> guard(*mtx_);
+      std::lock_guard<std::mutex> lock_guard(*mtx_);
       *avail = std::min(*actual_avail, limit_size_ - cur_size_.load());
       *total = std::min(*actual_total, limit_size_);
       return *total < *actual_total;
@@ -513,8 +518,11 @@ class RecordedGpuMallocHelper {
 
   mutable std::unique_ptr<std::mutex> mtx_;
   static std::once_flag once_flag_;
-  std::set<void *> gpu_ptrs;  // just for testing
-};                            // NOLINT
+
+  // just for testing
+  std::set<void *> gpu_ptrs;
+  std::mutex gpu_ptrs_mutex;
+};  // NOLINT
 
 std::once_flag RecordedGpuMallocHelper::once_flag_;
 
@@ -608,7 +616,7 @@ bool IsGpuMallocRecorded(int dev_id) {
 void EmptyCache() {
   std::vector<int> devices = GetSelectedDevices();
   for (auto device : devices) {
-    memory::Release(CUDAPlace(device));
+    memory::Release(phi::GPUPlace(device));
   }
 }
 
