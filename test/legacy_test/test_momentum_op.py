@@ -760,59 +760,68 @@ class TestFusedMomentumWithDecayAPI(unittest.TestCase):
 
     def test_param_has_l2decay(self):
         paddle.enable_static()
-        weight_attr = paddle.ParamAttr(
-            name="weight",
-            initializer=paddle.nn.initializer.Constant(value=0.5),
-            regularizer=paddle.regularizer.L2Decay(0.1),
-        )
-        program = self.get_program(weight_attr, bias_attr=False)
-        ops = program.global_block().ops
+        with paddle.pir_utils.OldIrGuard():
+            weight_attr = paddle.ParamAttr(
+                name="weight",
+                initializer=paddle.nn.initializer.Constant(value=0.5),
+                regularizer=paddle.regularizer.L2Decay(0.1),
+            )
+            program = self.get_program(weight_attr, bias_attr=False)
+            ops = program.global_block().ops
 
-        self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
-        self.assertEqual(ops[-1].attr('regularization_coeff'), np.float32(0.1))
-        for i in range(len(ops)):
-            self.assertTrue('sum' not in ops[i].type)
-            self.assertTrue('scale' not in ops[i].type)
+            self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
+            self.assertEqual(
+                ops[-1].attr('regularization_coeff'), np.float32(0.1)
+            )
+            for i in range(len(ops)):
+                self.assertTrue('sum' not in ops[i].type)
+                self.assertTrue('scale' not in ops[i].type)
 
     def test_param_has_l1decay(self):
         paddle.enable_static()
-        weight_attr = paddle.ParamAttr(
-            name="weight",
-            initializer=paddle.nn.initializer.Constant(value=0.5),
-            regularizer=paddle.regularizer.L1Decay(0.1),
-        )
-        bias_attr = paddle.ParamAttr(
-            name="bias",
-            initializer=paddle.nn.initializer.Constant(value=0.0),
-            regularizer=None,
-        )
-        program = self.get_program(weight_attr, bias_attr)
-        ops = program.global_block().ops
-
-        self.assertEqual(ops[-1].type, 'momentum')
-        self.assertEqual(ops[-2].type, 'momentum')
-        self.assertEqual(ops[-3].type, 'sum')
-        self.assertEqual(ops[-4].type, 'scale')
-        self.assertEqual(ops[-5].type, 'sign')
-        self.assertEqual(ops[-6].type, 'matmul_v2_grad')
-        if 'weight' in ops[-1].input('Param'):
-            self.assertEqual(ops[-1].attr('regularization_method'), '')
-            self.assertEqual(ops[-1].attr('regularization_coeff'), 0)
-        if 'bias' in ops[-2].input('Param'):
-            self.assertEqual(ops[-2].attr('regularization_method'), 'l2_decay')
-            self.assertEqual(
-                ops[-2].attr('regularization_coeff'), np.float32(0.5)
+        with paddle.pir_utils.OldIrGuard():
+            weight_attr = paddle.ParamAttr(
+                name="weight",
+                initializer=paddle.nn.initializer.Constant(value=0.5),
+                regularizer=paddle.regularizer.L1Decay(0.1),
             )
+            bias_attr = paddle.ParamAttr(
+                name="bias",
+                initializer=paddle.nn.initializer.Constant(value=0.0),
+                regularizer=None,
+            )
+            program = self.get_program(weight_attr, bias_attr)
+            ops = program.global_block().ops
+
+            self.assertEqual(ops[-1].type, 'momentum')
+            self.assertEqual(ops[-2].type, 'momentum')
+            self.assertEqual(ops[-3].type, 'sum')
+            self.assertEqual(ops[-4].type, 'scale')
+            self.assertEqual(ops[-5].type, 'sign')
+            self.assertEqual(ops[-6].type, 'matmul_v2_grad')
+            if 'weight' in ops[-1].input('Param'):
+                self.assertEqual(ops[-1].attr('regularization_method'), '')
+                self.assertEqual(ops[-1].attr('regularization_coeff'), 0)
+            if 'bias' in ops[-2].input('Param'):
+                self.assertEqual(
+                    ops[-2].attr('regularization_method'), 'l2_decay'
+                )
+                self.assertEqual(
+                    ops[-2].attr('regularization_coeff'), np.float32(0.5)
+                )
 
     def test_param_has_no_regularizer(self):
         paddle.enable_static()
-        program = self.get_program(weight_attr=None)
-        ops = program.global_block().ops
-        self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
-        self.assertEqual(ops[-1].attr('regularization_coeff'), np.float32(0.5))
-        for i in range(len(ops)):
-            self.assertTrue('sum' not in ops[i].type)
-            self.assertTrue('scale' not in ops[i].type)
+        with paddle.pir_utils.OldIrGuard():
+            program = self.get_program(weight_attr=None)
+            ops = program.global_block().ops
+            self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
+            self.assertEqual(
+                ops[-1].attr('regularization_coeff'), np.float32(0.5)
+            )
+            for i in range(len(ops)):
+                self.assertTrue('sum' not in ops[i].type)
+                self.assertTrue('scale' not in ops[i].type)
 
 
 class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):

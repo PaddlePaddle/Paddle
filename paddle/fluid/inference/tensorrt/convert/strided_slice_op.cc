@@ -63,7 +63,7 @@ class StridedSliceOpConverter : public OpConverter {
         PADDLE_ENFORCE_GT(
             ends[i],
             starts[i],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Attr(ends) should be greater than attr(starts) in "
                 "slice op. But received ends = %d, starts = %d.",
                 ends[i],
