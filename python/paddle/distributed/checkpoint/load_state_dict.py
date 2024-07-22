@@ -80,7 +80,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
             tensor_key_list.append(local_tensor_index.tensor_key)
             if local_tensor_index.tensor_key in state_dict:
                 necessary_files.append(file_name)
-    
+
     all_necessary_files = []
     if use_dist:
         paddle.distributed.all_gather_object(
@@ -88,8 +88,10 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
         )
     else:
         all_necessary_files.append(necessary_files)
-    
-    global_necessary_files = [file for files in all_necessary_files for file in files]
+
+    global_necessary_files = [
+        file for files in all_necessary_files for file in files
+    ]
 
     global_necessary_files_set = set(global_necessary_files)
     if len(global_necessary_files_set) <= 0:
@@ -343,7 +345,9 @@ def get_read_items(path, state_dict, process_group, use_dist):
                 global_offset = (
                     tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
                 )
-            cur_chunk_metadata = LocalTensorMetadata(global_offset, local_shape, str(val.dtype).split(".")[1])
+            cur_chunk_metadata = LocalTensorMetadata(
+                global_offset, local_shape, str(val.dtype).split(".")[1]
+            )
             assert (
                 tensor_key in storage_state_dict_metadata
             ), f"tensor_key:{tensor_key} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
@@ -450,7 +454,7 @@ def load_state_dict(
         rank_to_files, missing_keys = get_rank_to_files(
             path, flat_state_dict, process_group, use_dist
         )
-    
+
         if len(missing_keys) > 0:
             logger.warning(
                 f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
