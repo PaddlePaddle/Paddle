@@ -69,7 +69,7 @@ class TestDataFeeder(unittest.TestCase):
                 self.assertEqual(result['label'].shape(), [3, 1])
                 self.assertEqual(
                     result['sentences'].recursive_sequence_lengths(),
-                    [[3, 2, 4]]
+                    [[3, 2, 4]],
                 )
                 self.assertEqual(
                     result['label'].recursive_sequence_lengths(), []
