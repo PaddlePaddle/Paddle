@@ -306,7 +306,7 @@ class Accuracy(Metric):
         Return:
             Tensor: the accuracy of current step.
         """
-        if isinstance(correct, (paddle.Tensor, paddle.base.core.eager.Tensor)):
+        if isinstance(correct, paddle.Tensor):
             correct = np.array(correct)
         num_samples = np.prod(np.array(correct.shape[:-1]))
         accs = []
@@ -442,12 +442,12 @@ class Precision(Metric):
                 the shape should keep the same as preds.
                 The data type is 'int32' or 'int64'.
         """
-        if isinstance(preds, (paddle.Tensor, paddle.base.core.eager.Tensor)):
+        if isinstance(preds, paddle.Tensor):
             preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
-        if isinstance(labels, (paddle.Tensor, paddle.base.core.eager.Tensor)):
+        if isinstance(labels, paddle.Tensor):
             labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
@@ -581,12 +581,12 @@ class Recall(Metric):
                 the shape should keep the same as preds.
                 Shape: [batch_size, 1], Dtype: 'int32' or 'int64'.
         """
-        if isinstance(preds, (paddle.Tensor, paddle.base.core.eager.Tensor)):
+        if isinstance(preds, paddle.Tensor):
             preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
-        if isinstance(labels, (paddle.Tensor, paddle.base.core.eager.Tensor)):
+        if isinstance(labels, paddle.Tensor):
             labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
@@ -740,12 +740,12 @@ class Auc(Metric):
                 (batch_size, 1), labels[i] is either o or 1,
                 representing the label of the instance i.
         """
-        if isinstance(labels, (paddle.Tensor, paddle.base.core.eager.Tensor)):
+        if isinstance(labels, paddle.Tensor):
             labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
 
-        if isinstance(preds, (paddle.Tensor, paddle.base.core.eager.Tensor)):
+        if isinstance(preds, paddle.Tensor):
             preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")

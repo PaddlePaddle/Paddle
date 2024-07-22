@@ -990,4 +990,41 @@ template std::vector<int32_t> GetVectorFromTensor(const phi::DenseTensor* x);
 
 template std::vector<int64_t> GetVectorFromTensor(const phi::DenseTensor* x);
 
+namespace {
+
+template <typename T>
+std::vector<T> _GetVectorFromTensor(const phi::DenseTensor* x) {
+  auto* data = x->data<T>();
+  phi::DenseTensor cpu_attr_tensor;
+  if (x->place().GetType() != phi::AllocationType::CPU) {
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto dev_ctx = pool.Get(x->place());
+    phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
+    data = cpu_attr_tensor.data<T>();
+  }
+  return std::vector<T>(data, data + x->numel());
+}
+
+}  // namespace
+
+template <>
+std::vector<float> GetVectorFromTensor<float>(const phi::DenseTensor* x) {
+  if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::FP32) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The dtype of Tensor must be float32, but received: %s",
+        phi::TransToProtoVarType(x->dtype())));
+  }
+  return _GetVectorFromTensor<float>(x);
+}
+
+template <>
+std::vector<double> GetVectorFromTensor<double>(const phi::DenseTensor* x) {
+  if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::FP64) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The dtype of Tensor must be float64, but received: %s",
+        phi::TransToProtoVarType(x->dtype())));
+  }
+  return _GetVectorFromTensor<double>(x);
+}
+
 }  // namespace phi
