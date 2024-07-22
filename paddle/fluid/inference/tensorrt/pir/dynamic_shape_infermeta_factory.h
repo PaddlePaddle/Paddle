@@ -18,7 +18,6 @@
 #include <string>
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/utils/flat_hash_map.h"
