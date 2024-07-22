@@ -18,7 +18,6 @@ limitations under the License. */
 #include <stack>
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
@@ -474,37 +473,6 @@ void RemoveControlDepInputAndOuput(OpDesc *op_desc) {
   op_desc->Flush();
 }
 
-static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
-  desc->SetType("fill_constant");
-  desc->SetAttr("shape", std::vector<int64_t>({1}));
-  desc->SetAttr("value", 1.0f);
-
-  if (node.IsWrappedBy<details::OpHandleBase>()) {
-    details::OpHandleBase &op_hander =
-        const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
-    desc->SetAttr(
-        "dtype",
-        dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->DType());
-    desc->SetAttr(
-        "value",
-        dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->Coeff());
-  }
-
-  desc->SetAttr("force_cpu", false);
-  desc->SetAttr(
-      OpProtoAndCheckerMaker::OpRoleAttrName(),
-      (static_cast<int>(OpRole::kBackward) | static_cast<int>(OpRole::kLoss)));
-  // TODO(Ruibiao) : Set OpDeviceAttrName when needed
-
-  std::vector<std::string> output_names;
-  output_names.reserve(node.outputs.size());
-  for (auto out : node.outputs) {
-    output_names.emplace_back(out->Name());
-  }
-  desc->SetOutput("Out", output_names);
-  return desc;
-}
-
 void ReplaceAllReduceOp(const Node &node,
                         proto::BlockDesc *block,
                         std::vector<OpDesc> *ops) {
@@ -662,21 +630,17 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
   for (Node *n : nodes) {
     // if node is not Op, skip
     if (!n->IsOp()) continue;
-    // create fill_constant op
-    if (n->Name() == "scale_loss_grad") {
-      VLOG(4) << "convert op node scale_loss_grad to desc fill_constant";
-      ops->emplace_back();
-      auto &desc = ops->back();
-      ReplaceScaleLossGradOp(*n, &desc);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    } else if ((n->Name() == "allreduce" || n->Name() == "fused_all_reduce") &&
-               dynamic_cast<details::NCCLOpHandleBase *>(
-                   &(n->Wrapper<details::OpHandleBase>())) != nullptr) {
+    if ((n->Name() == "allreduce" || n->Name() == "fused_all_reduce") &&
+        dynamic_cast<details::NCCLOpHandleBase *>(
+            &(n->Wrapper<details::OpHandleBase>())) != nullptr) {
       VLOG(4) << "convert op node " << n->Name() << " to desc c_allreduce_sum";
       ReplaceAllReduceOp(*n, block, ops);
       VLOG(4) << n->ToString();
+      continue;
+    }
 #endif
-    } else if (n->Op()) {
+    if (n->Op()) {
       VLOG(4) << "convert op node to desc " << n->Op()->Type();
       if (is_fused_opt(n)) {
         OpDesc depend_desc(n->Op()->Block());
