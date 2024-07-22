@@ -41,7 +41,6 @@
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
 #ifdef PADDLE_WITH_CINN
@@ -1897,7 +1896,11 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     }
 
     if (!instr_node->IsArtificial()) {
-      instr_node->Run();
+      {
+        platform::RecordEvent record(
+            "InstrRun", platform::TracerEventType::UserDefined, 10);
+        instr_node->Run();
+      }
 
       if (FLAGS_benchmark) {
         instr_node->DeviceContext().Wait();

@@ -231,6 +231,37 @@ inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
   return common::make_ddim(shapes);
 }
 
+inline DDim GetOutputDimsForDynamicShape(const DDim &s_dims,
+                                         const DDim &l_dims) {
+  if (s_dims.size() > l_dims.size()) {
+    return GetOutputDimsForDynamicShape(l_dims, s_dims);
+  }
+  std::vector<int64_t> shapes = common::vectorize<int64_t>(l_dims);
+
+  for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
+    int64_t s = s_dims[i];
+    int64_t l = l_dims[j];
+    if (s != l) {
+      if (l == 1) {
+        shapes[j] = s;
+      } else if (s == 1 || s == -1) {
+        shapes[j] = l;
+      } else if (l == -1) {
+        shapes[j] = s;
+      } else {
+        PADDLE_THROW(errors::InvalidArgument(
+            "The shape of tensor a %s:%d must match shape of tensor b "
+            "%s:%d.",
+            s_dims.to_str(),
+            i,
+            l_dims.to_str(),
+            j));
+      }
+    }
+  }
+  return common::make_ddim(shapes);
+}
+
 inline int64_t CalStride(phi::DDim dim) {
   int rank = dim.size();
   int64_t dimsum = 1;

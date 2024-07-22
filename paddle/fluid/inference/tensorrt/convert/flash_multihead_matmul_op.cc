@@ -36,7 +36,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         with_fp16,
         true,
-        platform::errors::Unimplemented(
+        phi::errors::Unimplemented(
             "Trt flash attention oss plugin only support fp16 mode yet."));
 
     framework::OpDesc op_desc(op, nullptr);
@@ -418,7 +418,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
         input->getType() == nvinfer1::DataType::kHALF ||
             input->getType() == nvinfer1::DataType::kFLOAT,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "This op has no dynamic plugin infershape function!"));
 
     if (input->getType() == nvinfer1::DataType::kHALF) {

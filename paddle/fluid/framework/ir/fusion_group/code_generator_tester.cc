@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/device_code.h"
+#include "paddle/phi/common/float16.h"
 
 namespace phi {
 class DenseTensor;
