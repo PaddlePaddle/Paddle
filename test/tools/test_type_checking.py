@@ -12,9 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
 import unittest
 
-from tools.type_checking import MypyChecker, get_test_results
+# set `PYTHONPATH=<Paddle/tools>` from `CMakeLists.txt`
+from type_checking import MypyChecker, get_test_results
+
+FILE_PATH = pathlib.Path(__file__).resolve().parent
+
+# test from `Paddle/test`
+BASE_PATH_IN_TEST = FILE_PATH.parent.parent
+CONFIG_FILE_IN_TEST = BASE_PATH_IN_TEST / 'pyproject.toml'
+CACHE_DIR_IN_TEST = BASE_PATH_IN_TEST / '.mypy_cache'
+
+# test from `Paddle/build/test`
+BASE_PATH_IN_BUILD = FILE_PATH.parent.parent.parent
+CONFIG_FILE_IN_BUILD = BASE_PATH_IN_BUILD / 'pyproject.toml'
+CACHE_DIR_IN_BUILD = BASE_PATH_IN_BUILD / '.mypy_cache'
+
+if CONFIG_FILE_IN_TEST.exists():
+    CONFIG_FILE = CONFIG_FILE_IN_TEST
+    CACHE_DIR = CACHE_DIR_IN_TEST
+elif CONFIG_FILE_IN_BUILD.exists():
+    CONFIG_FILE = CONFIG_FILE_IN_BUILD
+    CACHE_DIR = CACHE_DIR_IN_BUILD
+else:
+    raise FileNotFoundError('Can NOT found mypy config file `pyproject.toml`')
 
 
 class TestMypyChecker(unittest.TestCase):
@@ -347,7 +370,7 @@ class TestMypyChecker(unittest.TestCase):
 
             """,
         }
-        doctester = MypyChecker('../pyproject.toml')
+        doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_pass)
         self.assertEqual(len(test_results), 3)
@@ -412,7 +435,7 @@ class TestMypyChecker(unittest.TestCase):
             """,
         }
 
-        doctester = MypyChecker('../pyproject.toml')
+        doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_fail)
         self.assertEqual(len(test_results), 3)
@@ -457,7 +480,7 @@ class TestMypyChecker(unittest.TestCase):
             """
         }
 
-        doctester = MypyChecker('../pyproject.toml')
+        doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_fail)
         self.assertEqual(len(test_results), 2)
@@ -519,7 +542,7 @@ class TestMypyChecker(unittest.TestCase):
             """,
         }
 
-        doctester = MypyChecker('../pyproject.toml')
+        doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_ignore)
         self.assertEqual(len(test_results), 3)
@@ -569,7 +592,7 @@ class TestMypyChecker(unittest.TestCase):
             """,
         }
 
-        doctester = MypyChecker('../pyproject.toml')
+        doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_pass)
         self.assertEqual(len(test_results), 2)
@@ -620,7 +643,7 @@ class TestMypyChecker(unittest.TestCase):
             """,
         }
 
-        doctester = MypyChecker('../pyproject.toml')
+        doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_fail)
         self.assertEqual(len(test_results), 2)
@@ -628,3 +651,7 @@ class TestMypyChecker(unittest.TestCase):
         for tr in test_results:
             print(tr.msg)
             self.assertTrue(tr.fail)
+
+
+if __name__ == '__main__':
+    unittest.main()
