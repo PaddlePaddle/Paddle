@@ -22,7 +22,7 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/common/flags.h"
 
 COMMON_DECLARE_bool(cache_inference_while_scope);
 

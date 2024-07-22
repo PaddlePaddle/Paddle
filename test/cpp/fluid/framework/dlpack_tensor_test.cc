@@ -18,7 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -26,16 +26,16 @@ namespace framework {
 namespace {  // NOLINT
 template <typename T>
 constexpr uint8_t GetDLDataTypeCode() {
-  if (std::is_same<T, platform::complex<float>>::value ||
-      std::is_same<T, platform::complex<double>>::value) {
+  if (std::is_same<T, phi::dtype::complex<float>>::value ||
+      std::is_same<T, phi::dtype::complex<double>>::value) {
     return static_cast<uint8_t>(kDLComplex);
   }
 
-  if (std::is_same<T, platform::bfloat16>::value) {
+  if (std::is_same<T, phi::dtype::bfloat16>::value) {
     return static_cast<uint8_t>(kDLBfloat);
   }
 
-  return std::is_same<platform::float16, T>::value ||
+  return std::is_same<phi::dtype::float16, T>::value ||
                  std::is_floating_point<T>::value
              ? static_cast<uint8_t>(kDLFloat)
              : (std::is_unsigned<T>::value

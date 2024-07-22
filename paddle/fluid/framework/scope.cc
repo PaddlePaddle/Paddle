@@ -17,8 +17,8 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/threadpool.h"
-PD_DECLARE_bool(benchmark);
 
+COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(eager_delete_scope);
 
 #define SCOPE_KIDS_READER_LOCK phi::AutoRDLock auto_lock(&kids_lock_);

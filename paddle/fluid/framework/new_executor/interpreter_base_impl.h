@@ -21,7 +21,6 @@
 #include <unordered_set>
 #include <vector>
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/flags.h"
 
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
@@ -44,7 +43,7 @@ PD_DECLARE_bool(new_executor_use_inplace);
 PD_DECLARE_bool(new_executor_use_local_scope);
 
 COMMON_DECLARE_bool(check_nan_inf);
-PD_DECLARE_bool(benchmark);
+COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_uint64(executor_log_deps_every_microseconds);
 COMMON_DECLARE_bool(new_executor_use_cuda_graph);
 COMMON_DECLARE_bool(enable_pir_in_executor);

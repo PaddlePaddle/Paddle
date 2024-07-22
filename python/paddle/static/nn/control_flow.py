@@ -1420,22 +1420,20 @@ class OutputSelector:
             return new_outs
 
         if all(isinstance(out, paddle.pir.Value) for out in outs):
-            if in_pir_mode():
-                amp_attrs = core._get_amp_attrs()
-                amp_level = amp_attrs._amp_level
-                apply_amp_level_list = [
-                    core.AmpLevel.O0,
-                    core.AmpLevel.O1,
-                    core.AmpLevel.O2,
-                ]
-                if (amp_level in apply_amp_level_list) and (
-                    not all_has_same_dtype(outs)
-                ):
-                    warnings.warn(
-                        f"Return results from different branches in cond has different type: true value is '{outs[0]}' and false value is '{outs[1]}', "
-                        "so we will promote the lower precision to the higher one."
-                    )
-                    return promote_precision(out_with_blocks)
+            amp_attrs = core._get_amp_attrs()
+            amp_level = amp_attrs._amp_level
+            apply_amp_level_list = [
+                core.AmpLevel.O1,
+                core.AmpLevel.O2,
+            ]
+            if (amp_level in apply_amp_level_list) and (
+                not all_has_same_dtype(outs)
+            ):
+                warnings.warn(
+                    f"Return results from different branches in cond has different dtype: true value dtype is '{outs[0].dtype}' and false value dtype is '{outs[1].dtype}', "
+                    "so we will promote the lower precision to the higher one."
+                )
+                return promote_precision(out_with_blocks)
             return outs
 
         if all(arg is None for arg in outs):

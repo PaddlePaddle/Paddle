@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 
-PD_DECLARE_bool(benchmark);
+COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle::framework {
