@@ -24,7 +24,13 @@ import numpy as np
 import paddle
 from paddle.framework import core
 
-from ....infer_meta import MetaInfo, SymbolicInt
+from ....infer_meta import (
+    MetaInfo,
+    SymbolicBool,
+    SymbolicFloat,
+    SymbolicInt,
+    SymbolicValue,
+)
 from ....symbolic.statement_ir import Symbol
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
@@ -627,26 +633,54 @@ class TensorVariable(VariableBase):
         return None
 
 
+def get_symbolic_from_meta(meta: MetaInfo) -> SymbolicValue:
+    if meta.dtype in [paddle.bool]:
+        value = SymbolicBool()
+    elif meta.dtype in [
+        paddle.int8,
+        paddle.int16,
+        paddle.int32,
+        paddle.int64,
+    ]:
+        value = SymbolicInt()
+    elif meta.dtype in [
+        paddle.float16,
+        paddle.float32,
+        paddle.float64,
+    ]:
+        value = SymbolicFloat()
+    else:
+        raise InnerError(f"Unsupported dtype {meta.dtype} for SymbolicVariable")
+    return value
+
+
 class SymbolicVariable(VariableBase):
     """
-    TODO
+    SymbolicVariable is a subclass of VariableBase used to wrap a symbolic value.
+
+    Args:
+        value_or_meta (int | SymbolicInt | MetaInfo): The symbolic value  to be wrapped or metadata.
+        graph (FunctionGraph): The FunctionGraph object that this variable is associated with.
+        tracker (Tracker): The Tracker object that tracks the information of this variable.
     """
 
     var_name_generator = NameGenerator("symint_")
+    value: int | SymbolicValue
 
     def __init__(
         self,
-        value: int | SymbolicInt | MetaInfo,
+        value_or_meta: int | SymbolicInt | MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
         super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
-        if isinstance(value, MetaInfo):
-            self.value = SymbolicInt()
-            self.meta = value
+        if isinstance(value_or_meta, MetaInfo):
+            assert len(value_or_meta.shape) == 0
+            self.value = get_symbolic_from_meta(value_or_meta)
+            self.meta = value_or_meta
         else:
-            self.value = value
+            self.value = value_or_meta
             self.meta = MetaInfo(
                 [], paddle.int64, True, self.var_name, False, None, None
             )
@@ -654,7 +688,7 @@ class SymbolicVariable(VariableBase):
 
     def get_py_value(self, allow_tensor=False):
         self.need_guard_value = True
-        if isinstance(self.value, SymbolicInt):
+        if isinstance(self.value, SymbolicValue):
             assert isinstance(
                 self.tracker, SymbolicOperationTracker
             ), f"self.value is None, but tracker is not SymbolicOperationTracker. tracker: {self.tracker}"
@@ -667,10 +701,9 @@ class SymbolicVariable(VariableBase):
         return self.value
 
     def get_py_type(self):
-        # TODO(zrr1999): not need to use value to get type
-        if isinstance(self.value, SymbolicInt):
+        if isinstance(self.value, int):
             return int
-        return super().get_py_type()
+        return self.value.get_static_type()
 
     def get_symbol(self) -> Symbol:
         return Symbol(self.var_name)
@@ -703,9 +736,10 @@ class SymbolicVariable(VariableBase):
         assert frame_value_tracer.inlined_expr in symbolic_inputs
 
         # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
-        symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
-        symbolic_input.setdefault(self.value, 0)
-        symbolic_input[self.value] += 1
+        if isinstance(self.value, int):
+            symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
+            symbolic_input.setdefault(self.value, 0)
+            symbolic_input[self.value] += 1
         if self.need_guard_value:
             return super().make_stringified_guard()
         return [
