@@ -360,7 +360,61 @@ def linspace(
     if not isinstance(num, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.linspace(
+            tensor_start,
+            tensor_stop,
+            tensor_num,
+            dtype,
+            _current_expected_place(),
+        )
+    elif in_pir_mode():
+        helper = LayerHelper("linspace", **locals())
+
+        start_dtype = convert_dtype(tensor_start.dtype)
+        stop_dtype = convert_dtype(tensor_stop.dtype)
+        out_dtype = convert_dtype(dtype)
+        if isinstance(start, paddle.pir.Value):
+            check_dtype(
+                start.dtype,
+                'start',
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+                'linspace',
+            )
+        else:
+            check_type(start, 'start', (int, float), 'linspace')
+
+        if isinstance(stop, paddle.pir.Value):
+            check_dtype(
+                stop.dtype,
+                'stop',
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+                'linspace',
+            )
+        else:
+            check_type(stop, 'stop', (int, float), 'linspace')
+        if isinstance(num, paddle.pir.Value):
+            check_dtype(num.dtype, 'num', ['int32'], 'linspace')
+        check_dtype(
+            dtype,
+            'dtype',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'linspace',
+        )
+        if (
+            (stop_dtype == "float64" or start_dtype == "float64")
+            and out_dtype in ["float32", "int32"]
+        ) or (
+            (stop_dtype == "int64" or start_dtype == "int64")
+            and out_dtype == "int32"
+        ):
+            raise ValueError(
+                f"The dtype of start/stop is {start_dtype}/{stop_dtype} but the attr(dtype) of linspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of linspace."
+            )
+        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
+
         return _C_ops.linspace(
             tensor_start,
             tensor_stop,
@@ -1270,7 +1324,7 @@ def eye(
     """
 
     def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, paddle.Tensor, paddle.pir.Value))):
+        if isinstance(attr, ((Variable, core.eager.Tensor, paddle.pir.Value))):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
