@@ -126,7 +126,7 @@ class InstanceNorm(paddle.nn.Layer):
                 epsilon=self.epsilon,
                 weight_attr=base.ParamAttr(self.scale.name),
                 bias_attr=base.ParamAttr(self.bias.name),
-            )
+            )(input)
 
 
 class Conv2DLayer(paddle.nn.Layer):
