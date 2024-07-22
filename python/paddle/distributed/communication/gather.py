@@ -26,43 +26,13 @@ if TYPE_CHECKING:
     from paddle.distributed.communication.group import Group
 
 
-@overload
 def gather(
     tensor: Tensor,
     gather_list: list[Tensor] = None,
     dst: int = 0,
     group: Group | None = None,
     sync_op: bool = True,
-) -> tuple[Tensor, Tensor]:
-    ...
-
-@overload
-def gather(
-    tensor: Tensor,
-    gather_list: list[Tensor] = None,
-    dst: int = 0,
-    group: Group | None = None,
-    sync_op: bool = True,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
-
-@overload
-def gather(
-    tensor: Tensor,
-    gather_list: list[Tensor] = None,
-    dst: int = 0,
-    group: Group | None = None,
-    sync_op: bool = True,
-) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
-    ...
-
-def gather(
-    tensor: Tensor,
-    gather_list: list[Tensor] = None,
-    dst: int = 0,
-    group: Group | None = None,
-    sync_op: bool = True,
-) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
+) -> task | None:
     """
 
     Gather tensors from all participators.
