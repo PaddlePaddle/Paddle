@@ -132,69 +132,60 @@ class TestWhereAPI(unittest.TestCase):
         return np.where(~self.cond, dout, 0)
 
     def test_api(self, use_cuda=False):
-        with paddle.pir_utils.OldIrGuard():
-            for x_stop_gradient in [False, True]:
-                for y_stop_gradient in [False, True]:
-                    with paddle.static.program_guard(
-                        paddle.static.Program(), paddle.static.Program()
-                    ):
-                        cond = paddle.static.data(
-                            name='cond', shape=[-1] + self.shape, dtype='bool'
+        for x_stop_gradient in [False, True]:
+            for y_stop_gradient in [False, True]:
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    cond = paddle.static.data(
+                        name='cond', shape=[-1] + self.shape, dtype='bool'
+                    )
+                    cond.desc.set_need_check_feed(False)
+                    x = paddle.static.data(
+                        name='x', shape=[-1] + self.shape, dtype='float32'
+                    )
+                    x.desc.set_need_check_feed(False)
+                    y = paddle.static.data(
+                        name='y', shape=[-1] + self.shape, dtype='float32'
+                    )
+                    y.desc.set_need_check_feed(False)
+                    x.stop_gradient = x_stop_gradient
+                    x.desc.set_need_check_feed(False)
+                    y.stop_gradient = y_stop_gradient
+                    y.desc.set_need_check_feed(False)
+                    result = paddle.where(cond, x, y)
+                    result.stop_gradient = False
+                    append_backward(paddle.mean(result))
+                    for use_cuda in [False, True]:
+                        if use_cuda and (not base.core.is_compiled_with_cuda()):
+                            break
+                        place = (
+                            base.CUDAPlace(0) if use_cuda else base.CPUPlace()
                         )
-                        cond.desc.set_need_check_feed(False)
-                        x = paddle.static.data(
-                            name='x', shape=[-1] + self.shape, dtype='float32'
+                        exe = base.Executor(place)
+                        fetch_list = [result, result.grad_name]
+                        if x_stop_gradient is False:
+                            fetch_list.append(x.grad_name)
+                        if y_stop_gradient is False:
+                            fetch_list.append(y.grad_name)
+                        out = exe.run(
+                            paddle.static.default_main_program(),
+                            feed={'cond': self.cond, 'x': self.x, 'y': self.y},
+                            fetch_list=fetch_list,
                         )
-                        x.desc.set_need_check_feed(False)
-                        y = paddle.static.data(
-                            name='y', shape=[-1] + self.shape, dtype='float32'
-                        )
-                        y.desc.set_need_check_feed(False)
-                        x.stop_gradient = x_stop_gradient
-                        x.desc.set_need_check_feed(False)
-                        y.stop_gradient = y_stop_gradient
-                        y.desc.set_need_check_feed(False)
-                        result = paddle.where(cond, x, y)
-                        result.stop_gradient = False
-                        append_backward(paddle.mean(result))
-                        for use_cuda in [False, True]:
-                            if use_cuda and (
-                                not base.core.is_compiled_with_cuda()
-                            ):
-                                break
-                            place = (
-                                base.CUDAPlace(0)
-                                if use_cuda
-                                else base.CPUPlace()
+                        np.testing.assert_array_equal(out[0], self.out)
+                        if x_stop_gradient is False:
+                            np.testing.assert_array_equal(
+                                out[2], self.ref_x_backward(out[1])
                             )
-                            exe = base.Executor(place)
-                            fetch_list = [result, result.grad_name]
-                            if x_stop_gradient is False:
-                                fetch_list.append(x.grad_name)
-                            if y_stop_gradient is False:
-                                fetch_list.append(y.grad_name)
-                            out = exe.run(
-                                paddle.static.default_main_program(),
-                                feed={
-                                    'cond': self.cond,
-                                    'x': self.x,
-                                    'y': self.y,
-                                },
-                                fetch_list=fetch_list,
+                            if y.stop_gradient is False:
+                                np.testing.assert_array_equal(
+                                    out[3], self.ref_y_backward(out[1])
+                                )
+                        elif y.stop_gradient is False:
+                            np.testing.assert_array_equal(
+                                out[2], self.ref_y_backward(out[1])
                             )
-                            np.testing.assert_array_equal(out[0], self.out)
-                            if x_stop_gradient is False:
-                                np.testing.assert_array_equal(
-                                    out[2], self.ref_x_backward(out[1])
-                                )
-                                if y.stop_gradient is False:
-                                    np.testing.assert_array_equal(
-                                        out[3], self.ref_y_backward(out[1])
-                                    )
-                            elif y.stop_gradient is False:
-                                np.testing.assert_array_equal(
-                                    out[2], self.ref_y_backward(out[1])
-                                )
 
     def test_pir_api(self, use_cuda=False):
         for x_stop_gradient in [False, True]:
@@ -439,25 +430,22 @@ class TestWhereAPI(unittest.TestCase):
         self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
 
     def test_static_api_type_promotion_fp16_fp32(self):
-        with paddle.pir_utils.OldIrGuard():
-            x_dtype = 'float16'
-            y_dtype = 'float32'
-            self.__test_where_with_type_promotion(x_dtype, y_dtype)
-            self.__test_where_with_type_promotion(y_dtype, x_dtype)
+        x_dtype = 'float16'
+        y_dtype = 'float32'
+        self.__test_where_with_type_promotion(x_dtype, y_dtype)
+        self.__test_where_with_type_promotion(y_dtype, x_dtype)
 
     def test_static_api_type_promotion_fp16_fp64(self):
-        with paddle.pir_utils.OldIrGuard():
-            x_dtype = 'float16'
-            y_dtype = 'float64'
-            self.__test_where_with_type_promotion(x_dtype, y_dtype)
-            self.__test_where_with_type_promotion(y_dtype, x_dtype)
+        x_dtype = 'float16'
+        y_dtype = 'float64'
+        self.__test_where_with_type_promotion(x_dtype, y_dtype)
+        self.__test_where_with_type_promotion(y_dtype, x_dtype)
 
     def test_static_api_type_promotion_fp32_fp64(self):
-        with paddle.pir_utils.OldIrGuard():
-            x_dtype = 'float32'
-            y_dtype = 'float64'
-            self.__test_where_with_type_promotion(x_dtype, y_dtype)
-            self.__test_where_with_type_promotion(y_dtype, x_dtype)
+        x_dtype = 'float32'
+        y_dtype = 'float64'
+        self.__test_where_with_type_promotion(x_dtype, y_dtype)
+        self.__test_where_with_type_promotion(y_dtype, x_dtype)
 
     @unittest.skipIf(
         not (
@@ -765,37 +753,34 @@ class TestWhereDygraphAPI(unittest.TestCase):
             )
 
     def test_where_condition(self):
-        if not paddle.framework.use_pir_api():
-            data = np.array([[True, False], [False, True]])
-            with program_guard(Program(), Program()):
-                x = paddle.static.data(
-                    name='x', shape=[(-1), 2], dtype='float32'
-                )
-                x.desc.set_need_check_feed(False)
-                y = paddle.where(x)
-                self.assertEqual(type(y), tuple)
-                self.assertEqual(len(y), 2)
-                z = paddle.concat(list(y), axis=1)
-                exe = base.Executor(base.CPUPlace())
-                (res,) = exe.run(
-                    feed={'x': data}, fetch_list=[z], return_numpy=False
-                )
-            expect_out = np.array([[0, 0], [1, 1]])
-            np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
-            data = np.array([True, True, False])
-            with program_guard(Program(), Program()):
-                x = paddle.static.data(name='x', shape=[(-1)], dtype='float32')
-                x.desc.set_need_check_feed(False)
-                y = paddle.where(x)
-                self.assertEqual(type(y), tuple)
-                self.assertEqual(len(y), 1)
-                z = paddle.concat(list(y), axis=1)
-                exe = base.Executor(base.CPUPlace())
-                (res,) = exe.run(
-                    feed={'x': data}, fetch_list=[z], return_numpy=False
-                )
-            expect_out = np.array([[0], [1]])
-            np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+        data = np.array([[True, False], [False, True]])
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(name='x', shape=[(-1), 2], dtype='float32')
+            x.desc.set_need_check_feed(False)
+            y = paddle.where(x)
+            self.assertEqual(type(y), tuple)
+            self.assertEqual(len(y), 2)
+            z = paddle.concat(list(y), axis=1)
+            exe = base.Executor(base.CPUPlace())
+            (res,) = exe.run(
+                feed={'x': data}, fetch_list=[z], return_numpy=False
+            )
+        expect_out = np.array([[0, 0], [1, 1]])
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+        data = np.array([True, True, False])
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(name='x', shape=[(-1)], dtype='float32')
+            x.desc.set_need_check_feed(False)
+            y = paddle.where(x)
+            self.assertEqual(type(y), tuple)
+            self.assertEqual(len(y), 1)
+            z = paddle.concat(list(y), axis=1)
+            exe = base.Executor(base.CPUPlace())
+            (res,) = exe.run(
+                feed={'x': data}, fetch_list=[z], return_numpy=False
+            )
+        expect_out = np.array([[0], [1]])
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
 
 class TestWhereOpError(unittest.TestCase):

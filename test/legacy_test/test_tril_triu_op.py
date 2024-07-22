@@ -134,11 +134,10 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
             data = paddle.static.data(
                 shape=Xshape, dtype='float64', name=cls_name
             )
-            with paddle.pir_utils.OldIrGuard():
-                with self.assertRaisesRegex(
-                    eval(expected.split(':')[-1]), errmsg[expected]
-                ):
-                    getattr(tensor, op_type)(x=data, diagonal=diagonal)
+            with self.assertRaisesRegex(
+                eval(expected.split(':')[-1]), errmsg[expected]
+            ):
+                getattr(tensor, op_type)(x=data, diagonal=diagonal)
 
     class SuccessCase(TrilTriuOpDefaultTest):
         def initTestCase(self):
