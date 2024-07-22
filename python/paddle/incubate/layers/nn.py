@@ -34,6 +34,7 @@ from paddle.base.framework import (
     Variable,
     convert_np_dtype_to_dtype_,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.param_attr import ParamAttr
@@ -1697,6 +1698,9 @@ def _pull_box_sparse(
             >>> y = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=1)
             >>> emb_x, emb_y = incubate.layers._pull_box_sparse([x, y], size=1)
     """
+    if in_pir_mode():
+        w = paddle.to_tensor([0.0] * size, stop_gradient=False)
+        return _C_ops.pull_box_sparse(w, input, is_sparse, is_distributed, size)
     helper = LayerHelper('pull_box_sparse', **locals())
     if dtype != 'float32':
         raise ValueError(

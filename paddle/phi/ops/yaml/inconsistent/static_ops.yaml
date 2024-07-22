@@ -623,7 +623,7 @@
     func : PullBoxSparseInferMeta
   kernel :
     func : pull_box_sparse
-    data_type : ids
+    data_type : w
 
 - op : pull_gpups_sparse
   args : (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false)
