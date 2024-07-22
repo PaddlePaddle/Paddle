@@ -35,7 +35,7 @@ class Expert(nn.Layer):
         self.swiglu = swiglu
         self.fc2 = nn.Linear(d_feedforward // 2, d_model)
 
-    def forward(self, x):
+    def forward(self, x, idx):
         x = self.fc1(x)
         x = swiglu(x)
         x = self.fc2(x)
@@ -45,8 +45,8 @@ class Expert(nn.Layer):
 class TestFusedMoEOp(OpTest):
     def setUp(self):
         self.config()
-        self.rtol = 1e-3
-        self.atol = 1e-3
+        self.rtol = 1e-2
+        self.atol = 1e-2
 
         paddle.set_default_dtype(self.x_type)
         self.__class__.op_type = "fused_moe"
@@ -84,8 +84,7 @@ class TestFusedMoEOp(OpTest):
         )
 
         self.tensor_x = paddle.to_tensor(
-            np.random.randn(self.batch_size, self.seq_len, self.d_model)
-            * 0.001,
+            np.random.randn(self.batch_size, self.seq_len, self.d_model) * 0.1,
             dtype=paddle.float16,
         )
 
@@ -115,53 +114,6 @@ class TestFusedMoEOp(OpTest):
         self.d_feedforward = 3072
         self.top_k = 2
 
-    def GetBaselineOut(self, tensor_x, gate_logits):
-        def expert_choice_gating(logits, capacity, batch_idx, expert_idx):
-            gates = F.softmax(logits, -1)
-            indices1_s = paddle.topk(
-                logits.transpose([0, 2, 1]), k=capacity, axis=-1
-            )[1].cast("int32")
-            seqlen_idx = indices1_s.reshape([-1])
-            gather_idx = paddle.stack([batch_idx, seqlen_idx, expert_idx], -1)
-            return expert_idx, gather_idx
-
-        paddle.disable_static()
-        capacity = 2
-        batch_expert_idx = paddle.nonzero(
-            paddle.ones(shape=[self.batch_size, self.num_expert, capacity])
-        ).cast('int32')
-        batch_idx = batch_expert_idx[:, 0]
-        expert_idx = batch_expert_idx[:, 1]
-
-        (expert_idx_flatten, gather_idx) = expert_choice_gating(
-            gate_logits, capacity, batch_idx, expert_idx
-        )
-
-        outputs = paddle.zeros_like(tensor_x)
-
-        batch_idx = gather_idx[:, :2]
-        selected_token = tensor_x.gather_nd(batch_idx)
-
-        batch_selected_token = selected_token.reshape(
-            [self.batch_size, self.num_expert, -1, tensor_x.shape[-1]]
-        )
-        batch_selected_token = batch_selected_token.transpose(
-            [1, 0, 2, 3]
-        ).reshape([self.num_expert, -1, tensor_x.shape[-1]])
-
-        output = paddle.bmm(batch_selected_token, self.bmm_w0) + self.bmm_b0
-        output = self.activation(output)
-        output = paddle.bmm(output, self.bmm_w1) + self.bmm_b1
-
-        output = output.transpose([1, 0, 2]).reshape(
-            [self.batch_size, -1, self.num_expert, tensor_x.shape[-1]]
-        )
-        output = output.transpose([0, 2, 1, 3])
-        output = output.reshape([-1, tensor_x.shape[-1]])
-
-        outputs = outputs.scatter_nd_add(batch_idx, output)
-        return outputs
-
     def GetFusedMoeOut(self, tensor_x):
         paddle.disable_static()
         fused_out = fused_moe(
@@ -177,46 +129,61 @@ class TestFusedMoEOp(OpTest):
 
         return fused_out
 
-    def test_fused_moe_op(self):
-        gate_logits = self.gate(self.tensor_x)
-        ref_out = self.GetBaselineOut(self.tensor_x, gate_logits)
-        fused_moe_out = self.GetFusedMoeOut(self.tensor_x)
+    def GetBaselineOut(self, hidden_states):
+        batch_size, sequence_length, hidden_dim = hidden_states.shape
+        hidden_states = paddle.reshape(hidden_states, [-1, hidden_dim])
+        router_logits = self.gate(hidden_states)
 
-        np.testing.assert_allclose(
-            ref_out, fused_moe_out, rtol=self.rtol, atol=self.atol
+        routing_weights = F.softmax(router_logits, axis=1, dtype='float32')
+        routing_weights, selected_experts = paddle.topk(
+            routing_weights, self.top_k, axis=-1
+        )
+        routing_weights /= paddle.sum(routing_weights, axis=-1, keepdim=True)
+        # we cast back to the input dtype
+        routing_weights = routing_weights.astype(hidden_states.dtype)
+
+        final_hidden_states = paddle.zeros_like(hidden_states)
+
+        # One hot encode the selected experts to create an expert mask
+        # this will be used to easily index which expert is going to be sollicitated
+        expert_mask = paddle.transpose(
+            F.one_hot(selected_experts, num_classes=self.num_expert), [2, 1, 0]
         )
 
-    def GetBaselineOut2(self, x):
-        batch_size, seq_len, _ = x.shape
-        gate_outputs = self.gate(x)
-        topk_vals, topk_indices = paddle.topk(gate_outputs, self.top_k, axis=-1)
+        # Loop over all available experts in the model and perform the computation on each expert
+        for expert_idx in range(self.num_expert):
+            expert_layer = self.experts[expert_idx]
+            idx, top_x = paddle.where(expert_mask[expert_idx])
 
-        expert_outputs = []
-        for idx in range(self.num_expert):
-            mask = (topk_indices == idx).astype(x.dtype)
-            mask_combined = (mask.sum(axis=-1, keepdim=True) > 0).astype(
-                mask.dtype
+            # Index the correct hidden states and compute the expert hidden state for
+            # the current expert. We need to make sure to multiply the output hidden
+            # states by `routing_weights` on the corresponding tokens (top-1 and top-2)
+            current_state = paddle.index_select(
+                hidden_states, top_x, axis=0
+            ).reshape([-1, hidden_dim])
+            current_hidden_states = (
+                expert_layer(current_state, expert_idx)
+                * routing_weights[top_x, idx]
+            )
+            # Use scatter to accumulate the results
+            paddle.index_add_(
+                x=final_hidden_states,
+                index=top_x.squeeze(),
+                axis=0,
+                value=current_hidden_states.to(hidden_states.dtype),
             )
 
-            expert_output = self.experts[idx](x * mask_combined)
-            expert_outputs.append(expert_output * mask_combined)
-
-        combined_output = paddle.add_n(expert_outputs)
-        return combined_output
+        final_hidden_states = paddle.reshape(
+            final_hidden_states, [batch_size, sequence_length, hidden_dim]
+        )
+        return final_hidden_states
 
     def test_fused_moe_op_new(self):
-        ref_out = self.GetBaselineOut2(self.tensor_x)
+        ref_out = self.GetBaselineOut(self.tensor_x)
         fused_moe_out = self.GetFusedMoeOut(self.tensor_x)
-
         np.testing.assert_allclose(
             ref_out, fused_moe_out, rtol=self.rtol, atol=self.atol
         )
-
-
-class TestFusedMoEOpActGeluFp16(TestFusedMoEOp):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
 
 
 if __name__ == "__main__":

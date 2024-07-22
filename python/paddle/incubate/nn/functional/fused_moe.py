@@ -43,7 +43,6 @@ def fused_moe(
 
     """
     if in_dynamic_mode():
-        print("dynamic")
         final_out = _C_ops.fused_moe(
             x,
             gate_weight,
