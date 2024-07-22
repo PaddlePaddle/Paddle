@@ -704,7 +704,7 @@ class Engine:
                         optimizer_ops, params_grads = scaler.minimize(
                             self._optimizer, scaled
                         )
-                        first_opt_op = optimizer_ops[-1]
+                        first_opt_op = optimizer_ops[0]
                         backward_op_start_idx = (
                             dist_program.global_block().ops.index(
                                 last_forward_op
@@ -743,9 +743,6 @@ class Engine:
                                 last_backward_op
                             )
                             + 1
-                        )
-                        self._optimizer._apply_optimize(
-                            loss, startup_program, params_grads=params_grads
                         )
                         complete_op_role(
                             dist_program,
