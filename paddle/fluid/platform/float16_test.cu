@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
@@ -198,6 +198,9 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+using float16 = phi::dtype::float16;
+using namespace phi::dtype;  // NOLINT
+
 #if defined(PADDLE_WITH_HIP)
 ARITHMETIC_KERNEL(Add, +)
 ARITHMETIC_KERNEL(Sub, -)
@@ -327,7 +330,7 @@ TEST(float16, lod_tensor_on_gpu) {
   memcpy(src_ptr, arr, 4 * sizeof(float16));
 
   // CPU LoDTensor to GPU LoDTensor
-  CUDAPlace gpu_place(0);
+  phi::GPUPlace gpu_place(0);
   phi::GPUContext gpu_ctx(gpu_place);
   gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, gpu_ctx.stream())
@@ -351,7 +354,7 @@ template <typename T>
 struct Functor {
   bool operator()(const T &val) {
     return std::type_index(typeid(T)) ==
-           std::type_index(typeid(platform::float16));
+           std::type_index(typeid(phi::dtype::float16));
   }
 };
 
@@ -366,11 +369,11 @@ TEST(float16, typeid) {
   PADDLE_ENFORCE_EQ(
       functor(a),
       true,
-      platform::errors::Unavailable("The float16 support in GPU failed."));
+      phi::errors::Unavailable("The float16 support in GPU failed."));
   PADDLE_ENFORCE_EQ(
       functor2(b),
       false,
-      platform::errors::Unavailable("The float16 support in GPU failed."));
+      phi::errors::Unavailable("The float16 support in GPU failed."));
 }
 
 // GPU test

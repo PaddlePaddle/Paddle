@@ -2815,8 +2815,7 @@ def batch_norm(
     if in_dygraph_mode():
         inputs_has_MomentumTensor = False
         attrs_has_momentum = False
-        tmp_tensor_type = core.eager.Tensor
-        if isinstance(momentum, tmp_tensor_type):
+        if isinstance(momentum, paddle.Tensor):
             inputs_has_MomentumTensor = True
         else:
             attrs_has_momentum = True
@@ -3787,7 +3786,7 @@ def embedding(
             >>> exe = paddle.static.Executor(place)
             >>> exe.run(paddle.static.default_startup_program())
 
-            >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64)
+            >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64) # type: ignore[var-annotated]
             >>> out, = exe.run(paddle.static.default_main_program(), feed={'x':x}, fetch_list=[output])
             >>> print(out)
             [[[1. 1. 1.]

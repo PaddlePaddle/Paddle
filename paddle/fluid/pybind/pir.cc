@@ -51,6 +51,7 @@
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -283,31 +284,75 @@ bool HasValueName(const Value &value) {
   }
 }
 
-std::string GetValueName(Value value) {
+std::optional<std::string> GetValueInputName(Value value) {
+  std::optional<std::string> name;
   if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
-    return param_op.param_name();
+    name = param_op.param_name();
   } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
-    return data_op.attribute<StrAttribute>("name").AsString();
+    name = data_op.attribute<StrAttribute>("name").AsString();
   } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
     if (block_arg.is_kwarg()) {
-      return block_arg.keyword();
+      name = block_arg.keyword();
     } else {
-      return "arg_" + std::to_string(block_arg.index());
+      name = "arg_" + std::to_string(block_arg.index());
     }
-  } else if (IsUsedByShadowOutput(value)) {
+  }
+  return name;
+}
+
+std::optional<std::string> GetValueOutputName(Value value) {
+  std::optional<std::string> name;
+  if (IsUsedByShadowOutput(value)) {
     for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
       if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
-        return iter->owner()->attribute<StrAttribute>("output_name").AsString();
+        name = iter->owner()->attribute<StrAttribute>("output_name").AsString();
+        break;
       }
     }
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get name of Value which is "
-        "shadowoutput "));
+  }
+  return name;
+}
+
+std::string GetValueName(Value value) {
+  std::optional<std::string> input_name = GetValueInputName(value);
+  if (input_name.has_value()) return input_name.value();
+
+  VLOG(5) << "GetValueInputName(value) return empty, try to "
+             "GetValueOutputName(value).";
+  std::optional<std::string> output_name = GetValueOutputName(value);
+  if (output_name.has_value()) return output_name.value();
+
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Currently, we can only get name of Value from "
+      "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
+}
+
+phi::DataType GetTensorDtype(Type type) {
+  if (!type) {
+    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+  }
+  if (auto dense_tensor_type = type.dyn_cast<DenseTensorType>()) {
+    return dialect::TransToPhiDataType(dense_tensor_type.dtype());
+  } else if (auto sparse_coo_tensor_type =
+                 type.dyn_cast<SparseCooTensorType>()) {
+    return dialect::TransToPhiDataType(sparse_coo_tensor_type.dtype());
+  } else if (auto sparse_csr_tensor_type =
+                 type.dyn_cast<SparseCsrTensorType>()) {
+    return dialect::TransToPhiDataType(sparse_csr_tensor_type.dtype());
+  } else if (auto select_rows = type.dyn_cast<SelectedRowsType>()) {
+    return dialect::TransToPhiDataType(select_rows.dtype());
+  } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
+    return dialect::TransToPhiDataType(dense_array.dtype());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get name of Value that "
-        "is persistable"));
+        "Currently, we can only get phi::DataType from DenseTensorType and "
+        "SelectedRowsType, DenseTensorArrayType,SparseCooTensorType or "
+        "SparseCsrTensorType."));
   }
+}
+
+phi::DataType GetValueDtype(Value value) {
+  return GetTensorDtype(value.type());
 }
 
 py::object Clone(const Program &self, IrMapping *p_mapper = nullptr) {
@@ -321,6 +366,122 @@ py::object Clone(const Program &self, IrMapping *p_mapper = nullptr) {
     new_obj.attr(item.first.cast<std::string>().c_str()) = item.second;
   }
   return new_obj;
+}
+
+bool SomeInSet(const std::vector<pir::Value> &vec,
+               const std::set<pir::Value> &set) {
+  for (auto &v : vec) {
+    if (set.find(v) != set.end()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+pir::Value AppendDataOp(pir::Block *block,
+                        const pir::Value &value,
+                        const std::string &name,
+                        const pir::Operation &origin_op) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto op_info = ctx->GetRegisteredOpInfo(paddle::dialect::DataOp::name());
+  pir::AttributeMap attribute_map = {
+      {"name", StrAttribute::get(ctx, name)},
+      {"shape",
+       paddle::dialect::IntArrayAttribute::get(
+           ctx, phi::IntArray(phi::vectorize(GetValueDims(value))))},
+      {"dtype",
+       paddle::dialect::DataTypeAttribute::get(ctx, GetValueDtype(value))},
+      {"place", paddle::dialect::PlaceAttribute::get(ctx, phi::Place())}};
+  std::vector<pir::Type> output_types{value.type()};
+  pir::Operation *operation =
+      pir::Operation::Create({}, attribute_map, output_types, op_info);
+
+  block->insert(origin_op, operation);
+  return operation->result(0);
+}
+std::vector<pir::Value> GetRealOpInputs(pir::Operation *op) {
+  if (op->isa<paddle::dialect::IfOp>() ||
+      op->isa<paddle::dialect::PyLayerOp>()) {
+    return pir::GetUsedExternalValue(*op);
+  } else if (op->isa<paddle::dialect::WhileOp>()) {
+    paddle::dialect::WhileOp whileop = op->dyn_cast<paddle::dialect::WhileOp>();
+    auto value_vector = op->operands_source();
+    auto value_vector2 = pir::GetUsedExternalValue(whileop.body());
+    value_vector.insert(
+        value_vector.end(), value_vector2.begin(), value_vector2.end());
+    return value_vector;
+  } else {
+    return op->operands_source();
+  }
+}
+/*
+  Variables in input_vars will be the pruned program's inputs,
+  and variables in output_vars will be the pruned program's outputs.
+  Therefore, the pruning logic includes replacing the input of
+  input_vars with the data op, and then preserving all connected
+  ops starting from output_vars.
+
+  Note: The returned program is the original program.
+  If you do not want the original program to be modified,
+  please pass in a cloned result.
+*/
+void PruneWithInput(const std::vector<pir::Value> &input_vars,
+                    const std::vector<pir::Value> &output_vars,
+                    Program *prog) {
+  auto global_block = prog->block();
+  std::vector<pir::Value> new_input_vars;
+  if (!input_vars.empty()) {
+    std::vector<pir::Value> new_input_vars;
+    for (uint64_t idx = 0; idx < input_vars.size(); idx++) {
+      auto input = input_vars[idx];
+      auto orgin_op = input.defining_op();
+      std::string name = "input_" + idx;
+      if (HasValueName(input)) {
+        name = GetValueName(input);
+      }
+      auto new_input = AppendDataOp(global_block, input, name, *orgin_op);
+      input.ReplaceAllUsesWith(new_input);
+      new_input_vars.push_back(new_input);
+    }
+  }
+  VLOG(6) << "program after add new feed op = " << *prog;
+  auto total_ops_list = global_block->ops();
+  std::vector<pir::Operation *> total_ops(total_ops_list.begin(),
+                                          total_ops_list.end());
+  std::vector<bool> intersection_op_flags(total_ops.size(), true);
+  std::set<pir::Value> output_vars_set(output_vars.begin(), output_vars.end());
+  for (uint32_t index = total_ops.size() - 1; index != (uint32_t)(-1);
+       --index) {
+    auto op = total_ops[index];
+    auto op_results = op->results();
+    if (SomeInSet(op_results, output_vars_set)) {
+      for (auto &operand : GetRealOpInputs(op)) {
+        output_vars_set.insert(operand);
+      }
+    } else {
+      VLOG(6) << "delete op " << index << ", name is " << op->name();
+      intersection_op_flags[index] = false;
+    }
+  }
+
+  std::set<pir::Value> input_vars_set(new_input_vars.begin(),
+                                      new_input_vars.end());
+  std::vector<pir::Operation *> remove_ops;
+  for (uint32_t index = total_ops.size() - 1; index != (uint32_t)(-1);
+       --index) {
+    auto op = total_ops[index];
+    if (!intersection_op_flags[index]) {
+      auto op_results = op->results();
+      if (!input_vars_set.empty() && SomeInSet(op_results, input_vars_set)) {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "The input_var create by: '{%s}' is not involved in the "
+            "output_vars calculation"
+            "Please remove it from input_vars.",
+            op->name()));
+      }
+      global_block->erase(*op);
+    }
+  }
 }
 
 void BindProgram(py::module *m) {
@@ -551,6 +712,25 @@ void BindProgram(py::module *m) {
                }
              }
            })
+      .def(
+          "_prune",
+          [](Program &self, std::vector<pir::Value> output_vars) {
+            std::vector<pir::Value> input_vars;
+            PruneWithInput(input_vars, output_vars, &self);
+            return &self;
+          },
+          py::arg("targets"),
+          "A description for the _prune method")
+      .def(
+          "_prune_with_input",
+          [](Program &self,
+             std::vector<pir::Value> input_vars,
+             std::vector<pir::Value> output_vars) {
+            PruneWithInput(input_vars, output_vars, &self);
+            return &self;
+          },
+          py::arg("feeded_vars"),
+          py::arg("targets"))
       .def("_sync_with_cpp", [](const std::shared_ptr<Program> &self) {
         // It's not need _sync_with_cpp in pir, but it's necessary in old static
         // graph. Add empyt function to avoid python call error.
@@ -1015,33 +1195,6 @@ py::str Value2String(Value self) {
   return print_stream.str();
 }
 
-phi::DataType GetTensorDtype(Type type) {
-  if (!type) {
-    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
-  }
-  if (auto dense_tensor_type = type.dyn_cast<DenseTensorType>()) {
-    return dialect::TransToPhiDataType(dense_tensor_type.dtype());
-  } else if (auto sparse_coo_tensor_type =
-                 type.dyn_cast<SparseCooTensorType>()) {
-    return dialect::TransToPhiDataType(sparse_coo_tensor_type.dtype());
-  } else if (auto sparse_csr_tensor_type =
-                 type.dyn_cast<SparseCsrTensorType>()) {
-    return dialect::TransToPhiDataType(sparse_csr_tensor_type.dtype());
-  } else if (auto select_rows = type.dyn_cast<SelectedRowsType>()) {
-    return dialect::TransToPhiDataType(select_rows.dtype());
-  } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
-    return dialect::TransToPhiDataType(dense_array.dtype());
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get phi::DataType from DenseTensorType and "
-        "SelectedRowsType, DenseTensorArrayType,SparseCooTensorType or "
-        "SparseCsrTensorType."));
-  }
-}
-phi::DataType GetValueDtype(Value value) {
-  return GetTensorDtype(value.type());
-}
-
 const phi::DDim &GetTensorDims(Type type) {
   if (!type) {
     PADDLE_THROW(common::errors::InvalidArgument(
@@ -1187,6 +1340,20 @@ void BindValue(py::module *m) {
           [](Value self, const std::string &name) { SetValueName(self, name); })
       .def_property_readonly("has_name",
                              [](Value self) { return HasValueName(self); })
+      // Return all Maybe names of given Value, for example:
+      // DataOp("var_1") -> %0 -> shadow_output("output_2")
+      // Return ["var_1", "output_2"]
+      .def_property_readonly(
+          "_names",
+          [](Value self) -> py::list {
+            py::list all_names;
+            std::optional<std::string> input_name = GetValueInputName(self);
+            if (input_name.has_value()) all_names.append(input_name.value());
+
+            std::optional<std::string> output_name = GetValueOutputName(self);
+            if (output_name.has_value()) all_names.append(output_name.value());
+            return all_names;
+          })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -2450,8 +2617,7 @@ void InferSymbolicShapePass(
     pir::Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (pir::shape::HasDynamicShape(program) &&
-      FLAGS_pir_apply_shape_optimization_pass) {
+  if (FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
@@ -2587,6 +2753,9 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                }
                for (size_t i = 0; i < actual.size(); i++) {
                  if (!actual.at(i).isa<int64_t>()) {
+                   LOG(ERROR)
+                       << "expect[" << i << "]: " << expect.at(i) << " actual["
+                       << i << "]: " << actual.at(i) << " .";
                    PADDLE_THROW(phi::errors::InvalidArgument(
                        "In OpTest, only supports cases where the type of "
                        "DimExpr "
@@ -2618,6 +2787,21 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
         return pir::ShapeAnalysisManager::Instance().Get(program);
       },
       return_value_policy::reference);
+  m->def("all_ops_defined_symbol_infer",
+         [](const pir::Program *program) -> bool {
+           // check that all ops have defined the InferSymbolicShapeInterface
+           bool flag = true;
+           for (pir::Operation &op : *(program->block())) {
+             pir::InferSymbolicShapeInterface infer_interface =
+                 op.dyn_cast<pir::InferSymbolicShapeInterface>();
+             if (!infer_interface) {
+               LOG(ERROR) << "The op: " << op.name()
+                          << " does not implement InferSymbolicShapeInterface.";
+               flag = false;
+             }
+           }
+           return flag;
+         });
 
   py::class_<pir::ShapeConstraintIRAnalysis,
              std::shared_ptr<pir::ShapeConstraintIRAnalysis>>

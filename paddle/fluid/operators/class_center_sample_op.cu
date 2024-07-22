@@ -36,9 +36,9 @@ namespace cub = hipcub;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
-#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
@@ -354,17 +354,17 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
-    auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
+    auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(ring_id)) {
       // Use ProcessGroup
-      paddle::distributed::ProcessGroup* pg = map->get(ring_id);
+      phi::distributed::ProcessGroup* pg = map->get(ring_id);
       std::vector<phi::DenseTensor> in_tensor;
       std::vector<phi::DenseTensor> out_tensor;
       in_tensor.push_back(num_classes_per_device);
       out_tensor.push_back(num_classes_per_device);
 
-      paddle::distributed::AllreduceOptions opts;
-      opts.reduce_op = paddle::distributed::ReduceOp::SUM;
+      phi::distributed::AllreduceOptions opts;
+      opts.reduce_op = phi::distributed::ReduceOp::SUM;
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {

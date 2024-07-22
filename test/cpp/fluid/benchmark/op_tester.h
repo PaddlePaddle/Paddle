@@ -70,7 +70,7 @@ class OpTester {
   std::unordered_map<std::string, std::unique_ptr<framework::VarDesc>> vars_;
   std::unordered_map<std::string, OpInputConfig> inputs_;
   std::unique_ptr<framework::OperatorBase> op_;
-  platform::Place place_;
+  phi::Place place_;
   std::unique_ptr<framework::Scope> scope_;
 };
 

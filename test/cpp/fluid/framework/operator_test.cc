@@ -35,8 +35,7 @@ class OpWithoutKernelTest : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
 
  private:
-  void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {
+  void RunImpl(const Scope& scope, const phi::Place& place) const override {
     ++op_run_num;
     ASSERT_EQ(static_cast<int>(inputs_.size()), 1);
     ASSERT_EQ(static_cast<int>(outputs_.size()), 1);
@@ -89,7 +88,7 @@ TEST(OperatorBase, all) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -225,7 +224,7 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
     op_with_kernel,
     CPU,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     MY_SPECIAL_NAME,
     paddle::framework::special_type_value,
     paddle::framework::CPUKernel2Test<float, float>);
@@ -243,7 +242,7 @@ TEST(OpKernel, all) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -276,7 +275,7 @@ TEST(OpKernel, multi_inputs) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   scope.Var("x0")->GetMutable<phi::DenseTensor>();
   scope.Var("x1")->GetMutable<phi::DenseTensor>();
@@ -421,7 +420,7 @@ TEST(IndicateVarDataTypeTest, other) {
   op_desc.set_type("indicate_other_data_type_test");
   BuildVar("Other", {"lod_rank_table_1"}, op_desc.add_inputs());
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -455,15 +454,14 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* var = scope.Var("OUT1");
   var->GetMutable<paddle::framework::LoDTensorArray>();
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(cpu_place);
 
   paddle::framework::RuntimeContext ctx({}, {});
@@ -493,7 +491,7 @@ class GetLoDLevelTest : public OperatorWithKernel {
     auto lod_level = ctx->GetLoDLevel("X");
     PADDLE_ENFORCE_GT(lod_level,
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The LoD level Input(X) should be larger than 0."));
   }
 };
@@ -543,7 +541,7 @@ void SetGetLoDLevelTestMain(std::string op_type) {
   BuildVar("X", {"x.0"}, op_desc.add_inputs());
   BuildVar("Out", {"out.0"}, op_desc.add_outputs());
 
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -650,7 +648,7 @@ TEST(OpWithUnusedVar, all) {
   BuildVar("X", {"X"}, op_desc.add_inputs());
   BuildVar("Y", {"Y"}, op_desc.add_outputs());
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   auto* x = scope.Var("X")->GetMutable<phi::DenseTensor>();
   auto* y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
@@ -675,7 +673,7 @@ TEST(OpWithoutUnusedVar, all) {
   BuildVar("X", {"X"}, op_desc.add_inputs());
   BuildVar("Y", {"Y"}, op_desc.add_outputs());
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   auto* x = scope.Var("X")->GetMutable<phi::DenseTensor>();
   auto* y = scope.Var("Y")->GetMutable<phi::DenseTensor>();

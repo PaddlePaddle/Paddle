@@ -1301,7 +1301,12 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                            dim_log2);
       }
     } else {
-      LaunchSoftmaxForwardCudnnKernel<T>(dev_ctx, x, axis, LogMode, out);
+      if (dim >= MATRIX_SOFTMAX_THREAHOLD) {
+        LaunchKeMatrixSoftmaxForwardKernel<T, IndexType, LogMode>(
+            dev_ctx, out_data, x.data<T>(), N, dim);
+      } else {
+        LaunchSoftmaxForwardCudnnKernel<T>(dev_ctx, x, axis, LogMode, out);
+      }
     }
   } else {
     LaunchNormalSoftmaxForward<T, LogMode>(

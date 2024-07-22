@@ -40,9 +40,8 @@ ParameterConvertInterface::ParameterToVariable(pir::Parameter *parameter) {
         parameter->type().dyn_cast<DenseTensorType>().lod(),
         parameter->type().dyn_cast<DenseTensorType>().offset());
     tensor->set_meta(meta);
-    paddle::platform::DeviceContext *dev_ctx =
-        paddle::platform::DeviceContextPool::Instance().Get(
-            paddle::platform::CPUPlace());
+    phi::DeviceContext *dev_ctx =
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
     dev_ctx->Alloc(tensor,
                    TransToPhiDataType(
                        parameter->type().dyn_cast<DenseTensorType>().dtype()));

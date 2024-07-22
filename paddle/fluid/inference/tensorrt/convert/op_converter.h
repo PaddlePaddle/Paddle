@@ -697,7 +697,7 @@ class OpConverter {
                                       nvinfer1::Dims shape,
                                       const std::string& weight_name = "") {
     if (!(std::is_same<T, float>::value ||
-          std::is_same<T, platform::float16>::value ||
+          std::is_same<T, phi::dtype::float16>::value ||
           std::is_same<T, int32_t>::value)) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported data type (%s) for TensorRT AddConstantLayer, only "
@@ -708,7 +708,7 @@ class OpConverter {
         shape.d, shape.d + shape.nbDims, 1, std::multiplies<int>());
     std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
     tmp_tensor->Resize({data_size});
-    auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
+    auto* tmp_data = tmp_tensor->mutable_data<T>(phi::CPUPlace());
     for (int i = 0; i < data_size; i++) {
       tmp_data[i] = data[i];
     }
@@ -734,7 +734,7 @@ class OpConverter {
                                         const std::string& weight_name = "",
                                         bool scalar = false) {
     if (!(std::is_same<T, float>::value ||
-          std::is_same<T, platform::float16>::value ||
+          std::is_same<T, phi::dtype::float16>::value ||
           std::is_same<T, int32_t>::value)) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported data type (%s) for TensorRT AddConstantLayer, only "
@@ -744,7 +744,7 @@ class OpConverter {
     std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
     int data_size = data.size();
     tmp_tensor->Resize({data_size});
-    auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
+    auto* tmp_data = tmp_tensor->mutable_data<T>(phi::CPUPlace());
     for (int i = 0; i < data_size; i++) {
       tmp_data[i] = data[i];
     }

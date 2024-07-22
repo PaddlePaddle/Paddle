@@ -104,7 +104,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             exe = base.Executor(base.XPUPlace(0))
             (res,) = exe.run(
                 feed={'x': self.data_x, 'index': self.data_index},
-                fetch_list=[z.name],
+                fetch_list=[z],
                 return_numpy=False,
             )
         expect_out = np.array(
@@ -120,7 +120,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             exe = base.Executor(base.XPUPlace(0))
             (res,) = exe.run(
                 feed={'x': self.data_x, 'index': self.data_index},
-                fetch_list=[z.name],
+                fetch_list=[z],
                 return_numpy=False,
             )
         expect_out = np.array(

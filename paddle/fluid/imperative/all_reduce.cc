@@ -37,7 +37,7 @@
 namespace paddle {
 namespace imperative {
 
-static const platform::Place &GetVarPlace(const framework::Variable &src) {
+static const phi::Place &GetVarPlace(const framework::Variable &src) {
   if (src.IsType<phi::DenseTensor>()) {
     return src.Get<phi::DenseTensor>().place();
 #if NCCL_VERSION_CODE >= 2212
@@ -59,7 +59,7 @@ static void AllReduce(const phi::DenseTensor &src,
                       const platform::NCCLComm *comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(place),
+      phi::is_gpu_place(place),
       true,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
@@ -88,7 +88,7 @@ static void AllReduce(const phi::SelectedRows &src,
   const auto &src_tensor = src.value();
   const auto &place = src_tensor.place();
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(place),
+      phi::is_gpu_place(place),
       true,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
@@ -96,7 +96,7 @@ static void AllReduce(const phi::SelectedRows &src,
   auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
   auto nccl_dtype = platform::ToNCCLDataType(dtype);
   auto *dev_ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
 
   bool use_calc_stream = (dev_ctx->stream() == stream);
   VLOG(4) << "Is use calculate stream: " << use_calc_stream;
@@ -221,7 +221,7 @@ void AllReduce(const framework::Variable &src,
                bool use_calc_stream) {
   const auto &place = GetVarPlace(src);
   auto *dev_ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   platform::NCCLComm *comm =
       platform::NCCLCommContext::Instance().Get(ring_id, place);
   gpuStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());

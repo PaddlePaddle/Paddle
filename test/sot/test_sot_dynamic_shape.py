@@ -32,7 +32,7 @@ def dynamic_shape_input_func1(x):
 
 def dynamic_int_input_func1(x, n):
     x = paddle.reshape(x, [n, -1])
-    return (x + n) * 2 - 1, (-n + 1) * 2 - 1
+    return (x + n) * 2 - 1, (-n + 1) * 2 - 1, type(n) is int
 
 
 def dynamic_int_input_func2(x, n):
@@ -49,6 +49,10 @@ def dynamic_int_input_func3(x, n):
 def dynamic_shape_access_inner_var_shape(x):
     y = x + 1
     return y.shape[0]
+
+
+def dynamic_shape_in_list(x, shape):
+    return x.reshape(shape)
 
 
 class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
@@ -118,6 +122,24 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                     paddle.randn([i, 4, 5]),
                 )
                 self.assertEqual(ctx.translate_count, 2)
+
+    # def test_dynamic_shape_in_list(self):
+    #     with with_allow_dynamic_shape_guard(
+    #         True
+    #     ), test_instruction_translator_cache_context() as ctx:
+    #         self.assert_results(
+    #             dynamic_shape_in_list,
+    #             paddle.randn([1, 4, 5]),
+    #             [4, 5],
+    #         )
+    #         self.assertEqual(ctx.translate_count, 1)
+    #         for i in range(2, 6):
+    #             self.assert_results(
+    #                 dynamic_shape_in_list,
+    #                 paddle.randn([i, 4, 5]),
+    #                 [i * 4, 5],
+    #             )
+    #             self.assertEqual(ctx.translate_count, 2)
 
 
 if __name__ == '__main__':

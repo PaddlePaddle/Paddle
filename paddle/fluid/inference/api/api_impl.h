@@ -30,8 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 
@@ -67,7 +67,7 @@ class NativePaddlePredictor : public PaddlePredictor {
   void PrepareFeedFetch();
 
   NativeConfig config_;
-  platform::Place place_;
+  phi::Place place_;
   std::unique_ptr<framework::Executor> executor_;
   std::shared_ptr<framework::Scope> scope_;
   std::unique_ptr<framework::ExecutorPrepareContext> ctx_;
