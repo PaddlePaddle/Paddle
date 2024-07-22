@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Generator, List, TypeVar
+from typing import Callable, Generator, TypeVar
 
 _T = TypeVar('_T')
 __all__ = []
