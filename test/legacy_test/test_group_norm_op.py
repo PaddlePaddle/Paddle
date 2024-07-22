@@ -102,7 +102,7 @@ class TestGroupNormOpError(unittest.TestCase):
                         name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
                     )
                     groups = 2
-                    paddle.nn.GroupNorm(num_channels=100, num_groups=groups)(x2)
+                    paddle.nn.GroupNorm(num_channels=2, num_groups=groups)(x2)
 
                 self.assertRaises(TypeError, test_x_dtype)
 
@@ -707,13 +707,13 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
                 name='data1', shape=[None, 3, 3, 4], dtype='float64'
             )
             out1 = paddle.nn.GroupNorm(
-                num_channels=4, groups=2, data_format="NHWC"
+                num_channels=4, num_groups=2, data_format="NHWC"
             )(data1)
             data2 = paddle.static.data(
                 name='data2', shape=[None, 4, 3, 3], dtype='float64'
             )
             out2 = paddle.nn.GroupNorm(
-                num_channels=3, groups=2, data_format="NCHW"
+                num_channels=4, num_groups=2, data_format="NCHW"
             )(data2)
 
             data1_np = np.random.random((2, 3, 3, 4)).astype("float64")
