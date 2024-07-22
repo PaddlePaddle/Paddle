@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle import sparse
-from paddle.pir_utils import test_with_pir_api
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
 
@@ -227,6 +226,7 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
     """
     test paddle.sparse.add, subtract, multiply, divide
     """
+
     def setUp(self):
         np.random.seed(2022)
         self.op_list = op_list
@@ -242,7 +242,7 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
                 y = np.random.randint(-255, 255, size=self.coo_shape).astype(
                     dtype
                 )
-                
+
                 mask = np.random.randint(0, 2, self.coo_shape)
                 n = 0
                 while np.sum(mask) == 0:
@@ -253,19 +253,23 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
                         mask[0] = 1
                         break
 
-                self.dense_x = paddle.to_tensor(x * mask, dtype=dtype, stop_gradient=True)
-                self.dense_y = paddle.to_tensor(y * mask, dtype=dtype, stop_gradient=True)
+                self.dense_x = paddle.to_tensor(
+                    x * mask, dtype=dtype, stop_gradient=True
+                )
+                self.dense_y = paddle.to_tensor(
+                    y * mask, dtype=dtype, stop_gradient=True
+                )
 
                 self.expect_res = op(self.dense_x, self.dense_y)
 
                 self.x_indices_data, self.x_values_data = (
-                    self.dense_x.detach().to_sparse_coo(sparse_dim).indices(), 
-                    self.dense_x.detach().to_sparse_coo(sparse_dim).values()
+                    self.dense_x.detach().to_sparse_coo(sparse_dim).indices(),
+                    self.dense_x.detach().to_sparse_coo(sparse_dim).values(),
                 )
 
                 self.y_indices_data, self.y_values_data = (
-                    self.dense_y.detach().to_sparse_coo(sparse_dim).indices(), 
-                    self.dense_y.detach().to_sparse_coo(sparse_dim).values()
+                    self.dense_y.detach().to_sparse_coo(sparse_dim).indices(),
+                    self.dense_y.detach().to_sparse_coo(sparse_dim).values(),
                 )
                 if op == __add__:
                     self.func_static_test_add()
@@ -278,13 +282,11 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
                 else:
                     raise ValueError("unsupported op")
 
-                
     def func_static_test_add(self):
         paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            
             x_indices = paddle.static.data(
                 name='x_indices',
                 shape=self.x_indices_data.shape,
@@ -318,10 +320,13 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
                 shape=self.dense_y.shape,
                 dtype=self.dense_y.dtype,
             )
-            
-            print("add in_dynamic_or_pir_mode == ", paddle.base.framework.in_dynamic_or_pir_mode())
+
+            print(
+                "add in_dynamic_or_pir_mode == ",
+                paddle.base.framework.in_dynamic_or_pir_mode(),
+            )
             sp_out = paddle.sparse.add(sp_x, sp_y)
-            
+
             sp_dense_out = sp_out.to_dense()
 
             sparse_exe = paddle.static.Executor()
@@ -340,13 +345,12 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
                 self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
             )
         paddle.disable_static()
-    
+
     def func_static_test_subtract(self):
         paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            
             x_indices = paddle.static.data(
                 name='x_indices',
                 shape=self.x_indices_data.shape,
@@ -381,9 +385,12 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
                 dtype=self.dense_y.dtype,
             )
 
-            print("sub in_dynamic_or_pir_mode == ", paddle.base.framework.in_dynamic_or_pir_mode())
+            print(
+                "sub in_dynamic_or_pir_mode == ",
+                paddle.base.framework.in_dynamic_or_pir_mode(),
+            )
             sp_out = paddle.sparse.subtract(sp_x, sp_y)
-            
+
             sp_dense_out = sp_out.to_dense()
 
             sparse_exe = paddle.static.Executor()
@@ -402,13 +409,12 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
                 self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
             )
         paddle.disable_static()
-    
+
     def func_static_test_mul(self):
         paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            
             x_indices = paddle.static.data(
                 name='x_indices',
                 shape=self.x_indices_data.shape,
@@ -442,9 +448,9 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
                 shape=self.dense_y.shape,
                 dtype=self.dense_y.dtype,
             )
-            
+
             sp_out = paddle.sparse.multiply(sp_x, sp_y)
-            
+
             sp_dense_out = sp_out.to_dense()
 
             sparse_exe = paddle.static.Executor()
@@ -463,13 +469,12 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
                 self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
             )
         paddle.disable_static()
-    
+
     def func_static_test_div(self):
         paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            
             x_indices = paddle.static.data(
                 name='x_indices',
                 shape=self.x_indices_data.shape,
@@ -503,9 +508,9 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
                 shape=self.dense_y.shape,
                 dtype=self.dense_y.dtype,
             )
-            
+
             sp_out = paddle.sparse.divide(sp_x, sp_y)
-            
+
             sp_dense_out = sp_out.to_dense()
 
             sparse_exe = paddle.static.Executor()
@@ -526,9 +531,14 @@ class TestSparseElementWiseStaticAPI(unittest.TestCase):
         paddle.disable_static()
 
     def test_support_dtypes_coo(self):
-        print("test_support_dtypes_coo in_dynamic_or_pir_mode == ", paddle.base.framework.in_dynamic_or_pir_mode())
+        # test
+        print(
+            "test_support_dtypes_coo in_dynamic_or_pir_mode == ",
+            paddle.base.framework.in_dynamic_or_pir_mode(),
+        )
         for op in op_list:
             self.func_test_coo(op)
+
 
 if __name__ == "__main__":
     devices = []

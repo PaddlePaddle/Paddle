@@ -292,7 +292,6 @@ def add(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-
 def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Subtract two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
@@ -384,7 +383,6 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             return _C_ops.sparse_multiply(x, y)
     else:
         pass
-
 
 
 def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
