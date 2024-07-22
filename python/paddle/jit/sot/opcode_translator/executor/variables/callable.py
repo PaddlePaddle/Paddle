@@ -731,7 +731,9 @@ class ClassVariable(CallableVariable):
         return self.value
 
     def call_function(self, /, *args, **kwargs):
-        new_object = self.value.__new__(self.value)
+        args_py = [v.get_py_value() for v in args]
+        kwargs_py = {k: v.get_py_value() for k, v in kwargs.items()}
+        new_object = self.value.__new__(self.value, *args_py, **kwargs_py)
 
         # do not have init function
         if self.value.__init__ is object.__init__:
