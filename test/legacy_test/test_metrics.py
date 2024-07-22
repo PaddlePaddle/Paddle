@@ -189,63 +189,6 @@ class TestAccuracyDynamicMultiTopk(TestAccuracyDynamic):
         self.squeeze_label = True
 
 
-class TestAccuracyStatic(TestAccuracyDynamic):
-    def setUp(self):
-        self.topk = (1,)
-        self.class_num = 5
-        self.sample_num = 1000
-        self.name = None
-        self.squeeze_label = True
-
-    def test_main(self):
-        paddle.enable_static()
-        with paddle.pir_utils.OldIrGuard():
-            main_prog = base.Program()
-            startup_prog = base.Program()
-            paddle.seed(1024)
-            with base.program_guard(main_prog, startup_prog):
-                pred = paddle.static.data(
-                    name='pred', shape=[None, self.class_num], dtype='float32'
-                )
-                label = paddle.static.data(
-                    name='label', shape=[None, 1], dtype='int64'
-                )
-                acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
-                state = acc.compute(pred, label)
-
-            exe = base.Executor(base.CPUPlace())
-            compiled_main_prog = base.CompiledProgram(main_prog)
-
-            for _ in range(10):
-                label, pred = self.random_pred_label()
-                state_ret = exe.run(
-                    compiled_main_prog,
-                    feed={'pred': pred, 'label': label},
-                    fetch_list=to_list(state),
-                    return_numpy=True,
-                )
-                acc.update(*state_ret)
-                res_m = acc.accumulate()
-                res_f = accuracy(pred, label, self.topk)
-                assert np.all(
-                    np.isclose(np.array(res_m), np.array(res_f), rtol=1e-3)
-                ), f"Accuracy precision error: {res_m} != {res_f}"
-                acc.reset()
-                assert np.sum(acc.total) == 0
-                assert np.sum(acc.count) == 0
-
-        paddle.disable_static()
-
-
-class TestAccuracyStaticMultiTopk(TestAccuracyStatic):
-    def setUp(self):
-        self.topk = (1, 5)
-        self.class_num = 10
-        self.sample_num = 100
-        self.name = "accuracy"
-        self.squeeze_label = False
-
-
 class TestPrecision(unittest.TestCase):
     def test_1d(self):
         x = np.array([0.1, 0.5, 0.6, 0.7])
