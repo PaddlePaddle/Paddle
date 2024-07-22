@@ -203,7 +203,7 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     )(x)
     hidden = paddle.nn.ReLU()(hidden_l)
     out = paddle.nn.Linear(
-        in_features=reduce(lambda x, y: x * y, hidden.shape[1:]),
+        in_features=reduce(lambda x, y: x * y, hidden.shape[2:]),
         out_features=d_hid,
         weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_inner_hid**-0.5), high=(d_inner_hid**-0.5)
