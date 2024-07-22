@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/executor.h"
@@ -296,31 +297,43 @@ std::optional<std::string> GetValueInputName(Value value) {
     } else {
       name = "arg_" + std::to_string(block_arg.index());
     }
+  } else if (auto constant_op = value.defining_op<::pir::ConstantTensorOp>()) {
+    name = constant_op.tensor_name();
   }
   return name;
 }
 
-std::optional<std::string> GetValueOutputName(Value value) {
-  std::optional<std::string> name;
-  if (IsUsedByShadowOutput(value)) {
-    for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
-      if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
-        name = iter->owner()->attribute<StrAttribute>("output_name").AsString();
-        break;
-      }
+std::vector<std::string> GetValueOutputName(Value value) {
+  std::vector<std::string> names;
+  for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+    if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+      names.push_back(
+          iter->owner()->attribute<StrAttribute>("output_name").AsString());
+    } else if (iter->owner()->isa<::pir::SetParameterOp>()) {
+      names.push_back(
+          iter->owner()->attribute<StrAttribute>("parameter_name").AsString());
     }
   }
-  return name;
+  return names;
 }
 
-std::string GetValueName(Value value) {
+std::vector<std::string> GetValueName(Value value) {
+  std::vector<std::string> names;
   std::optional<std::string> input_name = GetValueInputName(value);
-  if (input_name.has_value()) return input_name.value();
+  if (input_name.has_value()) {
+    names.push_back(input_name.value());
+  }
 
   VLOG(5) << "GetValueInputName(value) return empty, try to "
              "GetValueOutputName(value).";
-  std::optional<std::string> output_name = GetValueOutputName(value);
-  if (output_name.has_value()) return output_name.value();
+  std::vector<std::string> output_name = GetValueOutputName(value);
+  for (auto &name : output_name) {
+    names.push_back(name);
+  }
+
+  if (!names.empty()) {
+    return names;
+  }
 
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Currently, we can only get name of Value from "
@@ -434,12 +447,14 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
     std::vector<pir::Value> new_input_vars;
     for (uint64_t idx = 0; idx < input_vars.size(); idx++) {
       auto input = input_vars[idx];
-      auto orgin_op = input.defining_op();
-      std::string name = "input_" + idx;
-      if (HasValueName(input)) {
-        name = GetValueName(input);
+      auto origin_op = input.defining_op();
+      std::string name;
+      if (auto names = GetValueName(input); !names.empty()) {
+        name = names[0];
+      } else {
+        name = "input_" + std::to_string(idx);
       }
-      auto new_input = AppendDataOp(global_block, input, name, *orgin_op);
+      auto new_input = AppendDataOp(global_block, input, name, *origin_op);
       input.ReplaceAllUsesWith(new_input);
       new_input_vars.push_back(new_input);
     }
@@ -670,14 +685,14 @@ void BindProgram(py::module *m) {
                     var.attribute<BoolAttribute>(kAttrIsPersistable);
                 if (is_persistable && is_persistable.data()) {
                   if (var.defining_op()->isa<::pir::ParameterOp>()) {
-                    std::string var_name = GetValueName(var);
+                    std::string var_name = GetValueName(var)[0];
                     auto tensor =
                         scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
                     state_dict_param[var_name] = *tensor;
                     state_dict_all[var_name] = *tensor;
                   } else if (var.defining_op()
                                  ->isa<paddle::dialect::DataOp>()) {
-                    std::string var_name = GetValueName(var);
+                    std::string var_name = GetValueName(var)[0];
                     auto tensor =
                         scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
                     state_dict_opt[var_name] = *tensor;
@@ -1350,8 +1365,10 @@ void BindValue(py::module *m) {
             std::optional<std::string> input_name = GetValueInputName(self);
             if (input_name.has_value()) all_names.append(input_name.value());
 
-            std::optional<std::string> output_name = GetValueOutputName(self);
-            if (output_name.has_value()) all_names.append(output_name.value());
+            std::vector<std::string> output_names = GetValueOutputName(self);
+            for (std::string output_name : output_names) {
+              all_names.append(output_name);
+            }
             return all_names;
           })
       .def_property(
@@ -2008,8 +2025,8 @@ int AppendShadowOutputs(Program *program,
   for (const auto &value : outputs) {
     if (!added_value.count(value) || IsFakeValue(value)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
-      if (HasValueName(value)) {
-        shadow_output_name = GetValueName(value);
+      if (auto names = GetValueName(value); !names.empty()) {
+        shadow_output_name = names[0];
       }
       AppendShadowOutput(
           program, value, shadow_output_name, start_point + counter);
@@ -2137,8 +2154,8 @@ SplitedResult SplitForwardBackward(
         }
         std::string shadow_output_name =
             std::string("output_") + std::to_string(counter);
-        if (HasValueName(v)) {
-          shadow_output_name = GetValueName(v);
+        if (auto names = GetValueName(v); !names.empty()) {
+          shadow_output_name = names[0];
         }
         auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
         pir::AttributeMap attribute_map = {
@@ -2359,7 +2376,7 @@ static void inline CreateVariableIfNotExist(
 
   for (size_t i = 0; i < len; ++i) {
     pir::Value value = var_list[i];
-    std::string para_name = GetValueName(value);
+    std::string para_name = GetValueName(value)[0];
     auto var = scope->FindVar(para_name);
     if (var == nullptr) {
       PADDLE_ENFORCE_NOT_NULL(exe,
