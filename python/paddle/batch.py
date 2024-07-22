@@ -24,7 +24,7 @@ def batch(
     reader: Callable[[], Generator[_T, None, None]],
     batch_size: int,
     drop_last: bool = False,
-) -> Callable[[], Generator[List[_T], None, None]]:
+) -> Callable[[], Generator[list[_T], None, None]]:
     """
     This operator creates a batched reader which combines the data from the
     input reader to batched data.
