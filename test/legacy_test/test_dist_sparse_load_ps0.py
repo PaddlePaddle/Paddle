@@ -44,7 +44,7 @@ class SparseLoadOp(unittest.TestCase):
                 ),
             )(dense_input)
             linear = paddle.nn.Linear(
-                in_features=emb.shape[1],
+                in_features=emb.shape[-1],
                 out_features=10,
                 weight_attr=base.ParamAttr(
                     name='fc',
