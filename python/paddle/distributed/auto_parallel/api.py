@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import copy
+import typing
 from types import MethodType
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
@@ -2812,6 +2813,7 @@ class ShardDataloader:
         self._dataloader.pin_memory = False
 
     def _process_shard_dims(self, shard_dims):
+        shard_dims = self._convert_shard_dim_type(shard_dims)
         if isinstance(shard_dims, (int, str)) or shard_dims is None:
             res = []
             for i in range(len(self._meshes)):
@@ -2826,6 +2828,51 @@ class ShardDataloader:
                     f"shard_dims must be the same length as meshes, but got {len(shard_dims)} != {len(self._meshes)}"
                 )
             return shard_dims
+
+    def _convert_placements_to_mesh_dim(self, placements):
+        mesh_dim = None
+        for i, placement in enumerate(placements):
+            if placement.is_shard():
+                shard_dim = typing.cast(dist.Shard, placement).get_dim()
+                assert (
+                    shard_dim == 0
+                ), "Only the 0th dim of the input can be sharded."
+                assert (
+                    mesh_dim is None
+                ), "The input placements can only contain one Shard(0)."
+                mesh_dim = i
+            else:
+                assert (
+                    placement.is_replicate()
+                ), "The input placement must be Replicate or Shard(0)."
+        assert (
+            mesh_dim is not None
+        ), "Failed to convert placements to a mesh_dim."
+        return mesh_dim
+
+    def _convert_shard_dim_type(self, shard_dims):
+        if not isinstance(shard_dims, list) or not isinstance(
+            shard_dims[0], dist.Placement
+        ):
+            # if the input shard_dims is not Placement type,
+            # no need to convert it
+            return shard_dims
+        if isinstance(shard_dims[0], dist.Placement):
+            # if the input shard_dims is a list of Placement,
+            # convert it to a mesh_dim value
+            mesh_dim = self._convert_placements_to_mesh_dim(shard_dims)
+            return mesh_dim
+        elif isinstance(shard_dims[0], list):
+            # if the input shard_dims is a list of List(Placement),
+            # convert each placements to a mesh_dim value
+            res = []
+            for shard_dim in shard_dims:
+                mesh_dim = self._convert_placements_to_mesh_dim(shard_dim)
+                res.append(mesh_dim)
+        else:
+            raise TypeError(
+                f"shard_dims must be Placements or list/tuple of Placements, but got {type(shard_dims)}"
+            )
 
     def _get_mesh_and_shard_dim(self, process_id):
         for i in range(len(self._meshes)):
