@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Generator, List, TypeVar
 if TYPE_CHECKING:
     from types import ModuleType
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 __all__ = []
 
 def batch(
