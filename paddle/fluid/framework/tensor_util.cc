@@ -23,9 +23,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -778,7 +778,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
         return static_cast<void*>(dst->mutable_data<double>(dst_place));
       if (type.code == kDLComplex)
         return static_cast<void*>(
-            dst->mutable_data<paddle::platform::complex<float>>(dst_place));
+            dst->mutable_data<phi::dtype::complex<float>>(dst_place));
       PADDLE_THROW(platform::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
@@ -786,7 +786,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
     case 128:
       if (type.code == kDLComplex)
         return static_cast<void*>(
-            dst->mutable_data<paddle::platform::complex<double>>(dst_place));
+            dst->mutable_data<phi::dtype::complex<double>>(dst_place));
       PADDLE_THROW(platform::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
@@ -911,9 +911,9 @@ std::ostream& print_tensor(std::ostream& os, const phi::DenseTensor& tensor) {
 }
 
 template <>
-std::ostream& print_tensor<paddle::platform::complex<float>>(
+std::ostream& print_tensor<phi::dtype::complex<float>>(
     std::ostream& os, const phi::DenseTensor& tensor) {
-  auto inspect = tensor.data<paddle::platform::complex<float>>();
+  auto inspect = tensor.data<phi::dtype::complex<float>>();
   auto element_num = tensor.numel();
 
   os << "  - data: [";
@@ -929,9 +929,9 @@ std::ostream& print_tensor<paddle::platform::complex<float>>(
 }
 
 template <>
-std::ostream& print_tensor<paddle::platform::complex<double>>(
+std::ostream& print_tensor<phi::dtype::complex<double>>(
     std::ostream& os, const phi::DenseTensor& tensor) {
-  auto inspect = tensor.data<paddle::platform::complex<double>>();
+  auto inspect = tensor.data<phi::dtype::complex<double>>();
   auto element_num = tensor.numel();
 
   os << "  - data: [";
