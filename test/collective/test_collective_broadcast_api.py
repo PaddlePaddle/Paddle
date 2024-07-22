@@ -125,6 +125,28 @@ class TestCollectiveBroadcastAPI(TestDistBase):
                 dtype=dtype,
             )
 
+    def test_allgather_nccl_with_new_comm_pir(self):
+        dtypes_to_test = [
+            "float16",
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "int8",
+            "uint8",
+            "bool",
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place(
+                "collective_broadcast_api.py",
+                "broadcast",
+                "nccl",
+                dtype=dtype,
+                need_envs={
+                    "FLAGS_dynamic_static_unified_comm": "true",
+                    "FLAGS_enable_pir_in_executor": "1",
+                },
+            )
 
 if __name__ == "__main__":
     unittest.main()
