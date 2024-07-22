@@ -29,6 +29,7 @@ from utils import static_guard
 
 import paddle
 import paddle.nn.functional as F
+import paddle.static
 from paddle import base
 from paddle.base import core
 
@@ -90,7 +91,9 @@ class TestGroupNormOpError(unittest.TestCase):
                 def test_x_type():
                     input = np.random.random(2, 100, 3, 5).astype('float32')
                     groups = 2
-                    paddle.static.nn.group_norm(input, groups)
+                    paddle.nn.GroupNorm(num_channels=100, num_groups=groups)(
+                        input
+                    )
 
                 self.assertRaises(TypeError, test_x_type)
 
@@ -99,7 +102,7 @@ class TestGroupNormOpError(unittest.TestCase):
                         name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
                     )
                     groups = 2
-                    paddle.static.nn.group_norm(x2, groups)
+                    paddle.nn.GroupNorm(num_channels=100, num_groups=groups)(x2)
 
                 self.assertRaises(TypeError, test_x_dtype)
 
@@ -703,15 +706,15 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
             data1 = paddle.static.data(
                 name='data1', shape=[None, 3, 3, 4], dtype='float64'
             )
-            out1 = paddle.static.nn.group_norm(
-                input=data1, groups=2, data_layout="NHWC"
-            )
+            out1 = paddle.nn.GroupNorm(
+                num_channels=4, groups=2, data_format="NHWC"
+            )(data1)
             data2 = paddle.static.data(
                 name='data2', shape=[None, 4, 3, 3], dtype='float64'
             )
-            out2 = paddle.static.nn.group_norm(
-                input=data2, groups=2, data_layout="NCHW"
-            )
+            out2 = paddle.nn.GroupNorm(
+                num_channels=3, groups=2, data_format="NCHW"
+            )(data2)
 
             data1_np = np.random.random((2, 3, 3, 4)).astype("float64")
             data2_np = np.random.random((2, 4, 3, 3)).astype("float64")
@@ -883,9 +886,9 @@ class TestGroupNormException(unittest.TestCase):
             )
 
             def attr_data_format():
-                out = paddle.static.nn.group_norm(
-                    input=data, groups=2, data_layout="NDHW"
-                )
+                out = paddle.nn.GroupNorm(
+                    num_channels=3, num_groups=2, data_format="NDHW"
+                )(data)
 
             self.assertRaises(ValueError, attr_data_format)
 
