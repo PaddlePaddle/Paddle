@@ -104,7 +104,8 @@ class _ConvNd(Layer):
         self._data_format = data_format
         if dtype is None:
             self._dtype = self._helper.get_default_dtype()
-        self._dtype = convert_dtype(dtype)
+        else:
+            self._dtype = convert_dtype(dtype)
 
         valid_padding_modes = {'zeros', 'reflect', 'replicate', 'circular'}
         if padding_mode not in valid_padding_modes:
