@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from functools import reduce
 
 import numpy as np
 from amp_base_models import AmpTestBase
@@ -335,7 +334,7 @@ class TestFp16Guard(AmpTestBase):
 
                 pool = F.max_pool2d(bn, kernel_size=2, stride=2)
                 hidden = paddle.nn.Linear(
-                    in_features=reduce(lambda x, y: x * y, pool.shape[1:]),
+                    in_features=pool.shape[-1],
                     out_features=10,
                 )(pool)
                 loss = paddle.mean(hidden)
