@@ -716,11 +716,11 @@
   args : (Tensor x, int ring_id=0, int root=0, bool use_calc_stream=false)
   output : Tensor(out)
   infer_meta :
-    func : UnchangedInferMeta
+    func : DistBroadcastInferMeta
     param : [x]
   kernel :
-    func : c_broadcast
-  inplace : (x -> out)
+    func : broadcast
+    param: [x, root
 
 - op : c_concat
   args : (Tensor x, int rank, int nranks, int ring_id, bool use_calc_stream, bool use_model_parallel)
