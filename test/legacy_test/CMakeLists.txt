@@ -1068,6 +1068,7 @@ set(STATIC_BUILD_TESTS
     test_layer_norm_op
     test_eigh_op
     test_matmul_v2_op
+    test_momentum_op
     test_paddle_save_load_binary
     test_fetch_lod_tensor_array
     test_assign_pos_op
