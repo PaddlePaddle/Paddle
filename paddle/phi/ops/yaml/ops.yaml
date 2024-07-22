@@ -179,6 +179,16 @@
   traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : all_gather
+  args : (Tensor x, int ring_id = 0, int nranks=0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllGatherInferMeta
+    param: [x, nranks]
+  kernel :
+    func : all_gather
+    param: [x, nranks]
+
 - op : allclose
   args : (Tensor x, Tensor y, Scalar(double) rtol=1e-5, Scalar(double) atol=1e-8, bool equal_nan=false)
   output : Tensor(out)
@@ -653,15 +663,6 @@
     data_type : input
   backward: broadcast_tensors_grad
 
-# - op : c_allgather
-#   args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)
-#   output : Tensor(out)
-#   infer_meta :
-#     func : AllGatherInferMeta
-#     param: [x, nranks]
-#   kernel :
-#     func : c_allgather
-
 - op : c_allgather
   args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)
   output : Tensor(out)
@@ -671,7 +672,6 @@
   kernel :
     func : all_gather
     param: [x, nranks]
-
 
 - op : c_allreduce_max
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)

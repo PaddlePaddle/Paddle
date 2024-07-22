@@ -7,16 +7,6 @@
     func : all
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op : all_gather
-  args : (Tensor x, int ring_id = 0, int nranks=0)
-  output : Tensor(out)
-  infer_meta :
-    func : AllGatherInferMeta
-    param: [x, nranks]
-  kernel :
-    func : all_gather
-    param: [x, nranks]
-
 - op : all_reduce
   args : (Tensor x, int ring_id = 0, int reduce_type = 0)
   output : Tensor(out)
