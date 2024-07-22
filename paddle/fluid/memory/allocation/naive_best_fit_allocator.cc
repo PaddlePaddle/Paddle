@@ -30,8 +30,8 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-#include "paddle/fluid/platform/flags.h"
-PADDLE_DEFINE_EXPORTED_bool(
+#include "paddle/common/flags.h"
+PHI_DEFINE_EXPORTED_bool(
     init_allocated_mem,
     false,
     "It is a mistake that the values of the memory allocated by "
