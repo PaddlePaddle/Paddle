@@ -709,7 +709,6 @@ set(STATIC_BUILD_TESTS
     test_fuse_bn_act_pass_deprecated
     test_layer_norm_op_deprecated
     test_lookup_table_v2_op_deprecated
-    test_momentum_op
     test_momentum_op_deprecated
     test_nce_deprecated
     test_sparse_conv_op
