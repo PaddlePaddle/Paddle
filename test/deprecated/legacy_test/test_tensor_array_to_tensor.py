@@ -85,7 +85,11 @@ class TestLoDTensorArrayStack(unittest.TestCase):
             scope=scope
         )
         for i, output in enumerate(self.outputs):
-            np.allclose(result[i], output, atol=0)
+            np.allclose(
+                result[i],
+                output,
+                atol=0
+            )
 
     def test_cpu(self):
         scope = core.Scope()
