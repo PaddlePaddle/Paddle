@@ -23,7 +23,7 @@ __all__ = []
 def batch(
     reader: Callable[[], Generator[_T, None, None]],
     batch_size: int,
-    drop_last: bool = False
+    drop_last: bool = False,
 ) -> Callable[[], Generator[list[_T], None, None]]:
     """
     This operator creates a batched reader which combines the data from the
