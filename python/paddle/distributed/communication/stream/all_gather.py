@@ -60,7 +60,7 @@ def _all_gather_in_dygraph(
 
 
 def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
-    op_type = 'c_allgather'
+    op_type = 'all_gather'
     helper = framework.LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
     for elem in tensor_list:
@@ -103,11 +103,10 @@ def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
     nranks = dist.get_world_size()
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [out]},
+        inputs={'x': [tensor]},
+        outputs={'out': [out]},
         attrs={
             'ring_id': ring_id,
-            'use_calc_stream': sync_op,
             'nranks': nranks,
         },
     )
