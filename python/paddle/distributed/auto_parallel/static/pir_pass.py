@@ -25,6 +25,7 @@ from .reshard_funcs.reshard_func_register import register_reshard_funcs
 register_reshard_funcs()
 
 partition_skip_op_list = ["builtin.combine", "builtin.split"]
+amp_ops = ["pd_op.check_finite_and_unscale_", "pd_op.update_loss_scaling_"]
 
 
 def reshard_single_value(op, operand, attr):
@@ -196,7 +197,7 @@ def apply_reshard_pass(dist_program):
             reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
             assert (
                 reshard_func is not None
-            ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}'
+            ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
             paddle.pir.set_insertion_point(op)
             ref_op_role = op.op_role
             out_value = reshard_func.reshard(
@@ -259,6 +260,38 @@ def remove_other_rank_op_pass(dist_program):
             lr = op.result(0)
             lr.replace_all_uses_with(lr_value)
             op.erase()
+
+
+# Pruning value not belong to cur rank
+# especially used for check_finite_and_unscale
+# and update_loss_scaling op in amp
+# For example, w0 on mesh0, w1 on mesh1, before pass, the ops is:
+#  [w0_g, w1_g], is_finite = check_finite_and_scale([w0_g, w1_g], loss_scaling)
+# after pass, on mesh0, the op is:
+#  [w0_g], is_finite = check_finite_and_scale([w0_g], loss_scaling)
+# Note that here we do not set the op_dist_attr, since it is not used
+# afterwards.
+def remove_other_rank_input_output_pass(dist_program):
+    cur_rank = paddle.distributed.get_rank()
+    for op in dist_program.global_block().ops[::-1]:
+        if op.name() not in amp_ops:
+            continue
+        new_vars = []
+        combine_op = op.operand_source(0).get_defining_op()
+        for inner_operand in op.operand_source(0).get_defining_op().operands():
+            if (
+                cur_rank
+                in inner_operand.source().dist_attr().process_mesh.process_ids
+            ):
+                new_vars.append(inner_operand.source())
+                continue
+        result = op.operand_source(0).get_defining_op().result(0)
+        paddle.pir.set_insertion_point_after(combine_op)
+        res = paddle._C_ops.builtin_combine(new_vars)
+        result.replace_all_uses_with(res)
+        combine_op.erase()
+        # since it is inplace op, set type of output as the same as input
+        op.result(0).set_type(res.type())
 
 
 # Note: this is the pass in the dense program

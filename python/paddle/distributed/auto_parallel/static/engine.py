@@ -60,6 +60,7 @@ from .pir_pass import (
     apply_reshard_pass,
     complete_op_role,
     pipeline_pass,
+    remove_other_rank_input_output_pass,
     remove_other_rank_op_pass,
     remove_unuseful_comm_op_pass,
 )
@@ -655,47 +656,117 @@ class Engine:
         backward_op_start_idx = -1
         opt_op_start_idx = -1
         # Part 1: Complete program
-        # Step 1.1: Mix2Dense Pass
+        # Step 1.1: Mix2Dist Pass
         # TODO(JZ-LIANG) regulization pass with pass management.
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
+
         # Step 1.2: pir backward
         last_forward_op = dist_program.global_block().ops[-1]
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
             if loss.initialized():
                 with static.program_guard(dist_program, startup_program):
-                    params_grads = paddle.autograd.ir_backward.append_backward(
-                        loss
-                    )
-                    last_backward_op = dist_program.global_block().ops[-1]
-                    self._optimizer._apply_optimize(
-                        loss, startup_program, params_grads=params_grads
-                    )
-                    # re-run apply_mix2dist_pass to dist accumulator.
-                    apply_mix2dist_pass(dist_program)
+                    if self._strategy.amp.enable:
+                        amp_lists = paddle.static.amp.decorator.AutoMixedPrecisionLists(
+                            custom_white_list=self._strategy.amp.custom_white_list,
+                            custom_black_list=self._strategy.amp.custom_black_list,
+                            dtype=self._strategy.amp.dtype,
+                        )
+                        self._optimizer = paddle.static.amp.decorator.OptimizerWithMixedPrecision(
+                            optimizer=self._optimizer,
+                            amp_lists=amp_lists,
+                            level=self._strategy.amp.level,
+                            dtype=self._strategy.amp.dtype,
+                            init_loss_scaling=self._strategy.amp.init_loss_scaling,
+                            incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
+                            decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
+                            incr_ratio=self._strategy.amp.incr_ratio,
+                            decr_ratio=self._strategy.amp.decr_ratio,
+                            use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
+                            use_amp_guard=self._strategy.amp.use_fp16_guard,
+                            use_master_grad=self._strategy.amp.use_dynamic_loss_scaling,
+                            use_promote=self._strategy.amp.use_promote,
+                        )
+                        # bfloat16 needs no scaler
+                        scaler = paddle.amp.GradScaler(
+                            init_loss_scaling=self._strategy.amp.init_loss_scaling,
+                            incr_ratio=self._strategy.amp.incr_ratio,
+                            decr_ratio=self._strategy.amp.decr_ratio,
+                            incr_every_n_steps=self._strategy.amp.incr_every_n_steps,
+                            decr_every_n_nan_or_inf=self._strategy.amp.decr_every_n_nan_or_inf,
+                            use_dynamic_loss_scaling=self._strategy.amp.use_dynamic_loss_scaling,
+                            enable=self._strategy.amp.enable
+                            and self._strategy.amp.dtype != 'bfloat16',
+                        )
+                        scaled = scaler.scale(loss)
+                        last_forward_op = dist_program.global_block().ops[-1]
+                        optimizer_ops, params_grads = scaler.minimize(
+                            self._optimizer, scaled
+                        )
+                        first_opt_op = optimizer_ops[-1]
+                        backward_op_start_idx = (
+                            dist_program.global_block().ops.index(
+                                last_forward_op
+                            )
+                            + 1
+                        )
+                        opt_op_start_idx = (
+                            dist_program.global_block().ops.index(first_opt_op)
+                        )
+                        # print('after minimize', dist_program, flush=1)
+                        complete_op_role(
+                            dist_program,
+                            [
+                                [forward_op_start_idx, backward_op_start_idx],
+                                [backward_op_start_idx, opt_op_start_idx],
+                                [opt_op_start_idx, dist_program.num_ops()],
+                            ],
+                        )
+                    else:
+                        params_grads = (
+                            paddle.autograd.ir_backward.append_backward(loss)
+                        )
+                        last_backward_op = dist_program.global_block().ops[-1]
+                        self._optimizer._apply_optimize(
+                            loss, startup_program, params_grads=params_grads
+                        )
 
-                    backward_op_start_idx = (
-                        dist_program.global_block().ops.index(last_forward_op)
-                        + 1
-                    )
-                    opt_op_start_idx = (
-                        dist_program.global_block().ops.index(last_backward_op)
-                        + 1
-                    )
-                    complete_op_role(
-                        dist_program,
-                        [
-                            [forward_op_start_idx, backward_op_start_idx],
-                            [backward_op_start_idx, opt_op_start_idx],
-                            [opt_op_start_idx, dist_program.num_ops()],
-                        ],
-                    )
+                        backward_op_start_idx = (
+                            dist_program.global_block().ops.index(
+                                last_forward_op
+                            )
+                            + 1
+                        )
+                        opt_op_start_idx = (
+                            dist_program.global_block().ops.index(
+                                last_backward_op
+                            )
+                            + 1
+                        )
+                        self._optimizer._apply_optimize(
+                            loss, startup_program, params_grads=params_grads
+                        )
+                        complete_op_role(
+                            dist_program,
+                            [
+                                [forward_op_start_idx, backward_op_start_idx],
+                                [backward_op_start_idx, opt_op_start_idx],
+                                [opt_op_start_idx, dist_program.num_ops()],
+                            ],
+                        )
+                        # self._optimizer.minimize(loss, startup_program=startup_program)
+
             else:
                 self._logger.info(
                     "loss value is not found, skip append backward."
                 )
-        # Part 2: Parallelism search
+
+        # re-run apply_mix2dist_pass to dist accumulator.
+        apply_mix2dist_pass(dist_program)
+        # print('program', startup_program, dist_program, flush=1)
+
+        # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,
         # and all the Pass in this Part should be optional to allow consistence in dynamic and static mode.
         if self._strategy.auto_mode == "semi-auto":
@@ -724,7 +795,16 @@ class Engine:
         #   collect the communicator created during resolution.
         apply_reshard_pass(dist_program)
 
+        # print('after reshard', dist_program, flush=1)
+
+        remove_other_rank_input_output_pass(dist_program)
+        # print(
+        #     'after remove_other_rank_input_output_pass', dist_program, flush=1
+        # )
+
         remove_other_rank_op_pass(dist_program)
+
+        # print('after remove_other_rank_op_pass', dist_program, flush=1)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
@@ -759,10 +839,16 @@ class Engine:
         self._pir_dist_main_progs[mode] = dist_program
 
     def _prepare_program(self, mode, init_parameters=True):
-        # Do the build process
-        self._build(mode)
-        # TODO(zhiqiu): fit the processes below for pir
         if self._in_pir_mode:
+            with paddle.amp.auto_cast(
+                enable=self._strategy.amp.enable,
+                custom_white_list=self._strategy.amp.custom_white_list,
+                custom_black_list=self._strategy.amp.custom_black_list,
+                level=self._strategy.amp.level,
+                dtype=self._strategy.amp.dtype,
+                use_promote=self._strategy.amp.use_promote,
+            ):
+                self._build(mode)
             self._parallel_pir(mode)
             # Init comm
             self._init_comm()
@@ -770,6 +856,10 @@ class Engine:
             self._initialize(mode, init_parameters)
             self._has_prepared[mode] = True
             return
+
+        # legacy program
+        # Do the build process
+        self._build(mode)
         # Do the planning process
         self._plan(mode)
         # Do the parallel process
@@ -1111,7 +1201,9 @@ class Engine:
             # 4. lazy init adaption
             # 5. amp init adaption
             # 6. vpp init adaption
-
+            self.program_helper.init_pir(
+                self._pir_dist_main_progs[mode], self._place
+            )
             # self._init_lr(self._pir_dense_main_progs[mode])
             self.program_helper.init_pir(
                 self._pir_dist_main_progs[mode], self._place
@@ -1124,7 +1216,9 @@ class Engine:
                 for op in dist_main_prog.global_block().ops:
                     if op.name() == "pd_op.data":
                         var_name = op.str_attr("name")
-                        assert var_name not in name_map_value
+                        assert (
+                            var_name not in name_map_value
+                        ), f"The value {var_name} in {op} is already exist"
                         name_map_value[var_name] = op.result(0)
                 del_ops = []
                 block = startup_prog.global_block()
@@ -1151,9 +1245,15 @@ class Engine:
                             src_value = op.operand_source(0)
                             assert src_value.shape == global_shape
                             initial_op = src_value.get_defining_op()
-                            assert initial_op.name() == "pd_op.full"
-                            initial_op.set_int_array_attr("shape", local_shape)
-                            src_value.set_type(name_map_value[var_name].type())
+                            if initial_op.name() == "pd_op.full":
+                                initial_op.set_int_array_attr(
+                                    "shape", local_shape
+                                )
+                                src_value.set_type(
+                                    name_map_value[var_name].type()
+                                )
+                            # initial_op.name() == "pd_op.cast": # master_weight
+
                 for del_op in del_ops:
                     del_op.erase()
                 self._executor.run(startup_prog)
