@@ -4190,6 +4190,13 @@
   outputs:
     param_out : ParamOut
 
+- op: fake_quantize_dequantize_lsqplus
+  backward: fake_quantize_dequantize_lsqplus_grad
+  inputs :
+    {x: X, alpha: Alpha, beta: Beta, g_scale: GScale}
+  outputs :
+    out: Out
+
 - op: fetch (fetch_v2)
   inputs: {x: X}
   outputs: {out: Out}

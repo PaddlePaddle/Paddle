@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/fake_quantize_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-
 namespace phi {
 
 template <typename T, typename Context>

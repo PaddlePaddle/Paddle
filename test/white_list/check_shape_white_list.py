@@ -29,4 +29,5 @@ NEED_TO_FIX_OP_LIST = [
     'reshape2',
     'squeeze',
     'squeeze2',
+    'fake_quantize_dequantize_lsqplus',
 ]

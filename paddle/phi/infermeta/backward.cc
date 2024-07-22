@@ -1816,44 +1816,45 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
 }
 
 // lsqplus backward Infermeta
-void LsqplusGradInferMeta(const MetaTensor& x,
-                          const MetaTensor& alpha,
-                          const MetaTensor& beta,
-                          const MetaTensor& g,
-                          const MetaTensor& dout,
-                          int Qn,
-                          int Qp,
-                          MetaTensor* din,
-                          MetaTensor* dalpha,
-                          MetaTensor* dbeta) {
+void FakeQuantizeDequantizeLsqplusGradInferMeta(const MetaTensor& x,
+                                                const MetaTensor& alpha,
+                                                const MetaTensor& beta,
+                                                const MetaTensor& g_scale,
+                                                const MetaTensor& out_grad,
+                                                int bit_length,
+                                                bool is_sign,
+                                                int round_type,
+                                                MetaTensor* x_grad,
+                                                MetaTensor* alpha_grad,
+                                                MetaTensor* beta_grad) {
+  // check out_grad
+  // PADDLE_ENFORCE_EQ(
+  //   x.dims().size(),
+  //   out_grad.dims().size(),
+  //   phi::errors::InvalidArgument(
+  //     "The input x and output out_grad should have the same dimension
+  //     size."));
 
-  // check dout
-  PADDLE_ENFORCE_EQ(
-    x.dims().size(),
-    dout.dims().size(),
-    phi::errors::InvalidArgument(
-      "The input x and output dout should have the same dimension size."));
-
-  PADDLE_ENFORCE_EQ(
-    x.numel(),
-    dout.numel(),
-    phi::errors::InvalidArgument(
-      "The input x and output dout should have the same number of elements."));
+  // PADDLE_ENFORCE_EQ(
+  //   x.numel(),
+  //   out_grad.numel(),
+  //   phi::errors::InvalidArgument(
+  //     "The input x and output out_grad should have the same number of
+  //     elements."));
 
   // set metadata
-  if (din) {
-    din->set_dims(x.dims());
-    din->set_dtype(x.dtype());
+  if (x_grad) {
+    x_grad->set_dims(x.dims());
+    x_grad->set_dtype(x.dtype());
   }
-  if (dalpha) {
-    dalpha->set_dims(alpha.dims());
-    dalpha->set_dtype(alpha.dtype());
+  if (alpha_grad) {
+    alpha_grad->set_dims(alpha.dims());
+    alpha_grad->set_dtype(alpha.dtype());
   }
-  if (dbeta) {
-    dbeta->set_dims(beta.dims());
-    dbeta->set_dtype(beta.dtype());
+  if (beta_grad) {
+    beta_grad->set_dims(beta.dims());
+    beta_grad->set_dtype(beta.dtype());
   }
-
 }
 
 }  // namespace phi

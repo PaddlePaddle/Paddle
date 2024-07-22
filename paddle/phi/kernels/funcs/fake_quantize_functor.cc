@@ -347,6 +347,46 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
   }
 }
 
+// for lsqplus fakequant
+template <typename Context, typename T>
+void LsqplusFakeQuantDequantFunctor<Context, T>::operator()(
+    const Context &ctx,
+    const DenseTensor &in,
+    const DenseTensor &alpha,
+    const DenseTensor &beta,
+    const DenseTensor &g_scale,
+    int Qn,
+    int Qp,
+    int round_type,
+    DenseTensor *out) {
+  phi::Transform<Context> trans;
+
+  T alpha_v = alpha.data<T>()[0];
+  T beta_v = beta.data<T>()[0];
+
+  if (round_type == 0) {
+    trans(ctx,
+          in.data<T>(),
+          in.data<T>() + in.numel(),
+          ctx.template Alloc<T>(out),
+          phi::funcs::LsqQuantDequantTensorFunctor<T>(alpha_v, beta_v, Qn, Qp));
+  } else {
+    T sp = alpha_v * Qp + beta_v;
+    T sn = alpha_v * Qn + beta_v;
+    trans(ctx,
+          in.data<T>(),
+          in.data<T>() + in.numel(),
+          ctx.template Alloc<T>(out),
+          phi::ClipFunctor<T>(sn, sp));
+    auto out_e = phi::EigenVector<T>::Flatten(*out);
+    out_e.device(*ctx.eigen_device()) =
+        ((out_e - beta_v) * inverse(alpha_v)).round() * alpha_v + beta_v;
+  }
+
+  // auto out_e = EigenVector<T>::Flatten(*out);
+  // out_e.device(*ctx.eigen_device()) = (qmax * inv_s * out_e).round();
+}
+
 template class FindAbsMaxFunctor<CPUContext, float>;
 template class ClipAndFakeQuantFunctor<CPUContext, float>;
 template class FindMovingAverageAbsMaxFunctor<CPUContext, float>;
@@ -355,6 +395,7 @@ template class ChannelClipAndFakeQuantFunctor<CPUContext, float>;
 template class ChannelClipFakeQuantDequantFunctor<CPUContext, float>;
 template class FindRangeAbsMaxFunctor<CPUContext, float>;
 template class ClipAndFakeQuantDequantFunctor<CPUContext, float>;
+template class LsqplusFakeQuantDequantFunctor<CPUContext, float>;
 
 }  // namespace funcs
 }  // namespace phi

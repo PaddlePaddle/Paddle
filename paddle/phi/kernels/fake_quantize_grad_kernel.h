@@ -43,4 +43,18 @@ void FakeQuantizeDequantizeMovingAverageAbsMaxGradKernel(
     int round_type,
     DenseTensor* dx);
 
+// for lsqplus
+template <typename T, typename Context>
+void FakeQuantizeDequantizeLsqplusGradKernel(const Context& dev_ctx,
+                                             const DenseTensor& x,
+                                             const DenseTensor& alpha,
+                                             const DenseTensor& beta,
+                                             const DenseTensor& g_scale,
+                                             const DenseTensor& out_grad,
+                                             int bit_length,
+                                             bool is_sign,
+                                             int round_type,
+                                             DenseTensor* x_grad,
+                                             DenseTensor* alpha_grad,
+                                             DenseTensor* beta_grad);
 }  // namespace phi

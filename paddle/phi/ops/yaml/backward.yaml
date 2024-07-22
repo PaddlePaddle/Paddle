@@ -3579,6 +3579,16 @@
     func: check_model_nan_inf
     data_type: out_grad
 
+- backward_op: fake_quantize_dequantize_lsqplus_grad
+  forward: fake_quantize_dequantize_lsqplus (Tensor x, Tensor alpha, Tensor beta, Tensor g_scale, int bit_length, bool is_sign, int round_type) -> Tensor(out)
+  args: (Tensor x, Tensor alpha, Tensor beta, Tensor g_scale, Tensor out_grad, int bit_length, bool is_sign, int round_type)
+  output: Tensor(x_grad), Tensor(alpha_grad), Tensor(beta_grad)
+  infer_meta:
+    func: FakeQuantizeDequantizeLsqplusGradInferMeta
+  kernel:
+    func: fake_quantize_dequantize_lsqplus_grad
+    data_type: x
+
 - backward_op: im2sequence_grad
   forward: im2sequence (Tensor x, Tensor y, int[] kernels, int[] strides = {1, 1}, int[] paddings
     = {0, 0, 0, 0}, int[] out_stride = {1, 1}) -> Tensor (out)
@@ -3675,14 +3685,3 @@
   kernel:
     func: unpool_grad
     data_type: x
-
-- backward_op: lsqplus_grad
-  forward: lsqplus (Tensor x, Tensor alpha, Tensor beta, Tensor g, int Qn, int Qp) -> Tensor(out)
-  args: (Tensor x, Tensor alpha, Tensor beta, Tensor g, Tensor out_grad, int Qn, int Qp)
-  output: Tensor(x_grad), Tensor(alpha_grad), Tensor(beta_grad)
-  infer_meta:
-    func: LsqplusGradInferMeta
-  kernel:
-    func: lsqplus_grad
-    data_type: x
-    

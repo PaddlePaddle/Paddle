@@ -4922,6 +4922,16 @@
     data_type: DataType::FLOAT32
   optional: seq_length
 
+- op: fake_quantize_dequantize_lsqplus
+  args: (Tensor x, Tensor alpha, Tensor beta, Tensor g_scale, int bit_length, bool is_sign, int round_type)
+  output: Tensor(out)
+  infer_meta:
+    func: FakeQuantizeDequantizeLsqplusInferMeta
+  kernel:
+    func: fake_quantize_dequantize_lsqplus
+    data_type: x
+  backward: fake_quantize_dequantize_lsqplus_grad
+
 - op: moe
   args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
     str act_type = "gelu")
@@ -4939,12 +4949,3 @@
   kernel:
      func: number_count
      data_type: numbers
-
-- op: lsqplus
-  args: (Tensor x, Tensor alpha, Tensor beta, Tensor g, int Qn, int Qp)
-  output: Tensor(out)
-  infer_meta:
-    func: LsqplusInferMeta
-  kernel:
-    func: lsqplus
-  backward: lsqplus_grad
