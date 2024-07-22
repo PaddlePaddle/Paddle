@@ -184,7 +184,8 @@ ir::Expr ExtractSymbolicFromExpr(const ir::Expr& expr) {
     return ir::Expr(0);
   } else if (expr.As<ir::_Var_>()) {
     auto var = expr.As<ir::_Var_>();
-    if (utils::StartsWith(var->name, "S")) {
+    if (var->is_symbolic_constant) {
+      VLOG(6) << "Extract symbolic constant, name = " << var->name;
       return ir::ir_utils::IRCopy(expr);
     }
     return ir::Expr(0);
@@ -417,9 +418,9 @@ void EliminateCommonFactorHelper(ir::Expr* expr) {
   eliminate_common_factor_visitor(expr);
 }
 
-class TransformExprVisitor : public ir::IRMutator<> {
+class TransformLocalIndicesVisitor : public ir::IRMutator<> {
  public:
-  TransformExprVisitor() {}
+  TransformLocalIndicesVisitor() {}
 
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
@@ -487,13 +488,6 @@ class TransformExprVisitor : public ir::IRMutator<> {
     return local_buffer_iters;
   }
 
-  void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
-    auto* node = expr->As<ir::ScheduleBlockRealize>();
-    CHECK(node);
-    current_sbr_ = node;
-    IRMutator<>::Visit(op, expr);
-  }
-
   void Visit(const ir::For* op, ir::Expr* expr) override {
     auto* for_ir = expr->As<ir::For>();
     loop_vars_.push_back(for_ir->loop_var);
@@ -519,13 +513,12 @@ class TransformExprVisitor : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(op, expr);
   }
 
-  ir::ScheduleBlockRealize* current_sbr_;
   std::vector<ir::Var> loop_vars_;
 };
 
-void TransformExprToIters(ir::Expr* expr) {
-  TransformExprVisitor transfromExprVisitor;
-  transfromExprVisitor(expr);
+void TransformLocalIndicesToIters(ir::Expr* expr) {
+  TransformLocalIndicesVisitor transformLocalIndicesVisitor;
+  transformLocalIndicesVisitor(expr);
 }
 
 void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
@@ -534,7 +527,7 @@ void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
   EliminateCommonFactorHelper<Offset>(expr);
   EliminateCommonFactorHelper<Symbolic>(expr);
 
-  TransformExprToIters(expr);
+  TransformLocalIndicesToIters(expr);
 
   VLOG(4) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 }
