@@ -52,16 +52,17 @@ def resnet_cifar10(input, depth=32):
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
-        tmp = paddle.static.nn.conv2d(
-            input=input,
-            filter_size=filter_size,
-            num_filters=ch_out,
+        conv = paddle.nn.Conv2D(
+            in_channels=input.shape[1],
+            out_channels=ch_out,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
-            act=None,
             bias_attr=bias_attr,
         )
-        return paddle.static.nn.batch_norm(input=tmp, act=act)
+        tmp = conv(input)
+        bn = paddle.nn.BatchNorm(tmp.shape[1], act=act)
+        return bn(tmp)
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:

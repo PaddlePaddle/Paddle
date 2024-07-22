@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from functools import reduce
 
 import numpy as np
 from amp_base_models import AmpTestBase
@@ -325,13 +326,18 @@ class TestFp16Guard(AmpTestBase):
                     data = paddle.static.data(
                         name='X', shape=[None, 1, 28, 28], dtype='float32'
                     )
-                    conv2d = paddle.static.nn.conv2d(
-                        input=data, num_filters=6, filter_size=3
-                    )
-                    bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+                    conv2d = paddle.nn.Conv2D(
+                        in_channels=1, out_channels=6, kernel_size=3
+                    )(data)
+                    bn = paddle.nn.BatchNorm(
+                        num_channels=conv2d.shape[1], act="relu"
+                    )(conv2d)
 
                 pool = F.max_pool2d(bn, kernel_size=2, stride=2)
-                hidden = paddle.static.nn.fc(pool, size=10)
+                hidden = paddle.nn.Linear(
+                    in_features=reduce(lambda x, y: x * y, pool.shape[1:]),
+                    out_features=10,
+                )(pool)
                 loss = paddle.mean(hidden)
                 fetch_vars = [loss]
                 # 2) Create the optimizer and set `multi_precision` to True.
