@@ -143,12 +143,6 @@ int ExtractMulNumberFromExpr(const ir::Expr& expr) {
     auto mul = expr.As<ir::Mul>();
     return ExtractMulNumberFromExpr(mul->a()) *
            ExtractMulNumberFromExpr(mul->b());
-  } else if (expr.As<ir::Mod>()) {
-    auto mod = expr.As<ir::Mod>();
-    return ExtractMulNumberFromExpr(mod->a());
-  } else if (expr.As<ir::Div>()) {
-    auto div = expr.As<ir::Div>();
-    return ExtractMulNumberFromExpr(div->a());
   } else {
     VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
     return 1;
@@ -216,15 +210,6 @@ struct CommonFactorTrait<Gcd> {
 
   static ir::Expr Simplify(const ir::Expr& expr, const ir::Expr& factor) {
     if (factor != unit) {
-      if (expr.As<ir::Mod>()) {
-        auto mod = expr.As<ir::Mod>();
-        return cinn::common::AutoSimplify(
-            ir::Mod::Make(Simplify(mod->a(), factor), mod->b()));
-      } else if (expr.As<ir::Div>()) {
-        auto div = expr.As<ir::Div>();
-        return cinn::common::AutoSimplify(
-            ir::Div::Make(Simplify(div->a(), factor), div->b()));
-      }
       return cinn::common::AutoSimplify(ir::Div::Make(expr, factor));
     }
     return expr;
@@ -420,21 +405,21 @@ void EliminateCommonFactorHelper(ir::Expr* expr) {
 
 class TransformLocalIndicesVisitor : public ir::IRMutator<> {
  public:
-  TransformLocalIndicesVisitor() {}
-
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
  private:
   template <typename OpType>
-  void ExtractIterHelper(const ir::Expr& expr,
-                         std::map<std::string, ir::Expr>* name_to_iter) {
+  void ExtractIterHelper(
+      const ir::Expr& expr,
+      std::unordered_map<std::string, ir::Expr>* name_to_iter) {
     const auto op = expr.As<OpType>();
     ExtractIterFromIndice(op->a(), name_to_iter);
     ExtractIterFromIndice(op->b(), name_to_iter);
   }
 
-  void ExtractIterFromIndice(const ir::Expr& expr,
-                             std::map<std::string, ir::Expr>* name_to_iter) {
+  void ExtractIterFromIndice(
+      const ir::Expr& expr,
+      std::unordered_map<std::string, ir::Expr>* name_to_iter) {
     if (expr.As<ir::_Var_>()) {
       const auto var = expr.As<ir::_Var_>();
       if (name_to_iter->count(var->name) == 0) {
@@ -457,35 +442,32 @@ class TransformLocalIndicesVisitor : public ir::IRMutator<> {
     return;
   }
 
-  void CopyIndiceItersToLocalBuffer(
-      const std::map<std::string, ir::Expr>& name_to_iter,
-      std::vector<ir::Expr>* local_buffer_iters) {
-    std::map<std::size_t, ir::Expr> name_helper;
-    for (std::size_t i = 0; i < loop_vars_.size(); ++i) {
-      VLOG(6) << "iter var name: " << loop_vars_[i]->name;
-      if (name_to_iter.count(loop_vars_[i]->name) > 0) {
-        name_helper[i] = name_to_iter.at(loop_vars_[i]->name);
-      }
-    }
-    for (const auto& [key, iter] : name_helper) {
-      local_buffer_iters->push_back(iter);
-    }
-  }
-
   std::vector<ir::Expr> ConvertIndicesToIters(
       const std::vector<ir::Expr>& indices) {
-    std::vector<ir::Expr> local_buffer_iters;
-    std::map<std::string, ir::Expr> name_to_iter;
+    auto CopyIndiceItersToLocalBuffer =
+        [&](const std::unordered_map<std::string, ir::Expr>& name_to_iter,
+            const std::vector<ir::Expr>& indices) -> std::vector<ir::Expr> {
+      std::vector<ir::Expr> local_buffer_iters;
+      for (std::size_t i = 0; i < loop_vars_.size(); ++i) {
+        VLOG(6) << "loop var name: " << loop_vars_[i]->name;
+        if (name_to_iter.count(loop_vars_[i]->name) > 0) {
+          local_buffer_iters.push_back(name_to_iter.at(loop_vars_[i]->name));
+        }
+      }
+
+      while (local_buffer_iters.size() < indices.size()) {
+        local_buffer_iters.insert(local_buffer_iters.begin(), ir::Expr(0));
+      }
+      return local_buffer_iters;
+    };
+
+    std::unordered_map<std::string, ir::Expr> name_to_iter;
     for (const auto& indice : indices) {
       ExtractIterFromIndice(indice, &name_to_iter);
       VLOG(6) << "extract iter: " << indice
               << " iter_set size: " << name_to_iter.size();
     }
-    CopyIndiceItersToLocalBuffer(name_to_iter, &local_buffer_iters);
-    while (local_buffer_iters.size() < indices.size()) {
-      local_buffer_iters.insert(local_buffer_iters.begin(), ir::Expr(0));
-    }
-    return local_buffer_iters;
+    return CopyIndiceItersToLocalBuffer(name_to_iter, indices);
   }
 
   void Visit(const ir::For* op, ir::Expr* expr) override {
@@ -517,8 +499,8 @@ class TransformLocalIndicesVisitor : public ir::IRMutator<> {
 };
 
 void TransformLocalIndicesToIters(ir::Expr* expr) {
-  TransformLocalIndicesVisitor transformLocalIndicesVisitor;
-  transformLocalIndicesVisitor(expr);
+  TransformLocalIndicesVisitor transform_local_indices_visitor;
+  transform_local_indices_visitor(expr);
 }
 
 void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {

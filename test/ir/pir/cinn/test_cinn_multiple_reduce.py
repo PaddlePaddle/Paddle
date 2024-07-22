@@ -20,7 +20,7 @@ import paddle
 from paddle.base import core
 
 
-class GroupNormSubGraph(paddle.nn.Layer):
+class MultipleReduceSubGraph(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -30,7 +30,7 @@ class GroupNormSubGraph(paddle.nn.Layer):
         return x1 + x2
 
 
-class TestGroupNormSubGraph(unittest.TestCase):
+class TestMultipleReduceSubGraph(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
         self.shape = [32, 32]
@@ -44,7 +44,7 @@ class TestGroupNormSubGraph(unittest.TestCase):
     def eval(self, use_cinn, use_prim=False):
         if use_prim:
             core._set_prim_all_enabled(True)
-        net = GroupNormSubGraph()
+        net = MultipleReduceSubGraph()
         net = utils.apply_to_static(net, use_cinn=use_cinn)
         net.eval()
         out = net(self.x)
