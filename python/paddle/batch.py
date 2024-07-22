@@ -14,14 +14,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generator, List, TypeVar
+from typing import Generator, TypeVar
 
 _T = TypeVar('_T')
 __all__ = []
 
+
 def batch(
-    reader: Generator[T, None, None], batch_size: int, drop_last: bool = False
-) -> Generator[list[T], None, None]:
+    reader: Callable[[], Generator[_T, None, None]], batch_size: int, drop_last: bool = False
+) -> Callable[[], Generator[list[_T], None, None]]:
     """
     This operator creates a batched reader which combines the data from the
     input reader to batched data.
