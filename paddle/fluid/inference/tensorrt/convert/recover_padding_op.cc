@@ -26,7 +26,7 @@ class RecoverPadding : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
     if (!engine_->with_dynamic_shape()) {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "recover_padding_op: If you want to use transformer, must "
           "be with dynamic shape"));
     }
@@ -39,8 +39,7 @@ class RecoverPadding : public OpConverter {
       VLOG(3) << "with_interleaved data format: Recover padding of "
                  "transformer'output: VarSeqlen -> Padding.";
       if (!op_desc.HasAttr("out_threshold")) {
-        PADDLE_THROW(
-            platform::errors::Fatal("use with_interleaved must be int8."));
+        PADDLE_THROW(phi::errors::Fatal("use with_interleaved must be int8."));
       }
       auto* transpose = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       transpose->setSecondTranspose({2, 1, 0, 3});
