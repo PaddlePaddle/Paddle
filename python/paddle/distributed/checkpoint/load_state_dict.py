@@ -80,8 +80,19 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
             tensor_key_list.append(local_tensor_index.tensor_key)
             if local_tensor_index.tensor_key in state_dict:
                 necessary_files.append(file_name)
-    necessary_data_files_set = set(necessary_files)
-    if len(necessary_data_files_set) <= 0:
+    
+    all_necessary_files = []
+    if use_dist:
+        paddle.distributed.all_gather_object(
+            all_necessary_files, necessary_files, process_group
+        )
+    else:
+        all_necessary_files.append(necessary_files)
+    
+    global_necessary_files = [file for files in all_necessary_files for file in files]
+
+    global_necessary_files_set = set(global_necessary_files)
+    if len(global_necessary_files_set) <= 0:
         logger.warning(
             f"No necessary data files found in the checkpoint directory:{path}. Please check the metadata_files:{metadata_files}"
         )
@@ -101,12 +112,12 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
         tmp += files
     global_data_files_set = set(tmp)
     logger.debug(
-        f"necessary_data_files_set:{necessary_data_files_set}, global_data_files_set:{global_data_files_set}"
+        f"necessary_data_files_set:{global_necessary_files_set}, global_data_files_set:{global_data_files_set}"
     )
     # check necessary files in global_data_files
     assert (
-        global_data_files_set & necessary_data_files_set
-        == necessary_data_files_set
+        global_data_files_set & global_necessary_files_set
+        == global_necessary_files_set
     ), f"The checkpoint files are not complete. Please check the checkpoint directory:{path}.global_data_files_set:{global_data_files_set}, necessary_data_files_set:{necessary_data_files_set}"
     missing_keys = set(state_dict.keys()) - set(tensor_key_list)
     if len(missing_keys) > 0:
@@ -118,7 +129,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
     for rank, local_files in enumerate(global_data_files):
         if len(local_files) > 0:
             local_files = [
-                f for f in local_files if f in necessary_data_files_set
+                f for f in local_files if f in all_necessary_files[rank]
             ]
             rank_to_files[rank] = local_files
     logger.debug(f"mapping rank_to_files:{rank_to_files}")
@@ -439,15 +450,7 @@ def load_state_dict(
         rank_to_files, missing_keys = get_rank_to_files(
             path, flat_state_dict, process_group, use_dist
         )
-        
-        gloabl_rank_to_files = []
-        paddle.distributed.all_gather_object(
-            gloabl_rank_to_files, rank_to_files[paddle.distributed.get_rank()], process_group
-        )
-
-        for key in rank_to_files:
-            rank_to_files[key] = gloabl_rank_to_files[key]
-
+    
         if len(missing_keys) > 0:
             logger.warning(
                 f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
