@@ -24,7 +24,7 @@ __all__ = []
 
 def batch(
     reader: Generator[T, None, None], batch_size: int, drop_last: bool = False
-) -> Generator[List[T], None, None]:
+) -> Generator[list[T], None, None]:
     """
     This operator creates a batched reader which combines the data from the
     input reader to batched data.
