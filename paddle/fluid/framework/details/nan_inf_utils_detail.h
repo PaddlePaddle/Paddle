@@ -18,8 +18,8 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
@@ -52,14 +52,13 @@ struct TensorCheckerVisitor {
   }
 
   template <typename T>
-  void apply(
-      typename std::enable_if<
-          std::is_floating_point<T>::value ||
-          std::is_same<T, ::paddle::platform::complex<float>>::value ||
-          std::is_same<T, ::paddle::platform::complex<double>>::value>::type* =
-          0) const {
+  void apply(typename std::enable_if<
+                 std::is_floating_point<T>::value ||
+                 std::is_same<T, ::phi::dtype::complex<float>>::value ||
+                 std::is_same<T, ::phi::dtype::complex<double>>::value>::type* =
+                 0) const {
     auto* dev_ctx = reinterpret_cast<Context*>(
-        platform::DeviceContextPool::Instance().Get(tensor.place()));
+        phi::DeviceContextPool::Instance().Get(tensor.place()));
 
     phi::DenseTensor stats;
     phi::DenseTensor values;

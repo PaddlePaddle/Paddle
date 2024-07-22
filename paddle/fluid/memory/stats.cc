@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/stats.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
-#include "paddle/fluid/platform/flags.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     log_memory_stats,
     false,
     "Log memory stats after each op runs, just used for debug.");
@@ -109,7 +109,7 @@ void HostMemoryStatUpdate(const std::string& stat_type,
 }
 
 void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name) {
-  if (FLAGS_log_memory_stats && platform::is_gpu_place(place)) {
+  if (FLAGS_log_memory_stats && phi::is_gpu_place(place)) {
     VLOG(0) << "After launching op_name: " << op_name << ", "
             << "memory_allocated: "
             << static_cast<double>(memory::DeviceMemoryStatCurrentValue(

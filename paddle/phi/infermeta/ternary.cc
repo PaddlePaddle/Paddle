@@ -1142,9 +1142,8 @@ void LerpInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto w_dims = weight.dims();
-  DDim out_dims;
-  out_dims = funcs::GetOutputDims(x_dims, y_dims);
-  out_dims = funcs::GetOutputDims(out_dims, w_dims);
+  DDim out_dims = funcs::GetOutputDimsForDynamicShape(x_dims, y_dims);
+  out_dims = funcs::GetOutputDimsForDynamicShape(out_dims, w_dims);
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->share_lod(x);

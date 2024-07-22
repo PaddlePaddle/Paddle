@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/flags.h"
-PADDLE_DEFINE_EXPORTED_int32(rpc_send_thread_num,
-                             12,
-                             "number of threads for rpc send");
+PHI_DEFINE_EXPORTED_int32(rpc_send_thread_num,
+                          12,
+                          "number of threads for rpc send");
 
 namespace paddle {
 namespace operators {
@@ -128,7 +128,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
   VLOG(1) << "HeterListenAndServOp::RunImpl On gpu? "
-          << platform::is_gpu_place(dev_place);
+          << phi::is_gpu_place(dev_place);
 
   auto pserver_id = Attr<int>("pserver_id");
   auto fan_in = Attr<int>("fanin");

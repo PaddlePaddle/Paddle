@@ -93,7 +93,7 @@ struct CastDataType {
     auto* in_end = in_begin + in_.numel();
     auto* out_begin = out_->mutable_data<OutType>(in_.place());
 
-    if (platform::is_cpu_place(in_.place())) {
+    if (phi::is_cpu_place(in_.place())) {
       phi::Transform<phi::CPUContext> trans;
       auto* context = static_cast<const phi::CPUContext*>(ctx_);
       trans(*context,
@@ -102,7 +102,7 @@ struct CastDataType {
             out_begin,
             CastDataTypeFunctor<InType, OutType>());
 #if defined(__NVCC__) || defined(__HIPCC__)
-    } else if (platform::is_gpu_place(in_.place())) {
+    } else if (phi::is_gpu_place(in_.place())) {
       phi::Transform<phi::GPUContext> trans;
       auto* context = static_cast<const phi::GPUContext*>(ctx_);
       trans(*context,
@@ -113,7 +113,7 @@ struct CastDataType {
       context->Wait();
 #endif
 #if defined(PADDLE_WITH_IPU)
-    } else if (platform::is_ipu_place(in_.place())) {
+    } else if (phi::is_ipu_place(in_.place())) {
       phi::Transform<phi::CPUContext> trans;
       auto* context = static_cast<const phi::CPUContext*>(ctx_);
       trans(*context,
@@ -147,7 +147,7 @@ void TransDataType(const phi::KernelKey& kernel_type_for_var,
 void TransDataType(const phi::DenseTensor& in,
                    const paddle::framework::proto::VarType::Type& type,
                    phi::DenseTensor* out) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
 
   out->Resize(in.dims());
   auto src_type = framework::TransToProtoVarType(in.dtype());
@@ -157,7 +157,7 @@ void TransDataType(const phi::DenseTensor& in,
 #if defined(PADDLE_WITH_XPU)
   switch (src_type) {
     case proto::VarType::FP16:
-      XPUTransDataType<platform::float16>(in, out, dst_type, ctx);
+      XPUTransDataType<phi::dtype::float16>(in, out, dst_type, ctx);
       break;
     case proto::VarType::FP32:
       XPUTransDataType<float>(in, out, dst_type, ctx);
@@ -185,11 +185,11 @@ void TransDataType(const phi::DenseTensor& in,
   switch (src_type) {
     case proto::VarType::FP16:
       framework::VisitDataType(dst_type,
-                               CastDataType<platform::float16>(in, out, ctx));
+                               CastDataType<phi::dtype::float16>(in, out, ctx));
       break;
     case proto::VarType::BF16:
-      framework::VisitDataType(dst_type,
-                               CastDataType<platform::bfloat16>(in, out, ctx));
+      framework::VisitDataType(
+          dst_type, CastDataType<phi::dtype::bfloat16>(in, out, ctx));
       break;
     case proto::VarType::FP8_E4M3FN:
       framework::VisitDataType(
@@ -232,18 +232,18 @@ void TransComplexToReal(const proto::VarType::Type& dst_type,
                         const proto::VarType::Type& src_type,
                         const phi::DenseTensor& in,
                         phi::DenseTensor* out) {
-  auto& pool = platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   auto* ctx = pool.Get(in.place());
   out->Resize(in.dims());
   // complex -> real
   switch (src_type) {
     case proto::VarType::COMPLEX64:
       framework::VisitDataType(
-          dst_type, CastDataType<platform::complex<float>>(in, out, ctx));
+          dst_type, CastDataType<phi::dtype::complex<float>>(in, out, ctx));
       break;
     case proto::VarType::COMPLEX128:
       framework::VisitDataType(
-          dst_type, CastDataType<platform::complex<double>>(in, out, ctx));
+          dst_type, CastDataType<phi::dtype::complex<double>>(in, out, ctx));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(

@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import struct
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from paddle import pir
-from paddle._typing.dtype_like import DTypeLike
 
 from ..pir import Value
 from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
@@ -30,6 +32,10 @@ from .framework import (
     in_dygraph_mode,
     in_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from paddle._typing import DTypeLike
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 __all__ = []
 
@@ -92,7 +98,7 @@ def convert_uint16_to_float(data):
     return np.reshape(new_data, data.shape)
 
 
-def convert_dtype(dtype: DTypeLike) -> str:
+def convert_dtype(dtype: DTypeLike) -> _DTypeLiteral:
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]

@@ -24,10 +24,10 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
-
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
@@ -160,7 +160,10 @@ PhiKernelInstruction::PhiKernelInstruction(
 
   kernel_context_.SetDeviceContext(dev_ctx);
   VLOG(6) << "finish process kernel context";
-
+  if (op->attributes().count("is_inplace") != 0 &&
+      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
+    HandleForInplaceOp(op, value_exec_info_, this);
+  }
   InitInputsOutputsIds(op, *value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
 
@@ -178,11 +181,23 @@ PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 void PhiKernelInstruction::Run() {
   VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
+    platform::RecordEvent record_event("PhiKernelInstruction::infermeta",
+                                       platform::TracerEventType::UserDefined,
+                                       1);
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
   VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
+  for (auto& pair : this->InplaceInfo()) {
+    ShareVarBuffer(pair.first, pair.second);
+  }
   VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
-  (*(phi_kernel_))(&(kernel_context_));
+  {
+    platform::RecordEvent record_event("PhiKernelInstruction::kernel launch",
+                                       platform::TracerEventType::UserDefined,
+                                       1);
+    (*(phi_kernel_))(&(kernel_context_));
+  }
+
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
 }
 

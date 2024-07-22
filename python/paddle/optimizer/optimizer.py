@@ -135,18 +135,18 @@ class Optimizer:
         parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
-            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            then the parameters are list of dict. Note that the learning_rate in parameter groups \
             represents the scale of base learning_rate. \
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
-            It canbe a float value as coeff of L2 regularization or \
+            It can be a float value as coeff of L2 regularization or \
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase|None, optional): Gradient cliping strategy, it's an instance of \
-            some derived class of ``GradientClipBase`` . There are three cliping strategies \
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of \
+            some derived class of ``GradientClipBase`` . There are three clipping strategies \
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , \
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         name (str|None, optional): Normally there is no need for user to set this property.
@@ -215,7 +215,7 @@ class Optimizer:
             # paddle.Tensor is also iterable, so here we don't check whether
             # the input is iterable, if the input is paddle.Tensor, the
             # list(paddle.Tensor) will be a error value
-            if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
+            if isinstance(parameters, paddle.Tensor):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
                     f"an iterable of paddle Tensors, but got argument type is `{type(parameters)}`."

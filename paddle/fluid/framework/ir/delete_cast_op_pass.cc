@@ -692,7 +692,7 @@ int DeleteCastOpPass::ApplyCastLookupTablePass(ir::Graph* graph) const {
     lookup_table_w->Var()->SetDataType(proto::VarType::FP16);
     if (w_tensor->dtype() != phi::DataType::FLOAT16) {
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
-          platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+          phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
       phi::DenseTensor w_fp32_tensor;
       w_fp32_tensor.Resize(w_tensor->dims());
       w_fp32_tensor.set_type(w_tensor->dtype());

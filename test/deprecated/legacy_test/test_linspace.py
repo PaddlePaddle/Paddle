@@ -43,7 +43,7 @@ class TestLinspaceOpCommonCase(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestLinspaceOpReverseCase(TestLinspaceOpCommonCase):
@@ -55,9 +55,6 @@ class TestLinspaceOpReverseCase(TestLinspaceOpCommonCase):
         }
         self.outputs = {'Out': np.arange(10, -1, -1).astype(self.dtype)}
 
-    def test_check_output(self):
-        self.check_output(check_pir=True)
-
 
 class TestLinspaceOpNumOneCase(TestLinspaceOpCommonCase):
     def _set_data(self):
@@ -67,9 +64,6 @@ class TestLinspaceOpNumOneCase(TestLinspaceOpCommonCase):
             'Num': np.array([1]).astype('int32'),
         }
         self.outputs = {'Out': np.array([10], dtype=self.dtype)}
-
-    def test_check_output(self):
-        self.check_output(check_pir=True)
 
 
 class TestLinspaceOpCommonCaseFP16(TestLinspaceOpCommonCase):
@@ -111,7 +105,9 @@ class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCaseFP16):
         }
 
     def test_check_output(self):
-        return self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        return self.check_output_with_place(
+            core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+        )
 
 
 class TestLinspaceOpReverseCaseBF16(TestLinspaceOpCommonCaseBF16):

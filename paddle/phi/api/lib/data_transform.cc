@@ -747,6 +747,9 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
     if (tensor_in) {
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+      VLOG(4) << "ReshardIsNeededWithPartial"
+              << ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
+                                            dist_attr);
       if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(), dist_attr)) {
         auto argument_name =
             (arg_name.empty() ? "tensor" : arg_name) + "_" + std::to_string(i);
@@ -806,7 +809,7 @@ void SetInplaceOutputCorrectDistAttr(
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
     if (dist_tensor->initialized()) {
-      if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr)) {
+      if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(), dist_attr)) {
         if (use_general_spmd_rule) {
           VLOG(6) << "SetInplaceOutputCorrectDistAttr Reshard inplace output"
                   << " to origin dist_attr "
@@ -856,7 +859,8 @@ void SetInplaceOutputCorrectDistAttr(
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
       if (dist_tensor->initialized()) {
-        if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr[i])) {
+        if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
+                                       dist_attr[i])) {
           if (use_general_spmd_rule) {
             VLOG(6) << "SetInplaceOutputCorrectDistAttr Reshard inplace output"
                     << " to origin dist_attr "

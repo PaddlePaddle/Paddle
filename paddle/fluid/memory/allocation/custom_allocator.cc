@@ -65,8 +65,8 @@ phi::Allocation* CustomAllocator::AllocateImpl(size_t size) {
   size_t avail, total;
   phi::DeviceManager::MemoryStats(place_, &total, &avail);
 
-  auto dev_type = platform::PlaceHelper::GetDeviceType(place_);
-  auto dev_id = platform::PlaceHelper::GetDeviceId(place_);
+  auto dev_type = phi::PlaceHelper::GetDeviceType(place_);
+  auto dev_id = phi::PlaceHelper::GetDeviceId(place_);
 
   PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
       "\n\nOut of memory error on %s:%d. "
