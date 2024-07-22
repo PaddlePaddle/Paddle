@@ -1897,7 +1897,11 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     }
 
     if (!instr_node->IsArtificial()) {
-      instr_node->Run();
+      {
+        platform::RecordEvent record(
+            "InstrRun", platform::TracerEventType::UserDefined, 10);
+        instr_node->Run();
+      }
 
       if (FLAGS_benchmark) {
         instr_node->DeviceContext().Wait();

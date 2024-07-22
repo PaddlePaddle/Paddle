@@ -24,8 +24,8 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     TensorListExprs list =
         shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     for (size_t i = 0; i < list.size(); i++) {
-      CHECK(list[i].data().has_value());
-      for (auto expr : list[i].data().value()) {
+      CHECK(list.at(i).data().has_value());
+      for (auto expr : list.at(i).data().value()) {
         result.emplace_back(expr);
       }
     }
@@ -49,21 +49,32 @@ inline void CheckAndUpdateSliceAttrs(
            expr.Get<int64_t>() ==
                static_cast<int64_t>(std::numeric_limits<int>::max());
   };
-
   for (size_t i = 0; i < axes.size(); ++i) {
-    int64_t axis = axes[i];
+    int64_t axis = axes.at(i);
     int64_t start_i = 0;
-    if (starts[i].isa<int64_t>()) {
-      start_i = starts[i].Get<int64_t>();
+    if (starts.at(i).isa<int64_t>()) {
+      if (in_dims.at(axis).isa<int64_t>()) {
+        starts.at(i) =
+            (starts.at(i).Get<int64_t>() > in_dims.at(axis).Get<int64_t>())
+                ? in_dims.at(axis)
+                : starts.at(i);
+      }
+      start_i = starts.at(i).Get<int64_t>();
     }
     int64_t end_i = 0;
-    if (ends[i].isa<int64_t>()) {
-      end_i = ends[i].Get<int64_t>();
+    if (ends.at(i).isa<int64_t>()) {
+      if (in_dims.at(axis).isa<int64_t>()) {
+        ends.at(i) =
+            (ends.at(i).Get<int64_t>() > in_dims.at(axis).Get<int64_t>())
+                ? in_dims.at(axis)
+                : ends.at(i);
+      }
+      end_i = ends.at(i).Get<int64_t>();
     }
 
     // For both start and end can be negative or positive, we need to handle the
     // following different arrangements.
-    ends[i] = IsMaxInt(ends[i]) ? in_dims[axis] : ends[i];
+    ends.at(i) = IsMaxInt(ends.at(i)) ? in_dims.at(axis) : ends.at(i);
 
     bool both_negative_or_positive =
         (start_i >= 0 && end_i >= 0) || (start_i <= 0 && end_i <= 0);
@@ -73,9 +84,9 @@ inline void CheckAndUpdateSliceAttrs(
     if (both_negative_or_positive) {
       continue;
     } else if (start_negative_end_positive) {
-      starts[i] = starts[i] + in_dims[axis];
+      starts.at(i) = starts.at(i) + in_dims.at(axis);
     } else if (start_positive_end_negative) {
-      starts[i] = starts[i] - in_dims[axis];
+      starts.at(i) = starts.at(i) - in_dims.at(axis);
     } else {
       PADDLE_THROW(phi::errors::Fatal("Dead code"));
     }
@@ -88,10 +99,14 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
                             const ExprVec &ends,
                             std::vector<int64_t> *infer_flags = nullptr) {
   ExprVec slice_dims(in_dims);
-
+  PADDLE_ENFORCE_EQ(
+      (axes.size() == starts.size() && axes.size() == ends.size()),
+      true,
+      phi::errors::InvalidArgument(
+          "The size of axes must equal size of starts and ends."));
   for (size_t i = 0; i < axes.size(); ++i) {
-    int64_t axis = axes[i];
-    slice_dims[axis] = ends[i] - starts[i];
+    int64_t axis = axes.at(i);
+    slice_dims.at(axis) = ends.at(i) - starts.at(i);
   }
 
   return slice_dims;
@@ -103,13 +118,13 @@ inline ExprVec GetDecreasedDims(const ExprVec &slice_dims,
   std::vector<uint8_t> decrease_flag(slice_dims.size(), 0);
   if (decrease_axes.size() > 0) {
     for (size_t i = 0; i < decrease_axes.size(); ++i) {
-      int64_t axis = decrease_axes[i];
+      int64_t axis = decrease_axes.at(i);
       decrease_flag[axis] = 1;
     }
     ExprVec new_shape;
     for (size_t i = 0; i < slice_dims.size(); ++i) {
-      if (decrease_flag[i] == 0) {
-        new_shape.emplace_back(slice_dims[i]);
+      if (decrease_flag.at(i) == 0) {
+        new_shape.emplace_back(slice_dims.at(i));
       }
     }
     decreased_dims = new_shape;
@@ -201,7 +216,7 @@ inline ShapeOrData SliceRawInferSymbolicShape(
             : ends_int[0];
 
     for (int64_t i = start; i < end; i++) {
-      out_data.push_back(in_shapeordata.data().value()[i]);
+      out_data.push_back(in_shapeordata.data().value().at(i));
     }
 
     const ExprVec shape = GetDecreasedDims(

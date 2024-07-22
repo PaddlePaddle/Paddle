@@ -74,6 +74,8 @@ pir::Value array_length(pir::Value x);
 
 pir::Value array_read(pir::Value array, pir::Value i);
 
+pir::Value fetch(pir::Value value, std::string name, int col);
+
 pir::Value array_write_(pir::Value array, pir::Value x, pir::Value i);
 
 std::tuple<pir::Value, pir::Value> array_to_tensor(pir::Value x,

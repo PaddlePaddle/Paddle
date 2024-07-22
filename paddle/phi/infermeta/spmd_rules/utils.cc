@@ -236,8 +236,8 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
                         n_inputs,
                         axis_names.size()));
 
-  PADDLE_ENFORCE_EQ(!align_axis.empty(),
-                    true,
+  PADDLE_ENFORCE_EQ(align_axis.empty(),
+                    false,
                     phi::errors::InvalidArgument("align_axis is empty"));
 
   std::map<std::pair<int64_t, char>, int64_t> axis_name_to_dim;
