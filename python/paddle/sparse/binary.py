@@ -292,7 +292,7 @@ def add(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@dygraph_only
+
 def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Subtract two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
@@ -330,12 +330,14 @@ def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                     [ 2.,  2., -4., -8.]])
 
     """
-    if y.dtype != x.dtype:
-        y = _C_ops.sparse_cast(y, None, x.dtype)
-    return _C_ops.sparse_subtract(x, y)
+    if in_dynamic_or_pir_mode():
+        if y.dtype != x.dtype:
+            y = _C_ops.sparse_cast(y, None, x.dtype)
+        return _C_ops.sparse_subtract(x, y)
+    else:
+        pass
 
 
-@dygraph_only
 def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Multiply two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
@@ -373,15 +375,18 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                     [ 8., 15.,  0.,  0.]])
 
     """
-    if isinstance(y, (int, float)):
-        return _C_ops.sparse_scale(x, float(y), 0.0, True)
+    if in_dynamic_or_pir_mode():
+        if isinstance(y, (int, float)):
+            return _C_ops.sparse_scale(x, float(y), 0.0, True)
+        else:
+            if y.dtype != x.dtype:
+                y = _C_ops.sparse_cast(y, None, x.dtype)
+            return _C_ops.sparse_multiply(x, y)
     else:
-        if y.dtype != x.dtype:
-            y = _C_ops.sparse_cast(y, None, x.dtype)
-        return _C_ops.sparse_multiply(x, y)
+        pass
 
 
-@dygraph_only
+
 def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Divide two sparse tensors element-wise. Input x and y's shape should be identical and have same sparse
@@ -419,15 +424,18 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                     [ 2.       , 1.66666663,  0.       ,  0.       ]])
 
     """
-    if x.dtype in _int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
+    if in_dynamic_or_pir_mode():
+        if x.dtype in _int_dtype_:
+            x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
 
-    if isinstance(y, (int, float)):
-        return _C_ops.sparse_divide_scalar(x, float(y))
+        if isinstance(y, (int, float)):
+            return _C_ops.sparse_divide_scalar(x, float(y))
+        else:
+            if y.dtype != x.dtype:
+                y = _C_ops.sparse_cast(y, None, x.dtype)
+            return _C_ops.sparse_divide(x, y)
     else:
-        if y.dtype != x.dtype:
-            y = _C_ops.sparse_cast(y, None, x.dtype)
-        return _C_ops.sparse_divide(x, y)
+        pass
 
 
 @dygraph_only
