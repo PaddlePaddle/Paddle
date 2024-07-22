@@ -1007,7 +1007,7 @@ def launch():
                         cur_cfg["max_mem_usage"] = mem
                         break
                     cur_cfg["max_mem_usage"] = max(
-                        int(mem), int(cur_cfg["max_mem_usage"])
+                        int(float(mem)), int(float(cur_cfg["max_mem_usage"]))
                     )
 
             # if need accurate peak memory
