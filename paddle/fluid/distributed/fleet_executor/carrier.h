@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
 #include "paddle/fluid/distributed/fleet_executor/task_loop_thread_pool.h"
@@ -29,7 +30,6 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -111,7 +111,7 @@ class Carrier final {
   framework::Scope* root_scope_{nullptr};
   framework::Scope* minibatch_scope_{nullptr};
   phi::Place place_;
-  paddle::platform::DeviceContext* dev_ctx_{nullptr};
+  phi::DeviceContext* dev_ctx_{nullptr};
   int64_t rank_;
   std::string carrier_id_;
   std::unordered_map<int64_t, TaskNode*> interceptor_id_to_node_;

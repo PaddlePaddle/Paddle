@@ -21,8 +21,8 @@
 #include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/allocator.h"
 #ifdef PADDLE_WITH_ONNXRUNTIME
 #include "onnxruntime_c_api.h"    // NOLINT
@@ -31,7 +31,7 @@
 
 namespace paddle_infer {
 
-using float16 = paddle::platform::float16;
+using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 
 void Tensor::Reshape(const std::vector<int> &shape) {

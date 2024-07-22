@@ -16,12 +16,12 @@
 
 #include <string>
 
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/pstring.h"
 
-using float16 = paddle::platform::float16;
-using bfloat16 = paddle::platform::bfloat16;
+using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
 using pstring = phi::dtype::pstring;
 
 namespace paddle::framework {
@@ -61,8 +61,8 @@ static DataTypeMap* InitDataTypeMap() {
   _ForEachDataType_(RegType);
   // Register pstring individually
   RegType(pstring, proto::VarType::PSTRING);
-  RegType(::paddle::platform::float8_e5m2, proto::VarType::FP8_E5M2);
-  RegType(::paddle::platform::float8_e4m3fn, proto::VarType::FP8_E4M3FN);
+  RegType(::phi::dtype::float8_e5m2, proto::VarType::FP8_E5M2);
+  RegType(::phi::dtype::float8_e4m3fn, proto::VarType::FP8_E4M3FN);
 #undef RegType
   return retv;
 }

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
@@ -25,6 +25,9 @@ limitations under the License. */
 #if defined(PADDLE_CUDA_BF16)
 namespace paddle {
 namespace platform {
+
+using bfloat16 = phi::dtype::bfloat16;
+using namespace phi::dtype;  // NOLINT
 
 TEST(bfloat16, convert_float32_to_bfloat16_on_gpu) {
   // Convert float32 to bfloat16
@@ -66,7 +69,7 @@ TEST(bfloat16, lod_tensor_on_gpu) {
   memcpy(src_ptr, arr, 4 * sizeof(bfloat16));
 
   // CPU LoDTensor to GPU LoDTensor
-  CUDAPlace gpu_place(0);
+  phi::GPUPlace gpu_place(0);
   phi::GPUContext gpu_ctx(gpu_place);
   gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, gpu_ctx.stream())
