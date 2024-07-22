@@ -582,7 +582,7 @@ class TestStride(unittest.TestCase):
         x = paddle.to_tensor(x_np)
         np.testing.assert_allclose(x.numpy(), x_np)
 
-        out = paddle.view(x, paddle.uint8)
+        out = paddle.view(x, 'uint8')
         np_out = x_np.view(np.uint8)
 
         np.testing.assert_allclose(out.numpy(), np_out)
@@ -757,7 +757,8 @@ class TestToStaticCheck(unittest.TestCase):
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')
             x = paddle.to_tensor(x_np)
             y = paddle.transpose(x, perm=[1, 0, 2])
-            x.add_(x)
+
+            x.add_(y)
 
         self.assertRaises(ValueError, func)
 
