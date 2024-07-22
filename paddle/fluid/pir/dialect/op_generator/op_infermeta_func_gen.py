@@ -905,6 +905,8 @@ def GenDistBranch(args, op_info):
 
 
 def gen_infermeta_func_str(args, op_info):
+    # if op_info.class_name == "ReshapeGradOp":
+    #     breakpoint()
     attr_args_is_map = True
     mutable_attr_is_input = (
         True if len(op_info.mutable_attribute_name_list) > 0 else False
@@ -936,7 +938,7 @@ def gen_infermeta_func_str(args, op_info):
         # TODO(GhostScreaming): specialized case for reshape_grad
         # xshape is not kernel params, but inferspmd needs it.
         if "reshape_grad" in op_info.kernel_map['func'][0]:
-            spmd_params = ["xshape"] + spmd_params
+            spmd_params = ["x"] + spmd_params
     op_info.spmd_params = spmd_params
 
     infermeta_inputs_str = get_infermeta_inputs_str(
