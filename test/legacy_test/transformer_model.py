@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import partial, reduce
+from functools import partial
 
 import numpy as np
 
@@ -73,7 +73,7 @@ def multi_head_attention(
         Add linear projection to queries, keys, and values.
         """
         q = paddle.nn.Linear(
-            in_features=reduce(lambda x, y: x * y, queries.shape[2:]),
+            in_features=queries.shape[-1],
             out_features=d_key * n_head,
             weight_attr=paddle.nn.initializer.XavierNormal(
                 fan_in=d_model * d_key, fan_out=n_head * d_key
@@ -81,7 +81,7 @@ def multi_head_attention(
             bias_attr=False,
         )(queries)
         k = paddle.nn.Linear(
-            in_features=reduce(lambda x, y: x * y, keys.shape[2:]),
+            in_features=keys.shape[-1],
             out_features=d_key * n_head,
             weight_attr=paddle.nn.initializer.XavierNormal(
                 fan_in=d_model * d_key, fan_out=n_head * d_key
@@ -89,7 +89,7 @@ def multi_head_attention(
             bias_attr=False,
         )(keys)
         v = paddle.nn.Linear(
-            in_features=reduce(lambda x, y: x * y, values.shape[2:]),
+            in_features=values.shape[-1],
             out_features=d_value * n_head,
             weight_attr=paddle.nn.initializer.XavierNormal(
                 fan_in=d_model * d_value, fan_out=n_head * d_value
@@ -179,7 +179,7 @@ def multi_head_attention(
 
     # Project back to the model size.
     proj_out = paddle.nn.Linear(
-        in_features=reduce(lambda x, y: x * y, out.shape[2:]),
+        in_features=out.shape[-1],
         out_features=d_model,
         weight_attr=paddle.nn.initializer.XavierNormal(),
         bias_attr=False,
@@ -194,16 +194,15 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     in between, which is applied to each position separately and identically.
     """
     hidden_l = paddle.nn.Linear(
-        in_features=reduce(lambda x, y: x * y, x.shape[2:]),
+        in_features=x.shape[-1],
         out_features=d_inner_hid,
         weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_hid**-0.5), high=(d_hid**-0.5)
         ),
-        bias_attr=paddle.nn.initializer.Constant(0.0),
     )(x)
     hidden = paddle.nn.ReLU()(hidden_l)
     out = paddle.nn.Linear(
-        in_features=reduce(lambda x, y: x * y, hidden.shape[2:]),
+        in_features=hidden.shape[-1],
         out_features=d_hid,
         weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_inner_hid**-0.5), high=(d_inner_hid**-0.5)
@@ -575,7 +574,7 @@ def transformer(
     # the pre-softmax linear transformation.
     predict = paddle.reshape(
         x=paddle.nn.Linear(
-            in_features=reduce(lambda x, y: x * y, dec_output.shape[2:]),
+            in_features=dec_output.shape[-1],
             out_features=trg_vocab_size,
             weight_attr=paddle.nn.initializer.XavierNormal(),
             bias_attr=False,

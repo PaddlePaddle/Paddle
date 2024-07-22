@@ -31,8 +31,7 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            fc_out = paddle.nn.Linear(6 * 64 * 64, 1000)(data)
-            # fc_out = paddle.static.nn.fc(x=[data], activation=None, size=1000)
+            fc_out = paddle.nn.Linear(64, 1000)(data)
             reshape_out = paddle.reshape(x=fc_out, shape=[1, 1000])
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
@@ -249,9 +248,6 @@ class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             out = paddle.nn.LayerNorm(data.shape[self.begin_norm_axis :])(data)
-            # out = paddle.static.nn.layer_norm(
-            #     data, begin_norm_axis=self.begin_norm_axis
-            # )
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
@@ -281,9 +277,6 @@ class TensorRTSubgraphPassLayerNormDynamicTest(InferencePassTest):
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             out = paddle.nn.LayerNorm(data.shape[self.begin_norm_axis :])(data)
-            # out = paddle.static.nn.layer_norm(
-            #     data, begin_norm_axis=self.begin_norm_axis
-            # )
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
