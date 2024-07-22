@@ -720,7 +720,7 @@
     param : [x]
   kernel :
     func : broadcast
-    param: [x, root
+    param: [x, root]
 
 - op : c_concat
   args : (Tensor x, int rank, int nranks, int ring_id, bool use_calc_stream, bool use_model_parallel)
