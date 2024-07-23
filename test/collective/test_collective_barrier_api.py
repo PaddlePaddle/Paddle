@@ -26,7 +26,12 @@ class TestCollectiveBarrierAPI(TestDistBase):
         pass
 
     def test_barrier_nccl(self):
-        self.check_with_place("collective_barrier_api.py", "barrier", "nccl")
+        self.check_with_place(
+            "collective_barrier_api.py",
+            "barrier",
+            "nccl",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
+        )
 
     def test_barrier_nccl_with_new_comm(self):
         self.check_with_place(
