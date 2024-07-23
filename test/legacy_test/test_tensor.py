@@ -349,7 +349,10 @@ class TestTensor(unittest.TestCase):
         place = core.CPUPlace()
         tensor = var.get_tensor()
         dtype = paddle.float32
-        if isinstance(dtype, paddle.base.core.DataType) and enable_pir_api == '1':
+        if (
+            isinstance(dtype, paddle.base.core.DataType)
+            and enable_pir_api == '1'
+        ):
             dtype = paddle.pir.core.datatype_to_vartype[dtype]
         self.assertTrue(
             isinstance(tensor._mutable_data(place, dtype), numbers.Integral)
