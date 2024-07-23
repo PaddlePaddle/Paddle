@@ -1236,6 +1236,10 @@ def launch():
                 processes = os.popen(
                     "fuser -v /dev/davinci* |awk '{for(i=1;i<=NF;i++) print $i;}'"
                 ).readlines()
+            elif paddle.device.is_compiled_with_custom_device('xpu'):
+                processes = os.popen(
+                    "fuser -v /dev/xpu* |awk '{for(i=1;i<=NF;i++) print $i;}'"
+                ).readlines()
             else:
                 processes = os.popen(
                     "fuser -v /dev/nvidia* |awk '{for(i=1;i<=NF;i++) print $i;}'"
