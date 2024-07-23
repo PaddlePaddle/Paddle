@@ -98,7 +98,7 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
     auto* block = weight_only_linear->Op()->Block();
     auto* scope = param_scope();
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
 
     auto permute_weight = [&](const std::string& input_name,
                               const std::string& scale_name,
@@ -119,7 +119,7 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
             scope->Var(scale_names[id])->GetMutable<phi::DenseTensor>();
         PADDLE_ENFORCE_NOT_NULL(
             scale_tensor,
-            platform::errors::Fatal(
+            phi::errors::Fatal(
                 "weight_scale tensor node should not be nullptr"));
 
         size_t dst_hash = HashTensor<phi::dtype::float16>(*scale_tensor);
@@ -131,7 +131,7 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
               scope->Var(name)->GetMutable<phi::DenseTensor>();
           PADDLE_ENFORCE_NOT_NULL(
               curr_tensor,
-              platform::errors::Fatal("tensor node should not be nullptr"));
+              phi::errors::Fatal("tensor node should not be nullptr"));
           // Create dst node
           // Update dst var_desc in block
           VarDesc dst_desc(dst_name);
@@ -220,7 +220,7 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
 
 void PermuteINT8WeightOnlyPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   ApplyPermuteINT8WeightOnly(graph);

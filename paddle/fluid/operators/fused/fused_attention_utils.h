@@ -124,7 +124,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     auto comm =
         paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
     auto stream = ctx.stream();
-    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, dtype, ncclSum, comm->comm(), stream));
   }
 #else

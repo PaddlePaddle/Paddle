@@ -128,7 +128,7 @@ void InitWhiteListFormEnv() {
     while (std::getline(ss, op_role, ',')) {
       PADDLE_ENFORCE_EQ(role_str2int().find(op_role) != role_str2int().end(),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Skip role must be one of "
                             "{forward,backward,optimize,rpc,dist,lrsched,loss,"
                             "default}, instead of %s",
@@ -145,7 +145,7 @@ void InitWhiteListFormEnv() {
       PADDLE_ENFORCE_EQ(
           pos != std::string::npos,
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Skip var format must be op:var, instead of %s", op_var));
       std::string op = op_var.substr(0, pos);
       std::string var = op_var.substr(pos + 1);
@@ -161,7 +161,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
                          const phi::Place& place) {
   PADDLE_ENFORCE_NOT_NULL(
       var,
-      platform::errors::NotFound(
+      phi::errors::NotFound(
           "Cannot find var: `%s` in op `%s`.", var_name, op_type));
 
   const phi::DenseTensor* tensor{nullptr};
@@ -182,17 +182,17 @@ void CheckVarHasNanOrInf(const std::string& op_type,
   VLOG(10) << "begin check " << op_type << " var_name:" << var_name
            << ", place:" << tensor->place() << ", numel:" << tensor->numel();
 
-  if (platform::is_gpu_place(tensor->place())) {
+  if (phi::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "phi::DenseTensor[%s] use gpu place. PaddlePaddle must compile "
         "with GPU.",
         var_name));
 #endif
     return;
-  } else if (platform::is_xpu_place(tensor->place())) {
+  } else if (phi::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU
     if (framework::TransToProtoVarType(tensor->dtype()) !=
         proto::VarType::FP32) {
@@ -216,12 +216,12 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     PADDLE_ENFORCE_NE(
         flag,
         true,
-        platform::errors::Fatal(
+        phi::errors::Fatal(
             "Operator %s output phi::DenseTensor %s contains Inf.",
             op_type,
             var_name));
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "phi::DenseTensor[%s] use xpu place. PaddlePaddle must compile "
         "with XPU.",
         var_name));

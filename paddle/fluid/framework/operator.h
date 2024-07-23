@@ -308,7 +308,7 @@ class TEST_API OperatorBase {
       PADDLE_ENFORCE_NE(
           it,
           runtime_attrs_.end(),
-          platform::errors::NotFound(
+          phi::errors::NotFound(
               "(%s) is not found in AttributeMap and RuntimeAttributeMap.",
               name));
     }
@@ -318,7 +318,7 @@ class TEST_API OperatorBase {
     PADDLE_ENFORCE_EQ(
         HasAttr(name),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "The attribute %s is not found in operator %s", name, Type()));
 
     attrs_[name] = v;
@@ -337,8 +337,7 @@ class TEST_API OperatorBase {
   const OpInfo& Info() const {
     PADDLE_ENFORCE_NOT_NULL(
         info_,
-        platform::errors::NotFound("OpInfo of operator (%s) is not found.",
-                                   type_));
+        phi::errors::NotFound("OpInfo of operator (%s) is not found.", type_));
     return *info_;
   }
 
@@ -424,7 +423,7 @@ class ExecutionContext : public phi::KernelContext {
  public:
   ExecutionContext(const OperatorBase& op,
                    const Scope& scope,
-                   const platform::DeviceContext& device_context,
+                   const phi::DeviceContext& device_context,
                    const RuntimeContext& ctx)
       : op_(op), scope_(scope), device_context_(device_context), ctx_(ctx) {}
   virtual ~ExecutionContext() {}
@@ -464,10 +463,10 @@ class ExecutionContext : public phi::KernelContext {
       PADDLE_ENFORCE_NE(
           iter,
           op_.RuntimeAttrs().end(),
-          platform::errors::NotFound("(%s) is not found in AttributeMap and "
-                                     "RuntimeAttributeMap of (%s) operator.",
-                                     name,
-                                     op_.Type()));
+          phi::errors::NotFound("(%s) is not found in AttributeMap and "
+                                "RuntimeAttributeMap of (%s) operator.",
+                                name,
+                                op_.Type()));
     }
     return iter->second;
   }
@@ -578,15 +577,13 @@ class ExecutionContext : public phi::KernelContext {
     return *reinterpret_cast<const DeviceContextType*>(&device_context_);
   }
 
-  const platform::DeviceContext& device_context() const {
-    return device_context_;
-  }
+  const phi::DeviceContext& device_context() const { return device_context_; }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const inline phi::GPUContext& cuda_device_context() const {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()),
+    PADDLE_ENFORCE_EQ(phi::is_gpu_place(device_context_.GetPlace()),
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Current device context place is not GPUPlace."));
     return *reinterpret_cast<const phi::GPUContext*>(&device_context_);
   }
@@ -609,7 +606,7 @@ class ExecutionContext : public phi::KernelContext {
  private:
   const OperatorBase& op_;
   const Scope& scope_;
-  const platform::DeviceContext& device_context_;
+  const phi::DeviceContext& device_context_;
   const RuntimeContext& ctx_;
 };
 
@@ -837,7 +834,7 @@ class OperatorWithKernel : public OperatorBase {
   void ChooseKernel(const ExecutionContext& ctx) const;
 
   void BuildPhiKernelContext(const RuntimeContext& ctx,
-                             platform::DeviceContext* dev_ctx,
+                             phi::DeviceContext* dev_ctx,
                              phi::KernelContext* phi_kernel_context) const;
 
   phi::KernelSignature* PhiKernelSignature() const {
