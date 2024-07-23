@@ -595,6 +595,48 @@ void ArangeTensorInferMeta(const MetaTensor& start,
   out->set_dtype(start.dtype());
 }
 
+void CollectFpnProposalsInferMeta(
+    const std::vector<const MetaTensor*>& multi_level_rois,
+    const std::vector<const MetaTensor*>& multi_level_scores,
+    const paddle::optional<std::vector<const MetaTensor*>>&
+        multi_level_rois_num,
+    int post_nms_topn,
+    MetaTensor* fpn_rois,
+    MetaTensor* rois_num,
+    MetaConfig config) {
+  std::vector<int64_t> out_dims;
+  for (auto& roi : multi_level_rois) {
+    const auto& roi_dim = roi->dims();
+    PADDLE_ENFORCE_EQ(
+        roi_dim[1],
+        4,
+        phi::errors::InvalidArgument(
+            "Second dimension of Input"
+            "(MultiLevelRois) must be 4. But received dimension = %d",
+            roi_dim[1]));
+  }
+  for (auto& score : multi_level_scores) {
+    const auto& score_dim = score->dims();
+    PADDLE_ENFORCE_EQ(
+        score_dim[1],
+        1,
+        phi::errors::InvalidArgument(
+            "Second dimension of Input"
+            "(MultiLevelScores) must be 1. But received dimension = %d",
+            score_dim[1]));
+  }
+  fpn_rois->set_dims({post_nms_topn, 4});
+  fpn_rois->set_dtype(multi_level_rois[0]->dtype());
+  if (rois_num != nullptr) {
+    rois_num->set_dims({-1});
+    rois_num->set_dtype(DataType::INT32);
+  }
+  if (!config.is_runtime) {  // Runtime LoD infershape will be computed
+    // in Kernel.
+    fpn_rois->share_lod(*multi_level_rois[0]);
+  }
+}
+
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
@@ -1142,66 +1184,8 @@ void LerpInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto w_dims = weight.dims();
-  DDim l_dims, s_dims;
-  if (x_dims.size() > y_dims.size()) {
-    l_dims = x_dims;
-    s_dims = y_dims;
-  } else {
-    l_dims = y_dims;
-    s_dims = x_dims;
-  }
-  std::vector<int64_t> shapes = common::vectorize<int64_t>(l_dims);
-  for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
-    int64_t s = s_dims[i];
-    int64_t l = l_dims[j];
-    if (s != l) {
-      if (l == 1) {
-        shapes[j] = s;
-      } else if (s == 1 || s == -1) {
-        shapes[j] = l;
-      } else if (l == -1) {
-        shapes[j] = s;
-      } else {
-        PADDLE_THROW(errors::InvalidArgument(
-            "The shape of tensor a %s:%d must match shape of tensor b "
-            "%s:%d.",
-            s_dims.to_str(),
-            i,
-            l_dims.to_str(),
-            j));
-      }
-    }
-  }
-  if (static_cast<int>(shapes.size()) > w_dims.size()) {
-    l_dims = common::make_ddim(shapes);
-    s_dims = w_dims;
-  } else {
-    l_dims = w_dims;
-    s_dims = common::make_ddim(shapes);
-  }
-  std::vector<int64_t> shapes_out = common::vectorize<int64_t>(l_dims);
-  for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
-    int64_t s = s_dims[i];
-    int64_t l = l_dims[j];
-    if (s != l) {
-      if (l == 1) {
-        shapes_out[j] = s;
-      } else if (s == 1 || s == -1) {
-        shapes_out[j] = l;
-      } else if (l == -1) {
-        shapes_out[j] = s;
-      } else {
-        PADDLE_THROW(errors::InvalidArgument(
-            "The shape of tensor a %s:%d must match shape of tensor b "
-            "%s:%d.",
-            s_dims.to_str(),
-            i,
-            l_dims.to_str(),
-            j));
-      }
-    }
-  }
-  DDim out_dims = common::make_ddim(shapes_out);
+  DDim out_dims = funcs::GetOutputDimsForDynamicShape(x_dims, y_dims);
+  out_dims = funcs::GetOutputDimsForDynamicShape(out_dims, w_dims);
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->share_lod(x);

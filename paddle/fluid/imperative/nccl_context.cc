@@ -23,7 +23,7 @@
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
 
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
 
 #include "paddle/fluid/framework/convert_utils.h"
@@ -67,7 +67,7 @@ void NCCLParallelContext::Init() {
   if (strategy_.local_rank_ == 0) {  // NOLINT
     // generate the unique ncclid on the root worker
     for (auto &nccl_id : nccl_ids) {
-      platform::dynload::ncclGetUniqueId(&nccl_id);
+      phi::dynload::ncclGetUniqueId(&nccl_id);
     }
   } else {
     // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server
@@ -103,7 +103,7 @@ void NCCLParallelContext::InitWithRingID(int ring_id) {
 
   if (strategy_.local_rank_ == 0) {
     // generate the unique ncclid on the root worker
-    platform::dynload::ncclGetUniqueId(&nccl_ids[0]);
+    phi::dynload::ncclGetUniqueId(&nccl_ids[0]);
   } else {
     // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server
     // on rank0.
@@ -133,7 +133,7 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
   PADDLE_ENFORCE_EQ(
       phi::is_gpu_place(place_),
       true,
-      platform::errors::Unimplemented(
+      phi::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
   AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
 }
@@ -149,7 +149,7 @@ void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   void *src_ptr = src_tensor->data();
   auto nccl_dtype = platform::ToNCCLDataType(
       framework::TransToProtoVarType(src_tensor->dtype()));
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
       src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));
 }
 
@@ -163,14 +163,14 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
   PADDLE_ENFORCE_GE(
       ring_id,
       0,
-      platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(ring_id,
-                    compute_events_.size(),
-                    platform::errors::OutOfRange(
-                        "ring id must < compute events size,"
-                        "but got ring id = %d, compute events size = %d",
-                        ring_id,
-                        compute_events_.size()));
+      phi::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(
+      ring_id,
+      compute_events_.size(),
+      phi::errors::OutOfRange("ring id must < compute events size,"
+                              "but got ring id = %d, compute events size = %d",
+                              ring_id,
+                              compute_events_.size()));
 
   auto compute_stream = static_cast<phi::GPUContext *>(
                             phi::DeviceContextPool::Instance().Get(place_))
@@ -193,14 +193,14 @@ void NCCLParallelContext::WaitComm(int ring_id) {
   PADDLE_ENFORCE_GE(
       ring_id,
       0,
-      platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(ring_id,
-                    comm_events_.size(),
-                    platform::errors::OutOfRange(
-                        "ring id must < comm events size,"
-                        "but got ring id = %d, comm events size = %d",
-                        ring_id,
-                        comm_events_.size()));
+      phi::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(
+      ring_id,
+      comm_events_.size(),
+      phi::errors::OutOfRange("ring id must < comm events size,"
+                              "but got ring id = %d, comm events size = %d",
+                              ring_id,
+                              comm_events_.size()));
 
   auto compute_stream = static_cast<phi::GPUContext *>(
                             phi::DeviceContextPool::Instance().Get(place_))

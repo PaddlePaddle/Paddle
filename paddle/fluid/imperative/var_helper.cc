@@ -266,7 +266,7 @@ template <>
 std::shared_ptr<VariableWrapper> GetCachedValue(
     std::shared_ptr<egr::EagerVariable> var, const phi::KernelKey &key) {
   // TODO(jiabin): Support this later
-  //   PADDLE_THROW(platform::errors::Fatal("In eager mode program should not
+  //   PADDLE_THROW(phi::errors::Fatal("In eager mode program should not
   //   reach this, support cache and remove this error check later, or this
   //   should not be supported."));
   //   VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key
@@ -290,7 +290,7 @@ void SetCachedValue<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> tensor,
     const phi::KernelKey &key,
     std::shared_ptr<egr::EagerVariable> res) {
-  //   PADDLE_THROW(platform::errors::Fatal("In eager mode program should not
+  //   PADDLE_THROW(phi::errors::Fatal("In eager mode program should not
   //   reach this, support cache and remove this error check later, or this
   //   should not be supported."));
   //   VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key

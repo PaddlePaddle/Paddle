@@ -98,7 +98,7 @@ void EmptyTensorInitializer(TensorObject* self,
     VLOG(6) << "in EmptyTensorInitializer, create DistTensor";
     self->tensor.set_impl(std::make_shared<DistTensor>());
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "The tensor-based initialization of (Dist)Tensor is not supported "
         "in the current PaddlePaddle, please recompile and install "
         "PaddlePaddle "
@@ -211,7 +211,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
 #endif
     SetTensorFromPyArray<phi::CustomPlace>(impl_ptr, array, place, zero_copy);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Place should be one of "
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
   }
@@ -234,7 +234,7 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
   if (phi::is_cpu_place(place)) {
     SetStringTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "StringTensor only support CPUPlace now, but receive %s",
         place.DebugString()));
   }
@@ -284,7 +284,7 @@ void InitDistTensorWithTensor(TensorObject* self,
     egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
   }
 #else
-  PADDLE_THROW(platform::errors::Unavailable(
+  PADDLE_THROW(phi::errors::Unavailable(
       "The tensor-based initialization of (Dist)Tensor is not supported "
       "in the current PaddlePaddle, please recompile and install PaddlePaddle "
       "with the option of `WITH_DISTRIBUTE=ON`."));
@@ -328,7 +328,7 @@ void InitDistTensorWithTensor(TensorObject* self,
     egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
   }
 #else
-  PADDLE_THROW(platform::errors::Unavailable(
+  PADDLE_THROW(phi::errors::Unavailable(
       "The tensor-based initialization of (Dist)Tensor is not supported "
       "in the current PaddlePaddle, please recompile and install PaddlePaddle "
       "with the option of `WITH_DISTRIBUTE=ON`."));
@@ -400,7 +400,7 @@ py::object ParsePyArray(
           py::reinterpret_borrow<py::object>(py::handle(kws_map["value"]));
 
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The first expected arguments is {value: PyArray}, "
           "but could not parse the first argument {value: PyArray} "
           "successfully. "
@@ -625,7 +625,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
       if (flag_kwargs && kws_map["value"] != nullptr) {
         src_tensor = CastPyArg2Tensor(kws_map["value"], 0);
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "The first expected kwargs is {value: Tensor}, "
             "but could not parse the first argument {value: Tensor} "
             "successfully. "
@@ -674,7 +674,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
       if (flag_kwargs && kws_map["value"] != nullptr) {
         src_tensor = CastPyArg2FrameworkTensor(kws_map["value"], 0);
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "The first expected arguments is {value: phi::DenseTensor}, "
             "but could not parse the first argument {value: phi::DenseTensor} "
             "successfully. "
@@ -749,7 +749,7 @@ void AutoInitStringTensorByStringTensor(
     if (flag_kwargs && kws_map["value"] != nullptr) {
       src_tensor = CastPyArg2Tensor(kws_map["value"], 0);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The first expected kwargs is {value: Tensor}, "
           "but could not parse the first argument {value: Tensor} "
           "successfully. "
@@ -954,7 +954,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                                  /* false means not init by egr tensor*/ false);
           return 0;
         } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "Could not parse the first keyword argument successfully, "
               "the first keyword argument is value, but it should be PyArray "
               "or Tensor or phi::DenseTensor. "
@@ -1034,7 +1034,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 
         return 0;
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "We not only support construct Tensor from numpy value "
             "or tensor(Tensor or phi::DenseTensor) "
             "with python kwargs by this initializer, "
@@ -1067,7 +1067,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                              /* false means not init by egr tensor*/ false);
       return 0;
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "We support construct Tensor from numpy value "
           "or tensor(Tensor or phi::DenseTensor) "
           "with python args and kwargs by this initializer, "
@@ -1085,7 +1085,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Incompatible constructor arguments, "
           "there are 4 position args and remaining arguments arg kwargs,"
           "but the first position args should be PyArray. "
@@ -1127,7 +1127,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
             py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
         return 0;
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Incompatible constructor arguments, "
             "there are only 5 position args,"
             "but the first position args should be PyArray or dtype. "
@@ -1142,7 +1142,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
             py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
         return 0;
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Incompatible constructor arguments, "
             "there are 5 position args and remaining arguments are kwargs,"
             "but the first position args should be PyArray. "
@@ -1159,7 +1159,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       return 0;
     } else {  // six position args, remaining arguments are kwargs, but this
               // is not a right way
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Incompatible constructor arguments, "
           "there are 6 position args and the remaining arguments are kwargs. "
           "Please check your code and make sure the first position args is "
@@ -1201,7 +1201,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                                &placements);
         return 0;
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Incompatible constructor arguments, "
             "there are only 7 position args,"
             "but the first position args should be dtype. "
@@ -1209,14 +1209,14 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
             "constructor."));
       }
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Incompatible constructor arguments, "
           "there are 7 position args and remaining arguments are kwargs,"
           "Please check your code and make sure you call the existed "
           "constructor."));
     }
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Can't not find expected num of args, please check your call, and "
         "make sure u call the existed constructor."));
   }
@@ -1341,7 +1341,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
           return 0;
         } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "Could not parse the first keyword argument successfully, "
               "the first keyword argument is value, but it should be PyArray "
               "or StringTensor."
@@ -1367,7 +1367,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
             dims);
         return 0;
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "We not only support construct Tensor from numpy value "
             "or StringTensor with python kwargs by this initializer, "
             "but also even support dtype to init a empty StringTensor. "
@@ -1389,7 +1389,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Could not parse the first keyword argument successfully, "
           "the first keyword argument is value, but it should be PyArray "
           "or StringTensor."
@@ -1429,7 +1429,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         return 0;
       }
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Can't not find expected num of args, please check your call, and "
           "make sure u call the existed constructor."));
     }
@@ -1503,8 +1503,8 @@ void BindEager(pybind11::module* module) {
   p_tensor_type = type;
 
   if (PyType_Ready(type) < 0) {
-    PADDLE_THROW(platform::errors::Fatal(
-        "Init Paddle error in BindEager(PyType_Ready)."));
+    PADDLE_THROW(
+        phi::errors::Fatal("Init Paddle error in BindEager(PyType_Ready)."));
     return;
   }
 
@@ -1513,7 +1513,7 @@ void BindEager(pybind11::module* module) {
       0) {
     Py_DECREF(type);
     Py_DECREF(m.ptr());
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Init Paddle error in BindEager(PyModule_AddObject)."));
     return;
   }
@@ -1551,8 +1551,8 @@ void BindEagerStringTensor(pybind11::module* module) {
   p_string_tensor_type = type;
 
   if (PyType_Ready(type) < 0) {
-    PADDLE_THROW(platform::errors::Fatal(
-        "Init Paddle error in BindEager(PyType_Ready)."));
+    PADDLE_THROW(
+        phi::errors::Fatal("Init Paddle error in BindEager(PyType_Ready)."));
     return;
   }
 
@@ -1561,7 +1561,7 @@ void BindEagerStringTensor(pybind11::module* module) {
           m.ptr(), "StringTensor", reinterpret_cast<PyObject*>(type)) < 0) {
     Py_DECREF(type);
     Py_DECREF(m.ptr());
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Init Paddle error in BindEagerStringTensor(PyModule_AddObject)."));
     return;
   }
