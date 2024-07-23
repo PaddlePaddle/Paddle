@@ -19,10 +19,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/port.h"
 

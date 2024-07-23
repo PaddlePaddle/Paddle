@@ -15,10 +15,10 @@
 #include "paddle/fluid/framework/ir/cost_model.h"
 
 #include "gtest/gtest.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/event.h"
 
 namespace paddle {

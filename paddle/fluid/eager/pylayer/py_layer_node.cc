@@ -15,10 +15,10 @@
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
 
 #include "glog/logging.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/all.h"

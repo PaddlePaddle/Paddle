@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/distributed/fleet_executor/task_loop.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 
 namespace paddle::distributed {
 

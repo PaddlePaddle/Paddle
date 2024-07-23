@@ -14,9 +14,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include "gtest/gtest.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/init.h"
 
 PD_DECLARE_bool(enable_unused_var_check);

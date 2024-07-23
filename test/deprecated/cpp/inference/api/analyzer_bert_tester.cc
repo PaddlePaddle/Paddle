@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/core/enforce.h"
 #include "test/cpp/inference/api/tester_helper.h"
 

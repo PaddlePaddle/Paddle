@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -32,7 +33,6 @@
 #include "paddle/fluid/pir/transforms/gpu/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
