@@ -218,7 +218,7 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
     def test_api_dygraph_dtype(self):
         if sys.platform == 'darwin' or sys.platform == 'win32':
             return
-        paddle.disable_static(self.place[0])
+        paddle.disable_static(paddle.CPUPlace())
         with self.assertRaises(AssertionError):
             x_tensor = paddle.to_tensor(self.x_np)
             self.index = paddle.to_tensor(self.index_np).astype("float32")
