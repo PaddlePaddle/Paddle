@@ -26,7 +26,12 @@ class TestCollectiveAllToAllAPI(TestDistBase):
         pass
 
     def test_alltoall_nccl(self):
-        self.check_with_place("collective_alltoall_api.py", "alltoall", "nccl")
+        self.check_with_place(
+            "collective_alltoall_api.py",
+            "alltoall",
+            "nccl",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
+        )
 
     def test_alltoall_nccl_with_comm_context(self):
         dtypes_to_test = [
