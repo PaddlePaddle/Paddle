@@ -218,7 +218,7 @@ def get_gpu_util(index=None):
         return query_rocm_smi(q, index=index, dtype=d)
     elif paddle.device.is_compiled_with_custom_device('npu'):
         return query_npu_smi(q, index=index, dtype=d)
-    elif paddle.device.is_compiled_with_custom_device('xpu'):
+    elif paddle.is_compiled_with_xpu():
         return query_xpu_smi(q, index=index, dtype=d)
     return query_smi(q, index=index, dtype=d)
 
