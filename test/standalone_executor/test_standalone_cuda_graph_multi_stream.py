@@ -119,14 +119,16 @@ class TestCustomStream(unittest.TestCase):
             return
 
         outs = []
-        for use_cuda_graph in [False, True]:
-            for apply_custom_stream in [False, True]:
-                out = self.run_program(use_cuda_graph, apply_custom_stream)
-                outs.append(out)
 
-        for out in outs:
-            for baseline, result in zip(outs[0], out):
-                self.assertEqual(baseline, result)
+        with paddle.pir_utils.OldIrGuard():
+            for use_cuda_graph in [False, True]:
+                for apply_custom_stream in [False, True]:
+                    out = self.run_program(use_cuda_graph, apply_custom_stream)
+                    outs.append(out)
+
+            for out in outs:
+                for baseline, result in zip(outs[0], out):
+                    self.assertEqual(baseline, result)
 
 
 if __name__ == "__main__":
