@@ -4869,11 +4869,11 @@ def ref_softsign(x):
 class TestSoftsign(TestActivation):
     def setUp(self):
         self.op_type = "softsign"
+        self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
-
         self.python_api = paddle.nn.functional.softsign
-
+        self.public_python_api = paddle.nn.functional.softsign
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         if self.dtype == np.complex64 or self.dtype == np.complex128:
@@ -4891,16 +4891,35 @@ class TestSoftsign(TestActivation):
         self.shape = [10, 12]
 
     def test_check_output(self):
-        self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_output(
+                check_pir=True, check_pir_onednn=self.check_pir_onednn
+            )
+        else:
+            self.check_output(
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+                check_prim_pir=True,
+            )
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+                check_prim_pir=True,
+            )
 
 
 class TestSoftsign_Complex64(TestSoftsign):
@@ -5609,7 +5628,7 @@ create_test_act_fp16_class(TestPow, check_prim=True, check_prim_pir=True)
 create_test_act_fp16_class(TestPow_API)
 create_test_act_fp16_class(TestSTanh)
 create_test_act_fp16_class(TestSoftplus, check_pir=True)
-create_test_act_fp16_class(TestSoftsign, check_pir=True)
+create_test_act_fp16_class(TestSoftsign, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestThresholdedRelu, check_pir=True)
 create_test_act_fp16_class(TestHardSigmoid, check_pir=True)
 create_test_act_fp16_class(TestSwish)

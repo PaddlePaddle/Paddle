@@ -136,6 +136,7 @@ CUSTOM_VJP = [
     'sigmoid_grad',
     'silu_grad',
     'softmax_grad',
+    "softsign_grad"
     'sqrt_grad',
     'stack_grad',
     'swiglu',
