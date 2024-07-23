@@ -2920,6 +2920,7 @@ std::vector<pir::Value> BuildInputs(
           VLOG(4) << "trans input: " << var_name << "'s dtype from "
                   << kernel_dtype_for_var << " to "
                   << expected_kernel_key.dtype();
+
           auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
           new_in = AddDtypeTransferOp(new_in,
                                       block,
