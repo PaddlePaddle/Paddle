@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import struct
+from typing import TYPE_CHECKING
 
 import numpy as np
 
+import paddle
 from paddle import pir
-from paddle._typing.dtype_like import DTypeLike
 
 from ..pir import Value
 from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
@@ -30,6 +33,10 @@ from .framework import (
     in_dygraph_mode,
     in_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from paddle._typing import DTypeLike
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 __all__ = []
 
@@ -92,7 +99,7 @@ def convert_uint16_to_float(data):
     return np.reshape(new_data, data.shape)
 
 
-def convert_dtype(dtype: DTypeLike) -> str:
+def convert_dtype(dtype: DTypeLike) -> _DTypeLiteral:
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
@@ -494,13 +501,23 @@ class DataFeeder:
             else:
                 converter.feed(data)
 
-        for each_sample in iterable:
-            assert len(each_sample) == len(converter), (
-                "The number of fields in data (%d) does not match "
-                + "len(feed_list) (%d)"
-            ) % (len(each_sample), len(converter))
-            for each_converter, each_slot in zip(converter, each_sample):
-                feed_data(each_converter, each_slot)
+        if paddle.framework.use_pir_api():
+            for each_sample in iterable:
+                assert len(each_sample) == len(converter), (
+                    "The number of fields in data (%d) does not match "
+                    + "len(feed_list) (%d)"
+                ) % (len(each_sample), len(converter))
+                for each_converter, each_slot in zip(converter, each_sample):
+                    feed_data(each_converter, each_slot)
+
+        else:
+            for each_sample in iterable:
+                assert len(each_sample) == len(converter), (
+                    "The number of fields in data (%d) does not match "
+                    + "len(feed_list) (%d)"
+                ) % (len(each_sample), len(converter))
+                for each_converter, each_slot in zip(converter, each_sample):
+                    each_converter.feed(each_slot)
 
         ret_dict = {}
         for each_name, each_converter in zip(self.feed_names, converter):
