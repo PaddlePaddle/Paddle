@@ -240,7 +240,6 @@ class TestLlamaAuto:
         ckpt_path = tempfile.TemporaryDirectory()
         tmp_ckpt_path = self.broadcast_ckpt_path(ckpt_path.name)
         loss = self.run_dy2static(tmp_ckpt_path)
-        print(loss)
         if int(dist.get_rank()) in [2, 3, 6, 7]:
             assert len(loss[0]) == len(loss[1])
             for i in range(len(loss[0])):
