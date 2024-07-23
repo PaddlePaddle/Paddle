@@ -366,6 +366,7 @@ void WeightDequantize(const Context& dev_ctx,
   dim3 block(512);
   dim3 grid(n / 32);
   auto stream = dev_ctx.stream();
+  
   if (algo == "weight_only_int8" && group_size == -1) {
     int8_weight_only_dequant<DataType><<<grid, block, 0, stream>>>(
         reinterpret_cast<const uint8_t*>(x.data<int8_t>()),
