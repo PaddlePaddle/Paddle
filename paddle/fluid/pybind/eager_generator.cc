@@ -729,7 +729,7 @@ static void PurifyGradNodeGenerationInfo(const proto::OpProto& op_proto,
 
               PADDLE_ENFORCE(
                   grad_outs->count(grad_output_name) > 0,
-                  paddle::platform::errors::Fatal(
+                  phi::errors::Fatal(
                       "Unable to find gradient output name in grad_outs."));
               // grad_outs
               grad_outs->erase(grad_output_name);
@@ -767,7 +767,7 @@ static void PurifyGradNodeGenerationInfo(const proto::OpProto& op_proto,
 
               PADDLE_ENFORCE(
                   grad_ins->count(grad_input_name) > 0,
-                  paddle::platform::errors::Fatal(
+                  phi::errors::Fatal(
                       "Unable to find gradient input name in grad_ins."));
               // grad_ins
               grad_ins->erase(grad_input_name);
@@ -1685,7 +1685,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       PADDLE_ENFORCE_NE(
           forward_inplace_map[output_name],
           "",
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Inplace op %s has no input corresponding to output %s.",
               op_type,
               output_name));
@@ -2388,7 +2388,7 @@ static std::string GenerateSingleOpBase(
       */
       if (!fwd_inputs_name_pos_map.count(fwd_name)) {
         PADDLE_ENFORCE(fwd_outputs_name_pos_map.count(fwd_name),
-                       paddle::platform::errors::Fatal(
+                       phi::errors::Fatal(
                            "fwd_name not found in fwd_inputs_name_pos_map nor "
                            "fwd_outputs_name_pos_map"));
 
@@ -2600,7 +2600,7 @@ static std::string GenerateSingleOpBase(
       num_appended_outputs++;
     } else {
       PADDLE_ENFORCE(fwd_outputs_name_pos_map.count(fwd_name),
-                     paddle::platform::errors::Fatal(
+                     phi::errors::Fatal(
                          "fwd_name not found in fwd_inputs_name_pos_map nor "
                          "fwd_outputs_name_pos_map"));
     }
