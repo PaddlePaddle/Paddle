@@ -58,10 +58,20 @@ class MatmulReshapeElementwiseAddFusePattern
     reshape1({&pat.Tensor("x"), &full_int_array1()},
              {&pat.Tensor("reshape_x"), &pat.Tensor("reshape_x_xshape")});
 
+    const auto &full_int_array2 =
+        pat.Op(paddle::dialect::FullIntArrayOp::name(),
+               {{"value", pat.Attr("value2")},
+                {"dtype", pat.Attr("dtype2")},
+                {"place", pat.Attr("place2")}});
+    const auto &reshape2 = pat.Op(paddle::dialect::ReshapeOp::name());
+    reshape2({&pat.Tensor("w"), &full_int_array2()},
+             {&pat.Tensor("reshape_w"), &pat.Tensor("reshape_w_xshape")});
+
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
-    pat.Tensor("matmul_out") = matmul(pat.Tensor("reshape_x"), pat.Tensor("w"));
+    pat.Tensor("matmul_out") =
+        matmul(pat.Tensor("reshape_x"), pat.Tensor("reshape_w"));
 
     const auto &full_int_array3 =
         pat.Op(paddle::dialect::FullIntArrayOp::name());
@@ -82,7 +92,7 @@ class MatmulReshapeElementwiseAddFusePattern
         return false;
       }
 
-      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("reshape_w"));
       auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("reshape_x"));
       auto y_dims = pir::GetShapeFromValue(match_ctx.Tensor("y"));
       auto origin_x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
@@ -123,17 +133,27 @@ class MatmulReshapeElementwiseAddFusePattern
                                 {{"value", pat.Attr("value")},
                                  {"dtype", pat.Attr("dtype")},
                                  {"place", pat.Attr("place")}});
-    const auto &reshape = res.Op(paddle::dialect::ReshapeOp::name());
-    reshape({&res.Tensor("x"), &full_1()},
-            {&res.Tensor("reshape_x"), &res.Tensor("reshape_x_xshape")});
+    const auto &reshape1_ = res.Op(paddle::dialect::ReshapeOp::name());
+    reshape1_({&res.Tensor("x"), &full_1()},
+              {&res.Tensor("reshape_x"), &res.Tensor("reshape_x_xshape")});
+
+    const auto &full_2 = res.Op(paddle::dialect::FullIntArrayOp::name(),
+                                {{"value", pat.Attr("value2")},
+                                 {"dtype", pat.Attr("dtype2")},
+                                 {"place", pat.Attr("place2")}});
+    const auto &reshape2_ = res.Op(paddle::dialect::ReshapeOp::name());
+    reshape2_({&res.Tensor("w"), &full_2()},
+              {&res.Tensor("reshape_w"), &res.Tensor("reshape_w_xshape")});
+
     const auto &fc_op = res.Op(fused_matmul_name_,
                                {{
                                    {"in_num_col_dims", in_num_col_dims_attr},
                                    {"activation_type", res.StrAttr("")},
                                    {"padding_weights", res.BoolAttr(false)},
                                }});
-    fc_op({&res.Tensor("reshape_x"), &res.Tensor("w"), &res.Tensor("y")},
-          {&res.Tensor("add_out")});
+    fc_op(
+        {&res.Tensor("reshape_x"), &res.Tensor("reshape_w"), &res.Tensor("y")},
+        {&res.Tensor("add_out")});
   }
 };
 
