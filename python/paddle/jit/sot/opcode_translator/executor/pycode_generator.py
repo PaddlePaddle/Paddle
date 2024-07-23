@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import inspect
 import opcode
 import random
 import sys
@@ -465,6 +466,9 @@ class PyCodeGen:
 
     def create_function(self) -> types.FunctionType:
         self.update_code_name(self.fn_name, is_resumed_fn=True)
+        self._code_options['co_flags'] &= ~(
+            inspect.CO_VARARGS | inspect.CO_VARKEYWORDS
+        )
         new_code = self.gen_pycode()
         if len(new_code.co_freevars) + len(new_code.co_cellvars) > 0:
             raise FallbackError("Break graph in closure is not support.")

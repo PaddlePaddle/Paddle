@@ -28,7 +28,7 @@ class TransformerInputConvert : public OpConverter {
     VLOG(3) << "Convert Transformer Input(pos_id, max_seqlen), use "
                "transformer_input_convert_plugin";
     if (!engine_->with_dynamic_shape()) {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "transformer_input_convert_op: If you want to use transformer, must "
           "be with dynamic shape"));
     }
