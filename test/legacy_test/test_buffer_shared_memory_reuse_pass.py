@@ -80,50 +80,51 @@ class InplaceTestBase(unittest.TestCase):
         return all_vars_name
 
     def check_single_card_fetch_var(self):
-        if self.is_invalid_test():
-            return
+        with paddle.pir_utils.OldIrGuard():
+            if self.is_invalid_test():
+                return
 
-        prog1, scope1, exe, loss1 = self.build_program_and_scope()
-        scopes = []
-        compiled_programs = []
-        for memory_optimize in [False, True]:
-            for enable_inplace in [False, True]:
-                prog, scope, _, loss = self.build_program_and_scope()
-                scopes.append(scope)
-                build_strategy = base.BuildStrategy()
-                build_strategy.memory_optimize = memory_optimize
-                build_strategy.enable_inplace = enable_inplace
-                build_strategy.fuse_all_optimizer_ops = (
-                    self.fuse_all_optimizer_ops
-                )
-                compiled_prog = base.CompiledProgram(
-                    prog, build_strategy=build_strategy
-                )
-                compiled_programs.append(compiled_prog)
-
-        all_vars_name = self.get_all_vars(prog1)
-        repeated_var_names = all_vars_name
-        random.shuffle(repeated_var_names)  # add some random
-
-        for fetch_var in repeated_var_names[:4]:
-            for _ in range(2):
-                with base.scope_guard(scope1):
-                    (fetch_val1,) = exe.run(
-                        prog1, feed=feed_dict, fetch_list=[fetch_var]
+            prog1, scope1, exe, loss1 = self.build_program_and_scope()
+            scopes = []
+            compiled_programs = []
+            for memory_optimize in [False, True]:
+                for enable_inplace in [False, True]:
+                    prog, scope, _, loss = self.build_program_and_scope()
+                    scopes.append(scope)
+                    build_strategy = base.BuildStrategy()
+                    build_strategy.memory_optimize = memory_optimize
+                    build_strategy.enable_inplace = enable_inplace
+                    build_strategy.fuse_all_optimizer_ops = (
+                        self.fuse_all_optimizer_ops
                     )
+                    compiled_prog = base.CompiledProgram(
+                        prog, build_strategy=build_strategy
+                    )
+                    compiled_programs.append(compiled_prog)
 
-                for scope, compiled_prog in zip(scopes, compiled_programs):
-                    with base.scope_guard(scope):
-                        (fetch_val2,) = exe.run(
-                            compiled_prog,
-                            feed=feed_dict,
-                            fetch_list=[fetch_var],
+            all_vars_name = self.get_all_vars(prog1)
+            repeated_var_names = all_vars_name
+            random.shuffle(repeated_var_names)  # add some random
+
+            for fetch_var in repeated_var_names[:4]:
+                for _ in range(2):
+                    with base.scope_guard(scope1):
+                        (fetch_val1,) = exe.run(
+                            prog1, feed=feed_dict, fetch_list=[fetch_var]
                         )
-                        np.testing.assert_array_equal(
-                            fetch_val1,
-                            fetch_val2,
-                            err_msg=f'error var name: {fetch_var}, fetch_val1: {fetch_val1[~np.equal(fetch_val1, fetch_val2)]}, fetch_val2: {fetch_val2[~np.equal(fetch_val1, fetch_val2)]}',
-                        )
+
+                    for scope, compiled_prog in zip(scopes, compiled_programs):
+                        with base.scope_guard(scope):
+                            (fetch_val2,) = exe.run(
+                                compiled_prog,
+                                feed=feed_dict,
+                                fetch_list=[fetch_var],
+                            )
+                            np.testing.assert_array_equal(
+                                fetch_val1,
+                                fetch_val2,
+                                err_msg=f'error var name: {fetch_var}, fetch_val1: {fetch_val1[~np.equal(fetch_val1, fetch_val2)]}, fetch_val2: {fetch_val2[~np.equal(fetch_val1, fetch_val2)]}',
+                            )
 
 
 class CUDAInplaceTest(InplaceTestBase):
