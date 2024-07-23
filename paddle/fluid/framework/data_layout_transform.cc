@@ -25,15 +25,14 @@ std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(
       from,
       to,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Layout transform should transform between different layout."));
   if (from == DataLayout::kNCHW && to == DataLayout::kNHWC) {
     return {0, 2, 3, 1};
   } else if (from == DataLayout::kNHWC && to == DataLayout::kNCHW) {
     return {0, 3, 1, 2};
   } else {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("Unsupported layout transform."));
+    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported layout transform."));
   }
 }
 
@@ -46,7 +45,7 @@ void CastDataLayout::apply() {
     auto* context = static_cast<const phi::CPUContext*>(ctx_);
     trans4(*context, in_, out_, axis_);
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "Unsupported data layout cast from CPU to GPU."));
   }
 }
@@ -59,7 +58,7 @@ void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
   PADDLE_ENFORCE(
       backends_are_same_class(kernel_type_for_var.backend(),
                               expected_kernel_type.backend()),
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "TransDataLayout only support DataLayout transform on same place."));
 
   TransDataLayout(kernel_type_for_var.layout(),
@@ -77,7 +76,7 @@ void TransDataLayout(DataLayout from_layout,
   PADDLE_ENFORCE_EQ(
       arity(in.dims()),
       4,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input dimension arity only can be 4, the input dimension is %s.",
           in.dims()));
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-def check_import_scipy(OsName):
+def check_import_scipy(OsName: str) -> None:
     print_info = ""
     if OsName == 'nt':
         try:

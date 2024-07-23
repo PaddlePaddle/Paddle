@@ -121,7 +121,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::OperatorWithKernel::OpKernelFunc& func,
                        const phi::ArgumentMappingFn* arg_map_fn,
                        const phi::KernelSignature* default_kernel_signature,
-                       platform::DeviceContext* dev_ctx)
+                       phi::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
       kernel_key_(kernel_key),
@@ -138,7 +138,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const phi::KernelSignature* default_kernel_signature,
                        phi::KernelSignature&& kernel_signature,
                        const phi::Kernel& phi_kernel,
-                       platform::DeviceContext* dev_ctx)
+                       phi::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
       kernel_key_(kernel_key),
@@ -368,7 +368,7 @@ PreparedOp PrepareImpl(
   PADDLE_ENFORCE_NE(
       kernels_iter,
       all_op_kernels.end(),
-      platform::errors::NotFound(
+      phi::errors::NotFound(
           "There are no kernels which are registered in the %s operator.",
           op.Type()));
 
@@ -435,9 +435,9 @@ PreparedOp PrepareImpl(
   PADDLE_ENFORCE_NE(
       kernel_iter,
       kernels.end(),
-      platform::errors::NotFound("Operator %s does not have kernel for %s.",
-                                 op.Type(),
-                                 KernelTypeToString(fluid_kernel_type)));
+      phi::errors::NotFound("Operator %s does not have kernel for %s.",
+                            op.Type(),
+                            KernelTypeToString(fluid_kernel_type)));
 
   if (!phi::places_are_same_class(fluid_kernel_type.place_,
                                   dev_ctx->GetPlace())) {
@@ -511,7 +511,7 @@ static void PreparedOpRunImpl(
     const framework::OperatorWithKernel::OpKernelFunc& func,
     const phi::ArgumentMappingFn* arg_map_fn,
     const phi::KernelSignature* default_kernel_signature,
-    platform::DeviceContext* dev_ctx,
+    phi::DeviceContext* dev_ctx,
     const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs,
     const framework::AttributeMap& attrs,
@@ -586,7 +586,7 @@ static void PreparedOpRunPtImpl(
     const phi::KernelSignature& kernel_signature,
     const phi::Kernel& phi_kernel,
     const framework::RuntimeContext& ctx,
-    platform::DeviceContext* dev_ctx,
+    phi::DeviceContext* dev_ctx,
     const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs,
     const framework::AttributeMap& attrs,

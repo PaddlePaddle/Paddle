@@ -67,7 +67,7 @@ void SparseConvOptimPass::ApplyImpl(ir::Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Scope in SparseConvOptimPass should not be null."));
   // Create pattern
   patterns::SparseConvOptimPartern pattern(gpd.mutable_pattern(), pattern_name);

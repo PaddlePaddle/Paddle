@@ -29,7 +29,7 @@ class Graph;
 
 void InterpolateOneDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
     VLOG(3) << "Do not handle interpolate_onednn_pass";
