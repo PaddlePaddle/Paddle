@@ -201,10 +201,11 @@ class TestLogcumsumexp(unittest.TestCase):
 
     def test_name(self):
         paddle.enable_static()
-        with base.program_guard(base.Program()):
-            x = paddle.static.data('x', [3, 4])
-            y = paddle.logcumsumexp(x, name='out')
-            self.assertTrue('out' in y.name)
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(base.Program()):
+                x = paddle.static.data('x', [3, 4])
+                y = paddle.logcumsumexp(x, name='out')
+                self.assertTrue('out' in y.name)
         paddle.disable_static()
 
     @test_with_pir_api

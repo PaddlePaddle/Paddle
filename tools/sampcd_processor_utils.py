@@ -48,7 +48,7 @@ ENV_KEY_TEST_CAPACITY = 'SAMPLE_CODE_TEST_CAPACITY'
 API_DEV_SPEC_FN = 'paddle/fluid/API_DEV.spec'
 API_PR_SPEC_FN = 'paddle/fluid/API_PR.spec'
 API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
-TEST_TIMEOUT = 10
+TEST_TIMEOUT = 15
 
 PAT_API_SPEC_MEMBER = re.compile(r'\((paddle[^,]+)\W*document\W*([0-9a-z]{32})')
 # insert ArgSpec for changing the API's type annotation can trigger the CI
@@ -355,14 +355,25 @@ def get_api_md5(path):
     return api_md5
 
 
-def get_incrementapi():
+def get_incrementapi(
+    api_dev_spec_fn: str | None = None,
+    api_pr_spec_fn: str | None = None,
+    api_diff_spec_fn: str | None = None,
+) -> None:
     '''
     this function will get the apis that difference between API_DEV.spec and API_PR.spec.
     '''
     global API_DEV_SPEC_FN, API_PR_SPEC_FN, API_DIFF_SPEC_FN  # readonly
-    dev_api = get_api_md5(API_DEV_SPEC_FN)
-    pr_api = get_api_md5(API_PR_SPEC_FN)
-    with open(API_DIFF_SPEC_FN, 'w') as f:
+
+    dev_api = get_api_md5(
+        API_DEV_SPEC_FN if api_dev_spec_fn is None else api_dev_spec_fn
+    )
+    pr_api = get_api_md5(
+        API_PR_SPEC_FN if api_pr_spec_fn is None else api_pr_spec_fn
+    )
+    with open(
+        API_DIFF_SPEC_FN if api_diff_spec_fn is None else api_diff_spec_fn, 'w'
+    ) as f:
         for key in pr_api:
             if key in dev_api:
                 if dev_api[key] != pr_api[key]:
