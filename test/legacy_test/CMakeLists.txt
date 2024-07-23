@@ -1242,6 +1242,4 @@ py_test_modules(test_install_check_pir MODULES test_install_check ENVS
 set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 
-py_test_modules(test_stride MODULES test_stride ENVS
-                FLAGS_use_stride_kernel=true)
 set_tests_properties(test_stride PROPERTIES TIMEOUT 120)
