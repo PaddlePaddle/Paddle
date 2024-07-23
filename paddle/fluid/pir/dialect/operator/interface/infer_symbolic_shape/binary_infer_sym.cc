@@ -182,6 +182,43 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
 
+bool CrossOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+
+  size_t x_dim = x_shape.shape().size();
+  size_t y_dim = y_shape.shape().size();
+
+  PADDLE_ENFORCE_EQ(x_dim,
+                    y_dim,
+                    common::errors::InvalidArgument(
+                        "The 'shape' of Input(X) should be equal to "
+                        "the 'shape' of Input(Y). But received "
+                        "Input(X).dimensions = [%d], "
+                        "Input(Y).dimensions = [%d]",
+                        x_dim,
+                        y_dim));
+
+  for (size_t i = 0; i < x_dim; i++) {
+    infer_context->AddEqualCstr(x_shape.shape()[i], y_shape.shape()[i]);
+  }
+
+  int dim = axis;
+  if (dim < 0) {
+    dim += x_dim;
+  }
+  infer_context->AddEqualCstr(x_shape.shape()[dim], 3);
+  infer_context->AddEqualCstr(y_shape.shape()[dim], 3);
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+
+  return true;
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<symbol::DimExpr> &x_dims =
