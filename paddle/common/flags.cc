@@ -1820,3 +1820,8 @@ PHI_DEFINE_EXPORTED_double(accuracy_check_atol_bf16,
 PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_bf16,
                            1e-3,
                            "It controls the rtol of accuracy_check op");
+
+PHI_DEFINE_EXPORTED_bool(
+    pinned_memory_as_cpu_backend,
+    false,
+    "Whether use CPU backend, when tensor is pinned_memory.");

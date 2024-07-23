@@ -14,15 +14,17 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/convert_utils.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/enforce.h"
-
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
+
+COMMON_DECLARE_bool(pinned_memory_as_cpu_backend);
 
 namespace phi {
 
@@ -33,8 +35,13 @@ Backend TransToPhiBackend(const phi::Place& place) {
       return Backend::GPU;
     case AllocationType::CPU:
       return Backend::CPU;
-    case AllocationType::GPUPINNED:
-      return Backend::CPU;
+    case AllocationType::GPUPINNED: {
+      if (FLAGS_pinned_memory_as_cpu_backend) {
+        return Backend::CPU;
+      } else {
+        return Backend::GPU;
+      }
+    }
     case AllocationType::XPU:
       return Backend::XPU;
     case AllocationType::IPU:
