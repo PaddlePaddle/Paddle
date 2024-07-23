@@ -85,7 +85,9 @@ class TestLoDTensorArrayStack(unittest.TestCase):
         for i, output in enumerate(self.outputs):
             np.allclose(result[i], output, atol=0)
         if not paddle.framework.use_pir_api():
-            tensor_array_grad = scope.var(self.array.name).get_lod_tensor_array()
+            tensor_array_grad = scope.var(
+                self.array.name
+            ).get_lod_tensor_array()
             for i, input_grad in enumerate(self.input_grads):
                 np.allclose(np.array(tensor_array_grad[i]), input_grad, atol=0)
 
