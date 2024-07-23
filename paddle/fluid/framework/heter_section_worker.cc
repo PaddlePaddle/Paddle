@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 
 void SetMicroId(paddle::framework::Scope* scope,
-                platform::DeviceContext* dev_ctx,
+                phi::DeviceContext* dev_ctx,
                 const phi::Place& place,
                 int micro_id) {
   // create microbatch_id variable
