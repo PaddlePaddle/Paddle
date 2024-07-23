@@ -464,8 +464,15 @@ struct LoopFrameworkVisitor {
   }
 
   MaybeLoopFramework operator()(const AnchorPattern& pattern) {
-    const auto& exprs = GetDimExprsFromValue(pattern.anchor());
-    return exprs;
+    const auto& loops = GetDimExprsFromValue(pattern.anchor());
+    auto anchor_op = pattern.anchor().defining_op();
+    if (GetOpPatternKind(anchor_op) == hlir::framework::kReduction) {
+      const auto& reduce_axes = GetReduceAxisIdx(anchor_op);
+      const auto& reduce_loops = GatherVector(
+          GetDimExprsFromValue(anchor_op->operand(0).source()), reduce_axes);
+      return ConcatVector(loops, reduce_loops);
+    }
+    return loops;
   }
 };
 
@@ -524,8 +531,6 @@ static StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
       {pad_first, pad_second},
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
-
-//
 
 static StmtPattern MergePattern(const StmtPattern& first,
                                 const StmtPattern& second) {

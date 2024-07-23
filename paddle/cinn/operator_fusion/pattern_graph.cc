@@ -274,7 +274,7 @@ std::string PatternGraph::GraphInfo() const {
   std::stringstream ss;
   ss << "\n========= GraphInfo ===========";
   for (const auto& v : all_pattern_nodes_) {
-    ss << "\n" << v->DebugStr();
+    ss << v->DebugStr();
     ss << "\n    IsOutput: " << IsOutputNodeMatcher()(*this, v);
     ss << "\n    Loop Framework is: " << GetLoopFramework(v->stmt_pattern());
   }

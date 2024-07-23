@@ -74,11 +74,14 @@ struct LiftToAnchorPatternMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     bool not_reduce_tree =
         !StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
-        !StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern>()(graph, node);
-    bool reduce_tree_with_single_reduce =
-        StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
-        std::get<ReduceTreePattern>(node->stmt_pattern()).childs().size() == 0;
-    return not_reduce_tree || reduce_tree_with_single_reduce;
+        !StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern>()(graph, node) &&
+        !StmtPatternGraphMatcher<ReducePattern>()(graph, node);
+    // TODO(huangjiyi): Support anchor value is reduce output.
+    // bool reduce_tree_with_single_reduce =
+    //     StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
+    //     std::get<ReduceTreePattern>(node->stmt_pattern()).childs().size() ==
+    //     0;
+    return not_reduce_tree /* || reduce_tree_with_single_reduce */;
   }
 };
 

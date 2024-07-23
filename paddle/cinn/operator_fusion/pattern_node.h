@@ -55,7 +55,14 @@ struct PatternNode {
     for (const auto& d : downstream_) {
       ss << d << ", ";
     }
-    ss << "Ops in pattern: \n################" << std::endl;
+    pir::IrPrinter printer(ss);
+    if (GetPatternName(stmt_pattern_) == AnchorPattern::name()) {
+      ss << "\n anchor: ";
+      auto anchor_op =
+          std::get<AnchorPattern>(stmt_pattern_).anchor().defining_op();
+      printer.PrintOperation(const_cast<pir::Operation*>(anchor_op));
+    }
+    ss << "\nOps in pattern: \n################" << std::endl;
     ss << OpsDebugStr(GetOpsInPattern(this->stmt_pattern()));
     ss << "################" << std::endl;
     return ss.str();
