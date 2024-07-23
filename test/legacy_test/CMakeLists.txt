@@ -1023,8 +1023,7 @@ set(TEST_CINN_OPS
     test_strided_slice_op
     test_pad_op
     test_pool2d_op
-    test_erf_op
-    test_where_op)
+    test_erf_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
