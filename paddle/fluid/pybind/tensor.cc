@@ -178,8 +178,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 PyTypeObject *g_framework_tensor_pytype = nullptr;
 
@@ -1152,5 +1151,4 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       });
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

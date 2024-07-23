@@ -15,8 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/common/flags.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 TEST_API bool is_gpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPU;
@@ -97,5 +96,4 @@ Place PlaceHelper::CreatePlace(const std::string &dev_type, size_t dev_id) {
 }
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

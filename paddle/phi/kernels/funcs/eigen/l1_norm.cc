@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T>
 struct EigenL1Norm<Eigen::DefaultDevice, T> {
@@ -50,5 +49,4 @@ struct EigenL1NormGrad<Eigen::DefaultDevice, T> {
 template struct EigenL1Norm<Eigen::DefaultDevice, float>;
 template struct EigenL1NormGrad<Eigen::DefaultDevice, float>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

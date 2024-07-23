@@ -14,9 +14,7 @@
 
 #include "paddle/phi/common/memory_utils.h"
 
-namespace phi {
-
-namespace memory_utils {
+namespace phi::memory_utils {
 
 Allocator::AllocationPtr Alloc(const phi::Place& place,
                                size_t size,
@@ -141,6 +139,4 @@ std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(
 }
 #endif
 
-}  // namespace memory_utils
-
-}  // namespace phi
+}  // namespace phi::memory_utils

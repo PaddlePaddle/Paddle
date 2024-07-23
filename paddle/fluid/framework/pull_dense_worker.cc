@@ -19,8 +19,7 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class Scope;
 class Variable;
@@ -269,5 +268,4 @@ void PullDenseWorker::MergeDenseParam() {
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

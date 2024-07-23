@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 VarDesc *BlockDesc::Var(const std::string &name) {
   auto it = vars_.find(name);
@@ -385,5 +384,4 @@ bool BlockDesc::NeedUpdate(bool include_subs) {
   return need;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

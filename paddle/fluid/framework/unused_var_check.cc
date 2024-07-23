@@ -29,8 +29,7 @@ PHI_DEFINE_EXPORTED_bool(
     "Checking whether operator contains unused inputs, "
     "especially for grad operator. It should be in unittest.");
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::unordered_set<std::string> *GetThreadLocalUsedVarNameSet() {
   thread_local std::unordered_set<std::string> used_var_name_set;
@@ -133,5 +132,4 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

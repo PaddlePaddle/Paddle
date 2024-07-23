@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #endif
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T>
 void CopyValidData(phi::DenseTensor* dst_tensor,
@@ -249,5 +248,4 @@ template class UnpaddingLoDTensorFunctor<phi::CPUContext, double>;
 template class UnpaddingLoDTensorFunctor<phi::XPUContext, float>;
 #endif
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

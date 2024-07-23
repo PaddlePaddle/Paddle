@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/ir/onednn/depthwise_conv_onednn_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void SetOp(ProgramDesc* prog,
            const std::string& type,
@@ -154,8 +152,6 @@ TEST(DepthwiseConvMKLDNNPass, basic) {
   EXPECT_EQ(after.onednn_conv_nodes, before.onednn_conv_nodes + 1);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(depthwise_conv_onednn_pass);

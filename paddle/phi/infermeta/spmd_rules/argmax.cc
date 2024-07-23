@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 SpmdInfo ArgMaxInferSpmdBase(const DistMetaTensor& x,
                              int axis,
@@ -115,5 +114,4 @@ SpmdInfo ArgMaxInferSpmdDynamic(const DistMetaTensor& x,
   return ArgMaxInferSpmdBase(x, axis.to<int32_t>(), keepdims, flatten);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

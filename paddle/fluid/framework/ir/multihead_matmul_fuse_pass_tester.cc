@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
@@ -145,9 +143,7 @@ TEST(MultiHeadMatmulFusePass, pass_op_version_check) {
           .IsPassCompatible("multihead_matmul_fuse_pass_v2"));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(multihead_matmul_fuse_pass);
 USE_PASS(multihead_matmul_fuse_pass_v2);
