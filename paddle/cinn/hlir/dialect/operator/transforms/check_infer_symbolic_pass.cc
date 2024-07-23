@@ -93,7 +93,8 @@ class BlockDimExprsAsserter {
       for (int i = 0; i < op->num_operands(); ++i) {
         const auto& input = op->operand_source(i);
         if (!input || !input.type()) continue;
-        if (input.type().isa<pir::VectorType>()) {
+        if (input.type().isa<pir::VectorType>() ||
+            input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
           return std::vector<pir::Value>{};
         }
         inputs.push_back(input);

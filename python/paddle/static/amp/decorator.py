@@ -631,11 +631,14 @@ class OptimizerWithMixedPrecision:
                     name="find_infinite_scale",
                     float_status=self._float_status,
                 )
+                found_infs.append(found_inf)
 
-        if self._is_distributed or self._use_pure_fp16:
+        if len(found_infs) > 1:
             with self._train_program._optimized_guard([]):
                 all_infs = paddle.concat(found_infs)
                 found_inf = paddle.any(all_infs)
+        else:
+            found_inf = found_infs[0]
 
         return found_inf
 

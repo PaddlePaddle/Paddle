@@ -186,7 +186,9 @@ def iinfo(dtype):
             uint8
 
     """
-    if dtype in _NUMPY_DTYPE_2_PADDLE_DTYPE:
+    if isinstance(dtype, paddle.pir.core.DataType):
+        dtype = paddle.base.framework.paddle_type_to_proto_type[dtype]
+    elif dtype in _NUMPY_DTYPE_2_PADDLE_DTYPE:
         dtype = _NUMPY_DTYPE_2_PADDLE_DTYPE[dtype]
     return core_iinfo(dtype)
 

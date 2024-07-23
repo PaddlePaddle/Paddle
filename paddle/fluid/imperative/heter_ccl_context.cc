@@ -23,7 +23,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -81,7 +81,7 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
 
   PADDLE_ENFORCE_NE(node_nranks,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The number of local nranks should not be zero."));
   node_strategy_.nranks_ = node_nranks;
   node_strategy_.current_endpoint_ = strategy_.current_endpoint_;
@@ -116,7 +116,7 @@ void HeterParallelContext::Init() {
   PADDLE_ENFORCE_NE(
       node_parallel_ctx_,
       nullptr,
-      platform::errors::Unavailable(
+      phi::errors::Unavailable(
           "The heter parallel context has not been initialized."));
 
   if (inter_parallel_ctx_ != nullptr) {
@@ -129,7 +129,7 @@ void HeterParallelContext::Init() {
 }
 
 void HeterParallelContext::InitWithRingID(int ring_id) {
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(phi::errors::Unimplemented(
       "Unimplemented InitWithRingID from heter ctx."));
 }
 
@@ -172,11 +172,10 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
 }
 
 void HeterParallelContext::Broadcast(framework::Variable *src, int ring_id) {
-  PADDLE_THROW(platform::errors::Unimplemented("Unimplemented function."));
+  PADDLE_THROW(phi::errors::Unimplemented("Unimplemented function."));
 }
 
-paddle::platform::DeviceContext *HeterParallelContext::GetDeviceContext(
-    int ring_id) {
+phi::DeviceContext *HeterParallelContext::GetDeviceContext(int ring_id) {
   // directly call the implementation of target parallel ctx.
   return node_parallel_ctx_->GetDeviceContext(ring_id);
 }

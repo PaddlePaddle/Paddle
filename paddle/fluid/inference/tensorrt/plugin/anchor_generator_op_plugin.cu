@@ -73,30 +73,30 @@ AnchorGeneratorPlugin::AnchorGeneratorPlugin(
   // anchors must be float32, which is the generator proposals' input
   PADDLE_ENFORCE_EQ(data_type_,
                     nvinfer1::DataType::kFLOAT,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts float32."));
   PADDLE_ENFORCE_GE(height_,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts height "
                         "greater than 0, but receive height = %d.",
                         height_));
   PADDLE_ENFORCE_GE(width_,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts width "
                         "greater than 0, but receive width = %d.",
                         width_));
   PADDLE_ENFORCE_GE(
       num_anchors_,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "TRT anchor generator plugin only accepts number of anchors greater "
           "than 0, but receive number of anchors = %d.",
           num_anchors_));
   PADDLE_ENFORCE_GE(box_num_,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts box_num "
                         "greater than 0, but receive box_num = %d.",
                         box_num_));
@@ -403,12 +403,12 @@ AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(
   // height, width, num_anchors are calculated at configurePlugin
   PADDLE_ENFORCE_EQ(data_type_,
                     nvinfer1::DataType::kFLOAT,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts float32."));
   PADDLE_ENFORCE_GE(
       num_anchors_,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "TRT anchor generator plugin only accepts number of anchors greater "
           "than 0, but receive number of anchors = %d.",
           num_anchors_));
