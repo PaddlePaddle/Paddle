@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 TEST(Device, Init) {
-  using paddle::platform::DeviceContext;
   using paddle::platform::XPUDeviceContext;
+  using phi::DeviceContext;
   using phi::XPUPlace;
 
   int count = paddle::platform::GetXPUDeviceCount();

@@ -433,6 +433,18 @@
     data_type : x
   backward : legacy_expand_grad
 
+- op : legacy_generate_proposals
+  args: (Tensor scores, Tensor bbox_deltas, Tensor im_info, Tensor anchors, Tensor
+    variances, int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size,
+    float eta)
+  output: Tensor (rpn_rois), Tensor (rpn_roi_probs), Tensor (rpn_rois_num)
+  infer_meta:
+    func: LegacyGenerateProposalsInferMeta
+  kernel:
+    func: legacy_generate_proposals
+    data_type: anchors
+  optional: rpn_rois_num
+
 - op : legacy_nearest_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)

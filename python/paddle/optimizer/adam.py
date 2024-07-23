@@ -736,7 +736,7 @@ class Adam(Optimizer):
                     else self._beta2.item(0)
                 )
 
-                if in_dynamic_or_pir_mode():
+                if in_dygraph_mode():
                     master_weight = self._master_weight_dict[key]
                     master_weight = (
                         master_weight[param_group_idx]
@@ -769,6 +769,28 @@ class Adam(Optimizer):
                             find_master,
                             False,
                         )
+                elif in_pir_mode():
+                    master_weight = self._master_weight_dict[key]
+                    master_weight = (
+                        master_weight[param_group_idx]
+                        if master_weight is not None
+                        else None
+                    )
+                    _, _, _, _, _, _ = _C_ops.merged_adam_(
+                        self._param_dict[key][param_group_idx],
+                        grad_dict[key],
+                        lr_dict[key],
+                        self._moment1_dict[key][param_group_idx],
+                        self._moment2_dict[key][param_group_idx],
+                        self._beta1_pow_acc_dict[key][param_group_idx],
+                        self._beta2_pow_acc_dict[key][param_group_idx],
+                        master_weight,
+                        _beta1,
+                        _beta2,
+                        self._epsilon,
+                        find_master,
+                        False,
+                    )
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],

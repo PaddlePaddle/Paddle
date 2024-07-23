@@ -106,7 +106,8 @@ class TestFusedBiasActOp(unittest.TestCase):
         self.rtol = 1e-5
         self.atol = 1e-3
 
-        self.rows = 20
+        self.batch_size = 2
+        self.seq_len = 20
         self.cols = 512
 
         self.dtype = 'float32'
@@ -122,7 +123,9 @@ class TestFusedBiasActOp(unittest.TestCase):
         pass
 
     def generate_inputs(self):
-        self.x = (np.random.rand(self.rows, self.cols) * 16).astype(self.dtype)
+        self.x = (
+            np.random.rand(self.batch_size, self.seq_len, self.cols) * 16
+        ).astype(self.dtype)
         self.bias = np.random.rand(self.cols).astype(self.dtype)
 
     def compute_baseline_output(self):
@@ -205,8 +208,8 @@ class TestGegluFP16(TestFusedBiasActOp):
 
     def compute_baseline_output(self):
         res_tmp = (self.x + self.bias).astype(self.dtype)
-        res_tmp_head = res_tmp[:, : self.cols // 2]
-        res_tmp_tail = res_tmp[:, self.cols // 2 :]
+        res_tmp_head = res_tmp[:, :, : self.cols // 2]
+        res_tmp_tail = res_tmp[:, :, self.cols // 2 :]
         res_tmp_head_act = gelu(res_tmp_head)
         out = res_tmp_head_act * res_tmp_tail
         return out
@@ -219,8 +222,8 @@ class TestSwigluFP16(TestFusedBiasActOp):
 
     def compute_baseline_output(self):
         res_tmp = (self.x + self.bias).astype(self.dtype)
-        res_tmp_head = res_tmp[:, : self.cols // 2]
-        res_tmp_tail = res_tmp[:, self.cols // 2 :]
+        res_tmp_head = res_tmp[:, :, : self.cols // 2]
+        res_tmp_tail = res_tmp[:, :, self.cols // 2 :]
         res_tmp_head_act = swish(res_tmp_head)
         out = res_tmp_head_act * res_tmp_tail
         return out
@@ -239,7 +242,7 @@ class TestQuantFP32(TestFusedBiasActOp):
 
     def generate_inputs(self):
         self.x = np.random.randint(
-            low=-16, high=16, size=(self.rows, self.cols)
+            low=-16, high=16, size=(self.batch_size, self.seq_len, self.cols)
         ).astype('int32')
         self.bias = np.random.rand(self.cols).astype(self.dtype)
         self.dequant_scales = np.random.rand(self.cols).astype('float32')
@@ -301,7 +304,7 @@ class TestDequantFP32(TestQuantFP32):
 
     def generate_inputs(self):
         self.x = np.random.randint(
-            low=-16, high=16, size=(self.rows, self.cols)
+            low=-16, high=16, size=(self.batch_size, self.seq_len, self.cols)
         ).astype('int32')
         self.bias = np.random.rand(self.cols).astype(self.dtype)
         self.dequant_scales = np.ones(self.cols).astype('float32')
@@ -370,8 +373,8 @@ class TestQuantGegluFP16(TestQuantFP32):
     def compute_baseline_output(self):
         input_dequanted = fake_dequant(self.x, self.dequant_scales)
         tmp = (input_dequanted + self.bias).astype('float32')
-        tmp_head = tmp[:, : self.cols // 2]
-        tmp_tail = tmp[:, self.cols // 2 :]
+        tmp_head = tmp[:, :, : self.cols // 2]
+        tmp_tail = tmp[:, :, self.cols // 2 :]
         out_tmp = gelu(tmp_head).astype('float32') * tmp_tail
 
         out = fake_quant(
@@ -400,7 +403,8 @@ class TestFusedBiasActOpBF16(unittest.TestCase):
         self.rtol = 1e-3
         self.atol = 1e-3
 
-        self.rows = 20
+        self.batch_size = 2
+        self.seq_len = 20
         self.cols = 512
 
         self.act_method = 'gelu'
@@ -413,7 +417,12 @@ class TestFusedBiasActOpBF16(unittest.TestCase):
         pass
 
     def generate_inputs(self):
-        self.x = np.random.rand(self.rows, self.cols).astype('float32') * 16
+        self.x = (
+            np.random.rand(self.batch_size, self.seq_len, self.cols).astype(
+                'float32'
+            )
+            * 16
+        )
         self.bias = np.random.rand(self.cols).astype('float32')
 
     def compute_baseline_output(self):
@@ -464,8 +473,8 @@ class TestGegluBF16(TestFusedBiasActOpBF16):
 
     def compute_baseline_output(self):
         res_tmp = self.x + self.bias
-        res_tmp_head = res_tmp[:, : self.cols // 2]
-        res_tmp_tail = res_tmp[:, self.cols // 2 :]
+        res_tmp_head = res_tmp[:, :, : self.cols // 2]
+        res_tmp_tail = res_tmp[:, :, self.cols // 2 :]
         res_tmp_head_act = gelu(res_tmp_head)
         out = res_tmp_head_act * res_tmp_tail
         return convert_float_to_uint16(out)
@@ -483,8 +492,8 @@ class TestSwigluBF16(TestFusedBiasActOpBF16):
 
     def compute_baseline_output(self):
         res_tmp = self.x + self.bias
-        res_tmp_head = res_tmp[:, : self.cols // 2]
-        res_tmp_tail = res_tmp[:, self.cols // 2 :]
+        res_tmp_head = res_tmp[:, :, : self.cols // 2]
+        res_tmp_tail = res_tmp[:, :, self.cols // 2 :]
         res_tmp_head_act = swish(res_tmp_head)
         out = res_tmp_head_act * res_tmp_tail
         return convert_float_to_uint16(out)
@@ -510,7 +519,9 @@ class TestQuantBF16(TestFusedBiasActOpBF16):
 
     def generate_inputs(self):
         self.x = np.random.randint(
-            low=-1000, high=1000, size=(self.rows, self.cols)
+            low=-1000,
+            high=1000,
+            size=(self.batch_size, self.seq_len, self.cols),
         ).astype('int32')
         self.bias = np.zeros(self.cols).astype('float32')
         self.dequant_scales = np.ones(self.cols).astype('float32')
@@ -583,8 +594,8 @@ class TestQuantGegluBF16(TestQuantBF16):
             self.x.astype('float32'), self.dequant_scales
         )
         tmp = (input_dequanted + self.bias).astype('float32')
-        tmp_head = tmp[:, : self.cols // 2]
-        tmp_tail = tmp[:, self.cols // 2 :]
+        tmp_head = tmp[:, :, : self.cols // 2]
+        tmp_tail = tmp[:, :, self.cols // 2 :]
         out_tmp = gelu(tmp_head).astype('float32') * tmp_tail
 
         out = fake_quant(
@@ -623,8 +634,8 @@ class TestQuantSwigluBF16(TestQuantBF16):
             self.x.astype('float32'), self.dequant_scales
         )
         tmp = (input_dequanted + self.bias).astype('float32')
-        tmp_head = tmp[:, : self.cols // 2]
-        tmp_tail = tmp[:, self.cols // 2 :]
+        tmp_head = tmp[:, :, : self.cols // 2]
+        tmp_tail = tmp[:, :, self.cols // 2 :]
         out_tmp = swish(tmp_head).astype('float32') * tmp_tail
 
         out = fake_quant(
@@ -717,7 +728,8 @@ class TestWithoutBias(unittest.TestCase):
         self.rtol = 1e-5
         self.atol = 1e-3
 
-        self.rows = 20
+        self.batch_size = 2
+        self.seq_len = 20
         self.cols = 512
 
         self.dtype = 'float32'
@@ -732,7 +744,9 @@ class TestWithoutBias(unittest.TestCase):
         pass
 
     def generate_inputs(self):
-        self.x = (np.random.rand(self.rows, self.cols) * 16).astype(self.dtype)
+        self.x = (
+            np.random.rand(self.batch_size, self.seq_len, self.cols) * 16
+        ).astype(self.dtype)
         # self.bias = np.random.rand(self.cols).astype(self.dtype)
 
     def compute_baseline_output(self):

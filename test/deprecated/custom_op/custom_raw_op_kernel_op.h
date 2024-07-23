@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace custom_raw_op {
 
@@ -50,12 +50,12 @@ struct ReluFunctor {
 
     const auto &dev_ctx = *phi::DeviceContextPool::Instance().Get(place);
 
-#define LAUNCH_RELU_KERNEL(DevCtxT)                              \
-  do {                                                           \
-    auto &__dev_ctx = dynamic_cast<const DevCtxT &>(dev_ctx);    \
-    paddle::platform::ForRange<DevCtxT> for_range(__dev_ctx, n); \
-    Impl<T> functor(x_data, y_data);                             \
-    for_range(functor);                                          \
+#define LAUNCH_RELU_KERNEL(DevCtxT)                           \
+  do {                                                        \
+    auto &__dev_ctx = dynamic_cast<const DevCtxT &>(dev_ctx); \
+    phi::funcs::ForRange<DevCtxT> for_range(__dev_ctx, n);    \
+    Impl<T> functor(x_data, y_data);                          \
+    for_range(functor);                                       \
   } while (0)
 
 #if defined(__NVCC__) || defined(__HIPCC__)
