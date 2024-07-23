@@ -165,11 +165,9 @@ def test_paddle_to_tensorrt_conversion_r50():
 
     # Step5: run TRTConverter(would lower group_op into tensorrt_engine_op)
     converter = PaddleToTensorRTConverter(program_with_pir, scope)
-    print("program_with_pir", program_with_pir)
     converter.convert_program_to_trt()
 
     output_var = program_with_pir.list_vars()[-1]
-    print("output_var", output_var)
     # Step6: run inference(converted_program)
     output_converted = predict_program(
         program_with_pir, {"input": input_data_min_shape}, [output_var]

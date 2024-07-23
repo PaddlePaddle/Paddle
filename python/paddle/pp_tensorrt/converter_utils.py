@@ -15,9 +15,9 @@
 import logging
 import os
 import sys
-from enum import Enum
 
-# import torch
+
+
 import numpy as np
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -31,12 +31,6 @@ from paddle.base.log_helper import get_logger
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
-
-
-class Frameworks(Enum):
-    NUMPY = "numpy"
-    TORCH = "torch"
-    TRT = "trt"
 
 
 def has_dynamic_shape(shape):

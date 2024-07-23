@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
+import os
 import paddle
+import numpy as np
 
 try:
     import tensorrt as trt
 except Exception as e:
     pass
-from paddle import nn, pir, static
-from paddle.nn import TransformerEncoder, TransformerEncoderLayer
+from paddle import base
+from paddle import pir
+
+import paddle.static as static
+import paddle.nn.functional as F
+import paddle.nn as nn
+from paddle.nn import TransformerEncoderLayer, TransformerEncoder
 
 
 def map_dtype(pd_dtype):
