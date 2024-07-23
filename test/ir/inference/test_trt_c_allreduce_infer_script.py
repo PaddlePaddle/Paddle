@@ -24,7 +24,7 @@ from paddle.distributed import fleet
 from paddle.inference import Config, PrecisionType, create_predictor
 
 
-def run(op_type, precision):
+def run(op_type, reduce_type, precision):
     fleet.init(is_collective=True)
     paddle.enable_static()
     main_program = paddle.static.Program()
@@ -43,10 +43,11 @@ def run(op_type, precision):
         )
         block.append_op(
             type=op_type,
-            inputs={'X': data},
-            outputs={'Out': c_data},
+            inputs={'x': data},
+            outputs={'out': c_data},
             attrs={
                 'ring_id': 0,
+                'reduce_type': reduce_type,
                 'use_calc_stream': True,
                 'use_model_parallel': True,
             },
@@ -117,5 +118,6 @@ if __name__ == "__main__":
         # This script just be called by test_trt_convert_c_allreduce.py
         sys.exit(0)
     op_type = sys.argv[1]
-    precision = sys.argv[2]
-    run(op_type, precision)
+    reduce_type = sys.argv[2]
+    precision = sys.argv[3]
+    run(op_type, reduce_type, precision)
