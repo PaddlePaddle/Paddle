@@ -129,6 +129,46 @@ class RemoveAssignOutPass : public pir::PatternRewritePass {
   }
 };
 
+class FoldAssignPattern
+    : public pir::OpRewritePattern<paddle::dialect::AssignOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::AssignOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::AssignOp op) const override {
+    if (op.x().use_count() > 1) return false;
+    for (auto user_iter = op.out().use_begin(); user_iter != op.out().use_end();
+         user_iter++) {
+      // filter use op such as yield, shadow_output
+      if (user_iter->owner()->num_results() == 0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  void Rewrite(paddle::dialect::AssignOp op,
+               pir::PatternRewriter& rewriter) const override {
+    rewriter.ReplaceAllUsesWith(op.out(), op.x());
+    rewriter.EraseOp(op);
+  }
+};
+
+class FoldAssignPass : public pir::PatternRewritePass {
+ public:
+  FoldAssignPass() : pir::PatternRewritePass("fold_assign_pass", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<FoldAssignPattern>(context);
+    return ps;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateFoldAssignPass() {
+  return std::make_unique<FoldAssignPass>();
+}
+
 std::unique_ptr<pir::Pass> CreateRemoveAssignOutPass() {
   return std::make_unique<RemoveAssignOutPass>();
 }

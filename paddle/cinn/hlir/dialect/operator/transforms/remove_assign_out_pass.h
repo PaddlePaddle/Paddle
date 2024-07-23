@@ -21,6 +21,8 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
+std::unique_ptr<pir::Pass> CreateFoldAssignPass();
+
 std::unique_ptr<pir::Pass> CreateRemoveAssignOutPass();
 }  // namespace ir
 }  // namespace dialect
