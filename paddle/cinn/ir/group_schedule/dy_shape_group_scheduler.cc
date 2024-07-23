@@ -17,6 +17,7 @@
 #include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/vectorizing_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/common/enforce.h"

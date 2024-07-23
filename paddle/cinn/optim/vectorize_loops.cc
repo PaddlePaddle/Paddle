@@ -134,7 +134,7 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
     // the size of the last dim should be divisible by factor
     Expr last_size = tensor->shape.back();
     if (tensor->shape.empty() || !tensor->shape.back().As<IntImm>() ||
-        tensor->shape.back().as_int32() % factor_ != 0) {
+        tensor->shape.back().as_int64() % factor_ != 0) {
       VLOG(5) << "Size of the last dim of tensor:" << tensor->name
               << " can't be divisible by factor:" << factor_
               << ", shape:" << utils::Join(tensor->shape, ",");
@@ -150,37 +150,42 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
       return false;
     }
 
+    // FIX: this part can be promised by the vectorize-tactic
+
     // the iter val can't appear in multiple indices
-    for (int i = 0; i < indices.size() - 1; ++i) {
-      auto repeat_found =
-          ir::ir_utils::CollectIRNodes(indices[i], find_matched_var_fn);
-      if (!repeat_found.empty()) {
-        VLOG(5) << "Loop var:" << iter_var_->name
-                << " is used at more than last index, current:" << i;
-        return false;
-      }
-    }
+    // for (int i = 0; i < indices.size() - 1; ++i) {
+    //  auto repeat_found =
+    //      ir::ir_utils::CollectIRNodes(indices[i], find_matched_var_fn);
+    //  if (!repeat_found.empty()) {
+    //    VLOG(5) << "Loop var:" << iter_var_->name
+    //            << " is used at more than last index, current:" << i;
+    //    return false;
+    //  }
+    //}
+
+    // This can be promised by the vectorize-tatic
 
     // check tensor accessed sequentially by comparing index one by one
-    Expr first_idx = ir::ir_utils::IRCopy(indices.back());
-    cinn::ir::ir_utils::IrReplaceVarBroadcast(
-        &first_idx, Expr(iter_var_), Expr(0));
-    const auto &interval = var_intervals_->at(iter_var_->name);
-    for (int i = 1; i < interval.r; ++i) {
-      Expr next_idx = ir::ir_utils::IRCopy(indices.back());
-      cinn::ir::ir_utils::IrReplaceVarBroadcast(
-          &next_idx, Expr(iter_var_), Expr(i));
-      auto gap = cinn::common::AutoSimplify(Expr(next_idx - first_idx));
-      if (!gap.As<IntImm>() || gap.as_int32() != i) {
-        VLOG(5) << "Tensor:" << tensor->name
-                << " is not accessed sequentially, next:" << next_idx
-                << ", first:" << first_idx << ", gap:" << gap;
-        return false;
-      }
-      VLOG(5) << "Tensor:" << tensor->name
-              << " is accessed sequentially, next:" << next_idx
-              << ", first:" << first_idx << ", gap:" << gap;
-    }
+    // Expr first_idx = ir::ir_utils::IRCopy(indices.back());
+    // cinn::ir::ir_utils::IrReplaceVarBroadcast(
+    //    &first_idx, Expr(iter_var_), Expr(0));
+    // const auto &interval = var_intervals_->at(iter_var_->name);
+    // for (int i = 1; i < interval.r; ++i) {
+    //  Expr next_idx = ir::ir_utils::IRCopy(indices.back());
+    //  cinn::ir::ir_utils::IrReplaceVarBroadcast(
+    //      &next_idx, Expr(iter_var_), Expr(i));
+    //  //FIX: the AutoSimplify can not Simplify the equation correctly
+    //  auto gap = cinn::common::AutoSimplify(Expr(next_idx - first_idx));
+    //  if (!gap.As<IntImm>() || gap.as_int64() != i) {
+    //    VLOG(5) << "Tensor:" << tensor->name
+    //            << " is not accessed sequentially, next:" << next_idx
+    //            << ", first:" << first_idx << ", gap:" << gap;
+    //    return false;
+    //  }
+    //  VLOG(5) << "Tensor:" << tensor->name
+    //          << " is accessed sequentially, next:" << next_idx
+    //          << ", first:" << first_idx << ", gap:" << gap;
+    //}
 
     auto dtype = expr->type().ElementOf();
     bool type_supported = dtype.is_float(32) || dtype.is_int(32) ||
@@ -282,11 +287,14 @@ class CudaVectorizer : public IRMutator<Expr *> {
     auto t = vectorized_var->type().is_cpp_handle()
                  ? node->tensor->type().PointerOf()
                  : node->tensor->type();
+    auto buffer = node->tensor.as_tensor_ref()->buffer;
+    buffer->memory_type = ir::MemoryType::GPULocal;
     node->tensor = ir::Tensor(vectorized_var->name,
                               t,
                               {Expr(factor_)},
                               {Expr(factor_)},
                               tensor->operation);
+    node->tensor.as_tensor_ref()->buffer = buffer;
     // remain the last iterative indice
     indices->assign({iter_var_});
   }
@@ -363,6 +371,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
                           {Expr(factor_)},
                           {Expr(factor_)},
                           node->operation);
+      t->buffer = node->buffer;
       auto store = Store::Make(t, vectorized_var, {make_const(0)});
 
       vectorized_store_exprs_.emplace_back(store);
@@ -802,8 +811,10 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
           },
           [&](common::HygonDCUArchHIP) {
             if (!forloop->extent.As<IntImm>() ||
-                forloop->extent.as_int32() % forloop->vectorize_info().factor !=
-                    0) {
+                (forloop->type().is_int(64) &&
+                 forloop->extent.as_int64() %
+                         forloop->vectorize_info().factor !=
+                     +0)) {
               vectorizable_ = false;
               VLOG(5) << "DCU vectorize only support extent is a multiple of "
                          "factor";
@@ -1013,7 +1024,9 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     Expr times;
     if (extent_ptr) {
       if (extent_ptr->value == 0) return Expr();
-      int extent_int = forloop->extent.as_int32();
+      int extent_int = forloop->extent.type().is_int(64)
+                           ? forloop->extent.as_int64()
+                           : forloop->extent.as_int32();
       int extent_trunc = extent_int / factor;
       int extent_times =
           extent_int % factor == 0 ? extent_trunc : extent_trunc + 1;

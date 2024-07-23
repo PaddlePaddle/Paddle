@@ -47,10 +47,11 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
  private:
   void Visit(const ir::Load *op, Expr *expr) override {
     if (is_inner_store) {
-      if (op->tensor.as_tensor_ref()->buffer->memory_type ==
-              ir::MemoryType::GPULocal ||
-          op->tensor.as_tensor_ref()->buffer->memory_type ==
-              ir::MemoryType::GPUShared)
+      if (op->tensor.as_tensor_ref()->buffer.operator->() != nullptr &&
+          (op->tensor.as_tensor_ref()->buffer->memory_type ==
+               ir::MemoryType::GPULocal ||
+           op->tensor.as_tensor_ref()->buffer->memory_type ==
+               ir::MemoryType::GPUShared))
         return;
 
       auto local_var =
