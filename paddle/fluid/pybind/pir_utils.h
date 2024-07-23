@@ -1,4 +1,5 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,23 +12,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
-
-#include <pybind11/pybind11.h>
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/pir/include/core/value.h"
-
+#include "paddle/pir/include/core/program.h"
 namespace paddle {
 
-namespace pybind {
-using pir::Value;
-void BindPir(pybind11::module *m);
-const phi::DDim &GetValueDims(Value value);
-bool GetValueBoolAttr(Value value, const std::string &attr_name);
-std::string GetValueName(Value value);
-bool HasValueName(const Value &value);
+IR_API std::vector<std::string> GetFeedTargetNames(pir::Program *prog);
+IR_API std::vector<std::string> GetFetchTargetNames(pir::Program *prog);
 
-}  // namespace pybind
 }  // namespace paddle
