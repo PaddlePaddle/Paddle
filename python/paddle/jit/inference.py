@@ -394,8 +394,11 @@ class InferenceEngine:
         if self.predictor is not None:
             self.predictor = None
 
-        for pass_name in self.delete_pass_lists:
-            config.delete_pass(pass_name)
+        if self.enable_new_ir:
+            config.delete_pass(self.delete_pass_lists)
+        else:
+            for pass_name in self.delete_pass_lists:
+                config.delete_pass(pass_name)
 
         self.predictor = create_predictor(config)
 
