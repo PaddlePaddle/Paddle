@@ -37,14 +37,9 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         if core.is_compiled_with_rocm():
             dtype = np.float32
         x = paddle.static.data('x', shape, dtype)
-        y = paddle.nn.Conv2DTranspose(
-            in_channels=4,
-            out_channels=2,
-            kernel_size=1,
-            groups=1,
-            bias_attr=False,
-            dtype=dtype,
-        )(x)
+        y = paddle.static.nn.conv2d_transpose(
+            x, 2, filter_size=1, groups=1, bias_attr=False
+        )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = base.default_main_program().global_block().all_parameters()
@@ -116,7 +111,7 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            if not paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
                 self.func(p)
             self.func_pir(p)
 
@@ -137,14 +132,14 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
         if core.is_compiled_with_rocm():
             dtype = np.float32
         x = paddle.static.data('x', shape, dtype)
-        y = paddle.nn.Conv2DTranspose(
-            in_channels=2,
-            out_channels=2,
-            kernel_size=1,
+        y = paddle.static.nn.conv2d_transpose(
+            input=x,
+            num_filters=2,
+            filter_size=1,
             padding=[1, 0, 0, 1],
             bias_attr=False,
-            dtype=dtype,
-        )(x)
+            use_cudnn=True,
+        )
 
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
@@ -228,14 +223,14 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
         if core.is_compiled_with_rocm():
             dtype = np.float32
         x = paddle.static.data('x', shape, dtype)
-        y = paddle.nn.Conv2DTranspose(
-            in_channels=2,
-            out_channels=2,
-            kernel_size=1,
+        y = paddle.static.nn.conv2d_transpose(
+            input=x,
+            num_filters=2,
+            filter_size=1,
             padding="SAME",
             bias_attr=False,
-            dtype=dtype,
-        )(x)
+            use_cudnn=True,
+        )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = base.default_main_program().global_block().all_parameters()
@@ -318,14 +313,14 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
         if core.is_compiled_with_rocm():
             dtype = np.float32
         x = paddle.static.data('x', shape, dtype)
-        y = paddle.nn.Conv2DTranspose(
-            in_channels=2,
-            out_channels=2,
-            kernel_size=1,
+        y = paddle.static.nn.conv2d_transpose(
+            input=x,
+            num_filters=2,
+            filter_size=1,
             padding="VALID",
             bias_attr=False,
-            dtype=dtype,
-        )(x)
+            use_cudnn=True,
+        )
 
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
@@ -410,16 +405,16 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
             dtype = np.float32
         x = paddle.static.data('x', shape, dtype)
 
-        y = paddle.nn.Conv2DTranspose(
-            in_channels=2,
-            out_channels=2,
-            kernel_size=1,
+        y = paddle.static.nn.conv2d_transpose(
+            input=x,
+            num_filters=2,
+            filter_size=1,
             padding=[1, 1],
-            groups=1,
             bias_attr=False,
+            use_cudnn=True,
+            groups=1,
             data_format="NHWC",
-            dtype=dtype,
-        )(x)
+        )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = base.default_main_program().global_block().all_parameters()
