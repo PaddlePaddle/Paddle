@@ -48,7 +48,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
 
         for dims in [0, 1, 2, 3, 4]:
             for batch in [1, 4]:
-                for dtype in [np.float32, np.int32]:
+                for dtype in [np.float32, np.int32, np.uint8]:
                     for op_inputs in [
                         {"X": ["input_data"]},
                         {"X": ["input_data"], "Min": ["Min_"], "Max": ["Max_"]},
