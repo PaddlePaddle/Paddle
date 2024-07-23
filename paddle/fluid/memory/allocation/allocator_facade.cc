@@ -267,7 +267,7 @@ class AllocatorFacadePrivate {
         if (FLAGS_use_cuda_malloc_async_allocator) {
           PADDLE_ENFORCE_EQ(FLAGS_use_cuda_managed_memory,
                             false,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "Async allocator cannot be used with CUDA "
                                 "managed memory."));
           WrapCUDAMallocAsyncAllocatorForDefault();
@@ -339,7 +339,7 @@ class AllocatorFacadePrivate {
       }
 
       default: {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Unsupported allocator strategy: %d", static_cast<int>(strategy_)));
       }
     }
@@ -370,10 +370,10 @@ class AllocatorFacadePrivate {
                                                           : GetAllocatorMap())
                   : zero_size_allocators_);
     auto iter = allocators.find(place);
-    PADDLE_ENFORCE_NE(iter,
-                      allocators.end(),
-                      platform::errors::NotFound(
-                          "No allocator found for the place, %s", place));
+    PADDLE_ENFORCE_NE(
+        iter,
+        allocators.end(),
+        phi::errors::NotFound("No allocator found for the place, %s", place));
     VLOG(6) << "[GetAllocator]"
             << " place = " << place << " size = " << size
             << " Allocator = " << iter->second;
@@ -424,7 +424,7 @@ class AllocatorFacadePrivate {
       } else {
         PADDLE_ENFORCE_NE(create_if_not_found,
                           false,
-                          platform::errors::NotFound(
+                          phi::errors::NotFound(
                               "No allocator found for stream %s in place %s "
                               "with create_if_not_found = false",
                               stream,
@@ -450,7 +450,7 @@ class AllocatorFacadePrivate {
         iter != default_cuda_malloc_async_allocators_.end())
       return iter->second;
 #endif
-    PADDLE_THROW(platform::errors::NotFound(
+    PADDLE_THROW(phi::errors::NotFound(
         "No StreamSafeCUDAAllocator found for the place, %s", place));
   }
 
@@ -465,7 +465,7 @@ class AllocatorFacadePrivate {
       return allocator->GetDefaultStream();
 #endif
     } else {
-      PADDLE_THROW(platform::errors::NotFound(
+      PADDLE_THROW(phi::errors::NotFound(
           "No StreamSafeCUDAAllocator or CUDAMallocAsyncAllocator found for "
           "the place, %s",
           place));
@@ -475,16 +475,16 @@ class AllocatorFacadePrivate {
   void SetDefaultStream(const phi::GPUPlace& place, gpuStream_t stream) {
     if (auto allocator = std::dynamic_pointer_cast<StreamSafeCUDAAllocator>(
             GetDefaultStreamSafeCUDAAllocator(place))) {
-      PADDLE_ENFORCE_EQ(allocator->GetDefaultStream(),
-                        nullptr,
-                        platform::errors::Unavailable(
-                            "The default stream for "
-                            "StreamSafeCUDAAllocator(%p) in %s has been "
-                            "set to %p, not allow to change it to %p.",
-                            allocator.get(),
-                            place,
-                            allocator->GetDefaultStream(),
-                            stream));
+      PADDLE_ENFORCE_EQ(
+          allocator->GetDefaultStream(),
+          nullptr,
+          phi::errors::Unavailable("The default stream for "
+                                   "StreamSafeCUDAAllocator(%p) in %s has been "
+                                   "set to %p, not allow to change it to %p.",
+                                   allocator.get(),
+                                   place,
+                                   allocator->GetDefaultStream(),
+                                   stream));
 
       allocator->SetDefaultStream(stream);
       VLOG(8) << "Set default stream to " << stream
@@ -494,23 +494,23 @@ class AllocatorFacadePrivate {
     } else if (auto allocator =
                    std::dynamic_pointer_cast<CUDAMallocAsyncAllocator>(
                        GetDefaultStreamSafeCUDAAllocator(place))) {
-      PADDLE_ENFORCE_EQ(allocator->GetDefaultStream(),
-                        nullptr,
-                        platform::errors::Unavailable(
-                            "The default stream for "
-                            "StreamSafeCUDAAllocator(%p) in %s has been "
-                            "set to %p, not allow to change it to %p.",
-                            allocator.get(),
-                            place,
-                            allocator->GetDefaultStream(),
-                            stream));
+      PADDLE_ENFORCE_EQ(
+          allocator->GetDefaultStream(),
+          nullptr,
+          phi::errors::Unavailable("The default stream for "
+                                   "StreamSafeCUDAAllocator(%p) in %s has been "
+                                   "set to %p, not allow to change it to %p.",
+                                   allocator.get(),
+                                   place,
+                                   allocator->GetDefaultStream(),
+                                   stream));
       allocator->SetDefaultStream(stream);
       VLOG(8) << "Set default stream to " << stream
               << " for CUDAMallocAsyncAllocator(" << allocator.get() << ") in "
               << place;
 #endif
     } else {
-      PADDLE_THROW(platform::errors::NotFound(
+      PADDLE_THROW(phi::errors::NotFound(
           "No StreamSafeCUDAAllocator or CUDAMallocAsyncAllocator found for "
           "the place, %s",
           place));
@@ -600,7 +600,7 @@ class AllocatorFacadePrivate {
       } else {
         PADDLE_ENFORCE_NE(create_if_not_found,
                           false,
-                          platform::errors::NotFound(
+                          phi::errors::NotFound(
                               "No allocator found for stream %s in place %s "
                               "with create_if_not_found = false",
                               stream,
@@ -622,7 +622,7 @@ class AllocatorFacadePrivate {
     PADDLE_ENFORCE_NE(
         iter,
         default_stream_safe_xpu_allocators_.end(),
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "No StreamSafeXPUAllocator found for the place, %s", place));
     return iter->second;
   }
@@ -640,7 +640,7 @@ class AllocatorFacadePrivate {
     PADDLE_ENFORCE_EQ(
         allocator->GetDefaultStream(),
         nullptr,
-        platform::errors::Unavailable(
+        phi::errors::Unavailable(
             "The default stream for StreamSafeXPUAllocator(%p) in %s has been "
             "set to %p, not allow to change it to %p.",
             allocator.get(),
@@ -709,7 +709,7 @@ class AllocatorFacadePrivate {
       } else {
         PADDLE_ENFORCE_NE(create_if_not_found,
                           false,
-                          platform::errors::NotFound(
+                          phi::errors::NotFound(
                               "No allocator found for stream %s in place %s "
                               "with create_if_not_found = false",
                               stream,
@@ -732,7 +732,7 @@ class AllocatorFacadePrivate {
     PADDLE_ENFORCE_NE(
         iter,
         default_stream_safe_custom_device_allocators_.end(),
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "No StreamSafeCustomDeviceAllocator found for the place, %s",
             place));
     return iter->second;
@@ -751,7 +751,7 @@ class AllocatorFacadePrivate {
 
     PADDLE_ENFORCE_EQ(allocator->GetDefaultStream(),
                       nullptr,
-                      platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "The default stream for "
                           "StreamSafeCustomDeviceAllocator(%p) in %s has been "
                           "set to %p, not allow to change it to %p.",
@@ -855,7 +855,7 @@ class AllocatorFacadePrivate {
       PADDLE_ENFORCE_EQ(
           strategy_,
           AllocatorStrategy::kAutoGrowth,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "CUDA managed memory is only implemented for auto_growth "
               "strategy, not support %s strategy.\n"
               "Please use auto_growth strategy by command `export "
@@ -864,7 +864,7 @@ class AllocatorFacadePrivate {
               FLAGS_allocator_strategy));
 
       if (!platform::IsGPUManagedMemorySupported(p.device)) {
-        PADDLE_THROW(platform::errors::Unavailable(
+        PADDLE_THROW(phi::errors::Unavailable(
             "Failed to create CUDAManagedAllocator on GPU %d.\n\n"
             "You have enabled CUDA managed memory, but the gpu device does not "
             "support allocating managed memory.\n"
@@ -882,7 +882,7 @@ class AllocatorFacadePrivate {
     PADDLE_ENFORCE_EQ(
         strategy_,
         AllocatorStrategy::kAutoGrowth,
-        platform::errors::Unimplemented(
+        phi::errors::Unimplemented(
             "Only support auto-growth strategy for StreamSafeCUDAAllocator, "
             "the allocator strategy %d is unsupported for multi-stream",
             static_cast<int>(strategy_)));
@@ -890,7 +890,7 @@ class AllocatorFacadePrivate {
       PADDLE_ENFORCE_EQ(
           FLAGS_use_cuda_managed_memory,
           false,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Async allocator cannot be used with CUDA managed memory."));
       VLOG(8) << "[CUDAMallocAsyncAllocator] Init CUDA allocator for stream "
               << stream << " in place " << p;
@@ -915,8 +915,8 @@ class AllocatorFacadePrivate {
     cuda_allocators_[p][stream] =
         std::make_shared<CUDAMallocAsyncAllocator>(allocator, p, stream);
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "CUDAMallocAsyncAllocator is not enabled"));
+    PADDLE_THROW(
+        phi::errors::Unavailable("CUDAMallocAsyncAllocator is not enabled"));
 #endif
   }
 
@@ -1206,8 +1206,8 @@ class AllocatorFacadePrivate {
       }
     }
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "CUDAMallocAsyncAllocator is not enabled"));
+    PADDLE_THROW(
+        phi::errors::Unavailable("CUDAMallocAsyncAllocator is not enabled"));
 #endif
   }
 
@@ -1217,7 +1217,7 @@ class AllocatorFacadePrivate {
     PADDLE_ENFORCE_GT(
         retry_time,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Retry time should be larger than 0, but got %d", retry_time));
     std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
     allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
@@ -1242,7 +1242,7 @@ class AllocatorFacadePrivate {
       for (auto& stream_pair : place_pair.second) {
         PADDLE_ENFORCE_EQ(stream_pair.second->IsAllocThreadSafe(),
                           true,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Public allocators must be thread safe"));
       }
     }
@@ -1263,7 +1263,7 @@ class AllocatorFacadePrivate {
     PADDLE_ENFORCE_EQ(
         strategy_,
         AllocatorStrategy::kAutoGrowth,
-        platform::errors::Unimplemented(
+        phi::errors::Unimplemented(
             "Only support auto-growth strategy for StreamSafeXPUAllocator, "
             "the allocator strategy %d is unsupported for multi-stream",
             static_cast<int>(strategy_)));
@@ -1339,7 +1339,7 @@ class AllocatorFacadePrivate {
     PADDLE_ENFORCE_GT(
         retry_time,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Retry time should be larger than 0, but got %d", retry_time));
     std::shared_ptr<Allocator>& allocator = xpu_allocators_[p][stream];
     allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
@@ -1372,7 +1372,7 @@ class AllocatorFacadePrivate {
     PADDLE_ENFORCE_EQ(
         strategy_,
         AllocatorStrategy::kAutoGrowth,
-        platform::errors::Unimplemented(
+        phi::errors::Unimplemented(
             "Only support auto-growth strategy for "
             "StreamSafeCustomDeviceAllocator, "
             "the allocator strategy %d is unsupported for multi-stream",
@@ -1523,7 +1523,7 @@ class AllocatorFacadePrivate {
     for (auto& pair : allocators) {
       PADDLE_ENFORCE_EQ(pair.second->IsAllocThreadSafe(),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Public allocators must be thread safe"));
     }
   }
@@ -1543,7 +1543,7 @@ class AllocatorFacadePrivate {
     PADDLE_ENFORCE_GT(
         retry_time,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Retry time should be larger than 0, but got %d", retry_time));
     for (auto& pair : allocators_) {
       if (phi::is_gpu_place(pair.first) || phi::is_xpu_place(pair.first)) {
@@ -1628,7 +1628,7 @@ AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
     PADDLE_ENFORCE_NE(
         iter,
         cuda_graph_map_.end(),
-        platform::errors::PermissionDenied(
+        phi::errors::PermissionDenied(
             "No memory pool is prepared for CUDA Graph capturing."));
     VLOG(10) << "Choose CUDA Graph memory pool";
     return iter->second.get();
@@ -1740,7 +1740,7 @@ AllocationPtr AllocatorFacade::Alloc(const phi::Place& place,
     return m->GetAllocator(p, size)->Allocate(size);
   }
 #else
-  PADDLE_THROW(platform::errors::PreconditionNotMet(
+  PADDLE_THROW(phi::errors::PreconditionNotMet(
       "Not compiled with GPU or XPU or CustomDevice."));
 #endif
 }
@@ -1752,7 +1752,7 @@ bool AllocatorFacade::InSameStream(
   gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());  // NOLINT
   return s == GetStream(allocation);
 #else
-  PADDLE_THROW(platform::errors::PreconditionNotMet("Not compiled with GPU."));
+  PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with GPU."));
 #endif
 }
 
@@ -1826,7 +1826,7 @@ void AllocatorFacade::SetDefaultStream(const phi::GPUPlace& place,
 void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
   PADDLE_ENFORCE_EQ(GetAllocatorStrategy(),
                     AllocatorStrategy::kAutoGrowth,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "CUDA Graph is only supported when the "
                         "FLAGS_allocator_strategy=\"auto_growth\", but got "
                         "FLAGS_allocator_strategy=\"%s\"",
@@ -1849,7 +1849,7 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
   auto ref_cnt_iter = cuda_graph_ref_cnt_.find(id);
   PADDLE_ENFORCE_NE(ref_cnt_iter,
                     cuda_graph_ref_cnt_.end(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Cannot find CUDA Graph with memory ID = %d", id));
   auto& ref_cnt = ref_cnt_iter->second;
   --ref_cnt;

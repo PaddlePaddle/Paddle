@@ -106,11 +106,11 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name),
         false,
-        platform::errors::AlreadyExists(
+        phi::errors::AlreadyExists(
             "Getter of global variable %s has been registered", name));
-    PADDLE_ENFORCE_NOT_NULL(getter,
-                            platform::errors::InvalidArgument(
-                                "Getter of %s should not be null", name));
+    PADDLE_ENFORCE_NOT_NULL(
+        getter,
+        phi::errors::InvalidArgument("Getter of %s should not be null", name));
     var_infos_.insert({name, VarInfo(is_public, getter, default_getter)});
   }
 
@@ -122,22 +122,22 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name),
         false,
-        platform::errors::AlreadyExists(
+        phi::errors::AlreadyExists(
             "Getter of global variable %s has been registered", name));
 
     PADDLE_ENFORCE_EQ(
         HasSetterMethod(name),
         false,
-        platform::errors::AlreadyExists(
+        phi::errors::AlreadyExists(
             "Setter of global variable %s has been registered", name));
 
-    PADDLE_ENFORCE_NOT_NULL(getter,
-                            platform::errors::InvalidArgument(
-                                "Getter of %s should not be null", name));
+    PADDLE_ENFORCE_NOT_NULL(
+        getter,
+        phi::errors::InvalidArgument("Getter of %s should not be null", name));
 
-    PADDLE_ENFORCE_NOT_NULL(setter,
-                            platform::errors::InvalidArgument(
-                                "Setter of %s should not be null", name));
+    PADDLE_ENFORCE_NOT_NULL(
+        setter,
+        phi::errors::InvalidArgument("Setter of %s should not be null", name));
     var_infos_.insert(
         {name, VarInfo(is_public, getter, default_getter, setter)});
   }
@@ -146,7 +146,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name),
         true,
-        platform::errors::NotFound("Cannot find global variable %s", name));
+        phi::errors::NotFound("Cannot find global variable %s", name));
     return var_infos_.at(name).getter;
   }
 
@@ -154,7 +154,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name),
         true,
-        platform::errors::NotFound("Cannot find global variable %s", name));
+        phi::errors::NotFound("Cannot find global variable %s", name));
     return var_infos_.at(name).default_getter;
   }
 
@@ -181,7 +181,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasSetterMethod(name),
         true,
-        platform::errors::NotFound("Global variable %s is not writable", name));
+        phi::errors::NotFound("Global variable %s is not writable", name));
     return var_infos_.at(name).setter;
   }
 

@@ -76,16 +76,15 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_EQ(
         places_.size(),
         1,
-        platform::errors::Unimplemented(
+        phi::errors::Unimplemented(
             "Only supported for single place now, but got %d", places_.size()));
     PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
                       0,
-                      platform::errors::Unimplemented(
+                      phi::errors::Unimplemented(
                           "Not supported use_hierarchical_allreduce_ now"));
     PADDLE_ENFORCE_NOT_NULL(
         nccl_ctxs_,
-        platform::errors::NotFound("Can't get flat %d nccl contexts.",
-                                   run_order_));
+        phi::errors::NotFound("Can't get flat %d nccl contexts.", run_order_));
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
     int dev_id = places_[0].device;
     auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);
@@ -97,7 +96,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_GE(
         run_order,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The argument run_order must be >= 0, but got %d.", run_order));
     run_order_ = run_order;
     use_hierarchical_allreduce_ = use_hierarchical_allreduce;
@@ -121,7 +120,7 @@ class NCCLOpHandleBase : public OpHandleBase {
 
     PADDLE_ENFORCE_EQ(places_.size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "HierarchicalAllReduce can only run "
                           "one proccess with one card mode, but got %d cards.",
                           places_.size()));
@@ -164,7 +163,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_GE(
         run_order_,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
     int dev_id = place.device;
@@ -189,7 +188,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_GE(
         run_order_,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     if (!use_hierarchical_allreduce_) {
       FlatNCCLAllReduce(place, sendbuff, recvbuff, count, datatype, op);
@@ -208,7 +207,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_GE(
         run_order_,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     InterReduce(place, sendbuff, recvbuff, count, datatype, op);
     // When a trainer is not in exter allreduce ring
@@ -261,8 +260,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalExterCtx(run_order_);
     PADDLE_ENFORCE_NOT_NULL(
         nccl_ctxs_,
-        platform::errors::NotFound("Can't get exter %d nccl contexts.",
-                                   run_order_));
+        phi::errors::NotFound("Can't get exter %d nccl contexts.", run_order_));
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
