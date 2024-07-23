@@ -62,30 +62,30 @@ class TestFusedMoEOp(OpTest):
 
         self.bmm_w0 = paddle.to_tensor(
             np.array([expert.fc1.weight.numpy() for expert in self.experts]),
-            dtype=paddle.float16,
+            dtype=self.x_type,
         )
         self.bmm_b0 = paddle.to_tensor(
             np.array(
                 [expert.fc1.bias.numpy() for expert in self.experts]
             ).reshape(self.num_expert, 1, -1),
-            dtype=paddle.float16,
+            dtype=self.x_type,
         )
 
         # d_model//2 for swiglu
         self.bmm_w1 = paddle.to_tensor(
             np.array([expert.fc2.weight.numpy() for expert in self.experts]),
-            dtype=paddle.float16,
+            dtype=self.x_type,
         )
         self.bmm_b1 = paddle.to_tensor(
             np.array(
                 [expert.fc2.bias.numpy() for expert in self.experts]
             ).reshape(self.num_expert, 1, -1),
-            dtype=paddle.float16,
+            dtype=self.x_type,
         )
 
         self.tensor_x = paddle.to_tensor(
             np.random.randn(self.batch_size, self.seq_len, self.d_model) * 0.1,
-            dtype=paddle.float16,
+            dtype=self.x_type,
         )
 
         self.bmm_w0.stop_gradient = True
