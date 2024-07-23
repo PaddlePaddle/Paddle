@@ -899,7 +899,6 @@ set_tests_properties(test_imperative_resnet PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES TIMEOUT
                                                                        200)
 set_tests_properties(test_imperative_se_resnext PROPERTIES TIMEOUT 200)
-set_tests_properties(test_stride PROPERTIES TIMEOUT 120)
 set_tests_properties(test_strided_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_translated_layer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pir_translated_layer PROPERTIES TIMEOUT 120)
@@ -1032,7 +1031,6 @@ set(TEST_CINN_OPS
     test_elementwise_min_op
     test_take_along_axis_op
     test_transpose_op
-    test_stride
     test_strided_slice_op
     test_pad_op
     test_pool2d_op
@@ -1243,3 +1241,7 @@ py_test_modules(test_install_check_pir MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
 set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
+
+set_tests_properties(test_stride PROPERTIES TIMEOUT 120)
+py_test_modules(test_stride MODULES test_stride ENVS
+                FLAGS_use_stride_kernel=true)

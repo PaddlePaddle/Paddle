@@ -456,7 +456,6 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
-list(REMOVE_ITEM TEST_OPS "test_stride")
 list(REMOVE_ITEM TEST_OPS "test_graph_reindex")
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
@@ -755,9 +754,6 @@ set_tests_properties(
 )
 set_tests_properties(test_layer_norm_op_deprecated_static_build
                      PROPERTIES TIMEOUT 1500)
-
-py_test_modules(test_stride MODULES test_stride ENVS
-                FLAGS_use_stride_kernel=true)
 
 set_pir_tests_properties()
 
