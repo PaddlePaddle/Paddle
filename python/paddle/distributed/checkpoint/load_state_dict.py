@@ -80,7 +80,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
             tensor_key_list.append(local_tensor_index.tensor_key)
             if local_tensor_index.tensor_key in state_dict:
                 necessary_files.append(file_name)
-    
+
     all_necessary_files = []
     if use_dist:
         paddle.distributed.all_gather_object(
@@ -88,8 +88,10 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
         )
     else:
         all_necessary_files.append(necessary_files)
-    
-    global_necessary_files = [file for files in all_necessary_files for file in files]
+
+    global_necessary_files = [
+        file for files in all_necessary_files for file in files
+    ]
 
     global_necessary_files_set = set(global_necessary_files)
     if len(global_necessary_files_set) <= 0:
@@ -118,7 +120,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
     assert (
         global_data_files_set & global_necessary_files_set
         == global_necessary_files_set
-    ), f"The checkpoint files are not complete. Please check the checkpoint directory:{path}.global_data_files_set:{global_data_files_set}, necessary_data_files_set:{necessary_data_files_set}"
+    ), f"The checkpoint files are not complete. Please check the checkpoint directory:{path}.global_data_files_set:{global_data_files_set}, necessary_data_files_set:{global_necessary_files_set}"
     missing_keys = set(state_dict.keys()) - set(tensor_key_list)
     if len(missing_keys) > 0:
         logger.warning(
@@ -343,7 +345,9 @@ def get_read_items(path, state_dict, process_group, use_dist):
                 global_offset = (
                     tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
                 )
-            cur_chunk_metadata = LocalTensorMetadata(global_offset, local_shape, str(val.dtype).split(".")[1])
+            cur_chunk_metadata = LocalTensorMetadata(
+                global_offset, local_shape, str(val.dtype).split(".")[1]
+            )
             assert (
                 tensor_key in storage_state_dict_metadata
             ), f"tensor_key:{tensor_key} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
@@ -451,11 +455,6 @@ def load_state_dict(
             path, flat_state_dict, process_group, use_dist
         )
 
-        print("=============> rank_to_files")
-        print(rank_to_files)
-
-        print("=============> rank_to_files\n", rank_to_files)
-
         if len(missing_keys) > 0:
             logger.warning(
                 f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
@@ -463,10 +462,6 @@ def load_state_dict(
         if len(rank_to_files) <= 0:
             return
         local_load_files = get_local_load_files(rank_to_files)
-
-        print("===================> local_load_files")
-        print(local_load_files)
-
         # load_infos: {LocalTensorIndex: (rank, file_name)}, which local tensor located in which file, and the file is load in which rank.
         load_infos = get_load_infos(
             path, local_load_files, process_group, use_dist
@@ -476,9 +471,6 @@ def load_state_dict(
         read_items = get_read_items(
             path, flat_state_dict, process_group, use_dist
         )
-        print("===============> read_items: ")
-        for item in read_items:
-            print(item)
         storage_file_to_state_dict = {}
         logger.debug(
             f"before load, state_dict:{flat_state_dict},\n load_infos:{load_infos},\n read_items:{read_items}"
@@ -489,17 +481,14 @@ def load_state_dict(
                 state_dict_in_cpu.append(k)
                 flat_state_dict[k] = v.cuda()
         for item in read_items:
-            print("===================> item: ",item)
             assert (
                 item.local_tensor_index in load_infos
             ), f"item:{item}, load_infos:{load_infos}"
             src_rank, file_name = load_infos[item.local_tensor_index]
-            print("===================> src_rank:{src_rank}, file_name:{file_name}\n", src_rank, file_name)
             storage_chunk_tensor = None
             cur_chunk_tensor = None
             # The src rank need to load the state_dict.
             if src_rank == paddle.distributed.get_rank():
-                print("====> src_rank == paddle.distributed.get_rank(): prepare send data.")
                 if file_name not in storage_file_to_state_dict:
                     # The value in state_dict is not distributed tensor but a normal tensor.
                     storage_file_to_state_dict[file_name] = paddle.load(
@@ -530,7 +519,6 @@ def load_state_dict(
                     storage_chunk_tensor = storage_local_tensor
             # The read item rank need to be assigned
             if item.rank == paddle.distributed.get_rank():
-                print("====> item.rank == paddle.distributed.get_rank(): prepare recv data.")
                 assert (
                     item.local_tensor_index.tensor_key in flat_state_dict
                 ), f"item:{item}, state_dict:{flat_state_dict}"
@@ -567,20 +555,17 @@ def load_state_dict(
                 )
 
             if src_rank == item.rank:
-                print("====> assign value locally")
                 if src_rank == paddle.distributed.get_rank():
                     # assign value locally
                     paddle.assign(storage_chunk_tensor, cur_chunk_tensor)
             else:
                 # assign value remotely
                 if src_rank == paddle.distributed.get_rank():
-                    print("====> send data by broadcast")
                     storage_chunk_tensor = storage_chunk_tensor.contiguous()
                     paddle.distributed.broadcast(
                         storage_chunk_tensor, src=src_rank, group=process_group
                     )
                 else:
-                    print("====> recv data by broadcast")
                     tmp_tensor = paddle.assign(cur_chunk_tensor)
                     paddle.distributed.broadcast(
                         tmp_tensor, src=src_rank, group=process_group

@@ -17,26 +17,8 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/dropout_impl.cu.h"
-#include "paddle/phi/kernels/funcs/hash_utils.h"
-#include "cuda_runtime.h"
-#include <xxhash.h>
 
 namespace phi {
-
-template <typename T, typename Context>
-int64_t hash_tensor(const Context& dev_ctx, phi::DenseTensor print_tensor) {
-  const T* data = nullptr;
-  phi::DenseTensor cpu_tensor;
-  if (print_tensor.place().GetType() == phi::AllocationType::CPU) {
-    data = print_tensor.data<T>();
-  } else {
-    phi::CPUPlace cpu_place;
-    phi::Copy(dev_ctx, print_tensor, cpu_place, false, &cpu_tensor);
-    data = cpu_tensor.data<T>();
-  }
-
-  return static_cast<int64_t>(XXH64(data, sizeof(T) * cpu_tensor.numel(), 0));
-}
 
 template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
@@ -49,12 +31,6 @@ void DropoutRawKernel(const Context& dev_ctx,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask) {
-
-  // std::cout<<"seed "<<seed<<std::endl;
-  
-  // auto x_hash_value = hash_tensor<T, Context>(dev_ctx, x);
-  // std::cout<<"before dropout hash value:  "<<x_hash_value<<std::endl;
-  
   bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(out);
   if (mask) {
@@ -70,9 +46,6 @@ void DropoutRawKernel(const Context& dev_ctx,
                                           seed_tensor.get_ptr(),
                                           mask,
                                           out);
-
-  // auto out_hash_value = hash_tensor<T, Context>(dev_ctx, *out);
-  // std::cout<<"after dropout hash value:  "<<out_hash_value<<std::endl;
 }
 
 template <typename T, typename Context>

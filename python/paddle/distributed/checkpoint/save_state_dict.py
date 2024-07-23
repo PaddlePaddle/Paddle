@@ -24,6 +24,7 @@ from .utils import (
     flatten_state_dict,
 )
 
+
 def check_file_name(file_name, process_group):
     all_unique_id = []
     unique_id = int(file_name.split(".")[0].split("_")[1])
@@ -188,7 +189,7 @@ def save_state_dict(
                 local_state_dict[key] = local_tensor
                 local_tenosr_dtype = str(local_tensor.dtype).split('.')[1]
                 local_state_dict_metadata[key] = LocalTensorMetadata(
-                    global_offset, local_shape , local_tenosr_dtype
+                    global_offset, local_shape, local_tenosr_dtype
                 )
                 local_storage_metadata[
                     LocalTensorIndex(key, tuple(global_offset))
