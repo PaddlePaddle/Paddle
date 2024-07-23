@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
+from test_sparse_attention_op import get_cuda_version
 
 import paddle
 import paddle.nn.functional as F
@@ -42,6 +43,12 @@ class Expert(nn.Layer):
         return x
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestFusedMoEOp(OpTest):
     def setUp(self):
         self.config()
