@@ -1221,7 +1221,7 @@ class TestDygraphInplaceLdexp(TestDygraphInplaceWithContinuous):
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-        with paddle.pir_utils.OldIrGuard():
+        with paddle.base.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype("float64")
             var_a.stop_gradient = False
 
