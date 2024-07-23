@@ -31,7 +31,7 @@ class Graph;
 
 void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   Init("fc_onednn_pass", graph);
 

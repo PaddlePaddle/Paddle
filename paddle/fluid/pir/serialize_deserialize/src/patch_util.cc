@@ -31,14 +31,16 @@ Json BuildAttrJsonPatch(const YAML::Node &action) {
   if (!action["type"].IsDefined() || !action["default"].IsDefined()) {
     j_attr_type = nullptr;
   } else {
-    j_attr_type = GetAttrTypeJson(action);
+    j_attr_type = GetAttrJson(action);
   }
   return j_attr_type;
 }
 
-Json GetAttrTypeJson(const YAML::Node &action) {
+Json GetAttrJson(const YAML::Node &action) {
   Json json;
-  std::string dialect = "0.";
+  std::string dialect = DialectIdMap::Instance()->GetCompressDialectId(
+                            pir::BuiltinDialect::name()) +
+                        ".";
   auto at_name = action["type"].as<std::string>();
   if (at_name == "pir::BoolAttribute") {
     VLOG(8) << "Get BoolAttribute name.";
@@ -93,8 +95,10 @@ Json GetAttrTypeJson(const YAML::Node &action) {
     VLOG(8) << "Get StrAttribute name.";
     json[ID] = dialect + pir::StrAttribute::name();
     json[DATA] = action["default"].as<std::string>();
-  } else {
-    dialect = "1.";
+  } else {  // TODO(czy): add data patch for other attributes
+    dialect = DialectIdMap::Instance()->GetCompressDialectId(
+                  paddle::dialect::OperatorDialect::name()) +
+              ".";
     if (at_name == "paddle::dialect::IntArrayAttribute") {
       VLOG(8) << "Get IntArrayAttribute name.";
       json[ID] = dialect + paddle::dialect::IntArrayAttribute::name();
@@ -116,31 +120,94 @@ Json GetAttrTypeJson(const YAML::Node &action) {
   return json;
 }
 
-Json YamlParser(const std::string &yaml_file) {
-  std::ifstream fin;
-  VLOG(8) << yaml_file;
-  fin.open(yaml_file);
-  if (!fin) {
-    // PADDLE_THROW(phi::errors::Unavailable("File %s is not available.",
-    //                                       yaml_file.c_str()));
-    fin.open("../src/patch.yaml");
+Json GetTypeJson(const YAML::Node &action) {
+  Json json = GetAttrJson(action);
+  return json;
+}
+
+Json BuildTypeJsonPatch(const YAML::Node &action) {
+  Json json;
+  std::string dialect = DialectIdMap::Instance()->GetCompressDialectId(
+                            pir::BuiltinDialect::name()) +
+                        ".";
+  auto type_name = action["type"].as<std::string>();
+  if (type_name == "pir::BoolType") {
+    VLOG(8) << "Get DataType name.";
+    json[ID] = dialect + pir::BoolType::name();
+  } else if (type_name == "pir::BFloat16Type") {
+    VLOG(8) << "Get Place name.";
+    json[ID] = dialect + pir::BFloat16Type::name();
+  } else if (type_name == "pir::Float16Type") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::Float16Type::name();
+  } else if (type_name == "pir::Float32Type") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::Float32Type::name();
+  } else if (type_name == "pir::Float64Type") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::Float64Type::name();
+  } else if (type_name == "pir::Int8Type") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::Int8Type::name();
+  } else if (type_name == "pir::UInt8Type") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::UInt8Type::name();
+  } else if (type_name == "pir::Int16Type") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::Int16Type::name();
+  } else if (type_name == "pir::Int32Type") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::Int32Type::name();
+  } else if (type_name == "pir::Int64Type") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::Int64Type::name();
+  } else if (type_name == "pir::IndexType") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::IndexType::name();
+  } else if (type_name == "pir::Complex64Type") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::Complex64Type::name();
+  } else if (type_name == "pir::Complex128Type") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::Complex128Type::name();
+  } else if (type_name == "pir::VectorType") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::VectorType::name();
+    json[DATA] = Json::array();
+    for (size_t i = 0; i < action["default"].size(); i++) {
+      YAML::Node array_value = action["default"][i];
+      json[DATA].push_back(BuildTypeJsonPatch(array_value));
+    }
+  } else if (type_name == "pir::DenseTensorType") {
+    VLOG(8) << "Get VarType name.";
+    json[ID] = dialect + pir::DenseTensorType::name();
+    Json content = Json::array();
+    YAML::Node tensor_value = action["default"];
+    content.push_back(BuildTypeJsonPatch(tensor_value[0]));
+
+    content.push_back(tensor_value[1].as<std::vector<int>>());  // Dims
+
+    content.push_back(tensor_value[2].as<std::string>());  // DataLayout
+
+    content.push_back(
+        tensor_value[3].as<std::vector<std::vector<int>>>());  // LoD
+
+    content.push_back(tensor_value[4].as<int>());  // offset
+    json[DATA] = content;
   }
-  YAML::Node root = YAML::Load(fin);
-  Json json_patch;
-  if (!root.IsDefined()) {
-    VLOG(8) << "Not defined";
-  } else {
-    VLOG(8) << root;
-  }
-  if (!root["op_patches"].IsSequence()) {
-    VLOG(8) << "Not a sequence";
-  }
-  json_patch["op_patches"] = Json::array();
-  for (size_t i = 0; i < root["op_patches"].size(); i++) {
+  return json;
+}
+
+Json ParseOpPatches(const YAML::Node &root) {
+  Json json_patch = Json::array();
+  for (size_t i = 0; i < root.size(); i++) {
     // parse op_name
-    YAML::Node node = root["op_patches"][i];
+    YAML::Node node = root[i];
     auto op_name = node["op_name"].as<std::string>();
     GetCompressOpName(&op_name);
+    if (op_name == "0.parameter") {
+      op_name = "p";
+    }
     Json j_patch;
     j_patch["op_name"] = op_name;
     j_patch["patch"] = Json::object();
@@ -179,11 +246,104 @@ Json YamlParser(const std::string &yaml_file) {
         std::string col =
             action_name == "modify_attr_name" ? ATTRS : OPRESULTS_ATTRS;
         j_patch["patch"][col].push_back(j_attr);
+      } else if (action_name == "add_input" || action_name == "modify_input" ||
+                 action_name == "delete_input") {
+        // TODO(czy)
+      } else if (action_name == "add_output" ||
+                 action_name == "modify_output" ||
+                 action_name == "delete_output") {
+        // TODO(czy)
+      } else if (action_name == "modify_output_type") {
+        int op_id = action["object"].as<int>();
+        Json j_type;
+        j_type[VALUE_ID] = op_id;
+        j_type[TYPE_TYPE] = BuildTypeJsonPatch(action);
+        j_patch["patch"][OPRESULTS].push_back(j_type);
       }
     }
-    json_patch["op_patches"].push_back(j_patch);
+    json_patch.push_back(j_patch);
   }
   VLOG(8) << json_patch;
+  return json_patch;
+}
+
+Json ParseTypePatches(const YAML::Node &root) {
+  Json json_patch = Json::array();
+  for (size_t i = 0; i < root.size(); i++) {
+    // parse op_name
+    YAML::Node node = root[i];
+    auto type_name = node["type_name"].as<std::string>();
+    Json j_patch;
+    j_patch["type_name"] = type_name;
+    j_patch["patch"] = Json::object();
+    auto actions = node["actions"];
+    for (size_t j = 0; j < actions.size(); j++) {
+      YAML::Node action = actions[j];
+      std::string action_name = action["action"].as<std::string>();
+      if (action_name == "modify_name") {
+        j_patch["NEW_NAME"] = node["default"].as<std::string>();
+      } else if (action_name == "delete_type") {
+        j_patch["NEW_NAME"] = "";
+      }
+    }
+    json_patch.push_back(j_patch);
+  }
+  return json_patch;
+}
+
+Json ParseAttrPatches(const YAML::Node &root) {
+  Json json_patch = Json::array();
+  for (size_t i = 0; i < root.size(); i++) {
+    // parse op_name
+    YAML::Node node = root[i];
+    auto attr_name = node["attr_name"].as<std::string>();
+    Json j_patch;
+    j_patch["attr_name"] = attr_name;
+    j_patch["patch"] = Json::object();
+    auto actions = node["actions"];
+    for (size_t j = 0; j < actions.size(); j++) {
+      YAML::Node action = actions[j];
+      std::string action_name = action["action"].as<std::string>();
+      if (action_name == "modify_name") {
+        j_patch["NEW_NAME"] = node["default"].as<std::string>();
+      } else if (action_name == "delete_attr") {
+        j_patch["NEW_NAME"] = "";
+      }
+    }
+    json_patch.push_back(j_patch);
+  }
+  return json_patch;
+}
+
+Json YamlParser(const std::string &yaml_file) {
+  std::ifstream fin;
+  VLOG(8) << yaml_file;
+  fin.open(yaml_file);
+  if (!fin) {
+    // PADDLE_THROW(phi::errors::Unavailable("File %s is not available.",
+    //                                       yaml_file.c_str()));
+    fin.open("../patch/patch.yaml");
+  }
+  YAML::Node root = YAML::Load(fin);
+  Json json_patch;
+  if (!root.IsDefined()) {
+    VLOG(8) << "Not defined";
+  } else {
+    VLOG(8) << root;
+  }
+  if (!root["op_patches"].IsSequence()) {
+    VLOG(8) << "Not a sequence";
+  }
+  Yaml op_patch = root["op_patches"];
+  json_patch["op_patches"] = ParseOpPatches(op_patch);
+  VLOG(8) << "Finish op json_patch: " << json_patch;
+  Yaml type_patch = root["type_patches"];
+  json_patch["type_patches"] = ParseTypePatches(type_patch);
+  VLOG(8) << "Finish type json_patch: " << json_patch;
+  Yaml attr_patch = root["attr_patches"];
+  json_patch["attr_patches"] = ParseAttrPatches(attr_patch);
+  VLOG(8) << "Finish attr json_patch: " << json_patch;
+  fin.close();
   return json_patch;
 }
 }  // namespace pir
