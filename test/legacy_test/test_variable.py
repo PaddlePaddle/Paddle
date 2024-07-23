@@ -50,15 +50,21 @@ class TestVariable(unittest.TestCase):
         w = b.create_var(
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w"
         )
+        w_dtype = w.dtype
+        if (
+            paddle.framework.use_pir_api()
+            and isinstance(w_dtype, paddle.base.libpaddle.VarDesc.VarType)
+        ):
+            w_dtype = paddle.pir.core.vartype_to_datatype[w_dtype]
         self.assertNotEqual(str(w), "")
-        self.assertEqual(paddle.float64, w.dtype)
+        self.assertEqual(paddle.float64, w_dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual("fc.w@GRAD", w.grad_name)
         self.assertEqual(0, w.lod_level)
 
         w = b.create_var(name='fc.w')
-        self.assertEqual(paddle.float64, w.dtype)
+        self.assertEqual(paddle.float64, w_dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual("fc.w@GRAD", w.grad_name)
@@ -76,33 +82,34 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(None, w.lod_level)
 
     def test_element_size(self):
-        with base.program_guard(Program(), Program()):
-            x = paddle.static.data(name='x1', shape=[2], dtype='bool')
-            self.assertEqual(x.element_size(), 1)
+        if not paddle.framework.use_pir_api():
+            with base.program_guard(Program(), Program()):
+                x = paddle.static.data(name='x1', shape=[2], dtype='bool')
+                self.assertEqual(x.element_size(), 1)
 
-            x = paddle.static.data(name='x2', shape=[2], dtype='float16')
-            self.assertEqual(x.element_size(), 2)
+                x = paddle.static.data(name='x2', shape=[2], dtype='float16')
+                self.assertEqual(x.element_size(), 2)
 
-            x = paddle.static.data(name='x3', shape=[2], dtype='float32')
-            self.assertEqual(x.element_size(), 4)
+                x = paddle.static.data(name='x3', shape=[2], dtype='float32')
+                self.assertEqual(x.element_size(), 4)
 
-            x = paddle.static.data(name='x4', shape=[2], dtype='float64')
-            self.assertEqual(x.element_size(), 8)
+                x = paddle.static.data(name='x4', shape=[2], dtype='float64')
+                self.assertEqual(x.element_size(), 8)
 
-            x = paddle.static.data(name='x5', shape=[2], dtype='int8')
-            self.assertEqual(x.element_size(), 1)
+                x = paddle.static.data(name='x5', shape=[2], dtype='int8')
+                self.assertEqual(x.element_size(), 1)
 
-            x = paddle.static.data(name='x6', shape=[2], dtype='int16')
-            self.assertEqual(x.element_size(), 2)
+                x = paddle.static.data(name='x6', shape=[2], dtype='int16')
+                self.assertEqual(x.element_size(), 2)
 
-            x = paddle.static.data(name='x7', shape=[2], dtype='int32')
-            self.assertEqual(x.element_size(), 4)
+                x = paddle.static.data(name='x7', shape=[2], dtype='int32')
+                self.assertEqual(x.element_size(), 4)
 
-            x = paddle.static.data(name='x8', shape=[2], dtype='int64')
-            self.assertEqual(x.element_size(), 8)
+                x = paddle.static.data(name='x8', shape=[2], dtype='int64')
+                self.assertEqual(x.element_size(), 8)
 
-            x = paddle.static.data(name='x9', shape=[2], dtype='uint8')
-            self.assertEqual(x.element_size(), 1)
+                x = paddle.static.data(name='x9', shape=[2], dtype='uint8')
+                self.assertEqual(x.element_size(), 1)
 
     def test_step_scopes(self):
         prog = Program()
@@ -291,8 +298,9 @@ class TestVariable(unittest.TestCase):
         with base.dygraph.guard():
             self._tostring()
 
-        with base.program_guard(default_main_program()):
-            self._tostring()
+        if not paddle.framework.use_pir_api():
+            with base.program_guard(default_main_program()):
+                self._tostring()
 
     def test_fake_interface_only_api(self):
         b = default_main_program().current_block()
@@ -306,6 +314,12 @@ class TestVariable(unittest.TestCase):
     def test_variable_in_dygraph_mode(self):
         b = default_main_program().current_block()
         var = b.create_var(dtype="float64", shape=[1, 1])
+        var_dtype = var.dtype
+        if (
+            paddle.framework.use_pir_api()
+            and isinstance(var_dtype, paddle.base.libpaddle.VarDesc.VarType)
+        ):
+            var_dtype = paddle.pir.core.vartype_to_datatype[var_dtype]
         with base.dygraph.guard():
             self.assertTrue(var.to_string(True).startswith('name:'))
 
@@ -319,7 +333,7 @@ class TestVariable(unittest.TestCase):
 
             self.assertTrue(var.name.startswith('_generated_var_'))
             self.assertEqual(var.shape, (1, 1))
-            self.assertEqual(var.dtype, paddle.float64)
+            self.assertEqual(var_dtype, paddle.float64)
             self.assertEqual(var.type, base.core.VarDesc.VarType.LOD_TENSOR)
 
     def test_create_selected_rows(self):
@@ -344,8 +358,10 @@ class TestVariable(unittest.TestCase):
             x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
             exe = paddle.static.Executor(base.CPUPlace())
             exe.run(paddle.static.default_startup_program())
-
-            output = exe.run(prog, fetch_list=[x.size()])
+            if not paddle.framework.use_pir_api():
+                output = exe.run(prog, fetch_list=[x.size()])
+            else:
+                output = exe.run(prog, fetch_list=[x.size])
             self.assertEqual(output[0], [24])
 
     def test_detach(self):
@@ -380,19 +396,20 @@ class TestVariable(unittest.TestCase):
                 self.assertTrue((result[1] == feed_data).all())
                 self.assertTrue((result[0] == result[1]).all())
 
-                modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
-                detach_x.set_value(modified_value, scope)
-                result = exe.run(main, fetch_list=[x, detach_x])
-                self.assertTrue((result[1] == modified_value).all())
-                self.assertTrue((result[0] == result[1]).all())
+                if not paddle.framework.use_pir_api():
+                    modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
+                    detach_x.set_value(modified_value, scope)
+                    result = exe.run(main, fetch_list=[x, detach_x])
+                    self.assertTrue((result[1] == modified_value).all())
+                    self.assertTrue((result[0] == result[1]).all())
 
-                modified_value = np.random.uniform(
-                    -1, 1, size=[3, 2, 1]
-                ).astype('float32')
-                x.set_value(modified_value, scope)
-                result = exe.run(main, fetch_list=[x, detach_x])
-                self.assertTrue((result[1] == modified_value).all())
-                self.assertTrue((result[0] == result[1]).all())
+                    modified_value = np.random.uniform(
+                        -1, 1, size=[3, 2, 1]
+                    ).astype('float32')
+                    x.set_value(modified_value, scope)
+                    result = exe.run(main, fetch_list=[x, detach_x])
+                    self.assertTrue((result[1] == modified_value).all())
+                    self.assertTrue((result[0] == result[1]).all())
 
 
 class TestVariableSlice(unittest.TestCase):
@@ -422,7 +439,14 @@ class TestVariableSlice(unittest.TestCase):
             data[..., None, :, None],
         ]
         for i in range(len(outs)):
-            self.assertEqual(outs[i].shape, expected[i].shape)
+            outs_i_shape = outs[i].shape
+            expected_i_shape = expected[i].shape
+            if paddle.framework.use_pir_api():
+                if type(outs_i_shape) == list:
+                    outs_i_shape = tuple(outs_i_shape)
+                if type(expected_i_shape) == list:
+                    expected_i_shape = tuple(expected_i_shape)
+            self.assertEqual(outs_i_shape, expected_i_shape)
             self.assertTrue((result[i] == expected[i]).all())
 
     def _test_item_none_and_decrease(self, place):
@@ -450,7 +474,14 @@ class TestVariableSlice(unittest.TestCase):
         ]
 
         for i in range(len(outs)):
-            self.assertEqual(outs[i].shape, expected[i].shape)
+            outs_i_shape = outs[i].shape
+            expected_i_shape = expected[i].shape
+            if paddle.framework.use_pir_api():
+                if type(outs_i_shape) == list:
+                    outs_i_shape = tuple(outs_i_shape)
+                if type(expected_i_shape) == list:
+                    expected_i_shape = tuple(expected_i_shape)
+            self.assertEqual(outs_i_shape, expected_i_shape)
             self.assertTrue((result[i] == expected[i]).all())
 
     def test_slice(self):
@@ -503,7 +534,7 @@ class TestListIndex(unittest.TestCase):
                 exe = paddle.static.Executor(place)
 
                 exe.run(paddle.static.default_startup_program())
-                fetch_list = [y.name]
+                fetch_list = [y]
 
                 getitem_np = array[np.array(index_mod)]
                 getitem_pp = exe.run(
@@ -588,26 +619,27 @@ class TestListIndex(unittest.TestCase):
             exe = paddle.static.Executor(place)
 
             exe.run(paddle.static.default_startup_program())
-            fetch_list = [y.name]
+            fetch_list = [y]
             array2 = array.copy()
 
             y2 = array2[index_mod1, index_mod2]
 
-            getitem_pp = exe.run(
-                prog,
-                feed={
-                    x.name: array,
-                    index1.name: index_mod1,
-                    index2.name: index_mod2,
-                },
-                fetch_list=fetch_list,
-            )
+            if not paddle.framework.use_pir_api():
+                getitem_pp = exe.run(
+                    prog,
+                    feed={
+                        x.name: array,
+                        index1.name: index_mod1,
+                        index2.name: index_mod2,
+                    },
+                    fetch_list=fetch_list,
+                )
 
-            np.testing.assert_array_equal(
-                y2,
-                getitem_pp[0],
-                err_msg=f'\n numpy:{y2},\n paddle:{getitem_pp[0]}',
-            )
+                np.testing.assert_array_equal(
+                    y2,
+                    getitem_pp[0],
+                    err_msg=f'\n numpy:{y2},\n paddle:{getitem_pp[0]}',
+                )
 
     def test_dygraph_list_index_muti_dim(self):
         paddle.disable_static()
@@ -649,7 +681,7 @@ class TestListIndex(unittest.TestCase):
         exe = paddle.static.Executor(place)
 
         exe.run(paddle.static.default_startup_program())
-        fetch_list = [y.name]
+        fetch_list = [y]
         array2 = array.copy()
 
         try:
@@ -707,7 +739,7 @@ class TestListIndex(unittest.TestCase):
         exe = paddle.static.Executor(place)
 
         exe.run(paddle.static.default_startup_program())
-        fetch_list = [y.name]
+        fetch_list = [y]
         array2 = array.copy()
         try:
             index = (
@@ -909,7 +941,7 @@ class TestListIndex(unittest.TestCase):
                 exe = paddle.static.Executor(place)
 
                 exe.run(paddle.static.default_startup_program())
-                fetch_list = [x1_out.name, x2_out.name]
+                fetch_list = [x1_out, x2_out]
 
                 setitem_pp = exe.run(
                     prog,
@@ -987,7 +1019,7 @@ class TestListIndex(unittest.TestCase):
                 prog = paddle.static.default_main_program()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
-                fetch_list = [x1_out.name, x2_out.name, y1.name, y2.name]
+                fetch_list = [x1_out, x2_out, y1, y2]
 
                 setitem_pp = exe.run(
                     prog,
