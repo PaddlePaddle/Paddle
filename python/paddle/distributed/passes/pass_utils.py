@@ -23,9 +23,6 @@ from paddle.base.framework import Parameter, Program
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
-from paddle.distributed.auto_parallel.static.dist_tensor import (
-    DistributedTensor,
-)
 from paddle.distributed.auto_parallel.static.utils import (
     get_logger,
     is_backward_op,
