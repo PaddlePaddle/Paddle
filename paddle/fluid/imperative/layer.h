@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -36,7 +37,6 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace framework {
@@ -133,14 +133,14 @@ class VarBase {
   const framework::Variable& GradVar() const {
     PADDLE_ENFORCE_NOT_NULL(
         grad_var_,
-        platform::errors::NotFound("Gradient of %s does not exist", Name()));
+        phi::errors::NotFound("Gradient of %s does not exist", Name()));
     return grad_var_->Var();
   }
 
   framework::Variable* MutableGradVar() {
     PADDLE_ENFORCE_NOT_NULL(
         grad_var_,
-        platform::errors::NotFound("Gradient of %s does not exist", Name()));
+        phi::errors::NotFound("Gradient of %s does not exist", Name()));
     return grad_var_->MutableVar();
   }
 
@@ -228,14 +228,14 @@ class VarBase {
     return var_->ForwardDataType();
   }
 
-  const platform::Place Place() const { return var_->Place(); }
+  const phi::Place Place() const { return var_->Place(); }
 
   void ClearGradient(bool set_to_zero = true);
 
   void _GradientSetEmpty(bool is_empty = true);
   bool _IsGradientSetEmpty();
 
-  std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
+  std::shared_ptr<VarBase> NewVarBase(const phi::Place& dst_place,
                                       const bool blocking) const;
 
   void CopyFrom(const imperative::VarBase& src, bool blocking);
@@ -295,7 +295,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameVarBaseMap& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
@@ -304,7 +304,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameTensorMap& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
 void ClearNoNeedBufferInputs(OpBase* op);

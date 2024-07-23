@@ -40,8 +40,8 @@ inline ncclDataType_t NvInferDtypeToNCCLDType(nvinfer1::DataType type) {
   } else if (type == nvinfer1::DataType::kINT32) {
     return ncclInt32;
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "This datatype in nccl is not supported."));
+    PADDLE_THROW(
+        phi::errors::Unimplemented("This datatype in nccl is not supported."));
   }
 }
 #endif
@@ -93,16 +93,16 @@ bool CAllReducePluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input of CAllReduce plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      platform::errors::InvalidArgument("The pos(%d) should be less than the "
-                                        "num(%d) of the input and the output.",
-                                        pos,
-                                        nb_inputs + nb_outputs));
+      phi::errors::InvalidArgument("The pos(%d) should be less than the "
+                                   "num(%d) of the input and the output.",
+                                   pos,
+                                   nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0 || pos == 1) {
@@ -138,7 +138,7 @@ nvinfer1::DataType CAllReducePluginDynamic::getOutputDataType(
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The CAllReduce Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
@@ -179,15 +179,15 @@ int CAllReducePluginDynamic::enqueue(
       break;
 
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument("Invalid reduce type: %d",
-                                                     red_type_));
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Invalid reduce type: %d", red_type_));
   }
   const auto& comm_context_manager =
       phi::distributed::CommContextManager::GetInstance();
   if (FLAGS_dynamic_static_unified_comm) {
     PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id_)),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "You choose to use new communication library by "
                           "setting environment "
                           "variable FLAGS_dynamic_static_unified_comm True. "
@@ -198,7 +198,7 @@ int CAllReducePluginDynamic::enqueue(
         comm_context_manager.Get(std::to_string(ring_id_)));
     PADDLE_ENFORCE_NE(comm_ctx,
                       nullptr,
-                      platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "NCCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
     auto stream = comm_ctx->GetStream();
@@ -215,13 +215,13 @@ int CAllReducePluginDynamic::enqueue(
   } else {
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
     cudaStream_t custream = use_calc_stream_ ? stream : comm->stream();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
-                                                                recvbuff,
-                                                                numel,
-                                                                dtype,
-                                                                nccl_red_type,
-                                                                comm->comm(),
-                                                                custream));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(sendbuff,
+                                                           recvbuff,
+                                                           numel,
+                                                           dtype,
+                                                           nccl_red_type,
+                                                           comm->comm(),
+                                                           custream));
     VLOG(3) << "old NCCLCommContext has ring_id_ " << ring_id_;
   }
 #endif

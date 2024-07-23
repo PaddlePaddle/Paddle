@@ -34,12 +34,12 @@ class RetryAllocator : public Allocator {
       : underlying_allocator_(std::move(allocator)), retry_time_(retry_ms) {
     PADDLE_ENFORCE_NOT_NULL(
         underlying_allocator_,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Underlying allocator of RetryAllocator is NULL"));
     PADDLE_ENFORCE_EQ(
         underlying_allocator_->IsAllocThreadSafe(),
         true,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "Underlying allocator of RetryAllocator is not thread-safe"));
   }
 
@@ -48,7 +48,7 @@ class RetryAllocator : public Allocator {
  protected:
   void FreeImpl(phi::Allocation* allocation) override;
   phi::Allocation* AllocateImpl(size_t size) override;
-  uint64_t ReleaseImpl(const platform::Place& place) override {
+  uint64_t ReleaseImpl(const phi::Place& place) override {
     return underlying_allocator_->Release(place);
   }
 

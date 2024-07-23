@@ -49,7 +49,7 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
     case phi::Backend::GPU:
       PADDLE_ENFORCE(mixed_precision_ == phi::DataType::FLOAT16 ||
                          mixed_precision_ == phi::DataType::BFLOAT16,
-                     platform::errors::InvalidArgument(
+                     phi::errors::InvalidArgument(
                          "mixed_precision of %s currently only supported fp16 "
                          "and bf16, not support %s.",
                          experimental::BackendToString(backend_),
@@ -58,14 +58,14 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
     case phi::Backend::XPU:
     case phi::Backend::CUSTOM:
       PADDLE_ENFORCE(mixed_precision_ == phi::DataType::FLOAT16,
-                     platform::errors::InvalidArgument(
+                     phi::errors::InvalidArgument(
                          "mixed_precision of %s currently only supported fp16 "
                          "and bf16, not support %s.",
                          experimental::BackendToString(backend_),
                          phi::DataTypeToString(mixed_precision_)));
       break;
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "mixed_precision currently not supported place GPU or XPU or CUSTOM, "
           "not support %s.",
           experimental::BackendToString(backend_)));
@@ -74,7 +74,7 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
 }
 
 void ConvertToMixedPrecisionPass::LoadModel() {
-  framework::Executor exe{platform::CPUPlace{}};
+  framework::Executor exe{phi::CPUPlace{}};
   // If we did not find the provided weight path,
   // we assume that the model to be converted only has a model file and no
   // params file, we believe this situation is reasonable. In this case, weight
@@ -177,7 +177,7 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
     op->SetAttr("file_path", save_params_path);
     op->CheckAttrs();
 
-    framework::Executor exe(platform::CPUPlace{});
+    framework::Executor exe(phi::CPUPlace{});
     exe.Run(save_program, &scope_, 0, true, true);
   };
 

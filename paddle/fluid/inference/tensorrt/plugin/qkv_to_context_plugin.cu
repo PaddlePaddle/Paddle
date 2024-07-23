@@ -40,7 +40,7 @@ inline int round_up(int seq_len, int multiple = 32) {
   PADDLE_ENFORCE_GT(
       multiple,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "multiple should be a positive number, but it's (%d)", multiple));
   return ((seq_len + multiple - 1) / multiple) * multiple;
 }
@@ -166,7 +166,7 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
   // output, (B, seq_len, hidden)
   PADDLE_ENFORCE_EQ(output_index,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "There is only one output of the EmbEltwiseLayernorm, "
                         "so the index should be zero,"
                         "but it's (%d)",
@@ -174,7 +174,7 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The Input of the EmbEltwiseLayernorm should be 3, but we found "
           "it has (%d) inputs",
           nb_inputs));
@@ -199,8 +199,7 @@ void QkvToContextPluginDynamic::configurePlugin(
     int device_id = 0;
     cudaGetDevice(&device_id);
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(
-            platform::CUDAPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
     const phi::GPUContext &dev_ctx = *device_ctx;
     auto stream = dev_ctx.stream();
     tensor_.Resize({batch, seq_len, seq_len, head_number_});
@@ -208,12 +207,12 @@ void QkvToContextPluginDynamic::configurePlugin(
       tensor_.Resize({batch, seq_len, seq_len, 1});
       int blocks = batch * 1 * seq_len;
       mask_half_ = reinterpret_cast<half *>(
-          tensor_.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
+          tensor_.mutable_data<int16_t>(phi::GPUPlace(device_id)));
       reset_qk_bias<<<blocks, 1024, 0, stream>>>(
           mask_half_, real_seq_len, seq_len);
     } else if (in[0].desc.type == nvinfer1::DataType::kFLOAT) {
       fake_qk_bias_ = reinterpret_cast<float *>(
-          tensor_.mutable_data<int32_t>(platform::CUDAPlace(device_id)));
+          tensor_.mutable_data<int32_t>(phi::GPUPlace(device_id)));
       int64_t size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -223,7 +222,7 @@ void QkvToContextPluginDynamic::configurePlugin(
           cudaMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
 #endif
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "The QKV TRT Plugin's input type should be float or half."));
     }
   }
@@ -236,16 +235,16 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      platform::errors::InvalidArgument("The pos(%d) should be less than the "
-                                        "num(%d) of the input and the output.",
-                                        pos,
-                                        nb_inputs + nb_outputs));
+      phi::errors::InvalidArgument("The pos(%d) should be less than the "
+                                   "num(%d) of the input and the output.",
+                                   pos,
+                                   nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
@@ -280,7 +279,7 @@ nvinfer1::DataType QkvToContextPluginDynamic::getOutputDataType(
   PADDLE_ENFORCE_EQ(
       index,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The EmbEltwiseLayernorm Plugin only has one input, so the "
           "index value should be 0, but get %d.",
           index));
@@ -344,8 +343,8 @@ int QkvToContextPluginDynamic::enqueue(
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp32";
-    auto *multihead_temp_data = multihead_temp_tensor.mutable_data<float>(
-        platform::CUDAPlace(device_id));
+    auto *multihead_temp_data =
+        multihead_temp_tensor.mutable_data<float>(phi::GPUPlace(device_id));
     auto *qkptr = multihead_temp_data;
     auto *tptr = multihead_temp_data + scratch_size;
 
@@ -355,8 +354,8 @@ int QkvToContextPluginDynamic::enqueue(
     float *qk_bias = const_cast<float *>(static_cast<const float *>(inputs[1]));
     if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
-      auto *temp_qk_bias = temp_qk_bias_tensor.mutable_data<float>(
-          platform::CUDAPlace(device_id));
+      auto *temp_qk_bias =
+          temp_qk_bias_tensor.mutable_data<float>(phi::GPUPlace(device_id));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -369,9 +368,8 @@ int QkvToContextPluginDynamic::enqueue(
     // fit to [batch, head_num, length, length] + [1, 1, length, length]
     if (ProductDim(input_desc[1].dims) == (seq_len * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
-      auto *temp_qk_bias =
-          reinterpret_cast<float *>(temp_qk_bias_tensor.mutable_data<float>(
-              platform::CUDAPlace(device_id)));
+      auto *temp_qk_bias = reinterpret_cast<float *>(
+          temp_qk_bias_tensor.mutable_data<float>(phi::GPUPlace(device_id)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast_batch_head_number<<<grid, block, 0, stream>>>(
@@ -392,8 +390,7 @@ int QkvToContextPluginDynamic::enqueue(
         batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(
-            platform::CUDAPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
 
     const phi::GPUContext &dev_ctx = *device_ctx;
     phi::funcs::MultiheadGPUComputeFunctor<float> multihead_compute_func;
@@ -430,7 +427,7 @@ int QkvToContextPluginDynamic::enqueue(
     }
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
-            platform::CUDAPlace(device_id));
+            phi::GPUPlace(device_id));
 
     half *qkptr = reinterpret_cast<half *>(multihead_temp_data);
     half *tptr = qkptr + scratch_size;
@@ -441,9 +438,8 @@ int QkvToContextPluginDynamic::enqueue(
     half *qk_bias = const_cast<half *>(static_cast<const half *>(inputs[1]));
     if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
-      auto *temp_qk_bias =
-          reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
+      auto *temp_qk_bias = reinterpret_cast<half *>(
+          temp_qk_bias_tensor.mutable_data<int16_t>(phi::GPUPlace(device_id)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -456,9 +452,8 @@ int QkvToContextPluginDynamic::enqueue(
     // fit to [batch, head_num, length, length] + [1, 1, length, length]
     if (ProductDim(input_desc[1].dims) == (seq_len * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
-      auto *temp_qk_bias =
-          reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
+      auto *temp_qk_bias = reinterpret_cast<half *>(
+          temp_qk_bias_tensor.mutable_data<int16_t>(phi::GPUPlace(device_id)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast_batch_head_number<<<grid, block, 0, stream>>>(
@@ -495,8 +490,7 @@ int QkvToContextPluginDynamic::enqueue(
     }
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(
-            platform::CUDAPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
 
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
@@ -536,7 +530,7 @@ int QkvToContextPluginDynamic::enqueue(
           tptr, output, batch, seq_len, head_number_, head_size_);
     }
 #else
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "The Ernie(Bert) TensorRT Plugin should be "
         "complied with CUDA version >= 10.0 when running with fp16. "
         "Please recomplie it or try to use fp32 by set "
@@ -544,7 +538,7 @@ int QkvToContextPluginDynamic::enqueue(
         "max_input_shape, opt_input_shape, true"));
 #endif
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "The QKV TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;

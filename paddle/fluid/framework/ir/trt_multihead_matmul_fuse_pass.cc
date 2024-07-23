@@ -779,12 +779,12 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
 
-    auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bq_data = bq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bk_data = bk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* wq_data = wq_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* wk_data = wk_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* wv_data = wv_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* bq_data = bq_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* bk_data = bk_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* bv_data = bv_tensor->mutable_data<float>(phi::CPUPlace());
 
     auto combined_w_dims =
         common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
@@ -802,7 +802,7 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     phi::DenseTensor tmp_combined_w_tensor;
     tmp_combined_w_tensor.Resize(combined_w_dims);
     auto* tmp_combined_w_data =
-        tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
+        tmp_combined_w_tensor.mutable_data<float>(phi::CPUPlace());
 
     std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
     int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
@@ -818,19 +818,18 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     }
 
     wq_tensor->Resize(combined_w_dims);
-    auto* new_combined_w_data =
-        wq_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* new_combined_w_data = wq_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_combined_w_data,
            tmp_combined_w_data,
            sizeof(float) * wq_tensor->numel());
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
-    paddle::memory::Release(platform::CPUPlace());
+    paddle::memory::Release(phi::CPUPlace());
 
     phi::DenseTensor tmp_combined_bias_tensor;
     tmp_combined_bias_tensor.Resize(combined_bias_dims);
     auto* tmp_combined_bias_data =
-        tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());
+        tmp_combined_bias_tensor.mutable_data<float>(phi::CPUPlace());
 
     size_t bias_size = bq_tensor->numel();
     memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
@@ -842,13 +841,13 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
     bq_tensor->Resize(combined_bias_dims);
     auto* new_combined_bias_data =
-        bq_tensor->mutable_data<float>(platform::CPUPlace());
+        bq_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_combined_bias_data,
            tmp_combined_bias_data,
            sizeof(float) * bq_tensor->numel());
 
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
-    paddle::memory::Release(platform::CPUPlace());
+    paddle::memory::Release(phi::CPUPlace());
 
     auto reshape_desc = reshape2->Op();
     int head_number =
@@ -1081,7 +1080,7 @@ void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::Fatal(
+      phi::errors::Fatal(
           "During the multiheadMatmul pass, The scope should not be null."));
 
   int fusion_count = BuildFusionV2(graph, name_scope_, scope);
@@ -1102,20 +1101,20 @@ void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
         }
       } else {
         PADDLE_THROW(
-            platform::errors::Fatal("Use transformer'varseqlen need "
-                                    "embedding_eltwise_layernorm_fuse_pass or "
-                                    "preln_embedding_eltwise_layernorm_fuse_"
-                                    "pass. please use no_varseqlen"));
+            phi::errors::Fatal("Use transformer'varseqlen need "
+                               "embedding_eltwise_layernorm_fuse_pass or "
+                               "preln_embedding_eltwise_layernorm_fuse_"
+                               "pass. please use no_varseqlen"));
       }
     } else if (!use_varseqlen && pos_id.empty()) {
       VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(
-          platform::errors::Fatal("Use transformer'varseqlen need config: "
-                                  "use_varseqlen, set pos_id, set "
-                                  "mask_id. Or not use varseqlen, do not set "
-                                  "pos_id. Please "
-                                  "reconfig"));
+          phi::errors::Fatal("Use transformer'varseqlen need config: "
+                             "use_varseqlen, set pos_id, set "
+                             "mask_id. Or not use varseqlen, do not set "
+                             "pos_id. Please "
+                             "reconfig"));
     }
     graph->Set(kMultiheadMatmulPass, new bool(true));
   }
@@ -1245,12 +1244,12 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
 
-    auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bq_data = bq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bk_data = bk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* wq_data = wq_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* wk_data = wk_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* wv_data = wv_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* bq_data = bq_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* bk_data = bk_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* bv_data = bv_tensor->mutable_data<float>(phi::CPUPlace());
 
     auto combined_w_dims =
         common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
@@ -1268,7 +1267,7 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     phi::DenseTensor tmp_combined_w_tensor;
     tmp_combined_w_tensor.Resize(combined_w_dims);
     auto* tmp_combined_w_data =
-        tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
+        tmp_combined_w_tensor.mutable_data<float>(phi::CPUPlace());
 
     std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
     int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
@@ -1284,19 +1283,18 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     }
 
     wq_tensor->Resize(combined_w_dims);
-    auto* new_combined_w_data =
-        wq_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* new_combined_w_data = wq_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_combined_w_data,
            tmp_combined_w_data,
            sizeof(float) * wq_tensor->numel());
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
-    paddle::memory::Release(platform::CPUPlace());
+    paddle::memory::Release(phi::CPUPlace());
 
     phi::DenseTensor tmp_combined_bias_tensor;
     tmp_combined_bias_tensor.Resize(combined_bias_dims);
     auto* tmp_combined_bias_data =
-        tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());
+        tmp_combined_bias_tensor.mutable_data<float>(phi::CPUPlace());
 
     size_t bias_size = bq_tensor->numel();
     memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
@@ -1308,13 +1306,13 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
 
     bq_tensor->Resize(combined_bias_dims);
     auto* new_combined_bias_data =
-        bq_tensor->mutable_data<float>(platform::CPUPlace());
+        bq_tensor->mutable_data<float>(phi::CPUPlace());
     memcpy(new_combined_bias_data,
            tmp_combined_bias_data,
            sizeof(float) * bq_tensor->numel());
 
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
-    paddle::memory::Release(platform::CPUPlace());
+    paddle::memory::Release(phi::CPUPlace());
 
     auto reshape_desc = reshape2->Op();
     int head_number =
@@ -1496,7 +1494,7 @@ void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::Fatal(
+      phi::errors::Fatal(
           "During the multiheadMatmul pass, The scope should not be null."));
 
   int fusion_count = BuildFusionV3(graph, name_scope_, scope);
@@ -1517,20 +1515,20 @@ void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
         }
       } else {
         PADDLE_THROW(
-            platform::errors::Fatal("Use transformer'varseqlen need "
-                                    "embedding_eltwise_layernorm_fuse_pass or "
-                                    "preln_embedding_eltwise_layernorm_fuse_"
-                                    "pass. please use no_varseqlen"));
+            phi::errors::Fatal("Use transformer'varseqlen need "
+                               "embedding_eltwise_layernorm_fuse_pass or "
+                               "preln_embedding_eltwise_layernorm_fuse_"
+                               "pass. please use no_varseqlen"));
       }
     } else if (!use_varseqlen && pos_id.empty()) {
       VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(
-          platform::errors::Fatal("Use transformer'varseqlen need config: "
-                                  "use_varseqlen, set pos_id, set "
-                                  "mask_id. Or not use varseqlen, do not set "
-                                  "pos_id. Please "
-                                  "reconfig"));
+          phi::errors::Fatal("Use transformer'varseqlen need config: "
+                             "use_varseqlen, set pos_id, set "
+                             "mask_id. Or not use varseqlen, do not set "
+                             "pos_id. Please "
+                             "reconfig"));
     }
     graph->Set(kMultiheadMatmulPass, new bool(true));
   }

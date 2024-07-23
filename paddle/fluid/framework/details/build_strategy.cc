@@ -18,7 +18,6 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
@@ -29,16 +28,6 @@ PD_DECLARE_bool(use_cinn);
 #endif
 
 namespace paddle::framework::details {
-
-static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
-  // Should fix the allreduce op order if scheduling
-  // them in multiple threads or processes to avoid hang.
-  // NOTE: ParallelGraph would execute this pass on each graph, so
-  // don't need to append it here.
-  return (!strategy.enable_sequential_execution_ &&
-          strategy.num_trainers_ > 1) &&
-         !strategy.enable_parallel_graph_;
-}
 
 static inline void ConvertDefaultValue(paddle::optional<bool> *default_value) {
   if (*default_value == paddle::none) {
@@ -62,25 +51,18 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 #endif
 
-    AppendPassWithCheck(strategy_.enable_sequential_execution_,
-                        "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
-    AppendAddReaderDependencyPass();
     AppendMultiDevPass();
     AppendPassToSetMkldnnAttr("onednn_placement_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
     // all original and fused operators. But no operators can be enabled this
     // attr if putting it after MultiDevPass.
-    AppendPassWithCheck(strategy_.cache_runtime_context_,
-                        "runtime_context_cache_pass");
-    AppendPassWithCheck(strategy_.remove_unnecessary_lock_,
-                        "modify_op_lock_and_record_event_pass");
-
-    SetCollectiveContext();
+    // AppendPassWithCheck(strategy_.cache_runtime_context_,
+    //                     "runtime_context_cache_pass");
   }
 
   void ResolveOptionConfliction() {
@@ -93,16 +75,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
           << "fuse_all_reduce_ops doesn't work under "
              "parallel_graph.";
-      strategy_.fuse_all_reduce_ops_ = false;
-    }
-    if (strategy_.is_distribution_) {
-      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
-          << "Currently, fuse_all_optimizer_ops only works under "
-             "Non-distributed mode.";
-      strategy_.fuse_all_optimizer_ops_ = false;
-      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
-          << "Currently, fuse_all_reduce_ops_ only works under "
-             "Non-distributed mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
@@ -193,61 +165,16 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #endif
   }
 
-  void SetCollectiveContext() const {
-    CollectiveContext *context = CollectiveContext::GetInstance();
-    context->endpoints_ = strategy_.trainers_endpoints_;
-    context->trainer_id_ = strategy_.trainer_id_;
-    PADDLE_ENFORCE_GE(
-        strategy_.trainer_id_,
-        0,
-        platform::errors::InvalidArgument(
-            "The trainer_id_ of strategy_ must be greater than or equal to 0, "
-            "but received strategy_.trainer_id_ = %d.",
-            strategy_.trainer_id_));
-
-    if (strategy_.trainer_id_ > 0 && !strategy_.trainers_endpoints_.empty()) {
-      PADDLE_ENFORCE_LT(
-          static_cast<size_t>(strategy_.trainer_id_),
-          strategy_.trainers_endpoints_.size(),
-          platform::errors::InvalidArgument(
-              "The trainer_id_ of strategy_ must be less than the "
-              "size of vector strategy_.trainers_endpoints_, "
-              "but received strategy_.trainer_id_ = %d, "
-              "the size of strategy_.trainers_endpoints_ is %d.",
-              static_cast<size_t>(strategy_.trainer_id_),
-              strategy_.trainers_endpoints_.size()));
-    }
-    VLOG(1) << "CollectiveContext:" << context->String();
-  }
-
-  void AppendAddReaderDependencyPass() {
-    AppendPass("add_reader_dependency_pass");
-  }
-
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass() {
     ir::Pass *multi_devices_pass = nullptr;
-    if (strategy_.async_mode_) {
-      multi_devices_pass = AppendPass("async_multi_devices_pass").get();
-    } else if (strategy_.is_distribution_) {
-      multi_devices_pass = AppendPass("dist_multi_devices_pass").get();
-    } else {
-      switch (strategy_.reduce_) {
-        case BuildStrategy::ReduceStrategy::kAllReduce:
-          multi_devices_pass =
-              AppendPass("all_reduce_mode_multi_devices_pass").get();
-          break;
-        case BuildStrategy::ReduceStrategy::kReduce:
-          multi_devices_pass =
-              AppendPass("reduce_mode_multi_devices_pass").get();
-          break;
-        case BuildStrategy::ReduceStrategy::kNoReduce:
-          multi_devices_pass = AppendPass("no_reduce_multi_devices_pass").get();
-          break;
-        default:
-          PADDLE_THROW(
-              platform::errors::Unimplemented("Unknown reduce strategy."));
-      }
+    switch (strategy_.reduce_) {
+      case BuildStrategy::ReduceStrategy::kAllReduce:
+        multi_devices_pass =
+            AppendPass("all_reduce_mode_multi_devices_pass").get();
+        break;
+      default:
+        PADDLE_THROW(phi::errors::Unimplemented("Unknown reduce strategy."));
     }
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
                                                          &strategy_);
@@ -288,7 +215,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #else
     PADDLE_ENFORCE_NE(FLAGS_use_mkldnn,
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "FLAGS_use_mkldnn has been set to True, but "
                           "PaddlePaddle is compiled without MKLDNN. "
                           "Please compile PaddlePaddle with MKLDNN first."));
@@ -316,7 +243,7 @@ bool BuildStrategy::IsMultiDevPass(const std::string &pass_name) const {
 }
 
 ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
-                                const std::vector<platform::Place> &places,
+                                const std::vector<phi::Place> &places,
                                 const std::string &loss_var_name,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
@@ -334,7 +261,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     PADDLE_ENFORCE_EQ(
         graph->IsMainGraph(),
         true,
-        platform::errors::InvalidArgument("This graph is not main_graph"));
+        phi::errors::InvalidArgument("This graph is not main_graph"));
   }
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
@@ -343,7 +270,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     VLOG(1) << "BuildStrategy::Apply pass:" << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
-      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
+      pass->SetNotOwned<const std::vector<phi::Place>>(kPlaces, &places);
       pass->Erase(ir::kLossVarName);
       pass->SetNotOwned<const std::string>(ir::kLossVarName, &loss_var_name);
       pass->Erase(kLocalScopes);
@@ -367,9 +294,6 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     } else if (pass->Type() == "coalesce_grad_tensor_pass") {
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
-    } else if (pass->Type() == "sequential_execution_pass") {
-      LOG(INFO) << "set enable_sequential_execution:"
-                << enable_sequential_execution_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (use_device != p::kCUDA) {
         VLOG(1) << "fuse_relu_depthwise_conv_pass is only supported on "
@@ -422,20 +346,12 @@ USE_PASS(fuse_bn_act_pass);
 USE_PASS(fuse_bn_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
-USE_PASS(no_reduce_multi_devices_pass);
-USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(all_reduce_mode_multi_devices_pass);
-USE_PASS(dist_multi_devices_pass);
-USE_PASS(sequential_execution_pass);
-USE_PASS(modify_op_lock_and_record_event_pass);
-USE_PASS(lock_free_optimize_pass);
 USE_PASS(coalesce_grad_tensor_pass);
-USE_PASS(graph_to_program_pass);
 USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
 USE_PASS(runtime_context_cache_pass);
-USE_PASS(add_reader_dependency_pass);
 USE_PASS(delete_dropout_op_x_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_attention_pass);

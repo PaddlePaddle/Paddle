@@ -41,9 +41,9 @@ void XPUTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::UNINITED || state_ == TracerState::STOPED,
       true,
-      platform::errors::PreconditionNotMet("XPUTracer must be UNINITED"));
+      phi::errors::PreconditionNotMet("XPUTracer must be UNINITED"));
 #ifdef PADDLE_WITH_XPTI
-  XPTI_CALL(dynload::xptiActivityEnable());
+  XPTI_CALL(phi::dynload::xptiActivityEnable());
   VLOG(3) << "enable xpti activity";
 #endif
   state_ = TracerState::READY;
@@ -53,22 +53,21 @@ void XPUTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::READY,
       true,
-      platform::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
+      phi::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
 #ifdef PADDLE_WITH_XPTI
-  XPTI_CALL(dynload::xptiStartTracing());
+  XPTI_CALL(phi::dynload::xptiStartTracing());
 #endif
   tracing_start_ns_ = PosixInNsec();
   state_ = TracerState::STARTED;
 }
 
 void XPUTracer::StopTracing() {
-  PADDLE_ENFORCE_EQ(
-      state_,
-      TracerState::STARTED,
-      platform::errors::PreconditionNotMet("Tracer must be STARTED"));
+  PADDLE_ENFORCE_EQ(state_,
+                    TracerState::STARTED,
+                    phi::errors::PreconditionNotMet("Tracer must be STARTED"));
 #ifdef PADDLE_WITH_XPTI
-  XPTI_CALL(dynload::xptiStopTracing());
-  XPTI_CALL(dynload::xptiActivityDisable());
+  XPTI_CALL(phi::dynload::xptiStopTracing());
+  XPTI_CALL(phi::dynload::xptiActivityDisable());
   VLOG(3) << "disable xpti activity";
 #endif
   state_ = TracerState::STOPED;
@@ -156,15 +155,14 @@ void AddMemcpyRecord(const baidu::xpu::xpti::XPTIEventMem* memcpy,
 #endif
 
 void XPUTracer::CollectTraceData(TraceEventCollector* collector) {
-  PADDLE_ENFORCE_EQ(
-      state_,
-      TracerState::STOPED,
-      platform::errors::PreconditionNotMet("Tracer must be STOPED"));
+  PADDLE_ENFORCE_EQ(state_,
+                    TracerState::STOPED,
+                    phi::errors::PreconditionNotMet("Tracer must be STOPED"));
 #ifdef PADDLE_WITH_XPTI
-  XPTI_CALL(dynload::xptiActivityFlushAll());
+  XPTI_CALL(phi::dynload::xptiActivityFlushAll());
   baidu::xpu::xpti::XPTIEvent* record = nullptr;
   while (true) {
-    XPTIResult status = dynload::xptiActivityGetNextRecord(&record);
+    XPTIResult status = phi::dynload::xptiActivityGetNextRecord(&record);
     if (status == XPTI_SUCCESS) {
       record->PrintForDebug();
       switch (record->type) {

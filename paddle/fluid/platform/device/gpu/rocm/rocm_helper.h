@@ -16,9 +16,9 @@
 
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/rocblas.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/backends/dynload/rocblas.h"
 
 namespace paddle {
 namespace platform {
@@ -77,14 +77,15 @@ namespace platform {
 class CublasHandleHolder {
  public:
   explicit CublasHandleHolder(hipStream_t stream) {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_create_handle(&handle_));
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_set_stream(handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::rocblas_create_handle(&handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(
+        phi::dynload::rocblas_set_stream(handle_, stream));
   }
 
   const rocblas_handle& GetCublasHandle() const { return handle_; }
 
   ~CublasHandleHolder() PADDLE_MAY_THROW {
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_destroy_handle(handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::rocblas_destroy_handle(handle_));
   }
 
   template <typename Callback>

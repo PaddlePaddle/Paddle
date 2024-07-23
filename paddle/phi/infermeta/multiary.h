@@ -528,6 +528,20 @@ void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   MetaTensor* rpn_roi_probs,
                                   MetaTensor* rpn_rois_num);
 
+void LegacyGenerateProposalsInferMeta(const MetaTensor& scores,
+                                      const MetaTensor& bbox_deltas,
+                                      const MetaTensor& im_info,
+                                      const MetaTensor& anchors,
+                                      const MetaTensor& variances,
+                                      int pre_nms_top_n,
+                                      int post_nms_top_n,
+                                      float nms_thresh,
+                                      float min_size,
+                                      float eta,
+                                      MetaTensor* rpn_rois,
+                                      MetaTensor* rpn_roi_probs,
+                                      MetaTensor* rpn_rois_num);
+
 void GraphKhopSamplerInferMeta(const MetaTensor& row,
                                const MetaTensor& col_ptr,
                                const MetaTensor& x,
@@ -610,6 +624,22 @@ void InterpolateInferMeta(
     int out_h,
     int out_w,
     const std::vector<float>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    MetaTensor* output,
+    MetaConfig config = MetaConfig());
+
+void LegacyInterpolateInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& out_size,
+    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
+    const MetaTensor& scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    float scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,

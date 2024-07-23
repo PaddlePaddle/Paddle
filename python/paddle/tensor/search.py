@@ -30,6 +30,7 @@ from ..framework import (
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 
 if TYPE_CHECKING:
@@ -999,6 +1000,16 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
             [1. 5. 6. 9.]
     """
     if in_dynamic_or_pir_mode():
+        if in_pir_mode():
+            check_variable_and_dtype(
+                x,
+                'x',
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+                'paddle.tensor.search.mask_select',
+            )
+            check_variable_and_dtype(
+                mask, 'mask', ['bool'], 'paddle.tensor.search.masked_select'
+            )
         return _C_ops.masked_select(x, mask)
     else:
         check_variable_and_dtype(

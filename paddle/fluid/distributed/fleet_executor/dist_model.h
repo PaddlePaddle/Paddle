@@ -18,11 +18,11 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/fleet_executor/dist_model_tensor_wrapper.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -99,7 +99,7 @@ class DistModel {
   std::shared_ptr<FleetExecutor> fleet_exe;
   std::shared_ptr<TaskNode> task_node_;
   std::shared_ptr<framework::Scope> scope_;
-  paddle::platform::Place place_;
+  phi::Place place_;
   std::shared_ptr<framework::ProgramDesc> program_;
 };
 

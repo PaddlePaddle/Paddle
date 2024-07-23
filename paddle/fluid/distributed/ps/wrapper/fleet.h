@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/framework/archive.h"
@@ -32,7 +33,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace framework {
@@ -114,7 +114,7 @@ class FleetWrapper {
       const uint64_t table_id,
       int fea_dim,
       uint64_t padding_id,
-      platform::Place place,
+      phi::Place place,
       bool is_training,
       std::vector<const phi::DenseTensor*>* inputs,  // NOLINT
       std::vector<phi::DenseTensor*>* outputs);      // NOLINT
@@ -186,7 +186,7 @@ class FleetWrapper {
       bool scale_sparse,
       const std::string& accessor,
       const std::string& click_name,
-      platform::Place place,
+      phi::Place place,
       const std::vector<std::string>& input_names,
       std::vector<const phi::DenseTensor*>* inputs,    // NOLINT
       std::vector<const phi::DenseTensor*>* outputs);  // NOLINT
@@ -194,7 +194,7 @@ class FleetWrapper {
   void PushSparseFromTensorAsync(const uint64_t table_id,
                                  int fea_dim,
                                  uint64_t padding_id,
-                                 platform::Place place,
+                                 phi::Place place,
                                  std::vector<const phi::DenseTensor*>* inputs,
                                  std::vector<int>& slots,  // NOLINT
                                  const phi::DenseTensor* shows,

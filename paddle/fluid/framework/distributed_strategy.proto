@@ -75,6 +75,7 @@ message MpConfig {
     optional bool need_broadcast_data = 8 [default = true];
     // Recompute AllGather in forward of ColumnSequenceParallelLinear to reduce the memory usage.
     optional bool recompute_allgather = 9 [default = false];
+    optional bool sp_async_reduce_scatter = 10 [default = false];
 }
 
 message PpConfig {
@@ -160,7 +161,6 @@ message LambConfig {
 }
 
 message BuildStrategy {
-  optional bool enable_sequential_execution = 1 [ default = false ];
   optional bool fuse_elewise_add_act_ops = 2 [ default = false ];
   optional bool fuse_bn_act_ops = 3 [ default = false ];
   optional bool fuse_relu_depthwise_conv = 4 [ default = false ];
@@ -172,7 +172,6 @@ message BuildStrategy {
   optional bool fuse_bn_add_act_ops = 10 [ default = true ];
   optional bool enable_auto_fusion = 11 [ default = false ];
   optional bool enable_addto = 12 [ default = false ];
-  optional bool fix_op_run_order = 13 [ default = false ];
   optional bool allow_cuda_graph_capture = 14 [ default = false ];
   optional int32 reduce_strategy = 15 [ default = 0 ];
   optional bool fuse_gemm_epilogue = 16 [ default = false ];

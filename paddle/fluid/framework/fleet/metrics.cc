@@ -51,7 +51,7 @@ void BasicAucCalculator::reset() {
 void BasicAucCalculator::add_data(const float* d_pred,
                                   const int64_t* d_label,
                                   int batch_size,
-                                  const paddle::platform::Place& place) {
+                                  const phi::Place& place) {
   thread_local std::vector<float> h_pred;
   thread_local std::vector<int64_t> h_label;
   h_pred.resize(batch_size);
@@ -68,26 +68,26 @@ void BasicAucCalculator::add_unlock_data(double pred, int label) {
   PADDLE_ENFORCE_GE(
       pred,
       0.0,
-      platform::errors::PreconditionNotMet("pred should be greater than 0"));
+      phi::errors::PreconditionNotMet("pred should be greater than 0"));
   PADDLE_ENFORCE_LE(
       pred,
       1.0,
-      platform::errors::PreconditionNotMet("pred should be lower than 1"));
+      phi::errors::PreconditionNotMet("pred should be lower than 1"));
   PADDLE_ENFORCE_EQ(
       label * label,
       label,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "label must be equal to 0 or 1, but its value is: %d", label));
   int pos = std::min(static_cast<int>(pred * _table_size), _table_size - 1);
   PADDLE_ENFORCE_GE(
       pos,
       0,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "pos must be equal or greater than 0, but its value is: %d", pos));
   PADDLE_ENFORCE_LT(
       pos,
       _table_size,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "pos must be less than table_size, but its value is: %d", pos));
   _local_abserr += fabs(pred - label);
   _local_sqrerr += (pred - label) * (pred - label);
@@ -100,7 +100,7 @@ void BasicAucCalculator::add_mask_data(const float* d_pred,
                                        const int64_t* d_label,
                                        const int64_t* d_mask,
                                        int batch_size,
-                                       const paddle::platform::Place& place) {
+                                       const phi::Place& place) {
   thread_local std::vector<float> h_pred;
   thread_local std::vector<int64_t> h_label;
   thread_local std::vector<int64_t> h_mask;
@@ -263,7 +263,7 @@ void BasicAucCalculator::add_uid_data(const float* d_pred,
                                       const int64_t* d_label,
                                       const int64_t* d_uid,
                                       int batch_size,
-                                      const paddle::platform::Place& place) {
+                                      const phi::Place& place) {
   thread_local std::vector<float> h_pred;
   thread_local std::vector<int64_t> h_label;
   thread_local std::vector<uint64_t> h_uid;
@@ -287,15 +287,15 @@ void BasicAucCalculator::add_uid_unlock_data(double pred,
   PADDLE_ENFORCE_GE(
       pred,
       0.0,
-      platform::errors::PreconditionNotMet("pred should be greater than 0"));
+      phi::errors::PreconditionNotMet("pred should be greater than 0"));
   PADDLE_ENFORCE_LE(
       pred,
       1.0,
-      platform::errors::PreconditionNotMet("pred should be lower than 1"));
+      phi::errors::PreconditionNotMet("pred should be lower than 1"));
   PADDLE_ENFORCE_EQ(
       label * label,
       label,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "label must be equal to 0 or 1, but its value is: %d", label));
 
   WuaucRecord record = {0, 0, 0};

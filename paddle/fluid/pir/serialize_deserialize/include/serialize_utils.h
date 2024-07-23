@@ -31,13 +31,12 @@ namespace pir {
   pir::DialectIdMap::Instance()->GetCompressDialectId( \
       (attr_template).dialect().name())
 
-void GetCompressOpName(std::string* op_name) {
-  std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
-  *op_name = pir::DialectIdMap::Instance()->GetCompressDialectId(name.first) +
-             "." + name.second;
-  return;
-}
-
+/**
+ * If you need to support serialize type or attr in a new dialect, please add
+ * the corresponding method according to the naming convention in the following
+ * class, and add a branch of the newly added serialization structure
+ * in the implementation function of the method.
+ */
 class AttrTypeWriter {
  public:
   static Json WriteBuiltInAttr(const pir::Attribute& attr);

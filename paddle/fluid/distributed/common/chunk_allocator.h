@@ -84,7 +84,7 @@ class ChunkAllocator {
                                alloc_size);
     PADDLE_ENFORCE_EQ(error,
                       0,
-                      paddle::platform::errors::ResourceExhausted(
+                      phi::errors::ResourceExhausted(
                           "Fail to alloc memory of %ld size, error code is %d.",
                           alloc_size,
                           error));

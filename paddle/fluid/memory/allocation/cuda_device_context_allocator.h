@@ -24,7 +24,7 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace memory {
@@ -48,7 +48,7 @@ class GPUContextAllocation : public Allocation {
   ~GPUContextAllocation() {
     PADDLE_WARN_NOT_NULL(
         dev_ctx_,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "Device context is not set for GPUContextAllocation"));
 
     auto *p_allocation = underlying_allocation_.release();
@@ -75,8 +75,7 @@ class GPUContextAllocation : public Allocation {
  */
 class GPUContextAllocator : public Allocator {
  public:
-  explicit GPUContextAllocator(platform::CUDAPlace place,
-                               gpuStream_t default_stream)
+  explicit GPUContextAllocator(phi::GPUPlace place, gpuStream_t default_stream)
       : place_(place), default_stream_(default_stream) {
     platform::CUDADeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
@@ -104,7 +103,7 @@ class GPUContextAllocator : public Allocator {
   phi::Allocation *AllocateImpl(size_t size) override {
     PADDLE_ENFORCE_NOT_NULL(
         default_stream_,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "Default stream is not set for GPUContextAllocator"));
     platform::CUDADeviceGuard guard(place_.device);
     auto allocation = new GPUContextAllocation(
@@ -123,7 +122,7 @@ class GPUContextAllocator : public Allocator {
   void FreeImpl(phi::Allocation *allocation) override { delete allocation; }
 
  private:
-  platform::CUDAPlace place_;
+  phi::GPUPlace place_;
   gpuEvent_t event_{nullptr};
   gpuStream_t default_stream_{nullptr};
 };
@@ -144,11 +143,11 @@ class GPUContextAllocatorPool {
 
   AllocationPtr Alloc(const phi::GPUContext &dev_ctx, size_t size) {
     auto iter =
-        allocators_.find(platform::CUDAPlace(dev_ctx.GetPlace().GetDeviceId()));
+        allocators_.find(phi::GPUPlace(dev_ctx.GetPlace().GetDeviceId()));
     PADDLE_ENFORCE_NE(
         iter,
         allocators_.end(),
-        platform::errors::NotFound("No allocator found for CUDAPlace."));
+        phi::errors::NotFound("No allocator found for CUDAPlace."));
     auto &allocator = iter->second;
     AllocationPtr allocation = allocator->Allocate(size);
     static_cast<GPUContextAllocation *>(allocation.get())
@@ -160,17 +159,16 @@ class GPUContextAllocatorPool {
   GPUContextAllocatorPool() {
     std::vector<int> devices = platform::GetSelectedDevices();
     for (int i : devices) {
-      auto place = platform::CUDAPlace(i);
+      auto place = phi::GPUPlace(i);
       auto compute_stream =
-          platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
+          phi::DeviceContextPool::Instance().GetByPlace(place)->stream();
       auto allocator = std::shared_ptr<GPUContextAllocator>(
           new GPUContextAllocator(place, compute_stream));
       allocators_.insert(make_pair(place, allocator));
     }
   }
 
-  std::map<platform::CUDAPlace, std::shared_ptr<GPUContextAllocator>>
-      allocators_;
+  std::map<phi::GPUPlace, std::shared_ptr<GPUContextAllocator>> allocators_;
 };
 
 }  // namespace allocation

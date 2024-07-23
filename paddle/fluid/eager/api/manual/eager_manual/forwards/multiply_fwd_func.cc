@@ -20,9 +20,9 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/type_promotion_utils.h"
 #include "paddle/fluid/imperative/amp_utils.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/type_promotion.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
@@ -172,7 +172,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     if (check_if_support_elementwise_mul_mem_opt(x.place().GetDeviceType())) {
 #else
-    if (paddle::platform::is_gpu_place(x.place())) {
+    if (phi::is_gpu_place(x.place())) {
 #endif
       if (x_autograd_meta != nullptr && x_autograd_meta->StopGradient() &&
           y_autograd_meta != nullptr && !y_autograd_meta->StopGradient()) {

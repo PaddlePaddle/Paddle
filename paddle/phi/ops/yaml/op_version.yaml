@@ -116,6 +116,15 @@
             of each place to be compatible with before.
           default : -1
 
+- op : collect_fpn_proposals
+  version :
+    - checkpoint : Upgrade collect_fpn_proposals add a new input [MultiLevelRoIsNum] and add a new output [RoisNum].
+      action :
+        - add_input : multi_level_rois_num
+          comment : The RoIs' number of each image on multiple levels. The number on each level has the shape of (N), N is the number of images.
+        - add_output : rois_num
+          comment : The number of RoIs in each image.
+
 - op : conv2d
   version :
     - checkpoint : Upgrade conv2d, add a new attribute [use_addto].
@@ -326,6 +335,16 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : histogram
+  version :
+    - checkpoint : Upgrade histogram, add a new Input [Weight] and a new attribute [density]
+      action :
+        - add_input : Weight
+          comment : The weight of each value in the input tensor.
+        - add_attr : density
+          comment : If true, the histogram is normalized to form a probability density.
+          default : "false"
+
 - op : instance_norm
   version :
     - checkpoint : Change dispensable of attribute from False to True in instance_norm.
@@ -353,6 +372,17 @@
           comment : The Output beta1 power accumulator. 'Beta1PowOut' is dispensable.
         - add_output : Beta2PowOut
           comment : The Output beta2 power accumulator. 'Beta2PowOut' is dispensable.
+
+- op : legacy_generate_proposals
+  version :
+    - checkpoint : Incompatible upgrade of output [RpnRoisLod].
+      action :
+        - delete_output : RpnRoisLod
+          comment : Delete RpnRoisLod due to incorrect output name and it is not used in object detection models yet.
+    - checkpoint : Upgrade generate_proposals add a new output [RpnRoisNum]
+      action :
+        - add_output : rpn_rois_num
+          comment : The number of Rpn RoIs in each image. RpnRoisNum is dispensable.
 
 - op : less_equal
   version :
@@ -493,6 +523,14 @@
       action :
         - add_input : ShiftsTensor
           comment : The number of places by which the elements of the tensor are shifted.
+
+- op : round
+  version :
+    - checkpoint : Add a new attribute [deciamls] to round
+      action :
+        - add_attr : decimals
+          comment : The number of decimal places rounded
+          default : 0.0
 
 - op : softmax_with_cross_entropy
   version :

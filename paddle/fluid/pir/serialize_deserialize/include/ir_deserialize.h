@@ -15,7 +15,9 @@
 
 #include <fstream>
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
 
@@ -32,19 +34,24 @@ class ProgramReader {
 
   // static void staticInit()
 
-  void RecoverProgram(Json* program_json, pir::Program* recover_program);
+  void RecoverProgram(Json* program_json,
+                      pir::Program* recover_program,
+                      pir::PatchBuilder* builder);
   ~ProgramReader() = default;
 
  private:
   uint64_t current_version;
   std::map<int64_t, pir::Value> id_value_map;
+  pir::PatchBuilder* patch_builder;
 
   void ReadProgram(Json* program_json, pir::Program* program);
   void ReadRegion(Json* region_json, pir::Region* region);
   void ReadBlock(Json* block_json, pir::Block* block);
   pir::Operation* ReadOp(Json* op_json);
-  pir::AttributeMap ReadAttributesMap(Json* attrs_json,
-                                      Json* operesult_attrs_json);
+  pir::AttributeMap ReadAttributesMap(
+      Json* attrs_json,
+      Json* operesult_attrs_json,
+      const std::unordered_map<std::string, Json>& attr_patch);
   pir::Attribute ReadAttribute(Json* attr_json);
   pir::Type ReadType(Json* type_json);
 

@@ -35,8 +35,8 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 
@@ -90,9 +90,9 @@ bool ONNXRuntimePredictor::InitBinding() {
   // Now ONNXRuntime only support CPU
   const char *device_name = config_.use_gpu() ? "Cuda" : "Cpu";
   if (config_.use_gpu()) {
-    place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
+    place_ = phi::GPUPlace(config_.gpu_device_id());
   } else {
-    place_ = paddle::platform::CPUPlace();
+    place_ = phi::CPUPlace();
   }
   scope_.reset(new paddle::framework::Scope());
 
@@ -205,7 +205,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kONNXRuntime>(
   PADDLE_ENFORCE_EQ(
       config.is_valid(),
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Note: Each config can only be used for one predictor."));
 
   VLOG(3) << "create ONNXRuntimePredictor";
@@ -262,7 +262,7 @@ bool ONNXRuntimePredictor::FindONNXDesc(const std::string &name,
 std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
     const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(scope_->FindVar(name),
-                          platform::errors::PreconditionNotMet(
+                          phi::errors::PreconditionNotMet(
                               "The in variable named %s is not found in the "
                               "ONNXPredictor.",
                               name));
@@ -270,7 +270,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
       new ZeroCopyTensor(static_cast<void *>(scope_.get()), this));
   res->input_or_output_ = true;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (phi::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else {
     auto gpu_place = place_;
@@ -283,14 +283,14 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
     const std::string &name) {
   PADDLE_ENFORCE_EQ(FindONNXDesc(name, false),
                     true,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "The out variable named %s is not found in the "
                         "ONNXPredictor.",
                         name));
   std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr, this));
   res->input_or_output_ = false;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  if (phi::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else {
     auto gpu_place = place_;
@@ -335,7 +335,7 @@ bool ONNXRuntimePredictor::Run(const std::vector<PaddleTensor> &inputs,
 
 bool ONNXRuntimePredictor::ZeroCopyRun(bool switch_stream) {
   try {
-    const char *device_name = platform::is_cpu_place(place_) ? "Cpu" : "Cuda";
+    const char *device_name = phi::is_cpu_place(place_) ? "Cpu" : "Cuda";
     std::vector<Ort::Value> inputs;
     inputs.reserve(input_desc_.size());
     for (auto desc : input_desc_) {
@@ -378,8 +378,7 @@ ONNXRuntimePredictor::~ONNXRuntimePredictor() {
 
 const void *ONNXRuntimePredictor::GetDeviceContexts() const {
   // TODO(inference): Support private device contexts.
-  paddle::platform::DeviceContextPool &pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   const auto &dev_ctxs = pool.device_contexts();
   return &const_cast<
       std::map<phi::Place,

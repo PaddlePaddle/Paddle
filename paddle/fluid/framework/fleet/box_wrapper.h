@@ -70,26 +70,26 @@ class BasicAucCalculator {
     PADDLE_ENFORCE_GE(
         pred,
         0.0,
-        platform::errors::PreconditionNotMet("pred should be greater than 0"));
+        phi::errors::PreconditionNotMet("pred should be greater than 0"));
     PADDLE_ENFORCE_LE(
         pred,
         1.0,
-        platform::errors::PreconditionNotMet("pred should be lower than 1"));
+        phi::errors::PreconditionNotMet("pred should be lower than 1"));
     PADDLE_ENFORCE_EQ(
         label * label,
         label,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "label must be equal to 0 or 1, but its value is: %d", label));
     int pos = std::min(static_cast<int>(pred * _table_size), _table_size - 1);
     PADDLE_ENFORCE_GE(
         pos,
         0,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "pos must be equal or greater than 0, but its value is: %d", pos));
     PADDLE_ENFORCE_LT(
         pos,
         _table_size,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "pos must be less than table_size, but its value is: %d", pos));
     std::lock_guard<std::mutex> lock(_table_mutex);
     _local_abserr += fabs(pred - label);
@@ -157,7 +157,7 @@ class AfsStreamFile {
     reader_ = afsfile_->OpenReader(path);
     PADDLE_ENFORCE_NE(reader_,
                       nullptr,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "OpenReader for file[%s] failed.", path));
     return 0;
   }
@@ -185,14 +185,14 @@ class AfsManager {
     int ret = _afshandler->Init(true, (com_logstatus() == 0));
     PADDLE_ENFORCE_EQ(ret,
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Called AFSAPI Init Interface Failed."));
     // Too high level will hurt the performance
     comlog_set_log_level(4);
     ret = _afshandler->Connect();
     PADDLE_ENFORCE_EQ(ret,
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Called AFSAPI Connect Interface Failed"));
   }
   virtual ~AfsManager() {
@@ -210,7 +210,7 @@ class AfsManager {
     int ret = read_stream->Open(path.c_str());
     PADDLE_ENFORCE_EQ(ret,
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Called AFSAPI Open file %s Failed.", path.c_str()));
     char* _buff = static_cast<char*>(calloc(BUF_SIZE + 2, sizeof(char)));
     int size = 0;
@@ -235,26 +235,26 @@ class AfsManager {
       PADDLE_ENFORCE_EQ(
           pipe(fd_read),
           0,
-          platform::errors::External("Create read pipe failed in AfsManager."));
+          phi::errors::External("Create read pipe failed in AfsManager."));
     }
     if (write) {
-      PADDLE_ENFORCE_EQ(pipe(fd_write),
-                        0,
-                        platform::errors::External(
-                            "Create write pipe failed in AfsManager."));
+      PADDLE_ENFORCE_EQ(
+          pipe(fd_write),
+          0,
+          phi::errors::External("Create write pipe failed in AfsManager."));
     }
     pid = vfork();
     PADDLE_ENFORCE_GE(
         pid,
         0,
-        platform::errors::External(
+        phi::errors::External(
             "Failed to create a child process via fork in AfsManager."));
     if (pid == 0) {
       if (read) {
         PADDLE_ENFORCE_NE(
             dup2(fd_read[1], STDOUT_FILENO),
             -1,
-            platform::errors::External(
+            phi::errors::External(
                 "Failed to duplicate file descriptor via dup2 in AfsManager."));
         close(fd_read[1]);
         close(fd_read[0]);
@@ -264,7 +264,7 @@ class AfsManager {
         PADDLE_ENFORCE_NE(
             dup2(fd_write[0], STDIN_FILENO),
             -1,
-            platform::errors::External(
+            phi::errors::External(
                 "Failed to duplicate file descriptor via dup2 in AfsManager."));
         close(fd_write[0]);
         close(fd_write[1]);
@@ -291,7 +291,7 @@ class AfsManager {
         PADDLE_ENFORCE_NE(
             fp_read,
             nullptr,
-            platform::errors::External(
+            phi::errors::External(
                 "Failed to open file descriptor via fdopen in AfsManager."));
       }
 
@@ -302,7 +302,7 @@ class AfsManager {
         PADDLE_ENFORCE_NE(
             fp_write,
             nullptr,
-            platform::errors::External(
+            phi::errors::External(
                 "Failed to open file descriptor via fdopen in AfsManager."));
       }
       return 0;
@@ -321,7 +321,7 @@ class AfsManager {
 
     PADDLE_ENFORCE_EQ(ret,
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Called PopenBidirectionalInternal Failed"));
     std::string filename(path);
     if (strncmp(filename.c_str(), "afs:", 4) == 0) {
@@ -370,14 +370,14 @@ class BoxWrapper {
   void SetTestMode(bool is_test) const;
 
   template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM = 0>
-  void PullSparseCase(const paddle::platform::Place& place,
+  void PullSparseCase(const phi::Place& place,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<float*>& values,
                       const std::vector<int64_t>& slot_lengths,
                       const int hidden_size,
                       const int expand_embed_dim);
 
-  void PullSparse(const paddle::platform::Place& place,
+  void PullSparse(const phi::Place& place,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
@@ -385,7 +385,7 @@ class BoxWrapper {
                   const int expand_embed_dim);
 
   template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM = 0>
-  void PushSparseGradCase(const paddle::platform::Place& place,
+  void PushSparseGradCase(const phi::Place& place,
                           const std::vector<const uint64_t*>& keys,
                           const std::vector<const float*>& grad_values,
                           const std::vector<int64_t>& slot_lengths,
@@ -393,7 +393,7 @@ class BoxWrapper {
                           const int expand_embed_dim,
                           const int batch_size);
 
-  void PushSparseGrad(const paddle::platform::Place& place,
+  void PushSparseGrad(const phi::Place& place,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<const float*>& grad_values,
                       const std::vector<int64_t>& slot_lengths,
@@ -401,7 +401,7 @@ class BoxWrapper {
                       const int expand_embed_dim,
                       const int batch_size);
 
-  void CopyForPull(const paddle::platform::Place& place,
+  void CopyForPull(const phi::Place& place,
                    uint64_t** gpu_keys,
                    const std::vector<float*>& values,
                    void* total_values_gpu,
@@ -411,7 +411,7 @@ class BoxWrapper {
                    const int expand_embed_dim,
                    const int64_t total_length);
 
-  void CopyForPush(const paddle::platform::Place& place,
+  void CopyForPush(const phi::Place& place,
                    const std::vector<const float*>& grad_values,
                    void* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
@@ -420,7 +420,7 @@ class BoxWrapper {
                    const int64_t total_length,
                    const int batch_size);
 
-  void CopyKeys(const paddle::platform::Place& place,
+  void CopyKeys(const phi::Place& place,
                 uint64_t** origin_keys,
                 uint64_t* total_keys,
                 const int64_t* gpu_len,
@@ -441,8 +441,7 @@ class BoxWrapper {
       for (int i = 0; i < platform::GetGPUDeviceCount(); ++i) {
         VLOG(3) << "before get context i[" << i << "]";
         phi::GPUContext* context = dynamic_cast<phi::GPUContext*>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(i)));
+            phi::DeviceContextPool::Instance().Get(phi::GPUPlace(i)));
         stream_list_[i] = context->stream();
         stream_list.push_back(&stream_list_[i]);
       }
@@ -476,7 +475,7 @@ class BoxWrapper {
     PADDLE_ENFORCE_EQ(
         date.length(),
         8,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "date[%s] is invalid, correct example is 20190817", date.c_str()));
     int year = std::stoi(date.substr(0, 4));
     int month = std::stoi(date.substr(4, 2));
@@ -493,9 +492,7 @@ class BoxWrapper {
     int ret = boxps_ptr_->SaveBase(
         batch_model_path, xbox_model_path, ret_str, seconds_from_1970 / 86400);
     PADDLE_ENFORCE_EQ(
-        ret,
-        0,
-        platform::errors::PreconditionNotMet("SaveBase failed in BoxPS."));
+        ret, 0, phi::errors::PreconditionNotMet("SaveBase failed in BoxPS."));
     return ret_str;
   }
 
@@ -504,9 +501,7 @@ class BoxWrapper {
     std::string ret_str;
     int ret = boxps_ptr_->SaveDelta(xbox_model_path, ret_str);
     PADDLE_ENFORCE_EQ(
-        ret,
-        0,
-        platform::errors::PreconditionNotMet("SaveDelta failed in BoxPS."));
+        ret, 0, phi::errors::PreconditionNotMet("SaveDelta failed in BoxPS."));
     return ret_str;
   }
 
@@ -514,7 +509,7 @@ class BoxWrapper {
     PADDLE_ENFORCE_EQ(
         s_instance_ == nullptr,
         false,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "GetInstance failed in BoxPs, you should use SetInstance firstly"));
     return s_instance_;
   }
@@ -587,8 +582,8 @@ class BoxWrapper {
       auto* var = exe_scope->FindVar(varname.c_str());
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          platform::errors::NotFound("Error: var %s is not found in scope.",
-                                     varname.c_str()));
+          phi::errors::NotFound("Error: var %s is not found in scope.",
+                                varname.c_str()));
       auto& gpu_tensor = var->Get<phi::DenseTensor>();
       auto* gpu_data = gpu_tensor.data<T>();
       auto len = gpu_tensor.numel();
@@ -632,8 +627,8 @@ class BoxWrapper {
         PADDLE_ENFORCE_EQ(
             cur_cmatch_rank.size(),
             2,
-            platform::errors::PreconditionNotMet(
-                "illegal multitask auc spec: %s", cmatch_rank.c_str()));
+            phi::errors::PreconditionNotMet("illegal multitask auc spec: %s",
+                                            cmatch_rank.c_str()));
         cmatch_rank_v.emplace_back(atoi(cur_cmatch_rank[0].c_str()),
                                    atoi(cur_cmatch_rank[1].c_str()));
       }
@@ -642,7 +637,7 @@ class BoxWrapper {
       }
       PADDLE_ENFORCE_EQ(cmatch_rank_v.size(),
                         pred_v.size(),
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "cmatch_rank's size [%lu] should be equal to pred "
                             "list's size [%lu], but ther are not equal",
                             cmatch_rank_v.size(),
@@ -658,7 +653,7 @@ class BoxWrapper {
       PADDLE_ENFORCE_EQ(
           batch_size,
           label_data.size(),
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "illegal batch size: batch_size[%lu] and label_data[%lu]",
               batch_size,
               label_data.size()));
@@ -671,7 +666,7 @@ class BoxWrapper {
         PADDLE_ENFORCE_EQ(
             batch_size,
             pred_data_list[i].size(),
-            platform::errors::PreconditionNotMet(
+            phi::errors::PreconditionNotMet(
                 "illegal batch size: batch_size[%lu] and pred_data[%lu]",
                 batch_size,
                 pred_data_list[i].size()));
@@ -720,8 +715,8 @@ class BoxWrapper {
         PADDLE_ENFORCE_EQ(
             cur_cmatch_rank.size(),
             2,
-            platform::errors::PreconditionNotMet(
-                "illegal cmatch_rank auc spec: %s", cmatch_rank.c_str()));
+            phi::errors::PreconditionNotMet("illegal cmatch_rank auc spec: %s",
+                                            cmatch_rank.c_str()));
         cmatch_rank_v.emplace_back(atoi(cur_cmatch_rank[0].c_str()),
                                    atoi(cur_cmatch_rank[1].c_str()));
       }
@@ -738,14 +733,14 @@ class BoxWrapper {
       PADDLE_ENFORCE_EQ(
           batch_size,
           label_data.size(),
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "illegal batch size: cmatch_rank[%lu] and label_data[%lu]",
               batch_size,
               label_data.size()));
       PADDLE_ENFORCE_EQ(
           batch_size,
           pred_data.size(),
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "illegal batch size: cmatch_rank[%lu] and pred_data[%lu]",
               batch_size,
               pred_data.size()));
@@ -818,7 +813,7 @@ class BoxWrapper {
         PADDLE_ENFORCE_NE(
             iter,
             metric_lists_.end(),
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The metric name you provided is not registered."));
 
         if (iter->second->MetricPhase() == metric_phase) {
@@ -877,7 +872,7 @@ class BoxWrapper {
                                               mask_varname,
                                               bucket_size));
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "PaddleBox only support AucCalculator, MultiTaskAucCalculator "
           "CmatchRankAucCalculator and MaskAucCalculator"));
     }
@@ -888,7 +883,7 @@ class BoxWrapper {
     const auto iter = metric_lists_.find(name);
     PADDLE_ENFORCE_NE(iter,
                       metric_lists_.end(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The metric name you provided is not registered."));
     std::vector<float> metric_return_values_(8, 0.0);
     auto* auc_cal_ = iter->second->GetCalculator();
@@ -1033,10 +1028,10 @@ class BoxHelper {
   void SlotsShuffle(const std::set<std::string>& slots_to_replace) {
 #ifdef PADDLE_WITH_BOX_PS
     auto box_ptr = BoxWrapper::GetInstance();
-    PADDLE_ENFORCE_EQ(box_ptr->Mode(),
-                      1,
-                      platform::errors::PreconditionNotMet(
-                          "Should call InitForAucRunner first."));
+    PADDLE_ENFORCE_EQ(
+        box_ptr->Mode(),
+        1,
+        phi::errors::PreconditionNotMet("Should call InitForAucRunner first."));
     box_ptr->FlipPhase();
 
     std::unordered_set<uint16_t> index_slots;
@@ -1104,7 +1099,7 @@ class BoxHelper {
     const auto& all_readers = dataset_->GetReaders();
     PADDLE_ENFORCE_GT(all_readers.size(),
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Readers number must be greater than 0."));
     const auto& all_slots_name = all_readers[0]->GetAllSlotAlias();
     for (size_t i = 0; i < all_slots_name.size(); ++i) {

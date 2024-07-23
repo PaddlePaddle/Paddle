@@ -40,7 +40,7 @@ void AddVarToScope(Scope* param_scope,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  tensor->mutable_data<float>(platform::CPUPlace());
+  tensor->mutable_data<float>(phi::CPUPlace());
 }
 
 Scope* CreateParamScope() {
@@ -108,7 +108,7 @@ TEST(FuseMultiTransformerLayerPass, encoder_fp) {
   PADDLE_ENFORCE_EQ(
       num_nodes_after,
       1,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "After the fuse_multi_transformer_layer_pass, "
           "The node num in graph should be 1, but the result is %d",
           num_nodes_after));
@@ -162,7 +162,7 @@ TEST(FuseMultiTransformerLayerPass, decoder_fp) {
   PADDLE_ENFORCE_EQ(
       num_nodes_after,
       1,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "After the fuse_multi_transformer_layer_pass, "
           "The node num in graph should be 1, but the result is %d",
           num_nodes_after));

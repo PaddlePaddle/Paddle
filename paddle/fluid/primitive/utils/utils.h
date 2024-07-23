@@ -68,10 +68,10 @@ static std::vector<int64_t> get_expand_dims(const Tensor& origin,
     PADDLE_ENFORCE_LE(
         offset,
         result.size(),
-        platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
-                                     "elements in origin_dims[%lu].",
-                                     offset,
-                                     result.size()));
+        phi::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                "elements in origin_dims[%lu].",
+                                offset,
+                                result.size()));
     result.insert(result.begin() + offset, 1);
   }
   return result;
@@ -92,10 +92,10 @@ static std::vector<int64_t> get_unsqueeze_dims(
       PADDLE_ENFORCE_LT(
           k,
           origin_dims.size(),
-          platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
-                                       "elements in origin_dims[%lu].",
-                                       k,
-                                       origin_dims.size()));
+          phi::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                  "elements in origin_dims[%lu].",
+                                  k,
+                                  origin_dims.size()));
       result.push_back(origin_dims[k]);
       k++;
     }
@@ -145,10 +145,38 @@ static std::vector<int64_t> process_dims(const Tensor& origin,
 }
 
 // These method don't need to be specified
+// These method only handle the static shape case
 static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
-  std::vector<int64_t> result;
+  bool has_dynamic_shape = false;
+  for (int i = 0; i < dout_dims.size(); i++) {
+    if (dout_dims[i] == -1) {
+      has_dynamic_shape = true;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      has_dynamic_shape,
+      false,
+      phi::errors::InvalidArgument(
+          "Function get_reduce_dims_from_out() only use in static shape case, "
+          "but the input [dout_dims] have the dynamic shape."));
+
+  for (int i = 0; i < in_dims.size(); i++) {
+    if (in_dims[i] == -1) {
+      has_dynamic_shape = true;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      has_dynamic_shape,
+      false,
+      phi::errors::InvalidArgument(
+          "Function get_reduce_dims_from_out() only use in static shape case, "
+          "but the input [in_dims] have the dynamic shape."));
+
   int bat = dout_dims.size() - in_dims.size();
+  std::vector<int64_t> result;
   for (int i = 0; i < bat; ++i) {
     result.push_back(i);
   }
@@ -159,7 +187,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
       PADDLE_ENFORCE_EQ(
           in_dims[i],
           dout_dims[i + bat],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "ReduceDims dimension mismatch. Operands could "
               "not be broadcast together with the shape of dout = [%s] and "
               "the shape of in_dims = [%s]. Received [%d] in X is not equal to "
