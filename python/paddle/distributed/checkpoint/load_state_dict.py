@@ -523,19 +523,16 @@ def load_state_dict(
                     item.local_tensor_index.tensor_key in flat_state_dict
                 ), f"item:{item}, state_dict:{flat_state_dict}"
 
-                if (
-                    use_dist
+                cur_local_tensor = (
+                    flat_state_dict[
+                        item.local_tensor_index.tensor_key
+                    ]._local_value()
+                    if use_dist
                     and flat_state_dict[
                         item.local_tensor_index.tensor_key
                     ].is_dist()
-                ):
-                    cur_local_tensor = flat_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ]._local_value()
-                else:
-                    cur_local_tensor = flat_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ]
+                    else flat_state_dict[item.local_tensor_index.tensor_key]
+                )
 
                 cur_offsets = item.cur_offset
                 cur_lengths = item.lengths
