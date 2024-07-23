@@ -115,7 +115,7 @@ class TestFusedMoEOp(OpTest):
         self.top_k = 2
 
     def GetFusedMoeOut(self, tensor_x):
-        paddle.disable_static()
+        paddle.disable_static(place=paddle.CUDAPlace(0))
         fused_out = fused_moe(
             tensor_x,
             self.gate_weight,
@@ -130,6 +130,7 @@ class TestFusedMoEOp(OpTest):
         return fused_out
 
     def GetBaselineOut(self, hidden_states):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
         batch_size, sequence_length, hidden_dim = hidden_states.shape
         hidden_states = paddle.reshape(hidden_states, [-1, hidden_dim])
         router_logits = self.gate(hidden_states)
