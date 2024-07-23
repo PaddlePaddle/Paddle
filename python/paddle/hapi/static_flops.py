@@ -44,7 +44,7 @@ class VarWrapper:
 
 
 class OpWrapper:
-    def __init__(self, op, graph: GraphWrapper) -> None:
+    def __init__(self, op: op_type, graph: GraphWrapper) -> None:
         assert isinstance(graph, GraphWrapper)
         self._op = op
         self._graph = graph
