@@ -147,7 +147,7 @@ platform::DeviceContext* ParseDeviceContext(
                   ->GetDevContext());
           dev_ctx->SetCommContext(comm_context);
           if (op_name.compare(paddle::dialect::CReducescatterOp::name()) == 0 ||
-              op_name.compare(paddle::dialect::CAllgatherOp::name()) == 0) {
+              op_name.compare(paddle::dialect::AllGatherOp::name()) == 0) {
             return dev_ctx;
           }
         } else {
