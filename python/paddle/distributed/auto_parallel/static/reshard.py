@@ -3202,17 +3202,8 @@ class Resharder:
                     group_ranks = op_desc.group
                     shape = op_desc.shape
                     allgather_desc = build_comm_desc(
-                        "c_allgather", group_ranks, dtype, shape
+                        "all_gather", group_ranks, dtype, shape
                     )
-
-                    # def build_comm_desc(op_type, group_ranks, dtype, shape, attrs=None):
-                    #     """Build a comm desc directly."""
-                    #     desc = {}
-                    #     desc["op"] = op_type
-                    #     desc["group_ranks"] = group_ranks
-                    #     desc["inputs"] = {"X": [(dtype, shape)]}
-                    #     desc["attrs"] = attrs
-                    #     return desc
                     split_inputs_shape = []
                     for idx, dim in enumerate(shape):
                         if idx == 0:

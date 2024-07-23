@@ -369,7 +369,7 @@ class PipelinePass(PassBase):
 
                     if not is_after_send_op or not is_after_recv_op:
                         if self._cur_pp_stage == self._pp_stages - 1:
-                            # NOTE: the c_sync_calc_stream about c_allgather cannot be removed
+                            # NOTE: the c_sync_calc_stream about all_gather cannot be removed
                             if (
                                 op.type == "c_sync_calc_stream"
                                 and src_block.ops[i + 1].type == "send_v2"
@@ -383,7 +383,7 @@ class PipelinePass(PassBase):
                                 not in [
                                     "recv_2",
                                     "assign",
-                                    "c_allgather",
+                                    "all_gather",
                                     "all_gather",
                                 ]
                                 and op.has_attr('op_namescope')

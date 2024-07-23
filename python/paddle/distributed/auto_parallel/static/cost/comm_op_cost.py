@@ -81,7 +81,7 @@ class AllreduceSumOpCost(CommOpCost):
 
 @register_op_cost
 class AllgatherOpCost(CommOpCost):
-    OP_TYPE = "c_allgather"
+    OP_TYPE = "all_gather"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
         super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)

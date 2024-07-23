@@ -2428,7 +2428,6 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
                 "cast",
                 "c_concat",
                 "concat",
-                "c_allgather",
                 "slice",
                 "all_gather",
             ]
