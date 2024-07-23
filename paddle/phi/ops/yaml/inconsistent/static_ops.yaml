@@ -12,6 +12,8 @@
   kernel :
     func : add
     data_type: x
+  data_transform :
+    support_trans_dtype : x, y
   inplace : (x -> out)
   backward : add_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
