@@ -44,7 +44,7 @@ phi::Allocation *CPUAllocator::AllocateImpl(size_t size) {
   PADDLE_ENFORCE_EQ(
       error,
       0,
-      platform::errors::ResourceExhausted(
+      phi::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
 #endif
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);

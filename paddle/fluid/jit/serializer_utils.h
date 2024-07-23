@@ -16,7 +16,9 @@
 
 #include <string>
 #include <vector>
-
+namespace pir {
+class Value;
+}
 namespace paddle {
 
 namespace framework {
@@ -25,11 +27,13 @@ class VarDesc;
 
 namespace jit {
 static const char PDMODEL_SUFFIX[] = ".pdmodel";
+static const char JSON_SUFFIX[] = ".json";
 static const char PDPARAMS_SUFFIX[] = ".pdiparams";
 static const char PROPERTY_SUFFIX[] = ".meta";
 
 namespace utils {
 bool IsPersistable(framework::VarDesc* desc_ptr);
+bool IsPersistable(pir::Value* value_ptr);
 
 bool StartsWith(const std::string& str, const std::string& suffix);
 
@@ -41,7 +45,7 @@ void ReplaceAll(std::string* str,
 
 bool FileExists(const std::string& file_path);
 
-const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
+const std::vector<std::pair<std::string, std::string>> ModelFilePaths(
     const std::string& path);
 
 void InitKernelSignatureMap();

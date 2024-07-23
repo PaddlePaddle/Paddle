@@ -294,9 +294,9 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
                !var->IsInitialized()) {
       return var->template GetMutable<paddle::framework::RawTensor>();
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported `%s` type when get tensor.",
-          framework::ToTypeName(var->Type())));
+      PADDLE_THROW(
+          phi::errors::Unimplemented("Unsupported `%s` type when get tensor.",
+                                     framework::ToTypeName(var->Type())));
     }
   } else {
     VLOG(4) << "Var is nullptr";
@@ -305,7 +305,7 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
 }
 
 template <class TensorType>
-void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
+void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
                           const phi::Place& place,
                           const phi::DataType& dtype,
                           const phi::DataLayout& layout,
@@ -335,7 +335,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
 
   // set place
   if (tensor->initialized()) {  // avoid overwriting valid data
-    platform::DeviceContext* dev_ctx_for_copy = nullptr;
+    phi::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
       dev_ctx_for_copy = phi::DeviceContextPool::Instance().Get(place);
     } else {
@@ -373,7 +373,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
           << ", place = " << place << ", layout = " << layout;
 }
 
-void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
+void FakeInitializeTensorBase(const phi::DeviceContext& dev_ctx,
                               const phi::Place& place,
                               const phi::DataType& dtype,
                               const phi::DataLayout& layout,
@@ -415,7 +415,7 @@ void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
   auto* scope_var = scope.FindVar(op.Output("Scope"));
   PADDLE_ENFORCE_NOT_NULL(
       scope_var,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Expect Scope variable to be set in conditional_block_op, but "
           "got a null Scope variable. Please set the Scope variable."));
 
@@ -462,7 +462,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
                                  const OperatorBase& op) {
   PADDLE_ENFORCE_NOT_NULL(
       scope.FindVar(op.Input("Condition")),
-      platform::errors::NotFound("Input(Condition) of WhileOp is not found."));
+      phi::errors::NotFound("Input(Condition) of WhileOp is not found."));
 
 #ifdef PADDLE_WITH_DNNL
   // Executor on being destroyed clears oneDNN cache and resets
@@ -521,7 +521,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
 
   PADDLE_ENFORCE_EQ(step_scopes->size(),
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "The Output(StepScope) of WhileOp should be empty."));
 
   auto& skip_vars =
@@ -792,13 +792,13 @@ void FakeInitializeOutputsForFunctionKernel(
     const phi::Kernel& phi_kernel,
     const phi::KernelSignature& kernel_sig,
     const RuntimeContext& runtime_ctx,
-    const platform::DeviceContext& dev_ctx) {
+    const phi::DeviceContext& dev_ctx) {
   const std::string& op_type = op.Type();
   auto output_names = kernel_sig.output_names;
   auto output_defs = phi_kernel.args_def().output_defs();
   PADDLE_ENFORCE_EQ(output_names.size(),
                     output_defs.size(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of outputs_args names (%d) must be equal to "
                         "the size of kernel output_defs (%d).",
                         output_names.size(),

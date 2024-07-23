@@ -232,7 +232,7 @@ class Conv2dTransposeXPUFusePass : public FusePassBase {
 
 void Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   int found_subgraph_count = 0;
@@ -282,7 +282,7 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
     auto* block = conv->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
 
     // recompute bias and weight for conv2d_transpose_xpu op
     auto* filter_t =
@@ -303,26 +303,26 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
       auto* ew_bias_add_y_t =
           scope->FindVar(ew_bias_add_y->Name())->GetMutable<phi::DenseTensor>();
       auto ew_bias_add_y_dims = ew_bias_add_y_t->dims();
-      PADDLE_ENFORCE_EQ(out_c,
-                        ew_bias_add_y_dims[0],
-                        platform::errors::InvalidArgument(
-                            "the shape[%d] of elewise bias tensor "
-                            "must equal out_channel[%d] of conv",
-                            ew_bias_add_y_dims[0],
-                            out_c));
+      PADDLE_ENFORCE_EQ(
+          out_c,
+          ew_bias_add_y_dims[0],
+          phi::errors::InvalidArgument("the shape[%d] of elewise bias tensor "
+                                       "must equal out_channel[%d] of conv",
+                                       ew_bias_add_y_dims[0],
+                                       out_c));
       PrepareBias(graph, scope, block, ew_bias_add_y, &fusion_bias_node);
     }
     // bn
     if (with_bn) {
       auto bn_bias_t =
           scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
-      PADDLE_ENFORCE_EQ(out_c,
-                        bn_bias_t->dims()[0],
-                        platform::errors::InvalidArgument(
-                            "the shape[%d] of bn bias tensor "
-                            "must equal out_channel[%d] of conv",
-                            bn_bias_t->dims()[0],
-                            out_c));
+      PADDLE_ENFORCE_EQ(
+          out_c,
+          bn_bias_t->dims()[0],
+          phi::errors::InvalidArgument("the shape[%d] of bn bias tensor "
+                                       "must equal out_channel[%d] of conv",
+                                       bn_bias_t->dims()[0],
+                                       out_c));
       auto bn_scale_t =
           scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
       auto bn_mean_t =

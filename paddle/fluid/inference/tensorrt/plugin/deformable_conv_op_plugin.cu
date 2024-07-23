@@ -623,7 +623,7 @@ void gemm_impl<float>(cublasHandle_t handle,
                       const float* beta,
                       float* C,
                       int ldc) {
-  platform::dynload::cublasSgemm(
+  phi::dynload::cublasSgemm(
       handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
@@ -643,7 +643,7 @@ void gemm_impl<half>(cublasHandle_t handle,
                      half* C,
                      int ldc) {
 #if TRT_PLUGIN_FP16_AVALIABLE
-  platform::dynload::cublasHgemm(
+  phi::dynload::cublasHgemm(
       handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 #else
   PADDLE_THROW(phi::errors::InvalidArgument(

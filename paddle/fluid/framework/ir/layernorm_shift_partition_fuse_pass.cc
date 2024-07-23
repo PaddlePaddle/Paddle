@@ -105,7 +105,7 @@ int LayerNormShiftPartitionFusePass::ApplyPattern(ir::Graph* graph,
                                                   bool with_roll) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input graph of LayerNormShiftPartitionFusePass should not be "
           "nullptr."));
   FusePassBase::Init(scope_name_, graph);
