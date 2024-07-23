@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import paddle
 import numpy as np
+
+import paddle
 
 try:
     import tensorrt as trt
 except Exception as e:
     pass
-from paddle import base
-from paddle import pir
-
-import paddle.static as static
-import paddle.nn.functional as F
-import paddle.nn as nn
-from paddle.nn import TransformerEncoderLayer, TransformerEncoder
+from paddle import nn, pir, static
+from paddle.nn import TransformerEncoder, TransformerEncoderLayer
 
 
 def map_dtype(pd_dtype):
@@ -148,7 +143,7 @@ def get_r50_program():
         with static.program_guard(infer_program, startup_program):
             scope = paddle.static.global_scope()
             input_data = paddle.static.data(
-                shape=[1, 3, 224, 224], dtype='float32', name='input'
+                shape=[-1, 3, 224, 224], dtype='float32', name='input'
             )
             model = wide_resnet50_2()
             model.eval()
