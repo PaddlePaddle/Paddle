@@ -18,11 +18,11 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 TEST(DataType, float16) {
-  using paddle::platform::float16;
   using phi::CPUPlace;
+  using phi::dtype::float16;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::FP16;
 
@@ -38,13 +38,13 @@ TEST(DataType, float16) {
   EXPECT_EQ(f::SizeOfType(dtype), 2u);
 
   // test debug info
-  std::string type = "::paddle::platform::float16";
+  std::string type = "::phi::dtype::float16";
   EXPECT_STREQ(f::DataTypeToString(dtype).c_str(), type.c_str());
 }
 
 TEST(DataType, bfloat16) {
-  using paddle::platform::bfloat16;
   using phi::CPUPlace;
+  using phi::dtype::bfloat16;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::BF16;
 
@@ -60,6 +60,6 @@ TEST(DataType, bfloat16) {
   EXPECT_EQ(f::SizeOfType(dtype), 2u);
 
   // test debug info
-  std::string type = "::paddle::platform::bfloat16";
+  std::string type = "::phi::dtype::bfloat16";
   EXPECT_STREQ(f::DataTypeToString(dtype).c_str(), type.c_str());
 }

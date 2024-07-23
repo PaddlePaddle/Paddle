@@ -23,7 +23,7 @@ class TrainerDesc;
 uint64_t SectionWorker::batch_id_(0);
 
 void SectionWorker::Initialize(const TrainerDesc &desc) {
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
   program_ = std::make_unique<ProgramDesc>(
       desc.section_param().section_config().program_desc());
   for (auto &op_desc : program_->Block(0).AllOps()) {
@@ -51,7 +51,7 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
     } else if (op_role == static_cast<int>(OpRole::kOptimize)) {
       optimizer_ops_.push_back(op.get());
     } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "The op %s is None of LRSched, Forward, Backward or Optimize.",
           op->Type()));
     }
@@ -74,7 +74,7 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
     VLOG(3) << "Pipeline backward send var " << var_name;
     PADDLE_ENFORCE_NE(is_first_stage,
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The first pipeline stage must do not have a "
                           "backward send var, please check var %s",
                           var_name));
@@ -167,7 +167,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
   PADDLE_ENFORCE_GT(
       num_microbatches_,
       startup_steps,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "To use pipeline with 1F1B scheduler, please make sure number of "
           "microbatches (%d) is than startup steps (%d).",
           num_microbatches_,
@@ -228,7 +228,7 @@ void SectionWorker::TrainFiles() {
   std::unique_ptr<GarbageCollector> gc;
   if (max_memory_size >= 0) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(place_)) {
+    if (phi::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place_,
                                                              max_memory_size);

@@ -37,8 +37,8 @@ void Copy<phi::CPUPlace, phi::CustomPlace>(phi::CPUPlace dst_place,
                                            void* stream) {
   if (UNLIKELY(num == 0)) return;
 
-  auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
-  auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
+  auto src_type = phi::PlaceHelper::GetDeviceType(src_place);
+  auto dst_type = phi::PlaceHelper::GetDeviceType(dst_place);
   std::string msg = "Memcpy:" + src_type + "->" + dst_type;
   platform::RecordEvent record_event(msg);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
@@ -58,8 +58,8 @@ void Copy<phi::CustomPlace, phi::CPUPlace>(phi::CustomPlace dst_place,
                                            size_t num,
                                            void* stream) {
   if (UNLIKELY(num == 0)) return;
-  auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
-  auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
+  auto src_type = phi::PlaceHelper::GetDeviceType(src_place);
+  auto dst_type = phi::PlaceHelper::GetDeviceType(dst_place);
   std::string msg = "Memcpy:" + src_type + "->" + dst_type;
   platform::RecordEvent record_event(msg);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
@@ -80,8 +80,8 @@ void Copy<phi::CustomPlace, phi::CustomPlace>(phi::CustomPlace dst_place,
                                               void* stream) {
   if (UNLIKELY(num == 0)) return;
 
-  auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
-  auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
+  auto src_type = phi::PlaceHelper::GetDeviceType(src_place);
+  auto dst_type = phi::PlaceHelper::GetDeviceType(dst_place);
   std::string msg = "Memcpy:" + src_type + "->" + dst_type;
   platform::RecordEvent record_event(msg);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
@@ -91,8 +91,8 @@ void Copy<phi::CustomPlace, phi::CustomPlace>(phi::CustomPlace dst_place,
     phi::DeviceManager::SetDevice(src_place);
     phi::stream::Stream stream_wrapper(src_place, stream);
 
-    auto src_id = platform::PlaceHelper::GetDeviceId(src_place);
-    auto dst_id = platform::PlaceHelper::GetDeviceId(dst_place);
+    auto src_id = phi::PlaceHelper::GetDeviceId(src_place);
+    auto dst_id = phi::PlaceHelper::GetDeviceId(dst_place);
     if (src_id == dst_id) {
       phi::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopyD2D(
           dst, src, num, &stream_wrapper);
@@ -101,7 +101,7 @@ void Copy<phi::CustomPlace, phi::CustomPlace>(phi::CustomPlace dst_place,
           dst_place, dst, src, num, &stream_wrapper);
     }
   } else {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Copy between %s and %s is not supported.", src_type, dst_type));
   }
 }

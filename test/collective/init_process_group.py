@@ -20,6 +20,9 @@ import paddle
 class TestProcessGroupFp32(unittest.TestCase):
     def setUp(self):
         self.config()
+        self._in_pir_mode = paddle.base.framework.get_flags(
+            "FLAGS_enable_pir_api"
+        )["FLAGS_enable_pir_api"]
 
     def config(self):
         pass
@@ -33,7 +36,8 @@ class TestProcessGroupFp32(unittest.TestCase):
         group = paddle.distributed.collective.Group(-1, 2, 0, [-1, -2])
         ret = paddle.distributed.barrier(group)
         assert ret is None
-        paddle.enable_static()
+        if not self._in_pir_mode:
+            paddle.enable_static()
         in_tensor = paddle.empty((1, 2))
         in_tensor2 = paddle.empty((1, 2))
         paddle.distributed.broadcast(in_tensor, src=0)

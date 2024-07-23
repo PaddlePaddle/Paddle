@@ -23,10 +23,10 @@ bool NCCLWrapper::is_initialized_ = false;
 void NCCLWrapper::InitNCCL() {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::ncclCommInitRank(&(nccl_info_.comm_),
-                                          nccl_info_.global_ranks_,
-                                          nccl_info_.nccl_id_,
-                                          nccl_info_.my_global_rank_));
+      phi::dynload::ncclCommInitRank(&(nccl_info_.comm_),
+                                     nccl_info_.global_ranks_,
+                                     nccl_info_.nccl_id_,
+                                     nccl_info_.my_global_rank_));
 #endif
   return;
 }
@@ -41,7 +41,7 @@ void NCCLWrapper::SetNCCLId(const NCCLInfo& nccl_info) {
 NCCLInfo NCCLWrapper::GetNCCLId() {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::ncclGetUniqueId(&(nccl_info_.nccl_id_)));
+      phi::dynload::ncclGetUniqueId(&(nccl_info_.nccl_id_)));
 #endif
   return nccl_info_;
 }
@@ -71,13 +71,13 @@ void NCCLWrapper::SyncVar(const int root_rank,
     auto var = scope.FindVar(name);
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     int32_t total_size = tensor->numel();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
-        reinterpret_cast<void*>(tensor->data<float>()),
-        total_size,
-        ncclFloat,
-        root_rank,
-        nccl_info_.comm_,
-        nccl_info_.stream_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::ncclBcast(reinterpret_cast<void*>(tensor->data<float>()),
+                                total_size,
+                                ncclFloat,
+                                root_rank,
+                                nccl_info_.comm_,
+                                nccl_info_.stream_));
 #ifdef PADDLE_WITH_RCCL
     hipStreamSynchronize(nccl_info_.stream_);
 #else

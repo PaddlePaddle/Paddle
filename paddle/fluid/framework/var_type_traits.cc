@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/framework/var_type_traits.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
-#include "paddle/fluid/platform/macros.h"
 #ifdef PADDLE_WITH_CUDA
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -62,12 +62,12 @@ struct VarIdToTypeIndexMapInitializerImpl {
     PADDLE_ENFORCE_EQ(
         id_to_type->count(kId),
         0,
-        platform::errors::AlreadyExists(
+        phi::errors::AlreadyExists(
             "Registered duplicate type id %d for type %s.", kId, type.name()));
     PADDLE_ENFORCE_EQ(
         type_to_id->count(type),
         0,
-        platform::errors::AlreadyExists(
+        phi::errors::AlreadyExists(
             "Registered duplicate type index %s for id %d.", type.name(), kId));
     id_to_type->emplace(kId, type);
     type_to_id->emplace(type, kId);
@@ -96,10 +96,10 @@ struct VarIdToTypeIndexMapHolder {
  public:
   static const std::type_index &ToTypeIndex(int var_id) {
     auto it = Instance().id_to_type_map_.find(var_id);
-    PADDLE_ENFORCE_NE(it,
-                      Instance().id_to_type_map_.end(),
-                      platform::errors::NotFound(
-                          "Variable Id %d is not registered.", var_id));
+    PADDLE_ENFORCE_NE(
+        it,
+        Instance().id_to_type_map_.end(),
+        phi::errors::NotFound("Variable Id %d is not registered.", var_id));
     return it->second;
   }
 
@@ -107,7 +107,7 @@ struct VarIdToTypeIndexMapHolder {
     auto it = Instance().type_to_id_map_.find(type);
     PADDLE_ENFORCE_NE(it,
                       Instance().type_to_id_map_.end(),
-                      platform::errors::NotFound(
+                      phi::errors::NotFound(
                           "Variable Type %s is not registered.", type.name()));
     return it->second;
   }

@@ -27,12 +27,11 @@ namespace allocation {
 
 bool CustomAllocator::IsAllocThreadSafe() const { return true; }
 void CustomAllocator::FreeImpl(phi::Allocation* allocation) {
-  PADDLE_ENFORCE_EQ(
-      allocation->place(),
-      place_,
-      platform::errors::PermissionDenied("CustomDevice memory is "
-                                         "freed in incorrect device. "
-                                         "This may be a bug"));
+  PADDLE_ENFORCE_EQ(allocation->place(),
+                    place_,
+                    phi::errors::PermissionDenied("CustomDevice memory is "
+                                                  "freed in incorrect device. "
+                                                  "This may be a bug"));
   if (phi::DeviceManager::HasDeviceType(place_.GetDeviceType())) {
     phi::DeviceManager::GetDeviceWithPlace(place_)->MemoryDeallocate(
         allocation->ptr(), allocation->size());
@@ -65,10 +64,10 @@ phi::Allocation* CustomAllocator::AllocateImpl(size_t size) {
   size_t avail, total;
   phi::DeviceManager::MemoryStats(place_, &total, &avail);
 
-  auto dev_type = platform::PlaceHelper::GetDeviceType(place_);
-  auto dev_id = platform::PlaceHelper::GetDeviceId(place_);
+  auto dev_type = phi::PlaceHelper::GetDeviceType(place_);
+  auto dev_id = phi::PlaceHelper::GetDeviceId(place_);
 
-  PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+  PADDLE_THROW_BAD_ALLOC(phi::errors::ResourceExhausted(
       "\n\nOut of memory error on %s:%d. "
       "Cannot allocate %s memory on %s:%d, "
       "available memory is only %s.\n\n"
