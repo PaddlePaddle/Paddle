@@ -731,7 +731,13 @@ class ClassVariable(CallableVariable):
         return self.value
 
     def call_function(self, /, *args, **kwargs):
-        new_object = self.value.__new__(self.value)
+        from ..function_graph import convert_to_py_value
+
+        new_object = self.value.__new__(
+            self.value,
+            *convert_to_py_value(args),
+            **convert_to_py_value(kwargs),
+        )
 
         # do not have init function
         if self.value.__init__ is object.__init__:
