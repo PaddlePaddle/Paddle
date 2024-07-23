@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from collections import OrderedDict
 
 import numpy as np
@@ -22,7 +24,7 @@ __all__ = []
 
 
 class VarWrapper:
-    def __init__(self, var: Variable, graph: 'GraphWrapper') -> None:
+    def __init__(self, var: Variable, graph: GraphWrapper) -> None:
         assert isinstance(var, Variable)
         assert isinstance(graph, GraphWrapper)
         self._var = var
@@ -34,7 +36,7 @@ class VarWrapper:
         """
         return self._var.name
 
-    def shape(self) -> tuple:
+    def shape(self) -> tuple[int, ...]:
         """
         Get the shape of the variable.
         """
@@ -42,7 +44,7 @@ class VarWrapper:
 
 
 class OpWrapper:
-    def __init__(self, op, graph: 'GraphWrapper') -> None:
+    def __init__(self, op, graph: GraphWrapper) -> None:
         assert isinstance(graph, GraphWrapper)
         self._op = op
         self._graph = graph
@@ -53,7 +55,7 @@ class OpWrapper:
         """
         return self._op.type
 
-    def inputs(self, name: str) -> list:
+    def inputs(self, name: str) -> list[VarWrapper]:
         """
         Get all the variables by the input name.
         """
@@ -64,7 +66,7 @@ class OpWrapper:
         else:
             return []
 
-    def outputs(self, name: str) -> list:
+    def outputs(self, name: str) -> list[OpWrapper]:
         """
         Get all the variables by the output name.
         """
@@ -104,7 +106,7 @@ class GraphWrapper:
         self.out_nodes = OrderedDict(out_nodes)
         self._attrs = OrderedDict()
 
-    def ops(self) -> list:
+    def ops(self) -> list[OpWrapper]:
         """
         Return all operator nodes included in the graph as a set.
         """
