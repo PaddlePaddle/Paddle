@@ -33,19 +33,19 @@ limitations under the License. */
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/miopen.h"
+#include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #else
-#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
+#include "paddle/phi/backends/dynload/cuda_driver.h"
 #endif
 #else  // PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/rocm_driver.h"
+#include "paddle/phi/backends/dynload/rocm_driver.h"
 #endif
 
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -461,8 +461,7 @@ class RecordedGpuMallocHelper {
                      size_t size,
                      const CUmemAllocationProp *prop,
                      unsigned long long flags) {  // NOLINT
-    auto result =
-        paddle::platform::dynload::cuMemCreate(handle, size, prop, flags);
+    auto result = phi::dynload::cuMemCreate(handle, size, prop, flags);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_add(size);
     }
@@ -470,7 +469,7 @@ class RecordedGpuMallocHelper {
   }
 
   CUresult MemRelease(CUmemGenericAllocationHandle handle, size_t size) {
-    auto result = paddle::platform::dynload::cuMemRelease(handle);
+    auto result = phi::dynload::cuMemRelease(handle);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_sub(size);
     }
@@ -483,8 +482,7 @@ class RecordedGpuMallocHelper {
                        size_t size,
                        const hipMemAllocationProp *prop,
                        unsigned long long flags) {  // NOLINT
-    auto result =
-        paddle::platform::dynload::hipMemCreate(handle, size, prop, flags);
+    auto result = phi::dynload::hipMemCreate(handle, size, prop, flags);
     if (result == hipSuccess) {
       cur_size_.fetch_add(size);
     }
@@ -492,7 +490,7 @@ class RecordedGpuMallocHelper {
   }
 
   hipError_t MemRelease(hipMemGenericAllocationHandle_t handle, size_t size) {
-    auto result = paddle::platform::dynload::hipMemRelease(handle);
+    auto result = phi::dynload::hipMemRelease(handle);
     if (result == hipSuccess) {
       cur_size_.fetch_sub(size);
     }

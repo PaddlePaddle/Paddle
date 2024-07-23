@@ -31,8 +31,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
@@ -1306,7 +1306,7 @@ void RegisterOperatorWithMetaInfoMap(
 // load op api
 const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
 LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
-  void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
+  void* handle = phi::dynload::GetOpDsoHandle(dso_name);
   VLOG(3) << "load custom_op lib: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =

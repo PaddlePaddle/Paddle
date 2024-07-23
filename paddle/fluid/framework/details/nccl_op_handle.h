@@ -22,10 +22,10 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/rccl.h"
+#include "paddle/phi/backends/dynload/rccl.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -176,7 +176,7 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dev_id:" << dev_id << ", dtype:" << datatype
              << ", place:" << place;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
   }
 
@@ -238,7 +238,7 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dtype:" << datatype << ", place:" << place
              << ", stream:" << stream;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(
         sendbuff, recvbuff, count, datatype, ncclSum, 0, comm, stream));
 
 #ifdef PADDLE_WITH_HIP
@@ -276,14 +276,14 @@ class NCCLOpHandleBase : public OpHandleBase {
 #ifdef PADDLE_WITH_HIP
     hipStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     hipEventRecord(exter_events_.at(dev_id), stream);
 #else
     cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     cudaEventRecord(exter_events_.at(dev_id), stream);
@@ -313,8 +313,8 @@ class NCCLOpHandleBase : public OpHandleBase {
 #else
     cudaStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
 #endif
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
-        sendbuff, count, datatype, 0, comm, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::ncclBcast(sendbuff, count, datatype, 0, comm, stream));
   }
 
  protected:

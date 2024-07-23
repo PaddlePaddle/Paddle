@@ -45,10 +45,10 @@ void CudaNvtxRangePush(const std::string& name, const NvtxRangeColor color) {
   eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII;
   eventAttrib.message.ascii = name.c_str();
 
-  dynload::nvtxRangePushEx(&eventAttrib);
+  phi::dynload::nvtxRangePushEx(&eventAttrib);
 }
 
-void CudaNvtxRangePop() { dynload::nvtxRangePop(); }
+void CudaNvtxRangePop() { phi::dynload::nvtxRangePop(); }
 #endif
 
 }  // namespace paddle::platform
