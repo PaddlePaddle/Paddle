@@ -40,7 +40,7 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
     inputs.push_back(input2);
 
     auto get_persistable_data = [&](const std::string& arg_name,
-                                    framework::DDim* dims) -> float* {
+                                    phi::DDim* dims) -> float* {
       std::string var_name = op_desc.Input(arg_name).front();
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
@@ -51,7 +51,7 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
       return temp_data;
     };
 
-    framework::DDim bias_dims, scale_dims;
+    phi::DDim bias_dims, scale_dims;
     auto* bias = get_persistable_data("Bias", &bias_dims);
     auto* scale = get_persistable_data("Scale", &scale_dims);
     int bias_size = common::product(bias_dims);

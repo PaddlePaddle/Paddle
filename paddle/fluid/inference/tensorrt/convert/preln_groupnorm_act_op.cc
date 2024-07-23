@@ -43,7 +43,7 @@ class PrelnGroupnormActOpConverter : public OpConverter {
 
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
-                         framework::DDim* dims) -> TensorRTEngine::Weight {
+                         phi::DDim* dims) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       (*dims) = temp_tensor->dims();
@@ -52,8 +52,8 @@ class PrelnGroupnormActOpConverter : public OpConverter {
       return weight;
     };
 
-    framework::DDim scale_dims;
-    framework::DDim bias_dims;
+    phi::DDim scale_dims;
+    phi::DDim bias_dims;
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();

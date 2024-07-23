@@ -803,7 +803,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
             dl_tensor.shape + dl_tensor.ndim,
             std::back_inserter(vec));
 
-  framework::DDim vddim = common::make_ddim(vec);
+  phi::DDim vddim = common::make_ddim(vec);
 
   dst->Resize(vddim);
   ::DLDataType type = dl_tensor.dtype;
@@ -840,7 +840,7 @@ void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
             src->dl_tensor.shape + src->dl_tensor.ndim,
             std::back_inserter(vec));
 
-  framework::DDim vddim = common::make_ddim(vec);
+  phi::DDim vddim = common::make_ddim(vec);
   dst->Resize(vddim);
   ::DLDataType type = src->dl_tensor.dtype;
 

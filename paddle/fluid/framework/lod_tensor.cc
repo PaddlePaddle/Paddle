@@ -429,7 +429,7 @@ void MergeLoDTensor(phi::DenseTensor *target,
       false,
       phi::errors::InvalidArgument("The LoDTensors to be merged are empty."));
 
-  framework::DDim new_dim = lod_tensors[0]->dims();
+  phi::DDim new_dim = lod_tensors[0]->dims();
   proto::VarType::Type new_type = proto::VarType::FP32;
   phi::DataLayout new_layout = lod_tensors[0]->layout();
   for (auto *t : lod_tensors) {

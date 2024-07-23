@@ -258,7 +258,7 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
 bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                                phi::DenseTensor *t,
                                const phi::Place &place) {
-  framework::DDim ddim = common::make_ddim(pt.shape);
+  phi::DDim ddim = common::make_ddim(pt.shape);
   void *input_ptr = nullptr;
   if (pt.dtype == PaddleDType::INT64) {
     input_ptr = t->mutable_data<int64_t>(ddim, place);
@@ -2853,7 +2853,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     if (!input_tensor.is_dense_tensor()) return;
     auto tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(input_tensor.impl()).get();
-    framework::DDim dim = tensor->dims();
+    phi::DDim dim = tensor->dims();
     std::vector<int32_t> shape(dim.size());
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
