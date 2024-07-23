@@ -396,6 +396,7 @@ def paddle_inference_decorator(function=None, **kwargs):
     Converts dynamic graph APIs into static graph saved in disk. Then will use Paddle Inference to predictor based on
     the static model in the disk.
     This function return a callable function, user can use it to inference just like dynamic function.
+    
     Args:
         function (callable): Callable dynamic graph function. It must be a member function of paddle.nn.Layer.
         If it used as a decorator, the decorated function will be parsed as this parameter.
