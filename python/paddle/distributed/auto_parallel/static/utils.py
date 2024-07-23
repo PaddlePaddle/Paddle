@@ -22,8 +22,8 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.base.framework import use_pir_api
+from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
@@ -838,7 +838,11 @@ def get_dist_attr(program, dist_context=None):
             if op.name() == "builtin.parameter" or op.name() == "pd_op.data":
                 op_dist_attr = op.dist_attr
                 var_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
-                var_name = op.str_attr("parameter_name") if op.name() == "builtin.parameter" else op.str_attr("name")
+                var_name = (
+                    op.str_attr("parameter_name")
+                    if op.name() == "builtin.parameter"
+                    else op.str_attr("name")
+                )
                 process_mesh = var_dist_attr.process_mesh
                 dist_attr[var_name] = {
                     "process_shape": process_mesh.shape,
@@ -847,13 +851,14 @@ def get_dist_attr(program, dist_context=None):
                 }
     else:
         from .dist_context import get_default_distributed_context
+
         assert isinstance(program, paddle.static.Program)
         if dist_context is None:
             dist_context = get_default_distributed_context()
         for var in program.list_vars():
             if is_parameter(var) or is_belong_to_optimizer(var):
-                tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                    var
+                tensor_dist_attr = (
+                    dist_context.get_tensor_dist_attr_for_program(var)
                 )
                 process_mesh = tensor_dist_attr.process_mesh
                 dims_mapping = tensor_dist_attr.dims_mapping

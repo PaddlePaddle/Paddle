@@ -17,7 +17,9 @@ import unittest
 import collective.test_communication_api_base as test_base
 
 
-class TestSemiAutoParallelLlamaSaveLoadTest(test_base.CommunicationTestDistBase):
+class TestSemiAutoParallelLlamaSaveLoadTest(
+    test_base.CommunicationTestDistBase
+):
     def setUp(self):
         super().setUp(num_of_devices=8, timeout=200, nnode=1)
         self._default_envs = {

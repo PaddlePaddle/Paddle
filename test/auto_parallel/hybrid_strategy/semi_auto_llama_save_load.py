@@ -15,8 +15,8 @@
 import hashlib
 import os
 import random
-from functools import reduce
 import tempfile
+from functools import reduce
 
 import numpy as np
 from semi_auto_parallel_llama_model import (
@@ -118,7 +118,7 @@ class TestLlamaAuto:
         np.random.seed(1024)
         random.seed(1024)
 
-    def run_dy2static(self,tmp_ckpt_path):
+    def run_dy2static(self, tmp_ckpt_path):
         model = LlamaForCausalLMAuto(self.config)
         criterion = LlamaPretrainingCriterionAuto(self.config)
 
@@ -159,9 +159,9 @@ class TestLlamaAuto:
         dist_model.train()
 
         state_dict = dist_model.state_dict()
-        for k,v in state_dict.items():
-            print(k,v.shape,v.dtype,v._md5sum())        
-        
+        for k, v in state_dict.items():
+            print(k, v.shape, v.dtype, v._md5sum())
+
         loss_before_save = []
         for step, inputs in enumerate(dist_loader()):
             input_ids, labels = inputs
@@ -169,7 +169,7 @@ class TestLlamaAuto:
             lr_scheduler.step()
             if step == 2:
                 state_dict = dist_model.state_dict()
-                dist.save_state_dict(state_dict,tmp_ckpt_path)
+                dist.save_state_dict(state_dict, tmp_ckpt_path)
             if step > 2:
                 numpy_array = np.array(loss)
                 array_bytes = numpy_array.tobytes()
@@ -181,7 +181,7 @@ class TestLlamaAuto:
                 else:
                     assert loss is None
 
-            if  step >= 9:
+            if step >= 9:
                 break
 
         loss_after_load = []
@@ -193,7 +193,7 @@ class TestLlamaAuto:
             lr_scheduler.step()
             if step == 2:
                 state_dict = dist_model.state_dict()
-                dist.load_state_dict(state_dict,tmp_ckpt_path)
+                dist.load_state_dict(state_dict, tmp_ckpt_path)
             if step > 2:
                 numpy_array = np.array(loss)
                 array_bytes = numpy_array.tobytes()
@@ -204,20 +204,22 @@ class TestLlamaAuto:
                     assert loss is not None
                 else:
                     assert loss is None
-            if  step >= 9:
+            if step >= 9:
                 break
 
-        return (loss_before_save,loss_after_load)
+        return (loss_before_save, loss_after_load)
 
-    def broadcast_ckpt_path(self,ckpt_path):
+    def broadcast_ckpt_path(self, ckpt_path):
         dist.init_parallel_env()
         rank = dist.get_rank()
         if rank == 0:
-            byte_array = np.frombuffer(ckpt_path.encode('utf-8'), dtype=np.uint8)
+            byte_array = np.frombuffer(
+                ckpt_path.encode('utf-8'), dtype=np.uint8
+            )
             length = np.array([len(byte_array)], dtype=np.int32)
         else:
             length = np.array([0], dtype=np.int32)
-        
+
         length_tensor = paddle.to_tensor(length)
         dist.broadcast(length_tensor, src=0)
         length = length_tensor.numpy()[0]
@@ -226,13 +228,12 @@ class TestLlamaAuto:
             byte_array = np.empty(length, dtype=np.uint8)
 
         byte_array_tensor = paddle.to_tensor(byte_array)
-            
+
         dist.broadcast(byte_array_tensor, src=0)
 
         global_ckpt_path = byte_array_tensor.numpy().tobytes().decode('utf-8')
 
         return global_ckpt_path
- 
 
     def run_test_cases(self):
         self.init_dist_env()
@@ -245,6 +246,7 @@ class TestLlamaAuto:
             for i in range(len(loss[0])):
                 assert loss[0][i] == loss[1][i]
         ckpt_path.cleanup()
+
 
 if __name__ == '__main__':
     TestLlamaAuto().run_test_cases()

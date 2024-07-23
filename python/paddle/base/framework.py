@@ -7413,7 +7413,6 @@ class Program:
         var_list = filter(condition, self.list_vars())
 
         state_dict = {}
-
         for var in var_list:
             var_temp = scope.find_var(var.name)
             if var_temp is None:
