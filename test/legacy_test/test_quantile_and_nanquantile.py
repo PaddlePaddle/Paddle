@@ -133,42 +133,45 @@ class TestQuantileAndNanquantile(unittest.TestCase):
 
     def test_backward(self):
         def check_grad(x, q, axis, target_gard, apis=None):
-            with paddle.pir_utils.OldIrGuard():
-                x = np.array(x, dtype="float32")
-                paddle.disable_static()
-                for op, _ in apis or API_list:
-                    x_p = paddle.to_tensor(
-                        x, dtype="float32", stop_gradient=False
+            x = np.array(x, dtype="float32")
+            paddle.disable_static()
+            for op, _ in apis or API_list:
+                x_p = paddle.to_tensor(x, dtype="float32", stop_gradient=False)
+                op(x_p, q, axis).sum().backward()
+                np.testing.assert_allclose(
+                    x_p.grad.numpy(),
+                    np.array(target_gard, dtype="float32"),
+                    rtol=1e-05,
+                    equal_nan=True,
+                )
+            paddle.enable_static()
+            opt = paddle.optimizer.SGD(learning_rate=0.01)
+            for op, _ in apis or API_list:
+                s_p = paddle.static.Program()
+                m_p = paddle.static.Program()
+                with paddle.static.program_guard(m_p, s_p):
+                    x_p = paddle.static.data(
+                        name="x",
+                        shape=x.shape,
+                        dtype=paddle.float32,
                     )
-                    op(x_p, q, axis).sum().backward()
-                    np.testing.assert_allclose(
-                        x_p.grad.numpy(),
-                        np.array(target_gard, dtype="float32"),
-                        rtol=1e-05,
-                        equal_nan=True,
+                    x_p.stop_gradient = False
+                    q_p = paddle.static.data(
+                        name="q",
+                        shape=[len(q)] if isinstance(q, list) else [],
+                        dtype=paddle.float32,
                     )
-                paddle.enable_static()
-                opt = paddle.optimizer.SGD(learning_rate=0.01)
-                for op, _ in apis or API_list:
-                    s_p = paddle.static.Program()
-                    m_p = paddle.static.Program()
-                    with paddle.static.program_guard(m_p, s_p):
-                        x_p = paddle.static.data(
-                            name="x",
-                            shape=x.shape,
-                            dtype=paddle.float32,
+                    loss = op(x_p, q_p, axis).sum()
+                    opt.minimize(loss)
+                    exe = paddle.static.Executor()
+                    exe.run(paddle.static.default_startup_program())
+                    if paddle.framework.use_pir_api():
+                        o = exe.run(
+                            paddle.static.default_main_program(),
+                            feed={"x": x, "q": np.array(q, dtype="float32")},
+                            fetch_list=[],
                         )
-                        x_p.stop_gradient = False
-                        q_p = paddle.static.data(
-                            name="q",
-                            shape=[len(q)] if isinstance(q, list) else [],
-                            dtype=paddle.float32,
-                        )
-                        # q_p = paddle.pir.core.datatype_to_vartype[q_p]
-                        loss = op(x_p, q_p, axis).sum()
-                        opt.minimize(loss)
-                        exe = paddle.static.Executor()
-                        exe.run(paddle.static.default_startup_program())
+                    else:
                         o = exe.run(
                             paddle.static.default_main_program(),
                             feed={"x": x, "q": np.array(q, dtype="float32")},
@@ -180,37 +183,30 @@ class TestQuantileAndNanquantile(unittest.TestCase):
                             rtol=1e-05,
                             equal_nan=True,
                         )
-                paddle.disable_static()
+            paddle.disable_static()
 
-            check_grad([1, 2, 3], 0.5, 0, [0, 1, 0])
-            check_grad(
-                [1, 2, 3, 4] * 2,
-                [0.55, 0.7],
-                0,
-                [0, 0, 0.95, 0, 0, 0.15, 0.9, 0],
-            )
-            check_grad(
-                [[1, 2, 3], [4, 5, 6]],
-                [0.3, 0.7],
-                1,
-                [[0.4, 1.2, 0.4], [0.4, 1.2, 0.4]],
-            )
-            # quantile
-            check_grad(
-                [1, float("nan"), 3],
-                0.5,
-                0,
-                [0, 1, 0],
-                [(paddle.quantile, None)],
-            )
-            # nanquantile
-            check_grad(
-                [1, float("nan"), 3],
-                0.5,
-                0,
-                [0.5, 0, 0.5],
-                [(paddle.nanquantile, None)],
-            )
+        check_grad([1, 2, 3], 0.5, 0, [0, 1, 0])
+        check_grad(
+            [1, 2, 3, 4] * 2, [0.55, 0.7], 0, [0, 0, 0.95, 0, 0, 0.15, 0.9, 0]
+        )
+        check_grad(
+            [[1, 2, 3], [4, 5, 6]],
+            [0.3, 0.7],
+            1,
+            [[0.4, 1.2, 0.4], [0.4, 1.2, 0.4]],
+        )
+        # quantile
+        check_grad(
+            [1, float("nan"), 3], 0.5, 0, [0, 1, 0], [(paddle.quantile, None)]
+        )
+        # nanquantile
+        check_grad(
+            [1, float("nan"), 3],
+            0.5,
+            0,
+            [0.5, 0, 0.5],
+            [(paddle.nanquantile, None)],
+        )
 
 
 class TestMuitlpleQ(unittest.TestCase):
@@ -404,104 +400,94 @@ class TestQuantileRuntime(unittest.TestCase):
                 )
 
     def test_static_tensor(self):
-        with paddle.pir_utils.OldIrGuard():
-            paddle.enable_static()
-            for func, res_func in API_list:
+        paddle.enable_static()
+        for func, res_func in API_list:
+            s_p = paddle.static.Program()
+            m_p = paddle.static.Program()
+            with paddle.static.program_guard(m_p, s_p):
+                for device in self.devices:
+                    x = paddle.static.data(
+                        name="x",
+                        shape=self.input_data.shape,
+                        dtype=paddle.float32,
+                    )
+                    q = paddle.static.data(
+                        name="q", shape=(3,), dtype=paddle.float32
+                    )
+                    x_fp64 = paddle.static.data(
+                        name="x_fp64",
+                        shape=self.input_data.shape,
+                        dtype=paddle.float64,
+                    )
+
+                    results = func(x, q=q, axis=1)
+                    np_input_data = self.input_data.astype("float32")
+                    results_fp64 = func(x_fp64, q=q, axis=1)
+                    np_input_data_fp64 = self.input_data.astype("float64")
+                    q_data = np.array([0.5, 0.5, 0.5]).astype("float32")
+
+                    exe = paddle.static.Executor(device)
+                    paddle_res, paddle_res_fp64 = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "x": np_input_data,
+                            "x_fp64": np_input_data_fp64,
+                            "q": q_data,
+                        },
+                        fetch_list=[results, results_fp64],
+                    )
+                    np_res = res_func(np_input_data, q=[0.5, 0.5, 0.5], axis=1)
+                    np_res_fp64 = res_func(
+                        np_input_data_fp64, q=[0.5, 0.5, 0.5], axis=1
+                    )
+                    np.testing.assert_allclose(paddle_res, np_res, rtol=1e-05)
+                    np.testing.assert_allclose(
+                        paddle_res_fp64, np_res_fp64, rtol=1e-05
+                    )
+
+    def test_static_0d_tensor(self):
+        paddle.enable_static()
+        for func, res_func in API_list:
+            for device in self.devices:
                 s_p = paddle.static.Program()
                 m_p = paddle.static.Program()
                 with paddle.static.program_guard(m_p, s_p):
-                    for device in self.devices:
-                        x = paddle.static.data(
-                            name="x",
-                            shape=self.input_data.shape,
-                            dtype=paddle.float32,
-                        )
-                        q = paddle.static.data(
-                            name="q", shape=(3,), dtype=paddle.float32
-                        )
-                        x_fp64 = paddle.static.data(
-                            name="x_fp64",
-                            shape=self.input_data.shape,
-                            dtype=paddle.float64,
-                        )
+                    x = paddle.static.data(
+                        name="x",
+                        shape=self.input_data.shape,
+                        dtype=paddle.float32,
+                    )
+                    q = paddle.static.data(
+                        name="q", shape=[], dtype=paddle.float32
+                    )
+                    x_fp64 = paddle.static.data(
+                        name="x_fp64",
+                        shape=self.input_data.shape,
+                        dtype=paddle.float64,
+                    )
 
-                        results = func(x, q=q, axis=1)
-                        np_input_data = self.input_data.astype("float32")
-                        results_fp64 = func(x_fp64, q=q, axis=1)
-                        np_input_data_fp64 = self.input_data.astype("float64")
-                        q_data = np.array([0.5, 0.5, 0.5]).astype("float32")
+                    results = func(x, q=q, axis=1)
+                    np_input_data = self.input_data.astype("float32")
+                    results_fp64 = func(x_fp64, q=q, axis=1)
+                    np_input_data_fp64 = self.input_data.astype("float64")
+                    q_data = np.array(0.3).astype("float32")
 
-                        exe = paddle.static.Executor(device)
-                        paddle_res, paddle_res_fp64 = exe.run(
-                            paddle.static.default_main_program(),
-                            feed={
-                                "x": np_input_data,
-                                "x_fp64": np_input_data_fp64,
-                                "q": q_data,
-                            },
-                            fetch_list=[results, results_fp64],
-                        )
-                        np_res = res_func(
-                            np_input_data, q=[0.5, 0.5, 0.5], axis=1
-                        )
-                        np_res_fp64 = res_func(
-                            np_input_data_fp64, q=[0.5, 0.5, 0.5], axis=1
-                        )
-                        np.testing.assert_allclose(
-                            paddle_res, np_res, rtol=1e-05
-                        )
-                        np.testing.assert_allclose(
-                            paddle_res_fp64, np_res_fp64, rtol=1e-05
-                        )
-
-    def test_static_0d_tensor(self):
-        with paddle.pir_utils.OldIrGuard():
-            paddle.enable_static()
-            for func, res_func in API_list:
-                for device in self.devices:
-                    s_p = paddle.static.Program()
-                    m_p = paddle.static.Program()
-                    with paddle.static.program_guard(m_p, s_p):
-                        x = paddle.static.data(
-                            name="x",
-                            shape=self.input_data.shape,
-                            dtype=paddle.float32,
-                        )
-                        q = paddle.static.data(
-                            name="q", shape=[], dtype=paddle.float32
-                        )
-                        x_fp64 = paddle.static.data(
-                            name="x_fp64",
-                            shape=self.input_data.shape,
-                            dtype=paddle.float64,
-                        )
-
-                        results = func(x, q=q, axis=1)
-                        np_input_data = self.input_data.astype("float32")
-                        results_fp64 = func(x_fp64, q=q, axis=1)
-                        np_input_data_fp64 = self.input_data.astype("float64")
-                        q_data = np.array(0.3).astype("float32")
-
-                        exe = paddle.static.Executor(device)
-                        paddle_res, paddle_res_fp64 = exe.run(
-                            paddle.static.default_main_program(),
-                            feed={
-                                "x": np_input_data,
-                                "x_fp64": np_input_data_fp64,
-                                "q": q_data,
-                            },
-                            fetch_list=[results, results_fp64],
-                        )
-                        np_res = res_func(np_input_data, q=0.3, axis=1)
-                        np_res_fp64 = res_func(
-                            np_input_data_fp64, q=0.3, axis=1
-                        )
-                        np.testing.assert_allclose(
-                            paddle_res, np_res, rtol=1e-05
-                        )
-                        np.testing.assert_allclose(
-                            paddle_res_fp64, np_res_fp64, rtol=1e-05
-                        )
+                    exe = paddle.static.Executor(device)
+                    paddle_res, paddle_res_fp64 = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "x": np_input_data,
+                            "x_fp64": np_input_data_fp64,
+                            "q": q_data,
+                        },
+                        fetch_list=[results, results_fp64],
+                    )
+                    np_res = res_func(np_input_data, q=0.3, axis=1)
+                    np_res_fp64 = res_func(np_input_data_fp64, q=0.3, axis=1)
+                    np.testing.assert_allclose(paddle_res, np_res, rtol=1e-05)
+                    np.testing.assert_allclose(
+                        paddle_res_fp64, np_res_fp64, rtol=1e-05
+                    )
 
 
 if __name__ == '__main__':

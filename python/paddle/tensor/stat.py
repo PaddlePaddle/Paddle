@@ -751,7 +751,9 @@ def _compute_quantile(
         )
     for q_num in q:
         # we do not validate tensor q in static mode
-        if not in_dynamic_or_pir_mode() and isinstance(q_num, Variable):
+        if not in_dynamic_mode() and isinstance(
+            q_num, (Variable, paddle.pir.Value)
+        ):
             break
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
