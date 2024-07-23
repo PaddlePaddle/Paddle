@@ -15,6 +15,9 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from typing import (
+    op_type,
+)
 
 import numpy as np
 
