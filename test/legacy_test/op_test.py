@@ -2132,7 +2132,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
-        check_symbol_infer=False,
+        check_symbol_infer=True,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2917,7 +2917,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
-        check_symbol_infer=False,
+        check_symbol_infer=True,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():

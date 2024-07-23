@@ -63,12 +63,13 @@ class TestSigmoidCrossEntropyWithLogitsOpGradWithAutoGrad(unittest.TestCase):
 
         def fn_comp(x, label, weight):
             zeros = paddle.full((self.batch_size, self.num_classes), 0.0)
-            t1 = paddle.where(x > 0, x, zeros)
-            t2 = x * label
-            t3 = paddle.log(1 + paddle.exp(-paddle.abs(x)))
-            t4 = t1 - t2 + t3 * weight
-            t5 = paddle.full((self.batch_size, self.num_classes), -100.0)
-            out = paddle.where(label == t5, zeros, t4)
+
+            max_val = paddle.where(x < zeros, -x, zeros)
+            t1 = (1 - label) * x
+            t2 = paddle.log((-max_val).exp() + (-x - max_val).exp())
+            t3 = t1 + weight * (t2 + max_val)
+            t4 = paddle.full((self.batch_size, self.num_classes), -100.0)
+            out = paddle.where(label == t4, zeros, t3)
             loss = out.sum()
             loss.backward()
             return out, x.grad

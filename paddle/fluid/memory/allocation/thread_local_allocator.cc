@@ -27,7 +27,7 @@ ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const phi::Place& p)
         platform::GpuMinChunkSize(),
         platform::GpuMaxChunkSize());
   } else {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Thread local allocator only supports CUDAPlace now."));
   }
 }
@@ -39,7 +39,7 @@ std::shared_ptr<ThreadLocalAllocatorImpl> ThreadLocalCUDAAllocatorPool::Get(
   PADDLE_ENFORCE_LT(
       pos,
       devices_.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The position of device should be less than the size of devices."));
   std::call_once(*init_flags_[pos], [this, pos, gpu_id] {
     platform::SetDeviceId(devices_[pos]);

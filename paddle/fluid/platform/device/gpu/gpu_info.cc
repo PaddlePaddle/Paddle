@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
@@ -34,19 +33,19 @@ limitations under the License. */
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/miopen.h"
+#include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #else
-#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
+#include "paddle/phi/backends/dynload/cuda_driver.h"
 #endif
 #else  // PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/rocm_driver.h"
+#include "paddle/phi/backends/dynload/rocm_driver.h"
 #endif
 
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -59,14 +58,14 @@ PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
                          false,
                          "Whether to print the message of gpu memory usage "
                          "at exit, mainly used for UT and CI.");
-PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
-                            true,
-                            "Whether to print the message of gpu memory usage "
-                            "MB as a unit of measurement.");
-PADDLE_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
-                              ULLONG_MAX,
-                              "Amount of reserved memory in bytes to hold onto "
-                              "before trying to release memory back to the OS");
+PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
+                         true,
+                         "Whether to print the message of gpu memory usage "
+                         "MB as a unit of measurement.");
+PHI_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
+                           ULLONG_MAX,
+                           "Amount of reserved memory in bytes to hold onto "
+                           "before trying to release memory back to the OS");
 
 namespace paddle::platform {
 
@@ -462,8 +461,7 @@ class RecordedGpuMallocHelper {
                      size_t size,
                      const CUmemAllocationProp *prop,
                      unsigned long long flags) {  // NOLINT
-    auto result =
-        paddle::platform::dynload::cuMemCreate(handle, size, prop, flags);
+    auto result = phi::dynload::cuMemCreate(handle, size, prop, flags);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_add(size);
     }
@@ -471,7 +469,7 @@ class RecordedGpuMallocHelper {
   }
 
   CUresult MemRelease(CUmemGenericAllocationHandle handle, size_t size) {
-    auto result = paddle::platform::dynload::cuMemRelease(handle);
+    auto result = phi::dynload::cuMemRelease(handle);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_sub(size);
     }
@@ -484,8 +482,7 @@ class RecordedGpuMallocHelper {
                        size_t size,
                        const hipMemAllocationProp *prop,
                        unsigned long long flags) {  // NOLINT
-    auto result =
-        paddle::platform::dynload::hipMemCreate(handle, size, prop, flags);
+    auto result = phi::dynload::hipMemCreate(handle, size, prop, flags);
     if (result == hipSuccess) {
       cur_size_.fetch_add(size);
     }
@@ -493,7 +490,7 @@ class RecordedGpuMallocHelper {
   }
 
   hipError_t MemRelease(hipMemGenericAllocationHandle_t handle, size_t size) {
-    auto result = paddle::platform::dynload::hipMemRelease(handle);
+    auto result = phi::dynload::hipMemRelease(handle);
     if (result == hipSuccess) {
       cur_size_.fetch_sub(size);
     }

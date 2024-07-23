@@ -28,7 +28,7 @@
 
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
 
 COMMON_DECLARE_string(allocator_strategy);

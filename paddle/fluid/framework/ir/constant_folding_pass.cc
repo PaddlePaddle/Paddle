@@ -88,13 +88,13 @@ ConstantFoldingPass::ConstantFoldingPass() = default;
 
 void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("constant_folding", graph);
   auto *scope = param_scope();
 
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::Fatal(
+      phi::errors::Fatal(
           "scope must not be null when applying constant folding."));
 
   std::vector<std::string> blacklist{"feed",

@@ -59,7 +59,7 @@ static T PyObjectCast(PyObject* obj) {
   try {
     return py::cast<T>(py::handle(obj));
   } catch (py::cast_error&) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Python object is not type of %s, the real type is %s",
         typeid(T).name(),
         obj->ob_type->tp_name));
@@ -468,7 +468,7 @@ struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
     PADDLE_ENFORCE_NE(
         m,
         nullptr,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input mesh of DistTensorConverter() shouldn't be nullptr."));
     mesh = m;
   }
@@ -498,7 +498,7 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
   PADDLE_ENFORCE_NE(
       mesh,
       nullptr,
-      platform::errors::InvalidArgument("Input mesh should not be nullptr."));
+      phi::errors::InvalidArgument("Input mesh should not be nullptr."));
   DistTensorConverter(mesh).apply(&args...);
 }
 

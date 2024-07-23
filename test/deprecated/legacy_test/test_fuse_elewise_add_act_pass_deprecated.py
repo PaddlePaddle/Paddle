@@ -78,6 +78,7 @@ class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
         self.assertEqual(loss_data_fused, loss_data)
 
     def test_fuse_act_add_grad_pass_cpu(self):
+        paddle.enable_static()
         place = base.CPUPlace()
         self.check(place)
 

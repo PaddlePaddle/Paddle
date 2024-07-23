@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
+#include <unordered_map>
 #include "paddle/fluid/pir/serialize_deserialize/include/deserialize_utils.h"
 namespace pir {
 void ProgramReader::RecoverProgram(Json* program_json,
@@ -101,6 +102,14 @@ pir::ArrayAttribute GetOneBoolArrayAttribute(pir::IrContext* ctx,
 pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
   // attr is_distributed; is_parameter; need_clip; parameter_name; persistable;
   // stop_gradient; trainable;
+  if (patch_builder->HasOpPatch(PARAMETEROP)) {
+    VLOG(8) << PARAMETEROP << " brefore: " << *op_json;
+    Json op_patch = patch_builder->GetJsonOpPatch(PARAMETEROP);
+    VLOG(8) << " get op patch:  " << op_patch;
+    patch_builder->ApplyOpPatches(PARAMETEROP, op_json, op_patch);
+    VLOG(8) << PARAMETEROP << " has been patched: " << *op_json;
+  }
+
   std::vector<pir::Value> inputs;
   Json& opresult_json = op_json->at(OPRESULTS);
   std::vector<pir::Type> output_types;
@@ -159,14 +168,18 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
 pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   // deal with patches
   auto op_name = op_json->at(ID).template get<std::string>();
+  std::unordered_map<std::string, Json> attr_patch;
+  if (op_name == PARAMETEROP) {
+    return ReadParameterOp(op_json);
+  }
   if (patch_builder->HasOpPatch(op_name)) {
     VLOG(8) << op_name << " brefore: " << *op_json;
     Json op_patch = patch_builder->GetJsonOpPatch(op_name);
+    VLOG(8) << " get op patch:  " << op_patch;
+    attr_patch = patch_builder->GetOpAttrPatchMap(op_patch);
+    VLOG(8) << " get attr_patch:  " << attr_patch;
     patch_builder->ApplyOpPatches(op_name, op_json, op_patch);
     VLOG(8) << op_name << " has been patched: " << *op_json;
-  }
-  if (op_name == PARAMETEROP) {
-    return ReadParameterOp(op_json);
   }
   GetDecompressOpName(&op_name);
   VLOG(4) << "Read op_name = " << op_name << ".";
@@ -196,10 +209,11 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   pir::AttributeMap attributes;
   if (op_json->contains(OPRESULTS_ATTRS)) {
     Json& opresults_attrs_json = op_json->at(OPRESULTS_ATTRS);
-    attributes = ReadAttributesMap(&attrs_json, &opresults_attrs_json);
+    attributes =
+        ReadAttributesMap(&attrs_json, &opresults_attrs_json, attr_patch);
   } else {
     Json empty_json = Json::array();
-    attributes = ReadAttributesMap(&attrs_json, &empty_json);
+    attributes = ReadAttributesMap(&attrs_json, &empty_json, attr_patch);
   }
 
   pir::IrContext* ctx_ = pir::IrContext::Instance();
@@ -241,11 +255,18 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   return op;
 }
 
-pir::AttributeMap ProgramReader::ReadAttributesMap(Json* attrs_json,
-                                                   Json* opresult_attrs_json) {
+pir::AttributeMap ProgramReader::ReadAttributesMap(
+    Json* attrs_json,
+    Json* opresult_attrs_json,
+    const std::unordered_map<std::string, Json>& attr_patch) {
   pir::AttributeMap attributes;
   for (auto& attr_json : *attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
+    if (attr_patch.count(attr_name)) {
+      Json patch = attr_patch.at(attr_name);
+      patch_builder->ApplyAttrPatches(attr_name, &attr_json, patch);
+      VLOG(8) << attr_name << " has been patched: " << attr_json;
+    }
     if (attr_json.contains(ATTR_TYPE)) {
       attributes.insert({attr_name, ReadAttribute(&attr_json)});
     } else {
@@ -255,6 +276,14 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(Json* attrs_json,
   VLOG(6) << "Finish Read pir::AttributeMap.";
   for (auto& attr_json : *opresult_attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
+    VLOG(8) << attr_name << " patch: " << attr_patch;
+    if (attr_patch.count(attr_name)) {
+      Json patch = attr_patch.at(attr_name);
+      VLOG(8) << attr_name << " patch: " << patch;
+      VLOG(8) << attr_name << " before: " << attr_json;
+      patch_builder->ApplyAttrPatches(attr_name, &attr_json, patch);
+      VLOG(8) << attr_name << " has been patched: " << attr_json;
+    }
     if (attr_json.contains(ATTR_TYPE)) {
       attributes.insert({attr_name, ReadAttribute(&attr_json)});
     } else {
@@ -267,11 +296,26 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(Json* attrs_json,
 
 pir::Attribute ProgramReader::ReadAttribute(Json* attr_json) {
   VLOG(6) << "Begin Read Attribute. ";
+  auto attr_type = attr_json->at(ATTR_TYPE).at(ID).template get<std::string>();
+  if (patch_builder->HasAttrPatch(attr_type)) {
+    VLOG(8) << attr_type << " brefore: " << *attr_json;
+    Json attr_patch = patch_builder->GetJsonAttrPatch(attr_type);
+    patch_builder->ApplyAttrTypePatches(
+        attr_type, &attr_json->at(ATTR_TYPE), attr_patch);
+    VLOG(8) << attr_type << " has been patched: " << *attr_json;
+  }
   return pir::parseAttr(&attr_json->at(ATTR_TYPE));
 }
 
 pir::Type ProgramReader::ReadType(Json* type_json) {
   VLOG(6) << "Begin Read Type. ";
+  auto type_name = type_json->at(ID).template get<std::string>();
+  if (patch_builder->HasOpPatch(type_name)) {
+    VLOG(8) << type_name << " brefore: " << *type_json;
+    Json type_patch = patch_builder->GetJsonTypePatch(type_name);
+    patch_builder->ApplyTypePatches(type_name, type_json, type_patch);
+    VLOG(8) << type_name << " has been patched: " << *type_json;
+  }
   return pir::parseType(type_json);
 }
 
