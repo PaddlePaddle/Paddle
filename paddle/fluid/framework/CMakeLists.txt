@@ -145,10 +145,10 @@ cc_library(
   SRCS var_type_traits.cc
   DEPS framework_proto scope phi common)
 if(WITH_GPU)
-  target_link_libraries(var_type_traits dynload_cuda)
+  target_link_libraries(var_type_traits)
 endif()
 if(WITH_XPU)
-  target_link_libraries(var_type_traits dynload_xpti)
+  target_link_libraries(var_type_traits)
 endif()
 
 # every source file that includes "dnnl.h" must depends on onednn

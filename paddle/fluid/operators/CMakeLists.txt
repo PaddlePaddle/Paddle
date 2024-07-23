@@ -111,7 +111,7 @@ cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute phi common)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} phi common)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_utils
 lod_tensor lod_rank_table executor static_prim_api)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc static_prim_api static_utils static_global_utils prim_utils)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} static_prim_api static_utils static_global_utils prim_utils)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper ps_gpu_wrapper)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} processgroup_comm_utils)
 if(WITH_NCCL OR WITH_RCCL)

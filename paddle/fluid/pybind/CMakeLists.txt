@@ -67,7 +67,7 @@ if(WITH_RPC)
                   common)
 endif()
 if(WITH_GPU OR WITH_ROCM)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
+  set(PYBIND_DEPS ${PYBIND_DEPS} phi)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
 endif()
 
@@ -84,7 +84,7 @@ if(WITH_NCCL OR WITH_RCCL)
 endif()
 
 if(WITH_XPU)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_xpti)
+  set(PYBIND_DEPS ${PYBIND_DEPS} phi common)
 endif()
 
 if(WITH_XPU_BKCL)
