@@ -723,7 +723,7 @@ def _to_tensor_static(
                     array_data = np.array(data)
 
                     # for numpy version <= 1.23.5
-                    if data.dtype == 'object':
+                    if array_data.dtype == 'object':
                         raise RuntimeError("Numpy get dtype `object`.")
 
                     data = array_data
