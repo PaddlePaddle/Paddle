@@ -11,10 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import datetime
 import hashlib
 import os
+from typing import (
+    TYPE_CHECKING,
+    Literal,
+)
+
+from typing_extensions import TypeAlias
 
 import paddle
 
@@ -38,6 +45,8 @@ from .fleet.layers.mpu.mp_ops import (  # noqa: F401
     split,
 )
 
+if TYPE_CHECKING:
+    _BackendList: TypeAlias = Literal["gloo", "nccl", "xccl", "bkcl"]
 __all__ = []
 
 _global_env = None
@@ -184,11 +193,11 @@ def _set_custom_gid(gid):
 
 
 def new_group(
-    ranks=None,
-    backend=None,
-    timeout=_default_timeout,
-    nccl_comm_init_option=0,
-):
+    ranks: list | None = None,
+    backend: str | None = None,
+    timeout: datetime.timedelta = _default_timeout,
+    nccl_comm_init_option: int = 0,
+) -> Group:
     """
 
     Creates a new distributed communication group.
@@ -320,7 +329,7 @@ def new_group(
     return gp
 
 
-def is_available():
+def is_available() -> bool:
     """
     Check whether the distributed package is available.
 
@@ -337,7 +346,7 @@ def is_available():
     return core.is_compiled_with_dist()
 
 
-def _init_parallel_env(backend):
+def _init_parallel_env(backend: _BackendList) -> None:
     store = core.create_or_get_global_tcp_store()
     global_env = _get_global_env()
     rank = global_env.rank
