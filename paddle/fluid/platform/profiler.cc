@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler_helper.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/nvtx.h"
+#include "paddle/phi/backends/dynload/nvtx.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -143,8 +143,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_allocated = 0;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
@@ -227,8 +226,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_reserved = 0;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
@@ -310,8 +308,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_allocated = 0;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
@@ -393,8 +390,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_reserved = 0;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(

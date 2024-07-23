@@ -590,14 +590,9 @@ class TestModelFunction(unittest.TestCase):
             net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             labels = [InputSpec([None, 1], 'int64', 'label')]
-            if new_optimizer:
-                optim = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=net.parameters()
-                )
-            else:
-                optim = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=net.parameters()
-                )
+            optim = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=net.parameters()
+            )
             model = Model(net, inputs, labels)
             model.prepare(
                 optimizer=optim, loss=CrossEntropyLoss(reduction="sum")

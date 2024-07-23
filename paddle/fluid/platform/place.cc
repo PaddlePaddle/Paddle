@@ -13,14 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/flags.h"
-PADDLE_DEFINE_EXPORTED_bool(
-    benchmark,
-    false,
-    "Doing memory benchmark. It will make deleting scope synchronized, "
-    "and add some memory usage logs."
-    "Default cuda is asynchronous device, set to True will"
-    "force op run in synchronous mode.");
+#include "paddle/common/flags.h"
 
 namespace paddle {
 namespace platform {
@@ -51,7 +44,7 @@ bool is_custom_place(const Place &p) {
 
 bool places_are_same_class(const Place &p1, const Place &p2) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (platform::is_custom_place(p1) && platform::is_custom_place(p2)) {
+  if (phi::is_custom_place(p1) && phi::is_custom_place(p2)) {
     return p1.GetDeviceType() == p2.GetDeviceType();
   }
 #endif
@@ -59,8 +52,8 @@ bool places_are_same_class(const Place &p1, const Place &p2) {
 }
 
 bool is_same_place(const Place &p1, const Place &p2) {
-  if (platform::places_are_same_class(p1, p2)) {
-    if (platform::is_cpu_place(p1) || platform::is_cuda_pinned_place(p1)) {
+  if (phi::places_are_same_class(p1, p2)) {
+    if (phi::is_cpu_place(p1) || phi::is_cuda_pinned_place(p1)) {
       return true;
     } else {
       return p1 == p2;
@@ -72,13 +65,13 @@ bool is_same_place(const Place &p1, const Place &p2) {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 std::string PlaceHelper::GetDeviceType(const Place &place) {
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     return "cpu";
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
     return "gpu";
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
     return "xpu";
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
     return place.GetDeviceType();
   } else {
     PADDLE_THROW(phi::errors::Fatal(

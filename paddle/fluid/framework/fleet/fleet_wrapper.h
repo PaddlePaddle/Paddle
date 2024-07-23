@@ -30,12 +30,12 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif

@@ -109,7 +109,7 @@ NCCLComm* NCCLCommContext::CreateComm(
   ncclComm_t comm = nullptr;
   SetDeviceId(dev_id);
   PADDLE_ENFORCE_GPU_SUCCESS(
-      platform::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
+      phi::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
 
   auto* comm_wrapper = AssignNCCLComm(comm, nranks, rank, dev_id, ring_id);
 
@@ -134,8 +134,8 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
 
   const int kDevices = dev_ids.size();
   ncclComm_t comms[kDevices];  // NOLINT
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclCommInitAll(
-      comms, dev_ids.size(), dev_ids.data()));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclCommInitAll(comms, dev_ids.size(), dev_ids.data()));
 
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
                     0,
@@ -171,18 +171,18 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
           << ", rind_id: " << ring_id;
   ncclComm_t comms[kDevices];  // NOLINT
   {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupStart());
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
     for (int i = 0; i < kDevices; i++) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipSetDevice(i));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(i));
 #endif
-      platform::dynload::ncclCommInitRank(
+      phi::dynload::ncclCommInitRank(
           comms + i, kDevices * ntrainers, *nccl_id, train_id * kDevices + i);
       VLOG(1) << "ncclCommInitRank: " << i;
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupEnd());
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupEnd());
     VLOG(1) << "nccl group end success";
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
@@ -210,17 +210,18 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
 NCCLComm* NCCLCommContext::AssignNCCLComm(
     ncclComm_t comm, int nranks, int rank, int dev_id, int ring_id) {
   std::unique_ptr<phi::GPUContext> dev_ctx(
-      new phi::GPUContext(CUDAPlace(dev_id)));
-  dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(CUDAPlace(dev_id), dev_ctx->stream())
-                            .get());
+      new phi::GPUContext(phi::GPUPlace(dev_id)));
+  dev_ctx->SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPlace(dev_id), dev_ctx->stream())
+          .get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
           .get());
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(CUDAPlace(dev_id))
+          .GetZeroAllocator(phi::GPUPlace(dev_id))
           .get());
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -569,7 +570,7 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
 
 XCCLComm* XCCLCommContext::AssignXCCLComm(
     phi::ccl::CCLComm comm, int nranks, int rank, int dev_id, int ring_id) {
-  auto place = CustomPlace(device_type_, dev_id);
+  auto place = phi::CustomPlace(device_type_, dev_id);
   std::unique_ptr<phi::CustomContext> dev_ctx(new phi::CustomContext(place));
   dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(place)
