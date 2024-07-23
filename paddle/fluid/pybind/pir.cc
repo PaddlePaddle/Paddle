@@ -318,8 +318,10 @@ std::vector<std::string> GetValueOutputName(Value value) {
 }
 
 std::vector<std::string> GetValueName(Value value) {
-  // if (!value.isa<paddle::dialect::DataOp>() ||
-  // !value.isa<::pir::ParameterOp>() || !value.isa<BlockArgument>()){
+  // if (!(value.defining_op()->isa<::pir::ParameterOp>() ||
+  //     value.defining_op()->isa<::pir::SetParameterOp>() ||
+  //     value.defining_op()->isa<paddle::dialect::DataOp>() ||
+  //     value.isa<BlockArgument>() || IsUsedByShadowOutput(value))){
   //     PADDLE_THROW(phi::errors::InvalidArgument(
   //     "Currently, we can only get name of Value from "
   //     "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
@@ -1352,7 +1354,7 @@ void BindValue(py::module *m) {
           })
       .def_property(
           "name",
-          [](Value self) { return GetValueName(self); },
+          [](Value self) { return GetValueName(self)[0]; },
           [](Value self, const std::string &name) { SetValueName(self, name); })
       .def_property_readonly("has_name",
                              [](Value self) { return HasValueName(self); })
