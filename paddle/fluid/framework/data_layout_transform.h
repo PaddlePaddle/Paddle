@@ -30,7 +30,7 @@ namespace paddle {
 namespace framework {
 
 struct CastDataLayout {
-  CastDataLayout(const platform::DeviceContext* ctx,
+  CastDataLayout(const phi::DeviceContext* ctx,
                  const std::vector<int>& axis,
                  const phi::DenseTensor& in,
                  phi::DenseTensor* out)
@@ -38,7 +38,7 @@ struct CastDataLayout {
 
   const phi::DenseTensor in_;
   phi::DenseTensor* out_;
-  const platform::DeviceContext* ctx_;
+  const phi::DeviceContext* ctx_;
   const std::vector<int> axis_;
 
   template <typename T>

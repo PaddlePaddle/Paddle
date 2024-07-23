@@ -74,16 +74,7 @@ struct BuildStrategy {
   // `FLAGS_cpu_deterministic=true` to env.
   enum class ReduceStrategy { kAllReduce = 0, kReduce = 1, kNoReduce = 2 };
 
-  enum class GradientScaleStrategy {
-    kCoeffNumDevice = 0,
-    kOne = 1,
-    // user can customize gradient scale to use, and just feed
-    // it into exe.run().
-    kCustomized = 2,
-  };
-
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
-  GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
 
   std::string debug_graphviz_path_{""};
 
@@ -91,7 +82,6 @@ struct BuildStrategy {
   // all the backward ops are finished before running the optimization
   // ops. It might make the training speed of data parallelism faster.
   bool enable_backward_optimizer_op_deps_{true};
-  bool remove_unnecessary_lock_{true};
   // TODO(dev-paddle): cache_runtime_context may cause some models to hang up
   // while running.
   bool cache_runtime_context_{false};
@@ -239,13 +229,9 @@ inline std::ostream &operator<<(std::ostream &os,
                                 const BuildStrategy &strategy) {
   os << "BuildStrategy: " << &strategy << std::endl;
   os << "reduce_: " << static_cast<int>(strategy.reduce_) << std::endl;
-  os << "gradient_scale_: " << static_cast<int>(strategy.gradient_scale_)
-     << std::endl;
   os << "debug_graphviz_path_: " << strategy.debug_graphviz_path_ << std::endl;
   os << "enable_backward_optimizer_op_deps_: "
      << strategy.enable_backward_optimizer_op_deps_ << std::endl;
-  os << "remove_unnecessary_lock_: " << strategy.remove_unnecessary_lock_
-     << std::endl;
   os << "cache_runtime_context_: " << strategy.cache_runtime_context_
      << std::endl;
   os << "fuse_bn_act_ops_: " << strategy.fuse_bn_act_ops_ << std::endl;

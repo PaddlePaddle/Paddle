@@ -24,8 +24,8 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
