@@ -265,7 +265,8 @@ void SetValueName(Value value, const std::string name) {
 
 bool IsUsedByShadowOutput(const pir::Value &value) {
   for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
-    if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+    if (iter->owner()->isa<::pir::ShadowOutputOp>() ||
+        iter->owner()->isa<::pir::SetParameterOp>()) {
       return true;
     }
   }
@@ -318,14 +319,14 @@ std::vector<std::string> GetValueOutputName(Value value) {
 }
 
 std::vector<std::string> GetValueName(Value value) {
-  // if (!(value.defining_op()->isa<::pir::ParameterOp>() ||
-  //     value.defining_op()->isa<::pir::SetParameterOp>() ||
-  //     value.defining_op()->isa<paddle::dialect::DataOp>() ||
-  //     value.isa<BlockArgument>() || IsUsedByShadowOutput(value))){
-  //     PADDLE_THROW(phi::errors::InvalidArgument(
-  //     "Currently, we can only get name of Value from "
-  //     "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
-  // }
+  if (!(value.defining_op()->isa<::pir::ParameterOp>() ||
+        value.defining_op()->isa<paddle::dialect::DataOp>() ||
+        value.defining_op<::pir::ConstantTensorOp>() ||
+        value.dyn_cast<BlockArgument>() || IsUsedByShadowOutput(value))) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value from "
+        "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
+  }
 
   std::vector<std::string> names;
   std::optional<std::string> input_name = GetValueInputName(value);
@@ -2028,7 +2029,7 @@ int AppendShadowOutputs(Program *program,
   for (const auto &value : outputs) {
     if (!added_value.count(value) || IsFakeValue(value)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
-      if (auto names = GetValueName(value); !names.empty()) {
+      if (auto names = GetValueOutputName(value); !names.empty()) {
         shadow_output_name = names[0];
       }
       AppendShadowOutput(
