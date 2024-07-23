@@ -341,10 +341,6 @@ void Instruction::UpdateRecordStreamForGcInfo() {
       stream_ = static_cast<phi::distributed::NCCLCommContext*>(
                     comm_context_manager.Get(std::to_string(ring_id)))
                     ->GetStream();
-    } else {
-      stream_ = platform::NCCLCommContext::Instance()
-                    .Get(ring_id, DeviceContext().GetPlace())
-                    ->stream();
     }
   }
 #endif
