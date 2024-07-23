@@ -161,7 +161,11 @@ def check_variable_and_dtype(
 ):
     if in_pir_mode():
         check_type(
-            input, input_name, (Value, ParameterMeta), op_name, extra_message
+            input,
+            input_name,
+            (Variable, Value, ParameterMeta),
+            op_name,
+            extra_message,
         )
     else:
         check_type(input, input_name, (Variable, Value), op_name, extra_message)
