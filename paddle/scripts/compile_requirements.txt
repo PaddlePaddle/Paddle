@@ -4,4 +4,3 @@ wheel ; sys_platform == 'win32'
 pyyaml ; sys_platform == 'win32'
 wget ; sys_platform == 'win32'
 jinja2 ; sys_platform == 'linux'
-pybind11-stubgen==2.5.1 # generate stub file from pybind11 C++ APIs
