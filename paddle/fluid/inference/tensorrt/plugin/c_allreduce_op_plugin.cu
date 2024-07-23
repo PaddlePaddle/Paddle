@@ -215,13 +215,13 @@ int CAllReducePluginDynamic::enqueue(
   } else {
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
     cudaStream_t custream = use_calc_stream_ ? stream : comm->stream();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(sendbuff,
-                                                                recvbuff,
-                                                                numel,
-                                                                dtype,
-                                                                nccl_red_type,
-                                                                comm->comm(),
-                                                                custream));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(sendbuff,
+                                                           recvbuff,
+                                                           numel,
+                                                           dtype,
+                                                           nccl_red_type,
+                                                           comm->comm(),
+                                                           custream));
     VLOG(3) << "old NCCLCommContext has ring_id_ " << ring_id_;
   }
 #endif

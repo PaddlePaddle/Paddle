@@ -208,11 +208,11 @@ class DeviceWorker {
   virtual void SetReaderPlace(const phi::Place& place) {
     device_reader_->SetPlace(place);
   }
-  virtual void SetDeviceContext(platform::DeviceContext* dev_ctx) {
+  virtual void SetDeviceContext(phi::DeviceContext* dev_ctx) {
     dev_ctx_ = dev_ctx;
   }
 
-  virtual platform::DeviceContext* GetDeviceContext() { return dev_ctx_; }
+  virtual phi::DeviceContext* GetDeviceContext() { return dev_ctx_; }
 
   virtual void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
 
@@ -247,7 +247,7 @@ class DeviceWorker {
   int dump_num_decimals_ = 9;
   ChannelWriter<std::string> writer_;
   const size_t tensor_iterator_thread_num = 16;
-  platform::DeviceContext* dev_ctx_ = nullptr;
+  phi::DeviceContext* dev_ctx_ = nullptr;
   int thread_num_;
 };
 
@@ -789,7 +789,7 @@ class SectionWorker : public DeviceWorker {
       unused_vars_;
   static uint64_t batch_id_;
 
-  platform::DeviceContext* dev_ctx_ = nullptr;
+  phi::DeviceContext* dev_ctx_ = nullptr;
 };
 #endif
 
@@ -873,7 +873,7 @@ class HeterSectionWorker : public DeviceWorker {
       thread_queue_;
   static uint64_t batch_id_;
   uint64_t total_ins_num_ = 0;
-  platform::DeviceContext* dev_ctx_ = nullptr;
+  phi::DeviceContext* dev_ctx_ = nullptr;
   bool debug_ = false;
   std::vector<double> op_total_time_;
   std::vector<std::string> op_name_;

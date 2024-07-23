@@ -543,6 +543,7 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
+set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 if(WITH_GPU
    OR WITH_XPU
    OR WITH_ASCEND
@@ -1033,7 +1034,8 @@ set(TEST_CINN_OPS
     test_strided_slice_op
     test_pad_op
     test_pool2d_op
-    test_erf_op)
+    test_erf_op
+    test_cumsum_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)

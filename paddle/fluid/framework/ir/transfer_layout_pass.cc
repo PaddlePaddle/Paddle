@@ -102,8 +102,7 @@ void InsertLayoutTransOp(ir::Graph *graph,
 
 void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph,
-      platform::errors::PreconditionNotMet("graph should not be nullptr."));
+      graph, phi::errors::PreconditionNotMet("graph should not be nullptr."));
   FusePassBase::Init("fused_conv2d_add_act_layout_transfer", graph);
   auto *scope = param_scope();
 
@@ -121,14 +120,14 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
 
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "the graph should be main graph when applying "
                         "transfer_layout_pass"));
 
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::Fatal("scope must not be nullptr when applying "
-                              "transfer_layout_pass"));
+      phi::errors::Fatal("scope must not be nullptr when applying "
+                         "transfer_layout_pass"));
 
   // Not support multiple block now.
   std::unordered_map<ir::Node *, ir::Node *> cache;

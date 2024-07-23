@@ -467,7 +467,6 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
-set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 
 py_test_modules(
   test_imperative_ocr_attention_model MODULES
@@ -680,8 +679,7 @@ set(TEST_CINN_OPS
     test_where_op
     test_arg_min_max_op
     test_instance_norm_op
-    test_instance_norm_op_deprecated
-    test_cumsum_op)
+    test_instance_norm_op_deprecated)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)

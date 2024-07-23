@@ -233,7 +233,8 @@ class TestMathOpPatches(unittest.TestCase):
     @prog_scope()
     def test_neg(self):
         a = paddle.static.data(name="a", shape=[-1, 10, 1], dtype='float32')
-        a.desc.set_need_check_feed(False)
+        if not paddle.framework.use_pir_api():
+            a.desc.set_need_check_feed(False)
         b = -a
         place = base.CPUPlace()
         exe = base.Executor(place)
@@ -247,8 +248,9 @@ class TestMathOpPatches(unittest.TestCase):
     @prog_scope()
     def test_astype(self):
         a = paddle.static.data(name="a", shape=[-1, 10, 1])
-        a.desc.set_need_check_feed(False)
-        b = a.astype('float32')
+        if not paddle.framework.use_pir_api():
+            a.desc.set_need_check_feed(False)
+        b = a.astype('float64')
         place = base.CPUPlace()
         exe = base.Executor(place)
         a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float64')
