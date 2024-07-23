@@ -690,16 +690,16 @@ class Inserter:
         allgather_op = insert_operation(
             idx + idx_offset,
             type=op_type,
-            inputs={'X': [tensor]},
-            outputs={'Out': [allgather_out]},
+            inputs={'x': [tensor]},
+            outputs={'out': [allgather_out]},
             attrs={
                 'ring_id': group.id,
-                'use_calc_stream': True,
                 'nranks': group.nranks,
                 'op_role': op_role,
             },
         )
         allgather_op._set_attr('op_namescope', "/auto_parallel/reshard")
+        allgather_op.dist_attr.execution_stream = "default"
         idx_offset += 1
 
         # insert split op
