@@ -561,11 +561,6 @@ def recompute(function, *args, **kwargs):
 
     if use_reentrant:
         offload_indices = kwargs.pop('offload_indices', [])
-        # if len(offload_indices) > 0:
-        #     assert isinstance(
-        #         paddle.device._convert_to_place(paddle.device.get_device()),
-        #         core.CUDAPlace,
-        #     ), "The current place does not support offloading variables to CPU."
         input_args = []
         # rearrange `position-args + keyword-args` into `position-args`
         if isinstance(function, paddle.nn.Layer):
