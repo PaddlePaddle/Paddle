@@ -18,8 +18,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
-#include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/dynload/cublasLt.h"
 
 namespace paddle {
 namespace inference {
@@ -325,10 +325,11 @@ class MatmulPluginDynamic : public DynamicPluginTensorRT {
 
   int initialize() TRT_NOEXCEPT { return 0; }
   void terminate() TRT_NOEXCEPT;
-  nvinfer1::DimsExprs getOutputDimensions(int outputIndex,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nbInputs,
-                                          nvinfer1::IExprBuilder& exprBuilder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int outputIndex,
+      const nvinfer1::DimsExprs* inputs,
+      int nbInputs,
+      nvinfer1::IExprBuilder& exprBuilder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,

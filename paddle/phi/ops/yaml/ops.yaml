@@ -894,6 +894,17 @@
     func : coalesce_tensor
     data_type : dtype
 
+- op : collect_fpn_proposals
+  args: (Tensor[] multi_level_rois, Tensor[] multi_level_scores, Tensor[] multi_level_rois_num,
+    int post_nms_topn)
+  output: Tensor (fpn_rois), Tensor (rois_num)
+  infer_meta:
+    func: CollectFpnProposalsInferMeta
+  kernel:
+    func: collect_fpn_proposals
+    data_type: multi_level_rois
+  optional: multi_level_rois_num, rois_num
+
 - op : complex
   args : (Tensor real, Tensor imag)
   output : Tensor

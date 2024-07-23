@@ -49,7 +49,7 @@ TEST(SqueezeExcitationFusePass, V1) {
              GetNumOpNodes(graph, "elementwise_mul");
   PADDLE_ENFORCE_EQ(num,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "pool2d/conv2d_xpu/elementwise_mul ops should be "
                         "removed from graph, but graph "
                         "still has %d ops. ",
