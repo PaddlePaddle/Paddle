@@ -7523,7 +7523,7 @@ def ldexp_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if not isinstance(y, (paddle.Tensor, Variable)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
     if x.dtype == paddle.float64 or y.dtype == paddle.float64:
-        out_dtype = paddle.float64
+        out_dtype = "float64"
     else:
         out_dtype = paddle.get_default_dtype()
     x = paddle.cast_(x, dtype=out_dtype)
