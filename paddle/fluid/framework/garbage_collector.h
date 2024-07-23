@@ -50,7 +50,7 @@ class GarbageCollector {
  protected:
   virtual void ClearCallback(const std::function<void()> &callback) = 0;
 
-  platform::DeviceContext *dev_ctx_;
+  phi::DeviceContext *dev_ctx_;
   std::unique_ptr<GarbageQueue> garbages_;
   mutable std::unique_ptr<std::mutex> mutex_;
   const size_t max_memory_size_;

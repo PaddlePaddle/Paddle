@@ -40,15 +40,14 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
                              !mask_id_name.empty();
 
     if (!flag_prelayernorm) {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "PrelnErnie: If you want to use varseqlen, must be with interleaved, "
           "set pos_id_name, set mask_id_name."));
     }
     framework::OpDesc op_desc(op, nullptr);
     bool enable_int8 = op_desc.HasAttr("enable_int8");
     if (!enable_int8) {
-      PADDLE_THROW(
-          platform::errors::Fatal("use with_interleaved must be int8."));
+      PADDLE_THROW(phi::errors::Fatal("use with_interleaved must be int8."));
     }
     // Declare inputs
     std::vector<nvinfer1::ITensor*> input_ids;
@@ -145,7 +144,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         output_fp16,
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Only Precision::KHalf(fp16) is supported when infering "
             "ernie(bert) model with config.EnableVarseqlen(). "
             "But Precision::KFloat32 is setted."));
@@ -228,7 +227,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
             .c_str());
 
 #else
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "PreInErnie want to use oss, must be with interleaved, "
         "your TRT version is no less than 7.0"));
 #endif

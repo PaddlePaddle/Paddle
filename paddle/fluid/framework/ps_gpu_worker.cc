@@ -240,12 +240,12 @@ int PSGPUWorker::OpRunAndShapeCheck(OperatorBase& op,
       op_name = op.Info().Proto().type();
     }
 
-#define SHAPE_CHECK_EQ(__VAL0, __VAL1)                                      \
-  PADDLE_ENFORCE_EQ(                                                        \
-      __VAL0,                                                               \
-      __VAL1,                                                               \
-      platform::errors::Fatal("Shape check dims/lods error, op name: %s .", \
-                              op_name))
+#define SHAPE_CHECK_EQ(__VAL0, __VAL1)                                 \
+  PADDLE_ENFORCE_EQ(                                                   \
+      __VAL0,                                                          \
+      __VAL1,                                                          \
+      phi::errors::Fatal("Shape check dims/lods error, op name: %s .", \
+                         op_name))
 
     SHAPE_CHECK_EQ(pre_dims.size(), after_dims.size());
     for (size_t i = 0; i < pre_dims.size(); i++) {
@@ -371,10 +371,9 @@ void PSGPUWorker::TrainFiles() {
       // tensor share buffer
       std::vector<Variable*>& cur_scope_vars =
           need_reuse_var_vec_[thread_scope];
-      PADDLE_ENFORCE_EQ(
-          cur_scope_vars.size(),
-          need_reuse_var_.size(),
-          platform::errors::Fatal("reuse vars size must be same."));
+      PADDLE_ENFORCE_EQ(cur_scope_vars.size(),
+                        need_reuse_var_.size(),
+                        phi::errors::Fatal("reuse vars size must be same."));
       for (size_t i = 0; i < need_reuse_var_.size(); i++) {
         Variable* child = cur_scope_vars[i];
         Variable* parent = need_reuse_var_[i];
@@ -455,10 +454,9 @@ void PSGPUWorker::TrainFiles() {
     if (scope_num_ != 1) {
       std::vector<Variable*>& cur_scope_vars =
           need_reuse_var_vec_[thread_scope];
-      PADDLE_ENFORCE_EQ(
-          cur_scope_vars.size(),
-          need_reuse_var_.size(),
-          platform::errors::Fatal("reuse vars size must be same."));
+      PADDLE_ENFORCE_EQ(cur_scope_vars.size(),
+                        need_reuse_var_.size(),
+                        phi::errors::Fatal("reuse vars size must be same."));
       for (size_t i = 0; i < need_reuse_var_.size(); i++) {
         Variable* child = cur_scope_vars[i];
         Variable* parent = need_reuse_var_[i];

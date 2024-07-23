@@ -36,8 +36,7 @@ InterpreterEngine::InterpreterEngine(
   PADDLE_ENFORCE_GT(
       static_cast<int64_t>(info_->ProgramDesc().Block(0).OpSize()),
       0,
-      platform::errors::PreconditionNotMet(
-          "There is no operator in ProgramDesc."));
+      phi::errors::PreconditionNotMet("There is no operator in ProgramDesc."));
   utils::ShareParamsIntoScope(info_->ParamNames(), params_dict_, &scope_);
   VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
   CreateInterpreterCore();

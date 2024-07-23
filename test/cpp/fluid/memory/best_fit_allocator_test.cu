@@ -22,7 +22,7 @@
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -62,7 +62,7 @@ TEST(BestFitAllocator, concurrent_cuda) {
       size_t* data = reinterpret_cast<size_t*>(allocation->ptr());
 
       ForEachFill fill(data);
-      platform::ForRange<phi::GPUContext> for_range(dev_ctx, allocate_size);
+      phi::funcs::ForRange<phi::GPUContext> for_range(dev_ctx, allocate_size);
       for_range(fill);
 
       memory::Copy(phi::CPUPlace(),

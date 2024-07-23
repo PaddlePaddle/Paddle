@@ -31,15 +31,14 @@ enum DownstreamRunType { kDirectRun, kEventRun };
 class ContextManager {
  public:
   using DeviceContextMap =
-      std::map<Place,
-               std::shared_future<std::unique_ptr<platform::DeviceContext>>>;
+      std::map<Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>;
 
   static ContextManager& Instance() {
     static ContextManager* ctx_manager = new ContextManager;
     return *ctx_manager;
   }
 
-  std::shared_future<std::unique_ptr<platform::DeviceContext>> Get(
+  std::shared_future<std::unique_ptr<phi::DeviceContext>> Get(
       const std::string& type, const phi::Place& place, int stream_priority) {
     std::lock_guard<std::mutex> lk(ctx_mtx_);
     VLOG(6) << "Get dev_ctx for " << type << " - " << place;
@@ -65,7 +64,7 @@ class ContextManager {
 
 class StreamAnalyzer {
  public:
-  using DeviceContext = platform::DeviceContext;
+  using DeviceContext = phi::DeviceContext;
   using Place = phi::Place;
 
   explicit StreamAnalyzer(const Place& place) : place_(place) {
@@ -77,8 +76,7 @@ class StreamAnalyzer {
 
   void ConstructEvents(std::vector<Instruction>* instructions);
 
-  platform::DeviceContext* ParseDeviceContext(
-      const OpFuncNode& op_func_node) const;
+  phi::DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node) const;
 
   platform::DeviceType GetWaiterType(const Instruction& instr) const;
 
@@ -127,7 +125,7 @@ class StreamAnalyzer {
 /// ======================== ///
 class PirStreamAnalyzer {
  public:
-  using DeviceContext = platform::DeviceContext;
+  using DeviceContext = phi::DeviceContext;
   using Place = phi::Place;
 
   explicit PirStreamAnalyzer(const Place& place) : place_(place) {

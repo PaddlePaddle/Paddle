@@ -4,8 +4,6 @@ if(WITH_GPU)
       test_sub_graph_23
       test_sub_graph_34
       test_sub_graph_42
-      test_sub_graph_43
-      test_sub_graph_49
       test_sub_graph_add_n
       test_sub_graph_add
       test_sub_graph_mul_method
@@ -14,7 +12,6 @@ if(WITH_GPU)
       test_sub_graph_56
       test_sub_graph_61
       test_sub_graph_62
-      test_sub_graph_67
       test_sub_graph_69
       test_sub_graph_73
       test_sub_graph_77

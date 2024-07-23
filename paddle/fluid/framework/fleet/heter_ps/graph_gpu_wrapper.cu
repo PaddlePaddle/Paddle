@@ -69,10 +69,10 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
       VLOG(2) << "node_types: " << first_node_type;
       for (auto &type : node_types) {
         auto iter = node_to_id.find(type);
-        PADDLE_ENFORCE_NE(iter,
-                          node_to_id.end(),
-                          platform::errors::NotFound(
-                              "(%s) is not found in node_to_id.", type));
+        PADDLE_ENFORCE_NE(
+            iter,
+            node_to_id.end(),
+            phi::errors::NotFound("(%s) is not found in node_to_id.", type));
         VLOG(2) << "node_to_id[" << type << "] = " << iter->second;
         first_node_type_[tensor_pair_idx].push_back(iter->second);
         all_node_type_.push_back(iter->second);
@@ -104,10 +104,10 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
         auto edges = paddle::string::split_string<std::string>(path, "-");
         for (auto &edge : edges) {
           auto iter = edge_to_id.find(edge);
-          PADDLE_ENFORCE_NE(iter,
-                            edge_to_id.end(),
-                            platform::errors::NotFound(
-                                "(%s) is not found in edge_to_id.", edge));
+          PADDLE_ENFORCE_NE(
+              iter,
+              edge_to_id.end(),
+              phi::errors::NotFound("(%s) is not found in edge_to_id.", edge));
           VLOG(2) << "edge_to_id[" << edge << "] = " << iter->second;
           meta_path_[tensor_pair_idx][i].push_back(iter->second);
           if (edge_to_node_map_.find(iter->second) == edge_to_node_map_.end()) {
@@ -132,10 +132,10 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
       auto nodes = get_ntype_from_etype(path);
       for (auto &node : nodes) {
         auto iter = node_to_id.find(node);
-        PADDLE_ENFORCE_NE(iter,
-                          edge_to_id.end(),
-                          platform::errors::NotFound(
-                              "(%s) is not found in edge_to_id.", node));
+        PADDLE_ENFORCE_NE(
+            iter,
+            edge_to_id.end(),
+            phi::errors::NotFound("(%s) is not found in edge_to_id.", node));
         VLOG(2) << "edge_to_id[" << node << "] = " << iter->second;
         excluded_train_pair_.push_back(iter->second);
       }
@@ -154,13 +154,13 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
         auto src_iter = node_to_id.find(edge_src);
         PADDLE_ENFORCE_NE(src_iter,
                           edge_to_id.end(),
-                          platform::errors::NotFound(
+                          phi::errors::NotFound(
                               "(%s) is not found in edge_to_id.", edge_src));
         auto &edge_dst = nodes[1];
         auto dst_iter = node_to_id.find(edge_dst);
         PADDLE_ENFORCE_NE(dst_iter,
                           edge_to_id.end(),
-                          platform::errors::NotFound(
+                          phi::errors::NotFound(
                               "(%s) is not found in edge_to_id.", edge_dst));
         VLOG(2) << "pair_label_conf[" << src_iter->second << "]["
                 << dst_iter->second << "] = " << label;
@@ -304,14 +304,14 @@ void GraphGpuWrapper::init_metapath(std::string cur_metapath,
     PADDLE_ENFORCE_NE(
         iter,
         edge_to_id.end(),
-        platform::errors::NotFound("(%s) is not found in edge_to_id.", node));
+        phi::errors::NotFound("(%s) is not found in edge_to_id.", node));
     cur_parse_metapath_.push_back(iter->second);
     std::string reverse_type = get_reverse_etype(node);
     iter = edge_to_id.find(reverse_type);
     PADDLE_ENFORCE_NE(iter,
                       edge_to_id.end(),
-                      platform::errors::NotFound(
-                          "(%s) is not found in edge_to_id.", reverse_type));
+                      phi::errors::NotFound("(%s) is not found in edge_to_id.",
+                                            reverse_type));
     cur_parse_reverse_metapath_.push_back(iter->second);
   }
 
@@ -480,7 +480,7 @@ std::string GraphGpuWrapper::get_reverse_etype(std::string etype) {
         etype_split[2] + "2" + etype_split[1] + "2" + etype_split[0];
     return reverse_type;
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "The format of edge type should be [src2dst] or [src2etype2dst], "
         "but got [%s].",
         etype));
@@ -498,7 +498,7 @@ std::vector<std::string> GraphGpuWrapper::get_ntype_from_etype(
     auto iter = etype_split.erase(etype_split.begin() + 1);
     return etype_split;
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "The format of edge type should be [src2dst] or [src2etype2dst], "
         "but got [%s].",
         etype));
@@ -829,8 +829,7 @@ void GraphGpuWrapper::init_service() {
     VLOG(0) << "init multi node graph gpu server";
   }
 #else
-  PADDLE_THROW(
-      platform::errors::Unavailable("heter ps need compile with GLOO"));
+  PADDLE_THROW(phi::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -839,40 +838,39 @@ void GraphGpuWrapper::init_service() {
     // init inner comm
     inner_comms_.resize(dev_size);
     inter_ncclids_.resize(dev_size);
-    platform::dynload::ncclCommInitAll(
+    phi::dynload::ncclCommInitAll(
         &(inner_comms_[0]), dev_size, &device_id_mapping[0]);
 // init inter comm
 #ifdef PADDLE_WITH_GLOO
     inter_comms_.resize(dev_size);
     if (gloo->Rank() == 0) {
       for (int i = 0; i < dev_size; ++i) {
-        platform::dynload::ncclGetUniqueId(&inter_ncclids_[i]);
+        phi::dynload::ncclGetUniqueId(&inter_ncclids_[i]);
       }
     }
 
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(),
         true,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::BroadcastOptions opts(gloo->GetContext());
     opts.setOutput(&inter_ncclids_[0], dev_size);
     opts.setRoot(0);
     gloo::broadcast(opts);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
     for (int i = 0; i < dev_size; ++i) {
       platform::CUDADeviceGuard guard(device_id_mapping[i]);
-      platform::dynload::ncclCommInitRank(
+      phi::dynload::ncclCommInitRank(
           &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupEnd());
 
     rank_id_ = gloo->Rank();
     node_size_ = gloo->Size();
 #else
-    PADDLE_THROW(
-        platform::errors::Unavailable("heter ps need compile with GLOO"));
+    PADDLE_THROW(phi::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
   }
 #endif
