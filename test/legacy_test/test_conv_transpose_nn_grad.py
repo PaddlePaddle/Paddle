@@ -111,7 +111,8 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
+            with paddle.pir_utils.OldIrGuard():
+                self.func(p)
             self.func_pir(p)
 
 
