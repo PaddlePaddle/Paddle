@@ -551,23 +551,26 @@ def load_state_dict(
                 else:
                     cur_chunk_tensor = cur_local_tensor
             else:
+                # Why we use item.dtype: In static mode, the state_dict maybe incomplete in pp, the dtype is stored in advance.
                 cur_chunk_tensor = paddle.zeros(
                     item.lengths,
                     item.dtype,
                 )
 
+            # Src_rank represents the rank of data read from ckpt, item_rank is the rank of the parameter of the data to be loaded.
             if src_rank == item.rank:
                 if src_rank == paddle.distributed.get_rank():
-                    # assign value locally
+                    # Assign value locally: in the case of src_rank is cur_rank, it means that the ckpt and the parameters to be loaded are both in the current node.
                     paddle.assign(storage_chunk_tensor, cur_chunk_tensor)
             else:
-                # assign value remotely
+                # Assign value remotely: src_rank broadcasts the ckpt, and the parameters to be loaded receive the data broadcast by src_rank.
                 if src_rank == paddle.distributed.get_rank():
                     storage_chunk_tensor = storage_chunk_tensor.contiguous()
                     paddle.distributed.broadcast(
                         storage_chunk_tensor, src=src_rank, group=process_group
                     )
                 else:
+                    # The memory hold by cur_chunk_tensor may be non-contiguous, and the broadcast API does not support this type of tensor.
                     tmp_tensor = paddle.assign(cur_chunk_tensor)
                     paddle.distributed.broadcast(
                         tmp_tensor, src=src_rank, group=process_group
