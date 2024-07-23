@@ -18,10 +18,7 @@
 #include <unordered_map>
 
 #include "paddle/common/enforce.h"
-#include "paddle/common/flags.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
-
-COMMON_DECLARE_int64(pir_broadcast_tree_limit);
 
 namespace cinn::common {
 
@@ -95,9 +92,6 @@ template <typename DoEachT>
 bool SearchBroadcastImpl(const symbol::Broadcast<symbol::DimExpr>& variadic,
                          const DoEachT& DoEach) {
   const auto& operands = *(variadic.operands);
-  if (operands.size() > 3) {
-    PADDLE_THROW(phi::errors::Fatal("Too many broadcast leaves to compile!"));
-  }
   for (const auto& operand : operands) {
     CHECK(!operand.isa<int64_t>());
     if (SearchBroadcast(operand, DoEach)) return true;
@@ -310,13 +304,13 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
 
 BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves,
                                      int* num_of_leaves) {
+  if (*num_of_leaves > FLAGS_pir_broadcast_tree_limit) {
+    return leaves;
+  }
   std::optional<symbol::Broadcastable<symbol::DimExpr>>
       broadcastable_condition = GetFirstCstrBroadcastable(leaves);
   if (!broadcastable_condition.has_value()) {
     (*num_of_leaves)++;
-    if (*num_of_leaves > FLAGS_pir_broadcast_tree_limit) {
-      PADDLE_THROW(phi::errors::Fatal("Too many broadcast leaves to compile!"));
-    }
     return leaves;
   }
   return ConstructBroadcastBranch(

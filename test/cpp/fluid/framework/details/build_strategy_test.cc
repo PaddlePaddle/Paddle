@@ -28,7 +28,7 @@
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 PD_DECLARE_bool(convert_all_blocks);
 
@@ -68,8 +68,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static std::vector<platform::Place> CreatePlaces(size_t num, bool use_cuda) {
-  std::vector<platform::Place> result;
+static std::vector<phi::Place> CreatePlaces(size_t num, bool use_cuda) {
+  std::vector<phi::Place> result;
   result.reserve(num);
   for (size_t i = 0; i < num; ++i) {
     if (use_cuda) {

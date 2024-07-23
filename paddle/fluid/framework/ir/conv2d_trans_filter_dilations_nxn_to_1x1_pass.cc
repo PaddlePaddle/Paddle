@@ -63,7 +63,7 @@ namespace paddle::framework::ir {
 
 void Conv2dTransFilterDilationsNxNTo1x1Pass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   conv2d_dilation_trans(graph);
 }
@@ -125,7 +125,7 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
         scope->Var(new_weights_name)->GetMutable<phi::DenseTensor>();
     new_weights->Resize({weights_shape[0], weights_shape[1], new_kh, new_kw});
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     if (weights->dtype() == phi::DataType::FLOAT32) {
       auto weights_data = weights->data<float>();
       auto* new_weights_data = cpu_ctx->Alloc<float>(new_weights);

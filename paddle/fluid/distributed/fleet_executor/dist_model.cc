@@ -63,21 +63,21 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
 
   PADDLE_ENFORCE_NOT_NULL(
       input_tensor_ptr,
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "LoDTensor creation failed. DistModel loaded data failed."));
-  PADDLE_ENFORCE_NOT_NULL(input_data.data.data(),
-                          paddle::platform::errors::InvalidArgument(
-                              "DistModelTensor contains no data."));
+  PADDLE_ENFORCE_NOT_NULL(
+      input_data.data.data(),
+      phi::errors::InvalidArgument("DistModelTensor contains no data."));
 
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     VLOG(3) << "Loading data for CPU.";
     std::memcpy(static_cast<void *>(input_tensor_ptr),
                 input_data.data.data(),
                 input_data.data.length());
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
     VLOG(3) << "Loading data for GPU.";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto *dev_ctx = dynamic_cast<const phi::GPUContext *>(pool.Get(place));
     auto gpu_place = place;
     memory::Copy(gpu_place,
@@ -87,10 +87,10 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                  input_data.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Paddle wasn't compiled with CUDA, but place is GPU."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
     VLOG(3) << "Loading data for XPU.";
 #if defined(PADDLE_WITH_XPU)
     auto xpu_place = place;
@@ -100,13 +100,13 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                  input_data.data.data(),
                  input_data.data.length());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Paddle wasn't compiled with XPU, but place is XPU."));
 #endif
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
     VLOG(3) << "Loading data for CustomDevice: " << place;
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto *dev_ctx = dynamic_cast<const phi::CustomContext *>(pool.Get(place));
     auto custom_place = place;
     memory::Copy(custom_place,
@@ -116,12 +116,12 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                  input_data.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Paddle wasn't compiled with custom_device, but place is "
         "CustomPlace."));
 #endif
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "DistModel only supports CPU and GPU and XPU and CustomDevice."));
   }
 
@@ -174,13 +174,13 @@ bool DistModel::Init() {
   bool init_method = (!config_.model_dir.empty() || config_.program_desc);
   PADDLE_ENFORCE_EQ(init_method,
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "One of model dir or program desc must be provided to "
                         "dist model inference."));
   if (config_.program_desc) {
     PADDLE_ENFORCE_NOT_NULL(
         config_.scope,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Scope must be provided to dist model inference if "
             "program desc has been provided."));
   }
@@ -224,7 +224,7 @@ bool DistModel::PreparePlace() {
   } else if (config_.place == "CUSTOM_DEVICE") {
     place_ = phi::CustomPlace(config_.device_type, config_.device_id);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Place must be choosen from GPU or CPU or XPU, but got %s.",
         config_.place));
   }
@@ -400,7 +400,7 @@ bool DistModel::LoadProgram() {
   PADDLE_ENFORCE_NE(
       config_.model_dir,
       "",
-      platform::errors::InvalidArgument("Model dir must be provided."));
+      phi::errors::InvalidArgument("Model dir must be provided."));
   std::string model_path = config_.model_dir + ".pdmodel";
   framework::proto::ProgramDesc program_proto;
   std::string pb_content;
@@ -409,7 +409,7 @@ bool DistModel::LoadProgram() {
   PADDLE_ENFORCE_EQ(
       static_cast<bool>(fin.is_open()),
       true,
-      platform::errors::NotFound(
+      phi::errors::NotFound(
           "Cannot open file %s, please confirm whether the file is normal.",
           model_path));
   fin.seekg(0, std::ios::end);
@@ -425,9 +425,9 @@ bool DistModel::LoadProgram() {
 
 bool DistModel::LoadParameters() {
   VLOG(3) << "Loading parameters from " << config_.model_dir;
-  PADDLE_ENFORCE_NOT_NULL(program_.get(),
-                          platform::errors::PreconditionNotMet(
-                              "The program should be loaded first."));
+  PADDLE_ENFORCE_NOT_NULL(
+      program_.get(),
+      phi::errors::PreconditionNotMet("The program should be loaded first."));
   const auto &global_block = program_->MutableBlock(0);
 
   // create a temporary program to load parameters.
@@ -605,7 +605,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(idx),
         i,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Fetch op's col attr(%d) should be equal to the index(%d)",
             idx,
             i));

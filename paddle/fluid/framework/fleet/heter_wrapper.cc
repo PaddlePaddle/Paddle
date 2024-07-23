@@ -115,7 +115,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
                    SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
   char* data_ptr = const_cast<char*>(req_data->data());
 
-  if (platform::is_cpu_place(tensor->place())) {
+  if (phi::is_cpu_place(tensor->place())) {
     memcpy(data_ptr,
            tensor->data(),
            tensor->numel() *
@@ -243,8 +243,8 @@ framework::proto::VarType::Type HeterWrapper::ToVarType(
     case VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "ToVarType:Unsupported type %d", type));
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("ToVarType:Unsupported type %d", type));
   }
 }
 

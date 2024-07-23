@@ -34,10 +34,10 @@ namespace framework {
  */
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows,
-                       const platform::DeviceContext& dev_ctx);
+                       const phi::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is,
                            phi::SelectedRows* selected_rows,
-                           const platform::DeviceContext& dev_ctx);
+                           const phi::DeviceContext& dev_ctx);
 
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows);

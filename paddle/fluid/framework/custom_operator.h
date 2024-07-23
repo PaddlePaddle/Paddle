@@ -87,7 +87,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
             attr_name, "custom operator std::vector<std::string> attribute.")
             .SetDefault({});
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
             "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -150,7 +150,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
         } else if (detail::IsMemberOf(fwd_op_outputs, in_name)) {
           grad_op->SetInput(in_name, this->Output(in_name));
         } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "The input tensor name `%s` is invalid, expected it is the input "
               "or output of forward operator.",
               in_name));
@@ -253,7 +253,7 @@ class CustomGradOpMaker<imperative::OpBase>
         } else if (detail::IsMemberOf(fwd_op_outputs, in_name)) {
           grad_op->SetInput(in_name, this->Output(in_name));
         } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "The input tensor name `%s` is invalid, expected it is the input "
               "or output of forward operator.",
               in_name));
