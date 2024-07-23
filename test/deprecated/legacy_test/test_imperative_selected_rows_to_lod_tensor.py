@@ -19,7 +19,7 @@ from test_imperative_base import new_program_scope
 
 import paddle
 from paddle import base
-from paddle.base import core, framework
+from paddle.base import core
 from paddle.nn import Embedding
 
 
@@ -92,8 +92,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
             if not core.is_compiled_with_rocm():
                 dtype_list.append("float64")
             for dtype in dtype_list:
-                with paddle.pir_utils.OldIrGuard():
-                    self.simple_net_float(is_sparse, dtype)
+                self.simple_net_float(is_sparse, dtype)
 
     def simple_net_float(self, is_sparse, dtype):
         places = [base.CPUPlace()]
@@ -175,19 +174,21 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     x = paddle.static.data(
                         name="x", shape=[-1, num_steps], dtype='int64'
                     )
-                    x.desc.set_need_check_feed(False)
+                    if not paddle.framework.use_pir_api():
+                        x.desc.set_need_check_feed(False)
                     y = paddle.static.data(name="y", shape=[-1, 1], dtype=dtype)
-                    y.desc.set_need_check_feed(False)
+                    if not paddle.framework.use_pir_api():
+                        y.desc.set_need_check_feed(False)
                     static_loss = simple_net(x, y)
                     sgd.minimize(static_loss)
                     static_param_updated = {}
                     static_param_init = {}
                     static_param_name_list = []
                     for param in simple_net.parameters():
-                        static_param_name_list.append(param.name)
+                        static_param_name_list.append(param)
 
                     out = exe.run(
-                        framework.default_startup_program(),
+                        paddle.base.default_startup_program(),
                         fetch_list=static_param_name_list,
                     )
                     for i in range(len(static_param_name_list)):
