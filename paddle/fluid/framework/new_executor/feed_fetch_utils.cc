@@ -35,7 +35,7 @@ void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
       PADDLE_ENFORCE_GE(
           col,
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Expected the column index (the attribute 'col' of "
               "operator 'Fetch') of current fetching variable to be "
               "no less than 0. But received column index = %d.",
@@ -58,8 +58,8 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
     auto feed_var = scope->GetVar(feed_name);
     PADDLE_ENFORCE_NOT_NULL(
         feed_var,
-        platform::errors::NotFound("Variable %s should not be nullptr.",
-                                   feed_names[i]));
+        phi::errors::NotFound("Variable %s should not be nullptr.",
+                              feed_names[i]));
     feed_tensors.push_back(feed_var->Get<phi::DenseTensor>());
   }
 

@@ -53,7 +53,7 @@ TEST(AdaptivePool2dConvertGlobalPass, basic) {
   PADDLE_ENFORCE_EQ(
       global_pooling,
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The attribute of pool2d global_pooling should be true after fuse"));
 }
 

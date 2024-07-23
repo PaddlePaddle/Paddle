@@ -43,7 +43,7 @@ void BindXpuStream(py::module *m_ptr) {
     dev_ctx->Wait();
     paddle::platform::SetXPUDeviceId(curr_device_id);
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Paddle is not compiled with XPU. Cannot visit device synchronize."));
 #endif
   });

@@ -485,11 +485,11 @@ void HandleForInplaceOp(pir::Operation* op,
 
       PADDLE_ENFORCE_NE(input_var_name,
                         "",
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input var name of view op is empty."));
       PADDLE_ENFORCE_NE(output_var_name,
                         "",
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The output var name of view op is empty."));
       VLOG(4) << "view: " << value_name << " -> " << view_name
               << " (var: " << input_var_name << ")";

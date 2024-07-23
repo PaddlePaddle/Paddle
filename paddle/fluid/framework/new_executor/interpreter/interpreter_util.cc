@@ -492,7 +492,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
               << " by device_guard.";
     } else {
       PADDLE_THROW(
-          platform::errors::Fatal("Unsupported current place %s", op_device));
+          phi::errors::Fatal("Unsupported current place %s", op_device));
     }
   }
 }

@@ -60,7 +60,7 @@ void AssertInstruction::Run() {
   PADDLE_ENFORCE_EQ(
       cond.numel(),
       1,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The numel of Input(Condition) of AssertOp must be 1. But now "
           "the Condition's shape is %s.",
           cond.dims().to_str()));
@@ -94,7 +94,7 @@ void AssertInstruction::Run() {
     }
     return {};
   }();
-  PADDLE_THROW(platform::errors::InvalidArgument(
+  PADDLE_THROW(phi::errors::InvalidArgument(
       "The condition variable '%s' of AssertOp must be "
       "true, but received false. %s",
       value_exe_info_->GetVarName(cond_var_),
