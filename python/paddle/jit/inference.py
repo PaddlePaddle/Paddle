@@ -399,13 +399,13 @@ def paddle_inference_decorator(function=None, **kwargs):
 
     Args:
         function (callable): Callable dynamic graph function. It must be a member function of paddle.nn.Layer.
-        If it used as a decorator, the decorated function will be parsed as this parameter.
+            If it used as a decorator, the decorated  function will be parsed as this parameter.
 
         kwargs: Support keys including `property`, set `property` to True if the function
             is python property.
 
     Returns:
-        Tensor(s): the decorated function can be sued for inference.
+        function (callable): the decorated function which can be used for inference.
 
     Examples:
         .. code-block:: python
