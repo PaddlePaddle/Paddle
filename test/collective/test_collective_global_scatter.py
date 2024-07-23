@@ -26,7 +26,10 @@ class TestCollectiveSelectScatterAPI(TestDistBase):
     def test_global_scatter_nccl(self):
         paddle.enable_static()
         self.check_with_place(
-            "collective_global_scatter.py", "global_scatter", "nccl"
+            "collective_global_scatter.py",
+            "global_scatter",
+            "nccl",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
     def test_global_scatter_nccl_dygraph_eager(self):
