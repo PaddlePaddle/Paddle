@@ -204,7 +204,7 @@ LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod,
 
 void SerializeToStream(std::ostream &os,
                        const phi::DenseTensor &tensor,
-                       const platform::DeviceContext &dev_ctx) {
+                       const phi::DeviceContext &dev_ctx) {
   {  // the 1st field, uint32_t version for DenseTensor
     os.write(
         reinterpret_cast<const char *>(&paddle::framework::kCurTensorVersion),
@@ -234,7 +234,7 @@ void SerializeToStream(std::ostream &os,
 
 void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
   phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-  const platform::DeviceContext *dev_ctx = nullptr;
+  const phi::DeviceContext *dev_ctx = nullptr;
   auto place = tensor.place();
   dev_ctx = pool.Get(place);
   SerializeToStream(os, tensor, *dev_ctx);
@@ -242,14 +242,14 @@ void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
 
 void DeserializeFromStream(std::istream &os, phi::DenseTensor *tensor) {
   phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-  const platform::DeviceContext *dev_ctx = nullptr;
+  const phi::DeviceContext *dev_ctx = nullptr;
   dev_ctx = pool.Get(phi::CPUPlace());
   DeserializeFromStream(os, tensor, *dev_ctx);
 }
 
 void DeserializeFromStream(std::istream &is,
                            phi::DenseTensor *tensor,
-                           const platform::DeviceContext &dev_ctx,
+                           const phi::DeviceContext &dev_ctx,
                            const size_t &seek,
                            const std::vector<int64_t> &shape) {
   {
@@ -282,7 +282,7 @@ void DeserializeFromStream(std::istream &is,
 
 void DeserializeFromStream(std::istream &is,
                            phi::DenseTensor *tensor,
-                           const platform::DeviceContext &dev_ctx) {
+                           const phi::DeviceContext &dev_ctx) {
   {
     // the 1st field, unit32_t version for DenseTensor
     uint32_t version = 0;

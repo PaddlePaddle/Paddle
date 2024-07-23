@@ -150,7 +150,7 @@ void VariableScope::CheckExist(const std::string& name) const {
 
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
-                         const platform::DeviceContext& dev_ctx)
+                         const phi::DeviceContext& dev_ctx)
     : is_artificial_(false),
       id_(id),
       next_instrs_in_different_thread(),
@@ -301,7 +301,7 @@ std::shared_ptr<ExecutionContext> Instruction::InnerExecutionContext() const {
   return execution_ctx_;
 }
 
-const platform::DeviceContext& Instruction::DeviceContext() const {
+const phi::DeviceContext& Instruction::DeviceContext() const {
   return dev_ctx_;
 }
 

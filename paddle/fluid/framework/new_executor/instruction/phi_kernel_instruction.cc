@@ -140,7 +140,7 @@ PhiKernelInstruction::PhiKernelInstruction(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel";
 
-  platform::DeviceContext* dev_ctx =
+  phi::DeviceContext* dev_ctx =
       ParseDeviceContext(op,
                          phi::DeviceContextPool::Instance().Get(
                              phi::TransToPhiPlace(kernel_key.backend())),

@@ -54,7 +54,7 @@ static void XPUTransDataType(
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const paddle::framework::proto::VarType::Type& dst_type,
-    const platform::DeviceContext* ctx) {
+    const phi::DeviceContext* ctx) {
   auto* context = static_cast<const platform::XPUDeviceContext*>(ctx);
 
 #define XPUCastCallback(cpp_type, proto_type)          \
@@ -81,11 +81,11 @@ template <typename InType>
 struct CastDataType {
   CastDataType(const phi::DenseTensor& in,
                phi::DenseTensor* out,
-               const platform::DeviceContext* ctx)
+               const phi::DeviceContext* ctx)
       : in_(in), out_(out), ctx_(ctx) {}
   const phi::DenseTensor in_;
   phi::DenseTensor* out_;
-  const platform::DeviceContext* ctx_;
+  const phi::DeviceContext* ctx_;
 
   template <typename OutType>
   void apply() {

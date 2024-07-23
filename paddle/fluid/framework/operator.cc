@@ -3163,7 +3163,7 @@ static void SetDnnAttrIntoDeviceContext(
 
 void OperatorWithKernel::BuildPhiKernelContext(
     const RuntimeContext& ctx,
-    platform::DeviceContext* dev_ctx,
+    phi::DeviceContext* dev_ctx,
     phi::KernelContext* phi_kernel_context) const {
   phi_kernel_context->SetDeviceContext(dev_ctx);
 
