@@ -305,7 +305,7 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
 }
 
 template <class TensorType>
-void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
+void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
                           const phi::Place& place,
                           const phi::DataType& dtype,
                           const phi::DataLayout& layout,
@@ -335,7 +335,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
 
   // set place
   if (tensor->initialized()) {  // avoid overwriting valid data
-    platform::DeviceContext* dev_ctx_for_copy = nullptr;
+    phi::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
       dev_ctx_for_copy = phi::DeviceContextPool::Instance().Get(place);
     } else {
@@ -373,7 +373,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
           << ", place = " << place << ", layout = " << layout;
 }
 
-void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
+void FakeInitializeTensorBase(const phi::DeviceContext& dev_ctx,
                               const phi::Place& place,
                               const phi::DataType& dtype,
                               const phi::DataLayout& layout,
@@ -792,7 +792,7 @@ void FakeInitializeOutputsForFunctionKernel(
     const phi::Kernel& phi_kernel,
     const phi::KernelSignature& kernel_sig,
     const RuntimeContext& runtime_ctx,
-    const platform::DeviceContext& dev_ctx) {
+    const phi::DeviceContext& dev_ctx) {
   const std::string& op_type = op.Type();
   auto output_names = kernel_sig.output_names;
   auto output_defs = phi_kernel.args_def().output_defs();

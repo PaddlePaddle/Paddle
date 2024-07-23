@@ -423,7 +423,7 @@ class ExecutionContext : public phi::KernelContext {
  public:
   ExecutionContext(const OperatorBase& op,
                    const Scope& scope,
-                   const platform::DeviceContext& device_context,
+                   const phi::DeviceContext& device_context,
                    const RuntimeContext& ctx)
       : op_(op), scope_(scope), device_context_(device_context), ctx_(ctx) {}
   virtual ~ExecutionContext() {}
@@ -577,9 +577,7 @@ class ExecutionContext : public phi::KernelContext {
     return *reinterpret_cast<const DeviceContextType*>(&device_context_);
   }
 
-  const platform::DeviceContext& device_context() const {
-    return device_context_;
-  }
+  const phi::DeviceContext& device_context() const { return device_context_; }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const inline phi::GPUContext& cuda_device_context() const {
@@ -608,7 +606,7 @@ class ExecutionContext : public phi::KernelContext {
  private:
   const OperatorBase& op_;
   const Scope& scope_;
-  const platform::DeviceContext& device_context_;
+  const phi::DeviceContext& device_context_;
   const RuntimeContext& ctx_;
 };
 
@@ -836,7 +834,7 @@ class OperatorWithKernel : public OperatorBase {
   void ChooseKernel(const ExecutionContext& ctx) const;
 
   void BuildPhiKernelContext(const RuntimeContext& ctx,
-                             platform::DeviceContext* dev_ctx,
+                             phi::DeviceContext* dev_ctx,
                              phi::KernelContext* phi_kernel_context) const;
 
   phi::KernelSignature* PhiKernelSignature() const {

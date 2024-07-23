@@ -38,7 +38,7 @@ namespace framework {
 template <typename TENSOR>
 void TensorCopyImpl(const TENSOR& src,
                     const phi::Place& dst_place,
-                    const platform::DeviceContext& ctx,
+                    const phi::DeviceContext& ctx,
                     TENSOR* dst) {
   if (&src == dst) {
     auto src_copy = src;
@@ -272,7 +272,7 @@ void TensorCopyImpl(const TENSOR& src,
                     const phi::Place& dst_place,
                     TENSOR* dst) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  const platform::DeviceContext* dev_ctx = nullptr;
+  const phi::DeviceContext* dev_ctx = nullptr;
   if (phi::is_gpu_place(dst_place) || phi::is_custom_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
   } else {
@@ -289,7 +289,7 @@ void TensorCopy(const phi::DenseTensor& src,
 }
 void TensorCopy(const phi::DenseTensor& src,
                 const phi::Place& dst_place,
-                const platform::DeviceContext& ctx,
+                const phi::DeviceContext& ctx,
                 phi::DenseTensor* dst) {
   TensorCopyImpl<phi::DenseTensor>(src, dst_place, ctx, dst);
   dst->set_strides(src.strides());
@@ -450,7 +450,7 @@ void TensorCopySync(const phi::DenseTensor& src,
 
 void TensorToStream(std::ostream& os,
                     const phi::DenseTensor& tensor,
-                    const platform::DeviceContext& dev_ctx) {
+                    const phi::DeviceContext& dev_ctx) {
   const auto ensure_contiguous = [](const phi::DenseTensor& tensor) {
     if (tensor.meta().is_contiguous()) {
       return tensor;
@@ -585,7 +585,7 @@ struct DeserializedDataFunctor {
 
 void TensorFromStream(std::istream& is,
                       phi::DenseTensor* tensor,
-                      const platform::DeviceContext& dev_ctx,
+                      const phi::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape) {
   uint32_t version = 0;
@@ -653,7 +653,7 @@ void TensorFromStream(std::istream& is,
 
 void TensorFromStream(std::istream& is,
                       phi::DenseTensor* tensor,
-                      const platform::DeviceContext& dev_ctx) {
+                      const phi::DeviceContext& dev_ctx) {
   uint32_t version = 0;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(

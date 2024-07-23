@@ -174,13 +174,13 @@ TEST_API std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
  */
 void SerializeToStream(std::ostream& os,
                        const phi::DenseTensor& tensor,
-                       const platform::DeviceContext& dev_ctx);
+                       const phi::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is,
                            phi::DenseTensor* tensor,
-                           const platform::DeviceContext& dev_ctx);
+                           const phi::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is,
                            phi::DenseTensor* tensor,
-                           const platform::DeviceContext& dev_ctx,
+                           const phi::DeviceContext& dev_ctx,
                            const size_t& seek,
                            const std::vector<int64_t>& shape);
 
