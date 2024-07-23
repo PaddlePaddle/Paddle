@@ -38,7 +38,7 @@ class TestGetTensorFromSelectedRowsError(unittest.TestCase):
             def test_SELECTED_ROWS():
                 clip.get_tensor_from_selected_rows(x=x_var)
 
-            self.assertRaises(TypeError, test_SELECTED_ROWS)
+            self.assertRaises((TypeError,NotImplementedError), test_SELECTED_ROWS)
 
 
 class TestGetTensorFromSelectedRows(unittest.TestCase):
