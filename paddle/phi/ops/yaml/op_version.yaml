@@ -116,6 +116,15 @@
             of each place to be compatible with before.
           default : -1
 
+- op : collect_fpn_proposals
+  version :
+    - checkpoint : Upgrade collect_fpn_proposals add a new input [MultiLevelRoIsNum] and add a new output [RoisNum].
+      action :
+        - add_input : multi_level_rois_num
+          comment : The RoIs' number of each image on multiple levels. The number on each level has the shape of (N), N is the number of images.
+        - add_output : rois_num
+          comment : The number of RoIs in each image.
+
 - op : conv2d
   version :
     - checkpoint : Upgrade conv2d, add a new attribute [use_addto].
