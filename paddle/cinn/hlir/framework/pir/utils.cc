@@ -179,10 +179,6 @@ bool UnimplementOps(const ::pir::Operation& op) {
 
 bool HaveUnkDim(const ::pir::Operation& op) {
   auto HasNegDim = [](const ::pir::Type& type) {
-    if (!type.isa<::pir::DenseTensorType>()) {
-      // TODO(Hongqing-work): check if tensor array is needed
-      return false;
-    }
     auto tensor_type = type.dyn_cast<::pir::DenseTensorType>();
 
     if (tensor_type) {
@@ -207,6 +203,7 @@ bool HaveUnkDim(const ::pir::Operation& op) {
   for (size_t i = 0; i < op.num_operands(); ++i) {
     auto value = op.operand_source(i);
     if (!value || !value.type()) continue;
+    // TODO(Hongqing-work): check if tensor array is needed
     if (auto vector_type = value.type().dyn_cast<::pir::VectorType>()) {
       if (HasUnkDimInVT(vector_type.data())) return true;
     } else if (HasNegDim(value.type())) {
@@ -356,12 +353,12 @@ std::unordered_set<std::string> CollectValueShapeSymbols(
   return res;
 }
 
-bool IsShapeSupported(const ::pir::Operation& op) {
+bool CauseNewSymbolicShape(const ::pir::Operation& op) {
   if (FLAGS_disable_dyshape_in_train) {
-    return true;
+    return false;
   }
   if (!HaveUnkDim(op)) {
-    return true;
+    return false;
   }
   auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
       const_cast<::pir::Operation&>(op).GetParentProgram());
@@ -389,7 +386,7 @@ bool IsShapeSupported(const ::pir::Operation& op) {
     return false;
   }();
 
-  return !outputs_have_new_symbol;
+  return outputs_have_new_symbol;
 }
 
 #define PD_OP_NAME(op) paddle::dialect::op::name()
@@ -426,12 +423,12 @@ bool IsSupportInCinn(const ::pir::Operation& op) {
   const bool is_denied = IsDeniedInCinn(op);
   const bool is_registered = IsRegisteredInCINN(op);
   const bool is_handled = HasHandledInPass(op);
-  const bool is_shape_supported = IsShapeSupported(op);
+  const bool cause_new_symbolic_shape = CauseNewSymbolicShape(op);
   VLOG(5) << op.name() << ": IsDeniedInCinn = " << is_denied
           << ", IsRegisteredInCINN = " << is_registered
           << ", HasHandledInPass = " << is_handled
-          << ", IsShapeSupported = " << is_shape_supported;
-  return !is_denied && is_registered && is_handled && is_shape_supported;
+          << ", CauseNewSymbolicShape = " << cause_new_symbolic_shape;
+  return !is_denied && is_registered && is_handled && !cause_new_symbolic_shape;
 }
 }  // namespace
 

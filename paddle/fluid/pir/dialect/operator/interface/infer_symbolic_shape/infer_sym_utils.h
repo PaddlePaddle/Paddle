@@ -81,6 +81,8 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
   return vec_res;
 }
 
+// Complete means that all the items in tensor or tensor_list have symbolic data
+// representations.
 inline bool HasCompleteData(const ShapeOrData &shapeordata) {
   return shapeordata.Match(
       [&](const symbol::TensorShapeOrDataDimExprs &impl) {
