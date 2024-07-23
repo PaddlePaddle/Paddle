@@ -7,6 +7,10 @@ op_patches:
         default :
           - type: pir::BoolAttribute
             default: "false"
+      - action : modify_attr
+        object : name
+        type : pir::StrAttribute
+        default : "B"
   - op_name : builtin.parameter
     actions :
       - action : modify_attr

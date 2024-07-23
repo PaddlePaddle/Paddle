@@ -12,21 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>
-#include "paddle/fluid/pybind/eager_generator.h"
-#include "paddle/fluid/pybind/eager_legacy_op_function_generator.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/collect_fpn_proposals_kernel_impl.h"
 
-int main(int argc, char* argv[]) {
-  if (argc == 2) {
-    // make eager_legacy_op_function_generator.cc
-    run_legacy_generator(argc, argv);
-  } else if (argc == 3) {
-    // make eager_generator.cc
-    run_generator(argc, argv);
-  } else {
-    std::cerr << "argc must be 2 or 3" << std::endl;
-    return -1;
-  }
-
-  return 0;
+PD_REGISTER_KERNEL(collect_fpn_proposals,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CollectFpnProposalsOpKernel,
+                   float,
+                   double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
 }
