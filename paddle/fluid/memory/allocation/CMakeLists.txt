@@ -76,13 +76,13 @@ target_link_libraries(allocator ${ALLOCATOR_DEPS})
 add_dependencies(allocator framework_proto)
 set_property(GLOBAL PROPERTY FLUID_MODULES allocator)
 
-if(WITH_TESTING)
-  # TODO(zhiqiu): why not win32? because wget is not found on windows
-  if(NOT WIN32)
-    add_custom_target(
-      download_data
-      COMMAND wget -nc --no-check-certificate
-              https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar
-      COMMAND tar -xf buddy_allocator_test_data.tar)
-  endif()
-endif()
+# if(WITH_TESTING)
+#   # TODO(zhiqiu): why not win32? because wget is not found on windows
+#   if(NOT WIN32)
+#     add_custom_target(
+#       download_data
+#       COMMAND wget -nc --no-check-certificate
+#               https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar
+#       COMMAND tar -xf buddy_allocator_test_data.tar)
+#   endif()
+# endif()

@@ -211,6 +211,10 @@ class TestLlamaAuto:
         )
 
         dist_model.train()
+
+
+
+        
         loss = None
         for step, inputs in enumerate(dist_loader()):
             input_ids, labels = inputs

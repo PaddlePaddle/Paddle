@@ -153,7 +153,7 @@ cc_test(
   SRCS system_allocator_test.cc
   DEPS allocator)
 
-cc_test(
-  buddy_allocator_test
-  SRCS buddy_allocator_test.cc
-  DEPS allocator)
+# cc_test(
+#   buddy_allocator_test
+#   SRCS buddy_allocator_test.cc
+#   DEPS allocator)

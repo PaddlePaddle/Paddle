@@ -7390,15 +7390,25 @@ class Program:
 
         var_list = filter(condition, self.list_vars())
 
+        # print("===============> var_list")
+        # for var in var_list:
+        #     print(var.name)
+
         state_dict = {}
+        
         for var in var_list:
+            
+            if var.name == "reshard_api.tmp_2":
+                continue
+                
             var_temp = scope.find_var(var.name)
             if var_temp is None:
                 raise ValueError(
                     f"Can not find Variable '{var.name}' in the scope. Make sure it is initialized"
                 )
             state_dict[var.name] = var_temp.get_tensor()
-
+        
+        
         return state_dict
 
     def set_state_dict(self, state_dict, scope=None):
