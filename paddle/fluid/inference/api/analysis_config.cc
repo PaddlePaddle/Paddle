@@ -1505,8 +1505,8 @@ void AnalysisConfig::EnableCustomPasses(const std::vector<std::string> &passes,
   custom_pass_only_ = custom_pass_only;
 }
 
-void AnalysisConfig::DeletePass(const std::vector<std::string> &passes) {
-  deleted_passes_ = passes;
+void AnalysisConfig::DeletePass(const std::string &pass_name) {
+  deleted_passes_.push_back(pass_name);
 }
 
 void AnalysisConfig::SetOptimizationLevel(int opt_level) {

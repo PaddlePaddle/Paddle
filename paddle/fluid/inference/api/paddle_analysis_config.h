@@ -1175,7 +1175,12 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableCustomPasses(const std::vector<std::string>& passes,
                           bool custom_pass_only = false);
 
-  void DeletePass(const std::vector<std::string>& passes);
+  ///
+  /// \brief Delete a pass to prevent it to optimizing the model.
+  ///
+  /// \param pass_name The pass's name to be deleted.
+  ///
+  void DeletePass(const std::string& pass_name);
 
   ///
   /// \brief Set pir Optimization level.

@@ -1016,10 +1016,6 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
-      .def("delete_pass",
-           [](AnalysisConfig &self, const std::string &pass) {
-             self.pass_builder()->DeletePass(pass);
-           })
       .def("delete_pass", &AnalysisConfig::DeletePass)
       .def(
           "pass_builder",

@@ -400,6 +400,11 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
       config_.SwitchIrOptim(false);
     }
   }
+  if (!config_.new_ir_enabled()) {
+    for (const auto &pass_name : config_.deleted_passes_) {
+      config_.pass_builder()->DeletePass(pass_name);
+    }
+  }
   int trt_identifier = config_.trt_engine_memory_sharing_identifier_;
   if (trt_identifier > 0) {
     // NOTE(liuyuanle): For convenience, we set the id of the predictor to
