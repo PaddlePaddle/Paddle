@@ -109,6 +109,7 @@ class InstanceNorm(paddle.nn.Layer):
     def __init__(self, num_channels, epsilon=1e-5):
         super().__init__()
         self.epsilon = epsilon
+        self.num_channels = num_channels
 
         self.scale = self.create_parameter(shape=[num_channels], is_bias=False)
         self.bias = self.create_parameter(shape=[num_channels], is_bias=True)
@@ -120,12 +121,12 @@ class InstanceNorm(paddle.nn.Layer):
             )
             return out
         else:
-            return paddle.static.nn.instance_norm(
-                input,
+            return paddle.nn.InstanceNorm2D(
+                num_features=self.num_channels,
                 epsilon=self.epsilon,
-                param_attr=base.ParamAttr(self.scale.name),
+                weight_attr=base.ParamAttr(self.scale.name),
                 bias_attr=base.ParamAttr(self.bias.name),
-            )
+            )(input)
 
 
 class Conv2DLayer(paddle.nn.Layer):
