@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # generator interfaces
+from op_gen import OpInfoParser
 from vjp_interface_black_list import vjp_interface_black_list
 
 CHECK_INPUT_TEMPLATE = """
@@ -106,11 +107,11 @@ input_types_map = {
 
 
 def gen_op_vjp_str(
-    op_class_name,
-    op_grad_name,
-    op_phi_name,
-    op_info,
-    op_grad_info,
+    op_class_name: str,
+    op_grad_name: str,
+    op_phi_name: str,
+    op_info: OpInfoParser,
+    op_grad_info: OpInfoParser,
 ):
     bw_input_list = op_grad_info.input_name_list
     fwd_input_and_mutable_attr_name_list = (
@@ -272,7 +273,7 @@ def gen_op_vjp_str(
     return str
 
 
-def gen_exclusive_interface_str(op_info, op_info_items):
+def gen_exclusive_interface_str(op_info: OpInfoParser, op_info_items):
     exclusive_interface_str = ""
     if op_info.op_phi_name[0] not in vjp_interface_black_list:
         exclusive_interface_str += "\n  static std::vector<std::vector<pir::Value>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::Value>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
