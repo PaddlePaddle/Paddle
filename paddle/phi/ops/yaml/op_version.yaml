@@ -364,6 +364,17 @@
         - add_output : Beta2PowOut
           comment : The Output beta2 power accumulator. 'Beta2PowOut' is dispensable.
 
+- op : legacy_generate_proposals
+  version :
+    - checkpoint : Incompatible upgrade of output [RpnRoisLod].
+      action :
+        - delete_output : RpnRoisLod
+          comment : Delete RpnRoisLod due to incorrect output name and it is not used in object detection models yet.
+    - checkpoint : Upgrade generate_proposals add a new output [RpnRoisNum]
+      action :
+        - add_output : rpn_rois_num
+          comment : The number of Rpn RoIs in each image. RpnRoisNum is dispensable.
+
 - op : less_equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
