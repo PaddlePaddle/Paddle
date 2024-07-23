@@ -59,35 +59,36 @@ def softmax_with_data_format(x, data_format, axis=-1, dtype=None, name=None):
 
 class TestTransferLayoutOpGpu(unittest.TestCase):
     def test_layout_transfer(self):
-        if not core.is_compiled_with_cuda():
-            return
+        with paddle.pir_utils.OldIrGuard():
+            if not core.is_compiled_with_cuda():
+                return
 
-        paddle.enable_static()
+            paddle.enable_static()
 
-        main_program = Program()
-        startup_program = Program()
-        n, c, h, w = 2, 3, 4, 5
-        with program_guard(main_program, startup_program):
-            x = paddle.static.data(
-                shape=[n, c, h, w], dtype='float32', name='x'
+            main_program = Program()
+            startup_program = Program()
+            n, c, h, w = 2, 3, 4, 5
+            with program_guard(main_program, startup_program):
+                x = paddle.static.data(
+                    shape=[n, c, h, w], dtype='float32', name='x'
+                )
+                y = softmax_with_data_format(x, data_format='NCHW')
+                z = softmax_with_data_format(y, data_format='NHWC')
+
+            place = (
+                base.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else base.CPUPlace()
             )
-            y = softmax_with_data_format(x, data_format='NCHW')
-            z = softmax_with_data_format(y, data_format='NHWC')
-
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
-        exe = base.Executor(place)
-        exe.run(startup_program)
-        ret = exe.run(
-            main_program,
-            feed={'x': np.full((n, c, h, w), 1, np.float32)},
-            fetch_list=[z.name],
-        )
-        assert len(ret) == 1
-        assert ret[0].shape == (n, h, w, c)
+            exe = base.Executor(place)
+            exe.run(startup_program)
+            ret = exe.run(
+                main_program,
+                feed={'x': np.full((n, c, h, w), 1, np.float32)},
+                fetch_list=[z.name],
+            )
+            assert len(ret) == 1
+            assert ret[0].shape == (n, h, w, c)
 
 
 class TestTransferLayoutFP16Op(OpTest):
