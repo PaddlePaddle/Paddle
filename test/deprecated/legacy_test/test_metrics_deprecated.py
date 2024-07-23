@@ -73,6 +73,8 @@ class TestAccuracyStatic(unittest.TestCase):
         pred_one_hot = convert_to_one_hot(pred, self.class_num)
         pred_one_hot = pred_one_hot.astype('float32')
 
+        return label, pred_one_hot
+
     def test_main(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
