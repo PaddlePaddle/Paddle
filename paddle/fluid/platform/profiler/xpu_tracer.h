@@ -18,9 +18,9 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/platform/dynload/xpti.h"
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
+#include "paddle/phi/backends/dynload/xpti.h"
 
 namespace paddle {
 namespace platform {

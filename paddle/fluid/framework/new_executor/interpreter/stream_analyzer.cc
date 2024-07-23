@@ -30,7 +30,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace paddle::framework::interpreter {
 
-using DeviceContext = platform::DeviceContext;
+using DeviceContext = phi::DeviceContext;
 using DeviceEvent = platform::DeviceEvent;
 
 inline std::string RunTypeToString(DownstreamRunType run_type) {
@@ -243,7 +243,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
       if (FLAGS_dynamic_static_unified_comm) {
         const auto& comm_context_manager =
             phi::distributed::CommContextManager::GetInstance();
-        dev_ctx = static_cast<platform::DeviceContext*>(
+        dev_ctx = static_cast<phi::DeviceContext*>(
             static_cast<phi::distributed::NCCLCommContext*>(
                 comm_context_manager.Get(std::to_string(ring_id)))
                 ->GetDevContext());

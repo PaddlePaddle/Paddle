@@ -20,9 +20,9 @@
 #include <future>
 #include <string>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/rpc/python_rpc_handler.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace py = pybind11;
 namespace paddle {

@@ -18,7 +18,7 @@ namespace paddle::framework {
 
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows,
-                       const platform::DeviceContext& dev_ctx) {
+                       const phi::DeviceContext& dev_ctx) {
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
     os.write(reinterpret_cast<const char*>(&version), sizeof(version));
@@ -44,7 +44,7 @@ void SerializeToStream(std::ostream& os,
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  const platform::DeviceContext* dev_ctx = nullptr;
+  const phi::DeviceContext* dev_ctx = nullptr;
   auto place = selected_rows.place();
   dev_ctx = pool.Get(place);
   SerializeToStream(os, selected_rows, *dev_ctx);
@@ -52,14 +52,14 @@ void SerializeToStream(std::ostream& os,
 
 void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  const platform::DeviceContext* dev_ctx = nullptr;
+  const phi::DeviceContext* dev_ctx = nullptr;
   dev_ctx = pool.Get(phi::CPUPlace());
   DeserializeFromStream(is, selected_rows, *dev_ctx);
 }
 
 void DeserializeFromStream(std::istream& is,
                            phi::SelectedRows* selected_rows,
-                           const platform::DeviceContext& dev_ctx) {
+                           const phi::DeviceContext& dev_ctx) {
   {
     // the 1st field, unit32_t version for SelectedRows
     uint32_t version = 0;

@@ -14,8 +14,8 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"  // Include XPU initialization headers
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 template <typename Place, typename T>
@@ -193,20 +193,20 @@ TEST(SaveLoadCombineOp, XPU) {
   EXPECT_EQ(r, 0);
 
   r = SaveLoadCombineOpTest<phi::XPUPlace,
-                            paddle::platform::float16,
-                            paddle::platform::float16>(xpu_place);
+                            phi::dtype::float16,
+                            phi::dtype::float16>(xpu_place);
   EXPECT_EQ(r, 0);
   r = SaveLoadCombineOpTest<phi::CPUPlace,
-                            paddle::platform::float16,
-                            paddle::platform::float16>(cpu_place);
+                            phi::dtype::float16,
+                            phi::dtype::float16>(cpu_place);
   EXPECT_EQ(r, 0);
 
   r = SaveLoadCombineOpTest<phi::XPUPlace,
-                            paddle::platform::bfloat16,
-                            paddle::platform::bfloat16>(xpu_place);
+                            phi::dtype::bfloat16,
+                            phi::dtype::bfloat16>(xpu_place);
   EXPECT_EQ(r, 0);
   r = SaveLoadCombineOpTest<phi::CPUPlace,
-                            paddle::platform::bfloat16,
-                            paddle::platform::bfloat16>(cpu_place);
+                            phi::dtype::bfloat16,
+                            phi::dtype::bfloat16>(cpu_place);
   EXPECT_EQ(r, 0);
 }

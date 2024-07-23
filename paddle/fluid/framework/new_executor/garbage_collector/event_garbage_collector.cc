@@ -60,7 +60,7 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
                                                const Instruction& instr) {
   PADDLE_ENFORCE_LT(instr.Id(),
                     gc_event_.size(),
-                    platform::errors::OutOfRange(
+                    phi::errors::OutOfRange(
                         "The index should be less than the size of gc event "
                         ", but got index is %d and size is %d",
                         instr.Id(),
@@ -72,7 +72,7 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
                                                const InstructionBase* instr) {
   PADDLE_ENFORCE_LT(instr->Id(),
                     gc_event_.size(),
-                    platform::errors::OutOfRange(
+                    phi::errors::OutOfRange(
                         "The index should be less than the size of gc event "
                         ", but got index is %d and size is %d",
                         instr->Id(),
@@ -80,10 +80,9 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
   Add(var, &gc_event_.at(instr->Id()), &instr->DeviceContext());
 }
 
-void InterpreterCoreEventGarbageCollector::Add(
-    Variable* var,
-    platform::DeviceEvent* event,
-    const platform::DeviceContext* ctx) {
+void InterpreterCoreEventGarbageCollector::Add(Variable* var,
+                                               platform::DeviceEvent* event,
+                                               const phi::DeviceContext* ctx) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {
     return;
   }
@@ -142,16 +141,15 @@ void InterpreterCoreEventGarbageCollector::Add(
     // refer to executor.cc to see what old garbage collector does.
     // do nothing, because the sub scope will be deleted by sub-executor.
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "The variable(%s) is not supported in eager deletion.",
         framework::ToTypeName(var->Type())));
   }
 }
 
-void InterpreterCoreEventGarbageCollector::Add(
-    Garbage garbage,
-    platform::DeviceEvent* event,
-    const platform::DeviceContext* ctx) {
+void InterpreterCoreEventGarbageCollector::Add(Garbage garbage,
+                                               platform::DeviceEvent* event,
+                                               const phi::DeviceContext* ctx) {
   if (!garbage) {
     return;
   }
@@ -172,10 +170,9 @@ void InterpreterCoreEventGarbageCollector::Add(
   }
 }
 
-void InterpreterCoreEventGarbageCollector::Free(
-    const Garbage& garbage,
-    platform::DeviceEvent* event,
-    const platform::DeviceContext* ctx) {
+void InterpreterCoreEventGarbageCollector::Free(const Garbage& garbage,
+                                                platform::DeviceEvent* event,
+                                                const phi::DeviceContext* ctx) {
   event->Record(ctx);
   event->SetFinished();  // Only for CPU Event
   queue_->AddTask([container = garbage, event = event]() {

@@ -582,10 +582,10 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
                                                     slot_num,
                                                     d_slot_feature_num_map,
                                                     fea_num_per_node);
-            PADDLE_ENFORCE_EQ(ret,
-                              0,
-                              platform::errors::PreconditionNotMet(
-                                  "Get_feature_of_nodes error."));
+            PADDLE_ENFORCE_EQ(
+                ret,
+                0,
+                phi::errors::PreconditionNotMet("Get_feature_of_nodes error."));
 
             CUDA_CHECK(cudaMemcpyAsync(
                 feature_ids[i].data() + pos * fea_num_per_node,
@@ -2080,8 +2080,7 @@ void PSGPUWrapper::BeginPass() {
 #endif
   timer.Start();
   if (current_task_) {
-    PADDLE_THROW(
-        platform::errors::Fatal("[BeginPass] current task is not ended."));
+    PADDLE_THROW(phi::errors::Fatal("[BeginPass] current task is not ended."));
   }
 
   debug_gpu_memory_info("befor build task");
@@ -2090,7 +2089,7 @@ void PSGPUWrapper::BeginPass() {
   timer.Pause();
 
   if (current_task_ == nullptr) {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "[BeginPass] after build_task, current task is not null."));
   }
   if (FLAGS_gpugraph_dedup_pull_push_mode) {
@@ -2176,8 +2175,7 @@ void PSGPUWrapper::HbmToSparseTable() {
   grad_push_count_ = 0;
 
   if (!current_task_) {
-    PADDLE_THROW(
-        platform::errors::Fatal("[EndPass] current task has been ended."));
+    PADDLE_THROW(phi::errors::Fatal("[EndPass] current task has been ended."));
   }
   size_t keysize_max = 0;
   // in case of feasign_num = 0, skip dump_to_cpu
@@ -2355,7 +2353,7 @@ void PSGPUWrapper::PullSparse(const phi::Place& place,
           << " pull_feature_value_size:" << pull_type_size_;
 
   if (phi::is_cpu_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GpuPs now."));
   } else if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
@@ -2471,7 +2469,7 @@ void PSGPUWrapper::PullSparse(const phi::Place& place,
 
       PADDLE_ENFORCE_GT(dedup_size,
                         0,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "dedup keys need more than zero failed in BoxPS."));
       dev.dedup_key_length = dedup_size;
 
@@ -2646,7 +2644,7 @@ void PSGPUWrapper::PullSparse(const phi::Place& place,
                                       feature_value_size);
 #endif
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "GpuPs/XpuPs: PullSparse Only Support CUDAPlace or XPUPlace Now."));
   }
   all_timer.Pause();
@@ -2672,7 +2670,7 @@ void PSGPUWrapper::PushSparseGrad(const phi::Place& place,
   size_t grad_value_size = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
 
   if (phi::is_cpu_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GPUPS now."));
   } else if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
@@ -2835,7 +2833,7 @@ void PSGPUWrapper::PushSparseGrad(const phi::Place& place,
     push_gpups_timer.Pause();
 #endif
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "GPUPS: PushSparseGrad Only Support CUDAPlace Now."));
   }
   all_timer.Pause();

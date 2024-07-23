@@ -319,8 +319,8 @@ void groupNormNCHW32ScaleQDQ(const GroupNormNDHWCParams<__half> &params,
       break;
     default:
       PADDLE_THROW(
-          platform::errors::Fatal("The function groupNormNCHW32ScaleQDQ of "
-                                  "GroupNorm TRT Plugin encounter error"));
+          phi::errors::Fatal("The function groupNormNCHW32ScaleQDQ of "
+                             "GroupNorm TRT Plugin encounter error"));
   }
 }
 
@@ -402,7 +402,7 @@ int GroupNormPlugin::enqueue(int batch_size,
   PADDLE_ENFORCE_EQ(
       C,
       scale_.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "scale's size should be equal to the channel number in groupnorm,"
           "but got channel number:%d, scale's size:%d.",
           C,
@@ -410,7 +410,7 @@ int GroupNormPlugin::enqueue(int batch_size,
   PADDLE_ENFORCE_EQ(
       C,
       bias_.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "bias's size should be equal to the channel number in groupnorm,"
           "but got channel number:%d, bias's size:%d.",
           C,
@@ -454,7 +454,7 @@ int GroupNormPlugin::enqueue(int batch_size,
                variance_d,
                DataLayout::kNCHW);
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "The GroupNorm TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
@@ -474,15 +474,15 @@ bool GroupNormPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input of groupnorm plugin shoule not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      platform::errors::InvalidArgument("The pos(%d) should be less than the "
-                                        "num(%d) of the input and the output.",
-                                        pos,
-                                        nb_inputs + nb_outputs));
+      phi::errors::InvalidArgument("The pos(%d) should be less than the "
+                                   "num(%d) of the input and the output.",
+                                   pos,
+                                   nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
 
   bool int8_support = in.type == nvinfer1::DataType::kINT8 &&
@@ -513,15 +513,15 @@ nvinfer1::DataType GroupNormPluginDynamic::getOutputDataType(
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The groupnorm Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
-  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
-                     input_types[0] == nvinfer1::DataType::kHALF),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "The input type should be half or float"));
+  PADDLE_ENFORCE_EQ(
+      (input_types[0] == nvinfer1::DataType::kFLOAT ||
+       input_types[0] == nvinfer1::DataType::kHALF),
+      true,
+      phi::errors::InvalidArgument("The input type should be half or float"));
 
   return input_types[0];
 }
@@ -587,7 +587,7 @@ int GroupNormPluginDynamic::enqueue(
   PADDLE_ENFORCE_EQ(
       C,
       scale_.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "scale's size should be equal to the channel number in groupnorm,"
           "but got feature_size:%d, scale's size:%d.",
           C,
@@ -595,7 +595,7 @@ int GroupNormPluginDynamic::enqueue(
   PADDLE_ENFORCE_EQ(
       C,
       bias_.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "bias's size should be equal to the channel number in groupnorm,"
           "but got feature_size:%d, bias's size:%d.",
           C,
@@ -715,7 +715,7 @@ int GroupNormPluginDynamic::enqueue(
       phi::groupNormNDHWCScale<half> ndhwc_scale;
       ndhwc_scale(params_, stream);
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "The Groupnorm TRT Plugin's only support nchw or nhwc8 input"));
     }
   } else if (input_type == nvinfer1::DataType::kINT8) {
@@ -801,12 +801,12 @@ int GroupNormPluginDynamic::enqueue(
       groupNormNCHW32SumQDQ(params_, stream);
       groupNormNCHW32ScaleQDQ(params_, stream);
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "The Groupnorm TRT Plugin only support nchw32 input"));
     }
   } else {
     // input not float
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "The Groupnorm TRT Plugin's only support fp32, fp16 or int8 input"));
   }
 
