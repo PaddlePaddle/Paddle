@@ -16,6 +16,7 @@
 
 #include <algorithm>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -35,7 +36,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -492,7 +492,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
               << " by device_guard.";
     } else {
       PADDLE_THROW(
-          platform::errors::Fatal("Unsupported current place %s", op_device));
+          phi::errors::Fatal("Unsupported current place %s", op_device));
     }
   }
 }

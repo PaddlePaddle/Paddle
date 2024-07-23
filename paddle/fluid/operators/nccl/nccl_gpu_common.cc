@@ -41,7 +41,7 @@ void Communicator::InitAll(const std::vector<int>& gpus) {
   if (global_comms) {
     for (size_t i = 0; i < global_comms->size(); ++i) {
       // FIXME(dzh) : PADDLE_ENFORCE return void
-      dynload::ncclCommDestroy((*global_comms)[i]);
+      phi::dynload::ncclCommDestroy((*global_comms)[i]);
     }
   }
   global_comms = std::make_unique<std::vector<ncclComm_t>>();
@@ -50,8 +50,8 @@ void Communicator::InitAll(const std::vector<int>& gpus) {
   for (size_t i = 0; i < gpus.size(); ++i) {
     (*comm_id_map)[gpus[i]] = i;
   }
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::ncclCommInitAll(global_comms->data(), gpus.size(), gpus.data()));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclCommInitAll(
+      global_comms->data(), gpus.size(), gpus.data()));
   inited = true;
 }
 

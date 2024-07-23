@@ -5296,6 +5296,15 @@ void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void UnchangedInferMetaIncludingTensorArray(const MetaTensor& x,
+                                            MetaTensor* out) {
+  if (x.is_tensor_array()) {
+    UnchangedArrayInferMeta(x, out);
+  } else {
+    UnchangedInferMeta(x, out);
+  }
+}
+
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }

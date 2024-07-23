@@ -775,7 +775,7 @@ int DeleteCastOpPass::ApplyCastPass(ir::Graph* graph) const {
 
 void DeleteCastOpPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   if (!graph->IsMainGraph()) {
     VLOG(3) << "'delete_cast_op_pass' needs info in all graphs, so it "
                "should be applied in the main graph.";
