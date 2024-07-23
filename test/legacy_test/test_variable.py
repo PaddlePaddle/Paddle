@@ -51,9 +51,8 @@ class TestVariable(unittest.TestCase):
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w"
         )
         w_dtype = w.dtype
-        if (
-            paddle.framework.use_pir_api()
-            and isinstance(w_dtype, paddle.base.libpaddle.VarDesc.VarType)
+        if paddle.framework.use_pir_api() and isinstance(
+            w_dtype, paddle.base.libpaddle.VarDesc.VarType
         ):
             w_dtype = paddle.pir.core.vartype_to_datatype[w_dtype]
         self.assertNotEqual(str(w), "")
@@ -315,9 +314,8 @@ class TestVariable(unittest.TestCase):
         b = default_main_program().current_block()
         var = b.create_var(dtype="float64", shape=[1, 1])
         var_dtype = var.dtype
-        if (
-            paddle.framework.use_pir_api()
-            and isinstance(var_dtype, paddle.base.libpaddle.VarDesc.VarType)
+        if paddle.framework.use_pir_api() and isinstance(
+            var_dtype, paddle.base.libpaddle.VarDesc.VarType
         ):
             var_dtype = paddle.pir.core.vartype_to_datatype[var_dtype]
         with base.dygraph.guard():
