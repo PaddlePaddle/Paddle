@@ -50,7 +50,6 @@ class TestSplitProgram(unittest.TestCase):
         return main, startup, image, label
 
     def find_startup_vars(self, main_prog, startup_prog):
-        # with paddle.pir_utils.OldIrGuard():
         self.assertEqual(startup_prog.num_blocks, 1)
         startup_vars = []
         for op in startup_prog.global_block().ops:
@@ -86,7 +85,6 @@ class TestSplitProgram(unittest.TestCase):
         return values
 
     def check_split_program(self, place, use_split=True, seed=100, batch_num=5):
-        # with paddle.pir_utils.OldIrGuard():
         batch_size = 2
 
         np.random.seed(seed)
