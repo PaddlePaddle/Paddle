@@ -4865,7 +4865,7 @@
   kernel :
     func : where
   data_transform :
-    support_trans_dtype : x, y
+    support_trans_dtype : condition, x, y
   inplace : (x -> out)
   backward : where_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
