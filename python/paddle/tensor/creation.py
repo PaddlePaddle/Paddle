@@ -720,11 +720,13 @@ def _to_tensor_static(
 
                     Thus, process nested structure in except block
                     '''
-                    data = np.array(data)
+                    array_data = np.array(data)
 
                     # for numpy version <= 1.23.5
                     if data.dtype == 'object':
                         raise RuntimeError("Numpy get dtype `object`.")
+
+                    data = array_data
 
                 except:
                     to_stack_list = [None] * len(data)
@@ -2547,6 +2549,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
                     'uint16',
                     'float32',
                     'float64',
+                    'int16',
                     'int32',
                     'int64',
                     'uint8',
