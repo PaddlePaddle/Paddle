@@ -609,6 +609,14 @@
   attrs :
     {size_of_dtype : user_defined_size_of_dtype}
 
+- op : collect_fpn_proposals
+  inputs:
+    {multi_level_rois : MultiLevelRois, multi_level_scores : MultiLevelScores, multi_level_rois_num : MultiLevelRoIsNum}
+  attrs:
+    post_nms_topn : post_nms_topN
+  outputs:
+    {fpn_rois : FpnRois, rois_num : RoisNum}
+
 - op : complex
   backward : complex_grad
   inputs :

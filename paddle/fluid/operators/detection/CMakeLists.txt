@@ -39,12 +39,9 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   detection_library(distribute_fpn_proposals_op SRCS
                     distribute_fpn_proposals_op.cc DEPS ${TMPDEPS})
-  detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc
-                    collect_fpn_proposals_op.cu DEPS ${TMPDEPS})
 else()
   detection_library(distribute_fpn_proposals_op SRCS
                     distribute_fpn_proposals_op.cc)
-  detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc)
 endif()
 
 #Export local libraries to parent

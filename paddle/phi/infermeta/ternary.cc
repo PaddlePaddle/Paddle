@@ -595,6 +595,48 @@ void ArangeTensorInferMeta(const MetaTensor& start,
   out->set_dtype(start.dtype());
 }
 
+void CollectFpnProposalsInferMeta(
+    const std::vector<const MetaTensor*>& multi_level_rois,
+    const std::vector<const MetaTensor*>& multi_level_scores,
+    const paddle::optional<std::vector<const MetaTensor*>>&
+        multi_level_rois_num,
+    int post_nms_topn,
+    MetaTensor* fpn_rois,
+    MetaTensor* rois_num,
+    MetaConfig config) {
+  std::vector<int64_t> out_dims;
+  for (auto& roi : multi_level_rois) {
+    const auto& roi_dim = roi->dims();
+    PADDLE_ENFORCE_EQ(
+        roi_dim[1],
+        4,
+        phi::errors::InvalidArgument(
+            "Second dimension of Input"
+            "(MultiLevelRois) must be 4. But received dimension = %d",
+            roi_dim[1]));
+  }
+  for (auto& score : multi_level_scores) {
+    const auto& score_dim = score->dims();
+    PADDLE_ENFORCE_EQ(
+        score_dim[1],
+        1,
+        phi::errors::InvalidArgument(
+            "Second dimension of Input"
+            "(MultiLevelScores) must be 1. But received dimension = %d",
+            score_dim[1]));
+  }
+  fpn_rois->set_dims({post_nms_topn, 4});
+  fpn_rois->set_dtype(multi_level_rois[0]->dtype());
+  if (rois_num != nullptr) {
+    rois_num->set_dims({-1});
+    rois_num->set_dtype(DataType::INT32);
+  }
+  if (!config.is_runtime) {  // Runtime LoD infershape will be computed
+    // in Kernel.
+    fpn_rois->share_lod(*multi_level_rois[0]);
+  }
+}
+
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
