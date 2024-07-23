@@ -165,7 +165,7 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         num_micro_batches = self.get_attr("num_micro_batches")
         num_model_chunks = self.get_attr("vpp_degree")
 
-        assert num_model_chunks % pp_degree == 0
+        assert num_micro_batches % pp_degree == 0
 
         # TODO(luchang): Fix the graident explosion issue when  num_model_chunks(accumulate steps) > pp_degree
         assert (
