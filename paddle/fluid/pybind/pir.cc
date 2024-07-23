@@ -318,6 +318,17 @@ std::vector<std::string> GetValueOutputName(Value value) {
 }
 
 std::vector<std::string> GetValueName(Value value) {
+  if (value == nullptr) {
+    PADDLE_THROW(phi::errors::InvalidArgument("The value is nullptr."));
+  }
+
+  // if (!value.isa<paddle::dialect::DataOp>() ||
+  // !value.isa<::pir::ParameterOp>() || !value.isa<BlockArgument>()){
+  //     PADDLE_THROW(phi::errors::InvalidArgument(
+  //     "Currently, we can only get name of Value from "
+  //     "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
+  // }
+
   std::vector<std::string> names;
   std::optional<std::string> input_name = GetValueInputName(value);
   if (input_name.has_value()) {
@@ -331,13 +342,7 @@ std::vector<std::string> GetValueName(Value value) {
     names.push_back(name);
   }
 
-  if (!names.empty()) {
-    return names;
-  }
-
-  PADDLE_THROW(phi::errors::InvalidArgument(
-      "Currently, we can only get name of Value from "
-      "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
+  return names;
 }
 
 phi::DataType GetTensorDtype(Type type) {
