@@ -670,8 +670,7 @@
     func : AllGatherInferMeta
     param: [x, nranks]
   kernel :
-    func : all_gather
-    param: [x, nranks]
+    func : c_allgather
 
 - op : c_allreduce_max
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
