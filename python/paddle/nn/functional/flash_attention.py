@@ -276,15 +276,15 @@ def flash_attention(
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         dropout(float): The dropout ratio.
         causal(bool): Whether enable causal mode.
         return_softmax(bool): Whether to return softmax.
@@ -696,15 +696,15 @@ def flash_attn_unpadded(
         query(Tensor): The query tensor in the Attention module.
                         3-D tensor with shape:
                         [total_seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         3-D tensor with shape:
                         [total_seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         3-D tensor with shape:
                         [total_seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         cu_seqlens_q(Tensor): The cumulative sequence lengths of the sequences in the batch,
                         used to index query.
         cu_seqlens_k(Tensor): The cumulative sequence lengths of the sequences in the batch,
@@ -1141,15 +1141,15 @@ def flash_attention_with_sparse_mask(
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         attn_mask_start_row_indices(Tensor): A sparse attention mask
                         indices tensor, the shape is [batch_size, num_head, seq_len],
                         The value of each element indicates the row index where the
