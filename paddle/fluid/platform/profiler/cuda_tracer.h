@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
+#include "paddle/phi/backends/dynload/cupti.h"
 
 namespace paddle {
 namespace platform {

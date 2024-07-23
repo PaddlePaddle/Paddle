@@ -91,7 +91,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -132,6 +131,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
@@ -708,7 +708,7 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
 static int GetNCCLVersion() {
 #if NCCL_VERSION_CODE >= 2304
   int ver;
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetVersion(&ver));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetVersion(&ver));
   return ver;
 #else
   PADDLE_THROW(platform::errors::External(
@@ -1477,7 +1477,7 @@ PYBIND11_MODULE(libpaddle, m) {
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
-  m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
+  m.def("_set_paddle_lib_path", &phi::dynload::SetPaddleLibPath);
 
   m.def("set_current_thread_name", &paddle::platform::SetCurrentThreadName);
 

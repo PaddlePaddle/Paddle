@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler_helper.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/nvtx.h"
+#include "paddle/phi/backends/dynload/nvtx.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_proto_maker.h"

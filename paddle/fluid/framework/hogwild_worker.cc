@@ -1223,23 +1223,22 @@ bool HogwildWorker::CheckBatchNum(int flag) {
       // comm_ctx->AllReduce only support allreduce on the whole tensor,
       // single element is not supported now.
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                           &stat_ptr[2],
-                                           1,
-                                           ncclFloat32,
-                                           ncclProd,
-                                           comm_ctx->GetNcclComm(),
-                                           stream));
+          phi::dynload::ncclAllReduce(&stat_ptr[flag],
+                                      &stat_ptr[2],
+                                      1,
+                                      ncclFloat32,
+                                      ncclProd,
+                                      comm_ctx->GetNcclComm(),
+                                      stream));
 
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                           &stat_ptr[2],
-                                           1,
-                                           ncclFloat32,
-                                           ncclProd,
-                                           comm->comm(),
-                                           stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(&stat_ptr[flag],
+                                                             &stat_ptr[2],
+                                                             1,
+                                                             ncclFloat32,
+                                                             ncclProd,
+                                                             comm->comm(),
+                                                             stream));
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
@@ -1271,13 +1270,13 @@ bool HogwildWorker::GetPassEnd(int flag) {
     //  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
     //  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
     auto stream = comm->stream();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                                                &stat_ptr[2],
-                                                                1,
-                                                                ncclFloat32,
-                                                                ncclProd,
-                                                                comm->comm(),
-                                                                stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(&stat_ptr[flag],
+                                                           &stat_ptr[2],
+                                                           1,
+                                                           ncclFloat32,
+                                                           ncclProd,
+                                                           comm->comm(),
+                                                           stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
                                                &stat_ptr[2],
                                                sizeof(float),

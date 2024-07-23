@@ -45,7 +45,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
@@ -308,14 +308,14 @@ class PSGPUWrapper {
         // init inner comm
         inner_comms_.resize(dev_size);
         inter_ncclids_.resize(dev_size);
-        platform::dynload::ncclCommInitAll(
+        phi::dynload::ncclCommInitAll(
             &(inner_comms_[0]), dev_size, &dev_ids[0]);
 // init inter comm
 #ifdef PADDLE_WITH_GLOO
         inter_comms_.resize(dev_size);
         if (gloo->Rank() == 0) {
           for (int i = 0; i < dev_size; ++i) {
-            platform::dynload::ncclGetUniqueId(&inter_ncclids_[i]);
+            phi::dynload::ncclGetUniqueId(&inter_ncclids_[i]);
           }
         }
 
@@ -329,13 +329,13 @@ class PSGPUWrapper {
         opts.setRoot(0);
         gloo::broadcast(opts);
 
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
         for (int i = 0; i < dev_size; ++i) {
           platform::CUDADeviceGuard guard(dev_ids[i]);
-          platform::dynload::ncclCommInitRank(
+          phi::dynload::ncclCommInitRank(
               &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupEnd());
 
         rank_id_ = gloo->Rank();
         node_size_ = gloo->Size();
