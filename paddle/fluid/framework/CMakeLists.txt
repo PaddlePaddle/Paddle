@@ -949,7 +949,6 @@ cc_library(
        framework_proto
        op_registry
        operator
-       dynamic_loader
        string_helper
        phi
        common
@@ -973,7 +972,8 @@ set(FLUID_FRAMEWORK_MODULES
     executor
     data_feed_proto
     layer
-    dynamic_loader
+    phi
+    common
     custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
