@@ -205,11 +205,11 @@ if(APPLE)
   endif()
   message(
     WARNING
-      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_dist_se_resnext_*"
+      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass_deprecated \n test_dist_se_resnext_*"
   )
   # this op is not support on mac
   list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
-  list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass)
+  list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass_deprecated)
 endif()
 if(NOT WITH_MKLML)
   # this op is not support on openblas
@@ -674,13 +674,11 @@ set(TEST_CINN_OPS
     test_softmax_op
     test_slice_op
     test_slice_op_deprecated
-    test_scale_op
     test_layer_norm_op_deprecated
     test_where_op
     test_arg_min_max_op
     test_instance_norm_op
-    test_instance_norm_op_deprecated
-    test_cumsum_op)
+    test_instance_norm_op_deprecated)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -730,10 +728,10 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
-set(PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass)
+set(PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass_deprecated)
 
 if(APPLE)
-  list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass)
+  list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass_deprecated)
 endif()
 
 foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})

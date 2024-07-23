@@ -428,7 +428,7 @@ PyObject* tensor_properties_get_process_mesh(TensorObject* self,
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     return ToPyObject(&dist_tensor->process_mesh());
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "The `process_mesh` property of (Dist)Tensor is not supported in the "
         "current PaddlePaddle, please recompile and install PaddlePaddle with "
         "the "
@@ -474,7 +474,7 @@ PyObject* tensor_properties_get_placements(TensorObject* self, void* closure) {
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     return ToPyObject(dist_tensor->placements());
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "The `placements()` property of (Dist)Tensor is not supported in the "
         "current PaddlePaddle, please recompile and installPaddlePaddle with "
         "the "
@@ -520,7 +520,7 @@ PyObject* tensor_properties_get_num_shard(TensorObject* self, void* closure) {
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     return ToPyObject(dist_tensor->num_shard());
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "The `num_shard` property of (Dist)Tensor is not supported in the "
         "current PaddlePaddle, please recompile and install PaddlePaddle with "
         "the "
@@ -540,7 +540,7 @@ PyObject* tensor_properties_get_local_shape(TensorObject* self, void* closure) {
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     return ToPyObject(common::vectorize<int64_t>(dist_tensor->local_dims()));
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "The `_local_shape` property of (Dist)Tensor is not supported "
         "in the current PaddlePaddle, please recompile and install "
         "PaddlePaddle "
@@ -815,7 +815,7 @@ PyObject* tensor_properties_get_placements_str(TensorObject* self,
     ostr << "]";
     return ToPyObject(ostr.str());
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "The `placements()` property of (Dist)Tensor is not supported in the "
         "current PaddlePaddle, please recompile and installPaddlePaddle with "
         "the "

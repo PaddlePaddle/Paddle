@@ -59,7 +59,7 @@ class WhileOpEagerDeletionPass : public ir::Pass {
       PADDLE_ENFORCE_LE(
           target_ops.size(),
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Unsupported multi device if graph is constructed by "
               "partial program."));
       size_t scope_idx = 0;

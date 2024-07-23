@@ -246,7 +246,7 @@ if(APPLE)
   endif()
   message(
     WARNING
-      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext_*"
+      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass_deprecated \n test_detection_map_op \n test_dist_se_resnext_*"
   )
   # this op is not support on mac
   list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
@@ -990,6 +990,7 @@ set(TEST_CINN_OPS
     test_assign_op
     test_reduce_op
     test_scatter_nd_op
+    test_scale_op
     test_layer_norm_op
     test_atan2_op
     test_cast_op
@@ -1034,7 +1035,8 @@ set(TEST_CINN_OPS
     test_strided_slice_op
     test_pad_op
     test_pool2d_op
-    test_erf_op)
+    test_erf_op
+    test_cumsum_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
