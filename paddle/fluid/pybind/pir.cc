@@ -318,10 +318,6 @@ std::vector<std::string> GetValueOutputName(Value value) {
 }
 
 std::vector<std::string> GetValueName(Value value) {
-  if (value == nullptr) {
-    PADDLE_THROW(phi::errors::InvalidArgument("The value is nullptr."));
-  }
-
   // if (!value.isa<paddle::dialect::DataOp>() ||
   // !value.isa<::pir::ParameterOp>() || !value.isa<BlockArgument>()){
   //     PADDLE_THROW(phi::errors::InvalidArgument(
