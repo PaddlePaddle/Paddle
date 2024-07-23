@@ -565,7 +565,4 @@ def load_state_dict(
 
         for k, v in flat_state_dict.items():
             if k in state_dict_in_cpu:
-                paddle.assign(
-                    v.cpu(),
-                    state_dict['optimizer'][k.removeprefix('optimizer.')],
-                )
+                paddle.assign(v.cpu(), state_dict[mapping[k][1]])
