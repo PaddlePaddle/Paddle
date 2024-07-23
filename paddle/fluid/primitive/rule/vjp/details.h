@@ -2251,6 +2251,31 @@ void swiglu_grad(const Tensor& x,
   set_output<T>(x_grad, dx);
 }
 
+template <typename T>
+void softsign_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (!x_grad) return;
+
+  Tensor x_tmp = x;
+  Tensor out_grad_tmp = out_grad;
+
+  bool need_cast = is_half_dtype(x.dtype());
+  if (need_cast) {
+    x_tmp = cast<T>(x, phi::DataType::FLOAT32);
+    out_grad_tmp = cast<T>(out_grad, phi::DataType::FLOAT32);
+  }
+
+  // x_grad = out_grad / ((1 + abs(x))^2)
+  Tensor x_abs = abs<T>(x_tmp);
+  Tensor x_abs_plusone = x_abs + full_scalar<T>(1.0, x_tmp.dtype());
+  Tensor x_grad_tmp = out_grad_tmp / (x_abs_plusone * x_abs_plusone);
+
+  if (need_cast) {
+    set_output<T>(cast<T>(x_grad_tmp, x.dtype()), x_grad);
+  } else {
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle

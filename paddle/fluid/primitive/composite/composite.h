@@ -1555,6 +1555,27 @@ Tensor log_loss_decomp(const Tensor& input,
   return term1 - term2;
 }
 
+template <typename T>
+Tensor softsign_decomp(const Tensor& x) {
+  // softsign = x / (1 + abs(x))
+
+  Tensor x_tmp = x;
+  bool need_cast = is_half_dtype(x.dtype());
+  if (need_cast) {
+    x_tmp = cast<T>(x, DataType::FLOAT32);
+  }
+
+  Tensor x_abs = abs<T>(x_tmp);
+  Tensor one = full_scalar<T>(1.0, x_tmp.dtype());
+  Tensor res = x_tmp / (one + x_abs);
+
+  if (need_cast) {
+    return cast<T>(res, x.dtype());
+  } else {
+    return res;
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive
