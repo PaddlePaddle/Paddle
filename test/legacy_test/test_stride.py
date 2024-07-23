@@ -757,7 +757,6 @@ class TestToStaticCheck(unittest.TestCase):
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')
             x = paddle.to_tensor(x_np)
             y = paddle.transpose(x, perm=[1, 0, 2])
-
             x.add_(y)
 
         self.assertRaises(ValueError, func)
