@@ -708,6 +708,8 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
 def forward_complete_op_role(main_program):
     all_ops = main_program.global_block().ops
     ops_len = len(all_ops)
+    if len(all_ops) == 0:
+        return
 
     iop = 0
     first_left_op_role = None
