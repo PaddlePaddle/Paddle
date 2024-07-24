@@ -44,7 +44,6 @@ else()
 endif()
 
 add_subdirectory(device)
-add_subdirectory(dynload)
 
 cc_library(
   cpu_helper
@@ -61,11 +60,11 @@ if(WITH_DGC)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
+  set(GPU_CTX_DEPS phi common)
 endif()
 
 if(WITH_XPU)
-  set(XPU_CTX_DEPS dynload_xpti dynamic_loader)
+  set(XPU_CTX_DEPS phi common)
 endif()
 
 if(WITH_IPU)
@@ -258,13 +257,7 @@ if(WITH_GPU)
   nv_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS phi
-         common
-         gpu_info
-         enforce
-         dynload_cuda
-         op_proto_maker
-         shape_inference)
+    DEPS phi common gpu_info enforce op_proto_maker shape_inference)
 elseif(WITH_ROCM)
   hip_library(
     profiler
@@ -274,7 +267,7 @@ elseif(WITH_XPU)
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS phi common enforce dynload_xpti op_proto_maker shape_inference)
+    DEPS phi common enforce op_proto_maker shape_inference)
 else()
   cc_library(
     profiler
