@@ -57,15 +57,13 @@ void InitTensorsOnClient(framework::Scope* scope,
   CreateVarsOnScope(scope, place);
 
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
-  float* x_ptr =
-      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  float* x_ptr = x_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto g_size = rows_numel +
                 30;  // hard code here: key_num * (fea_dim + 3), show/clk/slot
   auto x_g_var = scope->Var("x@GRAD")->GetMutable<phi::DenseTensor>();
-  float* x_g_ptr =
-      x_g_var->mutable_data<float>(framework::DDim({1, g_size}), *place);
+  float* x_g_ptr = x_g_var->mutable_data<float>(phi::DDim({1, g_size}), *place);
   for (int64_t i = 0; i < g_size; ++i) x_g_ptr[i] = 1.0;
 }
 
