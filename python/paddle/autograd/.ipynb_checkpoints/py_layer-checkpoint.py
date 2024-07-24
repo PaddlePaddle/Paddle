@@ -412,7 +412,7 @@ class PyLayer(with_metaclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
 
 
 def once_differentiable(backward):
-    def wrapper(ctx, *args):
+    def wrapper(ctx: PyLayerContext, *args: Any) -> Tensor | Sequence[Tensor]:
         with paddle.base.dygraph.no_grad():
             outputs = backward(ctx, *args)
         return outputs
