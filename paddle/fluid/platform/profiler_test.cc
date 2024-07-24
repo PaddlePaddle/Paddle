@@ -35,9 +35,9 @@ TEST(Event, CpuElapsedTime) {
 }
 
 TEST(RecordEvent, RecordEvent) {
+  using paddle::platform::EventSortingKey;
   using phi::Event;
   using phi::EventRole;
-  using phi::EventSortingKey;
   using phi::EventType;
   using phi::PopEvent;
   using phi::ProfilerState;
