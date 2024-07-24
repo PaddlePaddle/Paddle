@@ -3576,37 +3576,6 @@ struct QuantizeLinearOpTranscriber : public OpTranscriber {
   }
 };
 
-struct Reshape2GradOpTranscriber : public OpTranscriber {
-  pir::Operation* operator()(pir::IrContext* ctx,
-                             TranslationContext* param_map,
-                             const OpDesc& op_desc,
-                             pir::Block* block) override {
-    VLOG(10) << "[" << op_desc.Type() << "][input `XShape`]";
-
-    pir::Builder builder(ctx, block);
-
-    ValueInfo x_info = GetTensorInfoByVarName(
-        op_desc, op_desc.Input("XShape", true), param_map, "XShape");
-    const auto& [x_shape, x_tensor_type, x_value] = x_info;
-
-    auto x_dims = x_value.type().dyn_cast<dialect::DenseTensorType>().dims();
-    auto x_new_shape = common::slice_ddim(x_dims, 1, x_dims.size());
-    dialect::ReshapeOp reshape_op_x = builder.Build<dialect::ReshapeOp>(
-        x_value, common::vectorize(x_new_shape));
-
-    VLOG(6) << "[" << op_desc.Type() << "] xshape change from " << x_dims
-            << " to " << x_new_shape;
-
-    ValueInfo y_info = GetTensorInfoByVarName(
-        op_desc, op_desc.Input("Out@Grad", true), param_map, "Out@Grad");
-    const auto& [y_shape, y_tensor_type, y_value] = y_info;
-
-    dialect::ReshapeGradOp reshape_grad_op =
-        builder.Build<dialect::ReshapeGradOp>(reshape_op_x.result(0), y_value);
-    return reshape_grad_op;
-  }
-};
-
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -3698,7 +3667,6 @@ OpTranslator::OpTranslator() {
   special_handlers["c_embedding"] = CEmbeddingOpTranscriber();
   special_handlers["quantize_linear"] = QuantizeLinearOpTranscriber();
   special_handlers["dequantize_linear"] = QuantizeLinearOpTranscriber();
-  special_handlers["reshape2_grad"] = Reshape2GradOpTranscriber();
 }
 
 }  // namespace translator

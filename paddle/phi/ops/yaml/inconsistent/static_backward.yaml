@@ -390,6 +390,7 @@
     backend: out_grad
     layout: out_grad
   backward : reshape_double_grad
+  no_need_buffer : x
   inplace : (out_grad -> x_grad)
 
 - backward_op : row_conv_grad

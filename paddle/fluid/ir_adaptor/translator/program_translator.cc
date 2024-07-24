@@ -27,6 +27,7 @@
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -222,6 +223,8 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
       TranslateIfOperation(op, translation_ctx, dst_block, true);
     } else if (op->Type() == "while") {
       TranslateWhileOperation(op, translation_ctx, dst_block);
+    } else if (op->Type() == "reshape2_grad") {
+      TranslateReshapeGradOperation(op, translation_ctx, dst_block);
     } else {
       TranslateGeneralOperation(op, translation_ctx, dst_block);
     }
@@ -531,6 +534,40 @@ void ProgramTranslator::TranslateWhileOperation(
 
   while_op->Verify();
   VLOG(8) << "=============>end to translate while op:" << op;
+}
+
+void ProgramTranslator::TranslateReshapeGradOperation(
+    const OpDesc* op,
+    TranslationContext* translation_ctx,
+    pir::Block* dst_block) {
+  LOG_FIRST_N(INFO, 1) << "Translate ReshapeGrad";
+
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Builder builder(ctx, dst_block);
+  auto& input_xshape_name = op->Input("XShape")[0];
+  auto& input_outgrad_name = op->Input("Out@GRAD")[0];
+  auto& out_name = op->Output("X@GRAD")[0];
+
+  pir::Value xshape_value;
+  VLOG(10) << "create data op for " << input_xshape_name;
+  auto var_desc = legacy_program_->Block(0).FindVarRecursive(out_name);
+  auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
+  auto shape_vec = var_desc->GetShape();
+  // shape_vec.erase(shape_vec.begin());
+  xshape_value = builder
+                     .Build<paddle::dialect::DataOp>(
+                         input_xshape_name, shape_vec, dtype, phi::Place())
+                     .result(0);
+
+  VLOG(10) << "create data op for " << input_xshape_name << " done";
+  translation_ctx->PushValue(input_xshape_name, xshape_value);
+
+  auto& input_outgrad_value =
+      GetValueOrCreateInTop(input_outgrad_name, translation_ctx).value;
+  dialect::ReshapeGradOp reshape_grad_op =
+      builder.Build<dialect::ReshapeGradOp>(xshape_value, input_outgrad_value);
+  translation_ctx->PushValue(out_name, reshape_grad_op.result(0));
 }
 
 void ProgramTranslator::TranslateGeneralOperation(
