@@ -206,7 +206,7 @@ class TestUnittedEmbedding(AmpTestBase):
                     )
 
         x = self._generate_feed_x()
-        _run(x, '02', use_promote=False)
+        _run(x, 'O2', use_promote=False)
 
 
 if __name__ == "__main__":
