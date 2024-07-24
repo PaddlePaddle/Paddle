@@ -485,8 +485,8 @@ void SyncBatchNormGradFunctor(
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
   phi::DenseTensor stats_tensor;
   stats_tensor.Resize({static_cast<int64_t>(bytes)});
-  ctx.template Alloc<T>(&stats_tensor);
-  auto *stats_data = stats_tensor.mutable_data(ctx.GetPlace(), scale.dtype());
+  ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
+  auto *stats_data = stats_tensor.data<BatchNormParamType<T>>();
   auto *stats = reinterpret_cast<BatchNormParamType<T> *>(stats_data);
 
   const int block = 512;
