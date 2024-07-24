@@ -483,14 +483,11 @@ void SyncBatchNormGradFunctor(
   const auto *saved_inv_var =
       saved_variance.template data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-  auto alloc_tensor = phi::memory_utils::AllocShared(
-      ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-  auto stats_meta = phi::DenseTensorMeta(scale.dtype(), x_dims);
-  phi::DenseTensor tensor_stats = phi::DenseTensor(alloc_tensor, stats_meta);
-  auto *stats_tensor = tensor_stats.mutable_data(ctx.GetPlace(), scale.dtype());
-  auto *stats = reinterpret_cast<BatchNormParamType<T> *>(stats_tensor);
+  phi::DenseTensor stats_tensor;
+  stats_tensor.Resize({static_cast<int64_t>(bytes)});
+  ctx.template Alloc<T>(&stats_tensor);
+  auto *stats_data = stats_tensor.mutable_data(ctx.GetPlace(), scale.dtype());
+  auto *stats = reinterpret_cast<BatchNormParamType<T> *>(stats_data);
 
   const int block = 512;
   const int threads = 256;
@@ -606,7 +603,7 @@ void SyncBatchNormGradFunctor(
       auto comm_ctx =
           static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
       if (comm_ctx) {
-        comm_ctx->AllReduce(&tensor_stats, tensor_stats, ncclSum, stream);
+        comm_ctx->AllReduce(&stats_tensor, stats_tensor, ncclSum, stream);
         VLOG(3) << "Sync result using all reduce";
       }
     }
