@@ -329,12 +329,11 @@ def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                     [ 2.,  2., -4., -8.]])
 
     """
+
+    if y.dtype != x.dtype:
+        y = _C_ops.sparse_cast(y, None, x.dtype)
     if in_dynamic_or_pir_mode():
-        if y.dtype != x.dtype:
-            y = _C_ops.sparse_cast(y, None, x.dtype)
         return _C_ops.sparse_subtract(x, y)
-    else:
-        pass
 
 
 def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
@@ -374,15 +373,16 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                     [ 8., 15.,  0.,  0.]])
 
     """
-    if in_dynamic_or_pir_mode():
-        if isinstance(y, (int, float)):
-            return _C_ops.sparse_scale(x, float(y), 0.0, True)
-        else:
-            if y.dtype != x.dtype:
-                y = _C_ops.sparse_cast(y, None, x.dtype)
-            return _C_ops.sparse_multiply(x, y)
+
+    if isinstance(y, (int, float)):
+        return _C_ops.sparse_scale(x, float(y), 0.0, True)
     else:
-        pass
+        if y.dtype != x.dtype:
+            y = _C_ops.sparse_cast(y, None, x.dtype)
+        if in_dynamic_or_pir_mode():
+            return _C_ops.sparse_multiply(x, y)
+        else:
+            pass
 
 
 def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
@@ -422,18 +422,19 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                     [ 2.       , 1.66666663,  0.       ,  0.       ]])
 
     """
-    if in_dynamic_or_pir_mode():
-        if x.dtype in _int_dtype_:
-            x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
 
-        if isinstance(y, (int, float)):
-            return _C_ops.sparse_divide_scalar(x, float(y))
-        else:
-            if y.dtype != x.dtype:
-                y = _C_ops.sparse_cast(y, None, x.dtype)
-            return _C_ops.sparse_divide(x, y)
+    if x.dtype in _int_dtype_:
+        x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
+
+    if isinstance(y, (int, float)):
+        return _C_ops.sparse_divide_scalar(x, float(y))
     else:
-        pass
+        if y.dtype != x.dtype:
+            y = _C_ops.sparse_cast(y, None, x.dtype)
+        if in_dynamic_or_pir_mode():
+            return _C_ops.sparse_divide(x, y)
+        else:
+            pass
 
 
 @dygraph_only
