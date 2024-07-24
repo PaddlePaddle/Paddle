@@ -79,16 +79,17 @@ class TestLoDTensorArrayStack(unittest.TestCase):
         self.output_vars = [output]
 
     def run_check(self, executor, scope):
-        executor.run(self.program, scope=scope)
+        result = executor.run(
+            self.program, fetch_list=self.output_vars, scope=scope
+        )
         for i, output in enumerate(self.outputs):
-            np.allclose(
-                np.array(scope.var(self.output_vars[i].name).get_tensor()),
-                output,
-                atol=0,
-            )
-        tensor_array_grad = scope.var(self.array.name).get_lod_tensor_array()
-        for i, input_grad in enumerate(self.input_grads):
-            np.allclose(np.array(tensor_array_grad[i]), input_grad, atol=0)
+            np.allclose(result[i], output, atol=0)
+        if not paddle.framework.use_pir_api():
+            tensor_array_grad = scope.var(
+                self.array.name
+            ).get_lod_tensor_array()
+            for i, input_grad in enumerate(self.input_grads):
+                np.allclose(np.array(tensor_array_grad[i]), input_grad, atol=0)
 
     def test_cpu(self):
         scope = core.Scope()

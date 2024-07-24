@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import unittest
 
 import numpy as np
@@ -29,24 +30,59 @@ def fn_with_inplace_op(inplace_op, x):
     return y + z
 
 
+class ParamInplaceNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.weight = self.create_parameter(shape=[10], dtype='float32')
+
+    def forward(self, x):
+        if paddle.in_dynamic_mode():
+            # In dynamic mode, it is invalid if a leaf tensor is inplaced.
+            return paddle.assign(self.weight)
+        else:
+            return paddle._C_ops.assign_(self.weight)
+
+
 class TestDealInplace(Dy2StTestBase):
-    def run_test(self, dygraph_fn, *inputs):
-        dygraph_out = dygraph_fn(*inputs)
+    def copy_inputs(self, inputs):
+        # Make a copy for inputs to avoid inplace effect.
+        return [
+            (
+                paddle.assign(input)
+                if isinstance(input, paddle.Tensor)
+                else copy.copy(input)
+            )
+            for input in inputs
+        ]
+
+    def run_test(self, dygraph_fn, *inputs, static_n_times=1):
+        dygraph_out = dygraph_fn(*self.copy_inputs(inputs))
         static_fn = paddle.jit.to_static(dygraph_fn)
-        static_out = static_fn(*inputs)
-        np.testing.assert_allclose(dygraph_out.numpy(), static_out.numpy())
+        for i in range(static_n_times):
+            static_out = static_fn(*self.copy_inputs(inputs))
+            np.testing.assert_allclose(
+                dygraph_out.numpy(),
+                static_out.numpy(),
+                err_msg=f"Run {i}-th check failed.",
+            )
 
     @test_pir_only
     def test_deal_view(self):
         bn_layer = paddle.nn.BatchNorm2D(10)
         x = paddle.to_tensor(np.random.random((2, 10, 3, 3)).astype('float32'))
-        self.run_test(fn_with_inplace_op, bn_layer, x)
+        self.run_test(fn_with_inplace_op, bn_layer, x, static_n_times=2)
 
     @test_pir_only
     def test_deal_inplace(self):
         sigmoid_layer = paddle.nn.Sigmoid()
         x = paddle.to_tensor(np.random.random((2, 10, 3, 3)).astype('float32'))
-        self.run_test(fn_with_inplace_op, sigmoid_layer, x)
+        self.run_test(fn_with_inplace_op, sigmoid_layer, x, static_n_times=2)
+
+    @test_pir_only
+    def test_param_inplace(self):
+        net = ParamInplaceNet()
+        x = paddle.to_tensor(np.random.random(10).astype('float32'))
+        self.run_test(fn_with_inplace_op, net, x, static_n_times=2)
 
 
 if __name__ == '__main__':
