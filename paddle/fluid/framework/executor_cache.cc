@@ -111,14 +111,14 @@ InterpreterCoreInfoCache &InterpreterCoreInfoCache::Instance() {
 
 std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const ProgramDesc &program_desc,
-    const platform::Place &place,
+    const phi::Place &place,
     bool is_grad,
     int64_t program_id,
     framework::Scope *scope,
     const int64_t &place_hash_key) {
   auto &cache = framework::InterpreterCoreInfoCache::Instance();
   if (cache.Size() > 256000u /* max_cached_size*/) {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "The cached info size has exceeded max_cached_size: 256000, "
         "which will cause error. "));
   }
@@ -139,14 +139,14 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
 
 std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_program,
-    const platform::Place &place,
+    const phi::Place &place,
     bool is_grad,
     int64_t program_id,
     framework::Scope *scope,
     const int64_t &place_hash_key) {
   auto &cache = framework::InterpreterCoreInfoCache::Instance();
   if (cache.Size() > 256000u /* max_cached_size*/) {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "The cached info size has exceeded max_cached_size: 256000, "
         "which will cause error. "));
   }

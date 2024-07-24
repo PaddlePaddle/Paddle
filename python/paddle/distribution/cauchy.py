@@ -12,13 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import numbers
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
 import paddle
 from paddle.base import framework
 from paddle.distribution import distribution
+
+if TYPE_CHECKING:
+    from typing_extensions import Never
+
+    from paddle import Tensor, dtype
 
 
 class Cauchy(distribution.Distribution):
@@ -33,7 +41,7 @@ class Cauchy(distribution.Distribution):
     Args:
         loc (float|Tensor): Location of the peak of the distribution. The data type is float32 or float64.
         scale (float|Tensor): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
 
@@ -55,7 +63,17 @@ class Cauchy(distribution.Distribution):
                     [2.53102422, 3.22417140])
     """
 
-    def __init__(self, loc, scale, name=None):
+    loc: Tensor
+    scale: Tensor
+    dtype: dtype
+    name: str
+
+    def __init__(
+        self,
+        loc: float | Tensor,
+        scale: float | Tensor,
+        name: str | None = None,
+    ) -> None:
         self.name = name if name is not None else 'Cauchy'
 
         if not isinstance(
@@ -87,21 +105,21 @@ class Cauchy(distribution.Distribution):
         super().__init__(batch_shape=self.loc.shape, event_shape=())
 
     @property
-    def mean(self):
+    def mean(self) -> Never:
         """Mean of Cauchy distribution."""
         raise ValueError("Cauchy distribution has no mean.")
 
     @property
-    def variance(self):
+    def variance(self) -> Never:
         """Variance of Cauchy distribution."""
         raise ValueError("Cauchy distribution has no variance.")
 
     @property
-    def stddev(self):
+    def stddev(self) -> Never:
         """Standard Deviation of Cauchy distribution."""
         raise ValueError("Cauchy distribution has no stddev.")
 
-    def sample(self, shape, name=None):
+    def sample(self, shape: Sequence[int], name: str | None = None) -> Tensor:
         """Sample from Cauchy distribution.
 
         Note:
@@ -109,7 +127,7 @@ class Cauchy(distribution.Distribution):
 
         Args:
             shape (Sequence[int]): Sample shape.
-            name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+            name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
         Returns:
             Tensor: Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
@@ -149,12 +167,12 @@ class Cauchy(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape, name)
 
-    def rsample(self, shape, name=None):
+    def rsample(self, shape: Sequence[int], name: str | None = None) -> Tensor:
         """Sample from Cauchy distribution (reparameterized).
 
         Args:
             shape (Sequence[int]): Sample shape.
-            name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+            name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
         Returns:
             Tensor: Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
@@ -212,7 +230,7 @@ class Cauchy(distribution.Distribution):
             name=name,
         )
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         r"""Probability density function(PDF) evaluated at value.
 
         .. math::
@@ -265,7 +283,7 @@ class Cauchy(distribution.Distribution):
 
         return self.log_prob(value).exp(name=name)
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log of probability density function.
 
         Args:
@@ -328,7 +346,7 @@ class Cauchy(distribution.Distribution):
             name=name,
         )
 
-    def cdf(self, value):
+    def cdf(self, value: Tensor) -> Tensor:
         r"""Cumulative distribution function(CDF) evaluated at value.
 
         .. math::
@@ -392,7 +410,7 @@ class Cauchy(distribution.Distribution):
             + 0.5
         )
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Entropy of Cauchy distribution.
 
         .. math::
@@ -429,7 +447,7 @@ class Cauchy(distribution.Distribution):
             name=name,
         )
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Cauchy) -> Tensor:
         """The KL-divergence between two Cauchy distributions.
 
         Note:

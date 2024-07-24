@@ -46,17 +46,17 @@ float random(float low, float high) {
 }
 
 void RandomizeTensor(phi::DenseTensor* tensor,
-                     const platform::Place& place,
-                     const platform::DeviceContext& ctx) {
+                     const phi::Place& place,
+                     const phi::DeviceContext& ctx) {
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
   PADDLE_ENFORCE_GT(
       num_elements,
       0UL,
-      platform::errors::PermissionDenied("RandomizeTensor only can be used for "
-                                         "tensor which dims is not zero."));
+      phi::errors::PermissionDenied("RandomizeTensor only can be used for "
+                                    "tensor which dims is not zero."));
 
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::DenseTensor temp_tensor;
   temp_tensor.Resize(dims);
   auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
@@ -87,7 +87,7 @@ class TRTConvertValidation {
         max_batch_size_(max_batch_size) {
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_),
                       0,
-                      platform::errors::External("cudaStreamCreate error."));
+                      phi::errors::External("cudaStreamCreate error."));
     TensorRTEngine::ConstructionParams params;
     params.max_batch_size = max_batch_size;
     params.max_workspace_size = workspace_size;
@@ -169,7 +169,7 @@ class TRTConvertValidation {
     // Execute Fluid Op
     PADDLE_ENFORCE_LE(batch_size,
                       max_batch_size_,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Runtime batch_size should be less than or equal to "
                           "max_batch_size_. "
                           "But received batch_size:%d, max_batch_size_:%d",
@@ -250,7 +250,7 @@ class TRTConvertValidation {
   framework::Scope& scope() { return scope_; }
 
  private:
-  platform::CUDAPlace place_;
+  phi::GPUPlace place_;
   std::unique_ptr<TensorRTEngine> engine_;
   cudaStream_t stream_;
   std::unique_ptr<framework::OperatorBase> op_;

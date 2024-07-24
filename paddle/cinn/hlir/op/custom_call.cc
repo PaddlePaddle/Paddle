@@ -15,7 +15,6 @@
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -982,10 +981,6 @@ bool RegisterCustomCallArgsFunc() {
       cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForTriangularSolve);
   CustomCallArgsFuncRegistry::Global().Register(
-      "cinn_assert_true_nvgpu",
-      cinn::common::DefaultNVGPUTarget(),
-      CustomCallArgsForAssertTrue);
-  CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cuda_memset",
       cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForMemset);
@@ -1030,11 +1025,6 @@ bool RegisterCustomCallArgsFunc() {
       CustomCallArgsForCholesky);
 
 #endif
-
-  CustomCallArgsFuncRegistry::Global().Register(
-      "cinn_assert_true_host",
-      cinn::common::DefaultHostTarget(),
-      CustomCallArgsForAssertTrue);
 
   return true;
 }

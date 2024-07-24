@@ -20,6 +20,7 @@ import inspect
 import logging
 import re
 import sys
+import traceback
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
 from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol
@@ -409,10 +410,17 @@ def try_import_paddle() -> ModuleType | None:
     try:
         return importlib.import_module('paddle')
     except ModuleNotFoundError:
+        traceback.print_exc(file=sys.stderr)
         sys.stderr.write(
-            '''ERROR: Can NOT import paddle.
-            We could import paddle without installation, with all libs (.dll or .so) copied into dir `paddle/libs`,
-            or path already been set for the system.
+            '''
+ERROR: Can NOT import paddle from `tools/gen_tensor_stub.py` before installation.
+    So the stub file `python/paddle/tensor/tensor.pyi` of `paddle.Tensor` may be lost.
+    We COULD import paddle without installation with all libs (.dll or .so) copied into dir `paddle/libs`,
+    or path already been set for the system. Try the following steps to locate the problem.
+
+    1. Build with `SKIP_STUB_GEN=ON make -j$(nproc)`.
+    2. Install the wheel from `build/python/dist`.
+    3. Try to `import paddle` and check the problems.
             '''
         )
     return None

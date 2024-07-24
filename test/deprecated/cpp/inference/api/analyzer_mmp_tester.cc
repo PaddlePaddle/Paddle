@@ -98,12 +98,12 @@ void compare(bool use_mkldnn = false) {
       xx2_output.begin(),
       [](const float& l, const float& r) { return fabs(l - r) < 1e-4; });
 
-  PADDLE_ENFORCE_EQ(result,
-                    true,
-                    ::paddle::platform::errors::Fatal(
-                        "Results of model run independently "
-                        "differs from results of the same model "
-                        "run as a sequence of models"));
+  PADDLE_ENFORCE_EQ(
+      result,
+      true,
+      ::phi::errors::Fatal("Results of model run independently "
+                           "differs from results of the same model "
+                           "run as a sequence of models"));
 }
 
 TEST(Analyzer_mmp, compare) { compare(); }

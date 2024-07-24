@@ -46,8 +46,7 @@ cc_test(
        layer
        activation_op
        phi
-       common
-       place)
+       common)
 cc_test(
   test_tracer
   SRCS test_tracer.cc

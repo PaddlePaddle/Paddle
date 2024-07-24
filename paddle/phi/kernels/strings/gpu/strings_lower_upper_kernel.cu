@@ -41,7 +41,11 @@ struct AsciiCaseConverter<phi::GPUContext, CharConverter> {
                   const pstring* in,
                   pstring* out,
                   size_t num) const {
+#ifdef PADDLE_WITH_HIP
+    dim3 block_size = dim3(256, 1);
+#else
     dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+#endif
     dim3 grid_size =
         dim3((num + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
     StringCaseConvertCUDAKernel<CharConverter>

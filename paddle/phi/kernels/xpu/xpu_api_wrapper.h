@@ -79,6 +79,7 @@ struct XpuFcInfo {
   float* max_out;
   const float* bias;
   bool is_x_need_broadcast;
+  bool is_y_need_broadcast;
   const float* scale_x;
   const float* scale_y;
   int scale_x_mode;
@@ -99,6 +100,7 @@ struct XpuFcInfo {
         max_out(nullptr),
         bias(nullptr),
         is_x_need_broadcast(false),
+        is_y_need_broadcast(false),
         scale_x(nullptr),
         scale_y(nullptr),
         scale_x_mode(0),
@@ -157,41 +159,16 @@ static void GetFCInfo(const phi::DDim& x_dims,
   auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(new_y_dims, 0, trans_y);
 
   if (x_dims.size() >= 3 && y_dims.size() <= 2) {
-    if (!trans_x) {
+    if (!trans_x || mat_dim_a.batch_size_ == 1) {
       mat_dim_a.height_ *= mat_dim_a.batch_size_;
       mat_dim_a.batch_size_ = 0;
     } else {
-      mat_dim_b.batch_size_ = mat_dim_a.batch_size_;
-      mat_dim_b.height_ = mat_dim_b.height_ / mat_dim_b.batch_size_;
+      info->is_y_need_broadcast = true;
     }
   }
 
   if (y_dims.size() >= 3 && x_dims.size() <= 2) {
-    PADDLE_ENFORCE_EQ(
-        mat_dim_b.trans_,
-        false,
-        phi::errors::InvalidArgument(
-            "xpu not support this Shape in matmul_op xdims = %s ydims = %s "
-            "x_trans = %d y_trans = %d",
-            x_dims.to_str(),
-            y_dims.to_str(),
-            mat_dim_a.trans_,
-            mat_dim_b.trans_));
-    if (mat_dim_a.width_ == mat_dim_b.batch_size_ * mat_dim_b.height_) {
-      mat_dim_b.height_ *= mat_dim_b.batch_size_;
-      mat_dim_b.batch_size_ = 0;
-    } else {
-      info->is_x_need_broadcast = true;
-    }
-  }
-
-  if (mat_dim_a.width_ == mat_dim_b.height_) {
-    if (mat_dim_a.batch_size_ == 0 && mat_dim_b.batch_size_ == 1) {
-      mat_dim_a.batch_size_ = mat_dim_b.batch_size_ = 0;
-    }
-    if (mat_dim_a.batch_size_ == 1 && mat_dim_b.batch_size_ == 0) {
-      mat_dim_a.batch_size_ = mat_dim_b.batch_size_ = 0;
-    }
+    info->is_x_need_broadcast = (mat_dim_b.batch_size_ > 1);
   }
 
   PADDLE_ENFORCE_EQ(mat_dim_a.width_,
@@ -203,6 +180,13 @@ static void GetFCInfo(const phi::DDim& x_dims,
                         y_dims.to_str(),
                         mat_dim_a.trans_,
                         mat_dim_b.trans_));
+
+  if (mat_dim_a.batch_size_ == 0 && mat_dim_b.batch_size_ == 1) {
+    mat_dim_a.batch_size_ = mat_dim_b.batch_size_ = 0;
+  }
+  if (mat_dim_a.batch_size_ == 1 && mat_dim_b.batch_size_ == 0) {
+    mat_dim_a.batch_size_ = mat_dim_b.batch_size_ = 0;
+  }
 
   info->m = mat_dim_a.height_;
   info->n = mat_dim_b.width_;
@@ -572,6 +556,7 @@ static void MatMulXPUFunction(
   float* max_y = fcinfo.max_y;
   float* max_out = fcinfo.max_out;
   bool is_x_need_broadcast = fcinfo.is_x_need_broadcast;
+  bool is_y_need_broadcast = fcinfo.is_y_need_broadcast;
   const float* bias = fcinfo.bias;
   const float* scale_x = fcinfo.scale_x;
   const float* scale_y = fcinfo.scale_y;
@@ -615,22 +600,35 @@ static void MatMulXPUFunction(
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
       x_data = x_broadcast_data;
     }
+    const XPUType* y_data = reinterpret_cast<const XPUType*>(y);
+    if (is_y_need_broadcast) {
+      XPUType* y_broadcast_data = nullptr;
+      xpu::ctx_guard RAII_GUARD(xpu_ctx);
+      y_broadcast_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(batch_size * k * n);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(y_broadcast_data);
+      std::vector<int> y_shape = {1, k, n};
+      std::vector<int> new_y_shape = {batch_size, k, n};
+      int r = xpu::broadcast<XPUType>(
+          xpu_ctx, y_data, y_broadcast_data, y_shape, new_y_shape);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
+      y_data = y_broadcast_data;
+    }
     // batch matmul
-    xblas_fc_batch_api(xpu_ctx,                              // Context* ctx,
-                       batch_size,                           // int batch_size,
-                       trans_x,                              // bool x_trans,
-                       trans_y,                              // bool w_trans,
-                       m,                                    // int m,
-                       n,                                    // int n,
-                       k,                                    // int k,
-                       alpha,                                // float alpha,
-                       x_data,                               // const TX* x,
-                       ldx,                                  // int stride_a,
-                       reinterpret_cast<const XPUType*>(y),  // const TW* w,
-                       ldy,                                  // int stride_b,
-                       0.0,                                  // float beta,
-                       reinterpret_cast<XPUType*>(out),      // TY* y,
-                       ldout,                                // int stride_c,
+    xblas_fc_batch_api(xpu_ctx,                          // Context* ctx,
+                       batch_size,                       // int batch_size,
+                       trans_x,                          // bool x_trans,
+                       trans_y,                          // bool w_trans,
+                       m,                                // int m,
+                       n,                                // int n,
+                       k,                                // int k,
+                       alpha,                            // float alpha,
+                       x_data,                           // const TX* x,
+                       ldx,                              // int stride_a,
+                       y_data,                           // const TW* w,
+                       ldy,                              // int stride_b,
+                       0.0,                              // float beta,
+                       reinterpret_cast<XPUType*>(out),  // TY* y,
+                       ldout,                            // int stride_c,
                        max_x,   // const float* x_maxptr,
                        max_y);  // const float* w_maxptr
   }
@@ -708,6 +706,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         max_dout,
                         nullptr);
     dx_a = y, dx_b = dout_new;
+    dx_shape.is_x_need_broadcast = dout_shape.is_y_need_broadcast;
     // dy = T(dout) * T(x)
     dy_shape.InitFcInfo(dout_shape.bs,
                         dout_shape.n,
@@ -719,6 +718,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         nullptr,
                         nullptr);
     dy_a = dout_new, dy_b = x;
+    dy_shape.is_y_need_broadcast = dout_shape.is_x_need_broadcast;
   } else if (trans_x) {
     // dx = y * T(dout)
     dx_shape.InitFcInfo(dout_shape.bs,
@@ -731,6 +731,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         max_dout,
                         nullptr);
     dx_a = y, dx_b = dout_new;
+    dx_shape.is_x_need_broadcast = dout_shape.is_y_need_broadcast;
     // dy = x * dout
     dy_shape.InitFcInfo(dout_shape.bs,
                         dout_shape.k,
@@ -755,6 +756,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         nullptr,
                         nullptr);
     dx_a = dout_new, dx_b = y;
+    dx_shape.is_y_need_broadcast = dout_shape.is_y_need_broadcast;
     // dy =  T(dout) * x
     dy_shape.InitFcInfo(dout_shape.bs,
                         dout_shape.n,
@@ -766,6 +768,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         nullptr,
                         nullptr);
     dy_a = dout_new, dy_b = x;
+    dy_shape.is_y_need_broadcast = dout_shape.is_x_need_broadcast;
   } else {
     // dx = dout * T(y)
     dx_shape.InitFcInfo(dout_shape.bs,
@@ -778,6 +781,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         nullptr,
                         nullptr);
     dx_a = dout_new, dx_b = y;
+    dx_shape.is_y_need_broadcast = dout_shape.is_y_need_broadcast;
     // dy = T(x) * dout
     dy_shape.InitFcInfo(dout_shape.bs,
                         dout_shape.k,

@@ -313,7 +313,13 @@ class TestExpm1API(unittest.TestCase):
         self.x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         self.out_ref = np.expm1(self.x)
 
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -5601,10 +5607,7 @@ create_test_act_fp16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestCELU, check_pir=True)
 create_test_act_fp16_class(TestReciprocal, check_pir=True)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
-if core.is_compiled_with_rocm():
-    create_test_act_fp16_class(TestLog2, check_pir=True)
-else:
-    create_test_act_fp16_class(TestLog2, check_pir=True)
+create_test_act_fp16_class(TestLog2, check_pir=True)
 create_test_act_fp16_class(TestLog10, check_pir=True)
 create_test_act_fp16_class(TestLog1p, check_pir=True)
 create_test_act_fp16_class(TestSquare, check_pir=True, check_prim_pir=True)
@@ -5773,10 +5776,7 @@ create_test_act_bf16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestCELU, check_pir=True)
 create_test_act_bf16_class(TestReciprocal, check_pir=True)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)
-if core.is_compiled_with_rocm():
-    create_test_act_bf16_class(TestLog2, check_pir=True)
-else:
-    create_test_act_bf16_class(TestLog2, check_pir=True)
+create_test_act_bf16_class(TestLog2, check_pir=True)
 create_test_act_bf16_class(TestLog10, check_pir=True)
 create_test_act_bf16_class(TestLog1p, check_pir=True)
 create_test_act_bf16_class(TestSquare, check_pir=True, check_prim_pir=True)

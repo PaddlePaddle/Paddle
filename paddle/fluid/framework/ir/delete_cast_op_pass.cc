@@ -692,7 +692,7 @@ int DeleteCastOpPass::ApplyCastLookupTablePass(ir::Graph* graph) const {
     lookup_table_w->Var()->SetDataType(proto::VarType::FP16);
     if (w_tensor->dtype() != phi::DataType::FLOAT16) {
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
-          platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+          phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
       phi::DenseTensor w_fp32_tensor;
       w_fp32_tensor.Resize(w_tensor->dims());
       w_fp32_tensor.set_type(w_tensor->dtype());
@@ -775,7 +775,7 @@ int DeleteCastOpPass::ApplyCastPass(ir::Graph* graph) const {
 
 void DeleteCastOpPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   if (!graph->IsMainGraph()) {
     VLOG(3) << "'delete_cast_op_pass' needs info in all graphs, so it "
                "should be applied in the main graph.";

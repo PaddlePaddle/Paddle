@@ -6,4 +6,4 @@ nv_library(
 nv_test(
   cudnn_helper_test
   SRCS cudnn_helper_test.cc
-  DEPS dynload_cuda)
+  DEPS phi common)

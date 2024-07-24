@@ -33,7 +33,7 @@ COMMON_DECLARE_bool(enable_pir_api);
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle::framework {
-StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
+StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
                                        const interpreter::Plan& plan,
                                        Scope* scope)
     : place_(place),

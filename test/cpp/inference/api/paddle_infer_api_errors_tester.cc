@@ -27,7 +27,7 @@ struct FakeException {
   void pd_exception(int a) const {
     PADDLE_ENFORCE_NE(a,
                       a,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "This is a preset error message used to verify "
                           "whether the exception meets expectations: %d, %d.",
                           a,

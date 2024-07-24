@@ -42,11 +42,10 @@ TEST(AutogradMeta, MemberFunction) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
+  auto* dt_ptr = dt->mutable_data<float>(phi::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
   grad_t->set_impl(dt);

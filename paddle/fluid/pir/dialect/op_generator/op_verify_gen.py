@@ -272,6 +272,10 @@ def gen_verify_func_str(
     outputs_type_check_str = gen_outputs_type_check_str(
         op_output_type_list, op_output_optional_list
     )
+    # skip AddNOp type check, because it would be select rows.
+    if op_class_name == "AddNOp":
+        inputs_type_check_str = ""
+        outputs_type_check_str = ""
 
     return OP_VERIFY_TEMPLATE.format(
         op_name=op_class_name,

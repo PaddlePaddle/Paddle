@@ -1594,7 +1594,7 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
   const int device_id = phi::backends::gpu::GetCurrentDeviceId();
   const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
   const int max_thread_per_multiprocessor =
-      phi::backends::gpu::GetGPUMultiProcessors(device_id);
+      phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
 
   *num_blocks =
       std::max<int>(1,

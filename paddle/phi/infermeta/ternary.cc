@@ -515,6 +515,60 @@ void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
   }
 }
 
+void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
+                                    const MetaTensor& k,
+                                    const MetaTensor& softmax_lse,
+                                    MetaTensor* reduced_scores) {
+  PADDLE_ENFORCE(q.dims().size() == 4,
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q with dim "
+                     "[batch_size, seq_len, num_heads, head_dim]"));
+
+  PADDLE_ENFORCE(k.dims().size() == 4,
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input k with dim "
+                     "[batch_size, seq_len, num_heads, head_dim]"));
+
+  PADDLE_ENFORCE(
+      softmax_lse.dims().size() == 3,
+      phi::errors::InvalidArgument(
+          "calc_reduced_attn_scores must receive input softmax_lse with dim "
+          "[batch_size, num_heads, seq_len_q]"));
+
+  PADDLE_ENFORCE(q.dims()[0] == k.dims()[0],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and k "
+                     "with consistent batch_size!"));
+
+  PADDLE_ENFORCE(q.dims()[0] == softmax_lse.dims()[0],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and "
+                     "softmax_lse with consistent batch_size!"));
+
+  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+  PADDLE_ENFORCE(round_multiple(q.dims()[1], 128) == softmax_lse.dims()[2],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and "
+                     "softmax_lse with corresponding seq_len!"));
+
+  PADDLE_ENFORCE(q.dims()[2] == softmax_lse.dims()[1],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and "
+                     "softmax_lse with consistent num_heads!"));
+
+  PADDLE_ENFORCE(q.dims()[3] == k.dims()[3],
+                 phi::errors::InvalidArgument(
+                     "calc_reduced_attn_scores must receive input q and k "
+                     "with consistent head_dim!"));
+
+  int batch_size = q.dims()[0];
+  int num_heads = q.dims()[2];
+  int seqlen_k = k.dims()[1];
+
+  reduced_scores->set_dtype(phi::DataType::FLOAT32);
+  reduced_scores->set_dims({batch_size, num_heads, 1, seqlen_k});
+}
+
 void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& end,
                            const MetaTensor& step,
@@ -539,6 +593,48 @@ void ArangeTensorInferMeta(const MetaTensor& start,
 
   out->set_dims({-1});
   out->set_dtype(start.dtype());
+}
+
+void CollectFpnProposalsInferMeta(
+    const std::vector<const MetaTensor*>& multi_level_rois,
+    const std::vector<const MetaTensor*>& multi_level_scores,
+    const paddle::optional<std::vector<const MetaTensor*>>&
+        multi_level_rois_num,
+    int post_nms_topn,
+    MetaTensor* fpn_rois,
+    MetaTensor* rois_num,
+    MetaConfig config) {
+  std::vector<int64_t> out_dims;
+  for (auto& roi : multi_level_rois) {
+    const auto& roi_dim = roi->dims();
+    PADDLE_ENFORCE_EQ(
+        roi_dim[1],
+        4,
+        phi::errors::InvalidArgument(
+            "Second dimension of Input"
+            "(MultiLevelRois) must be 4. But received dimension = %d",
+            roi_dim[1]));
+  }
+  for (auto& score : multi_level_scores) {
+    const auto& score_dim = score->dims();
+    PADDLE_ENFORCE_EQ(
+        score_dim[1],
+        1,
+        phi::errors::InvalidArgument(
+            "Second dimension of Input"
+            "(MultiLevelScores) must be 1. But received dimension = %d",
+            score_dim[1]));
+  }
+  fpn_rois->set_dims({post_nms_topn, 4});
+  fpn_rois->set_dtype(multi_level_rois[0]->dtype());
+  if (rois_num != nullptr) {
+    rois_num->set_dims({-1});
+    rois_num->set_dtype(DataType::INT32);
+  }
+  if (!config.is_runtime) {  // Runtime LoD infershape will be computed
+    // in Kernel.
+    fpn_rois->share_lod(*multi_level_rois[0]);
+  }
 }
 
 void InstanceNormInferMeta(const MetaTensor& x,
@@ -1088,9 +1184,8 @@ void LerpInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto w_dims = weight.dims();
-  DDim out_dims;
-  out_dims = funcs::GetOutputDims(x_dims, y_dims);
-  out_dims = funcs::GetOutputDims(out_dims, w_dims);
+  DDim out_dims = funcs::GetOutputDimsForDynamicShape(x_dims, y_dims);
+  out_dims = funcs::GetOutputDimsForDynamicShape(out_dims, w_dims);
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->share_lod(x);

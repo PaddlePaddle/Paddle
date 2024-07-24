@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 
 TEST(DataTypeTransform, GPUTransform) {
-  auto cpu_place = paddle::platform::CPUPlace();
-  auto gpu_place = paddle::platform::CUDAPlace(0);
+  auto cpu_place = phi::CPUPlace();
+  auto gpu_place = phi::GPUPlace(0);
   phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
@@ -86,14 +86,14 @@ TEST(DataTypeTransform, GPUTransform) {
     phi::DenseTensor out_gpu;
     phi::DenseTensor out;
 
-    paddle::platform::float16* ptr = in.mutable_data<paddle::platform::float16>(
+    phi::dtype::float16* ptr = in.mutable_data<phi::dtype::float16>(
         common::make_ddim({2, 3}), cpu_place);
-    paddle::platform::float16 arr[6] = {paddle::platform::float16(0),
-                                        paddle::platform::float16(1),
-                                        paddle::platform::float16(2),
-                                        paddle::platform::float16(3),
-                                        paddle::platform::float16(4),
-                                        paddle::platform::float16(5)};
+    phi::dtype::float16 arr[6] = {phi::dtype::float16(0),
+                                  phi::dtype::float16(1),
+                                  phi::dtype::float16(2),
+                                  phi::dtype::float16(3),
+                                  phi::dtype::float16(4),
+                                  phi::dtype::float16(5)};
 
     int data_number = sizeof(arr) / sizeof(arr[0]);
     memcpy(ptr, arr, sizeof(arr));
@@ -165,10 +165,9 @@ TEST(DataTypeTransform, GPUTransform) {
     paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
-    ptr = out.data<paddle::platform::float16>();
+    ptr = out.data<phi::dtype::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i].x,
-                static_cast<paddle::platform::float16>(in_data_float[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<phi::dtype::float16>(in_data_float[i]).x);
     }
 
     // transform double to float16
@@ -185,10 +184,10 @@ TEST(DataTypeTransform, GPUTransform) {
     paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
-    ptr = out.data<paddle::platform::float16>();
+    ptr = out.data<phi::dtype::float16>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(ptr[i].x,
-                static_cast<paddle::platform::float16>(in_data_double[i]).x);
+                static_cast<phi::dtype::float16>(in_data_double[i]).x);
     }
 
     // transform int to float16
@@ -205,10 +204,9 @@ TEST(DataTypeTransform, GPUTransform) {
     paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
-    ptr = out.data<paddle::platform::float16>();
+    ptr = out.data<phi::dtype::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i].x,
-                static_cast<paddle::platform::float16>(in_data_int[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<phi::dtype::float16>(in_data_int[i]).x);
     }
 
     // transform int64 to float16
@@ -225,10 +223,9 @@ TEST(DataTypeTransform, GPUTransform) {
     paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
-    ptr = out.data<paddle::platform::float16>();
+    ptr = out.data<phi::dtype::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i].x,
-                static_cast<paddle::platform::float16>(in_data_int64[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<phi::dtype::float16>(in_data_int64[i]).x);
     }
 
     // transform bool to float16
@@ -245,10 +242,9 @@ TEST(DataTypeTransform, GPUTransform) {
     paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
-    ptr = out.data<paddle::platform::float16>();
+    ptr = out.data<phi::dtype::float16>();
     for (int i = 0; i < data_number; ++i) {
-      EXPECT_EQ(ptr[i].x,
-                static_cast<paddle::platform::float16>(in_data_bool[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<phi::dtype::float16>(in_data_bool[i]).x);
     }
   }
 }

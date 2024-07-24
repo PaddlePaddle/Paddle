@@ -34,6 +34,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -47,10 +48,29 @@
 COMMON_DECLARE_string(logging_pir_py_code_dir);
 COMMON_DECLARE_bool(logging_trunc_pir_py_code);
 COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
+COMMON_DECLARE_int64(logging_pir_py_code_int_tensor_element_limit);
 
 namespace paddle::framework {
 
 namespace {
+
+void SerializeToPyObject(std::ostream& ss, int32_t x) { ss << x; }
+
+void SerializeToPyObject(std::ostream& ss, int64_t x) { ss << x; }
+
+void SerializeToPyObject(std::ostream& ss, float x) {
+  ss << "float(\"" << x << "\")";
+}
+
+void SerializeToPyObject(std::ostream& ss, double x) {
+  ss << "float(\"" << x << "\")";
+}
+
+struct EnableDumpFloatData {};
+struct DisableDumpFloatData {};
+
+using TensorDumpPolicy =
+    std::variant<EnableDumpFloatData, DisableDumpFloatData>;
 
 std::optional<std::string> GetLoggingFilePath() {
   if (FLAGS_logging_pir_py_code_dir.empty()) return std::nullopt;
@@ -97,34 +117,78 @@ void VisitFeedName(const pir::Program& program,
     if (op_name != "pd_op.feed") return std::nullopt;
     return op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
   };
+  auto GetParameterOpName =
+      [](const pir::Operation& op) -> std::optional<std::string> {
+    if (!op.isa<pir::ParameterOp>()) return std::nullopt;
+    const auto& attributes = op.attributes();
+    const auto& parameter_name = op.attributes().at("parameter_name");
+    return parameter_name.dyn_cast<pir::StrAttribute>().AsString();
+  };
+  auto GetConstantOpName =
+      [](const pir::Operation& op) -> std::optional<std::string> {
+    if (!op.isa<pir::ConstantOp>()) return std::nullopt;
+    const auto& attributes = op.attributes();
+    const auto& tensor_name = op.attributes().at("value");
+    return tensor_name.dyn_cast<pir::TensorNameAttribute>().data();
+  };
   for (const auto& op : block) {
     if (const auto& name = GetDataOpName(op)) {
-      DoEachFeadName(name.value());
+      DoEachFeadName(name.value(), TensorDumpPolicy{EnableDumpFloatData{}});
     } else if (const auto& name = GetFeedOpName(op)) {
-      DoEachFeadName(name.value());
+      DoEachFeadName(name.value(), TensorDumpPolicy{EnableDumpFloatData{}});
     } else if (const auto& name = GetPhiFeedOpName(op)) {
-      DoEachFeadName(name.value());
+      DoEachFeadName(name.value(), TensorDumpPolicy{EnableDumpFloatData{}});
+    } else if (const auto& name = GetParameterOpName(op)) {
+      DoEachFeadName(name.value(), TensorDumpPolicy{DisableDumpFloatData{}});
+    } else if (const auto& name = GetConstantOpName(op)) {
+      DoEachFeadName(name.value(), TensorDumpPolicy{EnableDumpFloatData{}});
     } else {
       // Do nothing.
     }
   }
   for (const auto& [name, _] : block.kwargs()) {
-    DoEachFeadName(name);
+    DoEachFeadName(name, TensorDumpPolicy{EnableDumpFloatData{}});
   }
 }
 
-std::optional<std::vector<int64_t>> GetTensorData(
-    const phi::DenseTensor& tensor) {
-  constexpr int kLimit = 64;
-  if (tensor.numel() > kLimit || !tensor.IsInitialized()) return std::nullopt;
+using TensorDataT = std::variant<std::vector<int32_t>,
+                                 std::vector<int64_t>,
+                                 std::vector<float>,
+                                 std::vector<double>,
+                                 std::monostate>;
+
+TensorDataT GetTensorData(const phi::DenseTensor& tensor,
+                          const TensorDumpPolicy& tensor_dump_policy) {
+  int kLimit = FLAGS_logging_pir_py_code_int_tensor_element_limit;
+  if (tensor.numel() > kLimit || !tensor.IsInitialized())
+    return std::monostate{};
   if (tensor.dtype() == phi::DataType::INT64) {
     return phi::GetVectorFromTensor<int64_t>(&tensor);
   }
   if (tensor.dtype() == phi::DataType::INT32) {
-    const auto& data = phi::GetVectorFromTensor<int32_t>(&tensor);
-    return std::vector<int64_t>(data.begin(), data.end());
+    return phi::GetVectorFromTensor<int32_t>(&tensor);
   }
-  return std::nullopt;
+  if (tensor.dtype() == phi::DataType::FLOAT64) {
+    return std::visit(
+        ::common::Overloaded{[&](const EnableDumpFloatData&) -> TensorDataT {
+                               return phi::GetVectorFromTensor<double>(&tensor);
+                             },
+                             [&](const DisableDumpFloatData&) -> TensorDataT {
+                               return std::monostate{};
+                             }},
+        tensor_dump_policy);
+  }
+  if (tensor.dtype() == phi::DataType::FLOAT32) {
+    return std::visit(
+        ::common::Overloaded{[&](const EnableDumpFloatData&) -> TensorDataT {
+                               return phi::GetVectorFromTensor<float>(&tensor);
+                             },
+                             [&](const DisableDumpFloatData&) -> TensorDataT {
+                               return std::monostate{};
+                             }},
+        tensor_dump_policy);
+  }
+  return std::monostate{};
 }
 
 std::string ShapeToString(const phi::DenseTensor& tensor) {
@@ -141,20 +205,28 @@ std::string ShapeToString(const phi::DenseTensor& tensor) {
   return ss.str();
 }
 
-std::string DataToString(const phi::DenseTensor& tensor) {
-  const auto& data = GetTensorData(tensor);
-  if (!data.has_value()) return "None";
-  std::ostringstream ss;
-  ss << "[";
-  int i = 0;
-  for (int64_t dim : data.value()) {
-    if (i++ > 0) {
-      ss << ", ";
+std::string DataToString(const phi::DenseTensor& tensor,
+                         const TensorDumpPolicy& tensor_dump_policy) {
+  const auto& SerializeVector = [](const auto& data) {
+    std::ostringstream ss;
+    ss << "[";
+    int i = 0;
+    for (auto x : data) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      SerializeToPyObject(ss, x);
     }
-    ss << dim;
-  }
-  ss << "]";
-  return ss.str();
+    ss << "]";
+    return ss.str();
+  };
+  return std::visit(
+      ::common::Overloaded{
+          [&](const std::monostate&) -> std::string { return "None"; },
+          [&](const auto& data) -> std::string {
+            return SerializeVector(data);
+          }},
+      GetTensorData(tensor, tensor_dump_policy));
 }
 
 int64_t GetRandomId() {
@@ -165,15 +237,16 @@ int64_t GetRandomId() {
   return dis(gen);
 }
 
-std::string GetLoggingShapeOrDataForName(int64_t program_id,
-                                         const std::string& name,
-                                         const phi::DenseTensor& tensor) {
+std::string GetLoggingShapeAndDataForName(int64_t program_id,
+                                          const std::string& name,
+                                          const phi::DenseTensor& tensor,
+                                          const TensorDumpPolicy& policy) {
   std::ostringstream ss;
   ss << "class PirProgram_example_input_tensor_meta_" << GetRandomId() << ":";
   ss << "\n\tprogram_id = " << program_id;
   ss << "\n\tinput_name = " << std::quoted(name);
   ss << "\n\tshape = " << ShapeToString(tensor);
-  ss << "\n\tdata = " << DataToString(tensor);
+  ss << "\n\tdata = " << DataToString(tensor, policy);
   ss << "\n\n";
   return ss.str();
 }
@@ -188,15 +261,17 @@ void AppendToLoggingFile(const std::string& logging_str) {
   ofs.close();
 }
 
-void AppendLoggingShapeOrDataForName(int64_t uid,
-                                     const std::string& name,
-                                     const phi::DenseTensor& tensor) {
+void AppendLoggingShapeAndDataForName(int64_t uid,
+                                      const std::string& name,
+                                      const phi::DenseTensor& tensor,
+                                      const TensorDumpPolicy& policy) {
   static std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
   using Name2OnceFlag = std::unordered_map<std::string, std::once_flag>;
   static std::unordered_map<int64_t, Name2OnceFlag> once_flags;
   std::call_once(once_flags[uid][name], [&] {
-    AppendToLoggingFile(GetLoggingShapeOrDataForName(uid, name, tensor));
+    AppendToLoggingFile(
+        GetLoggingShapeAndDataForName(uid, name, tensor, policy));
   });
 }
 
@@ -204,13 +279,14 @@ void DumpExampleInputsShapeOrData(const pir::Program& program,
                                   const Scope& scope) {
   if (FLAGS_logging_pir_py_code_dir.empty()) return;
   TryTruncateLoggingFile();
-  VisitFeedName(program, [&](const std::string& name) {
-    Variable* variable = scope.FindVar(name);
-    if (variable == nullptr) return;
-    if (!variable->IsType<phi::DenseTensor>()) return;
-    const phi::DenseTensor& tensor = variable->Get<phi::DenseTensor>();
-    AppendLoggingShapeOrDataForName(program.id(), name, tensor);
-  });
+  VisitFeedName(
+      program, [&](const std::string& name, const TensorDumpPolicy& policy) {
+        Variable* variable = scope.FindVar(name);
+        if (variable == nullptr) return;
+        if (!variable->IsType<phi::DenseTensor>()) return;
+        const phi::DenseTensor& tensor = variable->Get<phi::DenseTensor>();
+        AppendLoggingShapeAndDataForName(program.id(), name, tensor, policy);
+      });
 }
 
 }  // namespace
@@ -608,13 +684,13 @@ struct PirToPyCodeConverterHelper {
       if (i++ > 0) {
         ss << ", ";
       }
-      ss << attr_name << "=" << ConvertAttr(attr);
+      ss << std::quoted(attr_name) << ":" << ConvertAttr(attr);
     });
     VisitSymbolicAttrs(op, [&](const auto& attr_name, const auto& attrs) {
       if (i++ > 0) {
         ss << ", ";
       }
-      ss << attr_name << "=" << ConvertSymbolicAttrs(attrs);
+      ss << std::quoted(attr_name) << ":" << ConvertSymbolicAttrs(attrs);
     });
     return ss.str();
   }
@@ -651,6 +727,10 @@ struct PirToPyCodeConverterHelper {
         },
         [](const symbol::TensorListShapeOrDataDimExprs& impl) {
           return ConvertTensorListShapeOrData(impl);
+        },
+        [](const symbol::RankedTensorArrayShapeOrDataDimExprs& impl) {
+          // TODO(Hongqing-work): support tensor_array to py
+          return std::string("self.s_tensor_array()");
         },
         [](const symbol::NullShapeOrDataDimExpr& impl) {
           return std::string("self.s_null()");
@@ -1230,6 +1310,27 @@ struct PirToPyCodeConverterHelper {
       const auto& name = ::pir::Complex128Type::name();
       return std::string("self.") + name + "()";
     }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::SelectedRowsType>) {
+      const auto& name = ::paddle::dialect::SelectedRowsType::name();
+      return std::string("self.") + name + "()";
+    }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::DenseTensorArrayType>) {
+      const auto& name = ::paddle::dialect::DenseTensorArrayType::name();
+      return std::string("self.") + name + "()";
+    }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::SparseCooTensorType>) {
+      const auto& name = ::paddle::dialect::SparseCooTensorType::name();
+      return std::string("self.") + name + "()";
+    }
+
+    std::string operator()(AdtTypeId<::paddle::dialect::SparseCsrTensorType>) {
+      const auto& name = ::paddle::dialect::SparseCsrTensorType::name();
+      return std::string("self.") + name + "()";
+    }
+
     std::string operator()(AdtTypeId<UnclassifiedType>) {
       std::stringstream ss;
       ss << "self.UnclassifiedType(";
@@ -1254,8 +1355,8 @@ struct PirToPyCodeConverterHelper {
     ss << "self." << ConvertOpUniqueName(op) << " = self.Op("
        << std::quoted(op->name()) << ", " << id << ", "
        << "input_types=" << input_types_str
-       << ", output_types=" << output_types_str << ", attrs=dict("
-       << attrs_as_args << ")";
+       << ", output_types=" << output_types_str << ", attrs={" << attrs_as_args
+       << "}";
     if (!block_signature.empty()) {
       ss << ", " << block_signature;
     }

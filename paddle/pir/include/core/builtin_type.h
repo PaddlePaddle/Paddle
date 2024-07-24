@@ -94,20 +94,22 @@ class IR_API DenseTensorType : public Type::TypeBase<DenseTensorType,
     static std::string name() { return s_name; }                           \
   };
 
-#define FOREACH_BUILTIN_TYPE(__macro) \
-  __macro(BFloat16Type, "t_bf16");    \
-  __macro(Float16Type, "t_f16");      \
-  __macro(Float32Type, "t_f32");      \
-  __macro(Float64Type, "t_f64");      \
-  __macro(Int8Type, "t_i8");          \
-  __macro(UInt8Type, "t_ui8");        \
-  __macro(Int16Type, "t_i16");        \
-  __macro(Int32Type, "t_i32");        \
-  __macro(Int64Type, "t_i64");        \
-  __macro(IndexType, "t_index");      \
-  __macro(BoolType, "t_bool");        \
-  __macro(Complex64Type, "t_c64");    \
-  __macro(Complex128Type, "t_c128");
+#define FOREACH_BUILTIN_TYPE(__macro)      \
+  __macro(BFloat16Type, "t_bf16");         \
+  __macro(Float16Type, "t_f16");           \
+  __macro(Float32Type, "t_f32");           \
+  __macro(Float64Type, "t_f64");           \
+  __macro(Int8Type, "t_i8");               \
+  __macro(UInt8Type, "t_ui8");             \
+  __macro(Int16Type, "t_i16");             \
+  __macro(Int32Type, "t_i32");             \
+  __macro(Int64Type, "t_i64");             \
+  __macro(IndexType, "t_index");           \
+  __macro(BoolType, "t_bool");             \
+  __macro(Complex64Type, "t_c64");         \
+  __macro(Complex128Type, "t_c128");       \
+  __macro(Float8E4M3FNType, "t_f8e4m3fn"); \
+  __macro(Float8E5M2Type, "t_f8e5m2");
 FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
 
 #undef FOREACH_BUILTIN_TYPE
@@ -129,4 +131,6 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::BoolType)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::IndexType)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Complex64Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Complex128Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Float8E4M3FNType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::Float8E5M2Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::DenseTensorType)

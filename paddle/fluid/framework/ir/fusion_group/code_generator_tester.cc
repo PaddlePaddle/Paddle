@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/device_code.h"
+#include "paddle/phi/common/float16.h"
 
 namespace phi {
 class DenseTensor;
@@ -179,9 +179,9 @@ void TestMainImpl(std::string func_name,
                   std::vector<int> input_ids,
                   std::vector<int> output_ids) {
   bool is_float16 = std::type_index(typeid(T)) ==
-                    std::type_index(typeid(paddle::platform::float16));
+                    std::type_index(typeid(phi::dtype::float16));
 
-  paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
+  phi::GPUPlace place = phi::GPUPlace(0);
   phi::GPUDeviceCode device_code(place, func_name, code_str);
 #ifdef PADDLE_WITH_HIP
   device_code.Compile(true);
@@ -202,12 +202,12 @@ void TestMainImpl(std::string func_name,
           gpu_tensors[id].mutable_data<T>(cpu_tensors[id].dims(), place);
       fusion_group::SetupRandomCPUTensor<float>(&cpu_tensors[id]);
       if (is_float16) {
-        paddle::platform::float16* tmp_cpu_ptr =
-            tmp_cpu_tensors[id].mutable_data<paddle::platform::float16>(
-                cpu_tensors[id].dims(), paddle::platform::CPUPlace());
+        phi::dtype::float16* tmp_cpu_ptr =
+            tmp_cpu_tensors[id].mutable_data<phi::dtype::float16>(
+                cpu_tensors[id].dims(), phi::CPUPlace());
         const float* cpu_ptr = cpu_tensors[id].data<float>();
         for (int64_t i = 0; i < cpu_tensors[id].numel(); ++i) {
-          tmp_cpu_ptr[i] = paddle::platform::float16(cpu_ptr[i]);
+          tmp_cpu_ptr[i] = phi::dtype::float16(cpu_ptr[i]);
         }
         paddle::framework::TensorCopySync(
             tmp_cpu_tensors[id], place, &gpu_tensors[id]);
@@ -230,26 +230,26 @@ void TestMainImpl(std::string func_name,
   device_code.Launch(n, &args);
 
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
-      paddle::platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
   dev_ctx->Wait();
 
   // Copy the results back to CPU.
   for (auto id : output_ids) {
     if (is_float16) {
-      paddle::platform::float16* tmp_cpu_ptr =
-          tmp_cpu_tensors[id].mutable_data<paddle::platform::float16>(
-              cpu_tensors[id].dims(), paddle::platform::CPUPlace());
+      phi::dtype::float16* tmp_cpu_ptr =
+          tmp_cpu_tensors[id].mutable_data<phi::dtype::float16>(
+              cpu_tensors[id].dims(), phi::CPUPlace());
       paddle::framework::TensorCopySync(
-          gpu_tensors[id], paddle::platform::CPUPlace(), &tmp_cpu_tensors[id]);
+          gpu_tensors[id], phi::CPUPlace(), &tmp_cpu_tensors[id]);
 
       float* cpu_ptr = cpu_tensors[id].mutable_data<float>(
-          cpu_tensors[id].dims(), paddle::platform::CPUPlace());
+          cpu_tensors[id].dims(), phi::CPUPlace());
       for (int64_t i = 0; i < cpu_tensors[id].numel(); ++i) {
         cpu_ptr[i] = static_cast<float>(tmp_cpu_ptr[i]);
       }
     } else {
       paddle::framework::TensorCopySync(
-          gpu_tensors[id], paddle::platform::CPUPlace(), &cpu_tensors[id]);
+          gpu_tensors[id], phi::CPUPlace(), &cpu_tensors[id]);
     }
   }
 }
@@ -274,12 +274,12 @@ void TestElementwiseMain(
   auto dims = common::make_ddim(
       {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   for (auto& cpu_tensor : cpu_tensors) {
-    cpu_tensor.mutable_data<float>(dims, paddle::platform::CPUPlace());
+    cpu_tensor.mutable_data<float>(dims, phi::CPUPlace());
   }
 
   int n = cpu_tensors[0].numel();
   if (dtype == "__half") {
-    TestMainImpl<paddle::platform::float16>(
+    TestMainImpl<phi::dtype::float16>(
         func_name, code_str, cpu_tensors, n, input_ids, output_ids);
   } else {
     TestMainImpl<float>(

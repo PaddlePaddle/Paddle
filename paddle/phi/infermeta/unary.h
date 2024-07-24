@@ -356,9 +356,6 @@ void HashInferMeta(const MetaTensor& x,
                    int64_t mod_by,
                    MetaTensor* out);
 
-void HistogramInferMeta(
-    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out);
-
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out);
@@ -854,6 +851,8 @@ void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
+void UnchangedInferMetaIncludingTensorArray(const MetaTensor& x,
+                                            MetaTensor* out);
 void UnchangedVectorInferMeta(const std::vector<const MetaTensor*>& xs,
                               std::vector<MetaTensor*> outs);
 

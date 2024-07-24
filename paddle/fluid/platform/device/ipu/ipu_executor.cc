@@ -415,7 +415,7 @@ void Executor::RunPopef(const std::vector<const Tensor *> &inputs,
         output_shape[0] = batch_size;
       } else {
         // shape of output must have batch info when when auto batch enabled
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Auto batch doesn't support the tensor with no batch info. "
             "Expected batch size in output tensor: %d should equal to "
             "micro batch size: %d. Please make sure batch size is set "

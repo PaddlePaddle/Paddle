@@ -207,20 +207,20 @@ int FCLstmFusePass::BuildFusion(Graph* graph,
     if (with_fc_bias) {
       // Add FC-bias with LSTM-bias and create a new weight
       PADDLE_ENFORCE_NOT_NULL(
-          scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+          scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
       auto* lstm_bias_var = scope->FindVar(bias->Name());
       auto* fc_bias_var = scope->FindVar(fc_bias->Name());
-      PADDLE_ENFORCE_NOT_NULL(lstm_bias_var,
-                              platform::errors::InvalidArgument(
-                                  "Lstm bias var ptr cannot be nullptr."));
-      PADDLE_ENFORCE_NOT_NULL(fc_bias_var,
-                              platform::errors::InvalidArgument(
-                                  "FC bias var ptr cannot be nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(
+          lstm_bias_var,
+          phi::errors::InvalidArgument("Lstm bias var ptr cannot be nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(
+          fc_bias_var,
+          phi::errors::InvalidArgument("FC bias var ptr cannot be nullptr."));
       auto* lstm_bias_tensor = lstm_bias_var->GetMutable<phi::DenseTensor>();
       const auto& fc_bias_tensor = fc_bias_var->Get<phi::DenseTensor>();
 
       auto lstm_bias_data =
-          lstm_bias_tensor->mutable_data<float>(platform::CPUPlace());
+          lstm_bias_tensor->mutable_data<float>(phi::CPUPlace());
       auto* fc_bias_data = fc_bias_tensor.data<float>();
 
       for (int i = 0; i < fc_bias_tensor.numel(); i++) {

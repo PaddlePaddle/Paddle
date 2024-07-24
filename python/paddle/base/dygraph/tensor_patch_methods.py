@@ -660,7 +660,10 @@ def monkey_patch_tensor():
 
     @overload
     def to(
-        self: Tensor, device: PlaceLike, blocking: bool | None = ...
+        self: Tensor,
+        device: PlaceLike,
+        dtype: DTypeLike | None = ...,
+        blocking: bool | None = ...,
     ) -> Tensor:
         ...
 

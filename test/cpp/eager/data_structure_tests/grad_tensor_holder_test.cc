@@ -39,8 +39,7 @@ TEST(GradTensorHolder, Constructor) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({2, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
   paddle::Tensor et = paddle::Tensor(dt);
@@ -57,19 +56,17 @@ TEST(GradTensorHolder, Interfaces) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt0 = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
+  dt0->mutable_data<float>(phi::CPUPlace())[0] = 10.0;
   paddle::Tensor et0 = paddle::Tensor(dt0);
 
   std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  dt1->mutable_data<float>(paddle::platform::CPUPlace())[0] = 20.0;
+  dt1->mutable_data<float>(phi::CPUPlace())[0] = 20.0;
   paddle::Tensor et1 = paddle::Tensor(dt1);
 
   // Constructor empty GradTensorHolder

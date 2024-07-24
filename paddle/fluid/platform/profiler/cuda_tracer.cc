@@ -27,7 +27,7 @@
     CUptiResult _status = call;                                              \
     if (_status != CUPTI_SUCCESS) {                                          \
       const char* errstr;                                                    \
-      dynload::cuptiGetResultString(_status, &errstr);                       \
+      phi::dynload::cuptiGetResultString(_status, &errstr);                  \
       LOG(ERROR) << "Function " << #call << " failed with error " << errstr; \
       exit(-1);                                                              \
     }                                                                        \
@@ -51,7 +51,7 @@ void CudaTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::UNINITED || state_ == TracerState::STOPED,
       true,
-      platform::errors::PreconditionNotMet("Tracer must be UNINITED"));
+      phi::errors::PreconditionNotMet("Tracer must be UNINITED"));
   EnableCuptiActivity();
   state_ = TracerState::READY;
 }
@@ -60,33 +60,32 @@ void CudaTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::READY,
       true,
-      platform::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
+      phi::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
   ConsumeBuffers();
   tracing_start_ns_ = PosixInNsec();
   state_ = TracerState::STARTED;
 }
 
 void CudaTracer::StopTracing() {
-  PADDLE_ENFORCE_EQ(
-      state_,
-      TracerState::STARTED,
-      platform::errors::PreconditionNotMet("Tracer must be STARTED"));
+  PADDLE_ENFORCE_EQ(state_,
+                    TracerState::STARTED,
+                    phi::errors::PreconditionNotMet("Tracer must be STARTED"));
   DisableCuptiActivity();
   state_ = TracerState::STOPED;
 }
 
 void CudaTracer::CollectTraceData(TraceEventCollector* collector) {
-  PADDLE_ENFORCE_EQ(
-      state_,
-      TracerState::STOPED,
-      platform::errors::PreconditionNotMet("Tracer must be STOPED"));
+  PADDLE_ENFORCE_EQ(state_,
+                    TracerState::STOPED,
+                    phi::errors::PreconditionNotMet("Tracer must be STOPED"));
   ProcessCuptiActivity(collector);
 }
 
 int CudaTracer::ProcessCuptiActivity(TraceEventCollector* collector) {
   int record_cnt = 0;
 #ifdef PADDLE_WITH_CUPTI
-  CUPTI_CALL(dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
+  CUPTI_CALL(
+      phi::dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
   auto mapping = details::CreateThreadIdMapping();
   std::vector<ActivityBuffer> buffers = ConsumeBuffers();
   for (auto& buffer : buffers) {
@@ -96,7 +95,7 @@ int CudaTracer::ProcessCuptiActivity(TraceEventCollector* collector) {
 
     CUpti_Activity* record = nullptr;
     while (true) {
-      CUptiResult status = dynload::cuptiActivityGetNextRecord(
+      CUptiResult status = phi::dynload::cuptiActivityGetNextRecord(
           buffer.addr, buffer.valid_size, &record);
       if (status == CUPTI_SUCCESS) {
         details::ProcessCuptiActivityRecord(
@@ -117,27 +116,27 @@ int CudaTracer::ProcessCuptiActivity(TraceEventCollector* collector) {
 
 void CudaTracer::EnableCuptiActivity() {
 #ifdef PADDLE_WITH_CUPTI
-  CUPTI_CALL(dynload::cuptiActivityRegisterCallbacks(BufferRequestedCallback,
-                                                     BufferCompletedCallback));
+  CUPTI_CALL(phi::dynload::cuptiActivityRegisterCallbacks(
+      BufferRequestedCallback, BufferCompletedCallback));
 
-  CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
+  CUPTI_CALL(phi::dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
   CUPTI_CALL(
-      dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
-  CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER));
-  CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
-  CUPTI_CALL(dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
+      phi::dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+  CUPTI_CALL(phi::dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER));
+  CUPTI_CALL(phi::dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
+  CUPTI_CALL(phi::dynload::cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
   VLOG(3) << "enable cupti activity";
 #endif
 }
 
 void CudaTracer::DisableCuptiActivity() {
 #ifdef PADDLE_WITH_CUPTI
-  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
-  CUPTI_CALL(
-      dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
-  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DRIVER));
-  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
-  CUPTI_CALL(dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
+  CUPTI_CALL(phi::dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
+  CUPTI_CALL(phi::dynload::cuptiActivityDisable(
+      CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+  CUPTI_CALL(phi::dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DRIVER));
+  CUPTI_CALL(phi::dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
+  CUPTI_CALL(phi::dynload::cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
   VLOG(3) << "disable cupti activity";
 #endif
 }
@@ -157,8 +156,8 @@ void CUPTIAPI CudaTracer::BufferCompletedCallback(CUcontext ctx,
                                                   size_t valid_size) {
   GetInstance().ProduceBuffer(buffer, valid_size);
   size_t dropped = 0;
-  CUPTI_CALL(
-      dynload::cuptiActivityGetNumDroppedRecords(ctx, stream_id, &dropped));
+  CUPTI_CALL(phi::dynload::cuptiActivityGetNumDroppedRecords(
+      ctx, stream_id, &dropped));
   if (dropped != 0) {
     LOG(WARNING) << "Stream " << stream_id << " Dropped " << dropped
                  << " activity records";

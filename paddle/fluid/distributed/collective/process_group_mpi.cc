@@ -113,8 +113,8 @@ void ProcessGroupMPI::InitOneTimeMPI() {
     PADDLE_ENFORCE_EQ(
         mpi_thread_support < MPI_THREAD_SERIALIZED,
         false,
-        platform::errors::InvalidArgument("MPI supports the number of threads "
-                                          "less than MPI_THREAD_SERIALIZED. "));
+        phi::errors::InvalidArgument("MPI supports the number of threads "
+                                     "less than MPI_THREAD_SERIALIZED. "));
 
     std::atexit(ProcessGroupMPI::ExitMPI);
   });
@@ -159,7 +159,7 @@ std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::CreateProcessGroupMPI(
       PADDLE_ENFORCE_EQ(
           rank < 0 || size < 0,
           false,
-          platform::errors::InvalidArgument("get world_size or rank failed!"));
+          phi::errors::InvalidArgument("get world_size or rank failed!"));
     }
   }
 
@@ -180,7 +180,7 @@ ProcessGroupMPI::ProcessGroupMPI(int rank, int size, MPI_Comm pg_comm, int gid)
   PADDLE_ENFORCE_EQ(
       pg_comm == MPI_COMM_NULL,
       false,
-      platform::errors::InvalidArgument("Error! mpi comm is MPI_COMM_NULL!"));
+      phi::errors::InvalidArgument("Error! mpi comm is MPI_COMM_NULL!"));
 
   worker_thread = std::thread(&ProcessGroupMPI::workLoop, this);
 }
@@ -353,10 +353,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllGather(
 
   mpi::CheckValidInputs(in_tensors);
 
-  PADDLE_ENFORCE_EQ(out_tensors.size() == 1,
-                    true,
-                    platform::errors::InvalidArgument(
-                        "MPI only support a single tensor op."));
+  PADDLE_ENFORCE_EQ(
+      out_tensors.size() == 1,
+      true,
+      phi::errors::InvalidArgument("MPI only support a single tensor op."));
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [this](std::unique_ptr<TaskEntry>& entry) {
@@ -391,7 +391,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllToAll(
   PADDLE_ENFORCE_EQ(in_tensors[0].numel() == out_tensors[0].numel() &&
                         in_tensors[0].dtype() == out_tensors[0].dtype(),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "MPI AlltoAll: input and output are not equal in "
                         "size or data type."));
 

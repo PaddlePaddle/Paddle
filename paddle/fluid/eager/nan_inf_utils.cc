@@ -102,12 +102,12 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
     }
 
     auto& place = dense_tensor->place();
-    if (paddle::platform::is_gpu_place(place)) {
+    if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       paddle::framework::details::tensor_check<phi::GPUContext>(
           api_name, tensor_name, *dense_tensor, place);
 #else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
           tensor_name));
 #endif

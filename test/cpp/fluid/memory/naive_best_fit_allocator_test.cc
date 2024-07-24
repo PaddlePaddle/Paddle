@@ -21,43 +21,43 @@ namespace memory {
 namespace allocation {
 
 TEST(NaiveBestFitAllocatorTest, CpuAlloc) {
-  NaiveBestFitAllocator alloc{platform::CPUPlace()};
+  NaiveBestFitAllocator alloc{phi::CPUPlace()};
   {
     size_t size = (1 << 20);
     auto allocation = alloc.Allocate(size);
   }
-  alloc.Release(platform::CPUPlace());
+  alloc.Release(phi::CPUPlace());
 
   size_t size = (1 << 20);
   auto allocation = alloc.Allocate(size);
-  alloc.Release(platform::CPUPlace());
+  alloc.Release(phi::CPUPlace());
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(NaiveBestFitAllocatorTest, GpuAlloc) {
-  NaiveBestFitAllocator alloc{platform::CUDAPlace(0)};
+  NaiveBestFitAllocator alloc{phi::GPUPlace(0)};
   {
     size_t size = (1 << 20);
     auto allocation = alloc.Allocate(size);
   }
-  alloc.Release(platform::CUDAPlace(0));
+  alloc.Release(phi::GPUPlace(0));
 
   size_t size = (1 << 20);
   auto allocation = alloc.Allocate(size);
-  alloc.Release(platform::CUDAPlace(0));
+  alloc.Release(phi::GPUPlace(0));
 }
 
 TEST(NaiveBestFitAllocatorTest, CudaPinnedAlloc) {
-  NaiveBestFitAllocator alloc{platform::CUDAPinnedPlace()};
+  NaiveBestFitAllocator alloc{phi::GPUPinnedPlace()};
   {
     size_t size = (1 << 20);
     auto allocation = alloc.Allocate(size);
   }
-  alloc.Release(platform::CUDAPinnedPlace());
+  alloc.Release(phi::GPUPinnedPlace());
 
   size_t size = (1 << 20);
   auto allocation = alloc.Allocate(size);
-  alloc.Release(platform::CUDAPinnedPlace());
+  alloc.Release(phi::GPUPinnedPlace());
 }
 #endif
 

@@ -12,18 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Iterable
+
 import paddle
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
 
 @paddle.autograd.no_grad()
 def clip_grad_norm_(
-    parameters,
-    max_norm,
-    norm_type=2.0,
-    error_if_nonfinite=False,
-):
+    parameters: Iterable[Tensor] | Tensor,
+    max_norm: float,
+    norm_type: float = 2.0,
+    error_if_nonfinite: bool = False,
+) -> Tensor:
     r"""Clips gradient norm of the iteratable parameters.
 
     Norms are calculated together on all gradients, just as they are

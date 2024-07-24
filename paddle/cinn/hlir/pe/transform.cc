@@ -24,7 +24,6 @@
 #include "paddle/cinn/hlir/pe/elementwise.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
@@ -356,32 +355,6 @@ std::vector<Tensor> Matmul(const Tensor& A,
   } else {
     return {temp};
   }
-}
-
-ir::Tensor Reshape(const ir::Tensor& A,
-                   const std::vector<int>& new_shape,
-                   poly::StageMap stages,
-                   const std::string& name) {
-  std::vector<Expr> new_expr_shape;
-  std::vector<Expr> A_expr_shape = A->shape;
-  int input_total_size = 1;
-  int output_total_size = 1;
-  for (auto& i : A_expr_shape) {
-    CHECK(i.is_constant()) << "Input tensor's shape should be constant value.";
-    input_total_size *= static_cast<int>(i.get_constant());
-  }
-  for (auto& i : new_shape) {
-    output_total_size *= i;
-    new_expr_shape.push_back(Expr(i));
-  }
-  PADDLE_ENFORCE_EQ(
-      input_total_size,
-      output_total_size,
-      phi::errors::InvalidArgument(
-          "In op reshape, the input tensor and output tensor's total size "
-          "should be equal, please check!"));
-  auto out = Identity(A->Reshape(new_expr_shape), name).front();
-  return out;
 }
 
 std::vector<ir::Tensor> Split(

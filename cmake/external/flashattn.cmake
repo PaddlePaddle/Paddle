@@ -103,6 +103,10 @@ else()
         CACHE FILEPATH "flash-attn Library" FORCE)
   endif()
 
+  if(NOT DEFINED FA_JOB_POOLS_COMPILE)
+    set(FA_JOB_POOLS_COMPILE 4)
+  endif()
+
   if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
      OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
      OR WIN32)
@@ -172,7 +176,7 @@ else()
                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                -DCMAKE_JOB_POOL_COMPILE:STRING=compile
-               -DCMAKE_JOB_POOLS:STRING=compile=4
+               -DCMAKE_JOB_POOLS:STRING=compile=${FA_JOB_POOLS_COMPILE}
                -DNVCC_ARCH_BIN=${FA_NVCC_ARCH_BIN}
                ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS

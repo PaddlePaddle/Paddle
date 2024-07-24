@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
 import paddle
 from paddle import _C_ops
 from paddle.base.data_feeder import check_dtype
@@ -21,6 +25,17 @@ from paddle.framework import (
     LayerHelper,
     in_dynamic_or_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
+    from paddle import Tensor
+    from paddle._typing import DTypeLike
+
+    _Algo: TypeAlias = Literal[
+        'weight_only_int8', 'weight_only_int4', 'llm.int8'
+    ]
+    _GroupSize: TypeAlias = Literal[-1, 64, 128]
 
 
 def _get_arch_info():
@@ -36,7 +51,12 @@ def _get_arch_info():
         )
 
 
-def weight_quantize(x, algo="weight_only_int8", arch=None, group_size=-1):
+def weight_quantize(
+    x: Tensor,
+    algo: _Algo = "weight_only_int8",
+    arch: int | None = None,
+    group_size: _GroupSize = -1,
+) -> tuple[Tensor, Tensor]:
     """
     Quantization function for weight_only and llm.int8's weight.
 
@@ -98,8 +118,12 @@ def weight_quantize(x, algo="weight_only_int8", arch=None, group_size=-1):
 
 
 def weight_dequantize(
-    x, scale, algo="weight_only_int8", out_dtype='float16', group_size=-1
-):
+    x: Tensor,
+    scale: Tensor,
+    algo: _Algo = "weight_only_int8",
+    out_dtype: DTypeLike = "float16",
+    group_size: _GroupSize = -1,
+) -> Tensor:
     """
     Dequantization function for weight_only and llm.int8's weight.
 
@@ -154,14 +178,14 @@ def weight_dequantize(
 
 
 def weight_only_linear(
-    x,
-    weight,
-    bias=None,
-    weight_scale=None,
-    weight_dtype="int8",
-    arch=None,
-    group_size=-1,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    weight_scale: Tensor | None = None,
+    weight_dtype: DTypeLike = "int8",
+    arch: int | None = None,
+    group_size: _GroupSize = -1,
+) -> Tensor:
     """
     Applies matrix multiplication of two tensors and then bias addition if provided.
     This method requires CUDA version >= 11.2.
@@ -247,12 +271,12 @@ def weight_only_linear(
 
 
 def llm_int8_linear(
-    x,
-    weight,
-    bias=None,
-    weight_scale=None,
-    threshold=6.0,
-):
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    weight_scale: Tensor | None = None,
+    threshold: float = 6.0,
+) -> Tensor:
     """
     Applies matrix multiplication of two tensors and then bias addition if provided.
     This method requires CUDA version >= 11.2.
@@ -312,7 +336,7 @@ def llm_int8_linear(
         return out
 
 
-def apply_per_channel_scale(x, scales):
+def apply_per_channel_scale(x: Tensor, scales: Tensor) -> Tensor:
     """
     Apply pre-quant per channel scale on activations
 

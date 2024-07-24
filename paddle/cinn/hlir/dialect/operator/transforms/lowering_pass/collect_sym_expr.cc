@@ -73,6 +73,14 @@ void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
           VisitEachDimExprFromTensorShapeOrData(tensor_shape_or_data, DoEach);
         }
       },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs& tensor_array) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, TensorArray should not be handled in backend."));
+        for (const symbol::DimExpr& dim_expr : tensor_array.GetShapeHint()) {
+          DoEach(dim_expr);
+        }
+        return;
+      },
       [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
         return;
       }};

@@ -360,7 +360,61 @@ def linspace(
     if not isinstance(num, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.linspace(
+            tensor_start,
+            tensor_stop,
+            tensor_num,
+            dtype,
+            _current_expected_place(),
+        )
+    elif in_pir_mode():
+        helper = LayerHelper("linspace", **locals())
+
+        start_dtype = convert_dtype(tensor_start.dtype)
+        stop_dtype = convert_dtype(tensor_stop.dtype)
+        out_dtype = convert_dtype(dtype)
+        if isinstance(start, paddle.pir.Value):
+            check_dtype(
+                start.dtype,
+                'start',
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+                'linspace',
+            )
+        else:
+            check_type(start, 'start', (int, float), 'linspace')
+
+        if isinstance(stop, paddle.pir.Value):
+            check_dtype(
+                stop.dtype,
+                'stop',
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+                'linspace',
+            )
+        else:
+            check_type(stop, 'stop', (int, float), 'linspace')
+        if isinstance(num, paddle.pir.Value):
+            check_dtype(num.dtype, 'num', ['int32'], 'linspace')
+        check_dtype(
+            dtype,
+            'dtype',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'linspace',
+        )
+        if (
+            (stop_dtype == "float64" or start_dtype == "float64")
+            and out_dtype in ["float32", "int32"]
+        ) or (
+            (stop_dtype == "int64" or start_dtype == "int64")
+            and out_dtype == "int32"
+        ):
+            raise ValueError(
+                f"The dtype of start/stop is {start_dtype}/{stop_dtype} but the attr(dtype) of linspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of linspace."
+            )
+        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
+
         return _C_ops.linspace(
             tensor_start,
             tensor_stop,
@@ -630,12 +684,7 @@ def _to_tensor_non_static(
                     "\n\tFailed to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
-        elif isinstance(data, paddle.Tensor) and not in_dynamic_mode():
-            data = data._copy_to(place, False)
-            data = _handle_tensor_dtype(data, dtype)
-            data.stop_gradient = stop_gradient
-            return data
-        elif isinstance(data, core.eager.Tensor) and in_dynamic_mode():
+        elif isinstance(data, paddle.Tensor):
             data = data._copy_to(place, False)
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
@@ -725,11 +774,13 @@ def _to_tensor_static(
 
                     Thus, process nested structure in except block
                     '''
-                    data = np.array(data)
+                    array_data = np.array(data)
 
                     # for numpy version <= 1.23.5
-                    if data.dtype == 'object':
+                    if array_data.dtype == 'object':
                         raise RuntimeError("Numpy get dtype `object`.")
+
+                    data = array_data
 
                 except:
                     to_stack_list = [None] * len(data)
@@ -983,7 +1034,12 @@ def fill_constant(
             out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
-        _C_ops.full_(out, shape, value, dtype, place)
+
+        if out.dtype != dtype:
+            raise TypeError(
+                "Required out.dtype == dtype if specifying out, but recevied f{out.dtype} != f{dtype}"
+            )
+        out = _C_ops.full_(out, shape, value, dtype, place)
         out.stop_gradient = True
         return out
 
@@ -2533,12 +2589,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.Value)):
-        if in_dynamic_mode():
-            if output is None:
-                output = _C_ops.assign(input)
-            else:
-                _C_ops.assign_out_(input, output)
-        elif in_pir_mode():
+        if in_dynamic_or_pir_mode():
             if output is None:
                 output = _C_ops.assign(input)
             else:
@@ -2552,6 +2603,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
                     'uint16',
                     'float32',
                     'float64',
+                    'int16',
                     'int32',
                     'int64',
                     'uint8',

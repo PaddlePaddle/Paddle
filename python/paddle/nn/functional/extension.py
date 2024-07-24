@@ -21,7 +21,11 @@ from typing import (
 from paddle import _C_ops, tensor
 from paddle.utils import deprecated
 
-from ...base.data_feeder import check_type, check_variable_and_dtype
+from ...base.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+)
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...framework import (
@@ -221,6 +225,7 @@ def gather_tree(ids: Tensor, parents: Tensor) -> Tensor:
         raise ValueError("The ids's shape must be the same as parents' shape. ")
 
     if in_dynamic_or_pir_mode():
+        check_dtype(parents.dtype, "parents", ['int32', 'int64'], 'gather_tree')
         return _C_ops.gather_tree(ids, parents)
     else:
         helper = LayerHelper('gather_tree', **locals())

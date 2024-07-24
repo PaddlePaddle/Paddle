@@ -58,7 +58,7 @@ inline bool IsInterpretercoreFastGCEnabled() {
                         memory::allocation::AllocatorFacade::Instance()
                                 .IsCUDAMallocAsyncAllocatorUsed() == true,
                     false,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "StreamSafeAllocator and AsyncAllocator shouldn't be "
                         "True together."));
   PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
@@ -67,7 +67,7 @@ inline bool IsInterpretercoreFastGCEnabled() {
                                 .IsCUDAMallocAsyncAllocatorUsed() == false &&
                         FLAGS_new_executor_use_cuda_graph,
                     false,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "When FLAGS_new_executor_use_cuda_graph is true, "
                         "Either IsStreamSafeCUDAAllocatorUsed or "
                         "IsCUDAMallocAsyncAllocatorUsed must be true, but "
@@ -80,12 +80,11 @@ inline bool IsInterpretercoreFastGCEnabled() {
 
 std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
-    const platform::Place& place,
-    const std::vector<Instruction>& vec_instruction);
+    const phi::Place& place, const std::vector<Instruction>& vec_instruction);
 
 std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
-    const platform::Place& place,
+    const phi::Place& place,
     const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction);
 
 }  // namespace framework

@@ -50,7 +50,7 @@ class BlockMultiHeadAttentionXPUPass : public FusePassBase {
 
 void BlockMultiHeadAttentionXPUPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   InplaceBlockMultiHeadAttentionXPU(graph);
@@ -78,7 +78,7 @@ void BlockMultiHeadAttentionXPUPass::InplaceBlockMultiHeadAttentionXPU(
           graph->CreateVarNode(&cache_k_per_batch_maxs_desc);
       phi::DenseTensor cpu_tensor;
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
-          platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+          phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
       cpu_tensor.set_type(phi::DataType::FLOAT32);
       cpu_tensor.Resize({max_batch_size, max_ptr_size});
       std::vector<float> tmp(max_batch_size * max_ptr_size, 0);

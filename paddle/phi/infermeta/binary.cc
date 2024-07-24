@@ -2248,6 +2248,47 @@ void HingeLossInferMeta(const MetaTensor& logits,
   loss->set_dtype(logits.dtype());
 }
 
+void HistogramInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        int64_t bins,
+                        int min,
+                        int max,
+                        bool density,
+                        MetaTensor* out) {
+  PADDLE_ENFORCE_GE(bins,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The bins should be greater than or equal to 1."
+                        "But received nbins is %d",
+                        bins));
+  PADDLE_ENFORCE_GE(
+      max,
+      min,
+      phi::errors::InvalidArgument("max must be larger or equal to min."
+                                   "But received max is %d, min is %d",
+                                   max,
+                                   min));
+  if (weight) {
+    auto weight_dims = weight.dims();
+    PADDLE_ENFORCE_EQ(
+        weight_dims,
+        input.dims(),
+        phi::errors::InvalidArgument(
+            "The shape of weight should be equal to the shape of input."
+            "But received weight shape is [%s], input shape is [%s]",
+            weight_dims,
+            input.dims()));
+  }
+
+  out->set_dims({bins});
+  out->share_lod(input);
+  if (density || weight) {
+    out->set_dtype(DataType::FLOAT32);
+  } else {
+    out->set_dtype(DataType::INT64);
+  }
+}
+
 void HuberLossInferMeta(const MetaTensor& input,
                         const MetaTensor& label,
                         float delta,
@@ -2518,6 +2559,42 @@ void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   }
   out->set_dims(common::make_ddim(dim_out));
   out->set_dtype(x.dtype());
+}
+
+void LegacyCropInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const IntArray& offsets,
+                         const std::vector<int>& shape,
+                         MetaTensor* out) {
+  const auto& x_dim = x.dims();
+  if (!y.initialized()) {
+    PADDLE_ENFORCE_EQ(
+        int64_t(shape.size()),
+        x_dim.size(),
+        phi::errors::InvalidArgument(
+            "The number of elements (%d) of CropOp's "
+            "'shape' attribute should be equal to the number of dimensions "
+            "(%d) of the Input(X).",
+            shape.size(),
+            x_dim.size()));
+    std::vector<int64_t> tensor_shape(shape.size());
+    for (size_t i = 0; i < shape.size(); ++i) {
+      tensor_shape[i] = static_cast<int64_t>(shape[i]);
+    }
+    out->set_dims(common::make_ddim(tensor_shape));
+    out->set_dtype(x.dtype());
+  } else {
+    const auto& y_dim = y.dims();
+    PADDLE_ENFORCE_EQ(common::arity(x_dim),
+                      common::arity(y_dim),
+                      phi::errors::InvalidArgument(
+                          "The number of dimensions (%d) of CropOp's input(X)"
+                          " must be equal to that (%d) of input(Y).",
+                          common::arity(x_dim),
+                          common::arity(y_dim)));
+    out->set_dims(y_dim);
+    out->set_dtype(y.dtype());
+  }
 }
 
 void LimitByCapacityInferMeta(const MetaTensor& expert_count,
@@ -3016,6 +3093,82 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
     out->set_dims(common::make_ddim(out_dims_array));
   }
   out->share_lod(x);
+}
+
+void MulticlassNmsv1InferMeta(const MetaTensor& bboxes,
+                              const MetaTensor& scores,
+                              float score_threshold,
+                              int nms_top_k,
+                              int keep_top_k,
+                              float nms_threshold,
+                              float nms_eta,
+                              bool normalized,
+                              int background_label,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  const auto& box_dims = bboxes.dims();
+  const auto& score_dims = scores.dims();
+  int score_size = static_cast<int>(score_dims.size());
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        score_size == 2 || score_size == 3,
+        true,
+        phi::errors::InvalidArgument("The rank of Input(Scores) must be 2 or 3"
+                                     ". But received rank = %d",
+                                     score_size));
+    PADDLE_ENFORCE_EQ(
+        box_dims.size(),
+        3,
+        phi::errors::InvalidArgument("The rank of Input(BBoxes) must be 3"
+                                     ". But received rank = %d",
+                                     box_dims.size()));
+    if (score_size == 3) {
+      PADDLE_ENFORCE_EQ(box_dims[2] == 4 || box_dims[2] == 8 ||
+                            box_dims[2] == 16 || box_dims[2] == 24 ||
+                            box_dims[2] == 32,
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The last dimension of Input"
+                            "(BBoxes) must be 4 or 8, "
+                            "represents the layout of coordinate "
+                            "[xmin, ymin, xmax, ymax] or "
+                            "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
+                            "8 points: [xi, yi] i= 1,2,...,8 or "
+                            "12 points: [xi, yi] i= 1,2,...,12 or "
+                            "16 points: [xi, yi] i= 1,2,...,16"));
+      PADDLE_ENFORCE_EQ(
+          box_dims[1],
+          score_dims[2],
+          phi::errors::InvalidArgument(
+              "The 2nd dimension of Input(BBoxes) must be equal to "
+              "last dimension of Input(Scores), which represents the "
+              "predicted bboxes."
+              "But received box_dims[1](%s) != score_dims[2](%s)",
+              box_dims[1],
+              score_dims[2]));
+    } else {
+      PADDLE_ENFORCE_EQ(box_dims[2],
+                        4,
+                        phi::errors::InvalidArgument(
+                            "The last dimension of Input"
+                            "(BBoxes) must be 4. But received dimension = %d",
+                            box_dims[2]));
+      PADDLE_ENFORCE_EQ(
+          box_dims[1],
+          score_dims[1],
+          phi::errors::InvalidArgument(
+              "The 2nd dimension of Input"
+              "(BBoxes) must be equal to the 2nd dimension of Input(Scores). "
+              "But received box dimension = %d, score dimension = %d",
+              box_dims[1],
+              score_dims[1]));
+    }
+  }
+  // Here the box_dims[0] is not the real dimension of output.
+  // It will be rewritten in the computing kernel.
+  out->set_dims({-1, box_dims[2] + 2});
+  out->set_dtype(scores.dtype());
 }
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {

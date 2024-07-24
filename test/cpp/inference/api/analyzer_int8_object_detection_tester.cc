@@ -153,9 +153,9 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   PADDLE_ENFORCE_LE(
       static_cast<size_t>(num_images),
       iterations * test_data_batch_size,
-      ::paddle::platform::errors::Fatal(
-          "The requested quantization warmup data size " +
-          std::to_string(num_images) + " is bigger than all test data size."));
+      ::phi::errors::Fatal("The requested quantization warmup data size " +
+                           std::to_string(num_images) +
+                           " is bigger than all test data size."));
 
   PaddleTensor images;
   images.name = "image";
@@ -244,12 +244,11 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
                 static_cast<int64_t *>(difficult.data.data()) + objects_accum);
     objects_accum = objects_accum + objects_remain;
   }
-  PADDLE_ENFORCE_EQ(
-      static_cast<size_t>(num_objects),
-      static_cast<size_t>(objects_accum),
-      ::paddle::platform::errors::Fatal("The requested num of objects " +
-                                        std::to_string(num_objects) +
-                                        " is the same as objects_accum."));
+  PADDLE_ENFORCE_EQ(static_cast<size_t>(num_objects),
+                    static_cast<size_t>(objects_accum),
+                    ::phi::errors::Fatal("The requested num of objects " +
+                                         std::to_string(num_objects) +
+                                         " is the same as objects_accum."));
 
   auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(4);
   (*warmup_data)[0] = std::move(images);

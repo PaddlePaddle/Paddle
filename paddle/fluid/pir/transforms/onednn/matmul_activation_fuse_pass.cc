@@ -255,13 +255,22 @@ class MatmulClipFusePattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
+    const auto &fuse_alpha = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("value1");
+        });
+    const auto &fuse_beta = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("value2");
+        });
+
     std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
         {"trans_x", pat.Attr("transpose_x")},
         {"trans_y", pat.Attr("transpose_y")},
         {"matmul_alpha", res.Float32Attr(1.0f)},
         {"fuse_activation", res.StrAttr("clip")},
-        {"fuse_alpha", pat.Attr("value1")},
-        {"fuse_beta", pat.Attr("value2")},
+        {"fuse_alpha", fuse_alpha},
+        {"fuse_beta", fuse_beta},
         {"fused_output_scale", res.Float32Attr(1.0f)},
         {"fused_reshape_x", res.VectorInt32Attr({})},
         {"fused_transpose_x", res.VectorInt32Attr({})},
@@ -565,13 +574,22 @@ class FusedMatmulClipFusePattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
+    const auto &fuse_alpha = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("value1");
+        });
+    const auto &fuse_beta = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("value2");
+        });
+
     std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
         {"trans_x", pat.Attr("transpose_x")},
         {"trans_y", pat.Attr("transpose_y")},
         {"matmul_alpha", pat.Attr("matmul_alpha")},
         {"fuse_activation", res.StrAttr("clip")},
-        {"fuse_alpha", pat.Attr("value1")},
-        {"fuse_beta", pat.Attr("value2")},
+        {"fuse_alpha", fuse_alpha},
+        {"fuse_beta", fuse_beta},
         {"fused_output_scale", pat.Attr("fused_output_scale")},
         {"fused_reshape_x", pat.Attr("fused_reshape_x")},
         {"fused_transpose_x", pat.Attr("fused_transpose_x")},

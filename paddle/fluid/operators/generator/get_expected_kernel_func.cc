@@ -271,8 +271,7 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
     for (auto& tensor : tensor_array) {
       if (!(tensor.place().GetType() == phi::AllocationType::GPUPINNED)) {
         PADDLE_ENFORCE_EQ(
-            platform::is_same_place(tensor.place(),
-                                    ctx.device_context().GetPlace()),
+            phi::is_same_place(tensor.place(), ctx.device_context().GetPlace()),
             true,
             phi::errors::InvalidArgument(
                 "Place of context is %s. Place of input tensor is %s. They "
@@ -439,6 +438,13 @@ phi::KernelKey GetBincountExpectedKernelType(
                        ? op_ptr->IndicateVarDataType(ctx, "Weights")
                        : op_ptr->IndicateVarDataType(ctx, "X");
   return phi::KernelKey(data_type, ctx.device_context().GetPlace());
+}
+
+phi::KernelKey GetMulticlassNmsExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Scores"),
+                        phi::CPUPlace());
 }
 
 }  // namespace paddle::operators

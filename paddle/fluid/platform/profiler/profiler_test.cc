@@ -23,11 +23,11 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
+#include "paddle/phi/common/place.h"
 
 TEST(ProfilerTest, TestHostTracer) {
   using paddle::platform::Profiler;
@@ -97,7 +97,6 @@ TEST(ProfilerTest, TestCudaTracer) {
 }
 
 TEST(ProfilerTest, TestHostTracerForMem) {
-  using paddle::platform::CPUPlace;
   using paddle::platform::EnableHostEventRecorder;
   using paddle::platform::MemTraceEventNode;
   using paddle::platform::Profiler;
@@ -108,6 +107,7 @@ TEST(ProfilerTest, TestHostTracerForMem) {
   using paddle::platform::RecordMemEvent;
   using paddle::platform::TracerEventType;
   using paddle::platform::TracerMemEventType;
+  using phi::CPUPlace;
   ProfilerOptions options;
   options.trace_level = 1;
   options.trace_switch = 3;

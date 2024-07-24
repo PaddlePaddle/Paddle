@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace memory {
@@ -22,8 +22,7 @@ namespace allocation {
 
 class CUDAManagedAllocator : public Allocator {
  public:
-  explicit CUDAManagedAllocator(const platform::CUDAPlace& place)
-      : place_(place) {}
+  explicit CUDAManagedAllocator(const phi::GPUPlace& place) : place_(place) {}
 
   bool IsAllocThreadSafe() const override;
 
@@ -32,7 +31,7 @@ class CUDAManagedAllocator : public Allocator {
   phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
-  platform::CUDAPlace place_;
+  phi::GPUPlace place_;
   std::once_flag once_flag_;
 };
 

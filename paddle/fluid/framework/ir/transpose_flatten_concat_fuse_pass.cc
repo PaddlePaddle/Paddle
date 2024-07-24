@@ -97,23 +97,21 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
     for (int i = 0; i < times; i++) {
       PADDLE_ENFORCE_NOT_NULL(
           subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i))),
-          platform::errors::NotFound("Can not find transpose%d in subgraph.",
-                                     i));
+          phi::errors::NotFound("Can not find transpose%d in subgraph.", i));
       PADDLE_ENFORCE_NOT_NULL(
           subgraph.at(pattern.GetPDNode("transpose_out" + std::to_string(i))),
-          platform::errors::NotFound(
-              "Can not find transpose_out%d in subgraph.", i));
+          phi::errors::NotFound("Can not find transpose_out%d in subgraph.",
+                                i));
       PADDLE_ENFORCE_NOT_NULL(
           subgraph.at(pattern.GetPDNode("flatten" + std::to_string(i))),
-          platform::errors::NotFound("Can not find flatten%d in subgraph.", i));
+          phi::errors::NotFound("Can not find flatten%d in subgraph.", i));
       PADDLE_ENFORCE_NOT_NULL(
           subgraph.at(pattern.GetPDNode("flatten_out" + std::to_string(i))),
-          platform::errors::NotFound("Can not find flatten_out%d in subgraph.",
-                                     i));
+          phi::errors::NotFound("Can not find flatten_out%d in subgraph.", i));
       PADDLE_ENFORCE_NOT_NULL(
           subgraph.at(input_nodes[i]),
-          platform::errors::NotFound("Can not find %s in subgraph.",
-                                     input_nodes[i]->name()));
+          phi::errors::NotFound("Can not find %s in subgraph.",
+                                input_nodes[i]->name()));
 
       if (i == 0) {
         trans_axis0 = PADDLE_GET_CONST(

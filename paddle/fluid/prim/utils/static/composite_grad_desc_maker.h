@@ -518,7 +518,7 @@ class CompositeGradOpMakerBase {
                          const std::vector<std::string>& origin_names) {
     PADDLE_ENFORCE_EQ(outputs.size(),
                       origin_names.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The size of outputs must be equal to the size "
                           "of the origin_names.",
                           outputs.size(),
@@ -575,7 +575,7 @@ class CompositeGradOpMakerBase {
     PADDLE_ENFORCE_NE(
         it,
         map.end(),
-        platform::errors::NotFound("Cannot find attribute (%s).", name));
+        phi::errors::NotFound("Cannot find attribute (%s).", name));
     return it->second;
   }
 

@@ -12,11 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import typing
+from typing import TYPE_CHECKING, Callable, Sequence, Tuple, TypeVar, overload
 
 import paddle
 from paddle.base import framework
 from paddle.incubate.autograd import primapi, utils
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import TensorOrTensors
+
+    _OutputT = TypeVar("_OutputT", Tensor, Tuple[Tensor, ...])
+
+
+@overload
+def vjp(
+    func: Callable[..., _OutputT],
+    xs: Tensor,
+    v: TensorOrTensors | None = None,
+) -> tuple[_OutputT, Tensor]:
+    ...
+
+
+@overload
+def vjp(
+    func: Callable[..., _OutputT],
+    xs: Sequence[Tensor],
+    v: TensorOrTensors | None = None,
+) -> tuple[_OutputT, tuple[Tensor, ...]]:
+    ...
 
 
 def vjp(func, xs, v=None):
@@ -75,6 +102,24 @@ def vjp(func, xs, v=None):
     _check_v_shape(v, ys)
 
     return ys, _grad(ys, xs, v)
+
+
+@overload
+def jvp(
+    func: Callable[..., _OutputT],
+    xs: Tensor,
+    v: TensorOrTensors | None = None,
+) -> tuple[_OutputT, Tensor]:
+    ...
+
+
+@overload
+def jvp(
+    func: Callable[..., _OutputT],
+    xs: Sequence[Tensor],
+    v: TensorOrTensors | None = None,
+) -> tuple[_OutputT, tuple[Tensor, ...]]:
+    ...
 
 
 def jvp(func, xs, v=None):
@@ -239,17 +284,22 @@ class Jacobian:
 
     """
 
-    def __init__(self, func, xs, is_batched=False):
+    def __init__(
+        self,
+        func: Callable[..., TensorOrTensors],
+        xs: TensorOrTensors,
+        is_batched: bool = False,
+    ) -> None:
         if not is_batched:
             self._jacobian = _JacobianNoBatch(func, xs)
         else:
             self._jacobian = _JacobianBatchFirst(func, xs)
 
-    def __getitem__(self, indexes):
+    def __getitem__(self, indexes: int | slice) -> Tensor:
         return self._jacobian[indexes]
 
     @property
-    def shape(self):
+    def shape(self) -> list[int]:
         """The shape of flattened Jacobian matrix."""
         return self._jacobian.shape
 
@@ -302,7 +352,14 @@ class Hessian:
 
     """
 
-    def __init__(self, func, xs, is_batched=False):
+    symbolic: Jacobian
+
+    def __init__(
+        self,
+        func: Callable[..., TensorOrTensors],
+        xs: TensorOrTensors,
+        is_batched: bool = False,
+    ) -> None:
         def _jac_func(*xs):
             jac = Jacobian(func, xs, is_batched=is_batched)
             if (is_batched and jac.shape[1] != 1) or (
@@ -315,11 +372,11 @@ class Hessian:
 
         self.symbolic = Jacobian(_jac_func, xs, is_batched=is_batched)
 
-    def __getitem__(self, indexes):
+    def __getitem__(self, indexes: int | slice) -> Tensor:
         return self.symbolic[indexes]
 
     @property
-    def shape(self):
+    def shape(self) -> list[int]:
         """The shape of flattened Hessian matrix."""
         return self.symbolic.shape
 

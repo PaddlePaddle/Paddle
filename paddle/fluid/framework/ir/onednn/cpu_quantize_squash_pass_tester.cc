@@ -85,7 +85,7 @@ void SetOp(ProgramDesc* prog,
     op->SetInput("Input", {inputs[0]});
     PADDLE_ENFORCE_EQ(inputs.size(),
                       2UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The fc inputs should contain input and weights, but "
                           "now the size of inputs is %d.",
                           inputs.size()));
@@ -713,7 +713,7 @@ ProgramDesc BuildQuantConv2dProgramDesc(const bool& use_mkldnn,
 }
 
 void InitTensorHolder(Scope* scope,
-                      const paddle::platform::Place& place,
+                      const phi::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<phi::DenseTensor>();

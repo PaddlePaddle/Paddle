@@ -97,7 +97,11 @@ class ContainerVariable(VariableBase):
         return reduce(
             operator.add,
             [[type_guard, len_guard]]
-            + [item.make_stringified_guard() for item in guard_variables],
+            + [
+                item.make_stringified_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
         )
 
 

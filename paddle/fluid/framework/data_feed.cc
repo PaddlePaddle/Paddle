@@ -207,21 +207,21 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
 }
 
 void DataFeed::SetBatchSize(int batch_size) {
-  PADDLE_ENFORCE_GT(batch_size,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "Batch size %d is illegal.", batch_size));
+  PADDLE_ENFORCE_GT(
+      batch_size,
+      0,
+      phi::errors::InvalidArgument("Batch size %d is illegal.", batch_size));
   default_batch_size_ = batch_size;
 }
 
 bool DataFeed::PickOneFile(std::string* filename) {
   PADDLE_ENFORCE_NOT_NULL(
       mutex_for_pick_file_,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "You should call SetFileListMutex before PickOneFile"));
   PADDLE_ENFORCE_NOT_NULL(
       file_idx_,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "You should call SetFileListIndex before PickOneFile"));
   std::unique_lock<std::mutex> lock(*mutex_for_pick_file_);
   VLOG(4) << "filelist_ size: " << filelist_.size();
@@ -238,21 +238,21 @@ void DataFeed::CheckInit() {
   PADDLE_ENFORCE_EQ(
       finish_init_,
       true,
-      platform::errors::PreconditionNotMet("DataFeed initialization failed."));
+      phi::errors::PreconditionNotMet("DataFeed initialization failed."));
 }
 
 void DataFeed::CheckSetFileList() {
   PADDLE_ENFORCE_EQ(
       finish_set_filelist_,
       true,
-      platform::errors::PreconditionNotMet("DataFeed set filelist failed."));
+      phi::errors::PreconditionNotMet("DataFeed set filelist failed."));
 }
 
 void DataFeed::CheckStart() {
-  PADDLE_ENFORCE_EQ(finish_start_,
-                    true,
-                    platform::errors::PreconditionNotMet(
-                        "Datafeed has not started running yet."));
+  PADDLE_ENFORCE_EQ(
+      finish_start_,
+      true,
+      phi::errors::PreconditionNotMet("Datafeed has not started running yet."));
 }
 
 void DataFeed::AssignFeedVar(const Scope& scope) {
@@ -263,7 +263,7 @@ void DataFeed::AssignFeedVar(const Scope& scope) {
 }
 
 void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
-  if (platform::is_cpu_place(this->place_)) {
+  if (phi::is_cpu_place(this->place_)) {
     memcpy(dst, src, size);
   } else {
 #ifdef PADDLE_WITH_CUDA
@@ -273,7 +273,7 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
 #elif defined(PADDLE_WITH_XPU_KP)
     xpu_memcpy(dst, src, size, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
 #else
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Not supported GPU/ROCM, please compile with option WITH_GPU=ON or "
         "WITH_ROCM=ON."));
 #endif
@@ -285,7 +285,7 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
   PADDLE_ENFORCE_GT(
       queue_size,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Queue size %d is illegal in PrivateQueueDataFeed.", queue_size));
   queue_size_ = queue_size;
   queue_ = paddle::framework::MakeChannel<T>();
@@ -647,7 +647,7 @@ void MultiSlotDataFeed::Init(
   PADDLE_ENFORCE_EQ(
       data_feed_desc.has_multi_slot_desc(),
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in MultiSlotDataFeed."));
   const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
@@ -892,7 +892,7 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
            << " which is illegal.\n";
         ss << "\n";
 
-        PADDLE_THROW(platform::errors::InvalidArgument(ss.str()));
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       }
 
       if (idx != -1) {
@@ -941,7 +941,7 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
       PADDLE_ENFORCE_NE(
           num,
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
@@ -1013,7 +1013,7 @@ void MultiSlotDataFeed::PutToFeedVec(
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
     VLOG(4) << "total_instance: " << total_instance;
-    // platform::CPUPlace()
+    // phi::CPUPlace()
     VLOG(4) << "this->place_: " << this->place_;
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
@@ -1053,7 +1053,7 @@ void MultiSlotInMemoryDataFeed::Init(
   PADDLE_ENFORCE_EQ(
       data_feed_desc.has_multi_slot_desc(),
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in MultiSlotInMemoryDataFeed."));
   const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
@@ -1208,7 +1208,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       PADDLE_ENFORCE_NE(
           num,
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
@@ -1224,7 +1224,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
 #ifdef PADDLE_WITH_PSLIB
       if (parse_uid_ && all_slots_[i] == uid_slot_) {
         PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
-                       platform::errors::PreconditionNotMet(
+                       phi::errors::PreconditionNotMet(
                            "The uid has to be uint64 and single.\n"
                            "please check this error line: %s",
                            str));
@@ -1295,7 +1295,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
       PADDLE_ENFORCE_NE(
           num,
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
@@ -1421,7 +1421,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(const Record* ins_vec, int num) {
         std::vector<size_t> tmp_offset;
         PADDLE_ENFORCE_EQ(slot_offset.size(),
                           2,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "In batch reader, the sparse tensor lod size "
                               "must be 2, but received %d.",
                               slot_offset.size()));
@@ -1521,7 +1521,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
         std::vector<size_t> tmp_offset;
         PADDLE_ENFORCE_EQ(slot_offset.size(),
                           2,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "In batch reader, the sparse tensor lod size "
                               "must be 2, but received %d.",
                               slot_offset.size()));
@@ -1578,7 +1578,7 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
       PADDLE_ENFORCE_EQ(
           total_dims,
           total_instance,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The actual data size of slot[%s] doesn't match its declaration. "
               "The actual data size of slot is %lld"
               ", and its declaration is %lld.",
@@ -1609,7 +1609,7 @@ int PrivateInstantDataFeed<T>::Next() {
   PADDLE_ENFORCE_EQ(
       true,
       ParseOneMiniBatch(),
-      platform::errors::InvalidArgument("Fail to parse mini-batch data."));
+      phi::errors::InvalidArgument("Fail to parse mini-batch data."));
   PutToFeedVec();
   return ins_vec_[0].GetBatchSize();
 }
@@ -1623,7 +1623,7 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
   PADDLE_ENFORCE_EQ(
       data_feed_desc.has_multi_slot_desc(),
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in PrivateInstantDataFeed."));
   const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
@@ -1670,7 +1670,7 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   PADDLE_ENFORCE_NE(
       fd_,
       -1,
-      platform::errors::Unavailable(
+      phi::errors::Unavailable(
           "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
           filename.c_str()));
 
@@ -1683,7 +1683,7 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   PADDLE_ENFORCE_NE(
       buffer_,
       MAP_FAILED,
-      platform::errors::Unavailable(
+      phi::errors::Unavailable(
           "Memory map failed when create shared memory, error number is %s.",
           strerror(errno)));
 
@@ -1720,7 +1720,7 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
       PADDLE_ENFORCE_NE(
           num,
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
@@ -1766,7 +1766,7 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
   }
 
   PADDLE_ENFORCE(batch_size_ == default_batch_size_ || offset_ == end_,
-                 platform::errors::InvalidArgument(
+                 phi::errors::InvalidArgument(
                      "The batch size id not equal to default batch size, or "
                      "the offset is not equal to end index."
                      "The batch size is %d, default batcch size is %d, offset "
@@ -2041,7 +2041,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   finish_set_filelist_ = false;
   finish_start_ = false;
   PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
-                 platform::errors::PreconditionNotMet(
+                 phi::errors::PreconditionNotMet(
                      "Multi_slot_desc has not been set in data_feed_desc"));
   const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
@@ -2720,7 +2720,7 @@ bool SlotRecordInMemoryDataFeed::Start() {
   }
   this->finish_start_ = true;
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  CHECK(paddle::platform::is_gpu_place(this->place_));
+  CHECK(phi::is_gpu_place(this->place_));
   for (int i = 0; i < pack_thread_num_ + 1; i++) {
     auto pack = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
     pack_vec_.push_back(pack);
@@ -2895,7 +2895,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
                         slot_total_num * sizeof(size_t),
                         cudaMemcpyDeviceToHost));
   auto* dev_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(this->place_));
+      phi::DeviceContextPool::Instance().Get(this->place_));
   for (int j = 0; j < use_slot_size_; ++j) {
     if (scope_feed_vec_.size() > 0) {
       if (scope_feed_vec_.begin()->second[j] == nullptr) {
@@ -3032,7 +3032,7 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
       lod.resize(1);
       lod[0].resize(offset_cols_size);
       phi::MixVector<size_t> mixv_lod(&lod[0]);
-      memcpy(mixv_lod.MutableData(platform::CPUPlace()),
+      memcpy(mixv_lod.MutableData(phi::CPUPlace()),
              off_start_ptr,
              offset_cols_size * sizeof(size_t));
     }
@@ -3062,7 +3062,7 @@ MiniBatchGpuPack* SlotRecordInMemoryDataFeed::get_pack(
   }
 }
 
-MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
+MiniBatchGpuPack::MiniBatchGpuPack(const phi::Place& place,
                                    const std::vector<UsedSlotInfo>& infos,
                                    phi::StreamId stream_id) {
   place_ = place;
@@ -3099,7 +3099,7 @@ MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
 
 MiniBatchGpuPack::~MiniBatchGpuPack() {}
 
-void MiniBatchGpuPack::reset(const paddle::platform::Place& place) {
+void MiniBatchGpuPack::reset(const phi::Place& place) {
   place_ = place;
   stream_holder_.reset(new phi::CUDAStream(place));
   stream_ = stream_holder_->raw_stream();
