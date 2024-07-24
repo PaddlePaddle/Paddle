@@ -28,11 +28,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/function.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
@@ -59,7 +59,7 @@ static T PyObjectCast(PyObject* obj) {
   try {
     return py::cast<T>(py::handle(obj));
   } catch (py::cast_error&) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Python object is not type of %s, the real type is %s",
         typeid(T).name(),
         obj->ob_type->tp_name));
@@ -468,7 +468,7 @@ struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
     PADDLE_ENFORCE_NE(
         m,
         nullptr,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input mesh of DistTensorConverter() shouldn't be nullptr."));
     mesh = m;
   }
@@ -498,7 +498,7 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
   PADDLE_ENFORCE_NE(
       mesh,
       nullptr,
-      platform::errors::InvalidArgument("Input mesh should not be nullptr."));
+      phi::errors::InvalidArgument("Input mesh should not be nullptr."));
   DistTensorConverter(mesh).apply(&args...);
 }
 

@@ -1544,7 +1544,7 @@ inline void QKVWeightsBiasProcess(phi::DenseTensor* wq_tensor,
                                   const int dim_embed) {
   switch (wq_tensor->dtype()) {
     case phi::DataType::FLOAT16:
-      QKVWeightsProcess<platform::float16>(
+      QKVWeightsProcess<phi::dtype::float16>(
           wq_tensor, wk_tensor, wv_tensor, num_head, dim_head, dim_embed);
       break;
     case phi::DataType::FLOAT32:
@@ -1556,14 +1556,14 @@ inline void QKVWeightsBiasProcess(phi::DenseTensor* wq_tensor,
           wq_tensor, wk_tensor, wv_tensor, num_head, dim_head, dim_embed);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "fused_multi_transformer not supported weight dtype. "
           "we now only support fp32/fp16/int8."));
       break;
   }
   switch (bq_tensor->dtype()) {
     case phi::DataType::FLOAT16:
-      QKVBiasProcess<platform::float16>(
+      QKVBiasProcess<phi::dtype::float16>(
           bq_tensor, bk_tensor, bv_tensor, num_head, dim_head, dim_embed);
       break;
     case phi::DataType::FLOAT32:
@@ -1571,7 +1571,7 @@ inline void QKVWeightsBiasProcess(phi::DenseTensor* wq_tensor,
           bq_tensor, bk_tensor, bv_tensor, num_head, dim_head, dim_embed);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "fused_multi_transformer not supported bias dtype. "
           "we now only support fp32/fp16."));
       break;
@@ -1657,7 +1657,7 @@ inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
                                          const int dim_embed) {
   switch (qkv_w_tensor->dtype()) {
     case phi::DataType::FLOAT16:
-      QKVWeightsProcessFuseQKV<platform::float16>(
+      QKVWeightsProcessFuseQKV<phi::dtype::float16>(
           qkv_w_tensor, num_head, dim_head, dim_embed);
       break;
     case phi::DataType::FLOAT32:
@@ -1669,21 +1669,21 @@ inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
           qkv_w_tensor, num_head, dim_head, dim_embed);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "fused_multi_transformer not supported weight dtype. "
           "we now only support fp32/fp16/int8."));
       break;
   }
   switch (qkv_b_tensor->dtype()) {
     case phi::DataType::FLOAT16:
-      QKVBiasProcessFuseQKV<platform::float16>(
+      QKVBiasProcessFuseQKV<phi::dtype::float16>(
           qkv_b_tensor, num_head, dim_head, dim_embed);
       break;
     case phi::DataType::FLOAT32:
       QKVBiasProcessFuseQKV<float>(qkv_b_tensor, num_head, dim_head, dim_embed);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "fused_multi_transformer not supported bias dtype. "
           "we now only support fp32/fp16."));
       break;
@@ -2393,7 +2393,7 @@ void FusedMultiTransformerEncoderPass::ApplyImpl(Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::Fatal(
+      phi::errors::Fatal(
           "During the multi_transformer pass, The scope should not be null."));
 
   VLOG(3) << "Running fused_multi_transformer_encoder_pass.";
@@ -3213,9 +3213,8 @@ void FusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::Fatal(
-          "During the fused_multi_transformer_encoder pass, "
-          "The scope should not be null."));
+      phi::errors::Fatal("During the fused_multi_transformer_encoder pass, "
+                         "The scope should not be null."));
 
   VLOG(3) << "Running fused_multi_transformer_encoder_fuse_qkv_pass.";
   if (graph->IsMainGraph()) {
@@ -4027,7 +4026,7 @@ void MultiDevicesFusedMultiTransformerEncoderPass::ApplyImpl(
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::Fatal(
+      phi::errors::Fatal(
           "During the multi_transformer pass, The scope should not be null."));
 
   VLOG(3) << "Running multi_devices_fused_multi_transformer_encoder_pass.";
@@ -4896,9 +4895,8 @@ void MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::Fatal(
-          "During the fused_multi_transformer_encoder pass, "
-          "The scope should not be null."));
+      phi::errors::Fatal("During the fused_multi_transformer_encoder pass, "
+                         "The scope should not be null."));
 
   VLOG(3)
       << "Running multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass.";

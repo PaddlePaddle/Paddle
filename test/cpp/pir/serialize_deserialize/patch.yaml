@@ -13,17 +13,24 @@ op_patches:
         object : parameter_name
         type : pir::StrAttribute
         default : "fc_0"
+      - action : add_attr
+        object : new_attribute
+        type : pir::StrAttribute
+        default : "new.attribute"
 
-  # - op_name : builtin.parameter
-  #   actions :
-  #     - action : add_attr
-  #       object : new_attribute
-  #       type : pir::StrAttribute
-  #       default : "new.attribute"
+  - op_name : pd_op.fetch
+    actions :
+      - action : delete_attr
+        object : col
 
-  # - op_name : pd_op.fetch
-  #   actions :
-  #     - action : delete_attr
-  #       object : col
+# attr_patches:
+#   - attr_name : pir::ArrayAttribute
+#     actions:
+#       - action : modify_name
+#         default : pir::AArrayAttribute
 
-attr_pathes:
+# type_patches:
+#   - type_name : pir::BoolType
+#     actions:
+#       - action : modify_name
+#         default : pir::BBoolType

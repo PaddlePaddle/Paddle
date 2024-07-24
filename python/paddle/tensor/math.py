@@ -7616,7 +7616,7 @@ def bitwise_left_shift(
                 [[2  , 8  , 32 , 128],
                     [64 , 136, 128, 130]])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_left_shift(x, y, is_arithmetic)
     return _bitwise_op(
         op_name="bitwise_left_shift",
@@ -7703,7 +7703,7 @@ def bitwise_right_shift(
                 [[123, 59 , 27 , 11 ],
                     [60 , 29 , 56 , 95 ]])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_right_shift(x, y, is_arithmetic)
 
     return _bitwise_op(

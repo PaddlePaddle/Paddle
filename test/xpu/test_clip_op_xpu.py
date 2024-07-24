@@ -150,48 +150,59 @@ class TestClipAPI(unittest.TestCase):
 
     def test_clip(self):
         paddle.enable_static()
-        data_shape = [1, 9, 9, 4]
-        data = np.random.random(data_shape).astype('float32')
-        images = paddle.static.data(
-            name='image', shape=data_shape, dtype='float32'
-        )
-        min = paddle.static.data(name='min', shape=[1], dtype='float32')
-        max = paddle.static.data(name='max', shape=[1], dtype='float32')
+        train_prog = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(train_prog, startup):
+            data_shape = [1, 9, 9, 4]
+            data = np.random.random(data_shape).astype('float32')
+            images = paddle.static.data(
+                name='image', shape=data_shape, dtype='float32'
+            )
+            min = paddle.static.data(name='min', shape=[1], dtype='float32')
+            max = paddle.static.data(name='max', shape=[1], dtype='float32')
 
-        place = (
-            base.XPUPlace(0)
-            if base.core.is_compiled_with_xpu()
-            else base.CPUPlace()
-        )
-        exe = base.Executor(place)
+            place = (
+                base.XPUPlace(0)
+                if base.core.is_compiled_with_xpu()
+                else base.CPUPlace()
+            )
+            exe = base.Executor(place)
 
-        out_1 = self._executed_api(images, min=min, max=max)
-        out_2 = self._executed_api(images, min=0.2, max=0.9)
-        out_3 = self._executed_api(images, min=0.3)
-        out_4 = self._executed_api(images, max=0.7)
-        out_5 = self._executed_api(images, min=min)
-        out_6 = self._executed_api(images, max=max)
-        out_7 = self._executed_api(images, max=-1.0)
-        out_8 = self._executed_api(images)
+            out_1 = self._executed_api(images, min=min, max=max)
+            out_2 = self._executed_api(images, min=0.2, max=0.9)
+            out_3 = self._executed_api(images, min=0.3)
+            out_4 = self._executed_api(images, max=0.7)
+            out_5 = self._executed_api(images, min=min)
+            out_6 = self._executed_api(images, max=max)
+            out_7 = self._executed_api(images, max=-1.0)
+            out_8 = self._executed_api(images)
+            res1, res2, res3, res4, res5, res6, res7, res8 = exe.run(
+                train_prog,
+                feed={
+                    "image": data,
+                    "min": np.array([0.2]).astype('float32'),
+                    "max": np.array([0.8]).astype('float32'),
+                },
+                fetch_list=[
+                    out_1,
+                    out_2,
+                    out_3,
+                    out_4,
+                    out_5,
+                    out_6,
+                    out_7,
+                    out_8,
+                ],
+            )
 
-        res1, res2, res3, res4, res5, res6, res7, res8 = exe.run(
-            base.default_main_program(),
-            feed={
-                "image": data,
-                "min": np.array([0.2]).astype('float32'),
-                "max": np.array([0.8]).astype('float32'),
-            },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8],
-        )
-
-        np.testing.assert_allclose(res1, data.clip(0.2, 0.8))
-        np.testing.assert_allclose(res2, data.clip(0.2, 0.9))
-        np.testing.assert_allclose(res3, data.clip(min=0.3))
-        np.testing.assert_allclose(res4, data.clip(max=0.7))
-        np.testing.assert_allclose(res5, data.clip(min=0.2))
-        np.testing.assert_allclose(res6, data.clip(max=0.8))
-        np.testing.assert_allclose(res7, data.clip(max=-1))
-        np.testing.assert_allclose(res8, data)
+            np.testing.assert_allclose(res1, data.clip(0.2, 0.8))
+            np.testing.assert_allclose(res2, data.clip(0.2, 0.9))
+            np.testing.assert_allclose(res3, data.clip(min=0.3))
+            np.testing.assert_allclose(res4, data.clip(max=0.7))
+            np.testing.assert_allclose(res5, data.clip(min=0.2))
+            np.testing.assert_allclose(res6, data.clip(max=0.8))
+            np.testing.assert_allclose(res7, data.clip(max=-1))
+            np.testing.assert_allclose(res8, data)
         paddle.disable_static()
 
     def test_clip_dygraph(self):

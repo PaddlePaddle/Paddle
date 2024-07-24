@@ -189,22 +189,12 @@ def to_pir_pt_test(fn):
                 return
             with static.scope_guard(static.Scope()):
                 with static.program_guard(static.Program()):
-                    print(
-                        "before:",
-                        os.environ.get(ENV_ENABLE_PIR_WITH_PT.name),
-                        flush=True,
-                    )
                     with EnvironmentVariableGuard(ENV_ENABLE_PIR_WITH_PT, True):
                         try:
                             set_flags({pt_flag: True})
                             ir_outs = fn(*args, **kwargs)
                         finally:
                             set_flags({pt_flag: original_flag_value})
-                    print(
-                        "after:",
-                        os.environ.get(ENV_ENABLE_PIR_WITH_PT.name),
-                        flush=True,
-                    )
         return ir_outs
 
     return impl

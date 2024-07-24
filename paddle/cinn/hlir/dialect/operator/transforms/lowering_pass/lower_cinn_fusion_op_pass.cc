@@ -32,18 +32,13 @@ namespace cinn::dialect::ir::details {
 
 pir::Operation* ProcessDyShapeGroup(const OpLoweringGroupPtr& group,
                                     pir::PatternRewriter& rewriter) {  // NOLINT
-  // NOTE(dev): Need UpdateShapeOrDataExprs firstly and the logic
-  // will be migated into BucketLower later.
-  UpdateGroupShapeOrDataExprs(const_cast<OpLoweringGroupPtr&>(group));
-  auto group_inputs = GetBlockOutsideInput(group->ops());
-  GroupDimExprInfo group_dim_expr_info = GetGroupDimExprInfo(group);
-  const auto& leaves = group_dim_expr_info.all_value_dim_exprs;
-  // has multiple branch
-  if (NeedBroadcastWithCF(leaves)) {
-    const auto& value_to_dim_expr_idx =
-        group_dim_expr_info.value_to_dim_expr_idx;
+  const auto& group_inputs = GetBlockOutsideInput(group->ops());
+  const auto& optional_broadcast_tree = GetBroadcastTreeForOptimize(group);
+  if (optional_broadcast_tree.has_value()) {
     const std::shared_ptr<BroadcastTree> broadcast_tree =
-        ConstructBroadcastTree(leaves);
+        optional_broadcast_tree.value();
+    const auto& value_to_dim_expr_idx =
+        GetGroupDimExprInfo(group).value_to_dim_expr_idx;
     std::vector<pir::Type> output_types;
     auto group_output_values = group->GetGroupOutputValues();
     for (size_t i = 0; i < group_output_values.size(); ++i) {

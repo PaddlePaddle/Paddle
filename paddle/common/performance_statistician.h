@@ -21,6 +21,11 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#if defined(PADDLE_WITH_CUDA)
+#include <cuda.h>
+#include <cuda_runtime.h>
+#endif
+#include "paddle/common/enforce.h"
 
 namespace common {
 
@@ -61,6 +66,44 @@ class PerformanceStatistician {
 
   void End(const std::string& label) {
     InsertTimePoint(label, /* is_start = */ false);
+  }
+
+  void CudaStart(const std::string& label) {
+#if defined(PADDLE_WITH_CUDA)
+    std::lock_guard<std::mutex> lck_guard(record_mtx_);
+    cudaEvent_t e_start, e_stop;
+    cudaEventCreate(&e_start);
+    cudaEventCreate(&e_stop);
+    cuda_events_[label].first = e_start;
+    cuda_events_[label].second = e_stop;
+    cudaEventRecord(cuda_events_[label].first, 0);
+#endif
+  }
+
+  void CudaEnd(const std::string& label) {
+#if defined(PADDLE_WITH_CUDA)
+    std::lock_guard<std::mutex> lck_guard(record_mtx_);
+    PADDLE_ENFORCE_NE(cuda_events_.count(label),
+                      0,
+                      common::errors::InvalidArgument(
+                          "Key for cuda time record does not exist"));
+
+    cudaEventRecord(cuda_events_[label].second, 0);
+    cudaEventSynchronize(cuda_events_[label].second);
+    float event_duration;
+    cudaEventElapsedTime(
+        &event_duration, cuda_events_[label].first, cuda_events_[label].second);
+    std::thread::id thread_id = std::this_thread::get_id();
+    TimePoint start_time_point = std::chrono::steady_clock::now();
+    TimePoint end_time_point =
+        start_time_point + std::chrono::nanoseconds(
+                               static_cast<int64_t>(event_duration * 1000000));
+    record_[label][thread_id].push_back(TimePointInfo{true, start_time_point});
+    record_[label][thread_id].push_back(TimePointInfo{false, end_time_point});
+    cudaEventDestroy(cuda_events_[label].first);
+    cudaEventDestroy(cuda_events_[label].second);
+    cuda_events_.erase(label);
+#endif
   }
 
   std::vector<TimePointInfo> Record(const std::string& label) const {
@@ -109,6 +152,12 @@ class PerformanceStatistician {
     record_.clear();
   }
 
+  void SetGraphNodesNum(int graph_nodes_num) {
+    graph_nodes_num_ = graph_nodes_num;
+  }
+
+  int GetGraphNodesNum() const { return graph_nodes_num_; }
+
  private:
   PerformanceStatistician() = default;
   ~PerformanceStatistician() = default;
@@ -117,7 +166,12 @@ class PerformanceStatistician {
 
  private:
   std::unordered_map<std::string, TimeRecordPerThread> record_;
+#if defined(PADDLE_WITH_CUDA)
+  std::unordered_map<std::string, std::pair<cudaEvent_t, cudaEvent_t>>
+      cuda_events_;
+#endif
   std::mutex record_mtx_;
+  int graph_nodes_num_ = 25;
 };
 
 class PerformanceReporter {

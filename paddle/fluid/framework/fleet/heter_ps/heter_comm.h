@@ -20,8 +20,8 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #include "thrust/pair.h"
 #elif defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #ifdef PADDLE_WITH_HETERPS
 

@@ -35,7 +35,7 @@ TEST(delete_op_device_pass, relu) {
     if (!node->IsOp()) continue;
     if (node->Op()->Type() == "relu") {
       PADDLE_ENFORCE(!node->Op()->HasAttr("op_device"),
-                     platform::errors::InvalidArgument(
+                     phi::errors::InvalidArgument(
                          "Run delete_op_device_pass failed. Relu op still has "
                          "'op_device' attr."));
     }

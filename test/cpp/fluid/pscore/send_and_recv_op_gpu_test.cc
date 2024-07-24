@@ -92,7 +92,7 @@ void CreateVarsOnScope(framework::Scope* scope) {
 
 void InitTensorsOnClient(framework::Scope* scope,
                          int64_t rows_numel,
-                         const platform::DeviceContext& ctx) {
+                         const phi::DeviceContext& ctx) {
   CreateVarsOnScope(scope);
   const auto place = ctx.GetPlace();
   // auto ids_var = scope->Var("ids")->GetMutable<phi::DenseTensor>();
