@@ -16,7 +16,6 @@
 
 #include <Python.h>
 #include <algorithm>
-#include <iostream>
 #include <iterator>
 #include <memory>
 #include <sstream>
@@ -319,7 +318,8 @@ std::string GetValueFirstName(Value value) {
   PADDLE_ENFORCE(name.has_value(),
                  phi::errors::InvalidArgument(
                      "Currently, we can only get name of Value from "
-                     "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
+                     "DataOp/ParameterOp/BlockArgument/ConstantTensorOp/"
+                     "SetParameterOp and ShadowOutputOp."));
 
   return name.value();
 }
@@ -445,8 +445,8 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
       auto input = input_vars[idx];
       auto origin_op = input.defining_op();
       std::string name = "input_" + std::to_string(idx);
-      if (auto names = name_analysis::GetValueAllNames(input); !names.empty()) {
-        name = names[0];
+      if (auto names = name_analysis::TryGetValueFirstName(input)) {
+        name = names.value();
       }
       auto new_input = AppendDataOp(global_block, input, name, *origin_op);
       input.ReplaceAllUsesWith(new_input);
@@ -1363,13 +1363,9 @@ void BindValue(py::module *m) {
       // Return ["var_1", "output_2"]
       .def_property_readonly("_names",
                              [](Value self) -> py::list {
-                               py::list all_names;
                                std::vector<std::string> names =
                                    name_analysis::GetValueAllNames(self);
-                               for (std::string name : names) {
-                                 all_names.append(name);
-                               }
-                               return all_names;
+                               return py::cast(names);
                              })
       .def_property(
           "shape",
