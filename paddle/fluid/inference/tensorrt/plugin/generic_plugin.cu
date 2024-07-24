@@ -653,8 +653,10 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         &((*dense_tensor_outputs_)[i]));
   }
 
-  PADDLE_ENFORCE_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
-  PADDLE_ENFORCE_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
+  PADDLE_ENFORCE_EQ(
+      phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
+  PADDLE_ENFORCE_EQ(
+      phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
 
   if (op_desc_.Type() == "argsort") {
