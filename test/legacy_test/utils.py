@@ -220,7 +220,7 @@ def compare_legacy_with_pt(fn):
     return impl
 
 
-FuncType = Callable[..., bool]
+FuncType = Callable[[], bool]
 PlaceType = Union[paddle.CPUPlace, paddle.CUDAPlace, str]
 
 
@@ -233,10 +233,10 @@ def convert_place(place: PlaceType) -> str:
 
 
 def get_places(
-    isStr: bool = False, func: FuncType = lambda: True, *args, **kwargs
+    func: FuncType = lambda: True, isStr: bool = False
 ) -> List[PlaceType]:
     places: List[PlaceType] = []
-    if paddle.is_compiled_with_cuda() and func(*args, **kwargs):
+    if paddle.is_compiled_with_cuda() and func():
         places.append(paddle.CUDAPlace(0))
     if (
         os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
