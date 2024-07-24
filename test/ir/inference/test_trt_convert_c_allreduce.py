@@ -26,7 +26,7 @@ class TestDistTRT(unittest.TestCase):
 
     def init_case(self):
         self.op_type = "all_reduce"
-        self.reduce_type = 0,
+        self.reduce_type = (0,)
         self.target_value = 4.0
         self.precision = "fp16"
 
@@ -63,7 +63,7 @@ class TestDistTRT(unittest.TestCase):
 class TestMin(TestDistTRT):
     def init_case(self):
         self.op_type = "all_reduce"
-        self.reduce_type = 5,
+        self.reduce_type = (5,)
         self.target_value = 2.0
         self.precision = "int8"
 
