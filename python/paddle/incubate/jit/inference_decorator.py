@@ -51,7 +51,7 @@ def get_tensor(run_time_args, arg_name):
         return [None]
     else:
         raise AssertionError(
-            f'''we only support adding @paddle.jit.to_static(backend='inference', ) in functions whose arguments are paddle.Tensor or list[paddle.Tensor] or None,
+            f'''we only support adding paddle.incubate.jit.inference() in functions whose arguments are paddle.Tensor or list[paddle.Tensor] or None,
             but here we get {arg_name} in your function is {type(run_time_args)}, please modify your function to meet our requirement.'''
         )
 
@@ -491,7 +491,7 @@ def inference(
             delete_pass_lists=delete_pass_lists,
         )
 
-        # This is the inner_most decorator, ie. when user invoke the function decorated by @paddle.jit.to_static(backend='inference', )
+        # This is the inner_most decorator, ie. when user invoke the function decorated by @paddle.incubate.jit.inference()
         # he is actually invoke this internel function.
         def innermost_decorator(*args, **kwargs):
             input_tensor_lists = infer_engine.get_input_tensor_lists(
