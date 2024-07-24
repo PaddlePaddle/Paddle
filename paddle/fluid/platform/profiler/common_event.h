@@ -36,7 +36,7 @@ struct OperatorSupplementOriginEvent {
       std::function<void *(size_t)> arena_allocator,
       uint64_t timestamp_ns,
       const std::string &type_name,
-      const std::map<std::string, std::vector<framework::DDim>> &input_shapes,
+      const std::map<std::string, std::vector<phi::DDim>> &input_shapes,
       const std::map<std::string, std::vector<framework::proto::VarType::Type>>
           &dtypes,
       const framework::AttributeMap &attributes,
@@ -54,7 +54,7 @@ struct OperatorSupplementOriginEvent {
   uint64_t timestamp_ns;
   const char *op_type = nullptr;  // not owned, designed for performance
   // input shapes
-  std::map<std::string, std::vector<framework::DDim>> input_shapes;
+  std::map<std::string, std::vector<phi::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   // op attributes
   framework::AttributeMap attributes;

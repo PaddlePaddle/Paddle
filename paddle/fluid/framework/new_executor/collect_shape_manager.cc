@@ -46,7 +46,7 @@ void CollectShapeManager::CollectShapeInfo(
 #endif
 #endif
 
-    framework::DDim dim = tensor.dims();
+    phi::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
