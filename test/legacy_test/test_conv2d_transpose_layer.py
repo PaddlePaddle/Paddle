@@ -270,7 +270,6 @@ def add_error_cases(suite):
             methodName='runTest', output_size="not_valid"
         )
     )
-    suite.addTest(Conv2DTransposeErrorTestCase(methodName='runTest', groups=0))
 
 
 def load_tests(loader, standard_tests, pattern):

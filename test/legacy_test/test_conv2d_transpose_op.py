@@ -1241,47 +1241,47 @@ class TestConv2DTransposeOpException(unittest.TestCase):
         )
 
         def attr_data_format():
-            out = paddle.nn.Conv2DTranspose(
-                in_channels=3,
+            out = paddle.static.nn.conv2d_transpose(
+                input=data,
                 groups=1,
-                out_channels=6,
-                kernel_size=3,
-                data_format='NCDHW',
-            )(data)
+                num_filters=6,
+                filter_size=3,
+                data_format="NCDHW",
+            )
 
         self.assertRaises(ValueError, attr_data_format)
 
         def attr_padding_str():
-            out = paddle.nn.Conv2DTranspose(
-                in_channels=3,
+            out = paddle.static.nn.conv2d_transpose(
+                input=data,
                 groups=1,
-                out_channels=6,
-                kernel_size=3,
+                num_filters=6,
+                filter_size=3,
                 padding='Vald',
-            )(data)
+            )
 
         self.assertRaises(ValueError, attr_padding_str)
 
         def attr_padding_list():
-            out = paddle.nn.Conv2DTranspose(
-                in_channels=3,
+            out = paddle.static.nn.conv2d_transpose(
+                input=data,
                 groups=1,
-                out_channels=6,
-                kernel_size=3,
+                num_filters=6,
+                filter_size=3,
                 padding=[[1, 1], [1, 1], [0, 0], [0, 0]],
-            )(data)
+            )
 
         self.assertRaises(ValueError, attr_padding_list)
 
         def attr_padding_with_data_format():
-            out = paddle.nn.Conv2DTranspose(
-                in_channels=5,
+            out = paddle.static.nn.conv2d_transpose(
+                input=data,
                 groups=1,
-                out_channels=6,
-                kernel_size=3,
+                num_filters=6,
+                filter_size=3,
                 padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
                 data_format='NHWC',
-            )(data)
+            )
 
         self.assertRaises(ValueError, attr_padding_with_data_format)
 
@@ -1290,34 +1290,33 @@ class TestConv2DTransposeOpException(unittest.TestCase):
         )
 
         def error_input_size():
-            out = paddle.nn.Conv2DTranspose(
-                in_channels=1,
-                groups=1,
-                out_channels=6,
-                kernel_size=3,
-            )(error_input)
+            out = paddle.static.nn.conv2d_transpose(
+                input=error_input, groups=1, num_filters=6, filter_size=3
+            )
 
         self.assertRaises(ValueError, error_input_size)
 
         def error_groups():
-            out = paddle.nn.Conv2DTranspose(
-                in_channels=5,
+            out = paddle.static.nn.conv2d_transpose(
+                input=data,
                 groups=0,
-                out_channels=6,
-                kernel_size=3,
-            )(data)
+                num_filters=6,
+                filter_size=3,
+                data_format='NHWC',
+            )
 
         self.assertRaises(ValueError, error_groups)
 
         def error_0_filter_number():
-            out = paddle.nn.Conv2DTranspose(
-                in_channels=3,
+            out = paddle.static.nn.conv2d_transpose(
+                input=data,
                 groups=1,
-                out_channels=0,
-                kernel_size=3,
-            )(data)
+                num_filters=0,
+                filter_size=3,
+                data_format='NCHW',
+            )
 
-        self.assertRaises(AssertionError, error_0_filter_number)
+        self.assertRaises(ValueError, error_0_filter_number)
 
 
 class TestConv2DTransposeRepr(unittest.TestCase):
@@ -1362,6 +1361,7 @@ class TestTensorOutputSize1(UnittestBase):
         )
         return out
 
+    @test_with_pir_api
     def test_static(self):
         main_prog = Program()
         startup_prog = Program()
