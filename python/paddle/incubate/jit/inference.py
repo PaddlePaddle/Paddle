@@ -393,14 +393,20 @@ class InferenceEngine:
 
 def paddle_inference_decorator(function=None, **kwargs):
     """
-    Converts dynamic graph APIs into static graph saved in disk. Then will use Paddle Inference to predictor based on
+    Converts dynamic graph APIs into static graph saved in disk. Then will use Paddle Inference to infer based on
     the static model in the disk.
     This function return a callable function, user can use it to inference just like dynamic function.
 
     Args:
         function (callable): Callable dynamic graph function. It must be a member function of paddle.nn.Layer.
             If it used as a decorator, the decorated  function will be parsed as this parameter.
-
+        cache_static_model: Whether to cache the static model or not. Default is False.
+            when cache_static_model is True, the static model will be saved in disk, and the next time
+        delete_pass_lists: The pass lists that will be deleted before converting to static graph. Default is ['fuse_bn_before_activation'].
+        enable_new_ir: Whether to enable new IR. Default is True.
+        switch_ir_debug: Whether to enable IR debug. Default is False.
+        switch_ir_optim: Whether to enable IR optim. Default is True.
+        exp_enable_use_cutlass: Whether to enable use cutlass. Default
         kwargs: Support keys including `property`, set `property` to True if the function
             is python property.
 

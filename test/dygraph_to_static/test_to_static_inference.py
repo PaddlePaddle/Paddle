@@ -66,7 +66,7 @@ class TestToStaticInfenrenceModel(Dy2StTestBase):
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer1(hidd)
         result0 = my_layer(x).numpy()
-        my_static_layer = paddle.jit.paddle_inference_decorator(
+        my_static_layer = paddle.incubate.jit.paddle_inference_decorator(
             my_layer, backend="inference"
         )
         result1 = my_layer(x).numpy()
@@ -84,7 +84,7 @@ class TestToStaticInfenrenceTensorRTModel(Dy2StTestBase):
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer1(hidd)
         result0 = my_layer(x).numpy()
-        my_static_layer = paddle.jit.paddle_inference_decorator(
+        my_static_layer = paddle.incubate.jit.paddle_inference_decorator(
             my_layer, backend="inference", with_trt=True
         )
         result1 = my_layer(x).numpy()
@@ -105,7 +105,7 @@ class TestToStaticInfenrenceFunc(Dy2StTestBase):
         result_x0 = my_layer(x).numpy()
         result_y0 = my_layer(y).numpy()
 
-        my_layer.func = paddle.jit.paddle_inference_decorator(
+        my_layer.func = paddle.incubate.jit.paddle_inference_decorator(
             my_layer.func, backend="inference"
         )
 
@@ -124,7 +124,7 @@ class TestToStaticInputListModel(Dy2StTestBase):
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer2(hidd)
         result0 = my_layer([x, x]).numpy()
-        my_static_layer = paddle.jit.paddle_inference_decorator(
+        my_static_layer = paddle.incubate.jit.paddle_inference_decorator(
             my_layer,
             backend="inference",
         )
