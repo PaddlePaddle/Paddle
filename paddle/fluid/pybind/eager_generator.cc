@@ -3793,7 +3793,8 @@ int run_generator(int argc, char* argv[]) {
   paddle::operators::RegisterCustomDeviceCommonKernel("fake_device");
 #endif
 
-  std::string eager_root = argv[1] int split_count = atoi(argv[2]);
+  std::string eager_root = argv[1];
+  int split_count = atoi(argv[2]);
 
   paddle::framework::PrepareAttrMapForOps();
 
