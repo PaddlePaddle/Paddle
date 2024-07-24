@@ -15,9 +15,6 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import (
-    op_type,
-)
 
 import numpy as np
 
@@ -47,7 +44,7 @@ class VarWrapper:
 
 
 class OpWrapper:
-    def __init__(self, op: op_type, graph: GraphWrapper) -> None:
+    def __init__(self, op: OpWrapper, graph: GraphWrapper) -> None:
         assert isinstance(graph, GraphWrapper)
         self._op = op
         self._graph = graph
