@@ -33,8 +33,8 @@ TEST(Tensor, Constructor) {
   paddle::Tensor et1 = paddle::Tensor();
   paddle::Tensor et2 = paddle::Tensor("et2");
 
-  CHECK_EQ(et1.defined(), false);
-  CHECK_EQ(et2.name(), "et2");
+  PADDLE_ENFORCE_EQ(et1.defined(), false);
+  PADDLE_ENFORCE_EQ(et2.name(), "et2");
 
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
@@ -48,19 +48,19 @@ TEST(Tensor, Constructor) {
   paddle::Tensor et3 = paddle::Tensor(dt);
   auto* et3_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();
-  CHECK_EQ(et3_ptr[0], 5.0f);
-  CHECK_EQ(et3_ptr[1], 10.0f);
+  PADDLE_ENFORCE_EQ(et3_ptr[0], 5.0f);
+  PADDLE_ENFORCE_EQ(et3_ptr[1], 10.0f);
   // copy constructor
   paddle::Tensor et4(et3);
   auto* et4_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et4.impl())->data<float>();
-  CHECK_EQ(et4_ptr[0], 5.0f);
-  CHECK_EQ(et4_ptr[1], 10.0f);
+  PADDLE_ENFORCE_EQ(et4_ptr[0], 5.0f);
+  PADDLE_ENFORCE_EQ(et4_ptr[1], 10.0f);
   paddle::Tensor et5(std::move(et4));
   auto* et5_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et5.impl())->data<float>();
-  CHECK_EQ(et5_ptr[0], 5.0f);
-  CHECK_EQ(et5_ptr[1], 10.0f);
+  PADDLE_ENFORCE_EQ(et5_ptr[0], 5.0f);
+  PADDLE_ENFORCE_EQ(et5_ptr[1], 10.0f);
 }
 
 TEST(Tensor, MemberFunction) {
@@ -77,43 +77,43 @@ TEST(Tensor, MemberFunction) {
   VLOG(6) << "Make Dense Tensor";
   et3.set_name("et3");
   VLOG(6) << "Set Name";
-  CHECK_EQ(et3.name(), "et3");
-  CHECK_EQ(et3.defined(), false);
+  PADDLE_ENFORCE_EQ(et3.name(), "et3")
+  PADDLE_ENFORCE_EQ(et3.defined(), false);
   et3.set_impl(dt);
   VLOG(6) << "Set impl";
-  CHECK_EQ(et3.initialized(), true);
-  CHECK_EQ(et3.is_cpu(), true);
-  CHECK_EQ(et3.is_gpu(), false);
-  CHECK_EQ(et3.numel(), 2);
+  PADDLE_ENFORCE_EQ(et3.initialized(), true);
+  PADDLE_ENFORCE_EQ(et3.is_cpu(), true);
+  PADDLE_ENFORCE_EQ(et3.is_gpu(), false);
+  PADDLE_ENFORCE_EQ(et3.numel(), 2);
   auto expected_dim = common::make_ddim({1, 2});
-  CHECK_EQ(et3.dims(), expected_dim);
-  CHECK_EQ(et3.type(), phi::DataType::FLOAT32);
-  CHECK_EQ(et3.layout(), phi::DataLayout::NCHW);
+  PADDLE_ENFORCE_EQ(et3.dims(), expected_dim);
+  PADDLE_ENFORCE_EQ(et3.type(), phi::DataType::FLOAT32);
+  PADDLE_ENFORCE_EQ(et3.layout(), phi::DataLayout::NCHW);
   CHECK(phi::is_cpu_place(et3.place()));
   VLOG(6) << "Get impl";
   auto* dt3_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();
-  CHECK_EQ(dt3_ptr[0], 5.0f);
-  CHECK_EQ(dt3_ptr[1], 10.0f);
+  PADDLE_ENFORCE_EQ(dt3_ptr[0], 5.0f);
+  PADDLE_ENFORCE_EQ(dt3_ptr[1], 10.0f);
   paddle::Tensor et4 = et3;
   VLOG(6) << "copy =";
   CHECK(et4.initialized() == true);
   auto* dt4_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et4.impl())->data<float>();
-  CHECK_EQ(dt4_ptr[0], 5.0f);
-  CHECK_EQ(dt4_ptr[1], 10.0f);
+  PADDLE_ENFORCE_EQ(dt4_ptr[0], 5.0f);
+  PADDLE_ENFORCE_EQ(dt4_ptr[1], 10.0f);
   VLOG(6) << "move =";
   paddle::Tensor et5 = std::move(et4);
   auto* dt5_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et5.impl())->data<float>();
-  CHECK_EQ(dt5_ptr[0], 5.0f);
-  CHECK_EQ(dt5_ptr[1], 10.0f);
+  PADDLE_ENFORCE_EQ(dt5_ptr[0], 5.0f);
+  PADDLE_ENFORCE_EQ(dt5_ptr[1], 10.0f);
   VLOG(6) << "AutogradMeta";
   auto autograd_meta_test = std::make_shared<eager_test::AutogradMetaTest>(2);
   et3.set_autograd_meta(autograd_meta_test);
   auto* tmp_autograd_meta_test =
       static_cast<eager_test::AutogradMetaTest*>(et3.get_autograd_meta());
-  CHECK_EQ(tmp_autograd_meta_test->val_, 2);
+  PADDLE_ENFORCE_EQ(tmp_autograd_meta_test->val_, 2);
 }
 
 TEST(EagerVariable, Constructor) {
@@ -130,14 +130,14 @@ TEST(EagerVariable, Constructor) {
   VLOG(6) << "Make Dense Tensor";
   t3.set_name("t3");
   VLOG(6) << "Set Name";
-  CHECK_EQ(t3.name(), "t3");
-  CHECK_EQ(t3.defined(), false);
+  PADDLE_ENFORCE_EQ(t3.name(), "t3");
+  PADDLE_ENFORCE_EQ(t3.defined(), false);
   t3.set_impl(dt);
 
   egr::EagerVariable et3 = egr::EagerVariable(t3);
   VLOG(6) << "SyncToVar";
-  CHECK_EQ(et3.Var().Get<phi::DenseTensor>().data<float>()[0], 5.0f);
-  CHECK_EQ(et3.Var().Get<phi::DenseTensor>().data<float>()[1], 10.0f);
+  PADDLE_ENFORCE_EQ(et3.Var().Get<phi::DenseTensor>().data<float>()[0], 5.0f);
+  PADDLE_ENFORCE_EQ(et3.Var().Get<phi::DenseTensor>().data<float>()[1], 10.0f);
   VLOG(6) << "SyncToTensor";
   paddle::Tensor t4;
   t4.set_impl(et3.GetTensorBase());
@@ -145,8 +145,8 @@ TEST(EagerVariable, Constructor) {
   VLOG(6) << "Check Tensor";
   auto* dt3_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t4.impl())->data<float>();
-  CHECK_EQ(dt3_tmp_ptr[0], 5.0f);
-  CHECK_EQ(dt3_tmp_ptr[1], 10.0f);
+  PADDLE_ENFORCE_EQ(dt3_tmp_ptr[0], 5.0f);
+  PADDLE_ENFORCE_EQ(dt3_tmp_ptr[1], 10.0f);
   t4.reset();
   CHECK(t4.defined() == false);
 
@@ -174,9 +174,9 @@ TEST(EagerVariable, Constructor) {
   auto* dt9_tmp_ptr = std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())
                           ->value()
                           .data<float>();
-  CHECK_EQ(dt9_tmp_ptr[0], 6.0f);
-  CHECK_EQ(dt9_tmp_ptr[1], 11.0f);
-  CHECK_EQ(std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())->height(),
+  PADDLE_ENFORCE_EQ(dt9_tmp_ptr[0], 6.0f);
+  PADDLE_ENFORCE_EQ(dt9_tmp_ptr[1], 11.0f);
+  PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())->height(),
            2);
 
   VLOG(6) << "Check Tensor Copy_ Dense Tensor";
@@ -184,14 +184,14 @@ TEST(EagerVariable, Constructor) {
   t6.copy_(t5, phi::CPUPlace(), false);
   auto* dt6_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t6.impl())->data<float>();
-  CHECK_EQ(dt6_tmp_ptr[0], 5.0f);
-  CHECK_EQ(dt6_tmp_ptr[1], 10.0f);
+  PADDLE_ENFORCE_EQ(dt6_tmp_ptr[0], 5.0f);
+  PADDLE_ENFORCE_EQ(dt6_tmp_ptr[1], 10.0f);
 #else
   t5.copy_(t3, phi::CPUPlace(), false);
   auto* dt5_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t5.impl())->data<float>();
-  CHECK_EQ(dt5_tmp_ptr[0], 5.0f);
-  CHECK_EQ(dt5_tmp_ptr[1], 10.0f);
+  PADDLE_ENFORCE_EQ(dt5_tmp_ptr[0], 5.0f);
+  PADDLE_ENFORCE_EQ(dt5_tmp_ptr[1], 10.0f);
 #endif
 
   VLOG(6) << "Finish";
@@ -215,10 +215,10 @@ TEST(EagerVariable, DataLayout) {
   tensor.set_impl(dt);
   auto eager_var = std::make_shared<egr::EagerVariable>(tensor);
   auto layout = paddle::imperative::GetDataLayout(eager_var);
-  CHECK_EQ(layout, phi::DataLayout::UNDEFINED);
+  PADDLE_ENFORCE_EQ(layout, phi::DataLayout::UNDEFINED);
   paddle::imperative::SetDataLayout(eager_var, phi::DataLayout::NCHW);
   layout = paddle::imperative::GetDataLayout(eager_var);
-  CHECK_EQ(layout, phi::DataLayout::NCHW);
+  PADDLE_ENFORCE_EQ(layout, phi::DataLayout::NCHW);
 }
 
 TEST(VariableCompatTensor, MemberFunction) {
