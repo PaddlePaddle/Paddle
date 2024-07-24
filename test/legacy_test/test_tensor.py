@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numbers
-import os
 import unittest
 
 import numpy as np
@@ -21,8 +20,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-
-enable_pir_api = os.getenv('FLAGS_enable_pir_api')
 
 
 class TestTensorPtr(unittest.TestCase):
@@ -349,9 +346,8 @@ class TestTensor(unittest.TestCase):
         place = core.CPUPlace()
         tensor = var.get_tensor()
         dtype = paddle.float32
-        if (
-            isinstance(dtype, paddle.base.core.DataType)
-            and enable_pir_api == '1'
+        if paddle.framework.use_pir_api() and isinstance(
+            dtype, paddle.base.core.DataType
         ):
             dtype = paddle.pir.core.datatype_to_vartype[dtype]
         self.assertTrue(
@@ -380,9 +376,8 @@ class TestTensor(unittest.TestCase):
         place = core.CPUPlace()
         tensor.set(array, place)
         tensor_dtype = tensor._dtype()
-        if (
-            isinstance(tensor_dtype, paddle.base.libpaddle.VarDesc.VarType)
-            and enable_pir_api == '1'
+        if paddle.framework.use_pir_api() and isinstance(
+            tensor_dtype, paddle.base.libpaddle.VarDesc.VarType
         ):
             tensor_dtype = paddle.pir.core.vartype_to_datatype[tensor_dtype]
         self.assertEqual(tensor_dtype, paddle.float16)
@@ -405,9 +400,8 @@ class TestTensor(unittest.TestCase):
         place = core.CPUPlace()
         tensor.set(array, place)
         tensor_dtype = tensor._dtype()
-        if (
-            isinstance(tensor_dtype, paddle.base.libpaddle.VarDesc.VarType)
-            and enable_pir_api == '1'
+        if paddle.framework.use_pir_api() and isinstance(
+            tensor_dtype, paddle.base.libpaddle.VarDesc.VarType
         ):
             tensor_dtype = paddle.pir.core.vartype_to_datatype[tensor_dtype]
         self.assertEqual(tensor_dtype, paddle.int16)
@@ -468,9 +462,8 @@ class TestTensor(unittest.TestCase):
         place = core.CPUPlace()
         tensor.set(array, place)
         tensor_dtype = tensor._dtype()
-        if (
-            isinstance(tensor_dtype, paddle.base.libpaddle.VarDesc.VarType)
-            and enable_pir_api == '1'
+        if paddle.framework.use_pir_api() and isinstance(
+            tensor_dtype, paddle.base.libpaddle.VarDesc.VarType
         ):
             tensor_dtype = paddle.pir.core.vartype_to_datatype[tensor_dtype]
         self.assertEqual(tensor_dtype, paddle.complex128)
@@ -504,9 +497,8 @@ class TestTensor(unittest.TestCase):
         place = core.CPUPlace()
         tensor.set(array, place)
         tensor_dtype = tensor._dtype()
-        if (
-            isinstance(tensor_dtype, paddle.base.libpaddle.VarDesc.VarType)
-            and enable_pir_api == '1'
+        if paddle.framework.use_pir_api() and isinstance(
+            isinstance(tensor_dtype, paddle.base.libpaddle.VarDesc.VarType
         ):
             tensor_dtype = paddle.pir.core.vartype_to_datatype[tensor_dtype]
         self.assertEqual(tensor_dtype, paddle.complex64)
