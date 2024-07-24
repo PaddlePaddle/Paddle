@@ -123,8 +123,8 @@ PyObject* new_tensor_with_impl(paddle::Tensor* tensor) {
         ->SetStopGradient(
             egr::EagerUtils::autograd_meta(tensor)->StopGradient());
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "tp_alloc return null, can not new a PyObject."));
+    PADDLE_THROW(
+        phi::errors::Fatal("tp_alloc return null, can not new a PyObject."));
   }
   return obj;
 }
@@ -435,7 +435,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
 
   if (outputs_tensor.empty()) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "At least one output of `PyLayer.forward` is a `Tensor`."));
   }
   VLOG(6) << "PyLayer forward function finish...";
@@ -624,7 +624,7 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                            reinterpret_cast<PyObject*>(
                                (*pack_hook)(reinterpret_cast<void*>(o))));
         } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
               "Tensor."));
         }
@@ -646,7 +646,7 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                            reinterpret_cast<PyObject*>(
                                (*pack_hook)(reinterpret_cast<void*>(o))));
         } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
               "Tensor."));
         }
@@ -658,7 +658,7 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                        reinterpret_cast<PyObject*>(
                            (*pack_hook)(reinterpret_cast<void*>(obj))));
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "save_for_backward only support Tensor, list of Tensor, tuple of "
           "Tensor."));
     }
@@ -799,8 +799,8 @@ void BindEagerPyLayer(PyObject* module) {
   p_pylayer_type = type;
 
   if (PyType_Ready(type) < 0) {
-    PADDLE_THROW(platform::errors::Fatal(
-        "Init Paddle error in BindEager(PyType_Ready)."));
+    PADDLE_THROW(
+        phi::errors::Fatal("Init Paddle error in BindEager(PyType_Ready)."));
     return;
   }
 
@@ -809,7 +809,7 @@ void BindEagerPyLayer(PyObject* module) {
       0) {
     Py_DECREF(type);
     Py_DECREF(module);
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Init Paddle error in BindEager(PyModule_AddObject)."));
     return;
   }

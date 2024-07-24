@@ -18,8 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import base, static, tensor
-from paddle.base import Program, program_guard
+from paddle import base, tensor
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -39,9 +38,9 @@ class TestUnbind(unittest.TestCase):
     def test_unbind(self):
         paddle.enable_static()
         self.init_dtype()
-        main_program = static.Program()
-        startup_program = static.Program()
-        with static.program_guard(
+        main_program = paddle.base.Program()
+        startup_program = paddle.base.Program()
+        with paddle.base.program_guard(
             main_program=main_program, startup_program=startup_program
         ):
             x_1 = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x_1')
@@ -408,7 +407,9 @@ class TestUnbindAxisError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
 
-        with program_guard(Program(), Program()):
+        with paddle.base.program_guard(
+            paddle.base.Program(), paddle.base.Program()
+        ):
             x = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x')
 
             def test_table_Variable():
