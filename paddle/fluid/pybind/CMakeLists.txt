@@ -68,7 +68,6 @@ if(WITH_RPC)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
-  set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
 endif()
 
 if(WITH_GPU)
