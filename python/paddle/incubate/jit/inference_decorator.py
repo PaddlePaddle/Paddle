@@ -441,6 +441,7 @@ def inference(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('`paddle.incubate.jit.inference` can not run in xdoctest')
             >>> import paddle
             >>> class ExampleLayer(paddle.nn.Layer):
             ...     def __init__(self, hidd):
