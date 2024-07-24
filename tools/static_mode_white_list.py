@@ -306,7 +306,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_matmul_op',
     'test_matmul_v2_op',
     'test_matrix_nms_op',
-    'test_memory_reuse_exclude_feed_var',
     'test_memory_usage',
     'test_merge_ids_op',
     'test_meshgrid_op',
