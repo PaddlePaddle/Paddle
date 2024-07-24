@@ -709,7 +709,6 @@ set(STATIC_BUILD_TESTS
     test_nce_deprecated
     test_sparse_conv_op
     test_sparse_norm_op
-    test_tensor_array_to_tensor
     test_tensor_array_to_tensor_deprecated
     test_unique
     test_one_hot_v2_op)
