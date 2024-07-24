@@ -176,8 +176,8 @@ TEST(EagerVariable, Constructor) {
                           .data<float>();
   PADDLE_ENFORCE_EQ(dt9_tmp_ptr[0], 6.0f);
   PADDLE_ENFORCE_EQ(dt9_tmp_ptr[1], 11.0f);
-  PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())->height(),
-           2);
+  PADDLE_ENFORCE_EQ(
+      std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())->height(), 2);
 
   VLOG(6) << "Check Tensor Copy_ Dense Tensor";
   t5.copy_(t3, phi::GPUPlace(0), false);
