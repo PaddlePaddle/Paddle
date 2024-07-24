@@ -24,13 +24,39 @@ void PadKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int>& paddings,
                const Scalar& pad_value,
+               bool pad_from_first_axis,
                DenseTensor* out) {
-  std::vector<int64_t> copied_paddings(paddings.begin(), paddings.end());
+  // pad the length of paddings to 2*x.ndim
+  auto x_dim = x.dims();
+  std::vector<int> pad(2 * x_dim.size());
+  int paddings_len = static_cast<int>(paddings.size());
+  for (int i = 0; i < pad.size(); ++i) {
+    int pad_i = i < paddings_len ? paddings[i] : 0;
+    pad[i] = pad_i;
+  }
 
-  std::swap(copied_paddings[0], copied_paddings[2]);
-  std::swap(copied_paddings[1], copied_paddings[3]);
-  PadOpKernel<T, Context>(
-      dev_ctx, x, copied_paddings, pad_value.to<float>(), out);
+  if (!(paddings.size() == x_dim.size() * 2 && pad_from_first_axis)) {
+    // since PaddingFunctor pad from first axis, if we want to pad from
+    // last axis, we need to reverse the paddings
+    std::vector<int> pad_reversed(2 * x_dim.size());
+    for (int i = 2 * x_dim.size() - 1; i >= 0; --i) {
+      pad_reversed[i] = (i % 2 == 1) ? pad[i - 1] : pad[i + 1];
+    }
+    std::vector<int64_t> copied_paddings(pad_reversed.begin(),
+                                         pad_reversed.end());
+
+    std::swap(copied_paddings[0], copied_paddings[2]);
+    std::swap(copied_paddings[1], copied_paddings[3]);
+    PadOpKernel<T, Context>(
+        dev_ctx, x, copied_paddings, pad_value.to<float>(), out);
+  } else {
+    std::vector<int64_t> copied_paddings(pad.begin(), pad.end());
+
+    std::swap(copied_paddings[0], copied_paddings[2]);
+    std::swap(copied_paddings[1], copied_paddings[3]);
+    PadOpKernel<T, Context>(
+        dev_ctx, x, copied_paddings, pad_value.to<float>(), out);
+  }
 }
 }  // namespace phi
 

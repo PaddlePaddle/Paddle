@@ -26,5 +26,6 @@ void PadKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int>& paddings,
                const Scalar& pad_value,
+               bool pad_from_first_axis,
                DenseTensor* out);
 }  // namespace phi

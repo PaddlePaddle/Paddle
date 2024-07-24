@@ -3333,7 +3333,7 @@
   backward : p_norm_grad
 
 - op : pad
-  args : (Tensor x, int[] paddings, Scalar pad_value)
+  args : (Tensor x, int[] paddings, Scalar pad_value, bool pad_from_first_axis=true)
   output : Tensor
   infer_meta :
     func : PadInferMeta

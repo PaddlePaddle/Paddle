@@ -1903,30 +1903,32 @@ def pad(
         paddings = pad
         pad_value = value
 
-        padding_len = len(paddings)
-        # pad the length of paddings to 2*x_dim
-        if padding_len < 2 * x_dim:
-            pad_len_for_paddings = 2 * x_dim - padding_len
-            paddings = paddings + ([0] if isinstance(pad, list) else (0,)) * (
-                pad_len_for_paddings
-            )
+        # padding_len = len(paddings)
+        # # pad the length of paddings to 2*x_dim
+        # if padding_len < 2 * x_dim:
+        #     pad_len_for_paddings = 2 * x_dim - padding_len
+        #     paddings = paddings + ([0] if isinstance(pad, list) else (0,)) * (
+        #         pad_len_for_paddings
+        #     )
 
-        # since the kernel pad from first axis, if we want to pad from last axis, we need to reverse the paddings
-        if not (len(pad) == x_dim * 2 and pad_from_first_axis):
-            paddings = [
-                paddings[i - 1] if i % 2 == 1 else paddings[i + 1]
-                for i in range(2 * x_dim - 1, -1, -1)
-            ]
+        # # since the kernel pad from first axis, if we want to pad from last axis, we need to reverse the paddings
+        # if not (len(pad) == x_dim * 2 and pad_from_first_axis):
+        #     paddings = [
+        #         paddings[i - 1] if i % 2 == 1 else paddings[i + 1]
+        #         for i in range(2 * x_dim - 1, -1, -1)
+        #     ]
 
         if in_dynamic_mode():
-            out = _C_ops.pad(x, paddings, float(pad_value))
+            out = _C_ops.pad(x, paddings, float(pad_value), pad_from_first_axis)
             return out
 
         if in_pir_mode():
             if isinstance(pad_value, paddle.pir.Value):
-                return _C_ops.pad(x, paddings, pad_value)
+                return _C_ops.pad(x, paddings, pad_value, pad_from_first_axis)
             else:
-                return _C_ops.pad(x, paddings, float(pad_value))
+                return _C_ops.pad(
+                    x, paddings, float(pad_value), pad_from_first_axis
+                )
 
         check_variable_and_dtype(
             x,
@@ -1955,7 +1957,11 @@ def pad(
             type='pad',
             inputs={'X': x},
             outputs={'Out': out},
-            attrs={'paddings': paddings, 'pad_value': pad_value},
+            attrs={
+                'paddings': paddings,
+                'pad_value': pad_value,
+                'pad_from_first_axis': pad_from_first_axis,
+            },
         )
         return out
 

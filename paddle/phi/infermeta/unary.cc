@@ -2971,18 +2971,19 @@ void OverlapAddInferMeta(const MetaTensor& x,
 void PadInferMeta(const MetaTensor& input,
                   const std::vector<int>& paddings,
                   const Scalar& padding_value,
+                  bool pad_from_first_axis,
                   MetaTensor* out,
                   MetaConfig config) {
   auto x_dim = input.dims();
-  PADDLE_ENFORCE_EQ(
-      static_cast<int>(paddings.size()),
-      x_dim.size() * 2,
-      phi::errors::InvalidArgument(
-          "Size of 'paddings' dimension should be equal to 2 * size of "
-          "Input(X)'s dimension, but received (size of 'paddings' dimension "
-          "is) %d vs (2 * size of Input(X)'s dimension is) %d.",
-          static_cast<int>(paddings.size()),
-          x_dim.size() * 2));
+  // PADDLE_ENFORCE_EQ(
+  //     static_cast<int>(paddings.size()),
+  //     x_dim.size() * 2,
+  //     phi::errors::InvalidArgument(
+  //         "Size of 'paddings' dimension should be equal to 2 * size of "
+  //         "Input(X)'s dimension, but received (size of 'paddings' dimension "
+  //         "is) %d vs (2 * size of Input(X)'s dimension is) %d.",
+  //         static_cast<int>(paddings.size()),
+  //         x_dim.size() * 2));
   for (size_t i = 0; i < paddings.size(); ++i) {
     PADDLE_ENFORCE_GE(paddings[i],
                       0,
@@ -2993,11 +2994,20 @@ void PadInferMeta(const MetaTensor& input,
                           static_cast<int>(i)));
   }
   std::vector<int64_t> out_dims(x_dim.size());
+  int paddings_len = static_cast<int>(paddings.size());
+  int out_len = static_cast<int>(out_dims.size());
   for (int i = 0; i < x_dim.size(); ++i) {
     if ((!config.is_runtime) && (x_dim[i] == -1)) {
       out_dims[i] = -1;
     } else {
-      out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
+      int64_t x_dim_i_increment = (i * 2 + 1) < paddings_len
+                                      ? (paddings[i * 2] + paddings[i * 2 + 1])
+                                      : 0;
+      if (pad_from_first_axis) {
+        out_dims[i] = x_dim[i] + x_dim_i_increment;
+      } else {
+        out_dims[out_len - 1 - i] = x_dim[i] + x_dim_i_increment;
+      }
     }
   }
   out->set_dims(common::make_ddim(out_dims));

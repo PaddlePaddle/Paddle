@@ -2205,8 +2205,8 @@
   backward : pad3d_double_grad
 
 - backward_op : pad_double_grad
-  forward : pad_grad(Tensor x, Tensor grad_out, int[] paddings, Scalar pad_value) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, int[] paddings, Scalar pad_value)
+  forward : pad_grad(Tensor x, Tensor grad_out, int[] paddings, Scalar pad_value, bool pad_from_first_axis=true) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, int[] paddings, Scalar pad_value, bool pad_from_first_axis)
   output : Tensor(grad_out_grad)
   infer_meta :
     func : PadInferMeta
