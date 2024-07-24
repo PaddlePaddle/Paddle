@@ -183,9 +183,13 @@ class TestMannulEvent(unittest.TestCase):
         with paddle.pir_utils.OldIrGuard():
             baselines = self.run_program()
             stream_outs = self.run_program(apply_custom_stream=True)
-            split_outs = self.run_program(apply_custom_stream=True, split_prog=True)
+            split_outs = self.run_program(
+                apply_custom_stream=True, split_prog=True
+            )
             manual_outs = self.run_program(
-                apply_custom_stream=True, split_prog=True, apply_manual_event=True
+                apply_custom_stream=True, 
+                split_prog=True, 
+                apply_manual_event=True,
             )
             for bl, out0, out1, out2 in zip(
                 baselines, stream_outs, split_outs, manual_outs
