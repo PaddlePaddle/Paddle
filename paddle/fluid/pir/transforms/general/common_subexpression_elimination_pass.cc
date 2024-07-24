@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
-#include <algorithm>
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
