@@ -53,7 +53,7 @@ void DoInsertTransposeOp(ir::Graph *graph,
       desc.SetAttr("mkldnn_data_type", std::string{"float32"});
       desc.Flush();
     };
-    CHECK_NOTNULL(block_desc);
+    PADDLE_ENFORCE_NOT_NULL(block_desc);
     if (cache->count(prev_node) == 0) {
       framework::OpDesc op_desc(block_desc);
       if (from_layout == phi::DataLayout::kNCHW) {
@@ -200,7 +200,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   auto *block_desc = (*iter)->Op()->Block();
 
   for (auto *op_node : op_nodes) {
-    CHECK_EQ(op_node->IsOp(), true);
+    PADDLE_ENFORCE_EQ(op_node->IsOp(), true);
     auto *op_desc = op_node->Op();
 
     std::string data_format;
@@ -213,7 +213,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
     bool input_shape_4{true};
     auto op_inputs = op_node->inputs;
     for (auto *in_var_node : op_inputs) {
-      CHECK_EQ(in_var_node->IsVar(), true);
+      PADDLE_ENFORCE_EQ(in_var_node->IsVar(), true);
       if (IsWeight(op_node, in_var_node, op_weight_pair)) continue;
 
       auto input_shape = in_var_node->Var()->GetShape();
@@ -241,7 +241,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
       // Update output var of current op
       auto op_outputs = op_node->outputs;
       for (auto *out_var_node : op_outputs) {
-        CHECK_EQ(out_var_node->IsVar(), true);
+        PADDLE_ENFORCE_EQ(out_var_node->IsVar(), true);
         if (out_var_node->Var()->Persistable()) continue;
 
         auto from_shape = out_var_node->Var()->GetShape();
@@ -280,7 +280,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
           }
           auto op_inputs = op_node->inputs;
           for (auto *in_var_node : op_inputs) {
-            CHECK_EQ(in_var_node->IsVar(), true);
+            PADDLE_ENFORCE_EQ(in_var_node->IsVar(), true);
             if (in_var_node->Var()->Persistable()) {
               if (std::find(weight_names.cbegin(),
                             weight_names.cend(),
@@ -309,10 +309,10 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   auto ProcessAnyLayoutOps = [&] {
     // Process any layout ops
     for (auto *op_node : op_nodes) {
-      CHECK_EQ(op_node->IsOp(), true);
+      PADDLE_ENFORCE_EQ(op_node->IsOp(), true);
       auto op_inputs = op_node->inputs;
       for (auto *in_var_node : op_inputs) {
-        CHECK_EQ(in_var_node->IsVar(), true);
+        PADDLE_ENFORCE_EQ(in_var_node->IsVar(), true);
         if (transposed_ops.count(op_node)) continue;
 
         if (vars_to_nchw.count(in_var_node) &&
@@ -321,7 +321,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
           // Update output var of current op
           auto op_outputs = op_node->outputs;
           for (auto *out_var_node : op_outputs) {
-            CHECK_EQ(out_var_node->IsVar(), true);
+            PADDLE_ENFORCE_EQ(out_var_node->IsVar(), true);
             if (out_var_node->Var()->Persistable()) continue;
 
             auto from_shape = out_var_node->Var()->GetShape();
@@ -340,12 +340,12 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   auto InsertTransposeOp = [&] {
     // Insert transpose op
     for (auto *op_node : op_nodes) {
-      CHECK_EQ(op_node->IsOp(), true);
+      PADDLE_ENFORCE_EQ(op_node->IsOp(), true);
 
       if (transposed_ops.count(op_node)) {
         auto op_inputs = op_node->inputs;
         for (auto *in_var_node : op_inputs) {
-          CHECK_EQ(in_var_node->IsVar(), true);
+          PADDLE_ENFORCE_EQ(in_var_node->IsVar(), true);
 
           if (IsWeight(op_node, in_var_node, op_weight_pair)) continue;
           if (vars_to_nchw.count(in_var_node)) continue;
@@ -361,7 +361,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
       } else {
         auto op_inputs = op_node->inputs;
         for (auto *in_var_node : op_inputs) {
-          CHECK_EQ(in_var_node->IsVar(), true);
+          PADDLE_ENFORCE_EQ(in_var_node->IsVar(), true);
 
           if (vars_to_nchw.count(in_var_node)) {
             DoInsertTransposeOp(graph,
