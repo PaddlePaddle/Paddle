@@ -466,7 +466,6 @@ endif()
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
-  list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_base)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_process)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_fds_clear)

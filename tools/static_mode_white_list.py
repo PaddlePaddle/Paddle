@@ -597,7 +597,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_batch_fc_op',
     'test_c_comm_init_all_op',
     'test_fused_conv2d_add_act_op',
-    'test_dataset_dataloader',
     'test_fleet_metric',
     'test_fused_bn_add_act',
     'test_fused_multihead_matmul_op',
