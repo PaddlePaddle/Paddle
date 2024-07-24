@@ -12,17 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import inspect
 import os
 import sys
 import textwrap
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, Protocol, TypeVar, overload
+
+from typing_extensions import ParamSpec
 
 import paddle
 from paddle.inference import Config, PrecisionType, create_predictor
 from paddle.nn import Layer
 from paddle.static import InputSpec
+
+_LayerT = TypeVar("_LayerT", bound=Layer)
+_InputT = ParamSpec("_InputT")
+_RetT = TypeVar("_RetT")
 
 
 def get_inference_precision(precision_str):
@@ -394,22 +402,97 @@ class InferenceEngine:
         self.predictor = create_predictor(config)
 
 
+class _InferenceDecorator(Protocol):
+    @overload
+    def __call__(self, function: _LayerT) -> _LayerT:
+        ...
+
+    @overload
+    def __call__(
+        self, function: Callable[_InputT, _RetT]
+    ) -> Callable[_InputT, _RetT]:
+        ...
+
+
+@overload
+def inference(
+    function: None = None,
+    cache_static_model: bool = ...,
+    save_model_dir: str | None = ...,
+    memory_pool_init_size_mb: int = ...,
+    precision_mode: str = ...,
+    switch_ir_optim: bool = ...,
+    switch_ir_debug: bool = ...,
+    enable_cinn: bool = ...,
+    with_trt: bool = ...,
+    trt_precision_mode: str = ...,
+    trt_use_static: bool = ...,
+    collect_shape: bool = ...,
+    enable_new_ir: bool = ...,
+    exp_enable_use_cutlass: bool = ...,
+    delete_pass_lists: list[str] | None = ...,
+) -> _InferenceDecorator:
+    ...
+
+
+@overload
+def inference(
+    function: _LayerT,
+    cache_static_model: bool = ...,
+    save_model_dir: str | None = ...,
+    memory_pool_init_size_mb: int = ...,
+    precision_mode: str = ...,
+    switch_ir_optim: bool = ...,
+    switch_ir_debug: bool = ...,
+    enable_cinn: bool = ...,
+    with_trt: bool = ...,
+    trt_precision_mode: str = ...,
+    trt_use_static: bool = ...,
+    collect_shape: bool = ...,
+    enable_new_ir: bool = ...,
+    exp_enable_use_cutlass: bool = ...,
+    delete_pass_lists: list[str] | None = ...,
+) -> _LayerT:
+    ...
+
+
+@overload
+def inference(
+    function: Callable[_InputT, _RetT],
+    cache_static_model: bool = ...,
+    save_model_dir: str | None = ...,
+    memory_pool_init_size_mb: int = ...,
+    precision_mode: str = ...,
+    switch_ir_optim: bool = ...,
+    switch_ir_debug: bool = ...,
+    enable_cinn: bool = ...,
+    with_trt: bool = ...,
+    trt_precision_mode: str = ...,
+    trt_use_static: bool = ...,
+    collect_shape: bool = ...,
+    enable_new_ir: bool = ...,
+    exp_enable_use_cutlass: bool = ...,
+    delete_pass_lists: list[str] | None = ...,
+) -> Callable[_InputT, _RetT]:
+    ...
+
+
 def inference(
     function=None,
-    cache_static_model: Optional[bool] = False,
-    save_model_dir: Optional[str] = None,
-    memory_pool_init_size_mb: Optional[int] = 1000,
-    precision_mode: Optional[str] = "float32",
-    switch_ir_optim: Optional[bool] = True,
-    switch_ir_debug: Optional[bool] = False,
-    enable_cinn: Optional[bool] = False,
-    with_trt: Optional[bool] = False,
-    trt_precision_mode: Optional[bool] = "float32",
-    trt_use_static: Optional[bool] = False,
-    collect_shape: Optional[bool] = False,
-    enable_new_ir: Optional[bool] = False,
-    exp_enable_use_cutlass: Optional[bool] = False,
-    delete_pass_lists: Optional[List[str]] = None,
+    cache_static_model=False,
+    save_model_dir=None,
+    memory_pool_init_size_mb=1000,
+    precision_mode="float32",
+    switch_ir_optim=True,
+    switch_ir_debug=False,
+    enable_cinn=False,
+    with_trt=False,
+    trt_precision_mode="float32",
+    trt_use_static=False,
+    collect_shape=False,
+    enable_new_ir=False,
+    exp_enable_use_cutlass=False,
+    delete_pass_lists=None,
 ):
     """
     Converts dynamic graph APIs into static graph saved in disk. Then will use Paddle Inference to infer based on
