@@ -2433,18 +2433,27 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
             ]
             if op.desc.type() in reshard_op_types:
                 input_names = op.desc.input_names()
-                if "X" in input_names or "Input" in input_names:
+                if (
+                    "X" in input_names
+                    or "Input" in input_names
+                    or "x" in input_names
+                ):
                     inputs = (
                         op.desc.input("X")
                         if "X" in input_names
-                        else op.desc.input("Input")
+                        else (
+                            op.desc.input("Input")
+                            if "Input" in input_names
+                            else op.desc.input("x")
+                        )
                     )
-                elif "x" in input_names:
-                    inputs = op.desc.input("x")
-                if "Out" in op.desc.output_names():
-                    outputs = op.desc.output("Out")
-                elif "out" in op.desc.output_names():
-                    outputs = op.desc.output("out")
+                output_names = op.desc.output_names()
+                if "Out" in output_names or "out" in output_names:
+                    outputs = (
+                        op.desc.output("Out")
+                        if "Out" in output_names
+                        else op.desc.output("out")
+                    )
                 if inputs[0] in grad_var_to_var.keys():
                     for output in outputs:
                         grad_var_to_var[output] = grad_var_to_var[inputs[0]]

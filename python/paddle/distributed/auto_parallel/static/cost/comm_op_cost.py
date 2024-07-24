@@ -134,14 +134,6 @@ class AllgatherOpCost(CommOpCost):
             factor = None
             if dtype == paddle.float32 or dtype == paddle.int32:
                 factor = 4
-            elif dtype == paddle.int64:
-                factor = 8
-            elif dtype == paddle.uint8:
-                factor = 1
-            elif dtype == paddle.float16:
-                factor = 2
-            elif dtype == paddle.bool:
-                factor = 8
             else:
                 raise ValueError(f"Unsupported comm dtype {dtype}")
             comm_count = int(np.prod(shape)) * factor
