@@ -420,7 +420,7 @@ def inference(
             If it used as a decorator, the decorated  function will be parsed as this parameter.
         cache_static_model: Whether to use the cached static model in thd disk . Default is False.
             when cache_static_model is True, the static model will be saved in disk, and the next time when you call this function
-        save_model_dir: The directory to save the static model. Default is ~/.cache/paddle/inference_models/.
+        save_model_dir: The directory to save the static model. Default is none which means ~/.cache/paddle/inference_models/.
         memory_pool_init_size_mb: The memory pool init size in MB. Default is 1000.
         precision_mode: The precision mode. Default is "float32".
         switch_ir_optim: Whether to enable IR optim. Default is True.
