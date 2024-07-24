@@ -151,11 +151,13 @@ if paddle.device.get_device() != "cpu":
 else:
     devices.append('cpu')
 
+
 class TestSparseReshapeStatic(unittest.TestCase):
     """
-    Test the API paddle.sparse.reshape on some sparse tensors. static graph 
+    Test the API paddle.sparse.reshape on some sparse tensors. static graph
     x: sparse, out: sparse
     """
+
     def check_result_coo(self, x_shape, new_shape):
         """
         x_shape: original shape
@@ -180,8 +182,12 @@ class TestSparseReshapeStatic(unittest.TestCase):
                 paddle.rand(x_shape, dtype='float32') + 1
             ) * mask.astype('float32')
             indices_data, values_data = (
-                origin_data.detach().to_sparse_coo(sparse_dim=len(x_shape)).indices(), 
-                origin_data.detach().to_sparse_coo(sparse_dim=len(x_shape)).values()
+                origin_data.detach()
+                .to_sparse_coo(sparse_dim=len(x_shape))
+                .indices(),
+                origin_data.detach()
+                .to_sparse_coo(sparse_dim=len(x_shape))
+                .values(),
             )
 
             dense_x = origin_data
@@ -192,7 +198,6 @@ class TestSparseReshapeStatic(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                
                 indices = paddle.static.data(
                     name='indices',
                     shape=indices_data.shape,
@@ -209,7 +214,7 @@ class TestSparseReshapeStatic(unittest.TestCase):
                     shape=dense_x.shape,
                     dtype=dense_x.dtype,
                 )
-                
+
                 sp_out = paddle.sparse.reshape(sp_x, new_shape)
                 sp_dense_out = sp_out.to_dense()
 
@@ -227,8 +232,6 @@ class TestSparseReshapeStatic(unittest.TestCase):
                     dense_out.numpy(), sparse_fetch[0], rtol=1e-5
                 )
                 paddle.disable_static()
-
-
 
     def test_reshape_2d(self):
         self.check_result_coo(
@@ -275,6 +278,7 @@ class TestSparseReshapeStatic(unittest.TestCase):
         self.check_result_coo([6, 2, 3], [-1, 6, 2])
         self.check_result_coo([6, 2, 3], [-1, 9, 1])
         self.check_result_coo([6, 2, 3], [-1, 1, 3])
+
 
 if __name__ == "__main__":
     unittest.main()

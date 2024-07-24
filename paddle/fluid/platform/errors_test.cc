@@ -19,7 +19,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/enforce.h"
 
-using namespace paddle::platform::errors;  // NOLINT
+using namespace phi::errors;  // NOLINT
 
 #define CHECK_PADDLE_THROW(EFUNC)                                          \
   do {                                                                     \

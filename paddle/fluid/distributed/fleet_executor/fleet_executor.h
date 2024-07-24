@@ -16,10 +16,10 @@
 #include <memory>
 #include <string>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {

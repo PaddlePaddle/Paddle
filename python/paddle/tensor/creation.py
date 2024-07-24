@@ -720,11 +720,13 @@ def _to_tensor_static(
 
                     Thus, process nested structure in except block
                     '''
-                    data = np.array(data)
+                    array_data = np.array(data)
 
                     # for numpy version <= 1.23.5
-                    if data.dtype == 'object':
+                    if array_data.dtype == 'object':
                         raise RuntimeError("Numpy get dtype `object`.")
+
+                    data = array_data
 
                 except:
                     to_stack_list = [None] * len(data)
@@ -1270,7 +1272,7 @@ def eye(
     """
 
     def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, core.eager.Tensor, paddle.pir.Value))):
+        if isinstance(attr, ((Variable, paddle.Tensor, paddle.pir.Value))):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
@@ -2547,6 +2549,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
                     'uint16',
                     'float32',
                     'float64',
+                    'int16',
                     'int32',
                     'int64',
                     'uint8',
