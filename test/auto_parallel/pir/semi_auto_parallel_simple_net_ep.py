@@ -152,7 +152,7 @@ class TestSimpleNetForEP:
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.01,
             parameters=model.parameters(),
-            grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
+            # grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
         )
         return optimizer
 
@@ -242,15 +242,18 @@ class TestSimpleNetForEP:
         dist_program = mix_fw_program.clone()
         startup_program = dist_model._engine._startup_progs[mode]
         apply_mix2dist_pass(dist_program)
-        loss = dist_program.get_output_value_by_name(self._loss_names[0])
+        loss_names = dist_model._engine.program_helper.loss_names
+        loss = dist_program.get_output_value_by_name(loss_names[0])
 
         print("==== forward dist program ====")
         print(dist_program)
         with paddle.static.program_guard(dist_program):
             params_grads = paddle.autograd.ir_backward.append_backward(loss)
+            print("==== params_grads ====")
+            print(params_grads)
             print("==== backward dist program ====")
             print(dist_program)
-            self._optimizer._apply_optimize(
+            optimizer._apply_optimize(
                 loss, startup_program, params_grads=params_grads
             )
             print("==== optimize dist program ====")

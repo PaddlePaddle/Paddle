@@ -77,16 +77,12 @@ std::vector<pir::Value> local_tensors_from_dist(
   for (const phi::distributed::ProcessMesh& mesh : local_mesh_list) {
     local_dist_attrs.emplace_back(TensorDistAttribute::get(
         ctx, mesh, local_dims_mapping, local_partial_status));
-    std::cout << "local_dist_attr: " << local_dist_attrs.back() << std::endl;
   }
   TensorDistAttribute global_dist_attr = TensorDistAttribute::get(
       ctx, global_mesh, global_dims_mapping, global_partial_status);
-  std::cout << "global_dist_attr: " << global_dist_attr << std::endl;
 
   auto op = ApiBuilder::Instance().GetBuilder()->Build<LocalTensorsFromDistOp>(
       input, local_dist_attrs, global_dist_attr);
-  std::cout << "==== local_tensors_from_dist ====" << std::endl;
-  op.operation()->Print(std::cout);
   return op.results();
 }
 
@@ -114,8 +110,6 @@ pir::Value dist_tensor_from_locals(
 
   auto op = ApiBuilder::Instance().GetBuilder()->Build<DistTensorFromLocalsOp>(
       inputs, local_dist_attrs, global_dist_attr, global_ddim);
-  std::cout << "==== dist_tensor_from_locals ====" << std::endl;
-  std::cout << op << std::endl;
   return op.result(0);
 }
 

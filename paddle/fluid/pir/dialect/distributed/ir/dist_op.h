@@ -63,9 +63,8 @@ class ReshardOp : public pir::Op<ReshardOp, VjpInterface, OpYamlInfoInterface> {
   void VerifySig();
 };
 
-class LocalTensorsFromDistOp : public pir::Op<LocalTensorsFromDistOp,
-                                              VjpInterface,
-                                              OpYamlInfoInterface> {
+class LocalTensorsFromDistOp
+    : public pir::Op<LocalTensorsFromDistOp, VjpInterface> {
  public:
   using Op::Op;
   static const char* name() { return "dist_op.local_tensors_from_dtensor"; }
@@ -90,9 +89,8 @@ class LocalTensorsFromDistOp : public pir::Op<LocalTensorsFromDistOp,
   std::vector<pir::Value> results() { return operation()->results(); }
 };
 
-class DistTensorFromLocalsOp : public pir::Op<DistTensorFromLocalsOp,
-                                              VjpInterface,
-                                              OpYamlInfoInterface> {
+class DistTensorFromLocalsOp
+    : public pir::Op<DistTensorFromLocalsOp, VjpInterface> {
  public:
   using Op::Op;
   static const char* name() { return "dist_op.dtensor_from_local_tensors"; }

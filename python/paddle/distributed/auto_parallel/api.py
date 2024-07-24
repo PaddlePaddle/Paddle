@@ -530,14 +530,6 @@ def local_tensor_list_from_dtensor(
             global_placements,
         )
         for local_tensor in local_tensors:
-            print(
-                "local_tensor:",
-                local_tensor,
-                " stop_gradient:",
-                local_tensor.stop_gradient,
-                " persistable:",
-                local_tensor.persistable,
-            )
             local_tensor.stop_gradient = dist_tensor.stop_gradient
             local_tensor.persistable = dist_tensor.persistable
         return local_tensors
