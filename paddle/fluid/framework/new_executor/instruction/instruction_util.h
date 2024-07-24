@@ -33,12 +33,11 @@ class ValueExecutionInfo;
 std::vector<int> GetValueIds(pir::Value value,
                              const ValueExecutionInfo& value_exec_info);
 
-platform::DeviceContext* ParseDeviceContext(
-    pir::Operation* op,
-    platform::DeviceContext* origin_dev_ctx,
-    const phi::Place& place,
-    const std::string& execution_stream,
-    const int stream_priority);
+phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
+                                       phi::DeviceContext* origin_dev_ctx,
+                                       const phi::Place& place,
+                                       const std::string& execution_stream,
+                                       const int stream_priority);
 
 OpFuncType AnalyseOpFuncType(::pir::Operation* op, const phi::Place& place);
 

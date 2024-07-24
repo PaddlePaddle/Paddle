@@ -45,7 +45,7 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "In dims rank should be 2, but received in dims size is [%d].",
           in_dims.size()));
 
@@ -72,7 +72,7 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
       phi::TransposeKernel<int8_t>(*cpu_ctx, *in, axis, out_ptr);
       break;
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Only support fp16/fp32/int16/int8, but received dtype is %s.",
           phi::DataTypeToString(in->dtype())));
       break;
@@ -105,7 +105,7 @@ void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out) {
       }
       break;
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Only support int64 and int32, but received dtype is %s.",
           phi::DataTypeToString(in->dtype())));
       break;
@@ -121,7 +121,7 @@ void CastTo(phi::DenseTensor* in, phi::DenseTensor* out, DataType out_dtype) {
 
   if (in->dtype() != phi::DataType::FLOAT16 &&
       in->dtype() != phi::DataType::FLOAT32) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Only support fp16 and fp32, but received dtype is %s.",
         phi::DataTypeToString(in->dtype())));
   }
@@ -389,7 +389,7 @@ void ConvertWithoutQuant(phi::DenseTensor* weight,
     PADDLE_ENFORCE_EQ(
         weight_scales.empty(),
         false,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "ConvertWithoutQuant is not allowed weight scales is empty!"));
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
@@ -477,7 +477,7 @@ bool IsPerTensorQuant(const std::vector<float>& weight_max) {
   PADDLE_ENFORCE_GT(
       weight_max.size(),
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Op's channel size: [%d] should great than zero", weight_max.size()));
   auto first = weight_max[0];
   for (size_t i = 1; i < weight_max.size(); ++i) {

@@ -63,8 +63,8 @@ class InstructionBase {
     execution_stream_ = stream;
   }
 
-  const platform::DeviceContext& DeviceContext() const;
-  void SetDeviceContext(platform::DeviceContext* ctx) { dev_ctx_ = ctx; }
+  const phi::DeviceContext& DeviceContext() const;
+  void SetDeviceContext(phi::DeviceContext* ctx) { dev_ctx_ = ctx; }
 
   const std::vector<size_t>& NextInstrsInDifferenceThread() const {
     return next_instrs_in_different_thread_;
@@ -187,7 +187,7 @@ class InstructionBase {
 
   std::string execution_stream_{kDefaultStream};
 
-  platform::DeviceContext* dev_ctx_;  // not owned
+  phi::DeviceContext* dev_ctx_;  // not owned
 
   std::vector<size_t> next_instrs_in_different_thread_;
 

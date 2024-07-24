@@ -25,16 +25,6 @@ from .utils import (
 )
 
 
-def check_state_dict(state_dict, process_group):
-    local_keys = list(state_dict.keys())
-    global_keys = []
-    paddle.distributed.all_gather_object(global_keys, local_keys, process_group)
-    for keys in global_keys[1:]:
-        assert (
-            keys == global_keys[0]
-        ), f"keys:{keys} != first_keys: {global_keys[0]}"
-
-
 def check_file_name(file_name, process_group):
     all_unique_id = []
     unique_id = int(file_name.split(".")[0].split("_")[1])
@@ -160,8 +150,6 @@ def save_state_dict(
         logger.debug(f"file_name:{file_name}")
         if use_dist:
             check_file_name(file_name, process_group)
-            # the parameter_name and order in state_dict should be the same
-            check_state_dict(flat_state_dict, process_group)
         metadata = Metadata()
         local_state_dict = {}
         local_state_dict_metadata = {}
@@ -199,8 +187,9 @@ def save_state_dict(
                     )
                     local_tensor = val
                 local_state_dict[key] = local_tensor
+                local_tenosr_dtype = str(local_tensor.dtype).split('.')[1]
                 local_state_dict_metadata[key] = LocalTensorMetadata(
-                    global_offset, local_shape
+                    global_offset, local_shape, local_tenosr_dtype
                 )
                 local_storage_metadata[
                     LocalTensorIndex(key, tuple(global_offset))

@@ -28,8 +28,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/flags.h"
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     fleet_executor_with_standalone,
     false,
     "Use standalone executor to run ops. Temporary FLAGS, will be removed "

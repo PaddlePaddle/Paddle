@@ -22,11 +22,11 @@
 #endif
 
 #ifdef PADDLE_WITH_NCCL
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
 
 #ifdef PADDLE_WITH_RCCL
-#include "paddle/fluid/platform/dynload/rccl.h"
+#include "paddle/phi/backends/dynload/rccl.h"
 #endif
 
 #include "paddle/fluid/imperative/parallel_context.h"

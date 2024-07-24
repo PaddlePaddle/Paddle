@@ -215,6 +215,10 @@ bool ExpandAsOpInferSymbolicShape(
   std::vector<int> target_shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
   const std::vector<symbol::DimExpr> &output_dims = [&] {
+    if (op->operand_source(0)) {
+      return infer_context->GetShapeOrDataForValue(op->operand_source(1))
+          .shape();
+    }
     std::vector<symbol::DimExpr> output_dims;
     output_dims.reserve(target_shape.size());
     for (int shape : target_shape) {

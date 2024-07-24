@@ -41,10 +41,6 @@ if(NOT APPLE)
   endif()
 endif()
 
-if(TENSORRT_FOUND)
-  list(APPEND CUDA_SRCS tensorrt.cc)
-endif()
-
 if(CUSPARSELT_FOUND)
   list(APPEND CUDA_SRCS cusparseLt.cc)
 endif()

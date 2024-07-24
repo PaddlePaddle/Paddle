@@ -102,7 +102,7 @@ struct BKCLContext {
   BKCLContext_t comm_;
 
   explicit BKCLContext(int dev_id)
-      : ctx_(new platform::XPUDeviceContext(XPUPlace(dev_id))),
+      : ctx_(new platform::XPUDeviceContext(phi::XPUPlace(dev_id))),
         comm_{nullptr} {}
 
   XPUStream stream() const { return ctx_->stream(); }
