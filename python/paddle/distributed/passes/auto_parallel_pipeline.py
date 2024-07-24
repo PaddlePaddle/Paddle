@@ -384,7 +384,6 @@ class PipelinePass(PassBase):
                                     "recv_2",
                                     "assign",
                                     "all_gather",
-                                    "all_gather",
                                 ]
                                 and op.has_attr('op_namescope')
                                 and "/auto_parallel/reshard"

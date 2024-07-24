@@ -111,7 +111,9 @@ def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
         },
     )
     if sync_op:
-        op.dist_attr.execution_stream = "default"
+        from paddle.distributed.passes.pass_utils import AutoParallelStreamType
+
+        op.dist_attr.execution_stream = AutoParallelStreamType.CALC_STREAM.value
     tensor_list.clear()
     # 0-D use stack/unstack while others use concat/split
     if len(tensor.shape) == 0:

@@ -14,6 +14,7 @@
 
 
 import paddle
+from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 
 from ..process_group import new_process_group
 from .base_reshard_func import ReshardFunction, is_replicated, is_shard
@@ -145,6 +146,9 @@ class SToRReshardFunction(ReshardFunction):
             paddle.base.libpaddle.pir.create_op_dist_attribute(
                 src_mesh, [src_dist_attr], [new_dist_attr]
             )
+        )
+        allgather_value.get_defining_op().dist_attr.execution_stream = (
+            AutoParallelStreamType.CALC_STREAM.value
         )
 
         if split_axis != 0 or padding_num != 0:
