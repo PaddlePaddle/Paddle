@@ -14,7 +14,6 @@
 #pragma once
 
 #ifdef PADDLE_WITH_MUSA
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -27,11 +26,6 @@ using ScopedBatchMatmulDescriptor =
     phi::backends::gpu::ScopedBatchMatmulDescriptor;
 using ScopedMatMulDescriptor = phi::backends::gpu::ScopedMatMulDescriptor;
 using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
-
-static void InternalMemFree_matmul_bmm(void* ptr) {
-
-}
-
 
 static inline DenseTensor LogicalTransposeLast2Dim(const DenseTensor& x) {
   int ndim = x.dims().size();
@@ -141,21 +135,12 @@ void MatMulGPUDNNKernelImpl(const Context& dev_ctx,
                                       GPUDNNDataLayout::kNCHW,
                                       common::vectorize<int>(y_contig.dims()));
 
-
-
-  Allocator::AllocationPtr memory_for_mudnn; //this is a unique ptr so the memory it holds will be free when it is out of its scope
-
-  auto InternalMemAlloc_matmul = [&memory_for_mudnn, &dev_ctx](size_t s) {
-    memory_for_mudnn = std::move(phi::memory_utils::Alloc(dev_ctx.GetPlace(),s,phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))));
-    return dynload::MemoryHandler(memory_for_mudnn->ptr(), InternalMemFree_matmul_bmm);
-  };
-
   mm_desc.descriptor(trans_x, trans_y)
       .Run(*handle,
            out_desc,
            left_desc,
            right_desc,
-           InternalMemAlloc_matmul);
+           backends::gpu::InternalMalloc<Context>(dev_ctx));
 }
 
 // also provide the sizes of tensor as a parameter, thus we dont have to
@@ -186,19 +171,12 @@ void MatMulGPUDNNKernelImpl(const Context& dev_ctx,
   auto& right_desc =
       right_scoped_desc.descriptor<T>(y_data, GPUDNNDataLayout::kNCHW, y_dims);
 
-  Allocator::AllocationPtr memory_for_mudnn; //this is a unique ptr so the memory it holds will be free when it is out of its scope
-
-  auto InternalMemAlloc_matmul = [&memory_for_mudnn, &dev_ctx](size_t s) {
-    memory_for_mudnn = std::move(phi::memory_utils::Alloc(dev_ctx.GetPlace(),s,phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))));
-    return dynload::MemoryHandler(memory_for_mudnn->ptr(), InternalMemFree_matmul_bmm);
-  };
-
   mm_desc.descriptor(trans_x, trans_y)
       .Run(*handle,
            out_desc,
            left_desc,
            right_desc,
-           InternalMemAlloc_matmul);
+           backends::gpu::InternalMalloc<Context>(dev_ctx));
 }
 
 template <typename T, typename Context>
@@ -232,19 +210,12 @@ void MatMulGPUDNNKernelImpl(const Context& dev_ctx,
   auto& right_desc = right_scoped_desc.descriptor<T>(
       y_contig.data<T>(), GPUDNNDataLayout::kNCHW, y_dims);
 
-  Allocator::AllocationPtr memory_for_mudnn; //this is a unique ptr so the memory it holds will be free when it is out of its scope
-
-  auto InternalMemAlloc_matmul = [&memory_for_mudnn, &dev_ctx](size_t s) {
-    memory_for_mudnn = std::move(phi::memory_utils::Alloc(dev_ctx.GetPlace(),s,phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))));
-    return dynload::MemoryHandler(memory_for_mudnn->ptr(), InternalMemFree_matmul_bmm);
-  };
-        
   mm_desc.descriptor(trans_x, trans_y)
       .Run(*handle,
            out_desc,
            left_desc,
            right_desc,
-           InternalMemAlloc_matmul);
+           backends::gpu::InternalMalloc<Context>(dev_ctx));
 }
 
 template <typename T, typename Context>
@@ -280,19 +251,13 @@ void BmmGPUDNNKernelImpl(const Context& dev_ctx,
       right_scoped_desc.descriptor<T>(y_contig,
                                       GPUDNNDataLayout::kNCHW,
                                       common::vectorize<int>(y_contig.dims()));
-  Allocator::AllocationPtr memory_for_mudnn; //this is a unique ptr so the memory it holds will be free when it is out of its scope
-
-  auto InternalMemAlloc_matmul = [&memory_for_mudnn, &dev_ctx](size_t s) {
-    memory_for_mudnn = std::move(phi::memory_utils::Alloc(dev_ctx.GetPlace(),s,phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))));
-    return dynload::MemoryHandler(memory_for_mudnn->ptr(), InternalMemFree_matmul_bmm);
-  };                          
 
   bmm_desc.descriptor(trans_x, trans_y)
       .Run(*handle,
            out_desc,
            left_desc,
            right_desc,
-           InternalMemAlloc_matmul);
+           backends::gpu::InternalMalloc<Context>(dev_ctx));
 }
 
 template <typename T, typename Context>
@@ -320,18 +285,13 @@ void BmmGPUDNNKernelImpl(const Context& dev_ctx,
       left_scoped_desc.descriptor<T>(x_data, GPUDNNDataLayout::kNCHW, x_dims);
   auto& right_desc =
       right_scoped_desc.descriptor<T>(y_data, GPUDNNDataLayout::kNCHW, y_dims);
-  Allocator::AllocationPtr memory_for_mudnn; //this is a unique ptr so the memory it holds will be free when it is out of its scope
 
-  auto InternalMemAlloc_matmul = [&memory_for_mudnn, &dev_ctx](size_t s) {
-    memory_for_mudnn = std::move(phi::memory_utils::Alloc(dev_ctx.GetPlace(),s,phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))));
-    return dynload::MemoryHandler(memory_for_mudnn->ptr(), InternalMemFree_matmul_bmm);
-  };                                
   bmm_desc.descriptor(trans_x, trans_y)
       .Run(*handle,
            out_desc,
            left_desc,
            right_desc,
-           InternalMemAlloc_matmul);
+           backends::gpu::InternalMalloc<Context>(dev_ctx));
 }
 
 template <typename T, typename Context>
@@ -364,18 +324,12 @@ void BmmGPUDNNKernelImpl(const Context& dev_ctx,
       x_contig.data<T>(), GPUDNNDataLayout::kNCHW, x_dims);
   auto& right_desc = right_scoped_desc.descriptor<T>(
       y_contig.data<T>(), GPUDNNDataLayout::kNCHW, y_dims);
-  Allocator::AllocationPtr memory_for_mudnn; //this is a unique ptr so the memory it holds will be free when it is out of its scope
-
-  auto InternalMemAlloc_matmul = [&memory_for_mudnn, &dev_ctx](size_t s) {
-    memory_for_mudnn = std::move(phi::memory_utils::Alloc(dev_ctx.GetPlace(),s,phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))));
-    return dynload::MemoryHandler(memory_for_mudnn->ptr(), InternalMemFree_matmul_bmm);
-  };            
   bmm_desc.descriptor(trans_x, trans_y)
       .Run(*handle,
            out_desc,
            left_desc,
            right_desc,
-           InternalMemAlloc_matmul);
+           backends::gpu::InternalMalloc<Context>(dev_ctx));
 }
 
 }  // namespace phi

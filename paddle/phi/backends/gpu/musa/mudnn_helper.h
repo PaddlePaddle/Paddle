@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/flags.h"
+#include "paddle/phi/common/memory_utils.h"
 
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
@@ -460,34 +461,47 @@ static dynload::MemoryHandler InternalMemAlloc(size_t s) {
   return dynload::MemoryHandler(data, InternalMemFree);
 }
 
-  template <>
-  inline dynload::Tensor& ScopedTensorDescriptor::descriptor_with_stride<phi::dtype::complex<float>>(const phi::DenseTensor& tensor,
-                                     const DataLayout& order,
-                                     const std::vector<int>& dims,
-                                     const int groups) {
-    auto __summary__ = phi::ErrorSummary("does not support");
-    auto __message__ = ::paddle::string::Sprintf(
-        "",
-        __summary__.error_message());
-    __THROW_ERROR_INTERNAL__(
-        phi::ErrorSummary(__summary__.code(), std::move(__message__)));
-    return desc_;
+template<class Context>
+struct InternalMalloc {
+  InternalMalloc(const Context& ctx) : stream(reinterpret_cast<phi::StreamId>(ctx.stream())), place(ctx.GetPlace()) {}
+  InternalMalloc(const InternalMalloc& alloc) : stream(alloc.stream), place(alloc.place) {}
+  dynload::MemoryHandler operator() (size_t s) {
+    memory_handle = std::move(phi::memory_utils::Alloc(place, s, stream));
+    return dynload::MemoryHandler(memory_handle->ptr(), [](void* ptr) {}); 
   }
+  phi::Stream stream;
+  phi::GPUPlace place;
+  Allocator::AllocationPtr memory_handle;
+};
+
+template <>
+inline dynload::Tensor& ScopedTensorDescriptor::descriptor_with_stride<phi::dtype::complex<float>>(const phi::DenseTensor& tensor,
+                                   const DataLayout& order,
+                                   const std::vector<int>& dims,
+                                   const int groups) {
+  auto __summary__ = phi::ErrorSummary("does not support");
+  auto __message__ = ::paddle::string::Sprintf(
+      "",
+      __summary__.error_message());
+  __THROW_ERROR_INTERNAL__(
+      phi::ErrorSummary(__summary__.code(), std::move(__message__)));
+  return desc_;
+}
 
 
-  template <>
-  inline dynload::Tensor& ScopedTensorDescriptor::descriptor_with_stride<phi::dtype::complex<double>>(const phi::DenseTensor& tensor,
-                                     const DataLayout& order,
-                                     const std::vector<int>& dims,
-                                     const int groups) {
-    auto __summary__ = phi::ErrorSummary("does not support");
-    auto __message__ = ::paddle::string::Sprintf(
-        "",
-        __summary__.error_message());
-    __THROW_ERROR_INTERNAL__(
-        phi::ErrorSummary(__summary__.code(), std::move(__message__)));
-    return desc_;
-  }
+template <>
+inline dynload::Tensor& ScopedTensorDescriptor::descriptor_with_stride<phi::dtype::complex<double>>(const phi::DenseTensor& tensor,
+                                   const DataLayout& order,
+                                   const std::vector<int>& dims,
+                                   const int groups) {
+  auto __summary__ = phi::ErrorSummary("does not support");
+  auto __message__ = ::paddle::string::Sprintf(
+      "",
+      __summary__.error_message());
+  __THROW_ERROR_INTERNAL__(
+      phi::ErrorSummary(__summary__.code(), std::move(__message__)));
+  return desc_;
+}
 
 }  // namespace gpu
 }  // namespace backends

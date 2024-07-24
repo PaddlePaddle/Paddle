@@ -317,8 +317,7 @@ void FlashAttnGradKernel(const Context& ctx,
       musa_output,
       musa_logsumexp,
       musa_dropout_mask,
-      InternalMemAlloc_flash_attn_bwd);
-
+      backends::gpu::InternalMalloc<Context>(ctx));
 
 #else
   RaiseNotSupportedError();
