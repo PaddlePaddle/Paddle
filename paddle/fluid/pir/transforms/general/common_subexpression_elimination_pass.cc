@@ -548,16 +548,20 @@ void ReplaceOpWith(pir::Operation* op, pir::Operation* new_op) {
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     auto value = op->result(i);
     auto new_value = new_op->result(i);
+    // NOTE(SigureMo): If the value has a shadow output, we could not replace
+    // it directly. It will cause a value has two shadow outputs. It is
+    // invalid for executor, so we make a copy by inserting a assign op.
+    std::optional<pir::Value> copied_value;
     for (auto it = value.use_begin(); it != value.use_end(); ++it) {
-      // NOTE(SigureMo): If the value has a shadow output, we could not replace
-      // it directly. It will cause a value has two shadow outputs. It is
-      // invalid for executor, so we make a copy by inserting a assign op.
       if (it->owner()->isa<pir::ShadowOutputOp>()) {
-        new_value = CreateAssignOp(new_value, new_op, op->GetParent());
-        break;
+        if (!copied_value) {
+          copied_value = CreateAssignOp(new_value, new_op, op->GetParent());
+        }
+        it->set_source(copied_value.value());
+      } else {
+        it->set_source(new_value);
       }
     }
-    value.ReplaceAllUsesWith(new_value);
   }
   op->Erase();
 }
