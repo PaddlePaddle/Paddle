@@ -51,8 +51,9 @@ class TestVariable(unittest.TestCase):
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w"
         )
         w_dtype = w.dtype
-        if paddle.framework.use_pir_api() and isinstance(
-            w_dtype, paddle.base.libpaddle.VarDesc.VarType
+        if (
+            paddle.framework.use_pir_api()
+            and isinstance(w_dtype, paddle.base.libpaddle.VarDesc.VarType)
         ):
             w_dtype = paddle.pir.core.vartype_to_datatype[w_dtype]
         self.assertNotEqual(str(w), "")
@@ -296,10 +297,8 @@ class TestVariable(unittest.TestCase):
     def test_tostring(self):
         with base.dygraph.guard():
             self._tostring()
-
-        if not paddle.framework.use_pir_api():
-            with base.program_guard(default_main_program()):
-                self._tostring()
+        with base.program_guard(paddle.base.default_main_program()):
+            self._tostring()
 
     def test_fake_interface_only_api(self):
         b = default_main_program().current_block()
@@ -314,8 +313,9 @@ class TestVariable(unittest.TestCase):
         b = default_main_program().current_block()
         var = b.create_var(dtype="float64", shape=[1, 1])
         var_dtype = var.dtype
-        if paddle.framework.use_pir_api() and isinstance(
-            var_dtype, paddle.base.libpaddle.VarDesc.VarType
+        if (
+            paddle.framework.use_pir_api()
+            and isinstance(var_dtype, paddle.base.libpaddle.VarDesc.VarType)
         ):
             var_dtype = paddle.pir.core.vartype_to_datatype[var_dtype]
         with base.dygraph.guard():
@@ -356,10 +356,10 @@ class TestVariable(unittest.TestCase):
             x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
             exe = paddle.static.Executor(base.CPUPlace())
             exe.run(paddle.static.default_startup_program())
-            if not paddle.framework.use_pir_api():
-                output = exe.run(prog, fetch_list=[x.size()])
-            else:
+            if paddle.framework.use_pir_api():
                 output = exe.run(prog, fetch_list=[x.size])
+            else:
+                output = exe.run(prog, fetch_list=[x.size()])
             self.assertEqual(output[0], [24])
 
     def test_detach(self):
@@ -594,10 +594,6 @@ class TestListIndex(unittest.TestCase):
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
             x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
-
-            value = paddle.static.data(
-                name='value', shape=value_np.shape, dtype='float32'
-            )
             index1 = paddle.static.data(
                 name='index1', shape=index1.shape, dtype='int32'
             )
@@ -622,22 +618,21 @@ class TestListIndex(unittest.TestCase):
 
             y2 = array2[index_mod1, index_mod2]
 
-            if not paddle.framework.use_pir_api():
-                getitem_pp = exe.run(
-                    prog,
-                    feed={
-                        x.name: array,
-                        index1.name: index_mod1,
-                        index2.name: index_mod2,
-                    },
-                    fetch_list=fetch_list,
-                )
+            getitem_pp = exe.run(
+                prog,
+                feed={
+                    x.name: array,
+                    index1.name: index_mod1,
+                    index2.name: index_mod2,
+                },
+                fetch_list=fetch_list,
+            )
 
-                np.testing.assert_array_equal(
-                    y2,
-                    getitem_pp[0],
-                    err_msg=f'\n numpy:{y2},\n paddle:{getitem_pp[0]}',
-                )
+            np.testing.assert_array_equal(
+                y2,
+                getitem_pp[0],
+                err_msg=f'\n numpy:{y2},\n paddle:{getitem_pp[0]}',
+            )
 
     def test_dygraph_list_index_muti_dim(self):
         paddle.disable_static()
