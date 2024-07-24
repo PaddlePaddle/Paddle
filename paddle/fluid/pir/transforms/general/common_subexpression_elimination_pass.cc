@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
+#include <algorithm>
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
@@ -551,16 +552,24 @@ void ReplaceOpWith(pir::Operation* op, pir::Operation* new_op) {
     // NOTE(SigureMo): If the value has a shadow output, we could not replace
     // it directly. It will cause a value has two shadow outputs. It is
     // invalid for executor, so we make a copy by inserting a assign op.
-    std::optional<pir::Value> copied_value;
-    for (auto it = value.use_begin(); it != value.use_end(); ++it) {
-      if (it->owner()->isa<pir::ShadowOutputOp>()) {
-        if (!copied_value) {
-          copied_value = CreateAssignOp(new_value, new_op, op->GetParent());
+    const bool used_by_shadow_output = [](const pir::Value& value) {
+      bool used_by_shadow_output = false;
+      for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+        if (it->owner()->isa<pir::ShadowOutputOp>()) {
+          used_by_shadow_output = true;
+          break;
         }
-        it->set_source(copied_value.value());
-      } else {
-        it->set_source(new_value);
       }
+      return used_by_shadow_output;
+    }(value);
+    value.ReplaceUsesWithIf(new_value, [](pir::OpOperand operand) {
+      return !operand.owner()->isa<pir::ShadowOutputOp>();
+    });
+    if (used_by_shadow_output) {
+      auto copied_value = CreateAssignOp(new_value, new_op, op->GetParent());
+      value.ReplaceUsesWithIf(copied_value, [](pir::OpOperand operand) {
+        return operand.owner()->isa<pir::ShadowOutputOp>();
+      });
     }
   }
   op->Erase();
