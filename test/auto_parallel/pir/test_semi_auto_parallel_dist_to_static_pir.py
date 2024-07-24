@@ -49,9 +49,10 @@ class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
                 "backend": ["gpu"],
                 "amp": ['1'],
                 "amp_dtype": ['float16'],
-                'amp_level': ['O1'],
+                'amp_level': ['O1', 'O2'],
                 'use_master_weight': ['1'],
                 'use_master_grad': ['1'],
+                'use_promote': ['1'],
             },
         )
         for envs in envs_list:
