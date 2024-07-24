@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/matmul_op_int8_plugin.h"
 
 namespace plf = paddle::platform;
-namespace dyl = paddle::platform::dynload;
+namespace dyl = phi::dynload;
 namespace paddle {
 namespace inference {
 namespace tensorrt {
