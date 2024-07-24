@@ -42,7 +42,6 @@ pir::Value shard_tensor(
   auto shard_tensor_op =
       ApiBuilder::Instance().GetBuilder()->Build<ShardTensorOp>(x,
                                                                 attribute_map);
-  shard_tensor_op.operation()->Print(std::cout);
   return shard_tensor_op.out();
 }
 
