@@ -231,10 +231,10 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                              int scale_x_mode,
                              int scale_w_mode) {
   int r = 0;
+  xpu::ctx_guard RAII_GUARD(ctx);
   if (x_trans && std::getenv("XPU_PADDLE_FC_TRANS_A") != nullptr &&
       std::is_same<float, XPUType>::value) {
     XPUType* l3_addr = nullptr;
-    xpu::ctx_guard RAII_GUARD(ctx);
     l3_addr = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * k);
     PADDLE_ENFORCE_XDNN_NOT_NULL(l3_addr);
 
@@ -562,6 +562,7 @@ static void MatMulXPUFunction(
   const float* scale_y = fcinfo.scale_y;
   int scale_x_mode = fcinfo.scale_x_mode;
   int scale_y_mode = fcinfo.scale_y_mode;
+
   xpu::ctx_guard RAII_GUARD(xpu_ctx);
   if (batch_size <= 1) {
     xblas_fc_api(xpu_ctx,
