@@ -62,7 +62,7 @@ class BeamSearchFunctor<phi::XPUContext, T> {
                   bool is_accumulated) {
     auto abs_lod = phi::ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
-
+    VLOG(1) << "2222222";
     auto items = SelectTopBeamSizeItems(pre_ids,
                                         pre_scores,
                                         ids,
@@ -72,7 +72,9 @@ class BeamSearchFunctor<phi::XPUContext, T> {
                                         end_id,
                                         is_accumulated,
                                         ids->place());
+    VLOG(1) << "3333333";
     auto selected_items = ToMap(items, high_level.back());
+    VLOG(1) << "444444";
     if (FLAGS_v == 3) {
       VLOG(3) << "selected_items:";
       for (size_t i = 0; i < selected_items.size(); ++i) {
@@ -82,9 +84,10 @@ class BeamSearchFunctor<phi::XPUContext, T> {
         }
       }
     }
-
+    VLOG(1) << "111111";
     PruneEndBeams(
         pre_ids, abs_lod, &selected_items, level, end_id, ids->place());
+    VLOG(1) << "66666666";
     // calculate the output tensor's height
     size_t num_instances = std::accumulate(
         std::begin(selected_items),
@@ -92,8 +95,11 @@ class BeamSearchFunctor<phi::XPUContext, T> {
         0,
         [](size_t a, std::vector<Item> &b) { return a + b.size(); });
     // the output tensor shape should be [num_instances, 1]
+    VLOG(1) << "55555";
     auto dims = common::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
+    // printf();
+    VLOG(1) << "123123";
     selected_ids->Resize(dims);
     auto *selected_ids_data = context.template Alloc<int64_t>(selected_ids);
     selected_scores->Resize(dims);

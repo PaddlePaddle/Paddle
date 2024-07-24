@@ -20,10 +20,11 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op import Operator
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.base import Operator, core
+from paddle.base import core
 
 paddle.enable_static()
 
