@@ -463,10 +463,10 @@ class TestDy2STWithSetValue(AmpTestBase):
         if not paddle.framework.use_pir_api():
             return
         expected_fp16_calls = {
-            "cast": 1,
-            "layer_norm": 1,
-            "scale": 3,
-            "set_value": 1,
+            "pd_op.cast_": 1,
+            "pd_op.layer_norm": 1,
+            "pd_op.scale": 3,
+            "pd_op.set_value_with_tensor_": 1,
         }
 
         func = SimpleModelIncludeSetValue()
@@ -477,13 +477,10 @@ class TestDy2STWithSetValue(AmpTestBase):
         with paddle.amp.auto_cast(level='O2'):
             res = func(input)
             loss = res.sum()
-            prog = func.forward.get_concrete_program(input)[1].program.program
-            # amp.debugging.collect_operator_stats(prog)
-            # op_stats_list = amp.debugging._get_op_stats_list(prog)
+            paddle.amp.debugging.disable_operator_stats_collection()
+            op_stats = paddle.base.core.get_low_precision_op_list()
         loss.backward()
-        # self._check_op_calls(
-        #     op_stats_list, expected_fp16_calls=expected_fp16_calls
-        # )
+        self._check_op_calls(op_stats, expected_fp16_calls=expected_fp16_calls)
 
 
 if __name__ == '__main__':
