@@ -122,13 +122,13 @@ TEST(PatternRewrite, broadcast_elementwise) {
                 .block()
                 ->begin();
 
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::AddOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::AddOp>(), true);
 }
 
 TEST(PatternRewrite, broadcast_elementwise_both) {
@@ -151,15 +151,15 @@ TEST(PatternRewrite, broadcast_elementwise_both) {
                 .block()
                 ->begin();
 
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::AddOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::AddOp>(), true);
 }
 
 TEST(PatternRewrite, broadcast_elementwise_sub_both) {
@@ -182,13 +182,13 @@ TEST(PatternRewrite, broadcast_elementwise_sub_both) {
                 .block()
                 ->begin();
 
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::SubtractOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::SubtractOp>(), true);
 }
