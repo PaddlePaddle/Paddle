@@ -60,17 +60,18 @@ class EmbeddingDygraph(unittest.TestCase):
 
     def test_3_renorm(self):
         x = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.int64)
-        weight = np.random.random((10, 4)).astype(np.float32) * 10
+        weight_np = np.random.random((10, 4)).astype(np.float32) * 10
         max_norm = 5.0
         norm_type = 2.0
-        y_ref = self.ref_embedding_renorm_(x, weight, max_norm, norm_type)
-        paddle_result = embedding_renorm_(
+        y_ref = self.ref_embedding_renorm_(x, weight_np, max_norm, norm_type)
+        weight = paddle.to_tensor(weight_np)
+        embedding_renorm_(
             paddle.to_tensor(x),
-            paddle.to_tensor(weight),
+            weight,
             max_norm,
             norm_type,
         )
-        np.testing.assert_allclose(paddle_result.numpy(), y_ref, atol=1e-5)
+        np.testing.assert_allclose(weight.numpy(), y_ref, atol=1e-5)
 
     def test_4_renorm(self):
         x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
