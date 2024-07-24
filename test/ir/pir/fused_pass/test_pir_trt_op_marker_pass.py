@@ -393,14 +393,14 @@ class TestCastTRTPattern(PassTest):
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(
-                    name='x', shape=[3,4], dtype='float64'
+                    name='x', shape=[3,4], dtype='float32'
                 )
                 cast_out = paddle.cast(x, 'uint8')
                 print(f'cast_out:{cast_out}')
                 out = paddle.assign(cast_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x": np.random.random([3,4]).astype("float64"),
+                    "x": np.random.random([3,4]).astype("float32"),
                 }
 
                 self.fetch_list = [out]
