@@ -91,35 +91,37 @@ class InferenceEngine:
 
         self.arg_defaults = [v.default for v in signature.parameters.values()]
 
-        self.memory_pool_init_size_mb = kwargs.get(
-            "memory_pool_init_size_mb", 1000
-        )
-        self.cache_static_model = kwargs.get("cache_static_model", False)
-        self.save_model_dir = kwargs.get(
-            "save_model_dir",
-            os.path.join(Path.home(), ".cache", "paddle", "inference_models"),
-        )
-        self.save_model_dir = os.path.join(self.save_model_dir, func.__name__)
-        self.precision_mode = kwargs.get("precision_mode", "float32")
-        self.switch_ir_optim = kwargs.get("switch_ir_optim", True)
-        self.switch_ir_debug = kwargs.get("switch_ir_debug", False)
-        self.enable_cinn = kwargs.get("enable_cinn", False)
+        self.memory_pool_init_size_mb = kwargs.get("memory_pool_init_size_mb")
+        self.cache_static_model = kwargs.get("cache_static_model")
 
-        self.with_trt = kwargs.get("with_trt", False)
-        self.trt_precision_mode = kwargs.get("trt_precision_mode", "float32")
-        self.trt_use_static = kwargs.get("trt_use_static", False)
-        self.collect_shape = kwargs.get("collect_shape", False)
+        self.save_model_dir = kwargs.get("save_model_dir")
+        # The default save_model_dir is ~/.cache/paddle/inference_models
+        if self.save_model_dir is None:
+            self.save_model_dir = os.path.join(
+                Path.home(), ".cache", "paddle", "inference_models"
+            )
+        self.save_model_dir = os.path.join(self.save_model_dir, func.__name__)
+
+        self.precision_mode = kwargs.get("precision_mode")
+        self.switch_ir_optim = kwargs.get("switch_ir_optim")
+        self.switch_ir_debug = kwargs.get("switch_ir_debug")
+        self.enable_cinn = kwargs.get("enable_cinn")
+
+        self.with_trt = kwargs.get("with_trt")
+        self.trt_precision_mode = kwargs.get("trt_precision_mode")
+        self.trt_use_static = kwargs.get("trt_use_static")
+        self.collect_shape = kwargs.get("collect_shape")
+
         default_delete_pass_lists = [
             "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",
             "add_support_int8_pass",
         ]
-        self.delete_pass_lists = kwargs.get(
-            "delete_pass_lists", default_delete_pass_lists
-        )
-        self.enable_new_ir = kwargs.get("enable_new_ir", False)
-        self.exp_enable_use_cutlass = kwargs.get(
-            "exp_enable_use_cutlass", False
-        )
+        self.delete_pass_lists = kwargs.get("delete_pass_lists")
+        if self.delete_pass_lists is None:
+            self.delete_pass_lists = default_delete_pass_lists
+
+        self.enable_new_ir = kwargs.get("enable_new_ir")
+        self.exp_enable_use_cutlass = kwargs.get("exp_enable_use_cutlass")
 
         py_script = textwrap.dedent(inspect.getsource(func))
         py_script = py_script[py_script.find("def") :]
@@ -391,7 +393,23 @@ class InferenceEngine:
         self.predictor = create_predictor(config)
 
 
-def inference(function=None, **kwargs):
+def inference(
+    function=None,
+    cache_static_model=False,
+    save_model_dir=None,
+    memory_pool_init_size_mb=1000,
+    precision_mode="float32",
+    switch_ir_optim=True,
+    switch_ir_debug=False,
+    enable_cinn=False,
+    with_trt=False,
+    trt_precision_mode="float32",
+    trt_use_static=False,
+    collect_shape=False,
+    enable_new_ir=False,
+    exp_enable_use_cutlass=False,
+    delete_pass_lists=None,
+):
     """
     Converts dynamic graph APIs into static graph saved in disk. Then will use Paddle Inference to infer based on
     the static model in the disk.
@@ -400,15 +418,21 @@ def inference(function=None, **kwargs):
     Args:
         function (callable): Callable dynamic graph function. It must be a member function of paddle.nn.Layer.
             If it used as a decorator, the decorated  function will be parsed as this parameter.
-        cache_static_model: Whether to cache the static model or not. Default is False.
-            when cache_static_model is True, the static model will be saved in disk, and the next time
-        delete_pass_lists: The pass lists that will be deleted before converting to static graph. Default is ['fuse_bn_before_activation'].
-        enable_new_ir: Whether to enable new IR. Default is True.
-        switch_ir_debug: Whether to enable IR debug. Default is False.
+        cache_static_model: Whether to use the cached static model in thd disk . Default is False.
+            when cache_static_model is True, the static model will be saved in disk, and the next time when you call this function
+        save_model_dir: The directory to save the static model. Default is ~/.cache/paddle/inference_models/.
+        memory_pool_init_size_mb: The memory pool init size in MB. Default is 1000.
+        precision_mode: The precision mode. Default is "float32".
         switch_ir_optim: Whether to enable IR optim. Default is True.
-        exp_enable_use_cutlass: Whether to enable use cutlass. Default
-        kwargs: Support keys including `property`, set `property` to True if the function
-            is python property.
+        switch_ir_debug: Whether to enable IR debug. Default is False.
+        enable_cinn: Whether to enable CINN. Default is False.
+        with_trt: Whether to enable TensorRT. Default is False.
+        trt_precision_mode: The precision mode of TensorRT. Default is "float32".
+        trt_use_static: Whether to use static shape in TensorRT. Default is False.
+        collect_shape: Whether to collect shape. Default is False.
+        enable_new_ir: Whether to enable new IR. Default is True.
+        exp_enable_use_cutlass: Whether to enable use cutlass. Default is False.
+        delete_pass_lists: The list of pass names to delete. Default is None.
 
     Returns:
         function (callable): the decorated function which can be used for inference.
@@ -416,9 +440,7 @@ def inference(function=None, **kwargs):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('`paddle.jit.paddle_inference_decorator` can not run in xdoctest')
             >>> import paddle
-            >>> from paddle.jit import paddle_inference_decorator
             >>> class ExampleLayer(paddle.nn.Layer):
             ...     def __init__(self, hidd):
             ...         super().__init__()
@@ -439,7 +461,7 @@ def inference(function=None, **kwargs):
             >>> x = paddle.rand([batch, hidd], dtype=dtype)
             >>> mylayer = ExampleLayer(hidd)
             >>> dynamic_result = mylayer(x)
-            >>> mylayer = paddle.jit.to_static(mylayer, backend='inference')
+            >>> mylayer = paddle.incubate.jit.inference(mylayer)
             >>> decorator_result = mylayer(x)
 
     """
@@ -450,7 +472,24 @@ def inference(function=None, **kwargs):
         if isinstance(func, paddle.nn.Layer):
             func = func.forward
 
-        infer_engine = InferenceEngine(func, used_as_at_decorator, **kwargs)
+        infer_engine = InferenceEngine(
+            func,
+            used_as_at_decorator,
+            cache_static_model=cache_static_model,
+            save_model_dir=save_model_dir,
+            memory_pool_init_size_mb=memory_pool_init_size_mb,
+            precision_mode=precision_mode,
+            switch_ir_optim=switch_ir_optim,
+            switch_ir_debug=switch_ir_debug,
+            enable_cinn=enable_cinn,
+            with_trt=with_trt,
+            trt_precision_mode=trt_precision_mode,
+            trt_use_static=trt_use_static,
+            collect_shape=collect_shape,
+            enable_new_ir=enable_new_ir,
+            exp_enable_use_cutlass=exp_enable_use_cutlass,
+            delete_pass_lists=delete_pass_lists,
+        )
 
         # This is the inner_most decorator, ie. when user invoke the function decorated by @paddle.jit.to_static(backend='inference', )
         # he is actually invoke this internel function.
