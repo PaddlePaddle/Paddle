@@ -193,6 +193,41 @@ def base_softmax_with_cross_entropy(
     axis: int = -1,
 ) -> Tensor:
     r"""
+
+    This operator implements the cross entropy loss function with softmax. This function
+    combines the calculation of the softmax operation and the cross entropy loss function
+    to provide a more numerically stable gradient.
+
+    Because this operator performs a softmax on logits internally, it expects
+    unscaled logits. This operator should not be used with the output of
+    softmax operator since that would produce incorrect results.
+
+    When the attribute :attr:`soft_label` is set :attr:`False`, this operators
+    expects mutually exclusive hard labels, each sample in a batch is in exactly
+    one class with a probability of 1.0. Each sample in the batch will have a
+    single label.
+
+    The equation is as follows:
+
+    1) Hard label (one-hot label, so every sample has exactly one class)
+
+    .. math::
+        \\loss_j=-\text{logits}_{label_j} +\log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right), j = 1,..., K
+
+    2) Soft label (each sample can have a distribution over all classes)
+
+    .. math::
+        \\loss_j= -\sum_{i=0}^{K}\text{label}_i\left(\text{logits}_i - \log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right)\right), j = 1,...,K
+
+    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated first by:
+
+    .. math::
+        \\max_j&=\max_{i=0}^{K}{\text{logits}_i} \\
+                log\_max\_sum_j &= \log\sum_{i=0}^{K}\exp(logits_i - max_j)\\
+                softmax_j &= \exp(logits_j - max_j - {log\_max\_sum}_j)
+
+    and then cross entropy loss is calculated by softmax and label.
+
     Args:
         logits (Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
         label (Tensor): The ground truth  ``Tensor`` , data type is the same
@@ -200,6 +235,32 @@ def base_softmax_with_cross_entropy(
             Label is a ``Tensor``  in the same shape with :attr:`logits`.
             If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor``
             in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
+        soft_label (bool, optional): A flag to indicate whether to interpret the given
+            labels as soft labels. Default False.
+        ignore_index (int, optional): Specifies a target value that is ignored and does
+                                      not contribute to the input gradient. Only valid
+                                      if :attr:`soft_label` is set to :attr:`False`.
+                                      Default: kIgnoreIndex(-100).
+        numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
+                                              numerically stable algorithm. Only valid
+                                              when :attr:`soft_label` is :attr:`False`
+                                              and GPU is used. When :attr:`soft_label`
+                                              is :attr:`True` or CPU is used, the
+                                              algorithm is always numerically stable.
+                                              Note that the speed may be slower when use
+                                              stable algorithm. Default: True.
+        return_softmax (bool, optional): A flag indicating whether to return the softmax
+                                         along with the cross entropy loss. Default: False.
+        axis (int, optional): The index of dimension to perform softmax calculations. It
+                              should be in range :math:`[-1, rank - 1]`, while :math:`rank`
+                              is the rank of input :attr:`logits`. Default: -1.
+
+    Returns:
+        - If `return_softmax` is False, return the cross entropy loss as a ``Tensor``.
+          The dtype is the same as the input ``logits``. The shape is consistent with ``logits`` except in dimension :attr:`axis` as 1.
+        - If `return_softmax` is True, return a tuple of two ``Tensor``: the cross entropy loss and the softmax result.
+          The dtype of the cross entropy loss is the same as the input ``logits``, and the shape is consistent with ``logits``
+          except in dimension :attr:`axis` as 1. The dtype and shape of the softmax result are the same as the input ``logits``.
 
     Examples:
         .. code-block:: python
@@ -209,6 +270,11 @@ def base_softmax_with_cross_entropy(
 
             >>> logits = paddle.to_tensor([0.4, 0.6, 0.9])
             >>> label = paddle.randint(high=2, shape=[1], dtype="int64")
+
+            >>> out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
+            >>> print(out)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [1.15328646])
 
     """
     input_dims = len(list(logits.shape))
@@ -2121,7 +2187,7 @@ def margin_cross_entropy(
     scale: float = ...,
     group=...,
     return_softmax: Literal[True] = ...,
-    reduction: _ReduceMode = ...,
+    reduction: _ReduceMode | None = ...,
 ) -> tuple[Tensor, Tensor]:
     ...
 
@@ -2136,7 +2202,7 @@ def margin_cross_entropy(
     scale: float = ...,
     group=...,
     return_softmax: Literal[False] = ...,
-    reduction: _ReduceMode = ...,
+    reduction: _ReduceMode | None = ...,
 ) -> Tensor:
     ...
 
