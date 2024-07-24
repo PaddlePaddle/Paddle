@@ -81,7 +81,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   if (IsEnabled() == false) {
     return;
   }
-  std::map<std::string, std::vector<framework::DDim>> input_shapes;
+  std::map<std::string, std::vector<phi::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   for (const auto &input : ctx.inputs) {
     input_shapes[input.first] = shape_ctx.GetInputsDim(input.first);
@@ -103,7 +103,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   if (IsEnabled() == false) {
     return;
   }
-  std::map<std::string, std::vector<framework::DDim>> input_shapes;
+  std::map<std::string, std::vector<phi::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   for (auto input_name_char : kernel_signature.input_names) {
     std::string input_name(input_name_char);
