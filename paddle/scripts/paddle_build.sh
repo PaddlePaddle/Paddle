@@ -19,6 +19,7 @@
 #=================================================
 
 # nothing to modify
+export FLAGS_CI_both_cpu_and_gpu=1
 set -ex
 
 if [ -z ${BRANCH} ]; then
