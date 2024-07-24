@@ -33,6 +33,11 @@ from pybind11_stubgen import (
     to_output_and_subdir,
 )
 
+PYBIND11_MAPPING = {
+    'capsule': 'typing_extensions.CapsuleType',
+    'paddle::Tensor': 'paddle.Tensor',
+}
+
 
 def patch_pybind11_stubgen_printer():
     # patch name with suffix '_' if `name` is a keyword like `in` to `in_`
@@ -55,9 +60,8 @@ def patch_pybind11_stubgen_printer():
 
     # patch invalid exp with `"xxx"` as a `typing.Any`
     def print_invalid_exp(self, invalid_expr) -> str:
-        if self.invalid_expr_as_ellipses:
-            return "..."
-        return f'"{invalid_expr.text}"'
+        _text = invalid_expr.text
+        return PYBIND11_MAPPING.get(_text, f'"{_text}"')
 
     Printer.print_invalid_exp = print_invalid_exp
 

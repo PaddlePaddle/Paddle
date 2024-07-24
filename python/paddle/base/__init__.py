@@ -19,7 +19,7 @@ import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from paddle._typing.libs import libpaddle as libpaddle
+    from . import libpaddle as libpaddle
 
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepaddle without -U option
