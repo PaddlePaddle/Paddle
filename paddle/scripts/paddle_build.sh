@@ -18,8 +18,7 @@
 #                   Utils
 #=================================================
 
-# nothing to modify just test
-export FLAGS_CI_both_cpu_and_gpu=1
+export FLAGS_CI_both_cpu_and_gpu=0
 set -ex
 
 if [ -z ${BRANCH} ]; then
