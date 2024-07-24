@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+import paddle
 from paddle import pir
 
 from ..pir import Value
@@ -493,13 +494,31 @@ class DataFeeder:
                 )
             )
 
-        for each_sample in iterable:
-            assert len(each_sample) == len(converter), (
-                "The number of fields in data (%d) does not match "
-                + "len(feed_list) (%d)"
-            ) % (len(each_sample), len(converter))
-            for each_converter, each_slot in zip(converter, each_sample):
-                each_converter.feed(each_slot)
+        def feed_data(converter, data):
+            if isinstance(data, (list, tuple)):
+                for item in data:
+                    feed_data(converter, item)
+            else:
+                converter.feed(data)
+
+        if paddle.framework.use_pir_api():
+            for each_sample in iterable:
+                assert len(each_sample) == len(converter), (
+                    "The number of fields in data (%d) does not match "
+                    + "len(feed_list) (%d)"
+                ) % (len(each_sample), len(converter))
+                for each_converter, each_slot in zip(converter, each_sample):
+                    feed_data(each_converter, each_slot)
+
+        else:
+            for each_sample in iterable:
+                assert len(each_sample) == len(converter), (
+                    "The number of fields in data (%d) does not match "
+                    + "len(feed_list) (%d)"
+                ) % (len(each_sample), len(converter))
+                for each_converter, each_slot in zip(converter, each_sample):
+                    each_converter.feed(each_slot)
+
         ret_dict = {}
         for each_name, each_converter in zip(self.feed_names, converter):
             ret_dict[each_name] = each_converter.done()
