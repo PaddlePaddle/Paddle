@@ -33,7 +33,6 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
   return Compute(
       domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
-        // CHECK_EQ(axis.size(), 0);
         return fn();
       },
       name,
