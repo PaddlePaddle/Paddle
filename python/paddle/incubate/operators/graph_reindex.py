@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 from paddle.utils import deprecated
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 @deprecated(
@@ -26,14 +33,14 @@ from paddle.utils import deprecated
     reason="paddle.incubate.graph_reindex will be removed in future",
 )
 def graph_reindex(
-    x,
-    neighbors,
-    count,
-    value_buffer=None,
-    index_buffer=None,
-    flag_buffer_hashtable=False,
-    name=None,
-):
+    x: Tensor,
+    neighbors: Tensor,
+    count: Tensor,
+    value_buffer: bool = None,
+    index_buffer: bool = None,
+    flag_buffer_hashtable: bool = False,
+    name: str = None,
+) -> tuple[Tensor, Tensor, Tensor]:
     """
 
     Graph Reindex API.
