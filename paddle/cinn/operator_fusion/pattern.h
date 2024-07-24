@@ -235,7 +235,7 @@ struct AnchorPattern {
   pir::Value anchor() const { return anchor_; }
   bool can_recompute() const {
     // Current Algorithm:
-    // An AnchorPattern can be recomputed iff:
+    // An AnchorPattern can be recomputed if:
     // 1. It didn't go through any pattern merging during prior fusions, which
     // means it only has one output_expr in anchor_state.
     // 2. It only contains trivial ops.

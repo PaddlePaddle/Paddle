@@ -138,6 +138,25 @@ class TestAnchorFusion(unittest.TestCase):
 
         self.compare_result(func, None, init)
 
+    def test_anchor_fusion_6(self):
+        #      T
+        #     / \
+        #    B   R
+        #   /     \
+        #  T       T
+        def func(x):
+            a = x + 1
+            b = paddle.expand(a, [10, 32, 32, 128]) / 2
+            c = paddle.sum(a, axis=-1)
+            d = c * 3
+            return b, d
+
+        def init():
+            x = paddle.rand((32, 32, 128))
+            return (x,)
+
+        self.compare_result(func, None, init)
+
 
 if __name__ == "__main__":
     unittest.main()
