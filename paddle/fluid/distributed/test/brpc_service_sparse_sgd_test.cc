@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {

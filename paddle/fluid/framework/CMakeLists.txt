@@ -123,12 +123,12 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS place fluid_memory data_type device_context phi common)
+  DEPS fluid_memory data_type device_context phi common)
 
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS phi common place tensor framework_proto version)
+  DEPS phi common tensor framework_proto version)
 
 cc_library(
   garbage_collector
@@ -290,7 +290,7 @@ cc_library(
 cc_library(
   op_kernel_type
   SRCS op_kernel_type.cc
-  DEPS device_context place)
+  DEPS device_context phi common)
 
 if(WITH_XPU)
   cc_library(
@@ -298,7 +298,6 @@ if(WITH_XPU)
     SRCS phi_utils.cc
     DEPS lod_tensor
          selected_rows_utils
-         place
          phi
          common
          var_type_traits
@@ -308,13 +307,7 @@ else()
   cc_library(
     phi_utils
     SRCS phi_utils.cc
-    DEPS lod_tensor
-         selected_rows_utils
-         place
-         phi
-         common
-         var_type_traits
-         op_info)
+    DEPS lod_tensor selected_rows_utils phi common var_type_traits op_info)
 endif()
 
 if(WITH_XPU)
@@ -920,7 +913,6 @@ cc_library(
   DEPS lod_tensor
        selected_rows_utils
        attribute
-       place
        var_type_traits
        phi
        common
