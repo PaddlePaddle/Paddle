@@ -53,7 +53,12 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
             << "at least one input tensor for relu compute\n";
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
-        CHECK_EQ(pack_args.size(), 2);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2,
+            phi::errors::InvalidArgument(
+                "The pack_args's dimensions should be 2, but got %d.",
+                pack_args.size()));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
@@ -84,7 +89,12 @@ std::shared_ptr<OpStrategy> StrategyForRelu6Symbolic(
             << "at least one input tensor for relu6 compute\n";
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
-        CHECK_EQ(pack_args.size(), 2);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2,
+            phi::errors::InvalidArgument(
+                "The pack_args's dimensions should be 2, but got %d.",
+                pack_args.size()));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
@@ -112,7 +122,12 @@ std::shared_ptr<OpStrategy> StrategyForReluSymbolic(
             << "at least one input tensor for relu compute\n";
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
-        CHECK_EQ(pack_args.size(), 2);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2,
+            phi::errors::InvalidArgument(
+                "The pack_args's dimensions should be 2, but got %d.",
+                pack_args.size()));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
@@ -140,7 +155,12 @@ std::shared_ptr<OpStrategy> StrategyForRelu6(
             << "at least one input tensor for relu6 compute\n";
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
-        CHECK_EQ(pack_args.size(), 2);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2,
+            phi::errors::InvalidArgument(
+                "The pack_args's dimensions should be 2, but got %d.",
+                pack_args.size()));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
@@ -199,8 +219,11 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
   }
 
 #ifndef CINN_WITH_CUDNN
-  CHECK_EQ(conv_type, "forward")
-      << "cudnn is not found, backward_data/backward_filter is not supported!";
+  PADDLE_ENFORCE_EQ(conv_type,
+                    "forward",
+                    phi::errors::NotFound(
+                        "cudnn is not found, backward_data/backward_filter is "
+                        "not supported!"));
 #endif
 
   framework::CINNCompute conv2d_compute(
@@ -209,24 +232,44 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         CHECK(!args.empty())
             << "The input argument of conv2d compute is empty! Please check.\n";
         CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 2U)
-            << "at least 2 input tensors for conv2d compute\n";
+        PADDLE_ENFORCE_GE(pack_args.size(),
+                          2U,
+                          phi::errors::InvalidArgument(
+                              "The size of pack_args in conv2d is incorrect. "
+                              "Expected size should be greater than or equal "
+                              "to 2, but receive %d. ",
+                              pack_args.size()));
         Expr A = pack_args[0];
         Expr B = pack_args[1];
         CHECK(A.as_tensor());
         CHECK(B.as_tensor());
-        CHECK_EQ(padding.size(), 2)
-            << "The size of padding in conv2d op is not 2! Please check.";
-        CHECK_EQ(stride.size(), 2)
-            << "The size of stride in conv2d op is not 2! Please check.";
-        CHECK_EQ(dilation.size(), 2)
-            << "The size of stride in conv2d op is not 2! Please check.";
+        PADDLE_ENFORCE_EQ(
+            padding.size(),
+            2,
+            phi::errors::InvalidArgument(
+                "The size of padding in conv2d op should be 2, but got %d.",
+                padding.size()));
+        PADDLE_ENFORCE_EQ(
+            stride.size(),
+            2,
+            phi::errors::InvalidArgument(
+                "The size of stride in conv2d op should be 2, but got %d."));
+        PADDLE_ENFORCE_EQ(
+            dilation.size(),
+            2,
+            phi::errors::InvalidArgument(
+                "The size of dilation in conv2d op should be 2, but got %d."));
         std::vector<ir::Tensor> out;
         VLOG(3) << "input shape: "
                 << utils::Join(A.as_tensor_ref()->shape, ", ");
         VLOG(3) << "weight shape: "
                 << utils::Join(B.as_tensor_ref()->shape, ", ");
-        CHECK_GE(pack_args.size(), 3);
+        PADDLE_ENFORCE_GE(
+            pack_args.size(),
+            3,
+            phi::errors::InvalidArgument(
+                "The size of pack_args in conv2d op should be 3, but got %d.",
+                pack_args.size()));
         CHECK(pack_args[2].is_string());
         std::string tensor_name = pack_args[2].operator std::string();
         if (data_format == "NCHW") {
@@ -367,7 +410,12 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           // be called. When cinn support backward_filter/backward_data code
           // gen, this code is to be removed.
           if (conv_type != "forward") {
-            CHECK_EQ(vec_ast.size(), 1);
+            PADDLE_ENFORCE_EQ(
+                vec_ast.size(),
+                1,
+                phi::errors::InvalidArgument(
+                    "The size of vec_ast should be 3, but got %d.",
+                    vec_ast.size()));
             pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
             std::vector<CINNValue> res{
                 CINNValue(ir_sch.GetModule().GetExprs().at(0))};
@@ -431,20 +479,39 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     CHECK(!args.empty()) << "The input argument of depthwise_conv compute is "
                             "empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 2U)
-        << "at least 2 input tensors for depthwise_conv compute\n";
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        2U,
+        phi::errors::InvalidArgument(
+            "The size of pack_args in depthwise_conv is incorrect. "
+            "Expected size should be greater than or equal "
+            "to 2, but receive %d. ",
+            pack_args.size()));
     Expr A = pack_args[0];
     Expr B = pack_args[1];
     CHECK(A.as_tensor());
     CHECK(B.as_tensor());
-    CHECK_EQ(padding.size(), 2) << "The size of padding in depthwise_conv "
-                                   "op is not 2! Please check.\n";
-    CHECK_EQ(stride.size(), 2) << "The size of stride in depthwise_conv op "
-                                  "is not 2! Please check.\n";
+    PADDLE_ENFORCE_EQ(
+        padding.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "The size of padding in depthwise_conv op should be 2, but got %d.",
+            padding.size()));
+    PADDLE_ENFORCE_EQ(
+        stride.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "The size of stride in depthwise_conv op should be 2, but got %d.",
+            stride.size()));
     CHECK(data_format == "NCHW" || data_format == "NHWC")
         << "only support NCHW/NHWC data_format.\n";
     std::vector<ir::Tensor> out;
-    CHECK_GE(pack_args.size(), 3);
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        3,
+        phi::errors::InvalidArgument(
+            "The size of pack_args in depthwise_conv op should be 3, but got %d.",
+            pack_args.size()));
     CHECK(pack_args[2].is_string());
     std::string tensor_name = pack_args[2].operator std::string();
     if (data_format == "NCHW") {
