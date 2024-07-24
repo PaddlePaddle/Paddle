@@ -473,7 +473,7 @@ GenerateOpFunctions() {
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
-void run_legacy_generator(int argc, char* argv[]) {
+int run_legacy_generator(int argc, char* argv[]) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   // We need a fake device to trigger the registration of the common kernel and
   // generate api
@@ -546,4 +546,6 @@ void run_legacy_generator(int argc, char* argv[]) {
       << "} // namespace paddle\n";
 
   out.close();
+
+  return 0;
 }

@@ -3786,17 +3786,18 @@ std::set<std::string> special_no_need_buffer_op_set = {
     "sequence_conv",
 };
 
-void run_generator(int argc, char* argv[]) {
+int run_generator(int argc, char* argv[]) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   // We need a fake device to trigger the registration of the common kernel and
   // generate api
   paddle::operators::RegisterCustomDeviceCommonKernel("fake_device");
 #endif
 
-  std::string eager_root = argv[1];
-  int split_count = atoi(argv[2]);
+  std::string eager_root = argv[1] int split_count = atoi(argv[2]);
 
   paddle::framework::PrepareAttrMapForOps();
 
   paddle::framework::DygraphCodeGeneration(eager_root, split_count);
+
+  return 0
 }
