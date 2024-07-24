@@ -95,6 +95,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_avg_',
     'c_allreduce_avg',
     'c_allreduce_max',
+    'c_reducescatter',
     'reduce_scatter',
     'c_allreduce_min_',
     'c_allreduce_prod_',
