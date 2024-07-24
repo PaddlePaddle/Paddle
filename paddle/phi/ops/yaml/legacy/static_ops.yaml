@@ -111,16 +111,6 @@
   kernel:
     func: beam_search_decode
 
-- op : broadcast
-  args : (Tensor x, int ring_id = 0, int root = 0)
-  output : Tensor(out)
-  infer_meta :
-    func : DistBroadcastInferMeta
-    param: [x]
-  kernel :
-    func : broadcast
-    param: [x, root]
-
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
