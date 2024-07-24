@@ -24,7 +24,6 @@ from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 def ref_repeat_interleave(x_np, index_np, axis):
@@ -116,7 +115,6 @@ class TestRepeatInterleaveAPI(unittest.TestCase):
         self.data_zero_dim_index = np.array(2)
         self.data_index = np.array([0, 1, 2, 1]).astype('int32')
 
-    @test_with_pir_api
     def test_repeat_interleave_api(self):
         paddle.enable_static()
         self.input_data()
@@ -137,7 +135,7 @@ class TestRepeatInterleaveAPI(unittest.TestCase):
             x.stop_gradient = False
             index.stop_gradient = False
             z = paddle.repeat_interleave(x, index, axis=1)
-            exe = base.Executor(base.CPUPlace())
+            exe = base.Executor(base.XPUPlace(0))
             (res,) = exe.run(
                 feed={'x': self.data_x, 'repeats_': self.data_index},
                 fetch_list=[z],
@@ -161,7 +159,7 @@ class TestRepeatInterleaveAPI(unittest.TestCase):
                 x.desc.set_need_check_feed(False)
                 index.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, index, axis=0)
-            exe = base.Executor(base.CPUPlace())
+            exe = base.Executor(base.XPUPlace(0))
             (res,) = exe.run(
                 feed={
                     'x': self.data_x,
@@ -181,7 +179,7 @@ class TestRepeatInterleaveAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, repeats, axis=0)
             if not paddle.framework.in_pir_mode():
                 x.desc.set_need_check_feed(False)
-            exe = base.Executor(base.CPUPlace())
+            exe = base.Executor(base.XPUPlace(0))
             (res,) = exe.run(
                 feed={'x': self.data_x}, fetch_list=[z], return_numpy=False
             )
@@ -197,7 +195,7 @@ class TestRepeatInterleaveAPI(unittest.TestCase):
                 if not paddle.framework.in_pir_mode():
                     x.desc.set_need_check_feed(False)
                 z = paddle.repeat_interleave(x, repeats)
-                exe = base.Executor(base.CPUPlace())
+                exe = base.Executor(base.XPUPlace(0))
                 (res,) = exe.run(
                     feed={'x': self.data_zero_dim_x},
                     fetch_list=[z],
@@ -221,7 +219,7 @@ class TestRepeatInterleaveAPI(unittest.TestCase):
                 x.desc.set_need_check_feed(False)
                 index.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, index, axis=-1)
-            exe = base.Executor(base.CPUPlace())
+            exe = base.Executor(base.XPUPlace(0))
             (res,) = exe.run(
                 feed={'x': self.data_x, 'repeats_': self.data_index},
                 fetch_list=[z],
