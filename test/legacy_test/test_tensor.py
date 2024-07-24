@@ -498,7 +498,7 @@ class TestTensor(unittest.TestCase):
         tensor.set(array, place)
         tensor_dtype = tensor._dtype()
         if paddle.framework.use_pir_api() and isinstance(
-            isinstance(tensor_dtype, paddle.base.libpaddle.VarDesc.VarType
+            tensor_dtype, paddle.base.libpaddle.VarDesc.VarType
         ):
             tensor_dtype = paddle.pir.core.vartype_to_datatype[tensor_dtype]
         self.assertEqual(tensor_dtype, paddle.complex64)
