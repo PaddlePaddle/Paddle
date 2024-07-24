@@ -129,6 +129,9 @@ class RecomputeFunction(PyLayer):
                 ctx.tensor_indices.append(i)
                 ctx.inputs.append(None)
             elif type(arg) is tuple:
+                assert (
+                    i not in ctx.offload_indices
+                ), f"offload_indices should not contain tensor tuple in position{i}"
                 is_tensors = [paddle.is_tensor(a) for a in arg]
                 if all(is_tensors):
                     # the tuple is a tuple of tensors
@@ -200,7 +203,13 @@ class RecomputeFunction(PyLayer):
             duplicate_tensor = ctx.duplicate_tensor
             tensors = ctx.saved_tensor()
             for i, idx in enumerate(tensor_indices):
-                inputs[idx] = tensors[i]
+                inputs[idx] = (
+                    tensors[i].to(
+                        paddle.base.framework._current_expected_place()
+                    )
+                    if i in ctx.offload_indices
+                    else tensors[i]
+                )
 
             # paddle.enable_grad()
             tracer = framework._dygraph_tracer()
