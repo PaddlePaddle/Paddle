@@ -19,8 +19,7 @@ cc_library(
        xpulib
        device_context
        phi
-       common
-       dynload_xpti)
+       common)
 cc_library(
   xpu_op_list
   SRCS xpu_op_list.cc
@@ -30,8 +29,7 @@ cc_library(
        device_context
        op_kernel_type
        phi
-       common
-       dynload_xpti)
+       common)
 cc_library(
   xpu_resource_pool
   SRCS xpu_resource_pool.cc

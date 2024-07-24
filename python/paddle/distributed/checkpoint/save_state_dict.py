@@ -160,6 +160,9 @@ def save_state_dict(
                 if not val._is_initialized():
                     continue
                 if val.is_dist():
+                    local_tensor = val._local_value()
+                    # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
+                    local_tensor.name = val.name
                     # when val is scalar, the shape is []
                     (
                         local_shape,
@@ -175,9 +178,11 @@ def save_state_dict(
                     )
                     if local_shape is None or global_offset is None:
                         continue
-                    local_tensor = val._local_value()
-                    # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
-                    local_tensor.name = val.name
+                    if (
+                        paddle.distributed.get_rank()
+                        not in val.process_mesh.process_ids
+                    ):
+                        continue
                 else:
                     local_shape = tuple(val.shape)
                     global_offset = (
