@@ -34,7 +34,9 @@ def build_resnet50(use_amp=False):
             label = paddle.static.data(name='label', shape=[32], dtype='int64')
             model = paddle.vision.models.resnet50()
             prediction = model(image)
-            loss = paddle.nn.functional.cross_entropy(input=prediction, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=prediction, label=label
+            )
             loss = paddle.mean(loss)
             adam = paddle.optimizer.Adam(learning_rate=0.001)
 
@@ -93,7 +95,9 @@ def run_resnet50(aot_choose_kernel=False, use_amp=False):
                     'image': np.random.randint(
                         0, 256, size=[32, 3, 224, 224]
                     ).astype(feed_dtype),
-                    'label': np.random.randint(0, 1000, size=[32]).astype('int64'),
+                    'label': np.random.randint(0, 1000, size=[32]).astype(
+                        'int64'
+                    ),
                 }
                 loss_ = exe.run(main_program, feed=feed, fetch_list=[loss])
     return loss_
