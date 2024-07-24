@@ -330,6 +330,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_fusion_group_pass',
     'test_fusion_lstm_bf16_mkldnn_op',
     'test_executor_feed_non_tensor',
+    'test_var_info_deprecated',
     'test_reducescatter',
     'test_fleet_ps',
     'test_check_import_scipy',
