@@ -26,7 +26,7 @@ struct CPUDeviceEventWrapper {
   explicit CPUDeviceEventWrapper(const phi::Place& place, unsigned int flag = 0)
       : status_(EventStatus::INITIALIZED) {
     PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(place),
+        phi::is_cpu_place(place),
         true,
         phi::errors::PreconditionNotMet(
             "Required device shall be CPUPlace, but received %d. ", place));

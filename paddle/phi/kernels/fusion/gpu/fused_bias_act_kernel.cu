@@ -446,8 +446,8 @@ void FusedBiasActKernel(const Context &dev_ctx,
                         float quant_max_bound,
                         float quant_min_bound,
                         DenseTensor *out) {
-  int rows = x.dims()[0];
-  int cols = x.dims()[1];
+  int cols = x.dims()[x.dims().size() - 1];
+  int rows = x.numel() / cols;
   if (x.dtype() == phi::DataType::INT32) {
     if (compute_dtype == "bf16") {
       DispatchWithDtype<phi::dtype::bfloat16, Context>(

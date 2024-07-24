@@ -296,7 +296,8 @@ void InferSymExprForOp(Operation* op,
       } else {
         // risk set
         LOG(WARNING) << "Not found symbolic shape cache for " << op->name()
-                     << "[id:" << op->id() << "]";
+                     << "[id:" << op->id()
+                     << "], op_infer_cache_key is :" << op_infer_cache_key;
         for (uint32_t i = 0; i < op->num_results(); ++i) {
           infer_context->SetSymbolForValueByStaticShape(op->result(i));
         }

@@ -55,13 +55,13 @@ class PrintOptions {
 
 TEST_API void TensorToStream(std::ostream& os,
                              const phi::DenseTensor& tensor,
-                             const platform::DeviceContext& dev_ctx);
+                             const phi::DeviceContext& dev_ctx);
 TEST_API void TensorFromStream(std::istream& is,
                                phi::DenseTensor* tensor,
-                               const platform::DeviceContext& dev_ctx);
+                               const phi::DeviceContext& dev_ctx);
 void TensorFromStream(std::istream& is,
                       phi::DenseTensor* tensor,
-                      const platform::DeviceContext& dev_ctx,
+                      const phi::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape);
 
@@ -73,7 +73,7 @@ void TensorFromStream(std::istream& is,
 // src_ctx.Wait() is added before memory::Copy.
 TEST_API void TensorCopy(const phi::DenseTensor& src,
                          const phi::Place& dst_place,
-                         const platform::DeviceContext& ctx,
+                         const phi::DeviceContext& ctx,
                          phi::DenseTensor* dst);
 
 // NOTE(zcd): If the src.place() and dst_place are two different GPU,
@@ -93,14 +93,14 @@ TEST_API void TensorCopySync(const phi::DenseTensor& src,
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
-                      const platform::DeviceContext& ctx,
+                      const phi::DeviceContext& ctx,
                       phi::DenseTensor* dst);
 template <typename T>
 void TensorFromVector(const std::vector<T>& src, phi::DenseTensor* dst);
 
 template <typename T>
 void TensorToVector(const phi::DenseTensor& src,
-                    const platform::DeviceContext& ctx,
+                    const phi::DeviceContext& ctx,
                     std::vector<T>* dst);
 template <typename T>
 void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
@@ -118,7 +118,7 @@ void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
 template <typename T>
 void TensorFromArray(const T* src,
                      const size_t& array_size,
-                     const platform::DeviceContext& ctx,
+                     const phi::DeviceContext& ctx,
                      phi::DenseTensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src);
@@ -127,11 +127,11 @@ void TensorFromArray(const T* src,
   auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
   auto size = array_size * sizeof(T);
 
-  if (platform::is_cpu_place(dst_place)) {
+  if (phi::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  else if (platform::is_gpu_place(dst_place)) {  // NOLINT
+  else if (phi::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place,
                  dst_ptr,
                  src_place,
@@ -141,7 +141,7 @@ void TensorFromArray(const T* src,
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  else if (platform::is_custom_place(dst_place)) {  // NOLINT
+  else if (phi::is_custom_place(dst_place)) {  // NOLINT
     memory::Copy(
         dst_place,
         dst_ptr,
@@ -152,19 +152,19 @@ void TensorFromArray(const T* src,
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+  else if (phi::is_xpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "TensorFromArray on %s is not supported.", dst_place));
   }
 }
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
-                      const platform::DeviceContext& ctx,
+                      const phi::DeviceContext& ctx,
                       phi::DenseTensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src.data());
@@ -173,11 +173,11 @@ void TensorFromVector(const std::vector<T>& src,
   auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
   auto size = src.size() * sizeof(T);
 
-  if (platform::is_cpu_place(dst_place)) {
+  if (phi::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  else if (platform::is_gpu_place(dst_place)) {  // NOLINT
+  else if (phi::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place,
                  dst_ptr,
                  src_place,
@@ -187,7 +187,7 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  else if (platform::is_custom_place(dst_place)) {  // NOLINT
+  else if (phi::is_custom_place(dst_place)) {  // NOLINT
     memory::Copy(
         dst_place,
         dst_ptr,
@@ -198,12 +198,12 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+  else if (phi::is_xpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "TensorFromVector on %s is not supported.", dst_place));
   }
 }
@@ -212,7 +212,7 @@ void TensorFromVector(const std::vector<T>& src,
 // multi-definition.
 template <>
 inline void TensorFromVector(const std::vector<bool>& src,
-                             const platform::DeviceContext& ctx,
+                             const phi::DeviceContext& ctx,
                              phi::DenseTensor* dst) {
   // vector<bool> has no data() member, use array instead.
   // See details:
@@ -229,11 +229,11 @@ inline void TensorFromVector(const std::vector<bool>& src,
   auto dst_ptr = static_cast<void*>(dst->mutable_data<bool>(dst_place));
   auto size = src.size() * sizeof(bool);
 
-  if (platform::is_cpu_place(dst_place)) {
+  if (phi::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUDA
-  else if (platform::is_gpu_place(dst_place)) {  // NOLINT
+  else if (phi::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place,
                  dst_ptr,
                  src_place,
@@ -243,19 +243,19 @@ inline void TensorFromVector(const std::vector<bool>& src,
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  else if (platform::is_custom_place(dst_place)) {  // NOLINT
+  else if (phi::is_custom_place(dst_place)) {  // NOLINT
     auto stream =
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+  else if (phi::is_xpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "TensorFromVector on %s is not supported.", dst_place));
   }
   delete[] array;
@@ -293,7 +293,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
 
 template <typename T>
 void TensorToVector(const phi::DenseTensor& src,
-                    const platform::DeviceContext& ctx,
+                    const phi::DeviceContext& ctx,
                     std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
   auto size = src.numel() * sizeof(T);
@@ -302,11 +302,11 @@ void TensorToVector(const phi::DenseTensor& src,
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(dst->data());
 
-  if (platform::is_cpu_place(src.place())) {
+  if (phi::is_cpu_place(src.place())) {
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  else if (platform::is_gpu_place(src.place())) {  // NOLINT
+  else if (phi::is_gpu_place(src.place())) {  // NOLINT
     memory::Copy(dst_place,
                  dst_ptr,
                  src.place(),
@@ -316,24 +316,24 @@ void TensorToVector(const phi::DenseTensor& src,
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
-  else if (platform::is_xpu_place(src.place())) {  // NOLINT
+  else if (phi::is_xpu_place(src.place())) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  else if (platform::is_custom_place(src.place())) {  // NOLINT
+  else if (phi::is_custom_place(src.place())) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "TensorToVector on %s is not supported.", src.place()));
   }
 }
 
 template <>
 inline void TensorToVector(const phi::DenseTensor& src,
-                           const platform::DeviceContext& ctx,
+                           const phi::DeviceContext& ctx,
                            std::vector<bool>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<bool>());
   auto size = src.numel() * sizeof(bool);
@@ -344,11 +344,11 @@ inline void TensorToVector(const phi::DenseTensor& src,
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(array);
 
-  if (platform::is_cpu_place(src.place())) {
+  if (phi::is_cpu_place(src.place())) {
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  else if (platform::is_gpu_place(src.place())) {  // NOLINT
+  else if (phi::is_gpu_place(src.place())) {  // NOLINT
     memory::Copy(dst_place,
                  dst_ptr,
                  src.place(),
@@ -358,12 +358,12 @@ inline void TensorToVector(const phi::DenseTensor& src,
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
-  else if (platform::is_xpu_place(src.place())) {  // NOLINT
+  else if (phi::is_xpu_place(src.place())) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  else if (platform::is_custom_place(src.place())) {  // NOLINT
+  else if (phi::is_custom_place(src.place())) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
@@ -383,9 +383,9 @@ void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst) {
   auto dst_ptr = static_cast<void*>(dst->data());
 
   PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(src.place()),
+      phi::is_cpu_place(src.place()),
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
 
@@ -405,9 +405,9 @@ inline void TensorToVector(const phi::DenseTensor& src,
   auto dst_ptr = static_cast<void*>(array);
 
   PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(src.place()),
+      phi::is_cpu_place(src.place()),
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
 
@@ -424,7 +424,7 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod);
 template <typename T>
 inline T GetValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
-  if (!platform::is_cpu_place(x->place())) {
+  if (!phi::is_cpu_place(x->place())) {
     phi::DenseTensor cpu_x;
     framework::TensorCopy(*x, phi::CPUPlace(), &cpu_x);
     value = cpu_x.data<T>()[0];

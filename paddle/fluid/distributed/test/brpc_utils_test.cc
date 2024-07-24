@@ -28,7 +28,7 @@ namespace platform = paddle::platform;
 
 void CreateVarsOnScope(framework::Scope* scope,
                        phi::Place* place,
-                       const platform::DeviceContext& ctx) {
+                       const phi::DeviceContext& ctx) {
   // var 1
   framework::Variable* var1 = scope->Var("x1");
   auto* tensor1 = var1->GetMutable<phi::DenseTensor>();
@@ -63,7 +63,7 @@ void CreateVarsOnScope(framework::Scope* scope,
 
 void RunMultiVarMsg(phi::Place place) {
   framework::Scope scope;
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
   CreateVarsOnScope(&scope, &place, ctx);
 

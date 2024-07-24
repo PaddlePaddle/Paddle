@@ -60,10 +60,10 @@ static int64_t GetMemorySize(
   auto *var_desc = TryGetLatestVarDesc(vars.at(var_name));
   PADDLE_ENFORCE_NOT_NULL(
       var_desc,
-      platform::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
+      phi::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
   PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Var(%s) must be phi::DenseTensor.", var_name));
   auto dims = var_desc->GetShape();
   return static_cast<int64_t>(
@@ -274,7 +274,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
 
     eager_deletion_op->SetDeviceContext(
         places[op->GetScopeIdx()],
-        platform::DeviceContextPool::Instance().Get(places[op->GetScopeIdx()]));
+        phi::DeviceContextPool::Instance().Get(places[op->GetScopeIdx()]));
   }
 
   VLOG(10) << "FLAGS_memory_fraction_of_eager_deletion = " << memory_fraction;

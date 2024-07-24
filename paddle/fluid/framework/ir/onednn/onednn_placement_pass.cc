@@ -25,7 +25,7 @@ inline bool FoundOneDNNKernelWithCorrectDataType(
   auto it = all_kernels.find(op_type);
   if (it != all_kernels.end()) {
     for (auto& kernel_pair : it->second) {
-      if (platform::is_cpu_place(kernel_pair.first.place_) &&
+      if (phi::is_cpu_place(kernel_pair.first.place_) &&
           (kernel_pair.first.library_type_ ==
            framework::LibraryType::kMKLDNN)) {
         if (!op->inputs.empty()) {

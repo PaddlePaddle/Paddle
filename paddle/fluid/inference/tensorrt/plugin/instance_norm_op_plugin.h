@@ -60,15 +60,15 @@ class InstanceNormPlugin : public PluginTensorRT {
       : eps_(eps), scale_(scale), bias_(bias) {
     PADDLE_ENFORCE_EQ(scale.size(),
                       bias.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The instanceNorm's scale and bias should be the "
                           "same size. Got scale size = %d, but bias size = %d",
                           scale.size(),
                           bias.size()));
-    platform::dynload::cudnnCreate(&handle_);
-    platform::dynload::cudnnCreateTensorDescriptor(&x_desc_);
-    platform::dynload::cudnnCreateTensorDescriptor(&y_desc_);
-    platform::dynload::cudnnCreateTensorDescriptor(&b_desc_);
+    phi::dynload::cudnnCreate(&handle_);
+    phi::dynload::cudnnCreateTensorDescriptor(&x_desc_);
+    phi::dynload::cudnnCreateTensorDescriptor(&y_desc_);
+    phi::dynload::cudnnCreateTensorDescriptor(&b_desc_);
   }
 
   // It was used for tensorrt deserialization.
@@ -79,17 +79,17 @@ class InstanceNormPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &scale_);
     DeserializeValue(&serialData, &serialLength, &bias_);
 
-    platform::dynload::cudnnCreate(&handle_);
-    platform::dynload::cudnnCreateTensorDescriptor(&x_desc_);
-    platform::dynload::cudnnCreateTensorDescriptor(&y_desc_);
-    platform::dynload::cudnnCreateTensorDescriptor(&b_desc_);
+    phi::dynload::cudnnCreate(&handle_);
+    phi::dynload::cudnnCreateTensorDescriptor(&x_desc_);
+    phi::dynload::cudnnCreateTensorDescriptor(&y_desc_);
+    phi::dynload::cudnnCreateTensorDescriptor(&b_desc_);
   }
 
   ~InstanceNormPlugin() {
-    platform::dynload::cudnnDestroy(handle_);
-    platform::dynload::cudnnDestroyTensorDescriptor(x_desc_);
-    platform::dynload::cudnnDestroyTensorDescriptor(y_desc_);
-    platform::dynload::cudnnDestroyTensorDescriptor(b_desc_);
+    phi::dynload::cudnnDestroy(handle_);
+    phi::dynload::cudnnDestroyTensorDescriptor(x_desc_);
+    phi::dynload::cudnnDestroyTensorDescriptor(y_desc_);
+    phi::dynload::cudnnDestroyTensorDescriptor(b_desc_);
   }
 
   int initialize() TRT_NOEXCEPT override;
@@ -170,15 +170,15 @@ class InstanceNormPluginDynamic : public DynamicPluginTensorRT {
       : eps_(eps), scale_(scale), bias_(bias) {
     PADDLE_ENFORCE_EQ(scale.size(),
                       bias.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The instanceNorm's scale and bias should be the "
                           "same size. Got scale size = %d, but bias size = %d",
                           scale.size(),
                           bias.size()));
-    platform::dynload::cudnnCreate(&handle_);
-    platform::dynload::cudnnCreateTensorDescriptor(&x_desc_);
-    platform::dynload::cudnnCreateTensorDescriptor(&y_desc_);
-    platform::dynload::cudnnCreateTensorDescriptor(&b_desc_);
+    phi::dynload::cudnnCreate(&handle_);
+    phi::dynload::cudnnCreateTensorDescriptor(&x_desc_);
+    phi::dynload::cudnnCreateTensorDescriptor(&y_desc_);
+    phi::dynload::cudnnCreateTensorDescriptor(&b_desc_);
   }
 
   // It was used for tensorrt deserialization.
@@ -188,17 +188,17 @@ class InstanceNormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &scale_);
     DeserializeValue(&serialData, &serialLength, &bias_);
 
-    platform::dynload::cudnnCreate(&handle_);
-    platform::dynload::cudnnCreateTensorDescriptor(&x_desc_);
-    platform::dynload::cudnnCreateTensorDescriptor(&y_desc_);
-    platform::dynload::cudnnCreateTensorDescriptor(&b_desc_);
+    phi::dynload::cudnnCreate(&handle_);
+    phi::dynload::cudnnCreateTensorDescriptor(&x_desc_);
+    phi::dynload::cudnnCreateTensorDescriptor(&y_desc_);
+    phi::dynload::cudnnCreateTensorDescriptor(&b_desc_);
   }
 
   ~InstanceNormPluginDynamic() {
-    platform::dynload::cudnnDestroy(handle_);
-    platform::dynload::cudnnDestroyTensorDescriptor(x_desc_);
-    platform::dynload::cudnnDestroyTensorDescriptor(y_desc_);
-    platform::dynload::cudnnDestroyTensorDescriptor(b_desc_);
+    phi::dynload::cudnnDestroy(handle_);
+    phi::dynload::cudnnDestroyTensorDescriptor(x_desc_);
+    phi::dynload::cudnnDestroyTensorDescriptor(y_desc_);
+    phi::dynload::cudnnDestroyTensorDescriptor(b_desc_);
   }
 
   int initialize() TRT_NOEXCEPT override;

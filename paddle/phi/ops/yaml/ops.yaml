@@ -177,6 +177,7 @@
   kernel :
     func : all
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : allclose
   args : (Tensor x, Tensor y, Scalar(double) rtol=1e-5, Scalar(double) atol=1e-8, bool equal_nan=false)
@@ -187,6 +188,7 @@
   kernel :
     func : allclose
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -196,6 +198,7 @@
   kernel :
     func : amax
   backward : amax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : amin
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -205,6 +208,7 @@
   kernel :
     func : amin
   backward : amin_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : angle
   args : (Tensor x)
@@ -224,6 +228,7 @@
   kernel :
     func : any
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : apply_per_channel_scale
   args: (Tensor x, Tensor scales)
@@ -888,6 +893,17 @@
   kernel :
     func : coalesce_tensor
     data_type : dtype
+
+- op : collect_fpn_proposals
+  args: (Tensor[] multi_level_rois, Tensor[] multi_level_scores, Tensor[] multi_level_rois_num,
+    int post_nms_topn)
+  output: Tensor (fpn_rois), Tensor (rois_num)
+  infer_meta:
+    func: CollectFpnProposalsInferMeta
+  kernel:
+    func: collect_fpn_proposals
+    data_type: multi_level_rois
+  optional: multi_level_rois_num, rois_num
 
 - op : complex
   args : (Tensor real, Tensor imag)
@@ -2092,6 +2108,7 @@
   output : Tensor(out)
   infer_meta :
     func : GatherNdInferMeta
+    spmd_rule : GatherNdInferSpmd
   kernel :
     func : gather_nd
     data_type : x
@@ -4260,6 +4277,7 @@
   output : Tensor(out)
   infer_meta :
     func : SquaredL2NormInferMeta
+    spmd_rule : SquaredL2NormInferSpmd
   kernel :
     func : squared_l2_norm
   backward : squared_l2_norm_grad

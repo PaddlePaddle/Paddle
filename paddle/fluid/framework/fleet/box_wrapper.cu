@@ -152,7 +152,7 @@ void BoxWrapper::CopyForPull(const phi::Place& place,
                              const int expand_embed_dim,
                              const int64_t total_length) {
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto buf_value = memory::Alloc(place, values.size() * sizeof(float*));
   float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
@@ -173,7 +173,7 @@ void BoxWrapper::CopyForPull(const phi::Place& place,
     switch (expand_embed_dim) {                                              \
       __VA_ARGS__                                                            \
       default:                                                               \
-        PADDLE_THROW(platform::errors::InvalidArgument(                      \
+        PADDLE_THROW(phi::errors::InvalidArgument(                           \
             "Unsupport this expand embedding size [%d]", expand_embed_dim)); \
     }                                                                        \
   } break
@@ -221,7 +221,7 @@ void BoxWrapper::CopyForPull(const phi::Place& place,
                 EXPAND_EMBED_PULL_CASE(64););
     EMBEDX_CASE(16, EXPAND_EMBED_PULL_CASE(0););
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupport this embedding size [%d]", hidden_size - 3));
   }
   cudaStreamSynchronize(stream);
@@ -236,7 +236,7 @@ void BoxWrapper::CopyKeys(const phi::Place& place,
                           int slot_num,
                           int total_len) {
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(CopyKeysKernel,
@@ -266,7 +266,7 @@ void BoxWrapper::CopyForPush(const phi::Place& place,
                              const int64_t total_length,
                              const int batch_size) {
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto slot_lengths_lod = slot_lengths;
   for (int i = 1; i < slot_lengths_lod.size(); i++) {
@@ -316,7 +316,7 @@ void BoxWrapper::CopyForPush(const phi::Place& place,
     switch (expand_embed_dim) {                                              \
       __VA_ARGS__                                                            \
       default:                                                               \
-        PADDLE_THROW(platform::errors::InvalidArgument(                      \
+        PADDLE_THROW(phi::errors::InvalidArgument(                           \
             "Unsupport this expand embedding size [%d]", expand_embed_dim)); \
     }                                                                        \
   } break
@@ -356,7 +356,7 @@ void BoxWrapper::CopyForPush(const phi::Place& place,
                 EXPAND_EMBED_PUSH_CASE(64););
     EMBEDX_CASE(16, EXPAND_EMBED_PUSH_CASE(0););
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupport this embedding size [%d]", hidden_size - 3));
   }
 

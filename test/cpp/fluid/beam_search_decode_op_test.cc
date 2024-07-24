@@ -153,7 +153,7 @@ TEST(BeamSearchDecodeOp, Backtrace_CPU_Float) {
 }
 
 TEST(BeamSearchDecodeOp, Backtrace_CPU_Float16) {
-  paddle::test::BeamSearchDecodeTestFrame<paddle::platform::float16>();
+  paddle::test::BeamSearchDecodeTestFrame<phi::dtype::float16>();
 }
 
 TEST(BeamSearchDecodeOp, Backtrace_CPU_Double) {

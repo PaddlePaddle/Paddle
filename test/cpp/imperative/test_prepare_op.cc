@@ -85,7 +85,7 @@ TEST(test_prepare_op, test_prepare_op) {
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   vin->MutableVar()->GetMutable<phi::DenseTensor>()->mutable_data<float>(place);
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -127,8 +127,8 @@ TEST(test_prepare_op, test_prepare_data) {
       new imperative::VarBase(false, "vout"));
 
   framework::OpDesc desc;
-  platform::CPUPlace cpu_place;
-  platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> dims = {2, 5};
 
@@ -186,7 +186,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
       new imperative::VarBase(false, "vout"));
 
   framework::OpDesc desc;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> dims = {2, 5};
 

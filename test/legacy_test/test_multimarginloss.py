@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -249,7 +250,13 @@ class TestMultiMarginLoss(unittest.TestCase):
             np.int64
         )
 
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.device.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']

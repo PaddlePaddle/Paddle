@@ -1,6 +1,5 @@
 set(eager_deps
     phi
-    phi_core
     common
     hook_utils
     utils

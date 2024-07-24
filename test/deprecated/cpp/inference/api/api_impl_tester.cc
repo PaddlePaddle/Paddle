@@ -108,7 +108,7 @@ void MainWord2Vec(const ::paddle::PaddlePlace& place) {
   std::vector<::paddle::framework::FetchType*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
-  TestInference<platform::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
+  TestInference<phi::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
 
   auto output1_tensor = PADDLE_GET(phi::DenseTensor, output1);
   float* lod_data = output1_tensor.data<float>();
@@ -145,7 +145,7 @@ void MainImageClassification(const ::paddle::PaddlePlace& place) {
   std::vector<framework::FetchType*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
-  TestInference<platform::CPUPlace, false, true>(
+  TestInference<phi::CPUPlace, false, true>(
       config.model_dir, cpu_feeds, cpu_fetchs1, repeat, is_combined);
 
   auto predictor = CreatePaddlePredictor(config);
@@ -190,7 +190,7 @@ void MainThreadsWord2Vec(const ::paddle::PaddlePlace& place) {
     for (auto& word : jobs[i]) {
       ref_feeds.push_back(&word);
     }
-    TestInference<platform::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
+    TestInference<phi::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
   }
 
   // create threads and each thread run 1 job
@@ -250,7 +250,7 @@ void MainThreadsImageClassification(const ::paddle::PaddlePlace& place) {
     // get reference result of each job
     std::vector<phi::DenseTensor*> ref_feeds(1, &jobs[i]);
     std::vector<framework::FetchType*> ref_fetches(1, &refs[i]);
-    TestInference<platform::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
+    TestInference<phi::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
   }
 
   // create threads and each thread run 1 job
