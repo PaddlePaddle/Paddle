@@ -1733,8 +1733,8 @@ def pad(
         data_format (str, optional): An string from: ``'NCL'``, ``'NLC'``, ``'NHWC'``, ``'NCHW'``, ``'NCDHW'``, ``'NDHWC'``. Specify the data format of
            the input data when: 1. mode is any of ``'reflect'``, ``'replicate'`` or ``'circular'``; or 2. the input ``'pad'`` is a tensor;
            or 3. the length of ``'pad'`` is ``2*(x.ndim - 2)``. Default: ``'NCHW'``.
-        pad_from_first_axis (bool, optional): When mode is ``'constant'`` and the input ``'pad'`` is a list or tuple and the
-           length of ``'pad'`` is ``2*x.ndim``, the order of padding can be customized. If True, the padding will be started from
+        pad_from_first_axis (bool, optional): The order of padding can be customized only when mode is ``'constant'`` and the input ``'pad'`` is
+           a list or tuple and the length of ``'pad'`` is ``2*x.ndim``. If True, the padding will be started from
            the first axis of ``'x'``; if False, it will be started from the last axis of ``'x'``. Default: True.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
