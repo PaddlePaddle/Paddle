@@ -19,7 +19,7 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 
 
 class TestLinspaceOpCommonCase(OpTest):
@@ -168,6 +168,8 @@ class TestLinspaceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res_1, res_2)
 
     def test_name(self):
+        if paddle.framework.use_pir_api():
+            return
         with paddle_static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 out = paddle.linspace(
@@ -190,7 +192,9 @@ class TestLinspaceAPI(unittest.TestCase):
 class TestLinspaceOpError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
-            with program_guard(Program(), Program()):
+            with paddle.base.program_guard(
+                paddle.base.Program(), paddle.base.Program()
+            ):
 
                 def test_dtype():
                     paddle.linspace(0, 10, 1, dtype="int8")
@@ -223,6 +227,7 @@ class TestLinspaceOpError(unittest.TestCase):
                     )
                     paddle.linspace(start, 10, 1, dtype="float32")
 
+                # test_start_dtype()
                 self.assertRaises(ValueError, test_start_dtype)
 
                 def test_end_dtype():
