@@ -22,11 +22,11 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace imperative {

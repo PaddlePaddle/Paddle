@@ -36,8 +36,7 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
       const framework::proto::OpProto* op_proto)
       : op_proto_(op_proto), input_names_(), output_names_(), attr_names_() {
     PADDLE_ENFORCE_NOT_NULL(
-        op_proto_,
-        platform::errors::InvalidArgument("Op proto cannot be nullptr."));
+        op_proto_, phi::errors::InvalidArgument("Op proto cannot be nullptr."));
   }
 
   ~KernelArgsNameMakerByOpProto() override = default;
@@ -272,10 +271,10 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
     PADDLE_ENFORCE_EQ(
         tensor.numel(),
         1UL,
-        platform::errors::InvalidArgument("The DenseTensor used to construct "
-                                          "the Scalar contains more than 1 "
-                                          "value, it contains `%d` values.",
-                                          tensor.numel()));
+        phi::errors::InvalidArgument("The DenseTensor used to construct "
+                                     "the Scalar contains more than 1 "
+                                     "value, it contains `%d` values.",
+                                     tensor.numel()));
     if (!phi::is_same_place(tensor.place(), expected_place)) {
       phi::DenseTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
@@ -284,7 +283,7 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
       return {tensor};
     }
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupport casting input `%s` type to Scalar when call pt "
         "kernel.",
         framework::ToTypeName(variable.Type())));
@@ -296,7 +295,7 @@ phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
     const auto& tensor = variable.Get<phi::DenseTensor>();
     return phi::IntArray(tensor);
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupport casting input `%s` type to IntArray when call pt "
         "kernel.",
         framework::ToTypeName(variable.Type())));

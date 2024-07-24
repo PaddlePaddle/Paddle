@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -126,14 +127,26 @@ class TestScaleOpSelectedRows(unittest.TestCase):
         assert in_rows == out_rows
 
     def test_scale_selected_rows(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place, 'in', 'out')
 
     def test_scale_selected_rows_inplace(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
@@ -280,7 +293,13 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -312,7 +331,13 @@ class TestScaleTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -321,16 +346,17 @@ class TestScaleTripleGradCheck(unittest.TestCase):
 
 class TestScaleOpZeroNumelVariable(unittest.TestCase):
     def test_check_zero_numel_cpu(self):
-        paddle.set_device('cpu')
-        data = paddle.ones([0, 1])
-        out = paddle.scale(data, 2)
-        self.assertEqual(out, data)
-
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
+        with paddle.pir_utils.OldIrGuard():
+            paddle.set_device('cpu')
             data = paddle.ones([0, 1])
             out = paddle.scale(data, 2)
             self.assertEqual(out, data)
+
+            if paddle.is_compiled_with_cuda():
+                paddle.set_device('gpu')
+                data = paddle.ones([0, 1])
+                out = paddle.scale(data, 2)
+                self.assertEqual(out, data)
 
 
 if __name__ == "__main__":

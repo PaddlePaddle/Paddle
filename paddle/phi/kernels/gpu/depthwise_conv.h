@@ -1235,10 +1235,10 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 
     phi::DenseTensor filter_hwc;
     if (data_layout == DataLayout::kNHWC) {
-      framework::DDim filter_hwc_dims({filter.dims()[2],
-                                       filter.dims()[3],
-                                       filter.dims()[0],
-                                       filter.dims()[1]});
+      phi::DDim filter_hwc_dims({filter.dims()[2],
+                                 filter.dims()[3],
+                                 filter.dims()[0],
+                                 filter.dims()[1]});
       filter_hwc.Resize(filter_hwc_dims);
       context.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
@@ -1403,10 +1403,10 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 
     phi::DenseTensor filter_hwc;
     if (data_layout == DataLayout::kNHWC) {
-      framework::DDim filter_hwc_dims({filter.dims()[2],
-                                       filter.dims()[3],
-                                       filter.dims()[0],
-                                       filter.dims()[1]});
+      phi::DDim filter_hwc_dims({filter.dims()[2],
+                                 filter.dims()[3],
+                                 filter.dims()[0],
+                                 filter.dims()[1]});
       filter_hwc.Resize(filter_hwc_dims);
       context.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
@@ -1635,10 +1635,10 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
     } else {                                                                   \
       phi::DenseTensor filter_grad_hwc;                                        \
       if (c_filter != -1) {                                                    \
-        framework::DDim filter_grad_hwc_dims({filter_grad->dims()[2],          \
-                                              filter_grad->dims()[3],          \
-                                              filter_grad->dims()[0],          \
-                                              filter_grad->dims()[1]});        \
+        phi::DDim filter_grad_hwc_dims({filter_grad->dims()[2],                \
+                                        filter_grad->dims()[3],                \
+                                        filter_grad->dims()[0],                \
+                                        filter_grad->dims()[1]});              \
         filter_grad_hwc.Resize(filter_grad_hwc_dims);                          \
         context.template Alloc<T>(&filter_grad_hwc);                           \
         phi::funcs::SetConstant<phi::GPUContext, T> set_zero;                  \

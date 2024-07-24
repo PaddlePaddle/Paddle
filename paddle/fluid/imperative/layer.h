@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -36,7 +37,6 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace framework {
