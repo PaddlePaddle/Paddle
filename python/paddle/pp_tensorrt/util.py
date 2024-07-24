@@ -148,7 +148,7 @@ def get_r50_program():
         with static.program_guard(infer_program, startup_program):
             scope = paddle.static.global_scope()
             input_data = paddle.static.data(
-                shape=[1, 3, 224, 224], dtype='float32', name='input'
+                shape=[-1, 3, 224, 224], dtype='float32', name='input'
             )
             model = wide_resnet50_2()
             model.eval()

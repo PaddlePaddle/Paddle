@@ -152,9 +152,13 @@ def test_paddle_to_tensorrt_conversion_r50():
     # enforce_op_lower_trt(program, "pd_op.conv2d")
     # enforce_op_lower_trt(program, "pd_op.relu")
     # enforce_op_lower_trt(program, "pd_op.pool2d")
+    # enforce_op_lower_trt(program,"pd_op.matmul")
+    # enforce_op_lower_trt(program, "pd_op.add")
     # enforce_op_lower_trt(program, "pd_op.batch_norm_")
     # enforce_op_lower_trt(program, "pd_op.flatten")
-    forbid_op_lower_trt(program, "pd_op.flatten")
+    # forbid_op_lower_trt(program,"pd_op.matmul")
+    # forbid_op_lower_trt(program,"pd_op.flatten")
+    # forbid_op_lower_trt(program,"pd_op.add")
 
     # Step4: run trt_sub_graph_extract_pass()
     program_with_pir = run_pir_pass(program, partition_mode=True)
@@ -163,6 +167,7 @@ def test_paddle_to_tensorrt_conversion_r50():
     converter = PaddleToTensorRTConverter(program_with_pir, scope)
     converter.convert_program_to_trt()
 
+    output_var = program_with_pir.list_vars()[-1]
     # Step6: run inference(converted_program)
     output_converted = predict_program(
         program_with_pir, {"input": input_data_min_shape}, [output_var]
@@ -172,8 +177,8 @@ def test_paddle_to_tensorrt_conversion_r50():
     np.testing.assert_allclose(
         output_expected[0],
         output_converted[0],
-        rtol=0.1,
-        atol=0.1,
+        rtol=1e-1,
+        atol=1e-1,
         err_msg="Outputs are not within the 1e-3 tolerance",
     )
 
