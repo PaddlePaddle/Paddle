@@ -18,12 +18,12 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     enable_unused_var_check,
     false,
     "Checking whether operator contains unused inputs, "

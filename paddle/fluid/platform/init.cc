@@ -52,9 +52,9 @@ limitations under the License. */
 #endif
 
 #include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 

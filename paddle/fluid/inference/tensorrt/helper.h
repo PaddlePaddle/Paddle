@@ -291,7 +291,7 @@ static nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
   if (!with_dynamic_shape) {
     if (shape.size() == 4UL) {
       if (shape[2] == -1 || shape[3] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "The input [%s] shape of trt subgraph is %s, please enable "
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
             input,

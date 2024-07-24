@@ -41,7 +41,6 @@
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
 #ifdef PADDLE_WITH_CINN
