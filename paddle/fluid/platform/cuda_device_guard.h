@@ -43,17 +43,17 @@ class CUDADeviceGuard {
       VLOG(10) << __func__ << " prev_id: " << prev_id_ << ", is_first_time_"
                << is_first_time_;
       if (!(is_first_time_ && prev_id_ == 0)) {
-        platform::SetDeviceId(prev_id_);
+        phi::backends::gpu::SetDeviceId(prev_id_);
         is_first_time_ = false;
       }
     }
   }
 
   inline void SetDeviceIndex(const int dev_id) {
-    int prev_id = platform::GetCurrentDeviceId();
+    int prev_id = phi::backends::gpu::GetCurrentDeviceId();
     if (prev_id != dev_id) {
       prev_id_ = prev_id;
-      platform::SetDeviceId(dev_id);
+      phi::backends::gpu::SetDeviceId(dev_id);
     }
   }
 
