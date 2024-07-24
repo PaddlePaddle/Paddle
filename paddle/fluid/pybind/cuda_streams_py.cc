@@ -315,7 +315,7 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
       });
 
-  py::class_<paddle::platform::CudaEvent>(m, "CUDAEvent", R"DOC(
+  py::class_<phi::CudaEvent>(m, "CUDAEvent", R"DOC(
       The handle of the CUDA event.
 
       Parameters:
@@ -401,7 +401,7 @@ void BindCudaStream(py::module *m_ptr) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             unsigned int flags = platform::GenerateDeviceEventFlag(
                 enable_timing, blocking, interprocess);
-            new (&self) paddle::platform::CudaEvent(flags);
+            new (&self) phi::CudaEvent(flags);
 #else
             PADDLE_THROW(phi::errors::Unavailable(
                 "Class CUDAEvent can only be initialized on the GPU "
