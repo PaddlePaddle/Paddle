@@ -2021,8 +2021,7 @@ SplitedResult SplitForwardBackward(
         }
         std::string shadow_output_name =
             std::string("output_") + std::to_string(counter);
-        if (auto names = name_analysis::TryGetValueFirstName(v);
-            names.has_value()) {
+        if (auto names = name_analysis::TryGetValueFirstName(v)) {
           shadow_output_name = names.value();
         }
         auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
