@@ -14,4 +14,4 @@
 
 import numpy as np
 
-aa = np.ones()
+aa = np.one
