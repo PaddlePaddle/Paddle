@@ -2240,8 +2240,8 @@ def matrix_rank(
         1. Support the use of attribute `tol` alone or the use of attributes `atol` and `rtol` together without `tol`.
 
         2. When `tol` is used alone, it will return the rank of a matrix is the number of singular values that are greater than the specified `tol`
-        threshold when hermitian=False, or the number of eigenvalues in absolute value that are greater than the specified `tol` threshold
-        when hermitian=True. It is compatible with numpy API.
+        threshold when `hermitian`=False, or the number of eigenvalues in absolute value that are greater than the specified `tol` threshold
+        when `hermitian`=True. It is compatible with numpy API.
 
         3. When `atol` and `rtol` are used, the tolerance value is computed as `max(atol, sigma_1 * rtol)`, where sigma_1 is largest
         singular value (or eigenvalues in absolute value).
@@ -2256,7 +2256,7 @@ def matrix_rank(
         tol (float|Tensor, optional): The tolerance value. If `tol` is not specified, and `sigma` is the largest singular value
             (or eigenvalues in absolute value), and `eps` is the epsilon value for the dtype of `x`, then `tol` is computed with formula
             `tol=sigma * max(m,n) * eps`. Note that if `x` is a batch of matrices, `tol` is computed this way for every batch. Default: None.
-        hermitian (bool, optional): Indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian,
+        hermitian (bool, optional): Indicates whether `x` is Hermitian. Default: False. When `hermitian`=True, `x` is assumed to be Hermitian,
             enabling a more efficient method for finding eigenvalues, but `x` is not checked inside the function. Instead, We just use
             the lower triangular of the matrix to compute. Default: False.
         atol (float|Tensor, optional): The absolute tolerance value. When None it is considered to be 0. Default: None.
