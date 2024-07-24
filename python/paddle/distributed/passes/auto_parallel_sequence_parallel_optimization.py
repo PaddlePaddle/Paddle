@@ -123,9 +123,9 @@ class SequenceParallelOptimizationPass(PassBase):
             # replace ops
             new_op = block._insert_op_without_sync(
                 index=i + 1,
-                type="c_reducescatter",
-                inputs={'X': [allreduce_input_name]},
-                outputs={'Out': [keep_output_name]},
+                type="reduce_scatter",
+                inputs={'x': [allreduce_input_name]},
+                outputs={'out': [keep_output_name]},
                 attrs={
                     'ring_id': ring_id,
                     'nranks': nranks,
