@@ -2,10 +2,10 @@ nv_test(
   test_tensorrt_engine_instruction
   SRCS test_tensorrt_engine_instruction.cc
   DEPS pir
-       dynload_cuda
        trt_engine
        naive_executor
        phi
+       common
        pir_save_load
        pir_tensorrt_plugin)
 set_tests_properties(test_tensorrt_engine_instruction PROPERTIES TIMEOUT 120)
