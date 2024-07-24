@@ -81,6 +81,9 @@ class TestTensorChecker(unittest.TestCase):
             places.append('cpu')
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
+        print(
+            f">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>places: {places}"
+        )
         # check seed
         self.assertEqual(checker_config.initial_seed, 102)
         self.assertEqual(checker_config.seed, 102)
