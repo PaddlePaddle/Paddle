@@ -140,19 +140,24 @@ class TestWhereAPI(unittest.TestCase):
                     cond = paddle.static.data(
                         name='cond', shape=[-1] + self.shape, dtype='bool'
                     )
-                    cond.desc.set_need_check_feed(False)
+                    if not paddle.framework.use_pir_api():
+                        cond.desc.set_need_check_feed(False)
                     x = paddle.static.data(
                         name='x', shape=[-1] + self.shape, dtype='float32'
                     )
-                    x.desc.set_need_check_feed(False)
+                    if not paddle.framework.use_pir_api():
+                        x.desc.set_need_check_feed(False)
                     y = paddle.static.data(
                         name='y', shape=[-1] + self.shape, dtype='float32'
                     )
-                    y.desc.set_need_check_feed(False)
+                    if not paddle.framework.use_pir_api():
+                        y.desc.set_need_check_feed(False)
                     x.stop_gradient = x_stop_gradient
-                    x.desc.set_need_check_feed(False)
+                    if not paddle.framework.use_pir_api():
+                        x.desc.set_need_check_feed(False)
                     y.stop_gradient = y_stop_gradient
-                    y.desc.set_need_check_feed(False)
+                    if not paddle.framework.use_pir_api():
+                        y.desc.set_need_check_feed(False)
                     result = paddle.where(cond, x, y)
                     result.stop_gradient = False
                     append_backward(paddle.mean(result))
@@ -163,29 +168,46 @@ class TestWhereAPI(unittest.TestCase):
                             base.CUDAPlace(0) if use_cuda else base.CPUPlace()
                         )
                         exe = base.Executor(place)
-                        fetch_list = [result, result.grad_name]
-                        if x_stop_gradient is False:
-                            fetch_list.append(x.grad_name)
-                        if y_stop_gradient is False:
-                            fetch_list.append(y.grad_name)
-                        out = exe.run(
-                            paddle.static.default_main_program(),
-                            feed={'cond': self.cond, 'x': self.x, 'y': self.y},
-                            fetch_list=fetch_list,
-                        )
-                        np.testing.assert_array_equal(out[0], self.out)
-                        if x_stop_gradient is False:
-                            np.testing.assert_array_equal(
-                                out[2], self.ref_x_backward(out[1])
+                        if paddle.framework.use_pir_api():
+                            fetch_list = [result]
+                            out = exe.run(
+                                paddle.static.default_main_program(),
+                                feed={
+                                    'cond': self.cond,
+                                    'x': self.x,
+                                    'y': self.y,
+                                },
+                                fetch_list=fetch_list,
                             )
-                            if y.stop_gradient is False:
+                            np.testing.assert_array_equal(out[0], self.out)
+                        else:
+                            fetch_list = [result, result.grad_name]
+                            if x_stop_gradient is False:
+                                fetch_list.append(x.grad_name)
+                            if y_stop_gradient is False:
+                                fetch_list.append(y.grad_name)
+                            out = exe.run(
+                                paddle.static.default_main_program(),
+                                feed={
+                                    'cond': self.cond,
+                                    'x': self.x,
+                                    'y': self.y,
+                                },
+                                fetch_list=fetch_list,
+                            )
+                            np.testing.assert_array_equal(out[0], self.out)
+                            if x_stop_gradient is False:
                                 np.testing.assert_array_equal(
-                                    out[3], self.ref_y_backward(out[1])
+                                    out[2], self.ref_x_backward(out[1])
                                 )
-                        elif y.stop_gradient is False:
-                            np.testing.assert_array_equal(
-                                out[2], self.ref_y_backward(out[1])
-                            )
+                                if y.stop_gradient is False:
+                                    np.testing.assert_array_equal(
+                                        out[3], self.ref_y_backward(out[1])
+                                    )
+                            elif y.stop_gradient is False:
+                                np.testing.assert_array_equal(
+                                    out[2], self.ref_y_backward(out[1])
+                                )
 
     def test_pir_api(self, use_cuda=False):
         for x_stop_gradient in [False, True]:
@@ -756,7 +778,8 @@ class TestWhereDygraphAPI(unittest.TestCase):
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[(-1), 2], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
@@ -770,7 +793,8 @@ class TestWhereDygraphAPI(unittest.TestCase):
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[(-1)], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
@@ -808,15 +832,18 @@ class TestWhereOpError(unittest.TestCase):
                     x = paddle.static.data(
                         name='x', shape=[-1, 4], dtype='bool'
                     )
-                    x.desc.set_need_check_feed(False)
+                    if not paddle.framework.use_pir_api():
+                        x.desc.set_need_check_feed(False)
                     y = paddle.static.data(
                         name='y', shape=[-1, 4], dtype='float16'
                     )
-                    y.desc.set_need_check_feed(False)
+                    if not paddle.framework.use_pir_api():
+                        y.desc.set_need_check_feed(False)
                     cond = paddle.static.data(
                         name='cond', shape=[-1, 4], dtype='int32'
                     )
-                    cond.desc.set_need_check_feed(False)
+                    if not paddle.framework.use_pir_api():
+                        cond.desc.set_need_check_feed(False)
                     paddle.where(cond, x, y)
 
             self.assertRaises(TypeError, test_type)
