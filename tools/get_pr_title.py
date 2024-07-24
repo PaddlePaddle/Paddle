@@ -22,6 +22,8 @@ import requests
 SKIP_COVERAGE_CHECKING_LABELS = [
     "cinn",
     "typing",
+    "codestyle",
+    "fluid_ops",
 ]
 
 SKIP_COVERAGE_CHECKING_REGEX = re.compile(

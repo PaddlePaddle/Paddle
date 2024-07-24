@@ -172,6 +172,13 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             else:
                 self.dtype = np.float32
 
+    # @check_run_big_shape_test()
+    # class TestXPULayerNormOpLargeShape1(TestXPULayerNormOp):
+    #     def set_attrs(self):
+    #         self.shape = [1024, 5120]
+    #         self.use_bf16_scale_bias = True
+    #         self.use_fp16_scale_bias = True
+
 
 support_types = get_xpu_op_support_types('layer_norm')
 for stype in support_types:

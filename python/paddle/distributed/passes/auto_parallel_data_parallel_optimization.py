@@ -152,12 +152,12 @@ class DataParallelOptimizationPass(PassBase):
                     continue
                 assert op.has_attr(
                     "ring_id"
-                ), f"Unexpected: comm op [{str(op)}] has NOT ring id."
+                ), f"Unexpected: comm op [{op}] has NOT ring id."
                 group = ring_id_to_process_group(op.attr("ring_id"))
 
                 assert (
                     group is not None
-                ), f"Unexpected: data parallel group of [{grad_name}] from op [{str(op)}] is None"
+                ), f"Unexpected: data parallel group of [{grad_name}] from op [{op}] is None"
 
                 self._grad_name_to_group_map[grad_name] = group
 
@@ -241,10 +241,10 @@ class DataParallelOptimizationPass(PassBase):
             ):
                 assert op.has_attr(
                     'rescale_grad'
-                ), f"Unexpected: op [{str(op)}] is supported to have [rescale_grad] attribute."
+                ), f"Unexpected: op [{op}] is supported to have [rescale_grad] attribute."
                 assert (
                     len(op.input("Grad")) == 1
-                ), f"Unexpected: op [{str(op)}] is supported to have only one input grad var."
+                ), f"Unexpected: op [{op}] is supported to have only one input grad var."
 
                 grad_name = op.input("Grad")[0]
                 dp_degree = len(
@@ -482,7 +482,7 @@ class DataParallelOptimizationPass(PassBase):
                 scale_op = block.ops[group.scale_op_idx]
                 assert (
                     scale_op.type == 'scale'
-                ), f"should found scale op but found {str(scale_op)}"
+                ), f"should found scale op but found {scale_op}"
                 scale_op._rename_input(
                     scale_op.input_arg_names[0], group.coalesce_var.name
                 )
@@ -494,7 +494,7 @@ class DataParallelOptimizationPass(PassBase):
             assert allreduce_op.type in [
                 'c_allreduce_avg',
                 'c_allreduce_sum',
-            ], f"should found c_allreduce_avg or c_allreduce_sum op but found {str(allreduce_op)}"
+            ], f"should found c_allreduce_avg or c_allreduce_sum op but found {allreduce_op}"
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
             )
@@ -527,7 +527,7 @@ class DataParallelOptimizationPass(PassBase):
             for idx in sorted(remove_op_indices, reverse=True):
                 assert (
                     block.ops[idx].type in remove_op_types
-                ), f"Unexpected: try to remove op {str(block.ops[idx])}"
+                ), f"Unexpected: try to remove op {block.ops[idx]}"
                 block._remove_op(idx, False)
 
             # insert coalesce op
@@ -752,7 +752,7 @@ class GradientsGroup:
             grad_op = self.ops[grad_op_idx]
             assert (
                 grad_var.name in grad_op.output_arg_names
-            ), f"grad [{grad_var.name}] should be output of {str(grad_op)}"
+            ), f"grad [{grad_var.name}] should be output of {grad_op}"
             self.coalesce_op_idx = grad_op_idx
 
     def finalize(self):

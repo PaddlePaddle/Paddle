@@ -151,7 +151,7 @@ def _new_process_group_impl(
 ):
     pg = None
     genv = _get_global_env()
-    assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
+    assert backend in _valid_backend_list, f"Unsupported backend: {backend}."
     if backend == "gloo":
         pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":

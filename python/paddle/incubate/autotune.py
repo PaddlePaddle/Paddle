@@ -12,16 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import json
 import warnings
+from typing import TYPE_CHECKING, TypedDict
 
 import paddle
 from paddle.base import core
 
+if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
+    class _Kernel(TypedDict):
+        enable: bool
+        tuning_range: list[int] | tuple[int, int]
+
+    class _Layout(TypedDict):
+        enable: bool
+
+    class _Dataloader(TypedDict):
+        enable: bool
+        tuning_steps: int
+
+    class _ConfigKernel(TypedDict):
+        kernel: NotRequired[_Kernel]
+        layout: NotRequired[_Layout]
+        dataloader: NotRequired[_Dataloader]
+
+
 __all__ = ['set_config']
 
 
-def set_config(config=None):
+def set_config(config: _ConfigKernel | str | None = None) -> None:
     r"""
     Set the configuration for kernel, layout and dataloader auto-tuning.
 
@@ -72,7 +95,7 @@ def set_config(config=None):
             ...         "enable": True,
             ...     }
             >>> }
-            >>> paddle.incubate.autotune.set_config(config)
+            >>> paddle.incubate.autotune.set_config(config) # type: ignore[arg-type]
 
             >>> # config is the path of json file.
             >>> config_json = json.dumps(config)

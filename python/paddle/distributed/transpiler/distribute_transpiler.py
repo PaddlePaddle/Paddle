@@ -470,7 +470,7 @@ class DistributeTranspiler:
         elif collective_mode == "single_process_multi_thread":
             transpiler = collective.SingleProcessMultiThread()
         else:
-            raise ValueError('invalid collective_mode: %s' % collective_mode)
+            raise ValueError(f'invalid collective_mode: {collective_mode}')
 
         transpiler.transpile(
             startup_program=startup_program,
@@ -2414,7 +2414,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             pass
         else:
             raise ValueError(
-                "Not supported optimizer for distributed training: %s" % op_type
+                f"Not supported optimizer for distributed training: {op_type}"
             )
         return orig_shape
 
@@ -2497,7 +2497,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
     def _append_dc_asgd_ops(self, block, param_var, grad_var):
         # NOTE: can not use grammar candy here, should put ops in specific block
         local_param_bak = block.create_var(
-            name="%s.local_bak" % param_var.name,
+            name=f"{param_var.name}.local_bak",
             shape=param_var.shape,
             type=param_var.type,
             dtype=param_var.dtype,

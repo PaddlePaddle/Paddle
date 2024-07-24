@@ -395,12 +395,12 @@ class MoELayer(nn.Layer):
                 )
             else:
                 raise AssertionError(
-                    f"We only support naive gate,                                 gshard gate and switch gate,                                 but you choose {str(gate)} gate."
+                    f"We only support naive gate,                                 gshard gate and switch gate,                                 but you choose {gate} gate."
                 )
         elif isinstance(gate, NaiveGate):
             self.top_k = gate.top_k
         elif isinstance(gate, BaseGate):
-            raise TypeError("Unimplemented gate type: ", type(gate))
+            raise TypeError(f"Unimplemented gate type: {type(gate)}")
         else:
             raise TypeError("gate's type must be either dict or moe.BaseGate")
         self.gate = gate

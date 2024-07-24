@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import distutils
 import os
 import unittest
 
@@ -24,6 +23,7 @@ from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
 from paddle.incubate import DistributedFusedLamb
 from paddle.nn.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
+from paddle.utils import strtobool
 from paddle.vision.models import resnet18 as resnet
 
 
@@ -280,7 +280,7 @@ class TestDistributedFusedLamb(unittest.TestCase):
 
     def config(self):
         clip_after_allreduce = bool(
-            distutils.util.strtobool(os.getenv('CLIP_AFTER_ALLREDUCE', 'True'))
+            strtobool(os.getenv('CLIP_AFTER_ALLREDUCE', 'True'))
         )
         max_global_norm = float(os.getenv('MAX_GLOBAL_NORM', -1.0))
         gm_steps = int(os.getenv('GRADIENT_MERGE_STEPS', 1))
@@ -291,9 +291,11 @@ class TestDistributedFusedLamb(unittest.TestCase):
         return {
             'clip_after_allreduce': clip_after_allreduce,
             'gradient_accumulation_steps': gm_steps,
-            'grad_clip': paddle.nn.ClipGradByGlobalNorm(max_global_norm)
-            if max_global_norm > 0
-            else None,
+            'grad_clip': (
+                paddle.nn.ClipGradByGlobalNorm(max_global_norm)
+                if max_global_norm > 0
+                else None
+            ),
             'use_master_acc_grad': use_master_acc_grad,
         }
 

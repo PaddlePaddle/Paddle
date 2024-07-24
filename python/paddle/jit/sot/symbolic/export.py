@@ -193,7 +193,7 @@ class PyFileGen:
             if inp in self.SIR.non_param_symbol:
                 meta = self.SIR.symbol_meta_map[inp]
                 forward_definition.append(
-                    f"    {self.name_gener(inp)},    # {str(meta)}"
+                    f"    {self.name_gener(inp)},    # {meta}"
                 )
         forward_definition.append("):")
 

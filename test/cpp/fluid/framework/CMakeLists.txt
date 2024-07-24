@@ -11,22 +11,22 @@ endif()
 nv_test(
   tensor_test
   SRCS tensor_test.cc
-  DEPS tensor isfinite_op)
+  DEPS tensor)
 if(WITH_GPU)
   nv_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor isfinite_op)
+    DEPS tensor dlpack_tensor)
 elseif(WITH_ROCM)
   hip_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor isfinite_op)
+    DEPS tensor dlpack_tensor)
 else()
   nv_test(
     tensor_util_test
     SRCS tensor_util_test.cc
-    DEPS tensor dlpack_tensor isfinite_op)
+    DEPS tensor dlpack_tensor)
 endif()
 
 nv_test(
@@ -212,8 +212,7 @@ cc_test(
 cc_test(
   op_kernel_type_test
   SRCS op_kernel_type_test.cc
-  DEPS place device_context framework_proto op_kernel_type)
-cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
+  DEPS phi common device_context framework_proto op_kernel_type)
 
 cc_test(tuple_test SRCS tuple_test.cc)
 

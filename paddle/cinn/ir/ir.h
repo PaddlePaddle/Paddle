@@ -1053,6 +1053,7 @@ struct _Module_ : public ExprNode<_Module_> {
   std::vector<Expr> functions;
   std::vector<Expr> submodules;
   std::vector<Expr> predicates;
+  std::vector<int> priorities;
   Expr infer_shape_func;
 
   static ir::Module Make(const std::string& name, Target target);

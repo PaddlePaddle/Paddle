@@ -24,7 +24,7 @@ void AddVarToScope(Scope* param_scope,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  tensor->mutable_data<float>(platform::CPUPlace());
+  tensor->mutable_data<float>(phi::CPUPlace());
 }
 
 Scope* CreateParamScope() {
@@ -126,14 +126,14 @@ TEST(MultiHeadMatmulFusePass, basic) {
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
       num_nodes_after + 39,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "After the multihead_matmul pass, The node num in graph "
           "should be %d, but the result is %d",
           num_nodes_before - 39,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "After the multihead_matmul pass, there should be one "
                         "multihead_matmul op, but the result is %d",
                         num_fused_nodes_after));

@@ -84,7 +84,7 @@ std::vector<std::vector<pir::Value>> {{class_name}}::DecompVjp(pir::Operation* o
           .defining_op();
   if ({{item.name}}_define_op->name() != "pd_op.full") {
     PADDLE_THROW(
-        platform::errors::Unimplemented("We don't support dynamic tensors "
+        phi::errors::Unimplemented("We don't support dynamic tensors "
                                         "attribute {{item.name}} for {{fwd_name}} decomposition "
                                         "for now. "));
   }
@@ -100,7 +100,7 @@ std::vector<std::vector<pir::Value>> {{class_name}}::DecompVjp(pir::Operation* o
           .defining_op();
   if ({{item.name}}_define_op->name() != "pd_op.full_int_array") {
     PADDLE_THROW(
-        platform::errors::Unimplemented("We don't support dynamic tensors "
+        phi::errors::Unimplemented("We don't support dynamic tensors "
                                         "attribute {{item.name}} for {{fwd_name}} decomposition "
                                         "for now. "));
   }

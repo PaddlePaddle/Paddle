@@ -16,8 +16,11 @@
 #include <set>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -26,6 +29,11 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
                                const DenseTensor& input,
                                const IntArray& axes_arr,
                                DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   std::vector<int64_t> axes = axes_arr.GetData();
   std::vector<int64_t> output_dims;
   std::vector<int64_t> output_stride;
@@ -120,6 +128,11 @@ void SqueezeStridedKernel(const Context& dev_ctx,
                           const IntArray& axes,
                           DenseTensor* out,
                           DenseTensor* xshape UNUSED) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   SqueezeInferStridedKernel<Context>(dev_ctx, x, axes, out);
 }
 

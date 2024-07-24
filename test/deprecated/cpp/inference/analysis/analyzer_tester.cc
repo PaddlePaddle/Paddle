@@ -81,12 +81,12 @@ void TestWord2vecPrediction(const std::string& model_path) {
 
   PADDLE_ENFORCE_EQ(outputs.size(),
                     1UL,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "Output size should be 1, but got %d", outputs.size()));
   // Check the output buffer size and result of each tid.
   PADDLE_ENFORCE_EQ(outputs.front().data.length(),
                     33168UL,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "Output's data length should be 33168 but got %d",
                         outputs.front().data.length()));
   std::array<float, 5> result = {

@@ -749,11 +749,11 @@ def update_op_dims_mapping(
     changed = False
     if len(input_arg_names) != len(infered_input_dims_mappings):
         warnings.warn(
-            f"dims mapping is NOT Match, infered [{len(infered_input_dims_mappings)}], original: [{len(input_arg_names)}]; dist op: [{str(dist_op)}]"
+            f"dims mapping is NOT Match, infered [{len(infered_input_dims_mappings)}], original: [{len(input_arg_names)}]; dist op: [{dist_op}]"
         )
     if len(output_arg_names) != len(infered_output_dims_mappings):
         warnings.warn(
-            f"dims mapping is NOT Match, infered [{len(infered_output_dims_mappings)}], original: [{len(output_arg_names)}]; dist op: [{str(dist_op)}]"
+            f"dims mapping is NOT Match, infered [{len(infered_output_dims_mappings)}], original: [{len(output_arg_names)}]; dist op: [{dist_op}]"
         )
 
     for i in range(len(input_arg_names)):

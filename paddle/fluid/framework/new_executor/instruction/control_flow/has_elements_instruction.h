@@ -27,7 +27,7 @@ class ValueExecutionInfo;
 class HasElementsInstruction : public InstructionBase {
  public:
   HasElementsInstruction(size_t id,
-                         const platform::Place& place,
+                         const phi::Place& place,
                          ::pir::Operation* op,
                          ValueExecutionInfo* value_exe_info);
 

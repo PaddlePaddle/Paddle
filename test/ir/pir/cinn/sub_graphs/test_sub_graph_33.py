@@ -84,8 +84,8 @@ class TestLayer(TestBase):
             paddle.rand(shape=[10, 256, 14, 14], dtype=paddle.float32),
         )
         self.net = LayerCase
-        self.with_train = False
         self.atol = 1e-5
+        self.with_train = False
 
 
 if __name__ == '__main__':

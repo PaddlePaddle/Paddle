@@ -103,8 +103,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
         super().__init__(pass_ctx)
         if self.ps_mode != DistributedMode.GEO:
             raise ValueError(
-                "ps mode: {} not matched {}",
-                format(self.ps_mode, "GeoPsProgramBuilder"),
+                f"ps mode: {self.ps_mode} not matched GeoPsProgramBuilder",
             )
 
     def _build_trainer_programs(self):
@@ -180,8 +179,7 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
             and self.ps_mode != DistributedMode.ASYNC
         ):
             raise ValueError(
-                "ps mode: {} not matched {}",
-                format(self.ps_mode, "PsProgramBuilder"),
+                f"ps mode: {self.ps_mode} not matched PsProgramBuilder"
             )
 
     def _build_trainer_programs(self):

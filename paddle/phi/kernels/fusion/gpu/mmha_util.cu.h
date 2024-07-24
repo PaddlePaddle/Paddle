@@ -69,6 +69,12 @@ namespace fusion {
 #define MMHA_USE_FP32_ACUM_FOR_OUT
 #define MMHA_USE_FP32_ACUM_FOR_FMA
 
+enum CacheType {
+  NORMAL,
+  INT8,
+  INT4,
+};
+
 struct Float8_ {
   float2 x;
   float2 y;
@@ -92,6 +98,86 @@ struct bf16_8_t {
   __nv_bfloat162 y;
   __nv_bfloat162 z;
   __nv_bfloat162 w;
+};
+#endif
+
+//-----------------------------------
+template <typename T, CacheType CACHE_TYPE>
+struct Packed_Int8_;
+template <>
+struct Packed_Int8_<float, CacheType::NORMAL> {
+  using Type = uint8_t;
+};
+template <>
+struct Packed_Int8_<float2, CacheType::NORMAL> {
+  using Type = uint16_t;
+};
+template <>
+struct Packed_Int8_<float4, CacheType::NORMAL> {
+  using Type = uint32_t;
+};
+template <>
+struct Packed_Int8_<float, CacheType::INT8> {
+  using Type = uint8_t;
+};
+template <>
+struct Packed_Int8_<float2, CacheType::INT8> {
+  using Type = uint16_t;
+};
+template <>
+struct Packed_Int8_<float4, CacheType::INT8> {
+  using Type = uint32_t;
+};
+
+template <>
+struct Packed_Int8_<uint32_t, CacheType::NORMAL> {
+  using Type = uint16_t;
+};
+template <>
+struct Packed_Int8_<uint2, CacheType::NORMAL> {
+  using Type = uint32_t;
+};
+template <>
+struct Packed_Int8_<uint4, CacheType::NORMAL> {
+  using Type = uint64_t;
+};
+template <>
+struct Packed_Int8_<uint32_t, CacheType::INT8> {
+  using Type = uint16_t;
+};
+template <>
+struct Packed_Int8_<uint2, CacheType::INT8> {
+  using Type = uint32_t;
+};
+template <>
+struct Packed_Int8_<uint4, CacheType::INT8> {
+  using Type = uint64_t;
+};
+
+#ifdef ENABLE_BF16
+template <>
+struct Packed_Int8_<__nv_bfloat162, CacheType::NORMAL> {
+  using Type = uint16_t;
+};
+template <>
+struct Packed_Int8_<bf16_4_t, CacheType::NORMAL> {
+  using Type = uint32_t;
+};
+template <>
+struct Packed_Int8_<bf16_8_t, CacheType::NORMAL> {
+  using Type = uint64_t;
+};
+template <>
+struct Packed_Int8_<__nv_bfloat162, CacheType::INT8> {
+  using Type = uint16_t;
+};
+template <>
+struct Packed_Int8_<bf16_4_t, CacheType::INT8> {
+  using Type = uint32_t;
+};
+template <>
+struct Packed_Int8_<bf16_8_t, CacheType::INT8> {
+  using Type = uint64_t;
 };
 #endif
 
@@ -169,6 +255,7 @@ struct packed_type<float, 8> {
   using type = Float8_;
 };
 
+//------------------------------------
 template <typename T, int Dh>
 struct Qk_vec_ {};
 template <>
@@ -279,6 +366,41 @@ struct Qk_vec_RoPE_<bfloat16, float, 256> {
 
 template <typename T, int THREADS_PER_KEY>
 struct K_vec_ {};
+template <typename T>
+struct K_vec_bttn_ {
+  using Type = T;
+};
+template <typename T, CacheType CACHE_TYPE>
+struct K_vec_I_bttn_ {
+  using Type = uint8_t;
+};
+
+template <>
+struct K_vec_bttn_<float> {
+  using Type = float4;
+};
+template <>
+struct K_vec_bttn_<float16> {
+  using Type = uint4;
+};
+
+template <>
+struct K_vec_I_bttn_<float, CacheType::NORMAL> {
+  using Type = uint32_t;
+};
+template <>
+struct K_vec_I_bttn_<float, CacheType::INT8> {
+  using Type = uint32_t;
+};
+template <>
+struct K_vec_I_bttn_<float16, CacheType::NORMAL> {
+  using Type = uint64_t;
+};
+template <>
+struct K_vec_I_bttn_<float16, CacheType::INT8> {
+  using Type = uint64_t;
+};
+
 template <>
 struct K_vec_<float, 4> {
   using Type = float;
@@ -316,27 +438,25 @@ template <>
 struct K_vec_<bfloat16, 1> {
   using Type = bf16_8_t;
 };
+template <>
+struct K_vec_bttn_<bfloat16> {
+  using Type = bf16_8_t;
+};
+template <>
+struct K_vec_I_bttn_<bfloat16, CacheType::NORMAL> {
+  using Type = uint64_t;
+};
+template <>
+struct K_vec_I_bttn_<bfloat16, CacheType::INT8> {
+  using Type = uint64_t;
+};
 #endif  // ENABLE_BF16
 
 //------------------------------------
+
 template <typename T, int THREADS_PER_KEY>
 struct K_vec_I_ {
   using Type = uint8_t;
-};
-
-template <>
-struct K_vec_I_<float16, 4> {
-  using Type = uint16_t;
-};
-
-template <>
-struct K_vec_I_<float16, 2> {
-  using Type = uint32_t;
-};
-
-template <>
-struct K_vec_I_<float16, 1> {
-  using Type = uint64_t;
 };
 
 #ifdef ENABLE_BF16
@@ -625,11 +745,24 @@ inline __device__ Float8_ add(bf16_8_t a, Float8_ fb) {
 }
 #endif  // ENABLE_BF16
 
-template <typename T, typename IntT>
-inline __device__ void mul_pointer_v2(T* c, float a, IntT* b);
+template <typename T, typename IntT, CacheType CACHE_TYPE>
+inline __device__ void mul_pointer_v2(T* c, float& a, IntT* b) {  // NOLINT
+  printf("mul_pointer_v2 not support this case!\n");
+}
+
+template <typename T, typename FT, typename IntT, CacheType CACHE_TYPE>
+inline __device__ void mul_pointer_v2(T* c, FT& a, IntT* b) {  // NOLINT
+  printf("mul_pointer_v2 not support this case!\n");
+}
+
+template <typename T, typename FT, typename IntT, CacheType CACHE_TYPE>
+inline __device__ void mul_pointer_v2(T* c, FT& a, FT& zp, IntT* b) {  // NOLINT
+  printf("mul_pointer_v2 not support this case!\n");
+}
 
 template <>
-inline __device__ void mul_pointer_v2(float4* c, float a, uint8_t* b) {
+inline __device__ void mul_pointer_v2<float4, float, uint8_t, CacheType::INT8>(
+    float4* c, float& a, uint8_t* b) {  // NOLINT
   c->x = a * (static_cast<float>(b[0]) - 128.0);
   c->y = a * (static_cast<float>(b[1]) - 128.0);
   c->z = a * (static_cast<float>(b[2]) - 128.0);
@@ -637,7 +770,17 @@ inline __device__ void mul_pointer_v2(float4* c, float a, uint8_t* b) {
 }
 
 template <>
-inline __device__ void mul_pointer_v2(float4* c, float a, uint32_t* b) {
+inline __device__ void mul_pointer_v2<float4, float4, uint8_t, CacheType::INT8>(
+    float4* c, float4& a, uint8_t* b) {  // NOLINT
+  c->x = a.x * (static_cast<float>(b[0]) - 128.0);
+  c->y = a.y * (static_cast<float>(b[1]) - 128.0);
+  c->z = a.z * (static_cast<float>(b[2]) - 128.0);
+  c->w = a.w * (static_cast<float>(b[3]) - 128.0);
+}
+
+template <>
+inline __device__ void mul_pointer_v2<float4, float, uint32_t, CacheType::INT8>(
+    float4* c, float& a, uint32_t* b) {  // NOLINT
   uint8_t* b_tmp = reinterpret_cast<uint8_t*>(b);
   c->x = a * (static_cast<float>(b_tmp[0]) - 128.0);
   c->y = a * (static_cast<float>(b_tmp[1]) - 128.0);
@@ -646,43 +789,90 @@ inline __device__ void mul_pointer_v2(float4* c, float a, uint32_t* b) {
 }
 
 template <>
-inline __device__ void mul_pointer_v2(float2* c, float a, uint8_t* b) {
+inline __device__ void
+mul_pointer_v2<float4, float4, uint32_t, CacheType::INT8>(float4* c,
+                                                          float4& a,  // NOLINT
+                                                          uint32_t* b) {
+  uint8_t* b_tmp = reinterpret_cast<uint8_t*>(b);
+  c->x = a.x * (static_cast<float>(b_tmp[0]) - 128.0);
+  c->y = a.y * (static_cast<float>(b_tmp[1]) - 128.0);
+  c->z = a.z * (static_cast<float>(b_tmp[2]) - 128.0);
+  c->w = a.w * (static_cast<float>(b_tmp[3]) - 128.0);
+}
+
+template <>
+inline __device__ void mul_pointer_v2<float, float, uint8_t, CacheType::INT8>(
+    float* c, float& a, float& zp, uint8_t* b) {  // NOLINT
+  *c = a * (static_cast<float>(b[0]) - 128.0 - zp);
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<float2, float2, uint16_t, CacheType::INT8>(float2* c,
+                                                          float2& a,   // NOLINT
+                                                          float2& zp,  // NOLINT
+                                                          uint16_t* b) {
+  uint8_t* b_tmp = reinterpret_cast<uint8_t*>(b);
+  c->x = a.x * (static_cast<float>(b_tmp[0]) - 128.0 - zp.x);
+  c->y = a.y * (static_cast<float>(b_tmp[1]) - 128.0 - zp.y);
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<float4, float4, uint32_t, CacheType::INT8>(float4* c,
+                                                          float4& a,   // NOLINT
+                                                          float4& zp,  // NOLINT
+                                                          uint32_t* b) {
+  uint8_t* b_tmp = reinterpret_cast<uint8_t*>(b);
+  c->x = a.x * (static_cast<float>(b_tmp[0]) - 128.0 - zp.x);
+  c->y = a.y * (static_cast<float>(b_tmp[1]) - 128.0 - zp.y);
+  c->z = a.z * (static_cast<float>(b_tmp[2]) - 128.0 - zp.z);
+  c->w = a.w * (static_cast<float>(b_tmp[3]) - 128.0 - zp.w);
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<Float8_, Float8_, uint64_t, CacheType::INT8>(
+    Float8_* c,
+    Float8_& a,   // NOLINT
+    Float8_& zp,  // NOLINT
+    uint64_t* b) {
+  uint8_t* b_tmp = reinterpret_cast<uint8_t*>(b);
+  c->x.x = a.x.x * (static_cast<float>(b_tmp[0]) - 128.0 - zp.x.x);
+  c->x.y = a.x.y * (static_cast<float>(b_tmp[1]) - 128.0 - zp.x.y);
+  c->y.x = a.y.x * (static_cast<float>(b_tmp[2]) - 128.0 - zp.y.x);
+  c->y.y = a.y.y * (static_cast<float>(b_tmp[3]) - 128.0 - zp.y.y);
+  c->z.x = a.z.x * (static_cast<float>(b_tmp[4]) - 128.0 - zp.z.x);
+  c->z.y = a.z.y * (static_cast<float>(b_tmp[5]) - 128.0 - zp.z.y);
+  c->w.x = a.w.x * (static_cast<float>(b_tmp[6]) - 128.0 - zp.w.x);
+  c->w.y = a.w.y * (static_cast<float>(b_tmp[7]) - 128.0 - zp.w.y);
+}
+
+template <>
+inline __device__ void mul_pointer_v2<float2, float, uint8_t, CacheType::INT8>(
+    float2* c, float& a, uint8_t* b) {  // NOLINT
   c->x = a * (static_cast<float>(b[0]) - 128.0);
   c->y = a * (static_cast<float>(b[1]) - 128.0);
 }
 
 template <>
-inline __device__ void mul_pointer_v2(float* c, float a, uint8_t* b) {
-  c[0] = a * (static_cast<float>(b[0]) - 128.0);
-}
-
-inline __device__ void convert_(float16* result, uint32_t const& source) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  uint32_t* h = reinterpret_cast<uint32_t*>(result);
-  uint32_t const i8s = reinterpret_cast<uint32_t const&>(source);
-
-  static constexpr uint32_t mask_for_elt_01 = 0x5150;
-  static constexpr uint32_t mask_for_elt_23 = 0x5352;
-  static constexpr uint32_t start_byte_for_fp16 = 0x64646464;
-  asm volatile("prmt.b32 %0,%1,%2,%3;\n"
-               : "=r"(h[0])
-               : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_01));
-  asm volatile("prmt.b32 %0,%1,%2,%3;\n"
-               : "=r"(h[1])
-               : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_23));
-
-  static constexpr uint32_t I8s_TO_F16s_MAGIC_NUM = 0x64806480;
-  asm volatile("sub.f16x2 %0, %1, %2;\n"
-               : "=r"(h[0])
-               : "r"(h[0]), "r"(I8s_TO_F16s_MAGIC_NUM));
-  asm volatile("sub.f16x2 %0, %1, %2;\n"
-               : "=r"(h[1])
-               : "r"(h[1]), "r"(I8s_TO_F16s_MAGIC_NUM));
-#endif
+inline __device__ void mul_pointer_v2<float2, float2, uint8_t, CacheType::INT8>(
+    float2* c, float2& a, uint8_t* b) {  // NOLINT
+  c->x = a.x * (static_cast<float>(b[0]) - 128.0);
+  c->y = a.y * (static_cast<float>(b[1]) - 128.0);
 }
 
 template <>
-inline __device__ void mul_pointer_v2(uint32_t* c, float a, uint8_t* b) {
+inline __device__ void mul_pointer_v2<float, float, uint8_t, CacheType::INT8>(
+    float* c, float& a, uint8_t* b) {  // NOLINT
+  c[0] = a * (static_cast<float>(b[0]) - 128.0);
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<uint32_t, float, uint8_t, CacheType::INT8>(uint32_t* c,
+                                                          float& a,  // NOLINT
+                                                          uint8_t* b) {
   float16* tmp_fp16 = reinterpret_cast<float16*>(c);
   float16 a_prime = static_cast<float16>(a);
   float16 offset = static_cast<float16>(128.0);
@@ -692,37 +882,115 @@ inline __device__ void mul_pointer_v2(uint32_t* c, float a, uint8_t* b) {
   }
 }
 
-// float16 * 2 <- uint8_t * 2
 template <>
-inline __device__ void mul_pointer_v2(uint32_t* c, float a, uint16_t* b) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  uint32_t tmp_uint32 = 0;
-  uint32_t* h = &tmp_uint32;
-  uint16_t tmp_b = *b;
-  uint32_t i8s = *reinterpret_cast<uint32_t*>(&tmp_b);
+inline __device__ void
+mul_pointer_v2<uint32_t, float2, uint8_t, CacheType::INT8>(uint32_t* c,
+                                                           float2& a,  // NOLINT
+                                                           uint8_t* b) {
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 offset = static_cast<float16>(128.0);
 
-  static constexpr uint32_t mask_for_elt_01 = 0x5150;
-  static constexpr uint32_t start_byte_for_fp16 = 0x64646464;
-  asm volatile("prmt.b32 %0,%1,%2,%3;\n"
-               : "=r"(h[0])
-               : "r"(i8s), "n"(start_byte_for_fp16), "n"(mask_for_elt_01));
-
-  static constexpr uint32_t I8s_TO_F16s_MAGIC_NUM = 0x64806480;
-  asm volatile("sub.f16x2 %0, %1, %2;\n"
-               : "=r"(h[0])
-               : "r"(h[0]), "r"(I8s_TO_F16s_MAGIC_NUM));
-
-  half2 tmp_half2 = *reinterpret_cast<half2*>(h);
-  tmp_half2.x *= static_cast<half>(a);
-  tmp_half2.y *= static_cast<half>(a);
-
-  c[0] = *reinterpret_cast<uint32_t*>(&tmp_half2);
-
-#endif
+  tmp_fp16[0] =
+      static_cast<float16>(a.x) * (static_cast<float16>(b[0]) - offset);
+  tmp_fp16[1] =
+      static_cast<float16>(a.y) * (static_cast<float16>(b[1]) - offset);
 }
 
 template <>
-inline __device__ void mul_pointer_v2(uint2* c, float a, uint8_t* b) {
+inline __device__ void
+mul_pointer_v2<uint32_t, float2, uint16_t, CacheType::INT8>(
+    uint32_t* c,
+    float2& a,   // NOLINT
+    float2& zp,  // NOLINT
+    uint16_t* b) {
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 offset = static_cast<float16>(128.0);
+  uint8_t* tmp_b = reinterpret_cast<uint8_t*>(b);
+
+  tmp_fp16[0] =
+      static_cast<float16>(a.x) *
+      (static_cast<float16>(tmp_b[0]) - offset - static_cast<float16>(zp.x));
+  tmp_fp16[1] =
+      static_cast<float16>(a.y) *
+      (static_cast<float16>(tmp_b[1]) - offset - static_cast<float16>(zp.y));
+}
+
+template <>
+inline __device__ void mul_pointer_v2<uint2, float4, uint32_t, CacheType::INT8>(
+    uint2* c, float4& a, float4& zp, uint32_t* b) {  // NOLINT
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 offset = static_cast<float16>(128.0);
+  uint8_t* tmp_b = reinterpret_cast<uint8_t*>(b);
+
+  tmp_fp16[0] =
+      static_cast<float16>(a.x) *
+      (static_cast<float16>(tmp_b[0]) - offset - static_cast<float16>(zp.x));
+  tmp_fp16[1] =
+      static_cast<float16>(a.y) *
+      (static_cast<float16>(tmp_b[1]) - offset - static_cast<float16>(zp.y));
+  tmp_fp16[2] =
+      static_cast<float16>(a.z) *
+      (static_cast<float16>(tmp_b[2]) - offset - static_cast<float16>(zp.z));
+  tmp_fp16[3] =
+      static_cast<float16>(a.w) *
+      (static_cast<float16>(tmp_b[3]) - offset - static_cast<float16>(zp.w));
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<uint4, Float8_, uint64_t, CacheType::INT8>(
+    uint4* c,
+    Float8_& a,   // NOLINT
+    Float8_& zp,  // NOLINT
+    uint64_t* b) {
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 offset = static_cast<float16>(128.0);
+  uint8_t* tmp_b = reinterpret_cast<uint8_t*>(b);
+
+  tmp_fp16[0] =
+      static_cast<float16>(a.x.x) *
+      (static_cast<float16>(tmp_b[0]) - offset - static_cast<float16>(zp.x.x));
+  tmp_fp16[1] =
+      static_cast<float16>(a.x.y) *
+      (static_cast<float16>(tmp_b[1]) - offset - static_cast<float16>(zp.x.y));
+  tmp_fp16[2] =
+      static_cast<float16>(a.y.x) *
+      (static_cast<float16>(tmp_b[2]) - offset - static_cast<float16>(zp.y.x));
+  tmp_fp16[3] =
+      static_cast<float16>(a.y.y) *
+      (static_cast<float16>(tmp_b[3]) - offset - static_cast<float16>(zp.y.y));
+  tmp_fp16[4] =
+      static_cast<float16>(a.z.x) *
+      (static_cast<float16>(tmp_b[4]) - offset - static_cast<float16>(zp.z.x));
+  tmp_fp16[5] =
+      static_cast<float16>(a.z.y) *
+      (static_cast<float16>(tmp_b[5]) - offset - static_cast<float16>(zp.z.y));
+  tmp_fp16[6] =
+      static_cast<float16>(a.w.x) *
+      (static_cast<float16>(tmp_b[6]) - offset - static_cast<float16>(zp.w.x));
+  tmp_fp16[7] =
+      static_cast<float16>(a.w.y) *
+      (static_cast<float16>(tmp_b[7]) - offset - static_cast<float16>(zp.w.y));
+}
+
+template <>
+inline __device__ void mul_pointer_v2<uint4, uint4, uint64_t, CacheType::INT8>(
+    uint4* c, uint4& a, uint4& zp, uint64_t* b) {  // NOLINT
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16* tmp_a = reinterpret_cast<float16*>(&a);
+  float16* tmp_zp = reinterpret_cast<float16*>(&zp);
+  float16 offset = static_cast<float16>(128.0);
+  uint8_t* tmp_b = reinterpret_cast<uint8_t*>(b);
+#pragma unroll
+  for (int i = 0; i < 8; i++) {
+    tmp_fp16[i] =
+        tmp_a[i] * (static_cast<float16>(tmp_b[i]) - offset - tmp_zp[i]);
+  }
+}
+
+template <>
+inline __device__ void mul_pointer_v2<uint2, float, uint8_t, CacheType::INT8>(
+    uint2* c, float& a, uint8_t* b) {  // NOLINT
   float16* tmp_fp16 = reinterpret_cast<float16*>(c);
   float16 a_prime = static_cast<float16>(a);
   float16 offset = static_cast<float16>(128.0);
@@ -732,20 +1000,25 @@ inline __device__ void mul_pointer_v2(uint2* c, float a, uint8_t* b) {
   }
 }
 
-// float16 * 4 <- uint8_t * 4
 template <>
-inline __device__ void mul_pointer_v2(uint2* c, float a, uint32_t* b) {
-  float16* c_prime = reinterpret_cast<float16*>(c);
-  float16 a_prime = static_cast<float16>(a);
-  convert_(c_prime, *b);
-#pragma unroll
-  for (int i = 0; i < 4; ++i) {
-    c_prime[i] *= a_prime;
-  }
+inline __device__ void mul_pointer_v2<uint2, float4, uint8_t, CacheType::INT8>(
+    uint2* c, float4& a, uint8_t* b) {  // NOLINT
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 offset = static_cast<float16>(128.0);
+
+  tmp_fp16[0] =
+      static_cast<float16>(a.x) * (static_cast<float16>(b[0]) - offset);
+  tmp_fp16[1] =
+      static_cast<float16>(a.y) * (static_cast<float16>(b[1]) - offset);
+  tmp_fp16[2] =
+      static_cast<float16>(a.z) * (static_cast<float16>(b[2]) - offset);
+  tmp_fp16[3] =
+      static_cast<float16>(a.w) * (static_cast<float16>(b[3]) - offset);
 }
 
 template <>
-inline __device__ void mul_pointer_v2(uint4* c, float a, uint8_t* b) {
+inline __device__ void mul_pointer_v2<uint4, float, uint8_t, CacheType::INT8>(
+    uint4* c, float& a, uint8_t* b) {  // NOLINT
   float16* tmp_fp16 = reinterpret_cast<float16*>(c);
   float16 a_prime = static_cast<float16>(a);
   float16 offset = static_cast<float16>(128.0);
@@ -755,18 +1028,83 @@ inline __device__ void mul_pointer_v2(uint4* c, float a, uint8_t* b) {
   }
 }
 
-// float16 * 8 <- uint8_t * 8
 template <>
-inline __device__ void mul_pointer_v2(uint4* c, float a, uint64_t* b) {
-  uint2* tmp_c = reinterpret_cast<uint2*>(c);
-  uint32_t* tmp_b = reinterpret_cast<uint32_t*>(b);
+inline __device__ void mul_pointer_v2<uint4, Float8_, uint8_t, CacheType::INT8>(
+    uint4* c, Float8_& a, uint8_t* b) {  // NOLINT
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 offset = static_cast<float16>(128.0);
+
+  tmp_fp16[0] =
+      static_cast<float16>(a.x.x) * (static_cast<float16>(b[0]) - offset);
+  tmp_fp16[1] =
+      static_cast<float16>(a.x.y) * (static_cast<float16>(b[1]) - offset);
+  tmp_fp16[2] =
+      static_cast<float16>(a.y.x) * (static_cast<float16>(b[2]) - offset);
+  tmp_fp16[3] =
+      static_cast<float16>(a.y.y) * (static_cast<float16>(b[3]) - offset);
+  tmp_fp16[4] =
+      static_cast<float16>(a.z.x) * (static_cast<float16>(b[4]) - offset);
+  tmp_fp16[5] =
+      static_cast<float16>(a.z.y) * (static_cast<float16>(b[5]) - offset);
+  tmp_fp16[6] =
+      static_cast<float16>(a.w.x) * (static_cast<float16>(b[6]) - offset);
+  tmp_fp16[7] =
+      static_cast<float16>(a.w.y) * (static_cast<float16>(b[7]) - offset);
+}
+
+template <>
+inline __device__ void mul_pointer_v2<uint4, float, uint64_t, CacheType::INT8>(
+    uint4* c, float& a, uint64_t* b) {  // NOLINT
+  uint8_t* tmp_b = reinterpret_cast<uint8_t*>(b);
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 a_prime = static_cast<float16>(a);
+  float16 offset = static_cast<float16>(128.0);
 #pragma unroll
-  for (int i = 0; i < 2; ++i) {
-    mul_pointer_v2(tmp_c + i, a, tmp_b + i);
+  for (int i = 0; i < 8; ++i) {
+    tmp_fp16[i] = a_prime * (static_cast<float16>(tmp_b[i]) - offset);
   }
 }
 
-#ifdef ENABLE_BF16
+template <>
+inline __device__ void
+mul_pointer_v2<uint4, Float8_, uint64_t, CacheType::INT8>(uint4* c,
+                                                          Float8_& a,  // NOLINT
+                                                          uint64_t* b) {
+  uint8_t* tmp_b = reinterpret_cast<uint8_t*>(b);
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 offset = static_cast<float16>(128.0);
+
+  tmp_fp16[0] =
+      static_cast<float16>(a.x.x) * (static_cast<float16>(tmp_b[0]) - offset);
+  tmp_fp16[1] =
+      static_cast<float16>(a.x.y) * (static_cast<float16>(tmp_b[1]) - offset);
+  tmp_fp16[2] =
+      static_cast<float16>(a.y.x) * (static_cast<float16>(tmp_b[2]) - offset);
+  tmp_fp16[3] =
+      static_cast<float16>(a.y.y) * (static_cast<float16>(tmp_b[3]) - offset);
+  tmp_fp16[4] =
+      static_cast<float16>(a.z.x) * (static_cast<float16>(tmp_b[4]) - offset);
+  tmp_fp16[5] =
+      static_cast<float16>(a.z.y) * (static_cast<float16>(tmp_b[5]) - offset);
+  tmp_fp16[6] =
+      static_cast<float16>(a.w.x) * (static_cast<float16>(tmp_b[6]) - offset);
+  tmp_fp16[7] =
+      static_cast<float16>(a.w.y) * (static_cast<float16>(tmp_b[7]) - offset);
+}
+
+template <>
+inline __device__ void mul_pointer_v2<uint4, uint4, uint64_t, CacheType::INT8>(
+    uint4* c, uint4& a, uint64_t* b) {  // NOLINT
+  uint8_t* tmp_b = reinterpret_cast<uint8_t*>(b);
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16* tmp_a = reinterpret_cast<float16*>(&a);
+  float16 offset = static_cast<float16>(128.0);
+#pragma unroll
+  for (int i = 0; i < 8; i++) {
+    tmp_fp16[i] = tmp_a[i] * (static_cast<float16>(tmp_b[i]) - offset);
+  }
+}
+
 inline __device__ static void convert_(__nv_bfloat16* result,
                                        uint32_t const& source) {
 #if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
@@ -799,8 +1137,10 @@ inline __device__ static void convert_(__nv_bfloat16* result,
 }
 
 template <>
-inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint8_t* b) {
-#if __CUDA_ARCH__ >= 800
+inline __device__ void
+mul_pointer_v2<__nv_bfloat162, float, uint8_t, CacheType::INT8>(
+    __nv_bfloat162* c, float& a, uint8_t* b) {  // NOLINT
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
   __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
   __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
   convert_(c_prime, static_cast<uint32_t>(*reinterpret_cast<uint16_t*>(b)));
@@ -808,11 +1148,31 @@ inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint8_t* b) {
   for (int i = 0; i < 2; ++i) {
     c_prime[i] *= a_prime;
   }
+#else
+  assert(false);
 #endif
 }
 
 template <>
-inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint16_t* b) {
+inline __device__ void
+mul_pointer_v2<__nv_bfloat162, float2, uint8_t, CacheType::INT8>(
+    __nv_bfloat162* c, float2& a, uint8_t* b) {  // NOLINT
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  convert_(c_prime, static_cast<uint32_t>(*reinterpret_cast<uint16_t*>(b)));
+
+  c_prime[0] *= static_cast<__nv_bfloat16>(a.x);
+  c_prime[1] *= static_cast<__nv_bfloat16>(a.y);
+#else
+  assert(false);
+#endif
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<__nv_bfloat162, float, uint16_t, CacheType::INT8>(
+    __nv_bfloat162* c, float& a, uint16_t* b) {  // NOLINT
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
   using Packed_Int8_t = typename packed_type<uint8_t, 2>::type;
   Packed_Int8_t int8_vec_4_val = *reinterpret_cast<Packed_Int8_t*>(b);
   uint8_t* int8_vec_pointer = reinterpret_cast<uint8_t*>(&int8_vec_4_val);
@@ -836,13 +1196,90 @@ inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint16_t* b) {
   bf16_result_ptr[0] = __byte_perm(
       fp32_intermediates_casted[0], fp32_intermediates_casted[1], 0x7632);
   __nv_bfloat16 scale = static_cast<__nv_bfloat16>(a);
-  c->x = c->x * scale;
-  c->y = c->y * scale;
+  c->x *= scale;
+  c->y *= scale;
+#else
+  assert(false);
+#endif
 }
 
 template <>
-inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint8_t* b) {
-#if __CUDA_ARCH__ >= 800
+inline __device__ void
+mul_pointer_v2<__nv_bfloat162, float2, uint16_t, CacheType::INT8>(
+    __nv_bfloat162* c, float2& a, uint16_t* b) {  // NOLINT
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  using Packed_Int8_t = typename packed_type<uint8_t, 2>::type;
+  Packed_Int8_t int8_vec_4_val = *reinterpret_cast<Packed_Int8_t*>(b);
+  uint8_t* int8_vec_pointer = reinterpret_cast<uint8_t*>(&int8_vec_4_val);
+
+  uint32_t* bf16_result_ptr = reinterpret_cast<uint32_t*>(c);
+  uint32_t const i8s = int8_vec_4_val;
+
+  static constexpr uint32_t fp32_base = 0x4B000000;
+  float fp32_intermediates[2];
+
+  uint32_t* fp32_intermediates_casted =
+      reinterpret_cast<uint32_t*>(fp32_intermediates);
+  fp32_intermediates_casted[0] = __byte_perm(i8s, fp32_base, 0x7650);
+  fp32_intermediates_casted[1] = __byte_perm(i8s, fp32_base, 0x7651);
+
+#pragma unroll
+  for (int ii = 0; ii < 2; ++ii) {
+    fp32_intermediates[ii] -= (8388608.f + 128.f);
+  }
+
+  bf16_result_ptr[0] = __byte_perm(
+      fp32_intermediates_casted[0], fp32_intermediates_casted[1], 0x7632);
+  c->x *= static_cast<__nv_bfloat16>(a.x);
+  c->y *= static_cast<__nv_bfloat16>(a.y);
+#else
+  assert(false);
+#endif
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<__nv_bfloat162, float2, uint16_t, CacheType::INT8>(
+    __nv_bfloat162* c, float2& a, float2& zp, uint16_t* b) {  // NOLINT
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  using Packed_Int8_t = typename packed_type<uint8_t, 2>::type;
+  Packed_Int8_t int8_vec_4_val = *reinterpret_cast<Packed_Int8_t*>(b);
+  uint8_t* int8_vec_pointer = reinterpret_cast<uint8_t*>(&int8_vec_4_val);
+
+  uint32_t* bf16_result_ptr = reinterpret_cast<uint32_t*>(c);
+  uint32_t const i8s = int8_vec_4_val;
+
+  static constexpr uint32_t fp32_base = 0x4B000000;
+  float fp32_intermediates[2];
+
+  uint32_t* fp32_intermediates_casted =
+      reinterpret_cast<uint32_t*>(fp32_intermediates);
+  fp32_intermediates_casted[0] = __byte_perm(i8s, fp32_base, 0x7650);
+  fp32_intermediates_casted[1] = __byte_perm(i8s, fp32_base, 0x7651);
+
+#pragma unroll
+  for (int ii = 0; ii < 2; ++ii) {
+    fp32_intermediates[ii] -= (8388608.f + 128.f);
+  }
+
+  bf16_result_ptr[0] = __byte_perm(
+      fp32_intermediates_casted[0], fp32_intermediates_casted[1], 0x7632);
+
+  c->x -= static_cast<__nv_bfloat16>(zp.x);
+  c->y -= static_cast<__nv_bfloat16>(zp.y);
+  c->x *= static_cast<__nv_bfloat16>(a.x);
+  c->y *= static_cast<__nv_bfloat16>(a.y);
+#else
+  assert(false);
+#endif
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<bf16_4_t, float, uint8_t, CacheType::INT8>(bf16_4_t* c,
+                                                          float& a,  // NOLINT
+                                                          uint8_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
   __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
   __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
   convert_(c_prime, *reinterpret_cast<uint32_t*>(b));
@@ -850,40 +1287,393 @@ inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint8_t* b) {
   for (int i = 0; i < 4; ++i) {
     c_prime[i] *= a_prime;
   }
+#else
+  assert(false);
 #endif
 }
 
 template <>
-inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint32_t* b) {
+inline __device__ void
+mul_pointer_v2<bf16_4_t, float4, uint8_t, CacheType::INT8>(bf16_4_t* c,
+                                                           float4& a,  // NOLINT
+                                                           uint8_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  convert_(c_prime, *reinterpret_cast<uint32_t*>(b));
+
+  c_prime[0] *= static_cast<__nv_bfloat16>(a.x);
+  c_prime[1] *= static_cast<__nv_bfloat16>(a.y);
+  c_prime[2] *= static_cast<__nv_bfloat16>(a.z);
+  c_prime[3] *= static_cast<__nv_bfloat16>(a.w);
+#else
+  assert(false);
+#endif
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<bf16_4_t, float4, uint32_t, CacheType::INT8>(
+    bf16_4_t* c,
+    float4& a,   // NOLINT
+    float4& zp,  // NOLINT
+    uint32_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  convert_(c_prime, *b);
+
+  c_prime[0] -= static_cast<__nv_bfloat16>(zp.x);
+  c_prime[1] -= static_cast<__nv_bfloat16>(zp.y);
+  c_prime[2] -= static_cast<__nv_bfloat16>(zp.z);
+  c_prime[3] -= static_cast<__nv_bfloat16>(zp.w);
+  c_prime[0] *= static_cast<__nv_bfloat16>(a.x);
+  c_prime[1] *= static_cast<__nv_bfloat16>(a.y);
+  c_prime[2] *= static_cast<__nv_bfloat16>(a.z);
+  c_prime[3] *= static_cast<__nv_bfloat16>(a.w);
+#else
+  assert(false);
+#endif
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<bf16_4_t, float, uint32_t, CacheType::INT8>(bf16_4_t* c,
+                                                           float& a,  // NOLINT
+                                                           uint32_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
   __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
   __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
   convert_(c_prime, *b);
 #pragma unroll
   for (int i = 0; i < 4; ++i) {
-    c_prime[i] = c_prime[i] * a_prime;
+    c_prime[i] *= a_prime;
   }
+#else
+  assert(false);
+#endif
 }
 
 template <>
-inline __device__ void mul_pointer_v2(bf16_8_t* c, float a, uint8_t* b) {
+inline __device__ void
+mul_pointer_v2<bf16_4_t, float4, uint32_t, CacheType::INT8>(
+    bf16_4_t* c,
+    float4& a,  // NOLINT
+    uint32_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  convert_(c_prime, *b);
+
+  c_prime[0] *= static_cast<__nv_bfloat16>(a.x);
+  c_prime[1] *= static_cast<__nv_bfloat16>(a.y);
+  c_prime[2] *= static_cast<__nv_bfloat16>(a.z);
+  c_prime[3] *= static_cast<__nv_bfloat16>(a.w);
+#else
+  assert(false);
+#endif
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<bf16_8_t, float, uint8_t, CacheType::INT8>(bf16_8_t* c,
+                                                          float& a,  // NOLINT
+                                                          uint8_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
   bf16_4_t* tmp_c = reinterpret_cast<bf16_4_t*>(c);
 #pragma unroll
   for (int i = 0; i < 2; ++i) {
-    mul_pointer_v2<bf16_4_t>(tmp_c + i, a, b + 4 * i);
+    mul_pointer_v2<bf16_4_t, float, uint8_t, CacheType::INT8>(
+        tmp_c + i, a, b + 4 * i);
   }
+#else
+  assert(false);
+#endif
 }
 
 template <>
-inline __device__ void mul_pointer_v2(bf16_8_t* c, float a, uint64_t* b) {
+inline __device__ void
+mul_pointer_v2<bf16_8_t, Float8_, uint64_t, CacheType::INT8>(
+    bf16_8_t* c,
+    Float8_& a,   // NOLINT
+    Float8_& zp,  // NOLINT
+    uint64_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  uint32_t* tmp_b = reinterpret_cast<uint32_t*>(b);
+  convert_(c_prime, tmp_b[0]);
+  convert_(c_prime + 4, tmp_b[1]);
+  c_prime[0] -= static_cast<__nv_bfloat16>(zp.x.x);
+  c_prime[1] -= static_cast<__nv_bfloat16>(zp.x.y);
+  c_prime[2] -= static_cast<__nv_bfloat16>(zp.y.x);
+  c_prime[3] -= static_cast<__nv_bfloat16>(zp.y.y);
+  c_prime[4] -= static_cast<__nv_bfloat16>(zp.z.x);
+  c_prime[5] -= static_cast<__nv_bfloat16>(zp.z.y);
+  c_prime[6] -= static_cast<__nv_bfloat16>(zp.w.x);
+  c_prime[7] -= static_cast<__nv_bfloat16>(zp.w.y);
+  c_prime[0] *= static_cast<__nv_bfloat16>(a.x.x);
+  c_prime[1] *= static_cast<__nv_bfloat16>(a.x.y);
+  c_prime[2] *= static_cast<__nv_bfloat16>(a.y.x);
+  c_prime[3] *= static_cast<__nv_bfloat16>(a.y.y);
+  c_prime[4] *= static_cast<__nv_bfloat16>(a.z.x);
+  c_prime[5] *= static_cast<__nv_bfloat16>(a.z.y);
+  c_prime[6] *= static_cast<__nv_bfloat16>(a.w.x);
+  c_prime[7] *= static_cast<__nv_bfloat16>(a.w.y);
+#ifdef DEBUG_BLHA
+  if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
+      threadIdx.x == 0) {
+    printf("mul_pointer_v2 float8 bf16_8 int8\n");
+    printf("scale: %f, zp: %f, b: %lu\n, c: %f\n",
+           a.x.x,
+           zp.x.x,
+           *b,
+           static_cast<float>(c->x.x));
+    printf("scale: %f, zp: %f, b: %lu\n, c: %f\n",
+           a.x.y,
+           zp.x.y,
+           *b,
+           static_cast<float>(c->x.y));
+    printf("scale: %f, zp: %f, b: %lu\n, c: %f\n",
+           a.y.x,
+           zp.y.x,
+           *b,
+           static_cast<float>(c->y.x));
+    printf("scale: %f, zp: %f, b: %lu\n, c: %f\n",
+           a.y.y,
+           zp.y.y,
+           *b,
+           static_cast<float>(c->y.y));
+    printf("scale: %f, zp: %f, b: %lu\n, c: %f\n",
+           a.z.x,
+           zp.z.x,
+           *b,
+           static_cast<float>(c->z.x));
+    printf("scale: %f, zp: %f, b: %lu\n, c: %f\n",
+           a.z.y,
+           zp.z.y,
+           *b,
+           static_cast<float>(c->z.y));
+    printf("scale: %f, zp: %f, b: %lu\n, c: %f\n",
+           a.w.x,
+           zp.w.x,
+           *b,
+           static_cast<float>(c->w.x));
+    printf("scale: %f, zp: %f, b: %lu\n, c: %f\n",
+           a.w.y,
+           zp.w.y,
+           *b,
+           static_cast<float>(c->w.y));
+  }
+#endif
+#else
+  assert(false);
+#endif
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<bf16_8_t, bf16_8_t, uint64_t, CacheType::INT8>(
+    bf16_8_t* c,
+    bf16_8_t& a,   // NOLINT
+    bf16_8_t& zp,  // NOLINT
+    uint64_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  uint32_t* tmp_b = reinterpret_cast<uint32_t*>(b);
+  convert_(c_prime, tmp_b[0]);
+  convert_(c_prime + 4, tmp_b[1]);
+  c_prime[0] -= zp.x.x;
+  c_prime[1] -= zp.x.y;
+  c_prime[2] -= zp.y.x;
+  c_prime[3] -= zp.y.y;
+  c_prime[4] -= zp.z.x;
+  c_prime[5] -= zp.z.y;
+  c_prime[6] -= zp.w.x;
+  c_prime[7] -= zp.w.y;
+  c_prime[0] *= a.x.x;
+  c_prime[1] *= a.x.y;
+  c_prime[2] *= a.y.x;
+  c_prime[3] *= a.y.y;
+  c_prime[4] *= a.z.x;
+  c_prime[5] *= a.z.y;
+  c_prime[6] *= a.w.x;
+  c_prime[7] *= a.w.y;
+#ifdef DEBUG_BLHA
+  if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
+      threadIdx.x == 0) {
+    printf("mul_pointer_v2 float8 bf16_8 int8\n");
+    printf("scale: %f, zp: %f, b: %u\n, c: %f\n",
+           static_cast<float>(a.x.x),
+           static_cast<float>(zp.x.x),
+           *b,
+           static_cast<float>(c->x.x));
+    printf("scale: %f, zp: %f, b: %u\n, c: %f\n",
+           static_cast<float>(a.x.y),
+           static_cast<float>(zp.x.y),
+           *b,
+           static_cast<float>(c->x.y));
+    printf("scale: %f, zp: %f, b: %u\n, c: %f\n",
+           static_cast<float>(a.y.x),
+           static_cast<float>(zp.y.x),
+           *b,
+           static_cast<float>(c->y.x));
+    printf("scale: %f, zp: %f, b: %u\n, c: %f\n",
+           static_cast<float>(a.y.y),
+           static_cast<float>(zp.y.y),
+           *b,
+           static_cast<float>(c->y.y));
+    printf("scale: %f, zp: %f, b: %u\n, c: %f\n",
+           static_cast<float>(a.z.x),
+           static_cast<float>(zp.z.x),
+           *b,
+           static_cast<float>(c->z.x));
+    printf("scale: %f, zp: %f, b: %u\n, c: %f\n",
+           static_cast<float>(a.z.y),
+           static_cast<float>(zp.z.y),
+           *b,
+           static_cast<float>(c->z.y));
+    printf("scale: %f, zp: %f, b: %u\n, c: %f\n",
+           static_cast<float>(a.w.x),
+           static_cast<float>(zp.w.x),
+           *b,
+           static_cast<float>(c->w.x));
+    printf("scale: %f, zp: %f, b: %u\n, c: %f\n",
+           static_cast<float>(a.w.y),
+           static_cast<float>(zp.w.y),
+           *b,
+           static_cast<float>(c->w.y));
+  }
+#endif
+#else
+  assert(false);
+#endif
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<bf16_8_t, Float8_, uint8_t, CacheType::INT8>(
+    bf16_8_t* c,
+    Float8_& a,  // NOLINT
+    uint8_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  uint32_t* tmp_b = reinterpret_cast<uint32_t*>(b);
+  convert_(c_prime, tmp_b[0]);
+  convert_(c_prime + 4, tmp_b[1]);
+  c_prime[0] *= static_cast<__nv_bfloat16>(a.x.x);
+  c_prime[1] *= static_cast<__nv_bfloat16>(a.x.y);
+  c_prime[2] *= static_cast<__nv_bfloat16>(a.y.x);
+  c_prime[3] *= static_cast<__nv_bfloat16>(a.y.y);
+  c_prime[4] *= static_cast<__nv_bfloat16>(a.z.x);
+  c_prime[5] *= static_cast<__nv_bfloat16>(a.z.y);
+  c_prime[6] *= static_cast<__nv_bfloat16>(a.w.x);
+  c_prime[7] *= static_cast<__nv_bfloat16>(a.w.y);
+#else
+  assert(false);
+#endif
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<bf16_8_t, float, uint64_t, CacheType::INT8>(bf16_8_t* c,
+                                                           float& a,  // NOLINT
+                                                           uint64_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
   bf16_4_t* tmp_c = reinterpret_cast<bf16_4_t*>(c);
   uint64_t bb = *b;
   uint32_t* tmp_b = reinterpret_cast<uint32_t*>(&bb);
 #pragma unroll
   for (int i = 0; i < 2; ++i) {
-    mul_pointer_v2<bf16_4_t>(tmp_c + i, a, tmp_b + i);
+    mul_pointer_v2<bf16_4_t, float, uint32_t, CacheType::INT8>(
+        tmp_c + i, a, tmp_b + i);
   }
+#else
+  assert(false);
+#endif
 }
-#endif  // ENABLE_BF16
+
+template <>
+inline __device__ void
+mul_pointer_v2<bf16_8_t, Float8_, uint64_t, CacheType::INT8>(
+    bf16_8_t* c,
+    Float8_& a,  // NOLINT
+    uint64_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  uint32_t* tmp_b = reinterpret_cast<uint32_t*>(b);
+  convert_(c_prime, tmp_b[0]);
+  convert_(c_prime + 4, tmp_b[1]);
+  c_prime[0] *= static_cast<__nv_bfloat16>(a.x.x);
+  c_prime[1] *= static_cast<__nv_bfloat16>(a.x.y);
+  c_prime[2] *= static_cast<__nv_bfloat16>(a.y.x);
+  c_prime[3] *= static_cast<__nv_bfloat16>(a.y.y);
+  c_prime[4] *= static_cast<__nv_bfloat16>(a.z.x);
+  c_prime[5] *= static_cast<__nv_bfloat16>(a.z.y);
+  c_prime[6] *= static_cast<__nv_bfloat16>(a.w.x);
+  c_prime[7] *= static_cast<__nv_bfloat16>(a.w.y);
+#else
+  assert(false);
+#endif
+}
+
+template <>
+inline __device__ void
+mul_pointer_v2<bf16_8_t, bf16_8_t, uint64_t, CacheType::INT8>(
+    bf16_8_t* c,
+    bf16_8_t& a,  // NOLINT
+    uint64_t* b) {
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  uint32_t* tmp_b = reinterpret_cast<uint32_t*>(b);
+  convert_(c_prime, tmp_b[0]);
+  convert_(c_prime + 4, tmp_b[1]);
+  c_prime[0] *= a.x.x;
+  c_prime[1] *= a.x.y;
+  c_prime[2] *= a.y.x;
+  c_prime[3] *= a.y.y;
+  c_prime[4] *= a.z.x;
+  c_prime[5] *= a.z.y;
+  c_prime[6] *= a.w.x;
+  c_prime[7] *= a.w.y;
+#ifdef DEBUG_BLHA
+  if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
+      threadIdx.x == 0) {
+    printf("mul_pointer_v2 float8 bf16_8 int8\n");
+    printf("scale: %f, b: %lu\n, c: %f\n",
+           static_cast<float>(a.x.x),
+           *b,
+           static_cast<float>(c->x.x));
+    printf("scale: %f, b: %lu\n, c: %f\n",
+           static_cast<float>(a.x.y),
+           *b,
+           static_cast<float>(c->x.y));
+    printf("scale: %f, b: %lu\n, c: %f\n",
+           static_cast<float>(a.y.x),
+           *b,
+           static_cast<float>(c->y.x));
+    printf("scale: %f, b: %lu\n, c: %f\n",
+           static_cast<float>(a.y.y),
+           *b,
+           static_cast<float>(c->y.y));
+    printf("scale: %f, b: %lu\n, c: %f\n",
+           static_cast<float>(a.z.x),
+           *b,
+           static_cast<float>(c->z.x));
+    printf("scale: %f, b: %lu\n, c: %f\n",
+           static_cast<float>(a.z.y),
+           *b,
+           static_cast<float>(c->z.y));
+    printf("scale: %f, b: %lu\n, c: %f\n",
+           static_cast<float>(a.w.x),
+           *b,
+           static_cast<float>(c->w.x));
+    printf("scale: %f, b: %lu\n, c: %f\n",
+           static_cast<float>(a.w.y),
+           *b,
+           static_cast<float>(c->w.y));
+  }
+#endif
+#else
+  assert(false);
+#endif
+}
 
 template <typename Acc, typename A, typename B>
 inline __device__ Acc mul(A a, B b);
@@ -1697,11 +2487,18 @@ inline __device__ T roundWithTiesToEven(T x) {
           : xUpper);
 }
 
-template <typename T, typename D>
-inline __device__ T round_tmp(D val);
+template <typename T, typename D, CacheType CACHE_TYPE>
+inline __device__ T round_tmp(D val) {
+  printf("round_tmp not support this case!\n");
+}
+template <typename T, typename D, CacheType CACHE_TYPE>
+inline __device__ T round_tmp(D val1, D val2) {
+  printf("round_tmp not support this case!\n");
+}
 
 template <>
-inline __device__ uint8_t round_tmp(float val) {
+inline __device__ uint8_t
+round_tmp<uint8_t, float, CacheType::INT8>(float val) {
   float quant_value = roundWithTiesToEven(val);
   quant_value = quant_value > 127.0f ? 127.0f : quant_value;
   quant_value = quant_value < -127.0f ? -127.0f : quant_value;
@@ -1709,50 +2506,53 @@ inline __device__ uint8_t round_tmp(float val) {
 }
 
 template <>
-inline __device__ uint8_t round_tmp(float16 val) {
+inline __device__ uint8_t
+round_tmp<uint8_t, float16, CacheType::INT8>(float16 val) {
   float quant_value = roundWithTiesToEven(static_cast<float>(val));
   quant_value = quant_value > 127.0f ? 127.0f : quant_value;
   quant_value = quant_value < -127.0f ? -127.0f : quant_value;
   return static_cast<uint8_t>(quant_value + 128.0);
 }
 
-#ifdef ENABLE_BF16
 template <>
-inline __device__ uint8_t round_tmp(__nv_bfloat16 val) {
+inline __device__ uint8_t
+round_tmp<uint8_t, __nv_bfloat16, CacheType::INT8>(__nv_bfloat16 val) {
   float quant_value =
       static_cast<float>(roundWithTiesToEven(static_cast<float>(val)));
   quant_value = quant_value > 127.0f ? 127.0f : quant_value;
   quant_value = quant_value < -127.0f ? -127.0f : quant_value;
   return static_cast<uint8_t>(quant_value + 128.0);
 }
-#endif
 
 template <>
-inline __device__ uint16_t round_tmp(float2 val) {
+inline __device__ uint16_t
+round_tmp<uint16_t, float2, CacheType::INT8>(float2 val) {
   union {
     uint16_t ret;
     uint8_t tmp[2];
   };
-  tmp[0] = round_tmp<uint8_t, float>(val.x);
-  tmp[1] = round_tmp<uint8_t, float>(val.y);
+  tmp[0] = round_tmp<uint8_t, float, CacheType::INT8>(val.x);
+  tmp[1] = round_tmp<uint8_t, float, CacheType::INT8>(val.y);
   return ret;
 }
 
 template <>
-inline __device__ uint32_t round_tmp(float4 val) {
+inline __device__ uint32_t
+round_tmp<uint32_t, float4, CacheType::INT8>(float4 val) {
   union {
     uint32_t ret;
     uint8_t tmp[4];
   };
-  tmp[0] = round_tmp<uint8_t, float>(val.x);
-  tmp[1] = round_tmp<uint8_t, float>(val.y);
-  tmp[2] = round_tmp<uint8_t, float>(val.z);
-  tmp[3] = round_tmp<uint8_t, float>(val.w);
+  tmp[0] = round_tmp<uint8_t, float, CacheType::INT8>(val.x);
+  tmp[1] = round_tmp<uint8_t, float, CacheType::INT8>(val.y);
+  tmp[2] = round_tmp<uint8_t, float, CacheType::INT8>(val.z);
+  tmp[3] = round_tmp<uint8_t, float, CacheType::INT8>(val.w);
   return ret;
 }
 
 template <>
-inline __device__ uint16_t round_tmp(uint32_t val) {
+inline __device__ uint16_t
+round_tmp<uint16_t, uint32_t, CacheType::INT8>(uint32_t val) {
   union {
     uint8_t int8[2];
     uint16_t ret;
@@ -1765,14 +2565,15 @@ inline __device__ uint16_t round_tmp(uint32_t val) {
 
 #pragma unroll
   for (int i = 0; i < 2; ++i) {
-    int8[i] = round_tmp<uint8_t, float16>(fp16[i]);
+    int8[i] = round_tmp<uint8_t, float16, CacheType::INT8>(fp16[i]);
   }
 
   return ret;
 }
 
 template <>
-inline __device__ uint32_t round_tmp(uint2 val) {
+inline __device__ uint32_t
+round_tmp<uint32_t, uint2, CacheType::INT8>(uint2 val) {
   union {
     uint8_t int8[4];
     uint32_t ret;
@@ -1786,13 +2587,14 @@ inline __device__ uint32_t round_tmp(uint2 val) {
 
 #pragma unroll
   for (int i = 0; i < 4; ++i) {
-    int8[i] = round_tmp<uint8_t, float16>(tmp_fp16[i]);
+    int8[i] = round_tmp<uint8_t, float16, CacheType::INT8>(tmp_fp16[i]);
   }
   return ret;
 }
 
 template <>
-inline __device__ uint64_t round_tmp(uint4 val) {
+inline __device__ uint64_t
+round_tmp<uint64_t, uint4, CacheType::INT8>(uint4 val) {
   union {
     uint8_t int8[8];
     uint64_t ret;
@@ -1806,53 +2608,56 @@ inline __device__ uint64_t round_tmp(uint4 val) {
 
 #pragma unroll
   for (int i = 0; i < 8; ++i) {
-    int8[i] = round_tmp<uint8_t, float16>(tmp_fp16[i]);
+    int8[i] = round_tmp<uint8_t, float16, CacheType::INT8>(tmp_fp16[i]);
   }
   return ret;
 }
 
-#ifdef ENABLE_BF16
 template <>
-inline __device__ uint16_t round_tmp(__nv_bfloat162 val) {
+inline __device__ uint16_t
+round_tmp<uint16_t, __nv_bfloat162, CacheType::INT8>(__nv_bfloat162 val) {
   union {
     uint8_t tmp[2];
     uint16_t ret;
   };
-  tmp[0] = round_tmp<uint8_t, __nv_bfloat16>(val.x);
-  tmp[1] = round_tmp<uint8_t, __nv_bfloat16>(val.y);
+  tmp[0] = round_tmp<uint8_t, __nv_bfloat16, CacheType::INT8>(val.x);
+  tmp[1] = round_tmp<uint8_t, __nv_bfloat16, CacheType::INT8>(val.y);
   return ret;
 }
 
 template <>
-inline __device__ uint32_t round_tmp(bf16_4_t val) {
+inline __device__ uint32_t
+round_tmp<uint32_t, bf16_4_t, CacheType::INT8>(bf16_4_t val) {
   union {
     uint16_t tmp[2];
     uint32_t ret;
   };
-  tmp[0] = round_tmp<uint16_t, __nv_bfloat162>(val.x);
-  tmp[1] = round_tmp<uint16_t, __nv_bfloat162>(val.y);
+  tmp[0] = round_tmp<uint16_t, __nv_bfloat162, CacheType::INT8>(val.x);
+  tmp[1] = round_tmp<uint16_t, __nv_bfloat162, CacheType::INT8>(val.y);
   return ret;
 }
 
 template <>
-inline __device__ uint64_t round_tmp(bf16_8_t val) {
+inline __device__ uint64_t
+round_tmp<uint64_t, bf16_8_t, CacheType::INT8>(bf16_8_t val) {
   union {
     uint16_t int16[4];
     uint64_t int64;
   };
-  int16[0] = round_tmp<uint16_t, __nv_bfloat162>(val.x);
-  int16[1] = round_tmp<uint16_t, __nv_bfloat162>(val.y);
-  int16[2] = round_tmp<uint16_t, __nv_bfloat162>(val.z);
-  int16[3] = round_tmp<uint16_t, __nv_bfloat162>(val.w);
+  int16[0] = round_tmp<uint16_t, __nv_bfloat162, CacheType::INT8>(val.x);
+  int16[1] = round_tmp<uint16_t, __nv_bfloat162, CacheType::INT8>(val.y);
+  int16[2] = round_tmp<uint16_t, __nv_bfloat162, CacheType::INT8>(val.z);
+  int16[3] = round_tmp<uint16_t, __nv_bfloat162, CacheType::INT8>(val.w);
   return int64;
 }
-#endif
 
 inline __device__ float2 rotary_embedding_coefficient(const int zid,
                                                       const int rot_embed_dim,
-                                                      const float t_step) {
+                                                      const float t_step,
+                                                      const float rope_theta) {
   const float inv_freq =
-      t_step / pow(10000.0f, zid / static_cast<float>(rot_embed_dim));
+      t_step / pow(rope_theta,
+                   static_cast<float>(zid) / static_cast<float>(rot_embed_dim));
   return {cos(inv_freq), sin(inv_freq)};
 }
 
@@ -1978,21 +2783,19 @@ inline __device__ void apply_rotary_embedding(uint2& q,      // NOLINT
   q.x = rotary_embedding_transform(q.x, cos.x, sin.x);
   k.x = rotary_embedding_transform(k.x, cos.x, sin.x);
   q.y = rotary_embedding_transform(q.y, cos.y, sin.y);
-  k.y = rotary_embedding_transform(k.y, cos.y, sin.x);
+  k.y = rotary_embedding_transform(k.y, cos.y, sin.y);
 }
 
-inline __device__ void apply_rotary_embedding(
-    uint2& q,       // NOLINT equals 4 half.
-    uint2& k,       // NOLINT
-    float4& cos,    // NOLINT 2 float2 cos.
-    float4& sin) {  // NOLINT
+inline __device__ void apply_rotary_embedding(uint2& q,       // NOLINT
+                                              uint2& k,       // NOLINT
+                                              float4& cos,    // NOLINT
+                                              float4& sin) {  // NOLINT
   Float4_& cos_ = *reinterpret_cast<Float4_*>(&cos);
   Float4_& sin_ = *reinterpret_cast<Float4_*>(&sin);
-  // cos_.x is float2
   q.x = rotary_embedding_transform(q.x, cos_.x, sin_.x);
   k.x = rotary_embedding_transform(k.x, cos_.x, sin_.x);
   q.y = rotary_embedding_transform(q.y, cos_.y, sin_.y);
-  k.y = rotary_embedding_transform(k.y, cos_.y, sin_.y);
+  k.y = rotary_embedding_transform(k.y, cos_.y, sin_.x);
 }
 
 inline __device__ void apply_rotary_embedding(uint4& q,      // NOLINT
@@ -2026,34 +2829,52 @@ inline __device__ void apply_rotary_embedding(uint4& q,        // NOLINT
 inline __device__ void apply_rotary_embedding(float& q,  // NOLINT
                                               int zid,
                                               int rot_embed_dim,
-                                              int t_step) {
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   return;
 }
 
-inline __device__ void apply_rotary_embedding(
-    float& q, float& k, int zid, int rot_embed_dim, int t_step) {  // NOLINT
+inline __device__ void apply_rotary_embedding(float& q,  // NOLINT
+                                              float& k,  // NOLINT
+                                              int zid,
+                                              int rot_embed_dim,
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   return;
 }
 
 inline __device__ void apply_rotary_embedding(float2& q,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (2 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef =
-      rotary_embedding_coefficient(2 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef = rotary_embedding_coefficient(
+      2 * tid, rot_embed_dim, float_t_step, rope_theta);
   q = rotary_embedding_transform(q, coef);
 }
 
-inline __device__ void apply_rotary_embedding(
-    float2& q, float2& k, int tid, int rot_embed_dim, int t_step) {  // NOLINT
+inline __device__ void apply_rotary_embedding(float2& q,  // NOLINT
+                                              float2& k,  // NOLINT
+                                              int tid,
+                                              int rot_embed_dim,
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (2 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef =
-      rotary_embedding_coefficient(2 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef = rotary_embedding_coefficient(
+      2 * tid, rot_embed_dim, float_t_step, rope_theta);
   q = rotary_embedding_transform(q, coef);
   k = rotary_embedding_transform(k, coef);
 }
@@ -2061,34 +2882,43 @@ inline __device__ void apply_rotary_embedding(
 inline __device__ void apply_rotary_embedding(float4& q,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (4 * tid >= rot_embed_dim) {
     return;
   }
-
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
   Float4_& q_ = *reinterpret_cast<Float4_*>(&q);
-  const auto coef0 =
-      rotary_embedding_coefficient(4 * tid, rot_embed_dim, t_step);
+  const auto coef0 = rotary_embedding_coefficient(
+      4 * tid, rot_embed_dim, float_t_step, rope_theta);
   q_.x = rotary_embedding_transform(q_.x, coef0);
-  const auto coef1 =
-      rotary_embedding_coefficient(4 * tid + 2, rot_embed_dim, t_step);
+  const auto coef1 = rotary_embedding_coefficient(
+      4 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
   q_.y = rotary_embedding_transform(q_.y, coef1);
 }
 
-inline __device__ void apply_rotary_embedding(
-    float4& q, float4& k, int tid, int rot_embed_dim, int t_step) {  // NOLINT
+inline __device__ void apply_rotary_embedding(float4& q,  // NOLINT
+                                              float4& k,  // NOLINT
+                                              int tid,
+                                              int rot_embed_dim,
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (4 * tid >= rot_embed_dim) {
     return;
   }
-
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
   Float4_& q_ = *reinterpret_cast<Float4_*>(&q);
   Float4_& k_ = *reinterpret_cast<Float4_*>(&k);
-  const auto coef0 =
-      rotary_embedding_coefficient(4 * tid, rot_embed_dim, t_step);
+  const auto coef0 = rotary_embedding_coefficient(
+      4 * tid, rot_embed_dim, float_t_step, rope_theta);
   q_.x = rotary_embedding_transform(q_.x, coef0);
   k_.x = rotary_embedding_transform(k_.x, coef0);
-  const auto coef1 =
-      rotary_embedding_coefficient(4 * tid + 2, rot_embed_dim, t_step);
+  const auto coef1 = rotary_embedding_coefficient(
+      4 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
   q_.y = rotary_embedding_transform(q_.y, coef1);
   k_.y = rotary_embedding_transform(k_.y, coef1);
 }
@@ -2096,12 +2926,16 @@ inline __device__ void apply_rotary_embedding(
 inline __device__ void apply_rotary_embedding(uint32_t& q,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (2 * tid >= rot_embed_dim) {
     return;
   }
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
   const auto coef =
-      rotary_embedding_coefficient(2 * tid, rot_embed_dim, t_step);
+      rotary_embedding_coefficient(2 * tid, rot_embed_dim, t_step, rope_theta);
   q = rotary_embedding_transform(q, coef);
 }
 
@@ -2109,12 +2943,16 @@ inline __device__ void apply_rotary_embedding(uint32_t& q,  // NOLINT
                                               uint32_t& k,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {  // NOLINT
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (2 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef =
-      rotary_embedding_coefficient(2 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef = rotary_embedding_coefficient(
+      2 * tid, rot_embed_dim, float_t_step, rope_theta);
   q = rotary_embedding_transform(q, coef);
   k = rotary_embedding_transform(k, coef);
 }
@@ -2122,29 +2960,40 @@ inline __device__ void apply_rotary_embedding(uint32_t& q,  // NOLINT
 inline __device__ void apply_rotary_embedding(uint2& q,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (4 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef0 =
-      rotary_embedding_coefficient(4 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef0 = rotary_embedding_coefficient(
+      4 * tid, rot_embed_dim, float_t_step, rope_theta);
   q.x = rotary_embedding_transform(q.x, coef0);
-  const auto coef1 =
-      rotary_embedding_coefficient(4 * tid + 2, rot_embed_dim, t_step);
+  const auto coef1 = rotary_embedding_coefficient(
+      4 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
   q.y = rotary_embedding_transform(q.y, coef1);
 }
 
-inline __device__ void apply_rotary_embedding(
-    uint2& q, uint2& k, int tid, int rot_embed_dim, int t_step) {  // NOLINT
+inline __device__ void apply_rotary_embedding(uint2& q,  // NOLINT
+                                              uint2& k,  // NOLINT
+                                              int tid,
+                                              int rot_embed_dim,
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (4 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef0 =
-      rotary_embedding_coefficient(4 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef0 = rotary_embedding_coefficient(
+      4 * tid, rot_embed_dim, float_t_step, rope_theta);
   q.x = rotary_embedding_transform(q.x, coef0);
   k.x = rotary_embedding_transform(k.x, coef0);
-  const auto coef1 =
-      rotary_embedding_coefficient(4 * tid + 2, rot_embed_dim, t_step);
+  const auto coef1 = rotary_embedding_coefficient(
+      4 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
   q.y = rotary_embedding_transform(q.y, coef1);
   k.y = rotary_embedding_transform(k.y, coef1);
 }
@@ -2152,43 +3001,54 @@ inline __device__ void apply_rotary_embedding(
 inline __device__ void apply_rotary_embedding(uint4& q,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (8 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef0 =
-      rotary_embedding_coefficient(8 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef0 = rotary_embedding_coefficient(
+      8 * tid, rot_embed_dim, float_t_step, rope_theta);
   q.x = rotary_embedding_transform(q.x, coef0);
-  const auto coef1 =
-      rotary_embedding_coefficient(8 * tid + 2, rot_embed_dim, t_step);
+  const auto coef1 = rotary_embedding_coefficient(
+      8 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
   q.y = rotary_embedding_transform(q.y, coef1);
-  const auto coef2 =
-      rotary_embedding_coefficient(8 * tid + 4, rot_embed_dim, t_step);
+  const auto coef2 = rotary_embedding_coefficient(
+      8 * tid + 4, rot_embed_dim, float_t_step, rope_theta);
   q.z = rotary_embedding_transform(q.z, coef2);
-  const auto coef3 =
-      rotary_embedding_coefficient(8 * tid + 6, rot_embed_dim, t_step);
+  const auto coef3 = rotary_embedding_coefficient(
+      8 * tid + 6, rot_embed_dim, float_t_step, rope_theta);
   q.w = rotary_embedding_transform(q.w, coef3);
 }
 
-inline __device__ void apply_rotary_embedding(
-    uint4& q, uint4& k, int tid, int rot_embed_dim, int t_step) {  // NOLINT
+inline __device__ void apply_rotary_embedding(uint4& q,  // NOLINT
+                                              uint4& k,  // NOLINT
+                                              int tid,
+                                              int rot_embed_dim,
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (8 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef0 =
-      rotary_embedding_coefficient(8 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef0 = rotary_embedding_coefficient(
+      8 * tid, rot_embed_dim, float_t_step, rope_theta);
   q.x = rotary_embedding_transform(q.x, coef0);
   k.x = rotary_embedding_transform(k.x, coef0);
-  const auto coef1 =
-      rotary_embedding_coefficient(8 * tid + 2, rot_embed_dim, t_step);
+  const auto coef1 = rotary_embedding_coefficient(
+      8 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
   q.y = rotary_embedding_transform(q.y, coef1);
   k.y = rotary_embedding_transform(k.y, coef1);
-  const auto coef2 =
-      rotary_embedding_coefficient(8 * tid + 4, rot_embed_dim, t_step);
+  const auto coef2 = rotary_embedding_coefficient(
+      8 * tid + 4, rot_embed_dim, float_t_step, rope_theta);
   q.z = rotary_embedding_transform(q.z, coef2);
   k.z = rotary_embedding_transform(k.z, coef2);
-  const auto coef3 =
-      rotary_embedding_coefficient(8 * tid + 6, rot_embed_dim, t_step);
+  const auto coef3 = rotary_embedding_coefficient(
+      8 * tid + 6, rot_embed_dim, float_t_step, rope_theta);
   q.w = rotary_embedding_transform(q.w, coef3);
   k.w = rotary_embedding_transform(k.w, coef3);
 }
@@ -2263,12 +3123,16 @@ inline __device__ void apply_rotary_embedding(bf16_8_t& q,     // NOLINT
 inline __device__ void apply_rotary_embedding(__nv_bfloat162& q,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (2 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef =
-      rotary_embedding_coefficient(2 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef = rotary_embedding_coefficient(
+      2 * tid, rot_embed_dim, float_t_step, rope_theta);
   q = rotary_embedding_transform(q, coef);
 }
 
@@ -2276,12 +3140,16 @@ inline __device__ void apply_rotary_embedding(__nv_bfloat162& q,  // NOLINT
                                               __nv_bfloat162& k,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (2 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef =
-      rotary_embedding_coefficient(2 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef = rotary_embedding_coefficient(
+      2 * tid, rot_embed_dim, float_t_step, rope_theta);
   q = rotary_embedding_transform(q, coef);
   k = rotary_embedding_transform(k, coef);
 }
@@ -2289,15 +3157,19 @@ inline __device__ void apply_rotary_embedding(__nv_bfloat162& q,  // NOLINT
 inline __device__ void apply_rotary_embedding(bf16_4_t& q,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (4 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef0 =
-      rotary_embedding_coefficient(4 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef0 = rotary_embedding_coefficient(
+      4 * tid, rot_embed_dim, float_t_step, rope_theta);
   q.x = rotary_embedding_transform(q.x, coef0);
-  const auto coef1 =
-      rotary_embedding_coefficient(4 * tid + 2, rot_embed_dim, t_step);
+  const auto coef1 = rotary_embedding_coefficient(
+      4 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
   q.y = rotary_embedding_transform(q.y, coef1);
 }
 
@@ -2305,16 +3177,20 @@ inline __device__ void apply_rotary_embedding(bf16_4_t& q,  // NOLINT
                                               bf16_4_t& k,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {  // NOLINT
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (4 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef0 =
-      rotary_embedding_coefficient(4 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef0 = rotary_embedding_coefficient(
+      4 * tid, rot_embed_dim, float_t_step, rope_theta);
   q.x = rotary_embedding_transform(q.x, coef0);
   k.x = rotary_embedding_transform(k.x, coef0);
-  const auto coef1 =
-      rotary_embedding_coefficient(4 * tid + 2, rot_embed_dim, t_step);
+  const auto coef1 = rotary_embedding_coefficient(
+      4 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
   q.y = rotary_embedding_transform(q.y, coef1);
   k.y = rotary_embedding_transform(k.y, coef1);
 }
@@ -2322,21 +3198,25 @@ inline __device__ void apply_rotary_embedding(bf16_4_t& q,  // NOLINT
 inline __device__ void apply_rotary_embedding(bf16_8_t& q,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (8 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef0 =
-      rotary_embedding_coefficient(8 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef0 = rotary_embedding_coefficient(
+      8 * tid, rot_embed_dim, float_t_step, rope_theta);
   q.x = rotary_embedding_transform(q.x, coef0);
-  const auto coef1 =
-      rotary_embedding_coefficient(8 * tid + 2, rot_embed_dim, t_step);
+  const auto coef1 = rotary_embedding_coefficient(
+      8 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
   q.y = rotary_embedding_transform(q.y, coef1);
-  const auto coef2 =
-      rotary_embedding_coefficient(8 * tid + 4, rot_embed_dim, t_step);
+  const auto coef2 = rotary_embedding_coefficient(
+      8 * tid + 4, rot_embed_dim, float_t_step, rope_theta);
   q.z = rotary_embedding_transform(q.z, coef2);
-  const auto coef3 =
-      rotary_embedding_coefficient(8 * tid + 6, rot_embed_dim, t_step);
+  const auto coef3 = rotary_embedding_coefficient(
+      8 * tid + 6, rot_embed_dim, float_t_step, rope_theta);
   q.w = rotary_embedding_transform(q.w, coef3);
 }
 
@@ -2344,24 +3224,28 @@ inline __device__ void apply_rotary_embedding(bf16_8_t& q,  // NOLINT
                                               bf16_8_t& k,  // NOLINT
                                               int tid,
                                               int rot_embed_dim,
-                                              int t_step) {  // NOLINT
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
   if (8 * tid >= rot_embed_dim) {
     return;
   }
-  const auto coef0 =
-      rotary_embedding_coefficient(8 * tid, rot_embed_dim, t_step);
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef0 = rotary_embedding_coefficient(
+      8 * tid, rot_embed_dim, float_t_step, rope_theta);
   q.x = rotary_embedding_transform(q.x, coef0);
   k.x = rotary_embedding_transform(k.x, coef0);
-  const auto coef1 =
-      rotary_embedding_coefficient(8 * tid + 2, rot_embed_dim, t_step);
+  const auto coef1 = rotary_embedding_coefficient(
+      8 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
   q.y = rotary_embedding_transform(q.y, coef1);
   k.y = rotary_embedding_transform(k.y, coef1);
-  const auto coef2 =
-      rotary_embedding_coefficient(8 * tid + 4, rot_embed_dim, t_step);
+  const auto coef2 = rotary_embedding_coefficient(
+      8 * tid + 4, rot_embed_dim, float_t_step, rope_theta);
   q.z = rotary_embedding_transform(q.z, coef2);
   k.z = rotary_embedding_transform(k.z, coef2);
-  const auto coef3 =
-      rotary_embedding_coefficient(8 * tid + 6, rot_embed_dim, t_step);
+  const auto coef3 = rotary_embedding_coefficient(
+      8 * tid + 6, rot_embed_dim, float_t_step, rope_theta);
   q.w = rotary_embedding_transform(q.w, coef3);
   k.w = rotary_embedding_transform(k.w, coef3);
 }
@@ -2559,7 +3443,7 @@ struct MMHALoad {
   explicit MMHALoad(const LoadT* src) : src_(src) {}
 
   template <typename Vec>
-  __device__ void load(Vec& dst, int idx) {
+  __device__ void load(Vec& dst, int idx) {  // NOLINT
     dst = *reinterpret_cast<const Vec*>(src_ + idx);
   }
 
@@ -2571,7 +3455,7 @@ struct MMHAStore {
   explicit MMHAStore(StoreT* dst) : dst_(dst) {}
 
   template <typename Vec>
-  __device__ void store(Vec& src, int idx) {
+  __device__ void store(Vec& src, int idx) {  // NOLINT
     *reinterpret_cast<Vec*>(dst_ + idx) = src;
   }
 
@@ -2584,7 +3468,7 @@ struct MMHAStore<T, T, true> {
       : dst_(dst), shift_(shift), smooth_(smooth), cols_(cols) {}
 
   template <typename Vec>
-  __device__ void store(Vec& src, int idx) {
+  __device__ void store(Vec& src, int idx) {  // NOLINT
     constexpr int VecSize = sizeof(Vec) / sizeof(T);
     using TVec = phi::AlignedVector<T, VecSize>;
     TVec src_vec;
@@ -2615,7 +3499,7 @@ struct MMHALoad<T, int32_t> {
       : src_(src), dequant_scales_(dequant_scales), cols_(cols) {}
 
   template <typename Vec>
-  __device__ void load(Vec& dst, int idx) {
+  __device__ void load(Vec& dst, int idx) {  // NOLINT
     constexpr int VecSize = sizeof(Vec) / sizeof(T);
     using SrcVec = phi::AlignedVector<int32_t, VecSize>;
     using DstVec = phi::AlignedVector<T, VecSize>;
@@ -2741,50 +3625,6 @@ struct MMHAStore<T, int8_t, true> {
   const float quant_min_bound_;
 };
 
-inline __device__ float4 hmma_fp32_tensorcore(const uint2& a, uint32_t b) {
-  float4 c;
-  float zero = 0.f;
-  asm volatile(
-      "mma.sync.aligned.m16n8k8.row.col.f32.f16.f16.f32 \n"
-      "    {%0, %1, %2, %3}, \n"
-      "    {%4, %5}, \n"
-      "    {%6}, \n"
-      "    {%7, %7, %7, %7}; \n"
-
-      : "=f"(c.x), "=f"(c.y), "=f"(c.z), "=f"(c.w)
-      : "r"(a.x) "r"(a.y), "r"(b), "f"(zero));
-  return c;
-}
-
-template <int N>
-inline __device__ float qk_hmma_dot_(const uint32_t (&q)[N],
-                                     const uint32_t (&k)[N],
-                                     float inv_sqrt_dh) {
-#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
-    __CUDA_ARCH__ >= 750
-#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
-  using K_vec_acum = typename K_vec_acum_fp32_<uint32_t>::Type;
-#else
-  using K_vec_acum = uint32_t;
-#endif
-  K_vec_acum inv_q = mul<K_vec_acum, uint32_t, float>(q[0], inv_sqrt_dh);
-  K_vec_acum qk_vec = mul<K_vec_acum, K_vec_acum, uint32_t>(inv_q, k[0]);
-#pragma unroll
-  for (int ii = 1; ii < N; ++ii) {
-    inv_q = mul<K_vec_acum, uint32_t, float>(q[ii], inv_sqrt_dh);
-    qk_vec = fma(inv_q, k[ii], qk_vec);
-  }
-#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
-  uint32_t qk_vec_ = float2_to_half2(qk_vec);
-  return hmma_fp32_tensorcore(make_uint2(qk_vec_, 0u), 0x3c003c00u).x;
-#else
-  return hmma_fp32_tensorcore(make_uint2(qk_vec, 0u), 0x3c003c00u).x;
-#endif
-#else
-  return 0.f;
-#endif
-}
-
 template <int THREADS_PER_KEY, typename K_vec, int N>
 inline __device__ float qk_dot_(const K_vec (&q)[N],
                                 const K_vec (&k)[N],
@@ -2812,21 +3652,6 @@ struct Qk_dot {
                                      const K_vec (&k)[N],
                                      float inv_sqrt_dh) {
     return qk_dot_<THREADS_PER_KEY>(q, k, inv_sqrt_dh);
-  }
-};
-
-template <>
-struct Qk_dot<float16, 4> {
-  template <int N>
-  static inline __device__ float dot(const uint32_t (&q)[N],
-                                     const uint32_t (&k)[N],
-                                     float inv_sqrt_dh) {
-#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
-    __CUDA_ARCH__ >= 750
-    return qk_hmma_dot_(q, k, inv_sqrt_dh);
-#else
-    return qk_dot_<4>(q, k, inv_sqrt_dh);
-#endif
   }
 };
 

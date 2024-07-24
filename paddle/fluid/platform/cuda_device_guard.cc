@@ -14,9 +14,7 @@
 
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 // Even this source file does not contains any code, it is better to keep this
 // source file for cmake dependency.
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

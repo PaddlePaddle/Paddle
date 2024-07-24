@@ -65,6 +65,7 @@ class GroupScheduler {
   virtual void Schedule() = 0;
 
   virtual std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() = 0;
+  virtual std::vector<int> GetPriorities() = 0;
   virtual std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetCX86IRs() {
     CINN_NOT_IMPLEMENTED;
   }

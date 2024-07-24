@@ -422,7 +422,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"forward op [{str(src_op)}] don't have dist attribute !"
+        ), f"forward op [{src_op}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         assert 'Ids' in kwargs, "input [{}] is not given".format('Ids')
@@ -578,7 +578,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert (
             dist_attr is not None
-        ), f"backward op [{str(backward_op)}] don't have dist attribute !"
+        ), f"backward op [{backward_op}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in dist_attr.process_mesh.process_ids:

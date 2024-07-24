@@ -20,7 +20,7 @@ from typing_extensions import TypeAlias
 # Note: Do not confrom to predefined naming style in pylint.
 DataLayout0D: TypeAlias = Literal["NC"]
 DataLayout1D: TypeAlias = Literal["NCL", "NLC"]
-DataLayout2D: TypeAlias = Literal["NCHW", "NHCW"]
+DataLayout2D: TypeAlias = Literal["NCHW", "NHWC"]
 DataLayout3D: TypeAlias = Literal["NCDHW", "NDHWC"]
 
 DataLayoutND: TypeAlias = Union[

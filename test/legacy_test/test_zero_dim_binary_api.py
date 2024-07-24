@@ -168,7 +168,7 @@ class TestBinaryAPI(unittest.TestCase):
             # 1) x is 0D, y is 0D
             x_np = np.random.randint(-10, 10, [])
             y_np = np.random.randint(-10, 10, [])
-            out_np = eval('np.%s(x_np, y_np)' % api.__name__)
+            out_np = eval(f'np.{api.__name__}(x_np, y_np)')
 
             x = paddle.to_tensor(x_np)
             y = paddle.to_tensor(y_np)
@@ -180,7 +180,7 @@ class TestBinaryAPI(unittest.TestCase):
             # 2) x is ND, y is 0D
             x_np = np.random.randint(-10, 10, [3, 5])
             y_np = np.random.randint(-10, 10, [])
-            out_np = eval('np.%s(x_np, y_np)' % api.__name__)
+            out_np = eval(f'np.{api.__name__}(x_np, y_np)')
 
             x = paddle.to_tensor(x_np)
             y = paddle.to_tensor(y_np)
@@ -192,7 +192,7 @@ class TestBinaryAPI(unittest.TestCase):
             # 3) x is 0D , y is ND
             x_np = np.random.randint(-10, 10, [])
             y_np = np.random.randint(-10, 10, [3, 5])
-            out_np = eval('np.%s(x_np, y_np)' % api.__name__)
+            out_np = eval(f'np.{api.__name__}(x_np, y_np)')
 
             x = paddle.to_tensor(x_np)
             y = paddle.to_tensor(y_np)

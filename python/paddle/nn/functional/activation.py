@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
@@ -24,10 +28,14 @@ from ...tensor.manipulation import chunk
 from ...tensor.math import tanh, tanh_  # noqa: F401
 from ...tensor.ops import sigmoid
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DataLayout2D, DTypeLike
+
 __all__ = []
 
 
-def celu(x, alpha=1.0, name=None):
+def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     r"""
     celu activation.
 
@@ -40,7 +48,7 @@ def celu(x, alpha=1.0, name=None):
     Parameters:
         x (Tensor): The input Tensor with data type float16, float32, or float64.
         alpha (float, optional): The 'alpha' value of the CELU formula. Default is 1.0.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A ``Tensor`` with the same data type and shape as ``x`` .
@@ -77,7 +85,7 @@ def celu(x, alpha=1.0, name=None):
         return out
 
 
-def elu(x, alpha=1.0, name=None):
+def elu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     r"""
     elu activation.
 
@@ -94,7 +102,7 @@ def elu(x, alpha=1.0, name=None):
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -132,18 +140,18 @@ def elu(x, alpha=1.0, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def elu_(x, alpha=1.0, name=None):
+def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_elu`.
     """
     assert alpha >= 0.0, "elu_ only support alpha >= 0, please use elu instead."
-    if in_dynamic_mode():
-        return _C_ops.elu_(x, alpha)
-    return _legacy_C_ops.elu_(x, 'alpha', alpha)
+    return _C_ops.elu_(x, alpha)
 
 
-def gelu(x, approximate=False, name=None):
+def gelu(
+    x: Tensor, approximate: bool = False, name: str | None = None
+) -> Tensor:
     r"""
     gelu activation.
 
@@ -164,7 +172,7 @@ def gelu(x, approximate=False, name=None):
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         approximate (bool, optional): Whether to enable approximation. Default is False.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -205,7 +213,9 @@ def gelu(x, approximate=False, name=None):
         return out
 
 
-def hardshrink(x, threshold=0.5, name=None):
+def hardshrink(
+    x: Tensor, threshold: float = 0.5, name: str | None = None
+) -> Tensor:
     r"""
     hard shrinkage activation
 
@@ -223,7 +233,7 @@ def hardshrink(x, threshold=0.5, name=None):
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
         threshold (float, optional): The value of threshold for hardthrink. Default is 0.5.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -259,7 +269,9 @@ def hardshrink(x, threshold=0.5, name=None):
         return out
 
 
-def hardtanh(x, min=-1.0, max=1.0, name=None):
+def hardtanh(
+    x: Tensor, min: float = -1.0, max: float = 1.0, name: str | None = None
+) -> Tensor:
     r"""
     hardtanh activation. Calculate the `hardtanh` of input `x`.
 
@@ -278,7 +290,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
         x (Tensor): The input Tensor with data type float32, float64.
         min (float, optional): The minimum value of the linear region range. Default is -1.
         max (float, optional): The maximum value of the linear region range. Default is 1.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -315,7 +327,9 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def hardtanh_(x, min=-1.0, max=1.0, name=None):
+def hardtanh_(
+    x: Tensor, min: float = -1.0, max: float = 1.0, name: str | None = None
+) -> Tensor:
     r"""
     Inplace version of ``hardtanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_hardtanh`.
@@ -324,7 +338,12 @@ def hardtanh_(x, min=-1.0, max=1.0, name=None):
         return _C_ops.hardtanh_(x, min, max)
 
 
-def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
+def hardsigmoid(
+    x: Tensor,
+    slope: float = 0.1666667,
+    offset: float = 0.5,
+    name: str | None = None,
+) -> Tensor:
     r"""
     hardsigmoid activation. Calculate the `hardsigmoid` of input `x`.
     A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
@@ -345,7 +364,7 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
         x (Tensor): The input Tensor with data type float32, float64.
         slope (float, optional): The slope of hardsigmoid function. Default is 0.1666667.
         offset (float, optional): The offset of hardsigmoid function. Default is 0.5.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -381,7 +400,7 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
         return out
 
 
-def hardswish(x, name=None):
+def hardswish(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     hardswish activation. hardswish is proposed in MobileNetV3, and performs
     better in computational stability and efficiency compared to swish function.
@@ -400,7 +419,7 @@ def hardswish(x, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -448,7 +467,9 @@ def hardswish(x, name=None):
         return out
 
 
-def leaky_relu(x, negative_slope=0.01, name=None):
+def leaky_relu(
+    x: Tensor, negative_slope: float = 0.01, name: str | None = None
+) -> Tensor:
     r"""
     leaky_relu activation. The calculation formula is:
 
@@ -465,7 +486,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
         x (Tensor): The input Tensor with data type float32, float64.
         negative_slope (float, optional): Slope of the activation function at
             :math:`x < 0` . Default is 0.01.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -501,7 +522,9 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def leaky_relu_(x, negative_slope=0.01, name=None):
+def leaky_relu_(
+    x: Tensor, negative_slope: float = 0.01, name: str | None = None
+) -> Tensor:
     r"""
     Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_leaky_relu`.
@@ -510,7 +533,12 @@ def leaky_relu_(x, negative_slope=0.01, name=None):
         return _C_ops.leaky_relu_(x, negative_slope)
 
 
-def prelu(x, weight, data_format="NCHW", name=None):
+def prelu(
+    x: Tensor,
+    weight: Tensor,
+    data_format: DataLayout2D = "NCHW",
+    name: str | None = None,
+) -> Tensor:
     """
     prelu activation. The calculation formula is follows:
 
@@ -524,7 +552,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
         x (Tensor): The input Tensor with data type float32, float64.
         weight (Tensor): The learnable parameter with data type same as ``x``.
             The weight shape is [], [1] or [in], where `in` is the input channel of ``x``.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
 
@@ -616,7 +644,13 @@ def prelu(x, weight, data_format="NCHW", name=None):
         return out
 
 
-def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
+def rrelu(
+    x: Tensor,
+    lower: float = 1.0 / 8.0,
+    upper: float = 1.0 / 3.0,
+    training: bool = True,
+    name: str | None = None,
+) -> Tensor:
     r"""
     rrelu activation.
 
@@ -659,7 +693,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
         lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
         upper (float, optional): The upper bound of uniform distribution. Default: 0.3333333333333333.
         training (bool, optional): Current mode is in training or others.  Default is True.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -727,7 +761,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
         return out
 
 
-def relu(x, name=None):
+def relu(x: Tensor, name: str | None = None) -> Tensor:
     """
     relu activation. The calculation formula is follows:
 
@@ -739,7 +773,7 @@ def relu(x, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -770,7 +804,7 @@ def relu(x, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def relu_(x, name=None):
+def relu_(x: Tensor, name: str | None = None) -> Tensor:
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_relu`.
@@ -778,7 +812,7 @@ def relu_(x, name=None):
     return _C_ops.relu_(x)
 
 
-def log_sigmoid(x, name=None):
+def log_sigmoid(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     log_sigmoid activation.
 
@@ -788,7 +822,7 @@ def log_sigmoid(x, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -823,7 +857,9 @@ def log_sigmoid(x, name=None):
         return out
 
 
-def maxout(x, groups, axis=1, name=None):
+def maxout(
+    x: Tensor, groups: int, axis: int = 1, name: str | None = None
+) -> Tensor:
     r"""
     maxout activation.
 
@@ -854,7 +890,7 @@ def maxout(x, groups, axis=1, name=None):
             is NHWC. If ``axis`` < 0, it works the same way as :math:`axis + D` ,
             where D is the dimensions of ``x`` . ``axis`` only supports 1, 3 or -1.
             Default is 1.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type as ``x`` .
@@ -891,7 +927,7 @@ def maxout(x, groups, axis=1, name=None):
         if axis not in [1, -1, 3]:
             raise ValueError(
                 "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "
-                "Attr(axis): %s." % str(axis)
+                f"Attr(axis): {axis}."
             )
         if axis == -1:
             axis = 3
@@ -907,7 +943,7 @@ def maxout(x, groups, axis=1, name=None):
         return out
 
 
-def relu6(x, name=None):
+def relu6(x: Tensor, name: str | None = None) -> Tensor:
     """
     relu6 activation
 
@@ -917,7 +953,7 @@ def relu6(x, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -953,11 +989,11 @@ def relu6(x, name=None):
 
 
 def selu(
-    x,
-    scale=1.0507009873554804934193349852946,
-    alpha=1.6732632423543772848170429916717,
-    name=None,
-):
+    x: Tensor,
+    scale: float = 1.0507009873554804934193349852946,
+    alpha: float = 1.6732632423543772848170429916717,
+    name: str | None = None,
+) -> Tensor:
     r"""
     selu activation
 
@@ -975,7 +1011,7 @@ def selu(
         x (Tensor): The input Tensor with data type float32, float64.
         scale (float, optional): The value of scale(must be greater than 1.0) for selu. Default is 1.0507009873554804934193349852946.
         alpha (float, optional): The value of alpha(must be no less than zero) for selu. Default is 1.6732632423543772848170429916717.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -1020,7 +1056,7 @@ def selu(
         return out
 
 
-def silu(x, name=None):
+def silu(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     silu activation
 
@@ -1032,7 +1068,7 @@ def silu(x, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64, complex64, complex128.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as :attr:`x`.
@@ -1072,7 +1108,12 @@ def silu(x, name=None):
         return out
 
 
-def softmax(x, axis=-1, dtype=None, name=None):
+def softmax(
+    x: Tensor,
+    axis: int = -1,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     This operator implements the softmax layer. The calculation process is as follows:
 
@@ -1155,7 +1196,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
             rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
         dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same shape and data type (use ``dtype`` if it is
@@ -1244,7 +1285,12 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def softmax_(x, axis=-1, dtype=None, name=None):
+def softmax_(
+    x: Tensor,
+    axis: int = -1,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_softmax`.
@@ -1259,7 +1305,9 @@ def softmax_(x, axis=-1, dtype=None, name=None):
     return _C_ops.softmax_(outs_cast, axis)
 
 
-def softplus(x, beta=1, threshold=20, name=None):
+def softplus(
+    x: Tensor, beta: float = 1, threshold: float = 20, name: str | None = None
+) -> Tensor:
     r"""
     softplus activation
 
@@ -1273,7 +1321,7 @@ def softplus(x, beta=1, threshold=20, name=None):
         x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
         beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
         threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -1318,7 +1366,9 @@ def softplus(x, beta=1, threshold=20, name=None):
         return out
 
 
-def softshrink(x, threshold=0.5, name=None):
+def softshrink(
+    x: Tensor, threshold: float = 0.5, name: str | None = None
+) -> Tensor:
     r"""
     softshrink activation
 
@@ -1336,7 +1386,7 @@ def softshrink(x, threshold=0.5, name=None):
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -1375,7 +1425,7 @@ def softshrink(x, threshold=0.5, name=None):
         return out
 
 
-def softsign(x, name=None):
+def softsign(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     softsign activation
 
@@ -1385,7 +1435,7 @@ def softsign(x, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64, complex64 or complex128.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -1414,7 +1464,7 @@ def softsign(x, name=None):
     return out
 
 
-def swish(x, name=None):
+def swish(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     swish activation.
 
@@ -1424,7 +1474,7 @@ def swish(x, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -1458,7 +1508,7 @@ def swish(x, name=None):
         return out
 
 
-def mish(x, name=None):
+def mish(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     mish activation.
 
@@ -1473,7 +1523,7 @@ def mish(x, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -1502,7 +1552,7 @@ def mish(x, name=None):
         return out
 
 
-def tanhshrink(x, name=None):
+def tanhshrink(x: Tensor, name: str | None = None) -> Tensor:
     """
     tanhshrink activation
 
@@ -1512,7 +1562,7 @@ def tanhshrink(x, name=None):
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -1543,7 +1593,12 @@ def tanhshrink(x, name=None):
         return out
 
 
-def thresholded_relu(x, threshold=1.0, value=0.0, name=None):
+def thresholded_relu(
+    x: Tensor,
+    threshold: float = 1.0,
+    value: float = 0.0,
+    name: str | None = None,
+) -> Tensor:
     r"""
     thresholded relu activation.
 
@@ -1562,7 +1617,7 @@ def thresholded_relu(x, threshold=1.0, value=0.0, name=None):
         x (Tensor): The input Tensor with data type float32, float64.
         threshold (float, optional): The value of threshold for thresholded_relu. Default is 1.0
         value (float, optional): The value to replace with when x is less than threshold. Default is 0.0
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -1601,7 +1656,12 @@ def thresholded_relu(x, threshold=1.0, value=0.0, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def thresholded_relu_(x, threshold=1.0, value=0.0, name=None):
+def thresholded_relu_(
+    x: Tensor,
+    threshold: float = 1.0,
+    value: float = 0.0,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Inplace version of ``thresholded_relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_thresholded_relu`.
@@ -1610,7 +1670,12 @@ def thresholded_relu_(x, threshold=1.0, value=0.0, name=None):
         return _C_ops.thresholded_relu_(x, threshold, value)
 
 
-def log_softmax(x, axis=-1, dtype=None, name=None):
+def log_softmax(
+    x: Tensor,
+    axis: int = -1,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     This operator implements the log_softmax layer. The calculation process is
     as follows:
@@ -1634,7 +1699,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
             preventing data type overflows. Supported dtype: float32, float64.
             If ``dtype`` is None, the output Tensor has the same dtype as x.
             Default is None.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same shape and data type (use ``dtype`` if it is
@@ -1720,7 +1785,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
         return out
 
 
-def glu(x, axis=-1, name=None):
+def glu(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
     r"""
     The gated linear unit. The input is evenly splited into 2 parts along a
     given axis. The first part is used as the content, and the second part is
@@ -1737,7 +1802,7 @@ def glu(x, axis=-1, name=None):
             should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` < 0, it works the same way as :math:`axis + D` .
             Default is -1.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type as x. The size of the given axis is
@@ -1772,7 +1837,13 @@ def glu(x, axis=-1, name=None):
     return out
 
 
-def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
+def gumbel_softmax(
+    x: Tensor,
+    temperature: float = 1.0,
+    hard: bool = False,
+    axis: int = -1,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Samples from the Gumbel-Softmax distribution and optionally discretizes.
     temperature is denoted by t. The calculation process is as follows:
@@ -1805,7 +1876,7 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
             in autograd. Default is False.
         axis (int, optional): The axis along will be calculated softmax value.
             Default is -1.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Sampled tensor of same shape as ``x`` from the Gumbel-Softmax distribution.

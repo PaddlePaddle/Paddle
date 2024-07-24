@@ -72,17 +72,18 @@ def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):
         if isinstance(dilation, int):
             dilation = [dilation.copy(), dilation.copy()]
 
-        res = static.nn.conv2d(
-            input=img,
-            num_filters=filter_size_new[0],
-            filter_size=filter_hw,
+        c_index = 1 if data_format == "NCHW" else 3
+        res = paddle.nn.Conv2D(
+            in_channels=input_shape[c_index],
+            out_channels=filter_size_new[0],
+            kernel_size=filter_hw,
             stride=stride,
             padding=padding,
             dilation=dilation,
             groups=groups,
-            param_attr=param,
             data_format=data_format,
-        )
+            weight_attr=param,
+        )(img)
         exe = static.Executor(paddle.CPUPlace())
         exe.run(static.default_startup_program())
 
@@ -93,7 +94,4 @@ def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):
 
     res_shape = output.shape[1:]
 
-    if is_depthwise:
-        return output, [res_shape]
-    else:
-        return output, [res_shape]
+    return output, [res_shape]

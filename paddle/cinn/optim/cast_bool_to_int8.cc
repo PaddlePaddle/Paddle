@@ -55,6 +55,10 @@ void CastBoolExprToInt8Impl(common::NVGPUArch, Expr* e) {
   // Do nothing.
 }
 
+void CastBoolExprToInt8Impl(common::HygonDCUArchHIP, Expr* e) {
+  // Do nothing.
+}
+
 void CastBoolExprToInt8(common::Arch arch, Expr* e) {
   return std::visit(
       [&](const auto& impl) { return CastBoolExprToInt8Impl(impl, e); },

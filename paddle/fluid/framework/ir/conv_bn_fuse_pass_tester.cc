@@ -32,7 +32,7 @@ void AddVarToScope(Scope* param_scope,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  auto* data = tensor->mutable_data<float>(platform::CPUPlace());
+  auto* data = tensor->mutable_data<float>(phi::CPUPlace());
   int64_t numel = tensor->numel();
   for (int64_t i = 0; i < numel; ++i) {
     data[i] = 0;
@@ -85,13 +85,13 @@ void TestMain(const std::string& conv_type) {
   PADDLE_ENFORCE_EQ(
       num_bn_nodes_before,
       1,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Before conv_bn_fuse_pass, number of batch norm op(%d) must be 1.",
           num_bn_nodes_before));
   PADDLE_ENFORCE_EQ(
       num_bn_nodes_after,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "After conv_bn_fuse_pass, number of batch norm op(%d) must be 0.",
           num_bn_nodes_after));
 }

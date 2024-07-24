@@ -154,7 +154,7 @@ void ConcatDenseTensorWithType(const DeviceContext &dev_ctx,
       ConcatDenseTensor<DeviceContext, double>()(dev_ctx, t_list, p_out);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors.", type));
   }
 }
@@ -170,6 +170,10 @@ void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
       ConcatDenseTensor<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_list, p_out);
       break;
+    case phi::DataType::BFLOAT16:
+      ConcatDenseTensor<phi::XPUContext, phi::dtype::bfloat16>()(
+          dev_ctx, t_list, p_out);
+      break;
     case phi::DataType::FLOAT32:
       ConcatDenseTensor<phi::XPUContext, float>()(dev_ctx, t_list, p_out);
       break;
@@ -183,7 +187,7 @@ void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
       ConcatDenseTensor<phi::XPUContext, uint8_t>()(dev_ctx, t_list, p_out);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors.", type));
   }
 }
@@ -225,7 +229,7 @@ void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
       SplitDenseTensor<DeviceContext, double>()(dev_ctx, t_in, p_list);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors.", type));
   }
 }
@@ -241,6 +245,10 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
       SplitDenseTensor<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_in, p_list);
       break;
+    case phi::DataType::BFLOAT16:
+      SplitDenseTensor<phi::XPUContext, phi::dtype::bfloat16>()(
+          dev_ctx, t_in, p_list);
+      break;
     case phi::DataType::FLOAT32:
       SplitDenseTensor<phi::XPUContext, float>()(dev_ctx, t_in, p_list);
       break;
@@ -254,7 +262,7 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
       SplitDenseTensor<phi::XPUContext, uint8_t>()(dev_ctx, t_in, p_list);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors.", type));
   }
 }
@@ -267,29 +275,29 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
       std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl()).get();
 
   const auto &place = dev_ctx.GetPlace();
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ConcatDenseTensorWithType(static_cast<const phi::GPUContext &>(dev_ctx),
                               tensor_list,
                               dense_tensor,
                               tensor->dtype());
 #else
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(phi::errors::PermissionDenied(
         "Paddle can't concat tensor since it's not support GPU, please "
         "recompile or reinstall Paddle with GPU support."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
     ConcatDenseTensorWithType(static_cast<const phi::XPUContext &>(dev_ctx),
                               tensor_list,
                               dense_tensor,
                               tensor->dtype());
 #else
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(phi::errors::PermissionDenied(
         "Paddle can't concat tensor since it's not support XPU, please "
         "recompile or reinstall Paddle with XPU support."));
 #endif
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     ConcatDenseTensorWithType(
         static_cast<const platform::CustomDeviceContext &>(dev_ctx),
@@ -297,18 +305,18 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
         dense_tensor,
         tensor->dtype());
 #else
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(phi::errors::PermissionDenied(
         "Paddle can't concat tensor since it's not compiled with "
         "CUSTOM_DEVICE, please recompile or reinstall Paddle with "
         "CUSTOM_DEVICE support."));
 #endif
-  } else if (platform::is_cpu_place(place)) {
+  } else if (phi::is_cpu_place(place)) {
     ConcatDenseTensorWithType(static_cast<const phi::CPUContext &>(dev_ctx),
                               tensor_list,
                               dense_tensor,
                               tensor->dtype());
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Concat tensor not supported on place (%s)", place));
   }
 }
@@ -324,29 +332,29 @@ void SplitTensor(const phi::DeviceContext &dev_ctx,
   }
 
   const auto &place = dev_ctx.GetPlace();
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     SplitDenseTensorWithType(static_cast<const phi::GPUContext &>(dev_ctx),
                              tensor,
                              &dense_list,
                              tensor.dtype());
 #else
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(phi::errors::PermissionDenied(
         "Paddle can't split tensor since it's not support GPU, please "
         "recompile or reinstall Paddle with GPU support."));
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
     SplitDenseTensorWithType(static_cast<const phi::XPUContext &>(dev_ctx),
                              tensor,
                              &dense_list,
                              tensor.dtype());
 #else
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(phi::errors::PermissionDenied(
         "Paddle can't split tensor since it's not compiled with XPU, "
         "please recompile or reinstall Paddle with XPU support."));
 #endif
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     SplitDenseTensorWithType(
         static_cast<const platform::CustomDeviceContext &>(dev_ctx),
@@ -354,17 +362,17 @@ void SplitTensor(const phi::DeviceContext &dev_ctx,
         &dense_list,
         tensor.dtype());
 #else
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(phi::errors::PermissionDenied(
         "Paddle can't split tensor since it's not compiled with CUSTOM_DEVICE, "
         "please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
 #endif
-  } else if (platform::is_cpu_place(place)) {
+  } else if (phi::is_cpu_place(place)) {
     SplitDenseTensorWithType(static_cast<const phi::CPUContext &>(dev_ctx),
                              tensor,
                              &dense_list,
                              tensor.dtype());
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Split tensor not supported on place (%s)", place));
   }
 }

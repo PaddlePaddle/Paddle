@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-
 #include <glog/logging.h>
+#include <sys/stat.h>
 
 #include <fstream>
 #if !defined(_WIN32)
@@ -34,7 +34,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/port.h"
 #include "paddle/utils/string/printf.h"
 
@@ -73,7 +73,7 @@ inline PaddleDType ConvertToPaddleDType(
   } else if (type == paddle::framework::proto::VarType::UINT8) {
     return PaddleDType::UINT8;
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "The paddle dtype convert function only supports FLOAT32, INT64, INT32 "
         "and UINT8 now. But "
         "we get %d here.",
@@ -148,18 +148,18 @@ static T convert(const std::string &item,
     std::string message =
         "invalid_argument exception when try to convert : " + item;
     LOG(ERROR) << message;
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "invalid_argument exception when try to convert %s.", item));
   } catch (std::out_of_range &e) {
     std::string message =
         "out_of_range exception when try to convert : " + item;
     LOG(ERROR) << message;
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "out_of_range exception when try to convert %s.", item));
   } catch (...) {
     std::string message = "unexpected exception when try to convert " + item;
     LOG(ERROR) << message;
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "unexpected exception when try to convert %s.", item));
   }
   return res;
@@ -238,7 +238,7 @@ void CheckAssignedData(const std::vector<std::vector<T>> &data,
   PADDLE_ENFORCE_EQ(
       num,
       num_elems,
-      platform::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "The number of elements out of bounds. "
           "Expected number of elements = %d. But received %d. Suggested Fix: "
           "If the tensor is expected to assign %d elements, check the number "
@@ -409,9 +409,7 @@ static void PrintTime(int batch_size,
                       const framework::proto::VarType::Type data_type =
                           framework::proto::VarType::FP32) {
   PADDLE_ENFORCE_GT(
-      batch_size,
-      0,
-      platform::errors::InvalidArgument("Non-positive batch size."));
+      batch_size, 0, phi::errors::InvalidArgument("Non-positive batch size."));
   double sample_latency = batch_latency / batch_size;
   LOG(INFO) << "====== threads: " << num_threads << ", thread id: " << tid
             << " ======";
@@ -431,6 +429,16 @@ static bool IsFileExists(const std::string &path) {
   return exists;
 }
 
+static bool IsDirectory(const std::string &path) {
+  struct stat info;
+  if (stat(path.c_str(), &info) != 0) {
+    return false;
+  } else if (info.st_mode & S_IFDIR) {
+    return true;
+  }
+  return false;
+}
+
 void RegisterAllCustomOperator(bool use_pir);
 
 void InitGflagsFromEnv();
@@ -439,7 +447,7 @@ static inline double ToMegaBytes(size_t bytes) {
   return static_cast<double>(bytes) / (1 << 20);
 }
 
-static inline void DisplayMemoryInfo(platform::Place place,
+static inline void DisplayMemoryInfo(phi::Place place,
                                      const std::string &hint) {
 #ifdef PADDLE_WITH_CUDA
   // size_t free, total;

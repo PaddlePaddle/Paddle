@@ -325,6 +325,12 @@ struct Expression {
               << " vs rhs [" << rhs << "] " << rhs->name() << " equal";
       return true;
     }
+    if (lhs->num_regions() > 0 || rhs->num_regions() > 0) {
+      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+              << " vs rhs [" << rhs << "] " << rhs->name()
+              << " has region, which is not supported";
+      return false;
+    }
     if (lhs->name() != rhs->name()) {
       VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
               << " vs rhs [" << rhs << "] " << rhs->name() << " name not equal";
@@ -480,6 +486,14 @@ struct CSEAnalyzer {
       return;
     }
 
+    // Handle sub blocks
+    for (auto& region : *op) {
+      for (auto& block : region) {
+        SimplifyBlock(&block, expression_table);
+      }
+    }
+
+    // Handle the operation
     auto expr = expression_table->CreateExpression(op);
     expression_table->RegisiterExpression(expr);
     auto maybe_same_expression = expression_table->Lookup(expr);
@@ -490,12 +504,6 @@ struct CSEAnalyzer {
         VLOG(7) << "Found common subexpression: " << op->name();
         to_erase_ops_.push_back(
             std::make_pair(expr.op(), maybe_same_expression.value().op()));
-      }
-    }
-    // Handle sub blocks
-    for (auto& region : *op) {
-      for (auto& block : region) {
-        SimplifyBlock(&block, expression_table);
       }
     }
   }

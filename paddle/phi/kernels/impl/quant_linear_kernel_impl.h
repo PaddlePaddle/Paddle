@@ -76,10 +76,6 @@ void QuantLinearKernel(const Context& dev_ctx,
           "The weight's datatype is expected to be int8 when use quant. But "
           "received weight's datatype is %d",
           static_cast<int>(w.dtype())));
-#ifdef PADDLE_WITH_HIP
-  PADDLE_THROW(
-      phi::errors::Unimplemented("FCInt8Functor not surpport for rocm"));
-#else
   phi::funcs::FCInt8Functor<Context, T> fc;
   fc(dev_ctx,
      M,
@@ -96,7 +92,6 @@ void QuantLinearKernel(const Context& dev_ctx,
      bias_data,
      with_relu,
      padding_weights);
-#endif
   return;
 }
 

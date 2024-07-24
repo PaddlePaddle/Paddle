@@ -18,12 +18,11 @@ import numpy as np
 
 sys.path.append("..")
 
+import paddle
 from legacy_test.test_dist_base import (
     TestParallelDyGraphRunnerBase,
     runtime_main,
 )
-
-import paddle
 
 np.random.seed(2021)
 paddle.seed(1024)

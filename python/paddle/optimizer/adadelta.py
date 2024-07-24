@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING, Sequence
 
 from paddle import _C_ops
 from paddle.base.framework import in_dynamic_or_pir_mode
@@ -20,6 +22,21 @@ from paddle.base.framework import in_dynamic_or_pir_mode
 from ..base import framework
 from ..base.dygraph import no_grad
 from .optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .lr import LRScheduler
+    from .optimizer import _ParameterConfig
+
+    class _AdadeltaParameterConfig(_ParameterConfig):
+        epsilon: NotRequired[float]
+        rho: NotRequired[float]
+
 
 __all__ = []
 
@@ -42,28 +59,28 @@ class Adadelta(Optimizer):
         E(dx_t^2) &= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2
 
     Args:
-        learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
+        learning_rate (float|Tensor|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
         epsilon (float): a small float number for numeric stability. Default 1.0e-6.
         rho (float): a floating point value indicating the decay rate. Default 0.95.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
+        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+        grad_clip (GradientClipBase|None, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
-        name (str, optional): The default value is None. Normally there is no need for user
+        name (str|None, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
 
@@ -92,7 +109,7 @@ class Adadelta(Optimizer):
             >>> loss = paddle.mean(out)
             >>> adadelta = paddle.optimizer.Adadelta(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),
@@ -106,19 +123,22 @@ class Adadelta(Optimizer):
 
     """
 
+    type: str
     _avg_squared_grad_acc_str = "_avg_squared_grad"
     _avg_squared_update_acc_str = "_avg_squared_update"
 
     def __init__(
         self,
-        learning_rate=0.001,
-        epsilon=1.0e-6,
-        rho=0.95,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        name=None,
-    ):
+        learning_rate: float | Tensor | LRScheduler = 0.001,
+        epsilon: float = 1.0e-6,
+        rho: float = 0.95,
+        parameters: (
+            Sequence[Tensor] | Sequence[_AdadeltaParameterConfig] | None
+        ) = None,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        name: str | None = None,
+    ) -> None:
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
         if epsilon is None:

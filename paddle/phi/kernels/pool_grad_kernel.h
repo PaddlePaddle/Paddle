@@ -114,6 +114,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   const std::vector<int>& paddings,
                                   bool global_pooling,
                                   bool adaptive,
+                                  bool ceil_mode,
                                   DenseTensor* dx);
 
 template <typename T, typename Context>
@@ -160,6 +161,7 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   const std::vector<int>& paddings,
                                   bool global_pooling,
                                   bool adaptive,
+                                  bool ceil_mode,
                                   DenseTensor* dx);
 
 template <typename T, typename Context>

@@ -267,6 +267,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
                                                                         120)
       set_tests_properties(test_split_layernorm_to_math_ops_pass
                            PROPERTIES TIMEOUT 240)
+      set_tests_properties(test_inference_predictor_run_pir PROPERTIES TIMEOUT
+                                                                       60)
     endif()
     if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
       message(STATUS "Skip tests unrelated to CUDA/TRT")

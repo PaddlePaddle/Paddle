@@ -30,7 +30,7 @@ def SubstituteTemplate(template, values):
     while changed:
         changed = False
         for key, value in values.items():
-            regex = "\\$\\{%s\\}" % key
+            regex = f"\\$\\{{{key}\\}}"
             newtext = re.sub(regex, value, text)
             if newtext != text:
                 changed = True

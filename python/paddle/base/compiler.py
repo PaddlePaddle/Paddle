@@ -31,14 +31,6 @@ def _place_obj(place):
     return p
 
 
-def _is_pserver_mode(main_program):
-    main = main_program if main_program else framework.default_main_program()
-    for op in main.global_block().ops:
-        if op.type in ["send", "recv"]:
-            return True
-    return False
-
-
 def _has_backward_op(graph):
     for node in graph.nodes():
         if (
@@ -143,8 +135,7 @@ class CompiledProgram:
             self._program = program_or_graph
         else:
             raise TypeError(
-                "The type of program_to_graph parameter is wrong, expected Graph or Program, but received %s"
-                % type(program_or_graph)
+                f"The type of program_to_graph parameter is wrong, expected Graph or Program, but received {type(program_or_graph)}"
             )
 
         self._scope = None
@@ -203,7 +194,6 @@ class CompiledProgram:
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
-        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
 
         # TODO(wuyi): trainer endpoints should be passed in through
         # build_strategy, not program.xxx.
@@ -228,9 +218,6 @@ class CompiledProgram:
             self._build_strategy.hierarchical_allreduce_inter_nranks = (
                 self._program._hierarchical_allreduce_inter_nranks
             )
-
-        if self._build_strategy.sync_batch_norm:
-            self._build_strategy.enable_sequential_execution = True
 
         if self._program is not None and self._program._enable_dgc:
             assert (
@@ -481,8 +468,7 @@ class IpuDynamicPatcher:
         def patch_getter(self, item):
             if not isinstance(item, CacheKey):
                 raise ValueError(
-                    'type(item) should be CacheKey, but received %s'
-                    % type(item).__name__
+                    f'type(item) should be CacheKey, but received {type(item).__name__}'
                 )
             item_id = hash(item)
             self._recent_key = item_id
@@ -1061,8 +1047,7 @@ class IpuCompiledProgram:
 
         if not isinstance(program, framework.Program):
             raise TypeError(
-                "The type of program is wrong, expected Program, but got %s"
-                % type(program)
+                f"The type of program is wrong, expected Program, but got {type(program)}"
             )
 
         self._program = program

@@ -100,23 +100,3 @@ REGISTER_OPERATOR(get_tensor_from_selected_rows,
                   ops::GetTensorFromSelectedRowsOp,
                   ops::GetTensorFromSelectedRowsOpProtoMaker,
                   ops::GetTensorFromSelectedRowsOpVarTypeInference);
-
-PD_REGISTER_STRUCT_KERNEL(get_tensor_from_selected_rows,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::GetTensorFromSelectedRowsKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_STRUCT_KERNEL(get_tensor_from_selected_rows,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::GetTensorFromSelectedRowsKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
-#endif

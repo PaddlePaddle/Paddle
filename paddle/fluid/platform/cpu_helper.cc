@@ -51,7 +51,7 @@ void SetNumThreads(int num_threads) {
   // not sure about apple's blas
   return;
 #else
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(phi::errors::Unimplemented(
       "This library (except OPENBLAS, MKLML) is not supported yet, so the"
       "number of threads cannot be set."));
 #endif

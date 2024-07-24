@@ -12,3 +12,4 @@ test_semi_auto_parallel_multi_inputs,LINUX,GPU,120,HYBRID,test_runner.py,,,http_
 test_semi_auto_parallel_llama_model_vpp,LINUX,GPU,180,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_semi_auto_parallel_llama_model_pir,LINUX,GPU,180,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..;FLAGS_enable_pir_api=1,
 test_pir_reshard_nd_mesh_func,LINUX,GPU,35,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_semi_auto_llama_acc_align,LINUX,GPU,180,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..;FLAGS_enable_pir_api=1,

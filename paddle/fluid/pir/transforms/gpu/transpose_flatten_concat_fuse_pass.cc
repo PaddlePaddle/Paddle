@@ -122,7 +122,7 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
         });
     const auto &res_concat_axis =
         res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
-          return static_cast<int>(match_ctx.Attr<float>("full_value"));
+          return static_cast<int>(match_ctx.Attr<double>("full_value"));
         });
     const auto &fusion_transpose_flatten_concat_op =
         res.Op(paddle::dialect::FusionTransposeFlattenConcatOp::name(),

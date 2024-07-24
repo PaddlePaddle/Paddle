@@ -45,7 +45,7 @@ def dyfunc_print_with_format(x):
 # 4. print Tensor with format 2
 def dyfunc_print_with_format2(x):
     x_t = paddle.to_tensor(x)
-    print("PrintTensor: %s" % (x_t))
+    print("PrintTensor: %s" % x_t)  # noqa: UP031
 
 
 # 5. print Tensor in control flow1

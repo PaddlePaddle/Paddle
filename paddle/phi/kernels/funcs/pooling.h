@@ -538,17 +538,18 @@ inline int PoolOutputSize(int input_size,
   return output_size;
 }
 
-inline int MaxPoolOutputSize(int input_size,
-                             int filter_size,
-                             int padding,
-                             int stride) {
+inline int MaxPoolOutputSize(
+    int input_size, int filter_size, int padding, int stride, bool ceil_mode) {
   PADDLE_ENFORCE_NE(
       stride,
       0,
       phi::errors::InvalidArgument(
           "The stride of MaxPool shall not be 0, but received %d.", stride));
-  int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
-  return output_size;
+  if (ceil_mode) {
+    return (input_size - filter_size + 2 * padding + stride - 1) / stride + 1;
+  } else {
+    return (input_size - filter_size + 2 * padding) / stride + 1;
+  }
 }
 
 template <typename T = int>

@@ -109,8 +109,7 @@ def check_pruned_program_vars(train_prog, pruned_prog):
             train_prog_var = train_prog.global_block().var(var_name)
         except ValueError as e:
             logger.error(
-                "not find variable '%s' in train program. please check pruning."
-                % var_name
+                f"not find variable '{var_name}' in train program. please check pruning."
             )
             logger.error(e)
             continue
@@ -404,7 +403,7 @@ def try_load_model_vars(
                 return_numpy=return_numpy,
             )
         for i, v in enumerate(fetch_list):
-            logger.info("fetch_targets name: %s" % v.name)
+            logger.info(f"fetch_targets name: {v.name}")
             logger.info(f"fetch_targets: {results[i]}")
         return results
 

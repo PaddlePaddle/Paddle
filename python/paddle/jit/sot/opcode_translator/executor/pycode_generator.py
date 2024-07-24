@@ -18,13 +18,13 @@
 
 from __future__ import annotations
 
+import inspect
+import opcode
 import random
 import sys
 import types
 from functools import cached_property
 from typing import TYPE_CHECKING
-
-import opcode
 
 import paddle
 from paddle.jit.utils import OrderedSet
@@ -466,6 +466,9 @@ class PyCodeGen:
 
     def create_function(self) -> types.FunctionType:
         self.update_code_name(self.fn_name, is_resumed_fn=True)
+        self._code_options['co_flags'] &= ~(
+            inspect.CO_VARARGS | inspect.CO_VARKEYWORDS
+        )
         new_code = self.gen_pycode()
         if len(new_code.co_freevars) + len(new_code.co_cellvars) > 0:
             raise FallbackError("Break graph in closure is not support.")

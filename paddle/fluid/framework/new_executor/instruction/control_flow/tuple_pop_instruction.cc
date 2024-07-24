@@ -22,7 +22,7 @@
 namespace paddle {
 namespace framework {
 TuplePopInstruction::TuplePopInstruction(size_t id,
-                                         const platform::Place& place,
+                                         const phi::Place& place,
                                          ::pir::Operation* op,
                                          ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {

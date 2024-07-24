@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
@@ -86,8 +85,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
                                         bool apply_op_schedule = false,
                                         bool apply_group_schedule = true,
                                         bool apply_pass = true);
-
-  void InsertNameGeneToScope(std::shared_ptr<Scope> scope);
 
  private:
   /**

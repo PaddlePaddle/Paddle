@@ -109,6 +109,16 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     return true;
   }
 
+  int GetBlockSize() const {
+    int block_size = 1;
+    for (auto& loop : cur_loops_) {
+      if (loop->as<ir::For>()->is_gpu_thread_binded()) {
+        block_size *= ir::GetLoopExtent(loop);
+      }
+    }
+    return block_size;
+  }
+
   template <typename OpT>
   void ReplaceByContinuousReduceExternCall(ir::Expr* store, bool return_warp) {
     auto* node = store->As<ir::Store>()->value.As<OpT>();
@@ -139,7 +149,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
         operand.template As<ir::Load>()->tensor.as_tensor()->type();
     auto tmp_buffer = ir::_Buffer_::Make(
         "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",
-        {ir::Expr(512)});
+        {ir::Expr(GetBlockSize())});
     tmp_buffer->dtype = tmp_dtype;
     tmp_buffer->memory_type = ir::MemoryType::GPUShared;
     shm_buffer_.insert(tmp_buffer);
@@ -215,15 +225,6 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     } else if (original_update_body.As<ir::Store>()) {
       original_update_stmt = original_update_body;
     }
-
-    const auto& IsWarpReduce = cinn::adt::match{
-        [&](const ir::NoneReduceMethod&) { return ir::Expr(false); },
-        [&](const ir::WarpReduceMethod&) { return ir::Expr(true); },
-        [&](const ir::BlockReduceMethod&) { return ir::Expr(false); },
-        [&](const ir::DiscreteReduceMethod&) { return ir::Expr(false); },
-    };
-    ir::Expr return_warp =
-        std::visit(IsWarpReduce, schedule_block->reduce_method);
 
 #define REPLACE_TO_EXTERNAL_CALL(Op)                              \
   if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {     \

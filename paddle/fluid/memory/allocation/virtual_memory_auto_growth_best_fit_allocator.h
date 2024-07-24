@@ -36,7 +36,7 @@ struct Block {
 
 struct BlockAllocation : public Allocation {
   explicit BlockAllocation(const std::list<Block>::iterator &it,
-                           platform::Place place)
+                           phi::Place place)
       : Allocation(it->ptr_, it->size_, place), block_it_(it) {}
 
   std::list<Block>::iterator block_it_;
@@ -56,7 +56,7 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   VirtualMemoryAutoGrowthBestFitAllocator(
       const std::shared_ptr<Allocator> &underlying_allocator,
       size_t alignment,
-      const platform::CUDAPlace &place);
+      const phi::GPUPlace &place);
 
   bool IsAllocThreadSafe() const override { return true; }
 
@@ -76,7 +76,7 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   std::map<std::pair<size_t, void *>, std::list<Block>::iterator> free_blocks_;
   std::list<Block> all_blocks_;
   std::list<AllocationPtr> allocations_;
-  platform::Place place_;
+  phi::Place place_;
   SpinLock spinlock_;
 };
 

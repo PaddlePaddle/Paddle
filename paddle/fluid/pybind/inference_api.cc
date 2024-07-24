@@ -61,7 +61,7 @@ constexpr int NPY_FLOAT16_ = 23;
 constexpr int NPY_UINT16_ = 4;
 
 // Note: Since float16 is not a builtin type in C++, we register
-// paddle::platform::float16 as numpy.float16.
+// phi::dtype::float16 as numpy.float16.
 // Ref: https://github.com/pybind/pybind11/issues/1776
 template <>
 struct npy_format_descriptor<phi::dtype::float16> {
@@ -194,7 +194,7 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
       dt = py::dtype::of<bool>();
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, FLOAT64, "
           "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
@@ -294,7 +294,7 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
         "INT64, FLOAT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
@@ -319,8 +319,8 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else if (paddle_tensor.dtype() == phi::DataType::FLOAT16) {
     tensor.ShareExternalData(
-        static_cast<paddle::platform::float16 *>(
-            paddle_tensor.data<paddle::platform::float16>()),
+        static_cast<phi::dtype::float16 *>(
+            paddle_tensor.data<phi::dtype::float16>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else if (paddle_tensor.dtype() == phi::DataType::BFLOAT16) {
@@ -349,7 +349,7 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
         "INT64, UINT8, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
@@ -399,7 +399,7 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
       size = sizeof(bool);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data t ype. Now only supports INT32, INT64, FLOAT64, "
           "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
@@ -443,7 +443,7 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
       tensor.copy_to_cpu<bool>(static_cast<bool *>(array.mutable_data()));
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, FLOAT64, "
           "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
@@ -487,7 +487,7 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
       tensor.CopyToCpu(static_cast<bool *>(array.mutable_data()));
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data t ype. Now only supports INT32, INT64, FLOAT64, "
           "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
@@ -625,7 +625,7 @@ void BindPaddleBuf(py::module *m) {
                auto size = self.length() / sizeof(float);
                l = py::cast(std::vector<float>(data, data + size));
              } else {
-               PADDLE_THROW(platform::errors::Unimplemented(
+               PADDLE_THROW(phi::errors::Unimplemented(
                    "Unsupported data type. Now only supports INT32, INT64 and "
                    "FLOAT32."));
              }
@@ -968,18 +968,6 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SetTensorRtOptimizationLevel)
       .def("tensorrt_optimization_level",
            &AnalysisConfig::tensorrt_optimization_level)
-      .def("enable_dlnne",
-           &AnalysisConfig::EnableDlnne,
-           py::arg("min_subgraph_size") = 3,
-           py::arg("max_batch_size") = 1,
-           py::arg("use_static_batch") = false,
-           py::arg("weight_share_mode") = "0",
-           py::arg("disable_nodes_by_outputs") =
-               std::unordered_set<std::string>(),
-           py::arg("input_shape_dict") =
-               std::map<std::string, std::vector<int64_t>>(),
-           py::arg("use_calib_mode") = false,
-           py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32)
       .def("switch_ir_debug",
            &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true,
@@ -1028,10 +1016,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
-      .def("delete_pass",
-           [](AnalysisConfig &self, const std::string &pass) {
-             self.pass_builder()->DeletePass(pass);
-           })
+      .def("delete_pass", &AnalysisConfig::DeletePass)
       .def(
           "pass_builder",
           [](AnalysisConfig &self) {

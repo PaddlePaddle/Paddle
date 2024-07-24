@@ -57,7 +57,7 @@ unsigned int GenerateDeviceEventFlag(bool enable_timing,
 }
 
 void DeviceEventCreateCPU(DeviceEvent* event,
-                          const platform::Place& place,
+                          const phi::Place& place,
                           unsigned int flag) {
   event->InitEvent(std::make_shared<CPUDeviceEventWrapper>(place, flag));
 }
@@ -78,7 +78,7 @@ void DeviceEventRecordCPU(DeviceEvent* event, const DeviceContext* context) {
   PADDLE_ENFORCE_LT(
       wrapper->status_.load(),
       EventStatus::SCHEDULED,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "EventStatus shall be not SCHEDULED before Record(), but received %s",
           wrapper->status_.load()));
   if (wrapper->status_ == EventStatus::INITIALIZED) {
@@ -90,7 +90,7 @@ bool DeviceEventQueryCPU(const DeviceEvent* event) {
   auto* wrapper = static_cast<CPUDeviceEventWrapper*>(event->GetEvent().get());
   PADDLE_ENFORCE_NOT_NULL(
       wrapper,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Failed to dynamic_cast event into CPUDeviceEventWrapper."));
 
   return wrapper->status_ == EventStatus::SUCCESS;
@@ -117,7 +117,7 @@ void EventSetFinishedCPU(const DeviceEvent* event) {
 
   PADDLE_ENFORCE_LE(wrapper->status_.load(),
                     EventStatus::SCHEDULED,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "EventStatus shall be  INITIALIZED | SCHEDULED before "
                         "EventSetFinishedCPU()"));
   wrapper->status_ = EventStatus::SUCCESS;

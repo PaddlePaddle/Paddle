@@ -35,14 +35,18 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
  private:
   std::string act_name_;
   bool cutlass_pattern_;
+  int sm_version_;
   const std::unordered_set<std::string> conv2d_depthwise_act_set_ = {"relu",
                                                                      "swish"};
 
  public:
   static const int CUTLASS_NHWC_ALIGNMENT = 8;
   Conv2dAddActFusePassDrrPattern(const std::string &act_name,
-                                 bool cutlass_pattern)
-      : act_name_(act_name), cutlass_pattern_(cutlass_pattern) {}
+                                 bool cutlass_pattern,
+                                 int sm_version)
+      : act_name_(act_name),
+        cutlass_pattern_(cutlass_pattern),
+        sm_version_(sm_version) {}
   std::string name() const override { return "Conv2dAddActFusePassDrrPattern"; }
   uint32_t benefit() const override { return cutlass_pattern_ ? 3 : 2; }
 
@@ -80,8 +84,14 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
       }
       auto padding_algorithm = match_ctx.Attr<std::string>("padding_algorithm");
       auto groups = match_ctx.Attr<int>("groups");
+      auto filter_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("filter"));
       if (!cutlass_pattern_) {
         auto data_format = match_ctx.Attr<std::string>("data_format");
+        if (!(filter_dtype.isa<pir::Float16Type>() ||
+              filter_dtype.isa<pir::Float32Type>() ||
+              filter_dtype.isa<pir::Float64Type>())) {
+          return false;
+        }
         if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
             padding_algorithm != "VALID") {
           return false;
@@ -94,8 +104,6 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
           return false;
         }
       } else {
-        auto filter_dtype =
-            pir::GetDataTypeFromValue(match_ctx.Tensor("filter"));
         auto filter_shape = pir::GetShapeFromValue(match_ctx.Tensor("filter"));
         auto strides_shape = match_ctx.Attr<std::vector<int>>("strides");
         auto dilations_shape = match_ctx.Attr<std::vector<int>>("dilations");
@@ -107,7 +115,12 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
         int kc = filter_shape[1];
         int kh = filter_shape[2];
         int kw = filter_shape[3];
-        if (!filter_dtype.isa<pir::Float16Type>()) {
+        if (sm_version_ == 75 && !filter_dtype.isa<pir::Float16Type>()) {
+          return false;
+        }
+        if (!(filter_dtype.isa<pir::Float16Type>() ||
+              filter_dtype.isa<pir::Float32Type>() ||
+              filter_dtype.isa<pir::BFloat16Type>())) {
           return false;
         }
         if (padding_algorithm != "EXPLICIT") {
@@ -310,13 +323,13 @@ class Conv2dAddActFusePass : public pir::PatternRewritePass {
     for (auto act_name : cudnn_act_set) {
       // conv2d+add+act->fused_conv2d_add_act
       ps.Add(paddle::drr::Create<Conv2dAddActFusePassDrrPattern>(
-          context, act_name, false));
+          context, act_name, false, sm_version));
     }
     if (cutlass_pattern) {
       for (auto act_name : cutlass_act_set) {
         // conv2d+add+act->fused_conv2d_add_act
         ps.Add(paddle::drr::Create<Conv2dAddActFusePassDrrPattern>(
-            context, act_name, true));
+            context, act_name, true, sm_version));
       }
     }
 

@@ -229,7 +229,7 @@ class TestImperativePTQ(unittest.TestCase):
             self.ptq.save_quantized_model(
                 model=quant_model, path=save_path, input_spec=input_spec
             )
-            print('Quantized model saved in {%s}' % save_path)
+            print(f'Quantized model saved in {{{save_path}}}')
 
             after_acc_top1 = self.model_test(
                 quant_model, self.batch_num, self.batch_size
@@ -242,9 +242,9 @@ class TestImperativePTQ(unittest.TestCase):
             paddle.disable_static()
 
             # Check
-            print('Before converted acc_top1: %s' % before_acc_top1)
-            print('After converted acc_top1: %s' % after_acc_top1)
-            print('Infer acc_top1: %s' % infer_acc_top1)
+            print(f'Before converted acc_top1: {before_acc_top1}')
+            print(f'After converted acc_top1: {after_acc_top1}')
+            print(f'Infer acc_top1: {infer_acc_top1}')
 
             self.assertTrue(
                 after_acc_top1 >= self.eval_acc_top1,
@@ -295,7 +295,7 @@ class TestImperativePTQfuse(TestImperativePTQ):
             self.ptq.save_quantized_model(
                 model=quant_model, path=save_path, input_spec=input_spec
             )
-            print('Quantized model saved in {%s}' % save_path)
+            print(f'Quantized model saved in {{{save_path}}}')
 
             after_acc_top1 = self.model_test(
                 quant_model, self.batch_num, self.batch_size
@@ -308,9 +308,9 @@ class TestImperativePTQfuse(TestImperativePTQ):
             paddle.disable_static()
 
             # Check
-            print('Before converted acc_top1: %s' % before_acc_top1)
-            print('After converted acc_top1: %s' % after_acc_top1)
-            print('Infer acc_top1: %s' % infer_acc_top1)
+            print(f'Before converted acc_top1: {before_acc_top1}')
+            print(f'After converted acc_top1: {after_acc_top1}')
+            print(f'Infer acc_top1: {infer_acc_top1}')
 
             # Check whether the quant_model is correct after converting.
             # The acc of quantized model should be higher than 0.95.

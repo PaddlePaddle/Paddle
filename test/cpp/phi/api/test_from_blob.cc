@@ -89,12 +89,13 @@ TEST(GetPlaceFromPtr, GPU) {
   ASSERT_EQ(cpu_data_place, phi::CPUPlace());
   std::cout << "cpu_data_place: " << cpu_data_place << std::endl;
 
-  float* gpu0_data = static_cast<float*>(paddle::GetAllocator(phi::GPUPlace(0))
-                                             ->Allocate(sizeof(cpu_data))
-                                             ->ptr());
+  auto alloc_ptr =
+      paddle::GetAllocator(phi::GPUPlace(0))->Allocate(sizeof(cpu_data));
+  float* gpu0_data = static_cast<float*>(alloc_ptr->ptr());
   auto gpu0_data_place = GetPlaceFromPtr(gpu0_data);
   ASSERT_EQ(gpu0_data_place, phi::GPUPlace(0));
   std::cout << "gpu0_data_place: " << gpu0_data_place << std::endl;
+  alloc_ptr.release();
 
   if (phi::backends::gpu::GetGPUDeviceCount() > 1) {
     float* gpu1_data =

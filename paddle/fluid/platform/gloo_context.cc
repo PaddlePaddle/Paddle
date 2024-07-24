@@ -30,10 +30,10 @@ void GlooParallelContext::Init() {
 
 void GlooParallelContext::Barrier() {
   auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
-  PADDLE_ENFORCE_EQ(gloo_ptr->IsInitialized(),
-                    true,
-                    paddle::platform::errors::Unavailable(
-                        "Gloo context is not initialized."));
+  PADDLE_ENFORCE_EQ(
+      gloo_ptr->IsInitialized(),
+      true,
+      phi::errors::Unavailable("Gloo context is not initialized."));
   gloo_ptr->Barrier();
 }
 

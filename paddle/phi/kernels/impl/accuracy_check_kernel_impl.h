@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,15 +25,9 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-// TODO(xiongkun): remove the header when decouple the memcpy function in phi.
 #include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
-using Tensor = DenseTensor;
-template <typename DeviceContext, typename T>
-struct GetTensorValue {
-  T operator()(const DeviceContext& ctx, const DenseTensor& tensor) const;
-};
 
 template <typename DeviceContext, typename T>
 struct AccuracyCheckFunctor {
@@ -45,14 +39,6 @@ struct AccuracyCheckFunctor {
                   const float atol,
                   bool equal_nan,
                   DenseTensor* output);
-};
-
-template <typename T>
-struct GetTensorValue<phi::CPUContext, T> {
-  T operator()(const phi::CPUContext& dev_ctx,
-               const DenseTensor& tensor) const {
-    return *(tensor.data<T>());
-  }
 };
 
 template <typename T>
@@ -239,18 +225,6 @@ __global__ void AccuracyCheckCUDAKernel<phi::dtype::complex<double>>(
     }
   }
 }
-template <typename T>
-struct GetTensorValue<phi::GPUContext, T> {
-  T operator()(const phi::GPUContext& dev_ctx,
-               const DenseTensor& tensor) const {
-    const T* data = tensor.data<T>();
-    T value;
-    const auto gpu_place = dev_ctx.GetPlace();
-    memory_utils::Copy(
-        phi::CPUPlace(), &value, gpu_place, data, sizeof(T), dev_ctx.stream());
-    return value;
-  }
-};
 
 template <typename T>
 struct AccuracyCheckFunctor<phi::GPUContext, T> {

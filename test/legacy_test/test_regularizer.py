@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextlib
+import os
 import random
 import unittest
 
@@ -68,7 +69,13 @@ class TestRegularizer(unittest.TestCase):
         ]
 
     def get_places(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places
@@ -174,7 +181,11 @@ class TestRegularizer(unittest.TestCase):
         with base.dygraph.guard():
             input = paddle.to_tensor(np.random.randn(3, 2).astype('float32'))
             paddle.seed(1)
-            paddle.framework.random._manual_program_seed(1)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    paddle.framework.random._manual_program_seed(1)
+            else:
+                paddle.framework.random._manual_program_seed(1)
 
             linear1 = paddle.nn.Linear(
                 2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr

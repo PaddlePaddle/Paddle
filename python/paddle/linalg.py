@@ -25,6 +25,7 @@ from .tensor.linalg import (
     eigh,
     eigvals,
     eigvalsh,
+    fp8_fp8_half_gemm_fused,
     householder_product,
     lstsq,
     lu,
@@ -80,4 +81,5 @@ __all__ = [
     'triangular_solve',
     'lstsq',
     'ormqr',
+    'fp8_fp8_half_gemm_fused',
 ]

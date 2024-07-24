@@ -56,14 +56,21 @@ class AbsmaxObserverLayer(BaseObserver):
         super().__init__()
         self._quant_bits = quant_bits
         self.abs_max_val = paddle.to_tensor(AbsmaxObserverLayer.INIT_ABS_MAX)
+        self._max = None
+        self._scale = None
+        self._zero_point = None
 
     def forward(self, input):
-        abs_max_val = paddle.max(paddle.abs(input))
-        self.abs_max_val = paddle.maximum(abs_max_val, self.abs_max_val)
+        self._min, self._max = self.cal_min_max(input)
         return input
 
-    def cal_thresholds(self):
-        self.thresholds = self.abs_max_val
+    def cal_min_max(self, inputs):
+        abs_max_val = paddle.max(paddle.abs(inputs))
+        if self._max is not None:
+            abs_max_val = paddle.maximum(
+                abs_max_val, self._max.cast(inputs.dtype)
+            )
+        return 0, abs_max_val
 
     def bit_length(self):
         return self._quant_bits
@@ -71,8 +78,18 @@ class AbsmaxObserverLayer(BaseObserver):
     def quant_axis(self):
         return -1
 
+    def cal_thresholds(self):
+        """Compute thresholds for MAX function."""
+        if self._scale is None:
+            self._scale = self._max
+        self._zero_point = paddle.zeros_like(self._scale)
+
     def scales(self):
-        return self.abs_max_val
+        """Return output scales."""
+        if self._scale is None:
+            self.cal_thresholds()
+        return self._scale
 
     def zero_points(self):
-        return None
+        """Return output zero points."""
+        return self._zero_point

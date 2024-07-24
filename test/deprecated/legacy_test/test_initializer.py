@@ -425,6 +425,29 @@ class TestNormalInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 123)
         return block
 
+    def test_normal_initializer_complex(self, dtype="complex64"):
+        """Test normal initializer with complex dtype"""
+        program = framework.Program()
+        block = program.global_block()
+        for _ in range(2):
+            block.create_parameter(
+                dtype=dtype,
+                shape=[5, 10],
+                lod_level=0,
+                name="param",
+                initializer=paddle.nn.initializer.NormalInitializer(
+                    2.2 + 2.2j, 1.9, 123
+                ),
+            )
+        num_ops = 1
+        self.assertEqual(len(block.ops), num_ops)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'gaussian_random')
+        self.assertAlmostEqual(init_op.attr('mean'), 2.2, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 123)
+        return block
+
     def test_normal_initializer_fp16(self):
         """Test normal initializer with float16"""
         self.test_normal_initializer("float16")
@@ -432,6 +455,14 @@ class TestNormalInitializer(unittest.TestCase):
     def test_normal_initializer_bf16(self):
         """Test normal initializer with bfloat16"""
         self.test_normal_initializer("uint16")
+
+    def test_normal_initializer_complex64(self):
+        """Test normal initializer with complex64"""
+        self.test_normal_initializer_complex("complex64")
+
+    def test_normal_initializer_complex128(self):
+        """Test normal initializer with complex128"""
+        self.test_normal_initializer_complex("complex128")
 
 
 class TestXavierInitializer(unittest.TestCase):

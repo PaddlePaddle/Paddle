@@ -277,6 +277,15 @@ class FusedFcClipFusePattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
+    const auto &fuse_alpha = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("value1");
+        });
+    const auto &fuse_beta = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("value2");
+        });
+
     std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
         {"in_num_col_dims", pat.Attr("in_num_col_dims")},
         {"activation_type", pat.Attr("activation_type")},
@@ -288,8 +297,8 @@ class FusedFcClipFusePattern : public paddle::drr::DrrPatternBase {
         {"scale_out", pat.Attr("scale_out")},
         {"force_fp32_output", pat.Attr("force_fp32_output")},
         {"fuse_activation", res.StrAttr("clip")},
-        {"fuse_alpha", pat.Attr("value1")},
-        {"fuse_beta", pat.Attr("value2")},
+        {"fuse_alpha", fuse_alpha},
+        {"fuse_beta", fuse_beta},
         {"fused_output_scale", pat.Attr("fused_output_scale")},
         {"fused_reshape2_shape", pat.Attr("fused_reshape2_shape")}};
 

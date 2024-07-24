@@ -21,9 +21,7 @@ limitations under the License. */
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class CustomPluginCreater : public OpConverter {
  public:
@@ -199,7 +197,7 @@ class GenericPluginCreater : public OpConverter {
         phi_kernel_signature.input_names.empty() ||
             phi_kernel_signature.output_names.empty(),
         false,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "The %s op's kernel signature (inputs and output) should not null.",
             op_desc.Type()));
 
@@ -214,13 +212,13 @@ class GenericPluginCreater : public OpConverter {
         auto *var = block_desc.FindVar(arg_name);
         PADDLE_ENFORCE_NOT_NULL(
             var,
-            platform::errors::NotFound(
-                "There is no variable called %s in block.", arg_name.c_str()));
+            phi::errors::NotFound("There is no variable called %s in block.",
+                                  arg_name.c_str()));
         PADDLE_ENFORCE_EQ(
             var->GetType(),
             FluidDT::VarType_Type_LOD_TENSOR,
-            platform::errors::InvalidArgument("TensorRT engine only takes "
-                                              "LoDTensor as input"));
+            phi::errors::InvalidArgument("TensorRT engine only takes "
+                                         "LoDTensor as input"));
         in_out_info.inputs_data_type.push_back(
             ProtoTypeToGeneratePluginDataType(var->GetDataType()));
       }
@@ -233,13 +231,13 @@ class GenericPluginCreater : public OpConverter {
         auto *var = block_desc.FindVar(arg_name);
         PADDLE_ENFORCE_NOT_NULL(
             var,
-            platform::errors::NotFound(
-                "There is no variable called %s in block.", arg_name.c_str()));
+            phi::errors::NotFound("There is no variable called %s in block.",
+                                  arg_name.c_str()));
         PADDLE_ENFORCE_EQ(
             var->GetType(),
             FluidDT::VarType_Type_LOD_TENSOR,
-            platform::errors::InvalidArgument("TensorRT engine only takes "
-                                              "LoDTensor as input"));
+            phi::errors::InvalidArgument("TensorRT engine only takes "
+                                         "LoDTensor as input"));
         in_out_info.outputs_data_type.push_back(
             ProtoTypeToGeneratePluginDataType(var->GetDataType()));
       }
@@ -290,13 +288,13 @@ class CustomGenericPluginCreater : public OpConverter {
         auto *var = block_desc.FindVar(arg_name);
         PADDLE_ENFORCE_NOT_NULL(
             var,
-            platform::errors::NotFound(
-                "There is no variable called %s in block.", arg_name.c_str()));
+            phi::errors::NotFound("There is no variable called %s in block.",
+                                  arg_name.c_str()));
         PADDLE_ENFORCE_EQ(
             var->GetType(),
             FluidDT::VarType_Type_LOD_TENSOR,
-            platform::errors::InvalidArgument("TensorRT engine only takes "
-                                              "LoDTensor as input"));
+            phi::errors::InvalidArgument("TensorRT engine only takes "
+                                         "LoDTensor as input"));
         in_out_info.inputs_data_type.push_back(
             ProtoTypeToGenerateCustomGenericPluginDataType(var->GetDataType()));
       }
@@ -315,13 +313,13 @@ class CustomGenericPluginCreater : public OpConverter {
         auto *var = block_desc.FindVar(arg_name);
         PADDLE_ENFORCE_NOT_NULL(
             var,
-            platform::errors::NotFound(
-                "There is no variable called %s in block.", arg_name.c_str()));
+            phi::errors::NotFound("There is no variable called %s in block.",
+                                  arg_name.c_str()));
         PADDLE_ENFORCE_EQ(
             var->GetType(),
             FluidDT::VarType_Type_LOD_TENSOR,
-            platform::errors::InvalidArgument("TensorRT engine only takes "
-                                              "LoDTensor as input"));
+            phi::errors::InvalidArgument("TensorRT engine only takes "
+                                         "LoDTensor as input"));
         in_out_info.outputs_data_type.push_back(
             ProtoTypeToGenerateCustomGenericPluginDataType(var->GetDataType()));
       }
@@ -338,9 +336,7 @@ class CustomGenericPluginCreater : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(custom_plugin_creater, CustomPluginCreater);
 REGISTER_TRT_OP_CONVERTER(generic_plugin_creater, GenericPluginCreater);

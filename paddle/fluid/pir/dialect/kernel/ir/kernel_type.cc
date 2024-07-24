@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::Type AllocatedDenseTensorType::prim_type() {
   return storage()->dense_tensor_type_;
@@ -162,8 +161,7 @@ const phi::DataLayout& AllocatedDenseTensorArrayType::data_layout() const {
   return storage()->dense_tensor_array_type_.data_layout();
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorType)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedSelectedRowsType)

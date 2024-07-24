@@ -70,11 +70,11 @@ class EagerGroup {
   std::shared_ptr<ProcessGroup::Task> task;
 
   // context is used to select the stream for concat
-  void ConcatTensors(const platform::Place &);
+  void ConcatTensors(const phi::Place &);
 
   // context is used to select the stream for split
 
-  void SplitTensors(const platform::DeviceContext &);
+  void SplitTensors(const phi::DeviceContext &);
 
   friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };
@@ -122,7 +122,7 @@ class EagerReducer {
 
   std::vector<EagerGroup> groups_;
   std::vector<TensorLocator> variable_locators_;
-  platform::Place inner_place_;
+  phi::Place inner_place_;
   size_t next_group_ = 0;
   int64_t nranks_ = -1;
 

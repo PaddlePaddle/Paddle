@@ -97,7 +97,7 @@ def scatter_object_list(
             >>> import paddle.distributed as dist
 
             >>> dist.init_parallel_env()
-            >>> out_object_list = []
+            >>> out_object_list = [] # type: ignore
             >>> if dist.get_rank() == 0:
             ...     in_object_list = [{'foo': [1, 2, 3]}, {'foo': [4, 5, 6]}]
             >>> else:

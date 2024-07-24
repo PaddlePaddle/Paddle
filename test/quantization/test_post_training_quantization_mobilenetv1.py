@@ -317,7 +317,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         try:
             os.system("mkdir " + self.int8_model)
         except Exception as e:
-            _logger.info(f"Failed to create {self.int8_model} due to {str(e)}")
+            _logger.info(f"Failed to create {self.int8_model} due to {e}")
             sys.exit(-1)
 
         place = paddle.CPUPlace()

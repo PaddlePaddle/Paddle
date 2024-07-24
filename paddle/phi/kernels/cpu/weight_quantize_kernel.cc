@@ -35,10 +35,11 @@ void quant_compute(const DeviceContext& dev_ctx,
                    const int32_t arch,
                    const int32_t group_size) {
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 86) || (arch == 75) || (arch == 70)),
+      ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
+       (arch == 89) || (arch == 90)),
       true,
       phi::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86."));
+          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
 
   const auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
@@ -104,7 +105,8 @@ void quant_compute(const DeviceContext& dev_ctx,
       for (int i = 0; i < out->numel(); ++i) {
         out_data[i] = x_int_data[i];
       }
-    } else if ((arch == 80) || (arch == 75) || (arch == 86)) {
+    } else if ((arch == 90) || (arch == 89) || (arch == 86) || (arch == 80) ||
+               (arch == 75)) {
       permute_B_rows_for_mixed_gemm<bits>(
           int_processed_data, x_int_data, std::vector<size_t>{m, n});
       subbyte_transpose_impl<bits>(

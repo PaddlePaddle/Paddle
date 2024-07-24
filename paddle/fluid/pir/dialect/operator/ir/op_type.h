@@ -33,6 +33,8 @@ class TEST_API SelectedRowsType
  public:
   using Base::Base;
 
+  static std::string name() { return "t_selected_rows"; }
+
   const pir::Type &dtype() const;
 
   const phi::DDim &dims() const;
@@ -59,6 +61,8 @@ class DenseTensorArrayType
  public:
   using Base::Base;
 
+  static std::string name() { return "t_dense_tensor_array"; }
+
   const pir::Type &dtype() const;
 
   const phi::DDim &dims() const;
@@ -81,6 +85,8 @@ class IR_API SparseCooTensorType
                                  pir::ShapedTypeInterface> {
  public:
   using Base::Base;
+
+  static std::string name() { return "t_sparse_coo_tensor"; }
 
   pir::Type dtype() const;
   const common::DDim &dims() const;
@@ -124,6 +130,8 @@ class IR_API SparseCsrTensorType
                                  pir::ShapedTypeInterface> {
  public:
   using Base::Base;
+
+  static std::string name() { return "t_sparse_csr_tensor"; }
 
   pir::Type dtype() const;
   const common::DDim &dims() const;

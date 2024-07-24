@@ -62,6 +62,7 @@ namespace dynload {
   __macro(cublasLtMatrixTransformDescSetAttribute); \
   __macro(cublasLtMatmulAlgoInit);                  \
   __macro(cublasLtMatmulAlgoConfigSetAttribute);    \
+  __macro(cublasLtMatmulAlgoConfigGetAttribute);    \
   __macro(cublasLtMatmulAlgoGetIds);                \
   __macro(cublasLtMatmulAlgoCapGetAttribute);       \
   __macro(cublasLtMatmulAlgoCheck);                 \

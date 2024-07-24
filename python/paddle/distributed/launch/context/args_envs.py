@@ -14,7 +14,8 @@
 
 import os
 from argparse import REMAINDER, ArgumentParser
-from distutils.util import strtobool
+
+from paddle.utils import strtobool
 
 env_args_mapping = {
     'POD_IP': ('host', str),

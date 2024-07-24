@@ -159,7 +159,11 @@ class TestSparseUnary(unittest.TestCase):
         self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'complex128')
 
     def test_sparse_sin(self):
-        self.compare_with_dense(paddle.sin, paddle.sparse.sin)
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'float16')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'float32')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'float64')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'complex64')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'complex128')
 
     def test_sparse_tan(self):
         self.compare_with_dense(paddle.tan, paddle.sparse.tan)

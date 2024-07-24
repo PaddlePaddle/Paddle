@@ -242,7 +242,7 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
         });
     const auto &alpha = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("full_1_value");
+          return match_ctx.Attr<double>("full_1_value");
         });
     const auto &multihead_matmul = res.Op("pd_op.multihead_matmul",
                                           {{"transpose_q", res.BoolAttr(false)},
@@ -480,7 +480,7 @@ class MultiHeadMatmulFuseWithBiasQKPattern
         });
     const auto &alpha = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("full_1_value");
+          return match_ctx.Attr<double>("full_1_value");
         });
     const auto &multihead_matmul = res.Op("pd_op.multihead_matmul",
                                           {{"transpose_q", res.BoolAttr(false)},
@@ -646,7 +646,7 @@ class VitAttentionFusePattern : public paddle::drr::DrrPatternBase {
 
     const auto &alpha = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("full_1_value");
+          return match_ctx.Attr<double>("full_1_value");
         });
 
     const auto &multihead_matmul_op =

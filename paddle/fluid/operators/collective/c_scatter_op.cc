@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_scatter_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CScatterOp : public framework::OperatorWithKernel {
  public:
@@ -80,8 +79,7 @@ Scatter the source to all participators.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

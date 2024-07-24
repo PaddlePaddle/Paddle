@@ -14,10 +14,13 @@
 
 from __future__ import annotations
 
-import paddle
+from typing import TYPE_CHECKING
 
 from .. import functional as F
 from .layers import Layer
+
+if TYPE_CHECKING:
+    import paddle
 
 __all__ = []
 

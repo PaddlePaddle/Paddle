@@ -28,10 +28,18 @@ void StackKernel(const Context& dev_ctx,
 
   auto x_dims = x[0]->dims();
   for (int i = 0; i < x_dims.size(); i++) {
-    PADDLE_ENFORCE_GT(x_dims[i],
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The dims of Input(X) should be greater than 0"));
+    PADDLE_ENFORCE_GE(
+        x_dims[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The dims of Input(X) should be greater than or equal to 0"));
+  }
+  // zero sized tensor case
+  if (x[0]->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    auto out_dims = out->dims();
+    out->Resize(out_dims);
+    return;
   }
 
   int n = static_cast<int>(x.size());

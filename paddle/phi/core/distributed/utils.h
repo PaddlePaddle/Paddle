@@ -75,8 +75,9 @@ inline void CheckSizeOnEachRank(const phi::DDim& tensor_dim,
       phi::errors::InvalidArgument(
           "The length of size_on_each_rank must be equal to world_size."));
 
-  int64_t sum_size_on_each_rank =
-      std::accumulate(size_on_each_rank.begin(), size_on_each_rank.end(), 0);
+  int64_t sum_size_on_each_rank = std::accumulate(size_on_each_rank.begin(),
+                                                  size_on_each_rank.end(),
+                                                  static_cast<int64_t>(0));
   PADDLE_ENFORCE_EQ(
       sum_size_on_each_rank,
       tensor_dim[0],

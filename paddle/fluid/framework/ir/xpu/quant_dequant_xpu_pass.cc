@@ -66,7 +66,7 @@ void QuantDequantXPUPass::CollectWeightScalesInfoFromDequantize(
         auto* var = scope->FindVar(scale_name);
         PADDLE_ENFORCE_NOT_NULL(
             var,
-            platform::errors::NotFound(
+            phi::errors::NotFound(
                 "The Scales variable [%s] of dequantize op is not found.",
                 var));
 
@@ -100,7 +100,7 @@ void QuantDequantXPUPass::CollectWeightScalesInfoFromONNXFormatDequantize(
       auto* var = scope->FindVar(scale_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          platform::errors::NotFound(
+          phi::errors::NotFound(
               "The Scales variable [%s] of dequantize op is not found.", var));
 
       auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
@@ -147,12 +147,12 @@ void QuantDequantXPUPass::CollectInputScalesFromQuantize(
       auto* op_desc = op_node->Op();
       const int bit_length =
           PADDLE_GET_CONST(int, op_desc->GetAttr("bit_length"));
-      PADDLE_ENFORCE_EQ(bit_length,
-                        8,
-                        platform::errors::InvalidArgument(
-                            "Unsupported number quantization "
-                            "bits: %d, only 8 is supported now.",
-                            bit_length));
+      PADDLE_ENFORCE_EQ(
+          bit_length,
+          8,
+          phi::errors::InvalidArgument("Unsupported number quantization "
+                                       "bits: %d, only 8 is supported now.",
+                                       bit_length));
 
       std::string scale_name = "InScale";
       std::string out_name = "Out";
@@ -167,7 +167,7 @@ void QuantDequantXPUPass::CollectInputScalesFromQuantize(
       auto* var = scope->FindVar(scale_var_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          platform::errors::NotFound(
+          phi::errors::NotFound(
               "The InScale variable [%s] of quantize op is not found.", var));
 
       auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
@@ -259,12 +259,12 @@ void QuantDequantXPUPass::CollectFakeQuantizeOps(
 
   PADDLE_ENFORCE_NOT_NULL(
       fake_quant_in,
-      platform::errors::NotFound(
-          "The input var [%s] of quantize op is not found.", x_var_name));
+      phi::errors::NotFound("The input var [%s] of quantize op is not found.",
+                            x_var_name));
   PADDLE_ENFORCE_NOT_NULL(
       fake_quant_out,
-      platform::errors::NotFound(
-          "The output var [%s] of quantize op is not found.", out_var_name));
+      phi::errors::NotFound("The output var [%s] of quantize op is not found.",
+                            out_var_name));
 
   std::string input_act_name = fake_quant_in->Var()->Name();
   std::string output_act_name = fake_quant_out->Var()->Name();
@@ -307,11 +307,11 @@ void QuantDequantXPUPass::CollectFakeDequantizeOps(
 
   PADDLE_ENFORCE_NOT_NULL(
       fake_dequant_in,
-      platform::errors::NotFound(
-          "The input var [%s] of dequantize op is not found.", x_var_name));
+      phi::errors::NotFound("The input var [%s] of dequantize op is not found.",
+                            x_var_name));
   PADDLE_ENFORCE_NOT_NULL(
       fake_dequant_out,
-      platform::errors::NotFound(
+      phi::errors::NotFound(
           "The output var [%s] of dequantize op is not found.", out_var_name));
 
   std::string input_act_name = fake_dequant_in->Var()->Name();
@@ -355,16 +355,16 @@ void QuantDequantXPUPass::CollectQuantizeDequantizeOpsFromONNXFormat(
 
   PADDLE_ENFORCE_NOT_NULL(
       fake_quant_in,
-      platform::errors::NotFound(
-          "The input var [%s] of quantize op is not found.", x_var_name));
+      phi::errors::NotFound("The input var [%s] of quantize op is not found.",
+                            x_var_name));
   PADDLE_ENFORCE_NOT_NULL(
       fake_quant_in_scale,
-      platform::errors::NotFound(
-          "The scale var [%s] of quantize op is not found.", in_scale_name));
+      phi::errors::NotFound("The scale var [%s] of quantize op is not found.",
+                            in_scale_name));
   PADDLE_ENFORCE_NOT_NULL(
       fake_quant_out,
-      platform::errors::NotFound(
-          "The output var [%s] of quantize op is not found.", out_var_name));
+      phi::errors::NotFound("The output var [%s] of quantize op is not found.",
+                            out_var_name));
 
   std::string input_act_name = fake_quant_in->Var()->Name();
   std::string output_act_name = fake_quant_out->Var()->Name();
@@ -416,7 +416,7 @@ void QuantDequantXPUPass::RestoreWeightsToInt8(
     auto* var = scope->FindVar(weight_var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "The input persistable [%s] var of [%s] op is not found.",
             weight_var_name));
     auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
@@ -431,7 +431,7 @@ void QuantDequantXPUPass::RestoreWeightsToInt8(
     weight_tensor->set_type(phi::DataType::INT8);
     weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     auto* new_weight_data = cpu_ctx->Alloc<int8_t>(weight_tensor);
     memcpy(new_weight_data,
            weight_data.data(),

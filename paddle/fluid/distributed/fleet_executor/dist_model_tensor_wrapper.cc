@@ -16,8 +16,7 @@
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 void DistModelDataBuf::Reset(void* data, size_t length) {
   Free();
@@ -30,7 +29,7 @@ void DistModelDataBuf::Free() {
   if (memory_owned_ && data_) {
     PADDLE_ENFORCE_GT(length_,
                       0UL,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Error occurred when deconstruct DistModelDataBuf: "
                           "it contains no data!"));
     // NOTE: if own the memory, it must be char* type
@@ -50,7 +49,7 @@ void DistModelDataBuf::Resize(size_t length) {
     length_ = length;
     memory_owned_ = true;
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "The memory is allocated externally, can not Resized"));
   }
 }
@@ -68,7 +67,7 @@ DistModelDataBuf& DistModelDataBuf::operator=(const DistModelDataBuf& other) {
     if (other.length() && other.data()) {
       std::memcpy(data_, other.data(), other.length());
     } else if (other.length()) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Invalid argument, null pointer data with length %u is passed",
           other.length()));
     }
@@ -102,5 +101,4 @@ DistModelDataBuf::DistModelDataBuf(const DistModelDataBuf& other) {
   *this = other;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

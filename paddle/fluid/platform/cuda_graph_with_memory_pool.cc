@@ -56,7 +56,7 @@ phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::GPUPlace place,
     // Record method: RecordCapturingDeviceContext.
     PADDLE_ENFORCE_EQ(FLAGS_new_executor_use_cuda_graph,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "FLAGS_new_executor_use_cuda_graph must be True when "
                           "capturing stream is recorded."));
     if (num_stream > 1) {
@@ -143,10 +143,11 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
               << " wait for cuda graph dev_ctx: " << dev_ctx;
     }
   }
-  AddPostResetCallbackIfCapturingCUDAGraph([pool_id] {
-    memory::allocation::AllocatorFacade::Instance().RemoveMemoryPoolOfCUDAGraph(
-        pool_id);
-  });
+  AddPostResetCallbackIfCapturingCUDAGraph(
+      [=](paddle::optional<const CUDAGraph&> graph) {
+        memory::allocation::AllocatorFacade::Instance()
+            .RemoveMemoryPoolOfCUDAGraph(pool_id);
+      });
 }
 
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {

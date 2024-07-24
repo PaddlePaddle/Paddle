@@ -115,7 +115,7 @@ class StrategyGroupBase:
         if not self.list_of_group:
             return debug_str + "No group."
         for i in range(len(self.list_of_group)):
-            debug_str += f"Group[{i}]: {str(self.list_of_group[i])}; "
+            debug_str += f"Group[{i}]: {self.list_of_group[i]}; "
         return debug_str
 
 

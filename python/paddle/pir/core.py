@@ -15,6 +15,7 @@
 
 import numpy as np
 
+import paddle
 from paddle.base.core import Place, VarDesc
 from paddle.base.libpaddle import DataType
 from paddle.base.libpaddle.pir import (
@@ -43,6 +44,8 @@ vartype_to_datatype = {
     VarDesc.VarType.INT8: DataType.INT8,
     VarDesc.VarType.COMPLEX64: DataType.COMPLEX64,
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
+    VarDesc.VarType.FP8_E4M3FN: DataType.FLOAT8_E4M3FN,
+    VarDesc.VarType.FP8_E5M2: DataType.FLOAT8_E5M2,
 }
 
 datatype_to_vartype = {v: k for k, v in vartype_to_datatype.items()}
@@ -72,6 +75,8 @@ np_type_to_paddle_type = {
     np.int8: DataType.INT8,
     np.complex64: DataType.COMPLEX64,
     np.complex128: DataType.COMPLEX128,
+    "float8_e4m3fn": DataType.FLOAT8_E4M3FN,
+    "float8_e5m2": DataType.FLOAT8_E5M2,
 }
 
 _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
@@ -87,6 +92,8 @@ _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
     DataType.UINT8: 'uint8',
     DataType.COMPLEX64: 'complex64',
     DataType.COMPLEX128: 'complex128',
+    DataType.FLOAT8_E4M3FN: 'float8_e4m3fn',
+    DataType.FLOAT8_E5M2: 'float8_e5m2',
 }
 
 
@@ -107,13 +114,17 @@ def convert_np_dtype_to_dtype_(np_dtype):
         # since there is still no support for bfloat16 in NumPy,
         # uint16 is used for casting bfloat16
         dtype = np.dtype("uint16")
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e4m3fn":
+        dtype = 'float8_e4m3fn'
+    elif isinstance(np_dtype, str) and np_dtype == "float8_e5m2":
+        dtype = 'float8_e5m2'
     else:
         dtype = np.dtype(np_dtype)
 
     if dtype in np_type_to_paddle_type.keys():
         return np_type_to_paddle_type[dtype]
     else:
-        raise ValueError("Not supported numpy dtype %s" % dtype)
+        raise ValueError(f"Not supported numpy dtype {dtype}")
 
 
 # program is a global instance.
@@ -317,12 +328,44 @@ def create_parameter(
     main_program = default_main_program()
     parameter_meta = ParameterMeta(shape, dtype)
 
+    is_dist = False
+    if (
+        'placements' in kwargs
+        and kwargs['placements']
+        and 'process_mesh' in kwargs
+        and kwargs['process_mesh']
+    ):
+        is_dist = True
+
+    def to_dist(value):
+        import paddle
+        import paddle.distributed as dist
+
+        process_mesh = kwargs['process_mesh']
+        dim_map, partial_status = dist.auto_parallel.placement_type.to_dim_map(
+            kwargs['placements'], len(shape)
+        )
+        dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+            process_mesh, dim_map, partial_status
+        )
+        dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+            value.type(), dist_attr
+        )
+        value.set_type(dist_type)
+        op_dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
+            process_mesh, [], [dist_attr]
+        )
+        value.get_defining_op().dist_attr = op_dist_attr
+
     with program_guard(startup_program):
         initializer = kwargs['initializer']
         init_result = initializer(
             parameter_meta, startup_program.global_block()
         )
         init_result.persistable = True
+        if is_dist:
+            to_dist(init_result)
+
         set_parameter(init_result, value_name)
 
     main_program.set_parameters_from(startup_program)
@@ -330,6 +373,9 @@ def create_parameter(
         reset_insertion_point_to_start()
         param = parameter(value_name)
         param.persistable = True
+
+        if is_dist:
+            to_dist(param)
 
     param.trainable = kwargs.get('trainable', True)
     param.stop_gradient = not param.trainable
@@ -441,3 +487,77 @@ def static_op_arg_cast_guard(hook):
         yield
     finally:
         set_static_op_arg_pre_cast_hook(original_callback)
+
+
+def set_state_dict(program, state_dict, scope=None):
+    """
+    Set parameters and persistable buffers in state_dict to program.
+    An exception will throw if shape or dtype of the parameters is not match.
+
+    .. note::
+        This function MUST called after run start_up_program
+
+    Args:
+        state_dict(dict): the dict store parameters and persistable buffers.
+            The key is the name of the parameter or the name of the buffer.
+            The value is the tensor of this variable in the given scope.
+        scope(Scope, optional) : If scope is None, state_dict will be set to global scope
+            obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
+            Default: None
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.static as static
+
+            >>> paddle.enable_static()
+
+            >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
+            >>> y = static.nn.fc(x, 10)
+            >>> z = static.nn.fc(y, 10)
+
+            >>> place = paddle.CPUPlace()
+            >>> exe = static.Executor(place)
+            >>> exe.run(static.default_startup_program())
+            >>> prog = static.default_main_program()
+
+            >>> path = "./temp/model.pdparams"
+            >>> paddle.save(prog.state_dict(), path)
+            >>> state_dict_load = paddle.load(path)
+            >>> prog.set_state_dict(state_dict_load)
+    """
+    if not isinstance(state_dict, dict):
+        raise TypeError(
+            f"Type of `state_dict` should be dict, but received {type(state_dict)}."
+        )
+
+    condition = True if "StructuredToParameterName@@" in state_dict else False
+    if condition:
+        clear_state_dict = {}
+        for name, value in state_dict.items():
+            if name == "StructuredToParameterName@@":
+                continue
+            if name in state_dict["StructuredToParameterName@@"]:
+                name = state_dict["StructuredToParameterName@@"][name]
+                clear_state_dict[name] = value
+            else:
+                clear_state_dict[name] = value
+    else:
+        clear_state_dict = state_dict
+
+    for name, value in clear_state_dict.items():
+        if isinstance(value, paddle.base.libpaddle.Tensor):
+            continue
+        elif isinstance(value, np.ndarray):
+            clear_state_dict[name] = paddle.to_tensor(value)
+        else:
+            raise TypeError(
+                f"The type of `{name}` should be Tensor, ndarray, but received {type(value)}."
+            )
+    if scope is None:
+        scope = paddle.static.global_scope()
+    program.set_state_dict(clear_state_dict, scope)

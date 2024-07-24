@@ -11,10 +11,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING, Sequence
+
+from paddle import _C_ops
+from paddle.framework import (
+    in_dynamic_or_pir_mode,
+)
 
 from ..base import framework
 from .optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .optimizer import _ParameterConfig
+
+    class _AdagradParameterConfig(_ParameterConfig):
+        epsilon: NotRequired[float]
+        initial_accumulator_value: NotRequired[float]
+
 
 __all__ = []
 
@@ -44,24 +67,24 @@ class Adagrad(Optimizer):
             It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
+        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_base_param_attr_aramAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies,
             ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None,
             meaning there is no gradient clipping.
-        name (str, optional): Normally there is no need for user to set this property.
+        name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
         initial_accumulator_value (float, optional): Initial value for moment accumulator.
@@ -91,7 +114,7 @@ class Adagrad(Optimizer):
             >>> loss = paddle.mean(out)
             >>> adagrad = paddle.optimizer.Adagrad(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),
@@ -104,18 +127,23 @@ class Adagrad(Optimizer):
             >>> adagrad.clear_grad()
 
     """
+
+    type: str
+    initial_accumulator_value: float
     _moment_acc_str = "moment"
 
     def __init__(
         self,
-        learning_rate,
-        epsilon=1.0e-6,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        name=None,
-        initial_accumulator_value=0.0,
-    ):
+        learning_rate: float | Tensor,
+        epsilon: float = 1.0e-6,
+        parameters: (
+            Sequence[Tensor] | Sequence[_AdagradParameterConfig] | None
+        ) = None,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        name: str | None = None,
+        initial_accumulator_value: float = 0.0,
+    ) -> None:
         assert learning_rate is not None
         assert epsilon is not None
         super().__init__(
@@ -188,29 +216,44 @@ class Adagrad(Optimizer):
             else None
         )
 
-        # Create the adagrad optimizer op
-        inputs = {
-            "Param": param_and_grad[0],
-            "Grad": param_and_grad[1],
-            "Moment": moment_acc,
-            "LearningRate": self._create_param_lr(param_and_grad),
-        }
+        if in_dynamic_or_pir_mode():
+            _, _, _ = _C_ops.adagrad_(
+                param_and_grad[0],
+                param_and_grad[1],
+                moment_acc,
+                self._create_param_lr(param_and_grad),
+                master_weight if find_master else None,
+                self._epsilon,
+                find_master,
+            )
+            return None
+        else:
+            # Create the adagrad optimizer op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": moment_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            }
 
-        outputs = {"ParamOut": param_and_grad[0], "MomentOut": moment_acc}
+            outputs = {"ParamOut": param_and_grad[0], "MomentOut": moment_acc}
 
-        if find_master:
-            inputs["MasterParam"] = master_weight
-            outputs["MasterParamOut"] = master_weight
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
 
-        adagrad_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs={"epsilon": self._epsilon, "multi_precision": find_master},
-            stop_gradient=True,
-        )
+            adagrad_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs={
+                    "epsilon": self._epsilon,
+                    "multi_precision": find_master,
+                },
+                stop_gradient=True,
+            )
 
-        return adagrad_op
+            return adagrad_op
 
     def _update_param_group(self, parameters):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])

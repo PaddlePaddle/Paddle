@@ -1383,6 +1383,26 @@ struct DataOpTranscriber : public FeedOpTranscriber {
   }
 };
 
+struct CrossEntropyWithSoftmaxOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "axis") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    }
+  }
+};
+
+struct DepthwiseConv2dOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "padding_algorithm") {
+      (*attribute_map)[info.name] = pir::StrAttribute::get(ctx, "EXPLICIT");
+    }
+  }
+};
+
 struct SplitOpTranscriber : public OpTranscriber {
   std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
@@ -1689,8 +1709,11 @@ struct MulOpTranscriber : public OpTranscriber {
                              pir::Block* block) override {
 #ifdef PADDLE_WITH_DNNL
     if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
-      return static_cast<OpTranscriber>(*this).operator()(
-          ctx, param_map, op_desc, block);
+      return static_cast<OpTranscriber>(*this).operator()(  // NOLINT
+          ctx,
+          param_map,
+          op_desc,
+          block);
     }
 #endif
     return OpTranscriber::operator()(ctx, param_map, op_desc, block);
@@ -1863,8 +1886,11 @@ struct MulGradOpTranscriber : public OpTranscriber {
                              pir::Block* block) override {
 #ifdef PADDLE_WITH_DNNL
     if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
-      return static_cast<OpTranscriber>(*this).operator()(
-          ctx, param_map, op_desc, block);
+      return static_cast<OpTranscriber>(*this).operator()(  // NOLINT
+          ctx,
+          param_map,
+          op_desc,
+          block);
     }
 #endif
     return OpTranscriber::operator()(ctx, param_map, op_desc, block);
@@ -3153,6 +3179,20 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
   }
 };
 
+struct TopPSamplingOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "seed") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    } else if (info.name == "k") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 0);
+    } else if (info.name == "mode") {
+      (*attribute_map)[info.name] = pir::StrAttribute::get(ctx, "truncated");
+    }
+  }
+};
+
 struct FusedElemwiseAddActivationOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -3179,6 +3219,24 @@ struct FusedElemwiseAddActivationGradOpTranscriber
     }
 
     return OpTranscriber::LookUpOpInfo(ctx, op_desc);
+  }
+};
+
+// a more general version for fake quantize ops
+// if one has a more special property, then don't use this
+struct FakeQuantizeOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "round_type") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
+    } else if (info.name == "x_num_col_dims") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
+    } else if (info.name == "round_type") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
+    } else if (info.name == "quant_axis") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 0);
+    }
   }
 };
 
@@ -3523,6 +3581,12 @@ struct QuantizeLinearOpTranscriber : public OpTranscriber {
     if (info.name == "moving_rate") {
       (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.9);
     }
+    if (info.name == "qmin") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -128);
+    }
+    if (info.name == "qmax") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 127);
+    }
   }
 };
 
@@ -3539,7 +3603,10 @@ OpTranslator::OpTranslator() {
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["conv2d"] = Conv2dOpTranscriber();
+  special_handlers["cross_entropy_with_softmax"] =
+      CrossEntropyWithSoftmaxOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
+  special_handlers["depthwise_conv2d"] = DepthwiseConv2dOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
@@ -3549,6 +3616,13 @@ OpTranslator::OpTranslator() {
       FusedElemwiseAddActivationOpTranscriber();
   special_handlers["fused_elemwise_add_activation_grad"] =
       FusedElemwiseAddActivationGradOpTranscriber();
+  special_handlers["fake_quantize_moving_average_abs_max"] =
+      FakeQuantizeOpTranscriber();
+  special_handlers["fake_channel_wise_dequantize_max_abs"] =
+      FakeQuantizeOpTranscriber();
+  special_handlers["fake_quantize_range_abs_max"] = FakeQuantizeOpTranscriber();
+  special_handlers["fake_quantize_dequantize_moving_average_abs_max"] =
+      FakeQuantizeOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
@@ -3569,6 +3643,7 @@ OpTranslator::OpTranslator() {
   special_handlers["slice"] = SliceOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
+  special_handlers["top_p_sampling"] = TopPSamplingOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["tril_triu_grad"] = TrilAndTriuGradOpTranscriber();
   special_handlers["matmul"] = LegacyMatmulOpTranscriber();

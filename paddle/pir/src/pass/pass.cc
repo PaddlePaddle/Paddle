@@ -164,7 +164,6 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
     pass->Run(op);
     if (instrumentor) instrumentor->RunAfterPass(pass, op);
   }
-
   bool pass_failed = pass->pass_state()->pass_failed;
 
   if (!pass_failed && verify) {

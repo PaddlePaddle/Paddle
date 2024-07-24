@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -41,7 +42,14 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             self.init_attrs()
             self.dtype = self.in_type
             self.op_type = 'dropout'
-            self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
+            if self.dtype == np.uint16:
+                x = np.random.random(self.shape).astype('float32')
+                x = convert_float_to_uint16(x)
+                self.inputs = {'X': x}
+            else:
+                self.inputs = {
+                    'X': np.random.random(self.shape).astype(self.dtype)
+                }
             self.attrs = {
                 'dropout_prob': self.dropout_prob,
                 'fix_seed': self.fix_seed,
@@ -49,13 +57,24 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                 'dropout_implementation': self.dropout_implementation,
             }
 
-            out = self.inputs['X'] * (1.0 - self.dropout_prob)
+            if self.dtype == np.uint16:
+                x_float32 = convert_uint16_to_float(self.inputs['X'])
+                out = x_float32 * (1.0 - self.dropout_prob)
+                out = convert_float_to_uint16(out)
+            else:
+                out = self.inputs['X'] * (1.0 - self.dropout_prob)
+
             if not self.is_test:
                 mask = None
                 if self.dropout_prob == 0.0:
-                    mask = np.ones(self.shape).astype(self.dtype)
+                    mask = np.ones(self.shape)
                 elif self.dropout_prob == 1.0:
-                    mask = np.zeros(self.shape).astype(self.dtype)
+                    mask = np.zeros(self.shape)
+
+                if self.dtype == np.uint16:
+                    mask = convert_float_to_uint16(mask.astype('float32'))
+                else:
+                    mask = mask.astype(self.dtype)
                 self.outputs = {'Out': out, 'Mask': mask}
             else:
                 self.outputs = {'Out': out}
@@ -168,16 +187,27 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             self.places.append(base.XPUPlace(0))
 
         def cal_grad_upscale_train(self, mask, prob):
-            return mask.astype(self.in_type) / (1 - prob)
+            if self.in_type == np.uint16:
+                return convert_float_to_uint16(
+                    mask.astype("float32") / (1 - prob)
+                )
+            else:
+                return mask.astype(self.in_type) / (1 - prob)
 
         def cal_grad_downscale_in_infer(self, mask):
-            return mask.astype(self.in_type)
+            if self.in_type == np.uint16:
+                return convert_float_to_uint16(mask.astype("float32"))
+            else:
+                return mask.astype(self.in_type)
 
         def test_backward_downscale_in_infer(self):
             for place in self.places:
                 with base.dygraph.guard(place):
                     prob = 0.1
-                    input = paddle.uniform([100, 40], dtype=self.in_type)
+                    if self.in_type == np.uint16:
+                        input = paddle.uniform([100, 40], dtype="bfloat16")
+                    else:
+                        input = paddle.uniform([100, 40], dtype=self.in_type)
                     input.stop_gradient = False
                     out, mask = _legacy_C_ops.dropout(
                         input, 'dropout_prob', prob
@@ -197,7 +227,10 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             for place in self.places:
                 with base.dygraph.guard(place):
                     prob = 0.5
-                    input = paddle.uniform([100, 40], dtype=self.in_type)
+                    if self.in_type == np.uint16:
+                        input = paddle.uniform([100, 40], dtype="bfloat16")
+                    else:
+                        input = paddle.uniform([100, 40], dtype=self.in_type)
                     input.stop_gradient = False
                     out, mask = _legacy_C_ops.dropout(
                         input,
@@ -221,7 +254,10 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             for place in self.places:
                 with base.dygraph.guard(place):
                     prob = 0.2
-                    input = paddle.uniform([100, 40], dtype=self.in_type)
+                    if self.in_type == np.uint16:
+                        input = paddle.uniform([100, 40], dtype="bfloat16")
+                    else:
+                        input = paddle.uniform([100, 40], dtype=self.in_type)
                     input.stop_gradient = False
                     out, mask = _legacy_C_ops.dropout(
                         input,

@@ -60,6 +60,38 @@ TensorDistAttribute::partial_status() const {
   return storage()->partial_status;
 }
 
+phi::distributed::Placements TensorDistAttribute::placements() const {
+  auto process_mesh = process_mesh_attr();
+  phi::distributed::Placements placements;
+  placements.resize(process_mesh.ndim(),
+                    std::make_shared<phi::distributed::Replicate>());
+
+  for (const auto& pair : partial_status()) {
+    placements[pair.first] =
+        std::make_shared<phi::distributed::Partial>(pair.second);
+  }
+
+  auto& dim_mapping = dims_mapping();
+  for (size_t i = 0; i < dim_mapping.size(); ++i) {
+    auto& mesh_id = dim_mapping[i];
+    if (mesh_id >= 0) {
+      auto& p = placements[mesh_id];
+      if (p->is_shard()) {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "ProcessMesh dimension cann't be mapped to two  dimension of the "
+            "same tensor: {%d} and {%d}",
+            i,
+            dynamic_cast<phi::distributed::Shard&>(*p).get_dim()));
+      } else if (p->is_partial()) {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "ProcessMesh dimension {%d} cannot be both shard and partial!",
+            mesh_id));
+      }
+      placements[mesh_id] = std::make_shared<phi::distributed::Shard>(i);
+    }
+  }
+  return placements;
+}
 TensorDistAttribute TensorDistAttribute::get(
     pir::IrContext* ctx,
     ProcessMeshAttribute mesh,

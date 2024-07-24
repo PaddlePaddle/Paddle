@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-######
+
 import os
 import warnings
-from distutils.util import strtobool
 from functools import reduce
 
 import paddle
@@ -27,6 +26,7 @@ from paddle.distributed.communication.reduce import (
     ReduceOp,
     is_avg_reduce_op_supported,
 )
+from paddle.utils import strtobool
 
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (

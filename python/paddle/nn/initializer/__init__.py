@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the initializers to create a Parameter in neural network
+
 from ...base.initializer import set_global_initializer
 from .assign import (
     Assign,

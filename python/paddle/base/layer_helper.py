@@ -108,7 +108,7 @@ class LayerHelper(LayerHelperBase):
     def get_parameter(self, name):
         param = self.main_program.global_block().var(name)
         if not isinstance(param, Parameter):
-            raise ValueError("no Parameter name %s found" % name)
+            raise ValueError(f"no Parameter name {name} found")
         return param
 
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of bias_attr

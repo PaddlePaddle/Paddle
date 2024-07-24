@@ -27,6 +27,7 @@ namespace dynload {
   using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
+#ifndef RCCL_RAND_ROUTINE_EACH
 #define RCCL_RAND_ROUTINE_EACH(__macro) \
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
@@ -43,6 +44,7 @@ namespace dynload {
   __macro(ncclReduce);                  \
   __macro(ncclReduceScatter);           \
   __macro(ncclGetErrorString);
+#endif
 
 RCCL_RAND_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 

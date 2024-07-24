@@ -293,6 +293,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
         return phi::Backend::GPU;
       case phi::AllocationType::XPU:
         return phi::Backend::XPU;
+      case phi::AllocationType::CUSTOM:
+        return phi::Backend::CUSTOM;
       default:
         return phi::Backend::UNDEFINED;
     }

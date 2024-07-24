@@ -489,9 +489,9 @@ class OperantsAPI(ForwardAPI):
     def get_declare_args_without_first_tensor(self, inplace_flag=False):
         func_name = self.get_api_func_name()
         declare_args = self.get_input_tensor_args(inplace_flag)
-        assert len(declare_args) >= 1, (
-            "Error! Api %s has no Tensor inputs" % func_name
-        )
+        assert (
+            len(declare_args) >= 1
+        ), f"Error! Api {func_name} has no Tensor inputs"
         first_input_type = " ".join(declare_args[0].split(" ")[:-1])
         # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
         assert (
@@ -510,9 +510,9 @@ class OperantsAPI(ForwardAPI):
     def get_define_args_without_first_tensor(self, inplace_flag=False):
         func_name = self.get_api_func_name()
         define_args = self.get_input_tensor_args(inplace_flag)
-        assert len(define_args) >= 1, (
-            "Error! Api %s has no Tensor inputs" % func_name
-        )
+        assert (
+            len(define_args) >= 1
+        ), f"Error! Api {func_name} has no Tensor inputs"
         first_input_type = " ".join(define_args[0].split(" ")[:-1])
         # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
         assert (
@@ -525,9 +525,9 @@ class OperantsAPI(ForwardAPI):
 
     def gene_tensor_api_implementation(self):
         func_name = self.get_api_func_name()
-        assert len(self.inputs['names']) >= 1, (
-            "Error! Api %s has no Tensor inputs" % func_name
-        )
+        assert (
+            len(self.inputs['names']) >= 1
+        ), f"Error! Api {func_name} has no Tensor inputs"
         # remove first Tensor argument
         func_args = self.inputs['names'][1:] + self.attrs['names']
         if len(func_args) > 0:

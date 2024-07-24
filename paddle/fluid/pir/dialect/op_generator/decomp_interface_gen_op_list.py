@@ -41,6 +41,8 @@ decomp_interface_declare_gen_op_list = [
     "instance_norm",
     "layer_norm",
     "leaky_relu",
+    "lerp",
+    "log_loss",
     "log_softmax",
     "mean",
     "mean_all",
@@ -60,6 +62,7 @@ decomp_interface_declare_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "unbind",
     "huber_loss",
 ]
 
@@ -85,6 +88,8 @@ decomp_interface_implementation_gen_op_list = [
     "instance_norm",
     "layer_norm",
     "leaky_relu",
+    "lerp",
+    "log_loss",
     "log_softmax",
     "mean",
     "mean_all",
@@ -103,6 +108,7 @@ decomp_interface_implementation_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "unbind",
     "huber_loss",
 ]
 

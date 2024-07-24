@@ -191,7 +191,7 @@ std::string LayerDebugString(const std::string& op_type,
                              const NameVarBaseMap& outs);
 
 TEST(test_layer, test_debug_string) {
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
   var_pair in_pair = var_pair("X", vb_vector(1, vin));
@@ -254,7 +254,7 @@ static std::shared_ptr<imperative::GradOpNode> CreateGradNode(
     const imperative::NameVarBaseMap& ins,
     const imperative::NameVarBaseMap& outs,
     const framework::AttributeMap& attrs,
-    const platform::Place& place) {
+    const phi::Place& place) {
   auto node = std::make_shared<imperative::GradOpNode>();
   auto* op = &(node->emplace_back());
   op->SetId(id);
@@ -286,7 +286,7 @@ TEST(test_layer, test_clear_backward_info) {
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair y_pair = var_pair("Y", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -313,7 +313,7 @@ TEST(test_layer, test_clear_backward_info) {
 }
 
 TEST(test_layer, test_varbase_basic) {
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
   vin->MutableVar()->GetMutable<phi::DenseTensor>()->mutable_data<float>(place);
@@ -342,7 +342,7 @@ TEST(test_layer, test_dygraph_execution_context) {
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair y_pair = var_pair("Y", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -353,10 +353,9 @@ TEST(test_layer, test_dygraph_execution_context) {
   concat_att_map["axis"] = 1;
 
   auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(cpu_place);
   paddle::framework::RuntimeContext ctx({}, {});
   framework::Scope scope;
@@ -379,7 +378,7 @@ TEST(test_layer, test_dygraph_infershape_context) {
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(false, "vout"));
   framework::OpDesc desc;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair y_pair = var_pair("Y", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));

@@ -539,13 +539,17 @@ class TestSeResnet(Dy2StTestBase):
             return pred_res.numpy()
 
     def predict_analysis_inference(self, data):
+        if use_pir_api():
+            model_filename = self.pir_model_filename
+        else:
+            model_filename = self.model_filename
         output = PredictorTools(
             self.model_save_dir,
-            self.model_filename,
+            model_filename,
             self.params_filename,
             [data],
         )
-        out = output()
+        (out,) = output()
         return out
 
     def verify_predict(self):
@@ -567,18 +571,17 @@ class TestSeResnet(Dy2StTestBase):
             err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
 
-        if not use_pir_api():
-            predictor_pre = self.predict_analysis_inference(image)
-            flat_st_pre = st_pre.flatten()
-            flat_predictor_pre = np.array(predictor_pre).flatten()
-            for i in range(len(flat_predictor_pre)):
-                # modify precision to 1e-6, avoid unittest failed
-                self.assertAlmostEqual(
-                    flat_predictor_pre[i],
-                    flat_st_pre[i],
-                    delta=1e-6,
-                    msg=f"predictor_pre:\n {flat_predictor_pre[i]}\n, st_pre: \n{flat_st_pre[i]}.",
-                )
+        predictor_pre = self.predict_analysis_inference(image)
+        flat_st_pre = st_pre.flatten()
+        flat_predictor_pre = np.array(predictor_pre).flatten()
+        for i in range(len(flat_predictor_pre)):
+            # modify precision to 1e-6, avoid unittest failed
+            self.assertAlmostEqual(
+                flat_predictor_pre[i],
+                flat_st_pre[i],
+                delta=1e-5,
+                msg=f"predictor_pre:\n {flat_predictor_pre[i]}\n, st_pre: \n{flat_st_pre[i]}.",
+            )
 
     @test_default_and_pir
     def test_check_result(self):

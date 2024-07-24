@@ -880,8 +880,23 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x,
   }
   x_mean /= number * imsize;
   x_var /= number * imsize;
+
+#ifdef __NVCC__
   CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
   CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
+#endif
+#ifdef __HIPCC__
+  // Note(wangyanpeng04): When the block size is less than the warp size,
+  // WarpReduce will result in all zeros. It seems to be an internal problem of
+  // hipcub on DCU.
+  if (blockDim.x < phi::kps::details::kWarpSize) {
+    phi::CudaAtomicAdd(&mean[bid * groups + gid], x_mean);
+    phi::CudaAtomicAdd(&var[bid * groups + gid], x_var);
+  } else {
+    CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
+    CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
+  }
+#endif
 }
 
 template <typename T, typename AccT, int flags>

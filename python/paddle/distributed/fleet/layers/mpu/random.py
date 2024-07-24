@@ -124,19 +124,6 @@ def model_parallel_random_seed(seed=None):
     paddle.seed(global_seed)
 
 
-def determinate_seed(rng_name):
-    assert rng_name is not None and rng_name != ""
-    helper = LayerHelper('seed', **locals())
-    out = helper.create_variable_for_type_inference(dtype=paddle.int32)
-    # set force_cpu to reduce sync copy from CPU->GPU->CPU, and reduce pipeline hang
-    helper.append_op(
-        type='seed',
-        outputs={'Out': out},
-        attrs={'deterministic': True, 'rng_name': rng_name, 'force_cpu': True},
-    )
-    return out
-
-
 def dropout(
     x,
     p=0.5,
@@ -248,8 +235,6 @@ def dropout(
         )
         return out
     else:
-        seed = determinate_seed(rng_name)
-
         if isinstance(p, Variable) and not p.shape != [1]:
             raise TypeError(
                 f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
@@ -259,6 +244,9 @@ def dropout(
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'dropout'
         )
+
+        seed = helper.create_variable_for_type_inference(dtype=paddle.int32)
+        helper.append_op(type='seed', outputs={'Out': seed})
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         mask = helper.create_variable_for_type_inference(

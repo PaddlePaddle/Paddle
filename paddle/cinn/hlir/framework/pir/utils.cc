@@ -136,6 +136,8 @@ class OpTransInfo {
                                                     "dropout",
                                                     "pool2d",
                                                     "pool2d_grad",
+                                                    "pool3d",
+                                                    "pool3d_grad"
                                                     "split",
                                                     "matmul",
                                                     "matmul_grad",
@@ -329,6 +331,7 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(SplitWithNumOp),
     PD_OP_NAME(AddNOp),
     PD_OP_NAME(UniformOp),
+    PD_OP_NAME(GatherOp),
 };
 #undef PD_OP_NAME
 

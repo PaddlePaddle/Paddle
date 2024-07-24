@@ -19,16 +19,16 @@
 #include "paddle/fluid/inference/capi_exp/utils_internal.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#define CHECK_NULL_POINTER_PARM(param)                                   \
-  PADDLE_ENFORCE_NOT_NULL(                                               \
-      param,                                                             \
-      paddle::platform::errors::InvalidArgument("The pointer of " #param \
-                                                " shouldn't be nullptr"))
+#define CHECK_NULL_POINTER_PARM(param)                      \
+  PADDLE_ENFORCE_NOT_NULL(                                  \
+      param,                                                \
+      phi::errors::InvalidArgument("The pointer of " #param \
+                                   " shouldn't be nullptr"))
 
 #define CHECK_AND_CONVERT_PD_CONFIG                              \
   PADDLE_ENFORCE_NOT_NULL(                                       \
       pd_config,                                                 \
-      paddle::platform::errors::InvalidArgument(                 \
+      phi::errors::InvalidArgument(                              \
           "The pointer of paddle config shouldn't be nullptr")); \
   Config* config = reinterpret_cast<Config*>(pd_config)
 
@@ -43,7 +43,7 @@ static Config::Precision ConvertToCxxPrecisionType(PD_PrecisionType precision) {
     case PD_PRECISION_HALF:
       return Config::Precision::kHalf;
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupport paddle precision type %d.", precision));
       return Config::Precision::kFloat32;
   }
@@ -487,10 +487,7 @@ void PD_ConfigSetExecStream(__pd_keep PD_Config* pd_config, void* stream) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->SetExecStream(stream);
 }
-void PD_ConfigPartiallyRelease(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  config->PartiallyRelease();
-}
+
 void PD_ConfigDeletePass(__pd_keep PD_Config* pd_config, const char* pass) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->pass_builder()->DeletePass(pass);

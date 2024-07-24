@@ -21,9 +21,9 @@ namespace platform {
 CustomDeviceStreamResourcePool::CustomDeviceStreamResourcePool(
     const paddle::Place& place) {
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place),
+      phi::is_custom_place(place),
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
 
   int dev_cnt = phi::DeviceManager::GetDeviceCount(place.GetDeviceType());
@@ -74,9 +74,9 @@ CustomDeviceStreamResourcePool& CustomDeviceStreamResourcePool::Instance(
     const paddle::Place& place) {
   auto& pool = GetMap();
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place),
+      phi::is_custom_place(place),
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
   if (pool.find(place.GetDeviceType()) == pool.end()) {
     pool.insert({place.GetDeviceType(),
@@ -86,16 +86,16 @@ CustomDeviceStreamResourcePool& CustomDeviceStreamResourcePool::Instance(
          ++i) {
       pool[place.GetDeviceType()].emplace_back(
           new CustomDeviceStreamResourcePool(
-              paddle::platform::CustomPlace(place.GetDeviceType(), i)));
+              phi::CustomPlace(place.GetDeviceType(), i)));
     }
   }
   PADDLE_ENFORCE_LT(
       place.GetDeviceId(),
       pool[place.GetDeviceType()].size(),
-      platform::errors::OutOfRange("Device id is out of range, device id shall "
-                                   "be less than %d, but received %d. ",
-                                   pool[place.GetDeviceType()].size(),
-                                   place.GetDeviceId()));
+      phi::errors::OutOfRange("Device id is out of range, device id shall "
+                              "be less than %d, but received %d. ",
+                              pool[place.GetDeviceType()].size(),
+                              place.GetDeviceId()));
   return *pool[place.GetDeviceType()][place.GetDeviceId()];
 }
 
@@ -104,12 +104,12 @@ std::shared_ptr<CustomDeviceStreamObject> CustomDeviceStreamResourcePool::New(
   PADDLE_ENFORCE_GE(
       dev_idx,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
       dev_idx,
       pool_.size(),
-      platform::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
           pool_.size(),
           dev_idx));
@@ -119,9 +119,9 @@ std::shared_ptr<CustomDeviceStreamObject> CustomDeviceStreamResourcePool::New(
 CustomDeviceEventResourcePool::CustomDeviceEventResourcePool(
     const paddle::Place& place) {
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place),
+      phi::is_custom_place(place),
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
 
   int dev_cnt = phi::DeviceManager::GetDeviceCount(place.GetDeviceType());
@@ -172,9 +172,9 @@ CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(
     const phi::Place& place) {
   auto& pool = GetMap();
   PADDLE_ENFORCE_EQ(
-      platform::is_custom_place(place),
+      phi::is_custom_place(place),
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
   if (pool.find(place.GetDeviceType()) == pool.end()) {
     pool.insert(
@@ -184,16 +184,16 @@ CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(
          ++i) {
       pool[place.GetDeviceType()].emplace_back(
           new CustomDeviceEventResourcePool(
-              paddle::platform::CustomPlace(place.GetDeviceType(), i)));
+              phi::CustomPlace(place.GetDeviceType(), i)));
     }
   }
   PADDLE_ENFORCE_LT(
       place.GetDeviceId(),
       pool[place.GetDeviceType()].size(),
-      platform::errors::OutOfRange("Device id is out of range, device id shall "
-                                   "be less than %d, but received %d. ",
-                                   pool[place.GetDeviceType()].size(),
-                                   place.GetDeviceId()));
+      phi::errors::OutOfRange("Device id is out of range, device id shall "
+                              "be less than %d, but received %d. ",
+                              pool[place.GetDeviceType()].size(),
+                              place.GetDeviceId()));
   return *pool[place.GetDeviceType()][place.GetDeviceId()];
 }
 
@@ -202,12 +202,12 @@ std::shared_ptr<CustomDeviceEventObject> CustomDeviceEventResourcePool::New(
   PADDLE_ENFORCE_GE(
       dev_idx,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
       dev_idx,
       pool_.size(),
-      platform::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
           pool_.size(),
           dev_idx));

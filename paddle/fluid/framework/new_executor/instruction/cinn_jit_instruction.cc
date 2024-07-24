@@ -16,7 +16,6 @@
 
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/errors.h"
 #include "paddle/common/performance_statistician.h"
@@ -25,7 +24,8 @@
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #endif
 PD_DECLARE_bool(cinn_bucket_compile);
-PD_DECLARE_bool(cinn_enable_config_search);
+PD_DECLARE_bool(cinn_measure_kernel_time);
+PD_DECLARE_string(tile_config_policy);
 PD_DECLARE_string(cinn_kernel_execution_label);
 
 namespace paddle {
@@ -68,12 +68,46 @@ class CinnJitInstruction::FnPtrImpl {
     }
 
     // 3. Launch host kernel
-    if (is_gpu) {
-      ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
-          static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+    if (FLAGS_cinn_measure_kernel_time ||
+        FLAGS_tile_config_policy == "search") {
+      VLOG(3) << "enter searching config branch";
+      ::common::PerformanceStatistician& ps =
+          ::common::PerformanceStatistician::Instance();
+      auto data_p = static_cast<void*>(func_args_.data());
+      cudaStream_t stream;
+      cudaStreamCreate(&stream);
+      cudaDeviceSynchronize();
+      if (is_gpu) {
+        ps.SetGraphNodesNum(25);
+        int graph_nodes_num = ps.GetGraphNodesNum();
+        cudaGraph_t graph;
+        cudaGraphExec_t instance;
+        cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+        for (int ikrnl = 0; ikrnl < graph_nodes_num; ikrnl++) {
+          ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
+              static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+        }
+        cudaStreamEndCapture(stream, &graph);
+        cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+        ps.CudaStart(FLAGS_cinn_kernel_execution_label);
+        cudaGraphLaunch(instance, stream);
+        ps.CudaEnd(FLAGS_cinn_kernel_execution_label);
+        cudaGraphDestroy(graph);
+        cudaGraphExecDestroy(instance);
+        cudaStreamDestroy(stream);
+      } else {
+        ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+      }
+      cudaDeviceSynchronize();
     } else {
-      ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
-          static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+      if (is_gpu) {
+        ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+      } else {
+        ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+      }
     }
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
   }
@@ -136,7 +170,7 @@ class CinnJitInstruction::FnPtrImpl {
 
 CinnJitInstruction::CinnJitInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     ::pir::Operation* op,
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
@@ -195,6 +229,7 @@ void CinnJitInstruction::Run() {
 #if defined(PADDLE_WITH_CUDA)
   void* running_stream = nullptr;
   bool is_gpu = false;
+
   if (place_.GetType() == phi::AllocationType::GPU) {
     is_gpu = true;
     running_stream =
@@ -210,16 +245,7 @@ void CinnJitInstruction::Run() {
   }
 
   // 2. exexute kernel
-  if (FLAGS_cinn_enable_config_search) {
-    ::common::PerformanceStatistician& ps =
-        ::common::PerformanceStatistician::Instance();
-    ps.Start(FLAGS_cinn_kernel_execution_label);
-    fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
-    cudaDeviceSynchronize();
-    ps.End(FLAGS_cinn_kernel_execution_label);
-  } else {
-    fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
-  }
+  fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support non-CUDA kernel";
