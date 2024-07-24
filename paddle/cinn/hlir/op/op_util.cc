@@ -32,8 +32,11 @@ CINNSchedule GetElementwiseScheduleFunc(
     CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is "
                             "empty! Please check.\n";
     cinn::common::CINNValuePack arg_pack = args[0];
-    PADDLE_ENFORCE_GT(arg_pack.size(), 0U, platform::errors::InvalidArgument(
-                                            "arg_pack.size() must contains at least one element."))
+    PADDLE_ENFORCE_GT(
+        arg_pack.size(),
+        0U,
+        platform::errors::InvalidArgument(
+            "arg_pack.size() must contains at least one element."))
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
       if (arg_pack[i].is_expr()) {
