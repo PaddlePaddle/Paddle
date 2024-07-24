@@ -1906,7 +1906,20 @@ def generate_stub_files(paddle_binary_dir, paddle_source_dir):
         output_dir=paddle_binary_dir + '/python/paddle/_typing/libs/',
         module_name='paddle.base.libpaddle',
         ignore_all_errors=True,
-        is_dir=True,
+        ops_yaml=[
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/ops.yaml;paddle.base.libpaddle.eager.ops",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/ops.yaml;paddle.base.libpaddle.pir.ops",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/sparse_ops.yaml;paddle.base.libpaddle.eager.ops;sparse",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/sparse_ops.yaml;paddle.base.libpaddle.pir.ops;sparse",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.eager.ops;strings",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.pir.ops;strings",
+        ],
     )
 
     libpaddle_dst = paddle_source_dir + '/python/paddle/_typing/libs/libpaddle'
