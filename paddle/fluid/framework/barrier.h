@@ -33,24 +33,24 @@ class Barrier {
  public:
   explicit Barrier(int count = 1) {
 #ifdef _LINUX
-    CHECK_GE(count, 1);
+    PADDLE_ENFORCE_GE(count, 1UL);
     int ret = pthread_barrier_init(&_barrier, NULL, count);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(0UL, ret);
 #endif
   }
   ~Barrier() {
 #ifdef _LINUX
     int ret = pthread_barrier_destroy(&_barrier);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(0UL, ret);
 #endif
   }
   void reset(int count) {
 #ifdef _LINUX
-    CHECK_GE(count, 1);
+    PADDLE_ENFORCE_GE(count, 1UL);
     int ret = pthread_barrier_destroy(&_barrier);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(0UL, ret);
     ret = pthread_barrier_init(&_barrier, NULL, count);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(0UL, ret);
 #endif
   }
 
@@ -58,7 +58,7 @@ class Barrier {
 #ifdef _LINUX
     int err = pthread_barrier_wait(&_barrier);
     err = pthread_barrier_wait(&_barrier);
-    CHECK_EQ(true, (err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD));
+    PADDLE_ENFORCE_EQ(true, (err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD));
 #endif
   }
 
@@ -86,32 +86,32 @@ class Semaphore {
   Semaphore() {
 #ifdef _LINUX
     int ret = sem_init(&_sem, 0, 0);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(0UL, ret);
 #endif
   }
   ~Semaphore() {
 #ifdef _LINUX
     int ret = sem_destroy(&_sem);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(0UL, ret);
 #endif
   }
   void post() {
 #ifdef _LINUX
     int ret = sem_post(&_sem);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(0UL, ret);
 #endif
   }
   void wait() {
 #ifdef _LINUX
     int ret = ignore_signal_call(sem_wait, &_sem);
-    CHECK_EQ(0, ret);
+    PADDLE_ENFORCE_EQ(0UL, ret);
 #endif
   }
   bool try_wait() {
     int err = 0;
 #ifdef _LINUX
     err = ignore_signal_call(sem_trywait, &_sem);
-    CHECK_EQ(true, (err == 0 || errno == EAGAIN));
+    PADDLE_ENFORCE_EQ(true, (err == 0 || errno == EAGAIN));
 #endif
     return err == 0;
   }
