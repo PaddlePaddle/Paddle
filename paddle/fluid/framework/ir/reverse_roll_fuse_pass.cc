@@ -83,7 +83,7 @@ ReverseRollFusePass::ReverseRollFusePass() {  // NOLINT
 int ReverseRollFusePass::ApplyPattern(ir::Graph* graph, bool with_roll) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input graph of ReverseRollFusePass should not be "
           "nullptr."));
   GraphPatternDetector gpd;

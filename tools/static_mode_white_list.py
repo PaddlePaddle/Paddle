@@ -531,7 +531,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_squared_mat_sub_fuse_pass',
     'test_transpose_flatten_concat_fuse_pass',
     'test_detection_map_op',
-    'test_fuse_elewise_add_act_pass',
+    'test_fuse_elewise_add_act_pass_deprecated',
     'test_fusion_seqexpand_concat_fc_op',
     'test_match_matrix_tensor_op',
     'test_matmul_op_with_head',

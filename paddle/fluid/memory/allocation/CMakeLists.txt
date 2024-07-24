@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(ALLOCATOR_DEPS place profiler phi common device_context)
+set(ALLOCATOR_DEPS profiler phi common device_context)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc

@@ -32,14 +32,10 @@ cc_test(
   SRCS os_info_test.cc
   DEPS phi common)
 
-cc_library(
-  place
-  SRCS place.cc
-  DEPS enforce phi common)
 cc_test(
   place_test
   SRCS place_test.cc
-  DEPS place glog phi common)
+  DEPS glog phi common)
 
 if(WITH_ONEDNN)
   set(ONEDNN_CTX_DEPS onednn)
@@ -120,7 +116,6 @@ cc_library(
        allocator
        xxhash
        ${STREAM_CALLBACK_DEPS}
-       place
        eigen3
        cpu_helper
        framework_proto
@@ -160,7 +155,7 @@ set(DEVICE_EVENT_LIBS)
 cc_library(
   device_event_base
   SRCS device_event_base.cc
-  DEPS place enforce device_context op_registry common)
+  DEPS enforce device_context op_registry phi common)
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
@@ -247,7 +242,6 @@ cc_library(
   SRCS lodtensor_printer.cc
   DEPS phi
        common
-       place
        tensor
        scope
        lod_tensor
