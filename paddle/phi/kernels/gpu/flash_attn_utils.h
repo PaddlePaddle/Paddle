@@ -14,14 +14,17 @@
 
 #pragma once
 
+#include "flash_attn.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-
 #ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
 #endif
+
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -52,231 +55,305 @@ static std::pair<uint64_t, uint64_t> GenerateRNGState(
   }
 }
 
-static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
-  std::vector<int64_t> mask_dim_4d;
-  if (attn_mask) {
-    const auto& origin_dims = attn_mask->dims();
-    auto rank = origin_dims.size();
-    PADDLE_ENFORCE_GE(
-        rank,
-        4,
-        phi::errors::InvalidArgument(
-            "The number of dimensions of attn_mask is expected to be greater "
-            "or equal to 4, but recieved %d. The shape of attn_mask is {%s}",
-            rank,
-            origin_dims));
-
-    int64_t first_dim = 1;
-    for (int i = 0; i < rank - 3; i++) {
-      first_dim *= origin_dims[i];
-    }
-    mask_dim_4d = {first_dim,
-                   origin_dims[rank - 3],
-                   origin_dims[rank - 2],
-                   origin_dims[rank - 1]};
+template <typename T>
+mcflashattnDataType_t McFLashAttnTypeTraits(T& _tensor) {
+  phi::DataType dtype = _tensor.dtype();
+  switch (dtype) {
+    case phi::DataType::FLOAT16:
+      return MCFLASHATTN_DATATYPE_FP16;
+    case phi::DataType::BFLOAT16:
+      return MCFLASHATTN_DATATYPE_BF16;
+    case phi::DataType::INT8:
+      return MCFLASHATTN_DATATYPE_INT8;
+    case phi::DataType::INT32:
+      return MCFLASHATTN_DATATYPE_INT32;
+    case phi::DataType::INT64:
+      return MCFLASHATTN_DATATYPE_INT64;
+    case phi::DataType::FLOAT32:
+      return MCFLASHATTN_DATATYPE_FP32;
+    case phi::DataType::FLOAT64:
+      return MCFLASHATTN_DATATYPE_FP64;
+    default:
+      return MCFLASHATTN_DATATYPE_NONE;
   }
-  return mask_dim_4d;
+}
+
+template <typename T>
+Tensor_t DenseTensorToMcFLashAttnTensor(T& _tensor) {
+  PADDLE_ENFORCE_EQ(
+      _tensor.meta().is_contiguous(),
+      true,
+      phi::errors::InvalidArgument("McFLashAttnTensor must be contiguous."));
+  DDim tensor_dim = _tensor.dims();
+  mcflashattnDataType_t _dtype = McFLashAttnTypeTraits(_tensor);
+  int dim_num = tensor_dim.size();
+  void* data_ptr = const_cast<void*>(_tensor.data());
+  PADDLE_ENFORCE_NE(
+      data_ptr,
+      nullptr,
+      phi::errors::InvalidArgument("McFLashAttnTensor must not be nullptr."));
+  switch (dim_num) {
+    case 1:
+      return phi::dynload::make_contiguous_tensor1d(
+          data_ptr, _dtype, tensor_dim[0]);
+    case 2:
+      return phi::dynload::make_contiguous_tensor2d(
+          data_ptr, _dtype, tensor_dim[0], tensor_dim[1]);
+    case 3:
+      return phi::dynload::make_contiguous_tensor3d(
+          data_ptr, _dtype, tensor_dim[0], tensor_dim[1], tensor_dim[2]);
+    case 4:
+      return phi::dynload::make_contiguous_tensor4d(data_ptr,
+                                                    _dtype,
+                                                    tensor_dim[0],
+                                                    tensor_dim[1],
+                                                    tensor_dim[2],
+                                                    tensor_dim[3]);
+    default:
+      PADDLE_THROW(
+          "McFLashAttnTensors must have dimensions more than 0 and less than "
+          "5.");
+      return nullptr;
+  }
 }
 
 struct FlashAttnParamsBase {
-  int batch_size;
-  // for padded kernel, max_seqlen_q and seqlen_q is the same.
-  int64_t max_seqlen_q;
-  // for padded kernel, max_seqlen_k and seqlen_k is the same.
-  int64_t max_seqlen_k;
-  int num_heads;
-  int num_heads_k;
-  int head_size;
+  int64_t num_heads;
+  int64_t num_heads_k;
+  int64_t head_size;
+  int64_t batch_size;
+  int64_t seqlen_q;
+  int64_t seqlen_k;
 
-  int seqlen_q_rounded;
-  int seqlen_k_rounded;
-  int head_size_rounded;
+  Tensor_t q;
+  Tensor_t k;
+  Tensor_t v;
+  Tensor_t out;
+  Tensor_t alibi_slopes =
+      nullptr;  // alibi now use atten_mask rather than alibi_slops
 
-  bool is_bf16;
+  float p_dropout;
   float softmax_scale;
-  std::vector<int64_t> softmax_lse_dims;
+  bool is_causal;
+  int window_size_left = -1;  // do not support
+  int window_size_right = -1;
+  cudaStream_t stream;
+  mcflashattnExtendParameter_t extend_parameter = nullptr;
 
-  bool causal;
-  std::vector<int64_t> mask_dims;
-  const DenseTensor* attn_mask_tensor;
+  int64_t* seed_offset_data;
+  FlashAttnParamsBase(const GPUContext& ctx,
+                      const DenseTensor& _q,
+                      const DenseTensor& _k,
+                      const DenseTensor& _v,
+                      const DenseTensor& _out,
+                      const bool _is_test,
+                      const float _p_dropout,
+                      const bool _is_causal)
+      : is_causal(_is_causal), stream(ctx.stream()) {
+    // q, k, v [batch_size, seq_len, num_heads, head_dim]
+    const auto& dims = _q.dims();
+    PADDLE_ENFORCE_EQ(dims.size(),
+                      4,
+                      phi::errors::InvalidArgument(
+                          "flash_attn receive input with dim "
+                          "[batch_size, seq_len, num_heads, head_dim]"));
 
-  FlashAttnParamsBase(const int _batch_size,
-                      const int64_t _max_seqlen_q,
-                      const int64_t _max_seqlen_k,
-                      const int _num_heads,
-                      const int _num_heads_k,
-                      const int _head_size,
-                      const float _scale,
-                      const bool _causal,
-                      const DataType q_dtype,
-                      const paddle::optional<DenseTensor>& attn_mask)
-      : batch_size(_batch_size),
-        max_seqlen_q(_max_seqlen_q),
-        max_seqlen_k(_max_seqlen_k),
-        num_heads(_num_heads),
-        num_heads_k(_num_heads),
-        head_size(_head_size),
-        softmax_scale(_scale),
-        causal(_causal),
-        attn_mask_tensor(attn_mask.get_ptr()) {
-    is_bf16 = q_dtype == DataType::BFLOAT16;
+    batch_size = dims[0];
+    seqlen_q = dims[1];
+    num_heads = dims[2];
+    head_size = dims[3];
+    seqlen_k = _k.dims()[1];
+    num_heads_k = _k.dims()[2];
+    softmax_scale = 1.0f / std::sqrt(head_size);
+    p_dropout = _is_test ? 0.0f : _p_dropout;
+    q = DenseTensorToMcFLashAttnTensor(_q);
+    k = DenseTensorToMcFLashAttnTensor(_k);
+    v = DenseTensorToMcFLashAttnTensor(_v);
+    out = DenseTensorToMcFLashAttnTensor(_out);
+  }
+  ~FlashAttnParamsBase() {
+    phi::dynload::release_tensor(
+        q);  // won't release tensor memory, only release info of tensor_t
+    phi::dynload::release_tensor(k);
+    phi::dynload::release_tensor(v);
+    phi::dynload::release_tensor(out);
+    phi::dynload::release_tensor(alibi_slopes);
+    // phi::dynload::release_extend_para(extend_parameter);
+  }
+};
+template <typename T>
+struct FlashAttnParamsFwd : public FlashAttnParamsBase {
+  Tensor_t attn_mask;
+  Tensor_t p;  // return softmax
+  Tensor_t rng_state;
+  Tensor_t softmax_lse;
 
-    auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-    head_size_rounded = round_multiple(head_size, 32);
-    seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
-    seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
-
-    softmax_lse_dims = {batch_size, num_heads, seqlen_q_rounded};
-
-    if (attn_mask_tensor) {
-      PADDLE_ENFORCE_NE(causal,
+  FlashAttnParamsFwd(const GPUContext& ctx,
+                     const paddle::optional<DenseTensor>& _attn_mask,
+                     bool _return_softmax,
+                     DenseTensor& _softmax,
+                     const DenseTensor& _q,
+                     const DenseTensor& _k,
+                     const DenseTensor& _v,
+                     DenseTensor& _out,
+                     DenseTensor& _softmax_lse,
+                     bool _is_test,
+                     float _p_dropout,
+                     bool _is_causal,
+                     const paddle::optional<DenseTensor>& _fixed_seed_offset,
+                     DenseTensor& _seed_offset,
+                     const std::string& _rng_name)
+      : FlashAttnParamsBase(
+            ctx, _q, _k, _v, _out, _is_test, _p_dropout, _is_causal) {
+    if (_attn_mask.get_ptr()) {
+      PADDLE_ENFORCE_NE(_is_causal,
                         true,
                         phi::errors::InvalidArgument(
                             "When attn_mask is set, causal can not be true."));
 
       PADDLE_ENFORCE_EQ(
-          attn_mask->dtype(),
-          q_dtype,
+          _attn_mask->dtype(),
+          _q.dtype(),
           phi::errors::InvalidArgument(
               "attn_mask is expected to have the same data type with q."));
-
-      mask_dims = GetAttnMaskDims(attn_mask_tensor);
+      attn_mask = DenseTensorToMcFLashAttnTensor(_attn_mask.get());
+    } else {
+      attn_mask = nullptr;
     }
-  }
-};
+    auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+    int head_size_rounded = round_multiple(head_size, 32);
+    int seqlen_q_rounded = round_multiple(seqlen_q, 128);
+    int seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
-template <typename T>
-struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
-  float dropout;
-  bool return_softmax;
-  uint64_t seed;
-  uint64_t offset;
-  DenseTensor rng_state;
-  DenseTensor* softmax;
-  DenseTensor* softmax_lse;
-  DenseTensor* seed_offset;
-
-  FlashAttnFwdParamsV2(const GPUContext& ctx,
-                       const int _batch_size,
-                       const int64_t _max_seqlen_q,
-                       const int64_t _max_seqlen_k,
-                       const int _num_heads,
-                       const int _num_heads_k,
-                       const int _head_size,
-                       const float _dropout,
-                       const float _scale,
-                       const bool _causal,
-                       const bool _return_softmax,
-                       const DataType q_dtype,
-                       const bool is_test,
-                       const std::string& rng_name,
-                       const paddle::optional<DenseTensor>& fixed_seed_offset,
-                       const paddle::optional<DenseTensor>& attn_mask,
-                       DenseTensor* _softmax,
-                       DenseTensor* _softmax_lse,
-                       DenseTensor* _seed_offset)
-      : FlashAttnParamsBase(_batch_size,
-                            _max_seqlen_q,
-                            _max_seqlen_k,
-                            _num_heads,
-                            _num_heads_k,
-                            _head_size,
-                            _scale,
-                            _causal,
-                            q_dtype,
-                            attn_mask),
-        dropout(_dropout),
-        return_softmax(_return_softmax),
-        softmax(_softmax),
-        softmax_lse(_softmax_lse),
-        seed_offset(_seed_offset) {
-    dropout = is_test ? 0.0f : _dropout;
-
-    // (umiswing): There is no suitable kernel for uint64_t, allocate in int64_t
-    // with the same size.
-    rng_state = Empty<int64_t>(ctx, {2});
-
-    auto seed_offset_pair = GenerateRNGState(
-        ctx, fixed_seed_offset, rng_name, batch_size, num_heads);
-    seed = seed_offset_pair.first;
-    offset = seed_offset_pair.second;
-
-    seed_offset->Resize({2});
-    int64_t* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
-    seed_offset_data[0] = static_cast<int64_t>(seed);
-    seed_offset_data[1] = static_cast<int64_t>(offset);
-
-    softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
-    ctx.template Alloc<float>(softmax_lse);
-
-    if (return_softmax) {
+    std::vector<int64_t> softmax_lse_dims = {
+        batch_size, num_heads, seqlen_q_rounded};
+    _softmax_lse.Resize(phi::make_ddim(softmax_lse_dims));
+    ctx.template Alloc<float>(&_softmax_lse);
+    softmax_lse = DenseTensorToMcFLashAttnTensor(_softmax_lse);
+    if (_return_softmax) {
       PADDLE_ENFORCE_EQ(
-          dropout > 0.0f,
+          _p_dropout > 0.0f,
           true,
           phi::errors::InvalidArgument(
               "return_softmax is only supported when dropout > 0.0"));
 
-      softmax->Resize(
+      _softmax.Resize(
           {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
-      ctx.template Alloc<T>(softmax);
+      ctx.template Alloc<T>(&_softmax);
+      p = DenseTensorToMcFLashAttnTensor(_softmax);
     }
+    else{
+      p = nullptr;
+    }
+
+    _seed_offset.Resize({2});
+    seed_offset_data = ctx.template HostAlloc<int64_t>(&_seed_offset);
+    std::tie(seed_offset_data[0], seed_offset_data[1]) = GenerateRNGState(
+        ctx, _fixed_seed_offset, _rng_name, batch_size, num_heads);
+    rng_state = phi::dynload::make_contiguous_tensor1d(
+        seed_offset_data, MCFLASHATTN_DATATYPE_INT64, 2);
+  }
+
+  ~FlashAttnParamsFwd() {
+    phi::dynload::release_tensor(attn_mask);
+    phi::dynload::release_tensor(p);  // return softmax
+    phi::dynload::release_tensor(rng_state);
+    phi::dynload::release_tensor(softmax_lse);
   }
 };
 
-struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
-  float dropout;
-  uint64_t seed;
-  uint64_t offset;
-  DenseTensor softmax_d;
-  DenseTensor dq_accum;
-  DenseTensor rng_state;
+struct FlashAttnParamsBwd : public FlashAttnParamsBase {
+  Tensor_t attn_mask;
+  Tensor_t softmax_d;
+  Tensor_t rng_state;
+  Tensor_t dout;
+  Tensor_t out;
+  Tensor_t dq;
+  Tensor_t dk;
+  Tensor_t dv;
+  Tensor_t dq_accum;
+  Tensor_t softmax_lse;
+  bool deterministic;
+  FlashAttnParamsBwd(const GPUContext& ctx,
+                     const paddle::optional<DenseTensor>& _attn_mask,
+                     const DenseTensor& _dout,
+                     const DenseTensor& _q,
+                     const DenseTensor& _k,
+                     const DenseTensor& _v,
+                     const DenseTensor& _out,
+                     const DenseTensor& _softmax_lse,
+                     const DenseTensor& _seed_offset_data,
+                     DenseTensor& _dq,
+                     DenseTensor& _dk,
+                     DenseTensor& _dv,
+                     float _p_dropout,
+                     bool _is_causal)
+      : FlashAttnParamsBase(
+            ctx, _q, _k, _v, _out, false, _p_dropout, _is_causal) {
+    if (_attn_mask.get_ptr()) {
+      PADDLE_ENFORCE_NE(_is_causal,
+                        true,
+                        phi::errors::InvalidArgument(
+                            "When attn_mask is set, causal can not be true."));
 
-  FlashAttnBwdParamsV2(const GPUContext& ctx,
-                       const int _batch_size,
-                       const int64_t _max_seqlen_q,
-                       const int64_t _max_seqlen_k,
-                       const int _num_heads,
-                       const int _num_heads_k,
-                       const int _head_size,
-                       const float _dropout,
-                       const float _scale,
-                       const bool _causal,
-                       const DataType q_dtype,
-                       const paddle::optional<DenseTensor>& attn_mask,
-                       const int64_t* seed_offset_data)
-      : FlashAttnParamsBase(_batch_size,
-                            _max_seqlen_q,
-                            _max_seqlen_k,
-                            _num_heads,
-                            _num_heads_k,
-                            _head_size,
-                            _scale,
-                            _causal,
-                            q_dtype,
-                            attn_mask),
-        dropout(_dropout) {
-    seed = static_cast<uint64_t>(seed_offset_data[0]);
-    offset = static_cast<uint64_t>(seed_offset_data[1]);
+      PADDLE_ENFORCE_EQ(
+          _attn_mask->dtype(),
+          _q.dtype(),
+          phi::errors::InvalidArgument(
+              "attn_mask is expected to have the same data type with q."));
+      attn_mask = DenseTensorToMcFLashAttnTensor(_attn_mask.get());
+    } else {
+      attn_mask = nullptr;
+    }
+    dout = DenseTensorToMcFLashAttnTensor(_dout);
+    dq = DenseTensorToMcFLashAttnTensor(_dq);
+    dk = DenseTensorToMcFLashAttnTensor(_dk);
+    dv = DenseTensorToMcFLashAttnTensor(_dv);
+    out = DenseTensorToMcFLashAttnTensor(_out);
+    softmax_lse = DenseTensorToMcFLashAttnTensor(_softmax_lse);
+    rng_state = DenseTensorToMcFLashAttnTensor(_seed_offset_data);
+    deterministic = FLAGS_cudnn_deterministic;
+    auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+    int head_size_rounded = round_multiple(head_size, 32);
+    int seqlen_q_rounded = round_multiple(seqlen_q, 128);
+    int seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
-    // (umiswing): There is no suitable kernel for uint64_t, allocate in int64_t
-    // with the same size.
-    rng_state = Empty<int64_t>(ctx, {2});
-
+    std::vector<int64_t> softmax_lse_dims = {
+        batch_size, num_heads, seqlen_q_rounded};
     // gradient of softmax_lse
-    softmax_d = Empty<float>(ctx, softmax_lse_dims);
+    _softmax_d = Empty<float>(ctx, softmax_lse_dims);
+    softmax_d = DenseTensorToMcFLashAttnTensor(_softmax_d);
 
     // an internal gradient of q, which will be further accumulated.
-    dq_accum = Empty<float>(
+    _dq_accum = Empty<float>(
         ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
+    dq_accum = DenseTensorToMcFLashAttnTensor(_dq_accum);
   }
+
+  ~FlashAttnParamsBwd() {
+    phi::dynload::release_tensor(attn_mask);
+    phi::dynload::release_tensor(softmax_d);
+    phi::dynload::release_tensor(rng_state);
+    phi::dynload::release_tensor(dout);
+    phi::dynload::release_tensor(out);
+    phi::dynload::release_tensor(dq);
+    phi::dynload::release_tensor(dk);
+    phi::dynload::release_tensor(dv);
+    phi::dynload::release_tensor(dq_accum);
+    phi::dynload::release_tensor(softmax_lse);
+  }
+
+ private:
+  DenseTensor _softmax_d;
+  DenseTensor _dq_accum;
 };
 
-static void CheckFlashAttnStatus(const bool status) {
-  PADDLE_ENFORCE_EQ(status,
-                    true,
-                    phi::errors::External(
-                        "Error in Flash-Attention, detail information is: %s",
-                        phi::dynload::flash_attn_error()));
+static void CheckFlashAttnStatus(const mcflashattnStatus_t status) {
+  PADDLE_ENFORCE_EQ(
+      status,
+      MCFLASHATTN_STATUS_SUCCESS,
+      phi::errors::External("Error in MC-Flash-Attention, error code is %d",
+                            status));
 }
 #endif
 

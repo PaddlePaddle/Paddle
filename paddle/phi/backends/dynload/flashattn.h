@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
-#include "flashattn/FlashAttention2/include/flash_attn.h"
+#include "flash_attn.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
@@ -43,14 +43,21 @@ extern void* flashattn_dso_handle;
 #define DECLARE_DYNAMIC_LOAD_FLASHATTN_WRAP(__name) \
   DYNAMIC_LOAD_FLASHATTN_WRAP(__name)
 
-#define FLASHATTN_ROUTINE_EACH(__macro)       \
-  __macro(flash_attn_fwd);                    \
-  __macro(flash_attn_varlen_fwd);             \
-  __macro(flash_attn_bwd);                    \
-  __macro(flash_attn_varlen_bwd);             \
-  __macro(flash_attn_fwd_with_bias_and_mask); \
-  __macro(flash_attn_bwd_with_bias_and_mask); \
-  __macro(flash_attn_error);
+#define FLASHATTN_ROUTINE_EACH(__macro) \
+  __macro(mha_fwd);                     \
+  __macro(mha_varlen_fwd);              \
+  __macro(mha_bwd);                     \
+  __macro(mha_varlen_bwd);              \
+  __macro(make_contiguous_tensor1d);    \
+  __macro(make_contiguous_tensor2d);    \
+  __macro(make_contiguous_tensor3d);    \
+  __macro(make_contiguous_tensor4d);    \
+  __macro(make_tensor1d);               \
+  __macro(make_tensor2d);               \
+  __macro(make_tensor3d);               \
+  __macro(make_tensor4d);               \
+  __macro(print_tensor_info);           \
+  __macro(release_tensor);
 
 FLASHATTN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_FLASHATTN_WRAP);
 

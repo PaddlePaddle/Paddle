@@ -503,7 +503,7 @@ void* GetFlashAttnDsoHandle() {
 #elif defined(_WIN32)
   return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn.dll");
 #else
-  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.so");
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libmcFlashAttn.so");
 #endif
 }
 

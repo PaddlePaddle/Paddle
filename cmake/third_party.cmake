@@ -569,7 +569,6 @@ if(WITH_GPU
     foreach(arch ${NVCC_ARCH_BIN})
       if(${arch} GREATER_EQUAL 80)
         include(external/flashattn)
-        list(APPEND third_party_deps extern_flashattn)
         set(WITH_FLASHATTN ON)
         break()
       endif()

@@ -16,19 +16,11 @@
 #include "glog/logging.h"  // For VLOG()
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 
-PD_DECLARE_bool(cudnn_deterministic);
-
 namespace phi {
-
-int get_num_split() {
-  // 0 for an internal heuristic, which is optimal
-  return FLAGS_cudnn_deterministic ? 1 : 0;
-}
 
 template <typename T, typename Context>
 void FlashAttnUnpaddedGradKernel(const Context& ctx,
@@ -50,54 +42,35 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dq,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
-#ifdef PADDLE_WITH_FLASHATTN
-  void* dq_ptr = nullptr;
-  void* dk_ptr = nullptr;
-  void* dv_ptr = nullptr;
-
+#if 0
   ctx.template Alloc<T>(dq);
-  dq_ptr = dq->data();
-
   DenseTensor dk_tmp;
   if (dk) {
     ctx.template Alloc<T>(dk);
-    dk_ptr = dk->data();
+    dk_tmp = *dk;
   } else {
     dk_tmp = EmptyLike<T, Context>(ctx, k);
-    dk_ptr = dk_tmp.data();
   }
 
   DenseTensor dv_tmp;
   if (dv) {
     ctx.template Alloc<T>(dv);
-    dv_ptr = dv->data();
+    dv_tmp = *dv;
   } else {
     dv_tmp = EmptyLike<T, Context>(ctx, v);
-    dv_ptr = dv_tmp.data();
   }
-
-  const cudaStream_t stream = ctx.stream();
-
-  // q,k,v [total_*, num_heads, head_dim]
-  auto dims = q.dims();
-
-  const int64_t batch_size = cu_seqlens_q.numel() - 1;
-  const int64_t num_heads = dims[1];
-  const int64_t head_size_og = dout.dims()[2];
-  const int64_t head_size = dims[2];
-  const int64_t num_heads_k = k.dims()[1];
 
   int num_splits = get_num_split();
 
   // TODO(umiswing): add shape check
   PADDLE_ENFORCE_EQ(
-      head_size_og,
-      head_size,
+      q.dims()[2],
+      dout.dims()[2],
       phi::errors::InvalidArgument(
           "flash_attn_bwd receive input with head_size_og == head_size"));
 
-  FlashAttnBwdParamsV2 params =
-      FlashAttnBwdParamsV2(ctx,
+  FlashAttnParamsBwd params =
+      FlashAttnParamsBwd(ctx,
                            batch_size,
                            max_seqlen_q,
                            max_seqlen_k,
@@ -171,115 +144,79 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dk,
                          DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
-  void* dq_ptr = nullptr;
-  void* dk_ptr = nullptr;
-  void* dv_ptr = nullptr;
 
   ctx.template Alloc<T>(dq);
-  dq_ptr = dq->data();
-
   DenseTensor dk_tmp;
   if (dk) {
     ctx.template Alloc<T>(dk);
-    dk_ptr = dk->data();
+    dk_tmp = *dk;
   } else {
     dk_tmp = EmptyLike<T, Context>(ctx, k);
-    dk_ptr = dk_tmp.data();
   }
 
   DenseTensor dv_tmp;
   if (dv) {
     ctx.template Alloc<T>(dv);
-    dv_ptr = dv->data();
+    dv_tmp = *dv;
   } else {
     dv_tmp = EmptyLike<T, Context>(ctx, v);
-    dv_ptr = dv_tmp.data();
   }
-
-  const cudaStream_t stream = ctx.stream();
-
-  // q, k, v [batch_size, seq_len, num_heads, head_dim]
-  const auto& dims = q.dims();
-
-  const int64_t batch_size = dims[0];
-  const int64_t seqlen_q = dims[1];
-  const int64_t num_heads = dims[2];
-  const int64_t head_size_og = dout.dims()[3];
-  const int64_t head_size = dims[3];
-  const int64_t seqlen_k = k.dims()[1];
-  const int64_t num_heads_k = k.dims()[2];
 
   // TODO(umiswing): add shape check
   PADDLE_ENFORCE_EQ(
-      head_size_og,
-      head_size,
+      q.dims()[2],
+      dout.dims()[2],
       phi::errors::InvalidArgument(
           "flash_attn_bwd receive input with head_size_og == head_size"));
-
-  const float softmax_scale = 1.0f / std::sqrt(head_size);
-  const float softmax_unscale = std::sqrt(head_size);
-
-  FlashAttnBwdParamsV2 params =
-      FlashAttnBwdParamsV2(ctx,
-                           batch_size,
-                           seqlen_q,
-                           seqlen_k,
-                           num_heads,
-                           num_heads_k,
-                           head_size,
-                           dropout,
-                           softmax_scale,
-                           causal,
-                           q.dtype(),
-                           attn_mask,
-                           seed_offset.data<int64_t>());
+  // FlashAttnParamsBwd params = FlashAttnParamsBwd();
+  FlashAttnParamsBwd params = FlashAttnParamsBwd(ctx,
+                                                 attn_mask,
+                                                 dout,
+                                                 q,
+                                                 k,
+                                                 v,
+                                                 out,
+                                                 softmax_lse,
+                                                 seed_offset,
+                                                 *dq,
+                                                 dk_tmp,
+                                                 dv_tmp,
+                                                 dropout,
+                                                 causal);
 
   VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
            << k.dims() << "], v.shape=[" << v.dims() << "]";
   VLOG(10) << "[FlashAttn Forward] dropout=" << dropout
-           << ", seed=" << params.seed << ", offset=" << params.offset;
-  VLOG(10) << "[FlashAttn Forward] softmax_scale=" << softmax_scale
-           << ", softmax_unscale=" << softmax_unscale;
+           << ", seed=" << params.seed_offset_data[0]
+           << ", offset=" << params.seed_offset_data[1];
+  VLOG(10) << "[FlashAttn Forward] softmax_scale=" << params.softmax_scale;
   if (attn_mask.get_ptr()) {
     VLOG(10) << "[FlashAttn Backward] attn_mask.shape=["
              << (attn_mask.get_ptr())->dims() << "]";
   }
+  mcflashattnStatus_t succ = phi::dynload::mha_bwd(params.dout,
+                                                   params.q,
+                                                   params.k,
+                                                   params.v,
+                                                   params.out,
+                                                   params.softmax_d,
+                                                   params.softmax_lse,
+                                                   params.dq,
+                                                   params.dk,
+                                                   params.dv,
+                                                   params.dq_accum,
+                                                   params.alibi_slopes,
+                                                   params.attn_mask,
+                                                   params.rng_state,
+                                                   params.p_dropout,
+                                                   params.softmax_scale,
+                                                   params.is_causal,
+                                                   params.window_size_left,
+                                                   params.window_size_right,
+                                                   params.deterministic,
+                                                   params.stream,
+                                                   params.extend_parameter);
 
-  int num_splits = get_num_split();
-
-  bool succ = phi::dynload::flash_attn_bwd(
-      dout.data(),
-      q.data(),
-      k.data(),
-      v.data(),
-      out.data(),
-      params.softmax_d.data(),
-      softmax_lse.data(),
-      params.rng_state.data(),
-      dq_ptr,
-      dk_ptr,
-      dv_ptr,
-      params.dq_accum.data(),
-      params.batch_size,
-      params.max_seqlen_q,
-      params.max_seqlen_k,
-      params.seqlen_q_rounded,
-      params.seqlen_k_rounded,
-      params.num_heads,
-      params.num_heads_k,
-      params.head_size,
-      params.head_size_rounded,
-      params.dropout,
-      params.softmax_scale,
-      softmax_unscale,
-      params.causal,
-      params.is_bf16,
-      num_splits,
-      stream,
-      params.seed,
-      params.offset,
-      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
