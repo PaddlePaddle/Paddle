@@ -1085,6 +1085,13 @@ struct PirToPyCodeConverterHelper {
       ss << "self." << name << "()";
       return ss.str();
     }
+    std::string operator()(
+        TypeId<cinn::dialect::CINNKernelInplaceMapAttribute>) {
+      const auto& name = cinn::dialect::CINNKernelInplaceMapAttribute::name();
+      std::stringstream ss;
+      ss << "self." << name << "()";
+      return ss.str();
+    }
     std::string operator()(TypeId<UnclassifiedAttribute>) {
       return "self.UnclassifiedAttribute()";
     }

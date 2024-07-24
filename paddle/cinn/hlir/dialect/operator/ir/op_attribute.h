@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <unordered_map>
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/pir/include/core/attribute_base.h"
 
@@ -51,8 +52,25 @@ class CINNKernelInfoAttribute : public pir::Attribute {
   const cinn::hlir::framework::pir::CINNKernelInfo& data() const;
 };
 
+class CINNKernelInplaceMapAttribute : public pir::Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(CINNKernelInplaceMapAttribute,
+                                    CINNKernelInplaceMapAttributeStorage);
+
+  bool operator<(const CINNKernelInplaceMapAttribute& right) const {
+    return storage() < right.storage();
+  }
+
+  static std::string name() { return "a_cinn_kernel_inplace_map"; }
+
+  const std::unordered_map<int, int>& data() const;
+};
+
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupInfoAttribute)
 IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::CINNKernelInfoAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::CINNKernelInplaceMapAttribute)

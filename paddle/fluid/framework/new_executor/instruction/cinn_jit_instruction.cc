@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
@@ -168,6 +169,25 @@ class CinnJitInstruction::FnPtrImpl {
   std::vector<cinn_pod_value_t> func_args_;
 };
 
+bool IsInplace(::pir::Operation* op, int idx) {
+  if (!op->HasAttribute(cinn::dialect::JitKernelOp::kInplaceMapAttrName))
+    return false;
+  const std::unordered_map<int, int>& inplace_map =
+      op->attribute(cinn::dialect::JitKernelOp::kInplaceMapAttrName)
+          .dyn_cast<cinn::dialect::CINNKernelInplaceMapAttribute>()
+          .data();
+  return inplace_map.count(idx) > 0 && inplace_map.at(idx) < op->num_operands();
+}
+
+int GetInplaceInputId(::pir::Operation* op, int idx) {
+  if (!IsInplace(op, idx)) return -1;
+  const std::unordered_map<int, int>& inplace_map =
+      op->attribute(cinn::dialect::JitKernelOp::kInplaceMapAttrName)
+          .dyn_cast<cinn::dialect::CINNKernelInplaceMapAttribute>()
+          .data();
+  return inplace_map.at(idx);
+}
+
 CinnJitInstruction::CinnJitInstruction(
     size_t id,
     const phi::Place& place,
@@ -210,6 +230,12 @@ CinnJitInstruction::CinnJitInstruction(
                       ->Var(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
+    if (IsInplace(op, i)) {
+      int input_id = GetInplaceInputId(op, i);
+      share_data_tensor_map_[tensor] = tensor_args_[input_id];
+      continue;
+    }
+
     tensor_args_.push_back(tensor);
     auto alloc_tensor_type =
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -242,6 +268,10 @@ void CinnJitInstruction::Run() {
   }
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
     dev_ctx_->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
+  }
+
+  for (const auto item : share_data_tensor_map_) {
+    item.first->ShareDataWith(*item.second);
   }
 
   // 2. exexute kernel

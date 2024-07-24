@@ -120,12 +120,12 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
     };
     ir::ir_utils::CollectIRNodes(expr, InsertLoadTensorAndBufferNames);
 
-    auto IsShareBufferWithLoadedTensor =
-        [&](const ir::_Tensor_* tensor) -> bool {
-      return load_buffer_names.count(tensor->buffer->name) > 0;
-    };
     auto IsLoadedTensor = [&](const ir::_Tensor_* tensor) -> bool {
       return load_tensor_names.count(tensor->name) > 0;
+    };
+    auto IsShareBufferWithTensor = [&](const ir::_Tensor_* tensor) -> bool {
+      return load_buffer_names.count(tensor->buffer->name) > 0 ||
+             (tensor->buffer->name != "_" + tensor->name);
     };
     auto IsOutputTensor = [&](const ir::_Tensor_* tensor) -> bool {
       return output_names_.count(tensor->name) > 0;
@@ -133,7 +133,7 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
     auto IsDeadStore = [&](const ir::Store* store) -> bool {
       const ir::_Tensor_* tensor = store->tensor.as_tensor();
       return !IsOutputTensor(tensor) && !IsLoadedTensor(tensor) &&
-             !IsShareBufferWithLoadedTensor(tensor);
+             !IsShareBufferWithTensor(tensor);
     };
     auto InsertDeadStoreName = [&](const ir::Expr* x) -> bool {
       const ir::Store* store = x->As<ir::Store>();

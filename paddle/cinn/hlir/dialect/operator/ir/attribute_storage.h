@@ -122,5 +122,31 @@ struct CINNKernelInfoAttributeStorage : public pir::AttributeStorage {
   ParamKey data_;
 };
 
+struct CINNKernelInplaceMapAttributeStorage : public pir::AttributeStorage {
+  using ParamKey = std::unordered_map<int, int>;
+  explicit CINNKernelInplaceMapAttributeStorage(const ParamKey& key)
+      : data_(key) {}
+
+  static CINNKernelInplaceMapAttributeStorage* Construct(const ParamKey& key) {
+    return new CINNKernelInplaceMapAttributeStorage(key);
+  }
+
+  static std::size_t HashValue(const ParamKey& key) {
+    size_t hash_value = std::hash<std::size_t>()(key.size());
+    for (const auto& item : key) {
+      hash_value = pir::detail::hash_combine(
+          hash_value, std::hash<int>()(item.first * key.size() + item.second));
+    }
+    return hash_value;
+  }
+
+  bool operator==(const ParamKey& key) const { return data_ == key; }
+
+  const ParamKey& GetAsKey() const { return data_; }
+
+ private:
+  ParamKey data_;
+};
+
 }  // namespace dialect
 }  // namespace cinn

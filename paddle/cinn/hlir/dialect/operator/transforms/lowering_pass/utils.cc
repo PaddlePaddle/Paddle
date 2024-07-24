@@ -24,6 +24,7 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(enable_cinn_compile_cache);
@@ -58,6 +59,48 @@ std::vector<pir::Value> GetBlockOutsideInput(
   return vec_res;
 }
 
+std::unordered_map<int, int> GetInplaceIdxMap(const OpLoweringGroupPtr& group) {
+  std::unordered_map<pir::Value, pir::Value> inplace_map;
+  const auto GetInplaceMap = [&](pir::Operation* op) {
+    auto op_attrs = op->attributes();
+    std::string op_name = op->name();
+    VLOG(6) << "analyse op: " << op_name;
+    auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+    auto op_yaml_interface =
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+    if (op_yaml_interface == nullptr) return;
+    paddle::dialect::OpYamlInfoParser op_info_parser(
+        op_yaml_interface->get_op_info_(op_name));
+    for (auto [out_slot, in_slot] : op_info_parser.GetInplaceIdMap()) {
+      auto out_value = op->result(out_slot);
+      auto in_value = op->operand_source(in_slot);
+      inplace_map[out_value] = in_value;
+    }
+  };
+  group->WalkOps(GetInplaceMap);
+
+  std::unordered_map<int, int> inplace_idx_map;
+  for (const auto& item : inplace_map) {
+    int out_idx = -1, in_idx = -1;
+    std::vector<pir::Value> out_values = group->GetGroupOutputValues();
+    std::vector<pir::Value> in_values = group->GetInputOpValues();
+    for (int i = 0; i < out_values.size(); ++i) {
+      if (out_values[i] == item.first) {
+        out_idx = i;
+      }
+    }
+    for (int i = 0; i < in_values.size(); ++i) {
+      if (in_values[i] == item.second) {
+        in_idx = i;
+      }
+    }
+    if (out_idx != -1 && in_idx != -1) {
+      inplace_idx_map[out_idx] = in_idx;
+    }
+  }
+  return inplace_idx_map;
+}
+
 std::unordered_map<OpLoweringGroupPtr,
                    std::unordered_map<std::string, pir::Attribute>>
 CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list) {
@@ -69,10 +112,16 @@ CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list) {
       result;
   for (size_t i = 0; i < group_list.size(); ++i) {
     std::unordered_map<std::string, ::pir::Attribute> op_attrs{
-        {cinn::dialect::JitKernelOp::kAttrName,
+        {cinn::dialect::JitKernelOp::kKernelInfoAttrName,
          cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),
-                                                     fn_ptr_res[i])},
-    };
+                                                     fn_ptr_res[i])}};
+    std::unordered_map<int, int> inplace_idx_map =
+        GetInplaceIdxMap(group_list[i]);
+    if (!inplace_idx_map.empty()) {
+      op_attrs.insert({cinn::dialect::JitKernelOp::kInplaceMapAttrName,
+                       cinn::dialect::CINNKernelInplaceMapAttribute::get(
+                           pir::IrContext::Instance(), inplace_idx_map)});
+    }
     result.insert({group_list[i], op_attrs});
   }
   return result;
@@ -90,9 +139,15 @@ std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
     }
   };
   std::unordered_map<std::string, ::pir::Attribute> attrs{
-      {cinn::dialect::JitKernelOp::kAttrName,
+      {cinn::dialect::JitKernelOp::kKernelInfoAttrName,
        cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),
                                                    CreateKernelInfo())}};
+  std::unordered_map<int, int> inplace_idx_map = GetInplaceIdxMap(group);
+  if (!inplace_idx_map.empty()) {
+    attrs.insert({cinn::dialect::JitKernelOp::kInplaceMapAttrName,
+                  cinn::dialect::CINNKernelInplaceMapAttribute::get(
+                      pir::IrContext::Instance(), inplace_idx_map)});
+  }
   return attrs;
 }
 

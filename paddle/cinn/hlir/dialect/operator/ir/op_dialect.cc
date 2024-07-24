@@ -61,6 +61,7 @@ void OperatorDialect::initialize() {
   RegisterOp<GenerateXShapeOp>();
   RegisterAttribute<GroupInfoAttribute>();
   RegisterAttribute<CINNKernelInfoAttribute>();
+  RegisterAttribute<CINNKernelInplaceMapAttribute>();
 }
 
 void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {}
@@ -81,6 +82,14 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
 
     os << "(" << cinn_kernel_info.data().fn_ptr;
     os << ')';
+  } else if (attr.isa<CINNKernelInplaceMapAttribute>()) {
+    auto cinn_kernel_implace_map =
+        attr.dyn_cast<CINNKernelInplaceMapAttribute>().data();
+    os << "{";
+    for (const auto &item : cinn_kernel_implace_map) {
+      os << "{" << item.first << ", " << item.second << "}, ";
+    }
+    os << "}";
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "cinn dialect only support GroupInfo and CINNKernelInfo"));
