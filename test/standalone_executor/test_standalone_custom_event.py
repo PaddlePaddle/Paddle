@@ -187,8 +187,8 @@ class TestMannulEvent(unittest.TestCase):
                 apply_custom_stream=True, split_prog=True
             )
             manual_outs = self.run_program(
-                apply_custom_stream=True, 
-                split_prog=True, 
+                apply_custom_stream=True,
+                split_prog=True,
                 apply_manual_event=True,
             )
             for bl, out0, out1, out2 in zip(
