@@ -5601,10 +5601,7 @@ create_test_act_fp16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestCELU, check_pir=True)
 create_test_act_fp16_class(TestReciprocal, check_pir=True)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
-if core.is_compiled_with_rocm():
-    create_test_act_fp16_class(TestLog2, check_pir=True)
-else:
-    create_test_act_fp16_class(TestLog2, check_pir=True)
+create_test_act_fp16_class(TestLog2, check_pir=True)
 create_test_act_fp16_class(TestLog10, check_pir=True)
 create_test_act_fp16_class(TestLog1p, check_pir=True)
 create_test_act_fp16_class(TestSquare, check_pir=True, check_prim_pir=True)
@@ -5773,10 +5770,7 @@ create_test_act_bf16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestCELU, check_pir=True)
 create_test_act_bf16_class(TestReciprocal, check_pir=True)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)
-if core.is_compiled_with_rocm():
-    create_test_act_bf16_class(TestLog2, check_pir=True)
-else:
-    create_test_act_bf16_class(TestLog2, check_pir=True)
+create_test_act_bf16_class(TestLog2, check_pir=True)
 create_test_act_bf16_class(TestLog10, check_pir=True)
 create_test_act_bf16_class(TestLog1p, check_pir=True)
 create_test_act_bf16_class(TestSquare, check_pir=True, check_prim_pir=True)

@@ -20,9 +20,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/expect.h"
 #include "paddle/phi/core/generator.h"
@@ -36,19 +36,19 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-DeviceType Place2DeviceType(const platform::Place& place) {
-  if (platform::is_cpu_place(place)) {
+DeviceType Place2DeviceType(const phi::Place& place) {
+  if (phi::is_cpu_place(place)) {
     return platform::DeviceType::CPU;
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
     return platform::DeviceType::CUDA;
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
     return platform::DeviceType::XPU;
-  } else if (platform::is_ipu_place(place)) {
+  } else if (phi::is_ipu_place(place)) {
     return platform::DeviceType::IPU;
-  } else if (platform::is_custom_place(place)) {
+  } else if (phi::is_custom_place(place)) {
     return platform::DeviceType::CUSTOM_DEVICE;
   } else {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported place %s to convert into platform::DeviceType.", place));
   }
 }
@@ -220,7 +220,7 @@ void EmplaceDeviceContexts(
           "WITH_CUSTOM_DEVICE "
           "option."));
 #endif
-    } else if (platform::is_cuda_pinned_place(place)) {
+    } else if (phi::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       EmplaceDeviceContext<CUDAPinnedDeviceContext>(
           place_to_device_context,
@@ -228,11 +228,11 @@ void EmplaceDeviceContexts(
           disable_setting_default_stream_for_allocator,
           /*unused*/ stream_priority);
 #else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "CUDAPlace is not supported. Please re-compile with WITH_GPU "
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "GPUPlace is not supported. Please re-compile with WITH_GPU "
           "option."));
 #endif
-    } else if (platform::is_ipu_place(place)) {
+    } else if (phi::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
       EmplaceDeviceContext<IPUDeviceContext>(
           place_to_device_context,
@@ -241,8 +241,8 @@ void EmplaceDeviceContexts(
           /*unused*/ stream_priority);
 #else
       PADDLE_THROW(
-          platform::errors::Unimplemented("IPUPlace is not supported. Please "
-                                          "re-compile with WITH_IPU option."));
+          phi::errors::Unimplemented("IPUPlace is not supported. Please "
+                                     "re-compile with WITH_IPU option."));
 #endif
     }
   }

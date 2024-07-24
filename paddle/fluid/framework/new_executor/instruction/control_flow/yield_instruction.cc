@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 
 YieldInstruction::YieldInstruction(size_t id,
-                                   const platform::Place &place,
+                                   const phi::Place &place,
                                    ::pir::Operation *op,
                                    ValueExecutionInfo *value_exe_info)
     : InstructionBase(id, place), op_(op) {

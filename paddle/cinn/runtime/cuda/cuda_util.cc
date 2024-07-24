@@ -33,7 +33,6 @@
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/runtime/cuda/cublas_util.h"
-#include "paddle/cinn/runtime/custom_function.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/profiler.h"
 #include "paddle/cinn/utils/timer.h"
@@ -1929,16 +1928,6 @@ void cinn_call_triangular_solve_nvgpu(void *v_args,
         ldb,
         batch_size));
   }
-}
-
-void cinn_assert_true_nvgpu(
-    void *v_args, int num_args, int msg, bool only_warning, void *stream) {
-  cinn_assert_true(v_args,
-                   num_args,
-                   msg,
-                   only_warning,
-                   stream,
-                   cinn::common::DefaultNVGPUTarget());
 }
 
 void cinn_gpu_cublas_mul(const std::vector<int> &attrs,

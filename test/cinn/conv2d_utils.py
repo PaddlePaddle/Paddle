@@ -93,7 +93,4 @@ def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):
 
     res_shape = output.shape[1:]
 
-    if is_depthwise:
-        return output, [res_shape]
-    else:
-        return output, [res_shape]
+    return output, [res_shape]

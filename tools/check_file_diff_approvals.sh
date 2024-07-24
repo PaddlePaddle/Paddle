@@ -198,6 +198,11 @@ if [ "${HAS_MODIFIED_FRAMEWORK_EXECUTOR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; t
     check_approval 1 From00 zhangbo9674
 fi
 
+HAS_MODIFIED_FRAMEWORK_EXECUTOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/pir/serialize_deserialize" || true`
+if [ "${HAS_MODIFIED_FRAMEWORK_EXECUTOR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (xiaoguoguo626807 changeyoung98) approval for file changes in paddle/fluid/pir/serialize_deserialize.\n"
+    check_approval 1 xiaoguoguo626807 changeyoung98
+fi
 
 HAS_MODIFIED_DRR_INCLUDE_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/pir/drr/include" || true`
 if [ "${HAS_MODIFIED_DRR_INCLUDE_DIR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then

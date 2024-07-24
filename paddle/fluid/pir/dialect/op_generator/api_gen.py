@@ -93,8 +93,8 @@ API_INNER_CODE_TEMPLATE = """
     {handle_optional_inputs}
     {in_combine}
     {compute_op}
-    {handle_optional_outputs}
     {set_null_type}
+    {handle_optional_outputs}
     {out_split}
     {return_result}"""
 

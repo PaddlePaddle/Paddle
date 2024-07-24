@@ -25,7 +25,7 @@
 #define CHECK_AND_CONVERT_PD_PREDICTOR                              \
   PADDLE_ENFORCE_NOT_NULL(                                          \
       pd_predictor,                                                 \
-      paddle::platform::errors::InvalidArgument(                    \
+      phi::errors::InvalidArgument(                                 \
           "The pointer of paddle predictor shouldn't be nullptr")); \
   auto& predictor = pd_predictor->predictor
 
@@ -33,7 +33,7 @@ extern "C" {
 __pd_give PD_Predictor* PD_PredictorCreate(__pd_take PD_Config* pd_config) {
   PADDLE_ENFORCE_NOT_NULL(
       pd_config,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The pointer of paddle predictor shouldn't be nullptr"));
   PD_Predictor* pd_predictor = new PD_Predictor();
   paddle_infer::Config* config =

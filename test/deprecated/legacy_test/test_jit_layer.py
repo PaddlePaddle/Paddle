@@ -128,6 +128,7 @@ class TestMKLOutput(unittest.TestCase):
             paddle.jit.save(net, model_path, combine_params=True)
 
             layer = Layer()
+            print("load ", model_path)
             layer.load(model_path, paddle.CPUPlace())
             x = paddle.ones([498, 80])
             out = layer.forward(x)

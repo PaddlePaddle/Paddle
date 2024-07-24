@@ -146,9 +146,7 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     Please refer to :ref:`api_paddle_nn_functional_elu`.
     """
     assert alpha >= 0.0, "elu_ only support alpha >= 0, please use elu instead."
-    if in_dynamic_mode():
-        return _C_ops.elu_(x, alpha)
-    return _legacy_C_ops.elu_(x, 'alpha', alpha)
+    return _C_ops.elu_(x, alpha)
 
 
 def gelu(

@@ -54,7 +54,7 @@ void StartSwitchInterServer(
 }
 
 int main(int argc, char* argv[]) {
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   phi::CPUContext ctx(place);
   framework::Executor exe(place);
 

@@ -35,9 +35,7 @@ class TestChunkEvalOp(OpTest):
     batch_size = 50
 
     def parse_scheme(self):
-        if self.scheme == 'IOB':
-            self.num_tag_types = 2
-        elif self.scheme == 'IOE':
+        if self.scheme in ['IOB', 'IOE']:
             self.num_tag_types = 2
 
     def fill_with_chunks(self, data, chunks):

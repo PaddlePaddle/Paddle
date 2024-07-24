@@ -42,29 +42,28 @@ void InitDevice() {
   RegisterDevice();
   EXPECT_GT(static_cast<int>(phi::DeviceManager::GetAllDeviceTypes().size()),
             0);
-  auto place = paddle::platform::CustomPlace(DEVICE_TYPE, 0);
+  auto place = phi::CustomPlace(DEVICE_TYPE, 0);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   EXPECT_NE(device, nullptr);
 
-  std::vector<paddle::platform::Place> places;
+  std::vector<phi::Place> places;
   auto device_types = phi::DeviceManager::GetAllDeviceTypes();
   for (auto dev_type : device_types) {
     auto devices = phi::DeviceManager::GetDeviceList(dev_type);
     for (auto dev_id : devices) {
-      places.push_back(
-          paddle::platform::PlaceHelper::CreatePlace(dev_type, dev_id));
+      places.push_back(phi::PlaceHelper::CreatePlace(dev_type, dev_id));
     }
   }
   EXPECT_GT(static_cast<int>(places.size()), 0);
 
-  paddle::platform::DeviceContextPool::Init(places);
+  phi::DeviceContextPool::Init(places);
 }
 
-void TestDeviceInterface(const paddle::platform::Place& place) {
+void TestDeviceInterface(const phi::Place& place) {
   std::cout << "TestDeviceInterface on " << place << std::endl;
-  if (paddle::platform::is_custom_place(place)) {
+  if (phi::is_custom_place(place)) {
     auto device = phi::DeviceManager::GetDeviceWithPlace(place);
-    auto dev_type = paddle::platform::PlaceHelper::GetDeviceType(place);
+    auto dev_type = phi::PlaceHelper::GetDeviceType(place);
     auto p1 =
         device->MemoryAllocate(phi::DeviceManager::GetMinChunkSize(place));
     EXPECT_NE(p1, nullptr);
@@ -75,7 +74,7 @@ void TestDeviceInterface(const paddle::platform::Place& place) {
   }
 }
 
-void TestTensorMutableData(const paddle::platform::Place& place) {
+void TestTensorMutableData(const phi::Place& place) {
   std::cout << "TestTensorInitialization on " << place << std::endl;
   phi::DenseTensor src_tensor;
   float* p1 = nullptr;
@@ -100,7 +99,7 @@ void TestTensorMutableData(const paddle::platform::Place& place) {
   EXPECT_EQ(p1, p2);
 }
 
-void TestTensorShareDataWith(const paddle::platform::Place& place) {
+void TestTensorShareDataWith(const phi::Place& place) {
   std::cout << "TestTensorShareDataWith on " << place << std::endl;
   phi::DenseTensor src_tensor;
   phi::DenseTensor dst_tensor;
@@ -109,17 +108,17 @@ void TestTensorShareDataWith(const paddle::platform::Place& place) {
   ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
 }
 
-void TestTensorUtils(const paddle::platform::Place& place) {
+void TestTensorUtils(const phi::Place& place) {
   std::cout << "TestTensorUtils on " << place << std::endl;
-  if (paddle::platform::is_custom_place(place) == false) {
+  if (phi::is_custom_place(place) == false) {
     return;
   }
   phi::DenseTensor src_tensor;
   phi::DenseTensor gpu_tensor;
   phi::DenseTensor dst_tensor;
 
-  int* src_ptr = src_tensor.mutable_data<int>(common::make_ddim({3, 3}),
-                                              paddle::platform::CPUPlace());
+  int* src_ptr =
+      src_tensor.mutable_data<int>(common::make_ddim({3, 3}), phi::CPUPlace());
 
   std::array<int, 9> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   memcpy(src_ptr, arr.data(), 9 * sizeof(int));
@@ -129,7 +128,7 @@ void TestTensorUtils(const paddle::platform::Place& place) {
   paddle::framework::TensorCopy(src_tensor, place, gpu_ctx, &gpu_tensor);
 #if 0
   // GPU Tensor to CPU Tensor
-  auto cpu_place = new paddle::platform::CPUPlace();
+  auto cpu_place = new phi::CPUPlace();
   paddle::framework::TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
   // Sync before Compare Tensors
@@ -170,9 +169,9 @@ void TestTensorUtils(const paddle::platform::Place& place) {
 #endif
 }
 
-void TestCustomCCL(const paddle::platform::Place& place) {
+void TestCustomCCL(const phi::Place& place) {
   std::cout << "TestCustomCCL on " << place << std::endl;
-  if (paddle::platform::is_custom_place(place) == false) {
+  if (phi::is_custom_place(place) == false) {
     return;
   }
   std::string dev_type = place.GetDeviceType();
@@ -228,7 +227,7 @@ TEST(CustomDevice, Tensor) {
     std::cout << "Test on " << dev_type << std::endl;
     EXPECT_GT(static_cast<int>(phi::DeviceManager::GetDeviceCount(dev_type)),
               0);
-    auto place = paddle::platform::PlaceHelper::CreatePlace(dev_type);
+    auto place = phi::PlaceHelper::CreatePlace(dev_type);
 
     TestDeviceInterface(place);
     TestTensorMutableData(place);

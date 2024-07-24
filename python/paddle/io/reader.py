@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
 import logging
@@ -18,6 +19,17 @@ import multiprocessing
 import sys
 import time
 import warnings
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AnyStr,
+    Callable,
+    Mapping,
+    Protocol,
+    Sequence,
+    TypeVar,
+    overload,
+)
 
 import paddle
 
@@ -34,6 +46,44 @@ from .dataloader.dataloader_iter import (
     _DataLoaderIterSingleProcess,
     _DatasetKind,
 )
+
+if TYPE_CHECKING:
+    import numbers
+
+    import numpy.typing as npt
+
+    from paddle import Tensor
+    from paddle._typing import PlaceLike
+    from paddle.io.dataloader.dataset import Dataset
+
+    from .dataloader.dataloader_iter import _DataLoaderIterBase
+
+    _K = TypeVar('_K')
+    _V = TypeVar('_V')
+
+    class _CollateFn(Protocol):
+        @overload
+        def __call__(
+            self, batch: Sequence[npt.NDArray[Any]] | Sequence[numbers.Number]
+        ) -> npt.NDArray[Any]:
+            ...
+
+        @overload
+        def __call__(self, batch: Sequence[Tensor]) -> Tensor:
+            ...
+
+        @overload
+        def __call__(self, batch: Sequence[AnyStr]) -> AnyStr:
+            ...
+
+        @overload
+        def __call__(self, batch: Sequence[Mapping[_K, _V]]) -> Mapping[_K, _V]:
+            ...
+
+        @overload
+        def __call__(self, batch: Sequence[Sequence[_V]]) -> Sequence[_V]:
+            ...
+
 
 # NOTE: [ avoid hanging & failed quickly ]
 # These value is used in getting data from another process
@@ -257,11 +307,11 @@ class DataLoader:
         dataset(Dataset): the dataset to load data from, should be an
             instance of subclass of :code:`paddle.io.Dataset` or
             :code:`paddle.io.IterableDataset`.
-        feed_list (list(Tensor)|tuple(Tensor), optional): feed Tensor list.
+        feed_list (list(Tensor)|tuple(Tensor)|None, optional): feed Tensor list.
             The Tensors should be created by :code:`paddle.static.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is
             False. Default None.
-        places(list(Place)|tuple(Place)|list(str), optional): a list of Place,
+        places(list(Place)|tuple(Place)|list(str)|None, optional): a list of Place,
             to put data onto, :attr:`places` can be None, if
             :attr:`places` is None, default place(CPUPlace or CUDAPlace(0))
             will be used. Default None. If ``places`` is list of string,
@@ -274,7 +324,7 @@ class DataLoader:
             :attr:`return_list=True`, the return value on each device would
             be a list(Tensor). :attr:`return_list` can only be True
             in dynamic graph mode. Default True.
-        batch_sampler(BatchSampler, optional): an instance of `paddle.io.BatchSampler`
+        batch_sampler(BatchSampler|None, optional): an instance of `paddle.io.BatchSampler`
             to generate batch indices to draw samples from :attr:`dataset`
             and combine a batch. Default None.
         batch_size(int|None, optional): sample number in a mini-batch, a substitution
@@ -288,7 +338,7 @@ class DataLoader:
         drop_last(bool, optional): whether drop the last incomplete batch dataset size
             is not divisible by the batch size, a substitution parameter
             for :attr:`batch_sampler`, see :attr:`batch_size`. Default False
-        collate_fn(callable, optional): function to generate mini-batch data by merging
+        collate_fn(Callable|None, optional): function to generate mini-batch data by merging
             the sample list, None for only stack each fields of sample in axis
             0(same as :attr::`np.stack(..., axis=0)`). Default None
         num_workers(int, optional): the number of subprocess to load data, 0 for no
@@ -308,9 +358,10 @@ class DataLoader:
             > 0). Default True.
         timeout(int, optional): the timeout value for getting data form output queue
             of subprocesses. Default 0.
-        worker_init_fn(callable, optional): init function which will be called with
+        worker_init_fn(Callable|None, optional): init function which will be called with
             worker id on each subprocess starting if not set as None. Default
             None.
+        persistent_workers(bool, optional): whether to keep the workers in the DataLoader. Default False.
 
     Returns:
         DataLoader: an iterable object for data iterating, each element of the generated data is a Tensor.
@@ -335,7 +386,7 @@ class DataLoader:
             >>> CLASS_NUM = 10
 
             >>> # define a random dataset
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -382,25 +433,37 @@ class DataLoader:
         please see :code:`paddle.io.IterableDataset`
     """
 
+    return_list: bool
+    collate_fn: _CollateFn | None
+    use_buffer_reader: bool
+    prefetch_factor: int
+    worker_init_fn: Callable[[int], None]
+    dataset: Dataset
+    feed_list: Sequence[Tensor] | None
+    places: Sequence[PlaceLike] | None
+    num_workers: int
+    dataset_kind: _DatasetKind
+    use_shared_memory: bool
+
     def __init__(
         self,
-        dataset,
-        feed_list=None,
-        places=None,
-        return_list=True,
-        batch_sampler=None,
-        batch_size=1,
-        shuffle=False,
-        drop_last=False,
-        collate_fn=None,
-        num_workers=0,
-        use_buffer_reader=True,
-        prefetch_factor=2,
-        use_shared_memory=True,
-        timeout=0,
-        worker_init_fn=None,
-        persistent_workers=False,
-    ):
+        dataset: Dataset,
+        feed_list: Sequence[Tensor] | None = None,
+        places: Sequence[PlaceLike] | None = None,
+        return_list: bool = True,
+        batch_sampler: BatchSampler | None = None,
+        batch_size: int = 1,
+        shuffle: bool = False,
+        drop_last: bool = False,
+        collate_fn: _CollateFn | None = None,
+        num_workers: int = 0,
+        use_buffer_reader: bool = True,
+        prefetch_factor: int = 2,
+        use_shared_memory: bool = True,
+        timeout: int = 0,
+        worker_init_fn: Callable[[int], None] = None,
+        persistent_workers: bool = False,
+    ) -> None:
         self.return_list = return_list
         self.collate_fn = collate_fn
         self.use_buffer_reader = use_buffer_reader
@@ -497,7 +560,7 @@ class DataLoader:
         self._iterator = None
         self.num_workers = AuToTune(self).__call__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         if self.dataset_kind == _DatasetKind.ITER:
             raise ValueError("length of IterableDataset not supported")
         else:
@@ -506,7 +569,7 @@ class DataLoader:
             else:
                 return len(self.dataset)
 
-    def __iter__(self):
+    def __iter__(self) -> _DataLoaderIterBase:
         if self.num_workers == 0:
             return _DataLoaderIterSingleProcess(self)
         elif self._persistent_workers:
@@ -518,5 +581,5 @@ class DataLoader:
         else:
             return _DataLoaderIterMultiProcess(self)
 
-    def __call__(self):
+    def __call__(self) -> _DataLoaderIterBase:
         return self.__iter__()

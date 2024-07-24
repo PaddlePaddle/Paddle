@@ -371,3 +371,7 @@ cc_test(
   init_phi_test
   SRCS init_phi_test.cc
   DEPS phi common init_phi)
+
+if(TENSORRT_FOUND)
+  add_subdirectory(tensorrt)
+endif()

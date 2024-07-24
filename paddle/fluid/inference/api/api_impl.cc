@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/common/place.h"
 
 PD_DEFINE_bool(profile, false, "Turn on profiler for fluid");  // NOLINT
 
@@ -77,19 +77,19 @@ bool NativePaddlePredictor::Init(
   if (config_.use_gpu) {
     PADDLE_ENFORCE_EQ(config_.use_xpu,
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
-    place_ = paddle::platform::CUDAPlace(config_.device);
+    place_ = phi::GPUPlace(config_.device);
   } else if (config_.use_xpu) {
-    place_ = paddle::platform::XPUPlace(config_.device);
+    place_ = phi::XPUPlace(config_.device);
   } else {
-    place_ = paddle::platform::CPUPlace();
+    place_ = phi::CPUPlace();
   }
   if (parent_scope) {
     scope_ = parent_scope;
     sub_scope_ = &(parent_scope->NewScope());
     PADDLE_ENFORCE_NOT_NULL(sub_scope_,
-                            platform::errors::PreconditionNotMet(
+                            phi::errors::PreconditionNotMet(
                                 "The sub_scope should not be nullptr."));
   } else {
     paddle::framework::InitMemoryMethod();
@@ -190,7 +190,7 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone(void *stream) {
   // TODO(Superjomn) re-implement a real clone here.
   PADDLE_ENFORCE_NOT_NULL(
       dynamic_cast<NativePaddlePredictor *>(cls.get()),
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Dynamic_cast from PaddlePredictor to NativePaddlePredictor failed"));
   if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(nullptr)) {
     LOG(ERROR) << "fail to call Init";
@@ -228,55 +228,54 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       return false;
     }
 
-    PADDLE_ENFORCE_NOT_NULL(input_ptr,
-                            platform::errors::InvalidArgument(
-                                "The input_ptr should not be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        input_ptr,
+        phi::errors::InvalidArgument("The input_ptr should not be nullptr."));
     PADDLE_ENFORCE_NOT_NULL(
         inputs[i].data.data(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The data of input tensor should not be null."));
     PADDLE_ENFORCE_EQ(
         inputs[i].data.length(),
         input.numel() * phi::SizeOf(input.dtype()),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
 
-    if (platform::is_cpu_place(place_)) {
+    if (phi::is_cpu_place(place_)) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
       std::memcpy(static_cast<void *>(input_ptr),
                   inputs[i].data.data(),
                   inputs[i].data.length());
-    } else if (platform::is_gpu_place(place_)) {
+    } else if (phi::is_gpu_place(place_)) {
       PADDLE_ENFORCE_EQ(
-          platform::is_xpu_place(place_),
+          phi::is_xpu_place(place_),
           false,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place_));
       auto dst_gpu_place = place_;
       memory::Copy(dst_gpu_place,
                    static_cast<void *>(input_ptr),
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    inputs[i].data.data(),
                    inputs[i].data.length(),
                    dev_ctx->stream());
 #else
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "Not compile with CUDA, should not reach here."));
 #endif
-    } else if (platform::is_xpu_place(place_)) {
+    } else if (phi::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
       auto dst_xpu_place = place_;
       memory::Copy(dst_xpu_place,
                    static_cast<void *>(input_ptr),
-                   platform::CPUPlace(),
+                   phi::CPUPlace(),
                    inputs[i].data.data(),
                    inputs[i].data.length());
 #else
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "Not compile with XPU, should not reach here."));
 #endif
     }
@@ -326,7 +325,7 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(idx),
         i,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Fetch op's col attr(%d) should be equal to the index(%d)",
             idx,
             i));
@@ -363,12 +362,12 @@ CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
     // 1. GPU memory
     PADDLE_ENFORCE_GE(config.fraction_of_gpu_memory,
                       0.f,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "fraction_of_gpu_memory in the config should be set "
                           "to range (0., 1.]"));
     PADDLE_ENFORCE_GE(config.device,
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Invalid device id %d, the device id should be "
                           "greater than or equal to 0.",
                           config.device));
@@ -386,7 +385,7 @@ CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
   std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
   PADDLE_ENFORCE_NOT_NULL(
       dynamic_cast<NativePaddlePredictor *>(predictor.get()),
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Dynamic_cast from PaddlePredictor to NativePaddlePredictor failed"));
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;

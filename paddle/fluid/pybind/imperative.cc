@@ -98,16 +98,16 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
     } catch (platform::EnforceNotMet &e) {
       throw e;
     } catch (std::exception &e) {
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "Hook function of Tensor raises an exception: %s.", e.what()));
     } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Hook function of Tensor raises an unknown exception."));
     }
 
-    PADDLE_ENFORCE_NOT_NULL(res,
-                            platform::errors::Unavailable(
-                                "Hook function of Tensor return a nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        res,
+        phi::errors::Unavailable("Hook function of Tensor return a nullptr."));
     if (res == Py_None) {
       return var;
     }
@@ -123,23 +123,23 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
   PyObject *py_func_;
 };
 
-static const platform::Place PyObjectToPlace(const py::object &place_obj) {
-  if (py::isinstance<platform::CPUPlace>(place_obj)) {
-    return place_obj.cast<platform::CPUPlace>();
-  } else if (py::isinstance<platform::CUDAPlace>(place_obj)) {
-    return place_obj.cast<platform::CUDAPlace>();
-  } else if (py::isinstance<platform::XPUPlace>(place_obj)) {
-    return place_obj.cast<platform::XPUPlace>();
-  } else if (py::isinstance<platform::CUDAPinnedPlace>(place_obj)) {
-    return place_obj.cast<platform::CUDAPinnedPlace>();
-  } else if (py::isinstance<platform::IPUPlace>(place_obj)) {
-    return place_obj.cast<platform::IPUPlace>();
-  } else if (py::isinstance<platform::Place>(place_obj)) {
-    return place_obj.cast<platform::Place>();
-  } else if (py::isinstance<platform::CustomPlace>(place_obj)) {
-    return place_obj.cast<platform::CustomPlace>();
+static const phi::Place PyObjectToPlace(const py::object &place_obj) {
+  if (py::isinstance<phi::CPUPlace>(place_obj)) {
+    return place_obj.cast<phi::CPUPlace>();
+  } else if (py::isinstance<phi::GPUPlace>(place_obj)) {
+    return place_obj.cast<phi::GPUPlace>();
+  } else if (py::isinstance<phi::XPUPlace>(place_obj)) {
+    return place_obj.cast<phi::XPUPlace>();
+  } else if (py::isinstance<phi::GPUPinnedPlace>(place_obj)) {
+    return place_obj.cast<phi::GPUPinnedPlace>();
+  } else if (py::isinstance<phi::IPUPlace>(place_obj)) {
+    return place_obj.cast<phi::IPUPlace>();
+  } else if (py::isinstance<phi::Place>(place_obj)) {
+    return place_obj.cast<phi::Place>();
+  } else if (py::isinstance<phi::CustomPlace>(place_obj)) {
+    return place_obj.cast<phi::CustomPlace>();
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Place should be one of "
         "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/IPUPlace/"
         "CustomPlace"));
@@ -170,7 +170,7 @@ static void InitVarBaseOnly(imperative::VarBase *self,
 // initialize varbase and its tensor.
 static void InitVarBaseAndTensor(imperative::VarBase *self,
                                  const py::array &array,
-                                 const platform::Place &place,
+                                 const phi::Place &place,
                                  const std::string &name,
                                  bool persistable = false,
                                  bool zero_copy = false,
@@ -178,22 +178,20 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   InitVarBaseOnly(self, name, persistable, stop_gradient);
   auto *tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
   VLOG(4) << "zero_copy: " << zero_copy;
-  if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        tensor, array, place, zero_copy);
-  } else if (platform::is_ipu_place(place)) {
-    SetTensorFromPyArray<platform::IPUPlace>(tensor, array, place, zero_copy);
-  } else if (platform::is_custom_place(place)) {
-    SetTensorFromPyArray<platform::CustomPlace>(
-        tensor, array, place, zero_copy);
+  if (phi::is_cpu_place(place)) {
+    SetTensorFromPyArray<phi::CPUPlace>(tensor, array, place, zero_copy);
+  } else if (phi::is_xpu_place(place)) {
+    SetTensorFromPyArray<phi::XPUPlace>(tensor, array, place, zero_copy);
+  } else if (phi::is_gpu_place(place)) {
+    SetTensorFromPyArray<phi::GPUPlace>(tensor, array, place, zero_copy);
+  } else if (phi::is_cuda_pinned_place(place)) {
+    SetTensorFromPyArray<phi::GPUPinnedPlace>(tensor, array, place, zero_copy);
+  } else if (phi::is_ipu_place(place)) {
+    SetTensorFromPyArray<phi::IPUPlace>(tensor, array, place, zero_copy);
+  } else if (phi::is_custom_place(place)) {
+    SetTensorFromPyArray<phi::CustomPlace>(tensor, array, place, zero_copy);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Place should be one of "
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/IPUPlace/"));
   }
@@ -303,7 +301,7 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
   // Same place, share data directly
-  if (platform::is_same_place(place, tensor.place())) {
+  if (phi::is_same_place(place, tensor.place())) {
     new_tensor->ShareDataWith(tensor);
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
@@ -330,7 +328,7 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
             ->Var()
             .Get<phi::DenseTensor>());
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "We should only get paddle::Tensor or VarBase in this "
         "method, when you reach this means we got another type index."));
   }
@@ -356,7 +354,7 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
     for (size_t i = 0; i < len; ++i) {
       PyObject *py_ivar = PyList_GET_ITEM(py_obj, i);
       PADDLE_ENFORCE_NOT_NULL(
-          py_ivar, platform::errors::InvalidArgument("Python Object is NULL"));
+          py_ivar, phi::errors::InvalidArgument("Python Object is NULL"));
       result.emplace_back(
           PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
     }
@@ -366,7 +364,7 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
     for (size_t i = 0; i < len; ++i) {
       PyObject *py_ivar = PyTuple_GET_ITEM(py_obj, i);
       PADDLE_ENFORCE_NOT_NULL(
-          py_ivar, platform::errors::InvalidArgument("Python Object is NULL"));
+          py_ivar, phi::errors::InvalidArgument("Python Object is NULL"));
       result.emplace_back(
           PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
     }
@@ -391,7 +389,7 @@ static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
   PADDLE_ENFORCE_EQ(
       PyErr_Occurred(),
       nullptr,
-      platform::errors::InvalidArgument(py::str(py::handle(PyErr_Occurred()))));
+      phi::errors::InvalidArgument(py::str(py::handle(PyErr_Occurred()))));
   return result;
 }
 
@@ -414,7 +412,7 @@ paddle::imperative::NameTensorMap ConvertToNameTensorMap(
   PADDLE_ENFORCE_EQ(
       PyErr_Occurred(),
       nullptr,
-      platform::errors::InvalidArgument(py::str(py::handle(PyErr_Occurred()))));
+      phi::errors::InvalidArgument(py::str(py::handle(PyErr_Occurred()))));
   return result;
 }
 
@@ -437,10 +435,10 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
         dst_tensor->set_lod(src_tensor.lod());
         framework::TensorCopy(src_tensor, dst_device, dst_tensor);
         if (blocking) {
-          platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+          phi::DeviceContextPool::Instance().Get(dst_device)->Wait();
           auto src_device = src_tensor.place();
           if (!(src_device == dst_device)) {
-            platform::DeviceContextPool::Instance().Get(src_device)->Wait();
+            phi::DeviceContextPool::Instance().Get(src_device)->Wait();
           }
         }
       } else if (src->Var().IsType<phi::SelectedRows>()) {
@@ -453,10 +451,10 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
                               dst_device,
                               dst_selected_rows->mutable_value());
         if (blocking) {
-          platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+          phi::DeviceContextPool::Instance().Get(dst_device)->Wait();
           auto src_device = src_selected_rows.value().place();
           if (!(src_device == dst_device)) {
-            platform::DeviceContextPool::Instance().Get(src_device)->Wait();
+            phi::DeviceContextPool::Instance().Get(src_device)->Wait();
           }
         }
       }
@@ -466,11 +464,11 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
       }
 
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The source Tensor(%s) can not copy when it is empty.", src->Name()));
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "The destination Tensor(%s) can not copy when it is not empty.",
         dst.Name()));
   }
@@ -486,7 +484,7 @@ void BindImperative(py::module *m_ptr) {
     PADDLE_ENFORCE_EQ(
         py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The subprocess ids set in DataLoader is illegal."
             "Expected data type is tuple or list, but received %s",
             obj.get_type()));
@@ -510,7 +508,7 @@ void BindImperative(py::module *m_ptr) {
         // 0. input data check
         PADDLE_ENFORCE(
             py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj),
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The batch data read into DataLoader is illegal."
                 "Expected data type is tuple or list, but received %s",
                 obj.get_type()));
@@ -522,7 +520,7 @@ void BindImperative(py::module *m_ptr) {
           PADDLE_ENFORCE_NE(
               string::Sprintf("%s", array.dtype()).compare("object"),
               0,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Failed to convert input data to a regular ndarray.\n  * "
                   "Usually this means the input data contains nested "
                   "lists with different lengths.\n  * Check the reader "
@@ -530,8 +528,7 @@ void BindImperative(py::module *m_ptr) {
                   "_generator' to locate the data causes this issue."));
           // 2. construct LoDTensor
           phi::DenseTensor t;
-          SetTensorFromPyArray<platform::CPUPlace>(
-              &t, array, platform::CPUPlace(), true);
+          SetTensorFromPyArray<phi::CPUPlace>(&t, array, phi::CPUPlace(), true);
           // 3. allocate shared memory
           void *data_ptr = t.data();
           size_t data_size = t.numel() * phi::SizeOf(t.dtype());
@@ -541,9 +538,9 @@ void BindImperative(py::module *m_ptr) {
           const std::string &ipc_name = shared_writer_holder->ipc_name();
           memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
           // 5. copy data & reset holder
-          memory::Copy(platform::CPUPlace(),
+          memory::Copy(phi::CPUPlace(),
                        shared_writer_holder->ptr(),
-                       platform::CPUPlace(),
+                       phi::CPUPlace(),
                        data_ptr,
                        data_size);
           t.ResetHolder(shared_writer_holder);
@@ -562,7 +559,7 @@ void BindImperative(py::module *m_ptr) {
         PADDLE_ENFORCE_NE(
             string::Sprintf("%s", array.dtype()).compare("object"),
             0,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Failed to convert input data to a regular ndarray.\n  * "
                 "Usually this means the input data contains nested "
                 "lists with different lengths.\n  * Check the reader "
@@ -570,8 +567,7 @@ void BindImperative(py::module *m_ptr) {
                 "_generator' to locate the data causes this issue."));
         // 2. construct LoDTensor
         phi::DenseTensor t;
-        SetTensorFromPyArray<platform::CPUPlace>(
-            &t, array, platform::CPUPlace(), true);
+        SetTensorFromPyArray<phi::CPUPlace>(&t, array, phi::CPUPlace(), true);
         // 3. allocate shared memory
         void *data_ptr = t.data();
         size_t data_size = t.numel() * phi::SizeOf(t.dtype());
@@ -581,9 +577,9 @@ void BindImperative(py::module *m_ptr) {
         const std::string &ipc_name = shared_writer_holder->ipc_name();
         memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
         // 5. copy data & reset holder
-        memory::Copy(platform::CPUPlace(),
+        memory::Copy(phi::CPUPlace(),
                      shared_writer_holder->ptr(),
-                     platform::CPUPlace(),
+                     phi::CPUPlace(),
                      data_ptr,
                      data_size);
         t.ResetHolder(shared_writer_holder);
@@ -600,9 +596,9 @@ void BindImperative(py::module *m_ptr) {
               t.Holder().get());
       PADDLE_ENFORCE_NOT_NULL(
           mmap_writer_allocation,
-          platform::errors::NotFound("The shared memory of LoDTensor in "
-                                     "DataLoader's child process has been "
-                                     "released."));
+          phi::errors::NotFound("The shared memory of LoDTensor in "
+                                "DataLoader's child process has been "
+                                "released."));
       memory::allocation::MemoryMapFdSet::Instance().Remove(
           mmap_writer_allocation->ipc_name());
     }
@@ -692,45 +688,45 @@ void BindImperative(py::module *m_ptr) {
             return py::cast(self.ExpectedPlace());
           },
           [](imperative::Tracer &self, const py::object &obj) {
-            if (py::isinstance<platform::CUDAPlace>(obj)) {
-              auto p = obj.cast<platform::CUDAPlace *>();
+            if (py::isinstance<phi::GPUPlace>(obj)) {
+              auto p = obj.cast<phi::GPUPlace *>();
               self.SetExpectedPlace(*p);
               // TODO(jiabin): Support eager here when we need to make all
               // dygraph in eager mode
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::XPUPlace>(obj)) {
-              auto p = obj.cast<platform::XPUPlace *>();
+            } else if (py::isinstance<phi::XPUPlace>(obj)) {
+              auto p = obj.cast<phi::XPUPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::CPUPlace>(obj)) {
-              auto p = obj.cast<platform::CPUPlace *>();
+            } else if (py::isinstance<phi::CPUPlace>(obj)) {
+              auto p = obj.cast<phi::CPUPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
-              auto p = obj.cast<platform::CUDAPinnedPlace *>();
+            } else if (py::isinstance<phi::GPUPinnedPlace>(obj)) {
+              auto p = obj.cast<phi::GPUPinnedPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::IPUPlace>(obj)) {
-              auto p = obj.cast<platform::IPUPlace *>();
+            } else if (py::isinstance<phi::IPUPlace>(obj)) {
+              auto p = obj.cast<phi::IPUPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::CustomPlace>(obj)) {
-              auto p = obj.cast<platform::CustomPlace *>();
+            } else if (py::isinstance<phi::CustomPlace>(obj)) {
+              auto p = obj.cast<phi::CustomPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::Place>(obj)) {
-              auto p = obj.cast<platform::Place *>();
+            } else if (py::isinstance<phi::Place>(obj)) {
+              auto p = obj.cast<phi::Place *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
             } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
+              PADDLE_THROW(phi::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
                   "CPUPlace, IPUPlace"
                   "and CUDAPinnedPlace, "
@@ -838,12 +834,12 @@ void BindImperative(py::module *m_ptr) {
             self.nrings_ = nrings;
           });
 
-  m.def("varbase_copy", &VarBaseCopy<platform::Place>);
-  m.def("varbase_copy", &VarBaseCopy<platform::CPUPlace>);
-  m.def("varbase_copy", &VarBaseCopy<platform::CUDAPlace>);
-  m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
-  m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
-  m.def("varbase_copy", &VarBaseCopy<platform::CustomPlace>);
+  m.def("varbase_copy", &VarBaseCopy<phi::Place>);
+  m.def("varbase_copy", &VarBaseCopy<phi::CPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<phi::GPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<phi::XPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<phi::GPUPinnedPlace>);
+  m.def("varbase_copy", &VarBaseCopy<phi::CustomPlace>);
 
   m.def(
       "dygraph_partial_grad",
@@ -852,7 +848,7 @@ void BindImperative(py::module *m_ptr) {
              &output_targets,
          const std::vector<std::shared_ptr<imperative::VarBase>> &output_grads,
          const std::vector<std::shared_ptr<imperative::VarBase>> &no_grad_vars,
-         const platform::Place &place,
+         const phi::Place &place,
          bool create_graph,
          bool retain_graph,
          bool allow_unused,
@@ -920,7 +916,7 @@ void BindImperative(py::module *m_ptr) {
              std::shared_ptr<imperative::NCCLParallelContext>>(
       m, "NCCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::CUDAPlace &>())
+                    const phi::GPUPlace &>())
       .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::NCCLParallelContext::InitWithRingID,
@@ -933,7 +929,7 @@ void BindImperative(py::module *m_ptr) {
              std::shared_ptr<imperative::XCCLParallelContext>>(
       m, "XCCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::CustomPlace &>())
+                    const phi::CustomPlace &>())
       .def("init", [](imperative::XCCLParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::XCCLParallelContext::InitWithRingID,
@@ -946,7 +942,7 @@ void BindImperative(py::module *m_ptr) {
              std::shared_ptr<imperative::BKCLParallelContext>>(
       m, "BKCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::XPUPlace &>())
+                    const phi::XPUPlace &>())
       .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::BKCLParallelContext::InitWithRingID,
@@ -960,7 +956,7 @@ void BindImperative(py::module *m_ptr) {
              std::shared_ptr<imperative::GLOOParallelContext>>(
       m, "GLOOParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::CPUPlace &>())
+                    const phi::CPUPlace &>())
       .def("init", [](imperative::GLOOParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::GLOOParallelContext::InitWithRingID,
@@ -997,16 +993,15 @@ void BindImperative(py::module *m_ptr) {
           SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
         } else if (py::isinstance<py::array_t<int16_t>>(array)) {
           SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
-        } else if (py::isinstance<py::array_t<paddle::platform::float16>>(
-                       array)) {
-          SetUVATensorFromPyArray<paddle::platform::float16>(
+        } else if (py::isinstance<py::array_t<phi::dtype::float16>>(array)) {
+          SetUVATensorFromPyArray<phi::dtype::float16>(
               new_tensor, array, device_id);
         } else if (py::isinstance<py::array_t<bool>>(array)) {
           SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
         } else {
           // obj may be any type, obj.cast<py::array>() may be failed,
           // then the array.dtype will be string of unknown meaning.
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "Input object type error or incompatible array data type. "
               "tensor.set() supports array with bool, float16, float32, "
               "float64, int8, int16, int32, int64,"
@@ -1054,28 +1049,28 @@ void BindImperative(py::module *m_ptr) {
          const imperative::VarBase &offset,
          const imperative::VarBase &count) {
         PADDLE_ENFORCE_EQ(
-            platform::is_gpu_place(src.Place()),
+            phi::is_gpu_place(src.Place()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Required `src` device should be CUDAPlace, but received %d. ",
                 src.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cuda_pinned_place(dst.Place()),
+            phi::is_cuda_pinned_place(dst.Place()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Required `dst` device should be CUDAPinnedPlace, "
                 "but received %d. ",
                 dst.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cpu_place(offset.Place()),
+            phi::is_cpu_place(offset.Place()),
             true,
-            platform::errors::InvalidArgument("Required `offset` device should "
-                                              "be CPUPlace, but received %d. ",
-                                              offset.Place()));
+            phi::errors::InvalidArgument("Required `offset` device should "
+                                         "be CPUPlace, but received %d. ",
+                                         offset.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cpu_place(count.Place()),
+            phi::is_cpu_place(count.Place()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Required `count` device should be CPUPlace, but received %d. ",
                 count.Place()));
 
@@ -1089,27 +1084,27 @@ void BindImperative(py::module *m_ptr) {
 
         PADDLE_ENFORCE_EQ(offset_tensor.dims().size(),
                           1,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "`offset` tensor should be one-dimensional."));
         PADDLE_ENFORCE_EQ(count_tensor.dims().size(),
                           1,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "`count` tensor should be one-dimensional."));
         PADDLE_ENFORCE_EQ(offset_tensor.numel(),
                           count_tensor.numel(),
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "`offset` and `count` tensor size dismatch."));
         PADDLE_ENFORCE_EQ(
             src_tensor.dims().size(),
             dst_tensor->dims().size(),
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "`src` and `dst` should have the same tensor shape, "
                 "except for the first dimension."));
         for (int i = 1; i < src_tensor.dims().size(); i++) {
           PADDLE_ENFORCE_EQ(
               src_tensor.dims()[i],
               dst_tensor->dims()[i],
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "`src` and `dst` should have the same tensor shape, "
                   "except for the first dimension."));
         }
@@ -1125,14 +1120,14 @@ void BindImperative(py::module *m_ptr) {
         int64_t src_offset = 0, dst_offset, c;
         for (int64_t i = 0; i < offset_tensor.numel(); i++) {
           dst_offset = offset_data[i], c = count_data[i];
-          PADDLE_ENFORCE_LE(src_offset + c,
-                            src_tensor.dims()[0],
-                            platform::errors::InvalidArgument(
-                                "Invalid offset or count index"));
-          PADDLE_ENFORCE_LE(dst_offset + c,
-                            dst_tensor->dims()[0],
-                            platform::errors::InvalidArgument(
-                                "Invalid offset or count index"));
+          PADDLE_ENFORCE_LE(
+              src_offset + c,
+              src_tensor.dims()[0],
+              phi::errors::InvalidArgument("Invalid offset or count index"));
+          PADDLE_ENFORCE_LE(
+              dst_offset + c,
+              dst_tensor->dims()[0],
+              phi::errors::InvalidArgument("Invalid offset or count index"));
           cudaMemcpyAsync(dst_data + (dst_offset * size),
                           src_data + (src_offset * size),
                           c * size * sizeof(float),
@@ -1200,41 +1195,41 @@ void BindImperative(py::module *m_ptr) {
          imperative::VarBase &buffer,
          const imperative::VarBase &offset,
          const imperative::VarBase &count) {
-        PADDLE_ENFORCE_EQ(platform::is_cuda_pinned_place(src.Place()),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Required `src` device should be "
-                              "CUDAPinnedPlace, but received %d.",
-                              src.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_gpu_place(dst.Place()),
+            phi::is_cuda_pinned_place(src.Place()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument("Required `src` device should be "
+                                         "CUDAPinnedPlace, but received %d.",
+                                         src.Place()));
+        PADDLE_ENFORCE_EQ(
+            phi::is_gpu_place(dst.Place()),
+            true,
+            phi::errors::InvalidArgument(
                 "Required `dst` device should be CUDAPlace, but received %d.",
                 dst.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cpu_place(index.Place()),
+            phi::is_cpu_place(index.Place()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Required `index` device should be CPUPlace, but received %d.",
                 index.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cuda_pinned_place(buffer.Place()),
+            phi::is_cuda_pinned_place(buffer.Place()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Required `buffer` device should be CUDAPinnedPlace, "
                 "but received %d.",
                 buffer.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cpu_place(offset.Place()),
+            phi::is_cpu_place(offset.Place()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Required `offset` device should be CPUPlace, but received %d.",
                 offset.Place()));
         PADDLE_ENFORCE_EQ(
-            platform::is_cpu_place(count.Place()),
+            phi::is_cpu_place(count.Place()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Required `count` device should be CPUPlace, but received %d.",
                 count.Place()));
 
@@ -1250,32 +1245,32 @@ void BindImperative(py::module *m_ptr) {
 
         PADDLE_ENFORCE_EQ(src_tensor.dims().size(),
                           dst_tensor->dims().size(),
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "`src` and `dst` should have same tensor shape, "
                               "except for the first dimension."));
         PADDLE_ENFORCE_EQ(
             src_tensor.dims().size(),
             buffer_tensor->dims().size(),
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "`src` and `buffer` should have same tensor shape, "
                 "except for the first dimension."));
         for (int i = 1; i < src_tensor.dims().size(); i++) {
           PADDLE_ENFORCE_EQ(
               src_tensor.dims()[i],
               dst_tensor->dims()[i],
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "`src` and `dst` should have the same tensor shape, "
                   "except for the first dimension."));
           PADDLE_ENFORCE_EQ(
               src_tensor.dims()[i],
               buffer_tensor->dims()[i],
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "`src` and `buffer` should have the same tensor shape, "
                   "except for the first dimension."));
         }
         PADDLE_ENFORCE_EQ(index_tensor.dims().size(),
                           1,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "`index` tensor should be one-dimensional."));
 
         auto stream =
@@ -1288,42 +1283,42 @@ void BindImperative(py::module *m_ptr) {
         if (copy_flag != 0) {
           PADDLE_ENFORCE_EQ(offset_tensor.dims().size(),
                             1,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "`offset` tensor should be one-dimensional."));
           PADDLE_ENFORCE_EQ(count_tensor.dims().size(),
                             1,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "`count` tensor should be one-dimensional."));
           PADDLE_ENFORCE_EQ(offset_tensor.numel(),
                             count_tensor.numel(),
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "`offset` and `count` tensor size dismatch."));
           auto *offset_data = offset_tensor.data<int64_t>();
           auto *count_data = count_tensor.data<int64_t>();
           for (int64_t i = 0; i < count_tensor.numel(); i++) {
             numel += count_data[i];
           }
-          PADDLE_ENFORCE_LE(numel + index_tensor.numel(),
-                            buffer_tensor->dims()[0],
-                            platform::errors::InvalidArgument(
-                                "Buffer tensor size is too small."));
-          PADDLE_ENFORCE_LE(numel + index_tensor.numel(),
-                            dst_tensor->dims()[0],
-                            platform::errors::InvalidArgument(
-                                "Target tensor size is too small."));
+          PADDLE_ENFORCE_LE(
+              numel + index_tensor.numel(),
+              buffer_tensor->dims()[0],
+              phi::errors::InvalidArgument("Buffer tensor size is too small."));
+          PADDLE_ENFORCE_LE(
+              numel + index_tensor.numel(),
+              dst_tensor->dims()[0],
+              phi::errors::InvalidArgument("Target tensor size is too small."));
 
           int64_t src_offset, dst_offset = 0, c;
           auto *src_data = src_tensor.data<float>();
           for (int64_t i = 0; i < offset_tensor.numel(); i++) {
             src_offset = offset_data[i], c = count_data[i];
-            PADDLE_ENFORCE_LE(src_offset + c,
-                              src_tensor.dims()[0],
-                              platform::errors::InvalidArgument(
-                                  "Invalid offset or count index."));
-            PADDLE_ENFORCE_LE(dst_offset + c,
-                              dst_tensor->dims()[0],
-                              platform::errors::InvalidArgument(
-                                  "Invalid offset or count index."));
+            PADDLE_ENFORCE_LE(
+                src_offset + c,
+                src_tensor.dims()[0],
+                phi::errors::InvalidArgument("Invalid offset or count index."));
+            PADDLE_ENFORCE_LE(
+                dst_offset + c,
+                dst_tensor->dims()[0],
+                phi::errors::InvalidArgument("Invalid offset or count index."));
             cudaMemcpyAsync(dst_data + (dst_offset * size),
                             src_data + (src_offset * size),
                             c * size * sizeof(float),
@@ -1332,10 +1327,10 @@ void BindImperative(py::module *m_ptr) {
             dst_offset += c;
           }
         } else {
-          PADDLE_ENFORCE_LE(index_tensor.numel(),
-                            buffer_tensor->dims()[0],
-                            platform::errors::InvalidArgument(
-                                "Buffer tensor size is too small."));
+          PADDLE_ENFORCE_LE(
+              index_tensor.numel(),
+              buffer_tensor->dims()[0],
+              phi::errors::InvalidArgument("Buffer tensor size is too small."));
         }
 
         // Select the index data to the buffer

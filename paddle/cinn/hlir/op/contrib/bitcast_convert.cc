@@ -21,7 +21,6 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -32,7 +31,6 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 
 namespace cinn {
@@ -86,45 +84,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForBitcastConvert(
   return strategy;
 }
 
-std::vector<shape_t> InferShapeForBitcastConvert(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1U)
-      << "The input's shape size should be 1! Please check again.";
-
-  auto input_data_type_name =
-      absl::get<std::string>(attrs.at("input_data_type"));
-  auto output_data_type_name = absl::get<std::string>(attrs.at("dtype"));
-  auto input_data_type = cinn::common::Str2Type(input_data_type_name);
-  auto output_data_type = cinn::common::Str2Type(output_data_type_name);
-
-  auto output_shape =
-      std::vector<shape_t>(inputs_shape.begin(), inputs_shape.end());
-  auto ratio = input_data_type.bits() / output_data_type.bits();
-  if (ratio == 1) return inputs_shape;
-
-  if (ratio > 0) {
-    output_shape.back().emplace_back(ratio);
-  } else {
-    if (output_shape.back().back() !=
-        (output_data_type.bits() / input_data_type.bits())) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The rightmost dimension of input must be equal to "
-          "sizeof(output_data_type)/sizeof(input_data_type) when "
-          "sizeof(output_data_type) > sizeof(input_data_type)"));
-    }
-    output_shape.back().pop_back();
-  }
-
-  return output_shape;
-}
-
-std::vector<Type> InferDtypeForBitcastConvert(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("dtype"));
-  return {cinn::common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -136,10 +95,6 @@ CINN_REGISTER_HELPER(bitcast_convert_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForBitcastConvert)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForBitcastConvert))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForBitcastConvert))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);

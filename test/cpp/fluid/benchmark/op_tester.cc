@@ -51,14 +51,14 @@ void OpTester::Init(const OpTesterConfig &config) {
     CreateInputVarDesc();
     CreateOutputVarDesc();
   } else {
-    PADDLE_THROW(platform::errors::NotFound(
+    PADDLE_THROW(phi::errors::NotFound(
         "Operator '%s' is not registered in OpTester.", config_.op_type));
   }
 
   if (config_.device_id >= 0) {
-    place_ = ::paddle::platform::CUDAPlace(config_.device_id);
+    place_ = ::phi::GPUPlace(config_.device_id);
   } else {
-    place_ = ::paddle::platform::CPUPlace();
+    place_ = ::phi::CPUPlace();
   }
 
   framework::InitDevices();
@@ -78,14 +78,14 @@ void OpTester::Run() {
 
   platform::Timer timer;
   if (config_.profile) {
-    if (platform::is_cpu_place(place_)) {
+    if (phi::is_cpu_place(place_)) {
       platform::EnableProfiler(platform::ProfilerState::kCPU);
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::EnableProfiler(platform::ProfilerState::kAll);
       platform::SetDeviceId(config_.device_id);
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(phi::errors::PermissionDenied(
           "'CUDAPlace' is not supported in CPU only device."));
 #endif
     }
@@ -111,7 +111,7 @@ void OpTester::Run() {
 
 void OpTester::RunImpl() {
   op_->Run(*scope_, place_);
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  phi::DeviceContextPool::Instance().Get(place_)->Wait();
   scope_->DropKids();
 }
 
@@ -168,8 +168,8 @@ framework::proto::VarType::Type OpTester::TransToVarType(std::string str) {
   } else if (str == "fp64") {
     return framework::proto::VarType::FP64;
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupported dtype %s in OpTester.", str.c_str()));
+    PADDLE_THROW(phi::errors::Unimplemented("Unsupported dtype %s in OpTester.",
+                                            str.c_str()));
   }
 }
 
@@ -179,7 +179,7 @@ void OpTester::CreateInputVarDesc() {
     const OpInputConfig *input = config_.GetInput(name);
     PADDLE_ENFORCE_NOT_NULL(
         input,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "The input %s of operator %s is not correctly provided.",
             name,
             config_.op_type));
@@ -220,7 +220,7 @@ void OpTester::CreateOpDesc() {
     PADDLE_ENFORCE_NE(
         attr_types.find(name),
         attr_types.end(),
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Operator %s does not have attribute %d.", type_, name));
 
     const std::string &value_str = item.second;
@@ -243,7 +243,7 @@ void OpTester::CreateOpDesc() {
       case framework::proto::AttrType::INTS:
       case framework::proto::AttrType::FLOATS:
       case framework::proto::AttrType::STRINGS:
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Unsupported STRINGS type in OpTester yet."));
         break;
       case framework::proto::AttrType::LONG: {
@@ -252,7 +252,7 @@ void OpTester::CreateOpDesc() {
       } break;
       case framework::proto::AttrType::LONGS:
       default:
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Unsupport attr type %d in OpTester.", type));
     }
   }
@@ -284,9 +284,9 @@ void OpTester::SetupTensor(phi::DenseTensor *tensor,
   phi::DenseTensor cpu_tensor;
   T *cpu_ptr = nullptr;
 
-  if (!platform::is_cpu_place(place_)) {
-    cpu_ptr = cpu_tensor.mutable_data<T>(common::make_ddim(shape),
-                                         platform::CPUPlace());
+  if (!phi::is_cpu_place(place_)) {
+    cpu_ptr =
+        cpu_tensor.mutable_data<T>(common::make_ddim(shape), phi::CPUPlace());
   } else {
     cpu_ptr = ptr;
   }
@@ -312,11 +312,11 @@ void OpTester::SetupTensor(phi::DenseTensor *tensor,
     }
     is.close();
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported initializer %s in OpTester.", initializer.c_str()));
   }
 
-  if (!platform::is_cpu_place(place_)) {
+  if (!phi::is_cpu_place(place_)) {
     ::paddle::framework::TensorCopySync(cpu_tensor, place_, tensor);
   }
 }
@@ -371,7 +371,7 @@ void OpTester::CreateVariables(framework::Scope *scope) {
                           item.second.initializer,
                           item.second.filename);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported dtype %d in OpTester.", data_type));
     }
 
@@ -495,7 +495,7 @@ std::string OpTester::DebugString() {
            << "\n";
       } break;
       default:
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Unsupport attr type %d in OpTester.", attr_type));
     }
     ss << GenSpaces(--count) << "}\n";
@@ -510,8 +510,8 @@ TEST(op_tester, base) {
     PADDLE_ENFORCE_EQ(
         static_cast<bool>(fin),
         true,
-        platform::errors::InvalidArgument("OpTester cannot open file %s",
-                                          FLAGS_op_config_list.c_str()));
+        phi::errors::InvalidArgument("OpTester cannot open file %s",
+                                     FLAGS_op_config_list.c_str()));
     std::vector<OpTesterConfig> op_configs;
     while (!fin.eof()) {
       VLOG(4) << "Reading config " << op_configs.size() << "...";

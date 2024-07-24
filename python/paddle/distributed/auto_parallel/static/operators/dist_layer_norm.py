@@ -18,6 +18,7 @@ import logging
 from paddle.base.log_helper import get_logger
 
 from ..completion import get_phi_spmd_rule
+from ..dist_attribute import DistTensorSpec, TensorDistAttr
 from ..utils import get_dist_tensor_spec, is_dim_shard
 from .common import (
     DistributedOperatorImplContainer,
@@ -41,16 +42,30 @@ class DistributedLayerNorm(DistributedOperatorImplContainer):
         op_desc = dist_op.serial_op.desc
 
         x_name = op_desc.input('X')[0]
-        scale_name = op_desc.input('Scale')[0]
-        bias_name = op_desc.input('Bias')[0]
+        scale_name = (
+            op_desc.input('Scale')[0]
+            if len(op_desc.input('Scale')) > 0
+            else None
+        )
+        bias_name = (
+            op_desc.input('Bias')[0] if len(op_desc.input('Bias')) > 0 else None
+        )
         y_name = op_desc.output('Y')[0]
         var_name = op_desc.output('Variance')[0]
         mean_name = op_desc.output('Mean')[0]
         begin_norm_axis = op_desc.attr('begin_norm_axis')
 
         x_spec = get_dist_tensor_spec(dist_op, x_name)
-        scale_spec = get_dist_tensor_spec(dist_op, scale_name)
-        bias_spec = get_dist_tensor_spec(dist_op, bias_name)
+        scale_spec = (
+            DistTensorSpec([0], TensorDistAttr())
+            if scale_name is None
+            else get_dist_tensor_spec(dist_op, scale_name)
+        )
+        bias_spec = (
+            DistTensorSpec([0], TensorDistAttr())
+            if bias_name is None
+            else get_dist_tensor_spec(dist_op, bias_name)
+        )
         y_spec = get_dist_tensor_spec(dist_op, y_name, False)
         var_spec = get_dist_tensor_spec(dist_op, var_name, False)
         mean_spec = get_dist_tensor_spec(dist_op, mean_name, False)
@@ -74,9 +89,14 @@ class DistributedLayerNorm(DistributedOperatorImplContainer):
 
         # step3: update dist_attr
         # tensor order following order in PHI definition
+        input_arg_names = [x_name]
+        if scale_name is not None:
+            input_arg_names.append(scale_name)
+        if bias_name is not None:
+            input_arg_names.append(bias_name)
         changed = update_op_dims_mapping(
             dist_op,
-            [x_name, scale_name, bias_name],
+            input_arg_names,
             [y_name, var_name, mean_name],
             fw_results,
             bw_results,

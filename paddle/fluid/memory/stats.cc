@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/stats.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
-#include "paddle/fluid/platform/flags.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     log_memory_stats,
     false,
     "Log memory stats after each op runs, just used for debug.");
@@ -34,7 +34,7 @@ class StatRegistry {
   StatBase* GetStat(const std::string& stat_type, int dev_id) {
     auto it = stat_map_.find(GetStatKey(stat_type, dev_id));
     if (it == stat_map_.end()) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The STAT type \"%s\" for device %d has not been registered.",
           stat_type.c_str(),
           dev_id));
@@ -108,9 +108,8 @@ void HostMemoryStatUpdate(const std::string& stat_type,
   StatRegistry::GetInstance()->Update("Host" + stat_type, dev_id, increment);
 }
 
-void LogDeviceMemoryStats(const platform::Place& place,
-                          const std::string& op_name) {
-  if (FLAGS_log_memory_stats && platform::is_gpu_place(place)) {
+void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name) {
+  if (FLAGS_log_memory_stats && phi::is_gpu_place(place)) {
     VLOG(0) << "After launching op_name: " << op_name << ", "
             << "memory_allocated: "
             << static_cast<double>(memory::DeviceMemoryStatCurrentValue(

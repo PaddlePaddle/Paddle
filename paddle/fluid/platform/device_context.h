@@ -30,25 +30,25 @@ limitations under the License. */
 #include "paddle/phi/core/device_context.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
-#include "paddle/fluid/platform/dynload/cublas.h"
-#include "paddle/fluid/platform/dynload/cublasLt.h"
-#include "paddle/fluid/platform/dynload/cudnn.h"
-#include "paddle/fluid/platform/dynload/cusolver.h"
-#include "paddle/fluid/platform/dynload/cusparse.h"
+#include "paddle/phi/backends/dynload/cublas.h"
+#include "paddle/phi/backends/dynload/cublasLt.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/cusolver.h"
+#include "paddle/phi/backends/dynload/cusparse.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"  // NOLINT
-#include "paddle/fluid/platform/dynload/miopen.h"
-#include "paddle/fluid/platform/dynload/rocblas.h"
+#include "paddle/phi/backends/dynload/miopen.h"
+#include "paddle/phi/backends/dynload/rocblas.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"  // NOLINT
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/dynload/rccl.h"
+#include "paddle/phi/backends/dynload/rccl.h"
 #endif
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"  // NOLINT
 #endif
@@ -67,7 +67,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/stream.h"
@@ -82,9 +82,9 @@ struct GpuDevice;
 }  // namespace Eigen
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #endif
 
 namespace paddle {
@@ -100,7 +100,7 @@ enum DeviceType {
   MAX_DEVICE_TYPES = 7,
 };
 
-DeviceType Place2DeviceType(const platform::Place& place);
+DeviceType Place2DeviceType(const phi::Place& place);
 
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;

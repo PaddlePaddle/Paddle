@@ -605,12 +605,8 @@ def _to_name_str(var):
             return var.desc.name()
         elif isinstance(var, str):
             return var
-        elif isinstance(var, str):
-            return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
-        elif isinstance(var, Value):
-            return str(var)
         elif isinstance(var, Value):
             return str(var)
         else:
@@ -725,11 +721,7 @@ def _as_lodtensor(data, place, dtype=None):
         assert (
             dtype is not None
         ), 'The dtype should be given when feed data is not np.ndarray'
-        dtype = (
-            convert_dtype(dtype)
-            if isinstance(dtype, core.VarDesc.VarType)
-            else dtype
-        )
+        dtype = convert_dtype(dtype)
         if np.isscalar(data):
             data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):

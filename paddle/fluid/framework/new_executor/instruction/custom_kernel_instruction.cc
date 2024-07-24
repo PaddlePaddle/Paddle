@@ -350,7 +350,7 @@ void CustomKernelInstruction::BuildCustomContext(
 
 CustomKernelInstruction::CustomKernelInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo& value_exec_info)
     : InstructionBase(id, place),
@@ -410,6 +410,18 @@ CustomKernelInstruction::CustomKernelInstruction(
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
+  auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
+  for (auto const& pair : op_inplace_map) {
+    pir::Value input_value =
+        op->operand_source(yaml_info_parser.InputName2Id().at(pair.first));
+    pir::Value output_value =
+        op->result(yaml_info_parser.OutputName2Id().at(pair.second));
+    if (IsInvalid(output_value) && IsInvalid(input_value)) {
+      this->AddInplace(value_exec_info_.GetVarByValue(input_value),
+                       value_exec_info_.GetVarByValue(output_value));
+    }
+  }
+
   InitInputsOutputsIds(op, value_exec_info_);
   VLOG(6) << "finish process inputs outputs index";
 
@@ -453,6 +465,7 @@ void CustomKernelInstruction::UpdateOutputMeta(
     auto out_meta = phi::DenseTensorUtils::GetMutableMeta(out_in_scope);
     out_meta->dims = phi::make_ddim(output_shapes[i]);
     out_meta->dtype = output_dtypes[i];
+    out_meta->strides = out_meta->calc_strides(out_meta->dims);
   }
 }
 
@@ -504,7 +517,9 @@ void CustomKernelInstruction::Run() {
                     vec_input_name2id_map_,
                     custom_attrs_);
   UpdateOutputMeta(output_shapes, output_dtypes);
-
+  for (auto& pair : this->InplaceInfo()) {
+    ShareVarBuffer(pair.first, pair.second);
+  }
   VLOG(6) << "Run custom op " << custom_op_name_ << " kernel.";
   kernel_func_(&custom_kernel_ctx_);
 }

@@ -203,11 +203,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Construct a new AnalysisConfig from a combined model.
   ///
-  /// \param[in] prog_file model file path of the combined model.
-  /// \param[in] params_file params file path of the combined model.
+  /// \param[in] prog_file_or_model_dir model file path of the combined model or
+  /// the directory path containing the model. \param[in]
+  /// params_file_or_model_prefix params file path of the combined model or the
+  /// model prefix.
   ///
-  explicit AnalysisConfig(const std::string& prog_file,
-                          const std::string& params_file);
+  explicit AnalysisConfig(const std::string& prog_file_or_model_dir,
+                          const std::string& params_file_or_model_prefix);
   ///
   /// \brief Precision of inference.
   ///
@@ -229,11 +231,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Set the combined model with two specific paths for program and
   /// parameters.
   ///
-  /// \param prog_file_path model file path of the combined model.
-  /// \param params_file_path params file path of the combined model.
+  /// \param prog_file_path_or_model_dir_path model file path of the combined
+  /// model or the directory path containing the model. \param
+  /// params_file_path_or_model_prefix params file path of the combined model or
+  /// the model prefix.
   ///
-  void SetModel(const std::string& prog_file_path,
-                const std::string& params_file_path);
+  void SetModel(const std::string& prog_file_path_or_model_dir_path,
+                const std::string& params_file_path_or_model_prefix);
   ///
   /// \brief Set the model file path of a combined model.
   ///

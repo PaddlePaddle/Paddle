@@ -1084,7 +1084,8 @@ void softmax_grad(const Tensor& out,
         set_output<T>(tmp_x_grad, x_grad);
       }
     } else {
-      set_output<T>(out_grad * 0.0, x_grad);
+      Tensor zeros = full_scalar<T>(0.0, out.dtype());
+      set_output<T>(out_grad * zeros, x_grad);
     }
   }
 }

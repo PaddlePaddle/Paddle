@@ -109,7 +109,7 @@ class VariableWrapper {
       } else if (var_.IsType<phi::SelectedRows>()) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
-        PADDLE_THROW(platform::errors::PermissionDenied(
+        PADDLE_THROW(phi::errors::PermissionDenied(
             "Only support LoDTensor and SelectedRows for gradient var"));
       }
       if (tensor && tensor->IsInitialized()) {
@@ -191,10 +191,9 @@ class VariableWrapper {
 
   void SetDataLayout(const phi::DataLayout layout) { layout_ = layout; }
 
-  const platform::Place Place() const {
+  const phi::Place Place() const {
     const phi::DenseTensor* tensor = nullptr;
-    auto place =
-        platform::CPUPlace();  // Default place for var not initialized.
+    auto place = phi::CPUPlace();  // Default place for var not initialized.
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<phi::DenseTensor>());
@@ -287,7 +286,7 @@ class VariableWrapper {
       PADDLE_ENFORCE_EQ(
           shared_var,
           nullptr,
-          platform::errors::PermissionDenied(
+          phi::errors::PermissionDenied(
               "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
     }
@@ -306,7 +305,7 @@ class VariableWrapper {
         PADDLE_ENFORCE_EQ(
             shared_node,
             nullptr,
-            platform::errors::PermissionDenied(
+            phi::errors::PermissionDenied(
                 "Cannot set gradient op twice unless using Inplace Strategy."));
       } else if (shared_node) {
         VLOG(3) << "The gradient op of Var (" << Name()

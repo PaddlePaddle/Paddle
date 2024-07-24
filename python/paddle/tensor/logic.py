@@ -1449,6 +1449,38 @@ def isclose(
     """
 
     if in_dynamic_or_pir_mode():
+        if in_pir_mode():
+            check_variable_and_dtype(
+                x,
+                "input",
+                ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+                'isclose',
+            )
+            check_variable_and_dtype(
+                y,
+                "input",
+                ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+                'isclose',
+            )
+            if isinstance(rtol, paddle.pir.Value):
+                check_variable_and_dtype(
+                    rtol,
+                    "input",
+                    ['float64'],
+                    'isclose',
+                )
+            else:
+                check_type(rtol, 'rtol', float, 'isclose')
+            if isinstance(atol, paddle.pir.Value):
+                check_variable_and_dtype(
+                    atol,
+                    "input",
+                    ['float64'],
+                    'isclose',
+                )
+            else:
+                check_type(atol, 'atol', float, 'isclose')
+            check_type(equal_nan, 'equal_nan', bool, 'isclose')
         return _C_ops.isclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(

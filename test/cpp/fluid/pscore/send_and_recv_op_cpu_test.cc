@@ -88,7 +88,7 @@ void CreateVarsOnScope(framework::Scope* scope) {
 }
 
 void InitTensorsOnServer(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
   auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
@@ -104,28 +104,27 @@ void InitTensorsOnServer(framework::Scope* scope,
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
-                         platform::CPUPlace* place,
+                         phi::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
   auto ids_var = scope->Var("ids")->GetMutable<phi::DenseTensor>();
   int64_t* ids_ptr =
-      ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
+      ids_var->mutable_data<int64_t>(phi::DDim({rows_numel, 1}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
 
   auto micro_id_var =
       scope->Var("microbatch_id")->GetMutable<phi::DenseTensor>();
   float* micro_id_ptr =
-      micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
+      micro_id_var->mutable_data<float>(phi::DDim({1}), *place);
   micro_id_ptr[0] = 0;
 
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
-  float* x_ptr =
-      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  float* x_ptr = x_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();
   float* res_ptr =
-      res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+      res_var->mutable_data<float>(phi::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
@@ -136,7 +135,7 @@ void RunServer(std::shared_ptr<paddle::distributed::HeterServer> service) {
 void StartSendAndRecvServer(std::string endpoint) {
   framework::ProgramDesc program;
   framework::Scope scope;
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   phi::CPUContext ctx(place);
   LOG(INFO) << "before AppendSendAndRecvBlock";
@@ -220,13 +219,13 @@ TEST(SENDANDRECV, CPU) {
       distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
           .get();
 
-  PADDLE_ENFORCE_NE(rpc_client,
-                    nullptr,
-                    platform::errors::InvalidArgument(
-                        "Client Start Fail, Check Your Code & Env"));
+  PADDLE_ENFORCE_NE(
+      rpc_client,
+      nullptr,
+      phi::errors::InvalidArgument("Client Start Fail, Check Your Code & Env"));
 
   framework::Scope* scope = (*micro_scope)[0];
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   phi::CPUContext ctx(place);
 
   framework::Executor exe(place);
@@ -291,14 +290,14 @@ TEST(SENDANDRECV, CPU) {
   PADDLE_ENFORCE_EQ(
       task.first,
       "x",
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
       task2.first,
       "x",
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   b_rpc_service->Stop();

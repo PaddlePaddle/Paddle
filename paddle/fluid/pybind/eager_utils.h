@@ -28,11 +28,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/function.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
@@ -59,7 +59,7 @@ static T PyObjectCast(PyObject* obj) {
   try {
     return py::cast<T>(py::handle(obj));
   } catch (py::cast_error&) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Python object is not type of %s, the real type is %s",
         typeid(T).name(),
         obj->ob_type->tp_name));
@@ -83,7 +83,7 @@ std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj,
     ssize_t arg_pos,
     const phi::distributed::ProcessMesh* mesh = nullptr);
-platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
+phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                            ssize_t arg_pos);
@@ -143,7 +143,7 @@ PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
                      bool return_py_none_if_not_initialize = false);
-PyObject* ToPyObject(const platform::Place& value);
+PyObject* ToPyObject(const phi::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::distributed::DistTensor* value);
 PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value);
@@ -468,7 +468,7 @@ struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
     PADDLE_ENFORCE_NE(
         m,
         nullptr,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input mesh of DistTensorConverter() shouldn't be nullptr."));
     mesh = m;
   }
@@ -498,7 +498,7 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
   PADDLE_ENFORCE_NE(
       mesh,
       nullptr,
-      platform::errors::InvalidArgument("Input mesh should not be nullptr."));
+      phi::errors::InvalidArgument("Input mesh should not be nullptr."));
   DistTensorConverter(mesh).apply(&args...);
 }
 

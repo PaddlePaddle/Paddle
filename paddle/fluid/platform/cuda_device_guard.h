@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include "glog/logging.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace platform {
@@ -23,7 +24,7 @@ class CUDADeviceGuard {
  public:
   explicit CUDADeviceGuard(int dev_id) { SetDeviceIndex(dev_id); }
 
-  explicit CUDADeviceGuard(const CUDAPlace& place)
+  explicit CUDADeviceGuard(const phi::GPUPlace& place)
       : CUDADeviceGuard(place.device) {}
 
   // create uninitialized CUDADeviceGuard
@@ -56,7 +57,7 @@ class CUDADeviceGuard {
     }
   }
 
-  void SetDevice(const CUDAPlace& place) {
+  void SetDevice(const phi::GPUPlace& place) {
     int dev_id = place.device;
     SetDeviceIndex(dev_id);
   }

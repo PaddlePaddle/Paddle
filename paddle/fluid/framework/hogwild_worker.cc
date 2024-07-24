@@ -160,7 +160,7 @@ template <typename TStream>
 inline void Tensor2Pinned(phi::DenseTensor *tensor, const TStream &stream) {
 #if defined(PADDLE_WITH_CUDA)
   const size_t mem_len = tensor->memory_size();
-  auto place = platform::CUDAPinnedPlace();
+  auto place = phi::GPUPinnedPlace();
   auto holder = memory::AllocShared(place, mem_len);
   memory::Copy(
       place, holder->ptr(), tensor->place(), tensor->data(), mem_len, stream);
@@ -169,7 +169,7 @@ inline void Tensor2Pinned(phi::DenseTensor *tensor, const TStream &stream) {
 }
 template <typename TCopyer>
 void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope *root,
-                                               const platform::Place &place,
+                                               const phi::Place &place,
                                                Scope *scope,
                                                TCopyer *copyer) {
   if (!cast_vars.empty()) {
@@ -231,12 +231,12 @@ void HogwildWorker::OffLoadVarInfo::BackUpInputs(Scope *root_scope,
     if (root_var == nullptr) {
       root_var = root_scope->Var(name);
       auto root_tensor = root_var->GetMutable<phi::DenseTensor>();
-      auto place = platform::CUDAPinnedPlace();
+      auto place = phi::GPUPinnedPlace();
       copyer->Copy(src_tensor, place, root_tensor);
     } else {
       auto root_tensor = root_var->GetMutable<phi::DenseTensor>();
       if (root_tensor->IsInitialized() &&
-          !platform::is_gpu_place(root_tensor->place())) {
+          !phi::is_gpu_place(root_tensor->place())) {
         copyer->Copy(src_tensor, root_tensor->place(), root_tensor);
       }
     }
@@ -964,7 +964,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,
-      platform::errors::NotFound(
+      phi::errors::NotFound(
           "Root scope should be set before creating thread scope."));
 
   thread_scope_ = &root_scope_->NewScope();
@@ -1060,7 +1060,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
                            holder->ptr(),
                            holder->size(),
                            stream);
-              CHECK(platform::is_gpu_place(root_tensor->place()));
+              CHECK(phi::is_gpu_place(root_tensor->place()));
               ++persist_reset;
             }
           } else {
@@ -1199,7 +1199,7 @@ bool HogwildWorker::CheckBatchNum(int flag) {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -1210,7 +1210,7 @@ bool HogwildWorker::CheckBatchNum(int flag) {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
     } else {
@@ -1223,23 +1223,22 @@ bool HogwildWorker::CheckBatchNum(int flag) {
       // comm_ctx->AllReduce only support allreduce on the whole tensor,
       // single element is not supported now.
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                           &stat_ptr[2],
-                                           1,
-                                           ncclFloat32,
-                                           ncclProd,
-                                           comm_ctx->GetNcclComm(),
-                                           stream));
+          phi::dynload::ncclAllReduce(&stat_ptr[flag],
+                                      &stat_ptr[2],
+                                      1,
+                                      ncclFloat32,
+                                      ncclProd,
+                                      comm_ctx->GetNcclComm(),
+                                      stream));
 
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                           &stat_ptr[2],
-                                           1,
-                                           ncclFloat32,
-                                           ncclProd,
-                                           comm->comm(),
-                                           stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(&stat_ptr[flag],
+                                                             &stat_ptr[2],
+                                                             1,
+                                                             ncclFloat32,
+                                                             ncclProd,
+                                                             comm->comm(),
+                                                             stream));
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
@@ -1271,13 +1270,13 @@ bool HogwildWorker::GetPassEnd(int flag) {
     //  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
     //  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
     auto stream = comm->stream();
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                                                &stat_ptr[2],
-                                                                1,
-                                                                ncclFloat32,
-                                                                ncclProd,
-                                                                comm->comm(),
-                                                                stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(&stat_ptr[flag],
+                                                           &stat_ptr[2],
+                                                           1,
+                                                           ncclFloat32,
+                                                           ncclProd,
+                                                           comm->comm(),
+                                                           stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
                                                &stat_ptr[2],
                                                sizeof(float),

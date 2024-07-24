@@ -66,7 +66,7 @@ std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(Scope* scope) {
 void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
   auto* var = scope_->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound("Cannot find %s in scope.", var_name));
+      var, phi::errors::NotFound("Cannot find %s in scope.", var_name));
 
   if (value_2_var_name_.count(value) == 0) {
     value_2_var_name_.emplace(value, var_name);
@@ -84,7 +84,7 @@ void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
   PADDLE_ENFORCE_EQ(
       var_list_.size(),
       var_name_2_id_.size(),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of variable_list and var_name_2_id map should be equal"));
 }
 
@@ -320,8 +320,8 @@ void DeepCopyVariable(const Variable* src_var,
         (*dst_var) = nullptr;
         return;
       } else {
-        PADDLE_THROW(platform::errors::PermissionDenied(
-            "DenseTensor shouldn't be null"));
+        PADDLE_THROW(
+            phi::errors::PermissionDenied("DenseTensor shouldn't be null"));
       }
     }
     framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
@@ -341,8 +341,8 @@ void DeepCopyVariable(const Variable* src_var,
         (*dst_var) = nullptr;
         return;
       } else {
-        PADDLE_THROW(platform::errors::PermissionDenied(
-            "SelectedRows shouldn't be null"));
+        PADDLE_THROW(
+            phi::errors::PermissionDenied("SelectedRows shouldn't be null"));
       }
     }
     framework::TensorCopy(src_t, src_t.place(), dst_t);
@@ -354,8 +354,8 @@ void DeepCopyVariable(const Variable* src_var,
         (*dst_var) = nullptr;
         return;
       } else {
-        PADDLE_THROW(platform::errors::PermissionDenied(
-            "TensorArray shouldn't be null"));
+        PADDLE_THROW(
+            phi::errors::PermissionDenied("TensorArray shouldn't be null"));
       }
     }
     dst_tensor_array->resize(src_tensor_array.size());
@@ -431,12 +431,12 @@ void BuildValue(pir::Value value,
     tensor_array->clear();
     for (size_t i = 0; i < value.type().dyn_cast<pir::VectorType>().size();
          i++) {
-      PADDLE_ENFORCE(value.type()
-                         .dyn_cast<pir::VectorType>()[i]
-                         .isa<paddle::dialect::AllocatedDenseTensorType>(),
-                     paddle::platform::errors::Fatal(
-                         "Element of VectorType output only support "
-                         "DenseTensorType"));
+      PADDLE_ENFORCE(
+          value.type()
+              .dyn_cast<pir::VectorType>()[i]
+              .isa<paddle::dialect::AllocatedDenseTensorType>(),
+          phi::errors::Fatal("Element of VectorType output only support "
+                             "DenseTensorType"));
       auto var_i = CreateVar(value, var_name_prefix, false, value_exe_info);
 
       var_i->GetMutable<phi::DenseTensor>();
@@ -468,7 +468,13 @@ void HandleForSpecialOp(pir::Operation* op,
     auto fetch_var_name = fetch_src_name + "@fetch";
     auto* var = const_cast<Scope*>(value_exe_info->GetScope()->root())
                     ->Var(fetch_var_name);
-    var->GetMutable<phi::DenseTensor>();
+    if (op->operand_source(0)
+            .type()
+            .isa<paddle::dialect::DenseTensorArrayType>()) {
+      var->GetMutable<phi::TensorArray>();
+    } else {
+      var->GetMutable<phi::DenseTensor>();
+    }
     auto value = op->result(0);
 
     value_exe_info->Add(value, fetch_var_name);
@@ -495,9 +501,9 @@ void HandleForSpecialOp(pir::Operation* op,
         }
       }
     }
-    PADDLE_ENFORCE(var,
-                   paddle::platform::errors::InvalidArgument(
-                       "The variable %s should exist", name));
+    PADDLE_ENFORCE(
+        var,
+        phi::errors::InvalidArgument("The variable %s should exist", name));
 
     value_exe_info->Add(value, name);
   } else if (op->isa<pir::CombineOp>()) {
@@ -682,9 +688,21 @@ void HandleForSpecialOp(pir::Operation* op,
   }
 }
 
-void HandleForInplaceOp(pir::Operation* op,
-                        const std::string& var_name_prefix,
-                        ValueExecutionInfo* value_exe_info) {
+bool IsNeedVarInplace(pir::Operation* op,
+                      pir::Value value,
+                      std::string op_name) {
+  return (value.type().isa<paddle::dialect::DenseTensorArrayType>() ||
+          op_name == "pd_op.assign_value_");
+}
+
+// NOTE(chenxi67): Here, we only perform inplace processing for variables that
+// need to be inplaced by var (mostly, whose type is TensorArray or re-Allocated
+// Densetensor). For other types of variables, we only share the holder of
+// DenseTensor but not the var*. The reason is that vector<DenseTensor> in
+// TensorArray (or re-Allocated Densetensor) cannot be shared totally.
+void HandleForInplaceVarOp(pir::Operation* op,
+                           const std::string& var_name_prefix,
+                           ValueExecutionInfo* value_exe_info) {
   if (op->num_results() < 1) return;
   pir::IrContext* ctx = pir::IrContext::Instance();
   std::string op_name = op->name();
@@ -704,6 +722,10 @@ void HandleForInplaceOp(pir::Operation* op,
     if (!IsInvalid(value)) {
       VLOG(8) << "Number " << i << " result of " << op_name
               << " is not invalid, so skip build a variable.";
+      continue;
+    }
+    if (!IsNeedVarInplace(op, value, op_name)) {
+      BuildValue(value, var_name_prefix, value_exe_info);
       continue;
     }
     std::string value_name = yaml_parser.OutputNames()[i];
@@ -755,8 +777,8 @@ void BuildScope(const pir::Block& block,
             << value_exe_info->GetScope();
     Variable* var = value_exe_info->GetScope()->FindVar(kwarg.first);
     PADDLE_ENFORCE(var,
-                   paddle::platform::errors::InvalidArgument(
-                       "The variable %s should exist", kwarg.first));
+                   phi::errors::InvalidArgument("The variable %s should exist",
+                                                kwarg.first));
 
     value_exe_info->Add(kwarg.second, kwarg.first);
   }
@@ -785,7 +807,7 @@ void BuildScope(const pir::Block& block,
             .at("is_inplace")
             .dyn_cast<pir::BoolAttribute>()
             .data()) {
-      HandleForInplaceOp(&op, var_name_prefix, value_exe_info);
+      HandleForInplaceVarOp(&op, var_name_prefix, value_exe_info);
       continue;
     } else {
       for (size_t i = 0; i < op.num_results(); ++i) {
@@ -948,9 +970,8 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
       attr_map[legacy_arg_name] = val.dyn_cast<pir::Int64Attribute>().data();
     } else if (val.isa<pir::ArrayAttribute>()) {
       auto array_list = val.dyn_cast<pir::ArrayAttribute>().AsVector();
-      PADDLE_ENFORCE(
-          array_list.size() > 0,
-          paddle::platform::errors::Fatal("Attribute %s is empty", name));
+      PADDLE_ENFORCE(array_list.size() > 0,
+                     phi::errors::Fatal("Attribute %s is empty", name));
       if (array_list[0].isa<pir::Int32Attribute>()) {
         std::vector<int> vec_int;
         for (auto attribute : array_list) {

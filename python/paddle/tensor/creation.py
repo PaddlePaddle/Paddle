@@ -630,12 +630,7 @@ def _to_tensor_non_static(
                     "\n\tFailed to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
-        elif isinstance(data, paddle.Tensor) and not in_dynamic_mode():
-            data = data._copy_to(place, False)
-            data = _handle_tensor_dtype(data, dtype)
-            data.stop_gradient = stop_gradient
-            return data
-        elif isinstance(data, core.eager.Tensor) and in_dynamic_mode():
+        elif isinstance(data, paddle.Tensor):
             data = data._copy_to(place, False)
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
@@ -725,11 +720,13 @@ def _to_tensor_static(
 
                     Thus, process nested structure in except block
                     '''
-                    data = np.array(data)
+                    array_data = np.array(data)
 
                     # for numpy version <= 1.23.5
-                    if data.dtype == 'object':
+                    if array_data.dtype == 'object':
                         raise RuntimeError("Numpy get dtype `object`.")
+
+                    data = array_data
 
                 except:
                     to_stack_list = [None] * len(data)
@@ -983,7 +980,12 @@ def fill_constant(
             out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
-        _C_ops.full_(out, shape, value, dtype, place)
+
+        if out.dtype != dtype:
+            raise TypeError(
+                "Required out.dtype == dtype if specifying out, but recevied f{out.dtype} != f{dtype}"
+            )
+        out = _C_ops.full_(out, shape, value, dtype, place)
         out.stop_gradient = True
         return out
 
@@ -1270,7 +1272,7 @@ def eye(
     """
 
     def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, core.eager.Tensor, paddle.pir.Value))):
+        if isinstance(attr, ((Variable, paddle.Tensor, paddle.pir.Value))):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
@@ -2533,12 +2535,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.Value)):
-        if in_dynamic_mode():
-            if output is None:
-                output = _C_ops.assign(input)
-            else:
-                _C_ops.assign_out_(input, output)
-        elif in_pir_mode():
+        if in_dynamic_or_pir_mode():
             if output is None:
                 output = _C_ops.assign(input)
             else:
@@ -2552,6 +2549,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
                     'uint16',
                     'float32',
                     'float64',
+                    'int16',
                     'int32',
                     'int64',
                     'uint8',
