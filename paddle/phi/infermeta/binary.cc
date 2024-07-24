@@ -3044,32 +3044,30 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
 
 void MatrixRankStaticInferMeta(const MetaTensor& x,
                                const MetaTensor& atol_tensor,
-                               bool use_default_atol,
+                               bool use_default_tol,
                                bool hermitian,
                                MetaTensor* out) {
   if (atol_tensor) {
-    MatrixRankTolInferMeta(x, atol_tensor, use_default_atol, hermitian, out);
+    MatrixRankTolInferMeta(x, atol_tensor, use_default_tol, hermitian, out);
   } else {
-    MatrixRankInferMeta(x, use_default_atol, hermitian, out);
+    MatrixRankInferMeta(x, use_default_tol, hermitian, out);
   }
 }
 
 void MatrixRankAtolInferMeta(const MetaTensor& x,
                              const MetaTensor& atol_tensor,
                              float rtol,
-                             bool use_default_rtol,
                              bool hermitian,
                              MetaTensor* out) {
-  MatrixRankTolInferMeta(x, atol_tensor, use_default_rtol, hermitian, out);
+  MatrixRankTolInferMeta(x, atol_tensor, false, hermitian, out);
 }
 
 void MatrixRankRtolInferMeta(const MetaTensor& x,
                              const MetaTensor& rtol_tensor,
                              float atol,
-                             bool use_default_atol,
                              bool hermitian,
                              MetaTensor* out) {
-  MatrixRankTolInferMeta(x, rtol_tensor, use_default_atol, hermitian, out);
+  MatrixRankTolInferMeta(x, rtol_tensor, false, hermitian, out);
 }
 
 void MatrixRankTolInferMeta(const MetaTensor& x,

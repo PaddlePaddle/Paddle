@@ -452,8 +452,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& atol_tensor,
                               const DenseTensor& rtol_tensor,
-                              bool use_default_atol,
-                              bool use_default_rtol,
+                              bool use_default_tol,
                               bool hermitian,
                               DenseTensor* out) {
   auto* x_data = x.data<T>();
@@ -531,7 +530,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   tol_tensor.Resize(dim_out);
   dev_ctx.template Alloc<T>(&tol_tensor);
 
-  if (use_default_atol && use_default_rtol) {
+  if (use_default_tol) {
     T rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
     DenseTensor default_rtol_tensor;
     default_rtol_tensor =

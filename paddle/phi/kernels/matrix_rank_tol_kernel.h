@@ -31,8 +31,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& atol_tensor,
                               const DenseTensor& rtol_tensor,
-                              bool use_default_atol,
-                              bool use_default_rtol,
+                              bool use_default_tol,
                               bool hermitian,
                               DenseTensor* out);
 

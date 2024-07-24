@@ -2447,7 +2447,7 @@ void LUInferMeta(const MetaTensor& x,
 }
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool use_default_atol,
+                         bool use_default_tol,
                          bool hermitian,
                          MetaTensor* out) {
   auto dim_x = x.dims();
@@ -2467,6 +2467,15 @@ void MatrixRankInferMeta(const MetaTensor& x,
   DDim dim_x_batch = detail::CheckAndGetOutputDim(dim_x);
   out->set_dims(dim_x_batch);
   out->share_lod(x);
+}
+
+void MatrixRank2InferMeta(const MetaTensor& x,
+                          float atol,
+                          float rtol,
+                          bool use_default_tol,
+                          bool hermitian,
+                          MetaTensor* out) {
+  MatrixRankInferMeta(x, use_default_tol, hermitian, out);
 }
 
 void MaxOutInferMeta(const MetaTensor& x,

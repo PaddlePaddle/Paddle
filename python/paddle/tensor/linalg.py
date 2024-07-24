@@ -2332,28 +2332,24 @@ def matrix_rank(
                     x,
                     atol_tensor,
                     rtol_tensor,
-                    use_default_atol,
-                    use_default_rtol,
+                    use_default_atol and use_default_rtol,
                     hermitian,
                 )
             elif rtol_is_tensor:
                 return _C_ops.matrix_rank_rtol(
-                    x, rtol_tensor, atol_attr, use_default_atol, hermitian
+                    x, rtol_tensor, atol_attr, hermitian
                 )
             elif atol_is_tensor:
                 return _C_ops.matrix_rank_atol(
-                    x, atol_tensor, rtol_attr, use_default_rtol, hermitian
+                    x, atol_tensor, rtol_attr, hermitian
                 )
             else:
-                return _C_ops.matrix_rank(
+                return _C_ops.matrix_rank2(
                     x,
-                    0.0,
-                    use_default_atol,
-                    use_default_rtol,
-                    hermitian,
                     atol_attr,
                     rtol_attr,
-                    use_atol_rtol,
+                    use_default_atol and use_default_rtol,
+                    hermitian,
                 )
 
         else:
@@ -2373,16 +2369,7 @@ def matrix_rank(
             else:
                 tol_attr = float(tol)
                 use_default_tol = False
-            return _C_ops.matrix_rank(
-                x,
-                tol_attr,
-                use_default_tol,
-                True,
-                hermitian,
-                0.0,
-                0.0,
-                use_atol_rtol,
-            )
+            return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
     else:
         inputs = {}
         attrs = {}
@@ -2390,41 +2377,42 @@ def matrix_rank(
         check_type(hermitian, 'hermitian', bool, 'matrix_rank')
         attrs['hermitian'] = hermitian
         if use_atol_rtol:
+            inputs['x'] = x
             atol_is_tensor = False
             rtol_is_tensor = False
 
             if atol is None:
                 attrs['atol'] = 0.0
-                attrs['use_default_atol'] = True
+                use_default_atol = True
             elif isinstance(atol, Variable):
                 if atol.dtype != x.dtype:
                     inputs['atol_tensor'] = cast(atol, x.dtype)
                 else:
                     inputs['atol_tensor'] = atol
-                attrs['use_default_atol'] = False
+                use_default_atol = False
                 atol_is_tensor = True
             else:
                 check_type(atol, 'atol', float, 'matrix_rank')
                 attrs['atol'] = atol
-                attrs['use_default_atol'] = attrs['atol'] == 0.0
+                use_default_atol = attrs['atol'] == 0.0
 
             if rtol is None:
                 attrs['rtol'] = 0.0
-                attrs['use_default_rtol'] = True
+                use_default_rtol = True
             elif isinstance(rtol, Variable):
                 if rtol.dtype != x.dtype:
                     inputs['rtol_tensor'] = cast(rtol, x.dtype)
                 else:
                     inputs['rtol_tensor'] = rtol
-                attrs['use_default_rtol'] = False
+                use_default_rtol = False
                 rtol_is_tensor = True
             else:
                 check_type(rtol, 'rtol', float, 'matrix_rank')
                 attrs['rtol'] = rtol
-                attrs['use_default_rtol'] = False
+                use_default_rtol = False
 
             if atol_is_tensor and rtol_is_tensor:
-                inputs['x'] = x
+                attrs['use_default_tol'] = use_default_atol and use_default_rtol
                 helper = LayerHelper('matrix_rank_atol_rtol', **locals())
                 out = helper.create_variable_for_type_inference(dtype='int32')
                 helper.append_op(
@@ -2434,8 +2422,6 @@ def matrix_rank(
                     attrs=attrs,
                 )
             elif rtol_is_tensor:
-                inputs['x'] = x
-                attrs.pop('use_default_rtol')
                 helper = LayerHelper('matrix_rank_rtol', **locals())
                 out = helper.create_variable_for_type_inference(dtype='int32')
                 helper.append_op(
@@ -2445,8 +2431,6 @@ def matrix_rank(
                     attrs=attrs,
                 )
             elif atol_is_tensor:
-                inputs['x'] = x
-                attrs.pop('use_default_atol')
                 helper = LayerHelper('matrix_rank_atol', **locals())
                 out = helper.create_variable_for_type_inference(dtype='int32')
                 helper.append_op(
@@ -2456,38 +2440,31 @@ def matrix_rank(
                     attrs=attrs,
                 )
             else:
-                inputs['X'] = x
-                attrs['tol'] = 0.0
-                attrs['use_atol_rtol'] = True
-                helper = LayerHelper('matrix_rank', **locals())
+                attrs['use_default_tol'] = use_default_atol and use_default_rtol
+                helper = LayerHelper('matrix_rank2', **locals())
                 out = helper.create_variable_for_type_inference(dtype='int32')
                 helper.append_op(
-                    type='matrix_rank',
+                    type='matrix_rank2',
                     inputs=inputs,
-                    outputs={'Out': out},
+                    outputs={'out': out},
                     attrs=attrs,
                 )
         else:
             inputs['X'] = x
             if tol is None:
-                attrs['use_default_atol'] = True
+                attrs['use_default_tol'] = True
                 attrs['tol'] = 0.0
             elif isinstance(tol, Variable):
-                attrs['use_default_atol'] = False
+                attrs['use_default_tol'] = False
                 if tol.dtype != x.dtype:
                     inputs['TolTensor'] = cast(tol, x.dtype)
                 else:
                     inputs['TolTensor'] = tol
             else:
                 check_type(tol, 'tol', float, 'matrix_rank')
-                attrs['use_default_atol'] = False
+                attrs['use_default_tol'] = False
                 attrs['tol'] = tol
 
-            if 'TolTensor' not in inputs.keys():
-                attrs['use_atol_rtol'] = False
-                attrs['atol'] = 0.0
-                attrs['rtol'] = 0.0
-                attrs['use_default_rtol'] = True
             helper = LayerHelper('matrix_rank', **locals())
             out = helper.create_variable_for_type_inference(dtype='int32')
             helper.append_op(

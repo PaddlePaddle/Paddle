@@ -1201,8 +1201,7 @@ void LinspaceInferMeta(const MetaTensor& start,
 void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
                                  const MetaTensor& atol_tensor,
                                  const MetaTensor& rtol_tensor,
-                                 bool use_default_atol,
-                                 bool use_default_rtol,
+                                 bool use_default_tol,
                                  bool hermitian,
                                  MetaTensor* out) {
   auto dim_x = x.dims();
