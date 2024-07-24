@@ -74,23 +74,23 @@ class TestRotaryPosEmb(unittest.TestCase):
             static_fn,
             {
                 'if_0': {
-                    'if_0_0': {utils.JIT_KERNEL_NAME: 1},
+                    'if_0_0': {'jit_kernel': 1},
                     'else_0_0': {
-                        'if_0_0_0': {utils.JIT_KERNEL_NAME: 1},
-                        'else_0_0_0': {utils.JIT_KERNEL_NAME: 1},
+                        'if_0_0_0': {'jit_kernel': 1},
+                         'else_0_0_0': {'jit_kernel': 1}
+                        }
                     },
-                },
                 'else_0': {
-                    'if_0_0': {utils.JIT_KERNEL_NAME: 1},
-                    'else_0_0': {
-                        'if_0_0_0': {utils.JIT_KERNEL_NAME: 1},
+                    'if_0_0': {
+                        'if_0_0_0': {'jit_kernel': 1},
                         'else_0_0_0': {
-                            'if_0_0_0_0': {utils.JIT_KERNEL_NAME: 1},
-                            'else_0_0_0_0': {utils.JIT_KERNEL_NAME: 1},
+                            'if_0_0_0_0': {'jit_kernel': 1},
+                            'else_0_0_0_0': {'jit_kernel': 1}
+                            }
                         },
-                    },
-                },
-            },
+                    'else_0_0': {'jit_kernel': 1}
+                }
+},
         )
 
     def eval(self, use_cinn):
@@ -120,5 +120,5 @@ class TestRotaryPosEmb(unittest.TestCase):
             )
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()
