@@ -319,14 +319,14 @@ std::vector<std::string> GetValueOutputName(Value value) {
 }
 
 std::vector<std::string> GetValueName(Value value) {
-  if (!(value.defining_op()->isa<::pir::ParameterOp>() ||
-        value.defining_op()->isa<paddle::dialect::DataOp>() ||
-        value.defining_op<::pir::ConstantTensorOp>() ||
-        value.dyn_cast<BlockArgument>() || IsUsedByShadowOutput(value))) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get name of Value from "
-        "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
-  }
+  // if (!(value.defining_op()->isa<::pir::ParameterOp>() ||
+  //       value.defining_op()->isa<paddle::dialect::DataOp>() ||
+  //       value.defining_op<::pir::ConstantTensorOp>() ||
+  //       value.dyn_cast<BlockArgument>() || IsUsedByShadowOutput(value))) {
+  //   PADDLE_THROW(phi::errors::InvalidArgument(
+  //       "Currently, we can only get name of Value from "
+  //       "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
+  // }
 
   std::vector<std::string> names;
   std::optional<std::string> input_name = GetValueInputName(value);
@@ -1355,7 +1355,14 @@ void BindValue(py::module *m) {
           })
       .def_property(
           "name",
-          [](Value self) { return GetValueName(self)[0]; },
+          [](Value self) {
+            if (auto names = GetValueName(self); !names.empty()) {
+              return names[0];
+            }
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "Currently, we can only get name of Value from "
+                "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
+          },
           [](Value self, const std::string &name) { SetValueName(self, name); })
       .def_property_readonly("has_name",
                              [](Value self) { return HasValueName(self); })
