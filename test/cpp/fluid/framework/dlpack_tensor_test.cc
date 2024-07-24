@@ -26,8 +26,8 @@ namespace framework {
 namespace {  // NOLINT
 template <typename T>
 constexpr uint8_t GetDLDataTypeCode() {
-  if (std::is_same<T, phi::dtype::complex<float>>::value ||
-      std::is_same<T, phi::dtype::complex<double>>::value) {
+  if (std::is_same<T, platform::complex<float>>::value ||
+      std::is_same<T, platform::complex<double>>::value) {
     return static_cast<uint8_t>(kDLComplex);
   }
 
@@ -55,32 +55,32 @@ void TestMain(const phi::Place &place, uint16_t lanes) {
   DLPackTensor dlpack_tensor(tensor, lanes);
   ::DLTensor &dl_tensor = dlpack_tensor;
 
-  CHECK_EQ(p, dl_tensor.data);
+  PADDLE_ENFORCE_EQ(p, dl_tensor.data);
   if (phi::is_cpu_place(place)) {
-    CHECK_EQ(kDLCPU, dl_tensor.device.device_type);
-    CHECK_EQ(0, dl_tensor.device.device_id);
+    PADDLE_ENFORCE_EQ(kDLCPU, dl_tensor.device.device_type);
+    PADDLE_ENFORCE_EQ(0, dl_tensor.device.device_id);
   } else if (phi::is_gpu_place(place)) {
-    CHECK_EQ(kDLGPU, dl_tensor.device.device_type);
-    CHECK_EQ(place.device, dl_tensor.device.device_id);
+    PADDLE_ENFORCE_EQ(kDLGPU, dl_tensor.device.device_type);
+    PADDLE_ENFORCE_EQ(place.device, dl_tensor.device.device_id);
   } else if (phi::is_cuda_pinned_place(place)) {
-    CHECK_EQ(kDLCPUPinned, dl_tensor.device.device_type);
-    CHECK_EQ(0, dl_tensor.device.device_id);
+    PADDLE_ENFORCE_EQ(kDLCPUPinned, dl_tensor.device.device_type);
+    PADDLE_ENFORCE_EQ(0, dl_tensor.device.device_id);
   } else {
-    CHECK_EQ(false, true);
+    PADDLE_ENFORCE_EQ(false, true);
   }
 
-  CHECK_EQ(dims.size(), dl_tensor.ndim);
+  PADDLE_ENFORCE_EQ(dims.size(), dl_tensor.ndim);
   for (auto i = 0; i < dims.size(); ++i) {
-    CHECK_EQ(dims[i], dl_tensor.shape[i]);
+    PADDLE_ENFORCE_EQ(dims[i], dl_tensor.shape[i]);
   }
 
-  CHECK_EQ(dl_tensor.strides == nullptr, true);
-  CHECK_EQ(static_cast<uint64_t>(0), dl_tensor.byte_offset);
+  PADDLE_ENFORCE_EQ(dl_tensor.strides == nullptr, true);
+  PADDLE_ENFORCE_EQ(static_cast<uint64_t>(0), dl_tensor.byte_offset);
 
-  CHECK_EQ(lanes, dl_tensor.dtype.lanes);
-  CHECK_EQ(sizeof(T) * 8, dl_tensor.dtype.bits);
+  PADDLE_ENFORCE_EQ(lanes, dl_tensor.dtype.lanes);
+  PADDLE_ENFORCE_EQ(sizeof(T) * 8, dl_tensor.dtype.bits);
 
-  CHECK_EQ(GetDLDataTypeCode<T>(), dl_tensor.dtype.code);
+  PADDLE_ENFORCE_EQ(GetDLDataTypeCode<T>(), dl_tensor.dtype.code);
 }
 
 template <typename T>
@@ -94,14 +94,14 @@ void TestToDLManagedTensor(const phi::Place &place, uint16_t lanes) {
 
   ::DLManagedTensor *dl_managed_tensor = dlpack_tensor.ToDLManagedTensor();
 
-  CHECK_EQ(dl_managed_tensor->manager_ctx == nullptr, true);
+  PADDLE_ENFORCE_EQ(dl_managed_tensor->manager_ctx == nullptr, true);
 
   for (auto i = 0; i < dims.size(); ++i) {
-    CHECK_EQ(dims[i], dl_managed_tensor->dl_tensor.shape[i]);
+    PADDLE_ENFORCE_EQ(dims[i], dl_managed_tensor->dl_tensor.shape[i]);
   }
 
-  CHECK_EQ(dl_managed_tensor->dl_tensor.strides[0] == 7, true);
-  CHECK_EQ(dl_managed_tensor->dl_tensor.strides[1] == 1, true);
+  PADDLE_ENFORCE_EQ(dl_managed_tensor->dl_tensor.strides[0] == 7, true);
+  PADDLE_ENFORCE_EQ(dl_managed_tensor->dl_tensor.strides[1] == 1, true);
 
   dl_managed_tensor->deleter(dl_managed_tensor);
 }
