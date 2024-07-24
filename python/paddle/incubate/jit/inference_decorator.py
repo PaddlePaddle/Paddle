@@ -17,6 +17,7 @@ import os
 import sys
 import textwrap
 from pathlib import Path
+from typing import List, Optional
 
 import paddle
 from paddle.inference import Config, PrecisionType, create_predictor
@@ -395,20 +396,20 @@ class InferenceEngine:
 
 def inference(
     function=None,
-    cache_static_model=False,
-    save_model_dir=None,
-    memory_pool_init_size_mb=1000,
-    precision_mode="float32",
-    switch_ir_optim=True,
-    switch_ir_debug=False,
-    enable_cinn=False,
-    with_trt=False,
-    trt_precision_mode="float32",
-    trt_use_static=False,
-    collect_shape=False,
-    enable_new_ir=False,
-    exp_enable_use_cutlass=False,
-    delete_pass_lists=None,
+    cache_static_model: Optional[bool] = False,
+    save_model_dir: Optional[str] = None,
+    memory_pool_init_size_mb: Optional[int] = 1000,
+    precision_mode: Optional[str] = "float32",
+    switch_ir_optim: Optional[bool] = True,
+    switch_ir_debug: Optional[bool] = False,
+    enable_cinn: Optional[bool] = False,
+    with_trt: Optional[bool] = False,
+    trt_precision_mode: Optional[bool] = "float32",
+    trt_use_static: Optional[bool] = False,
+    collect_shape: Optional[bool] = False,
+    enable_new_ir: Optional[bool] = False,
+    exp_enable_use_cutlass: Optional[bool] = False,
+    delete_pass_lists: Optional[List[str]] = None,
 ):
     """
     Converts dynamic graph APIs into static graph saved in disk. Then will use Paddle Inference to infer based on
@@ -421,18 +422,18 @@ def inference(
         cache_static_model: Whether to use the cached static model in thd disk . Default is False.
             when cache_static_model is True, the static model will be saved in disk, and the next time when you call this function
         save_model_dir: The directory to save the static model. Default is none which means ~/.cache/paddle/inference_models/.
-        memory_pool_init_size_mb: The memory pool init size in MB. Default is 1000.
-        precision_mode: The precision mode. Default is "float32".
-        switch_ir_optim: Whether to enable IR optim. Default is True.
-        switch_ir_debug: Whether to enable IR debug. Default is False.
-        enable_cinn: Whether to enable CINN. Default is False.
-        with_trt: Whether to enable TensorRT. Default is False.
-        trt_precision_mode: The precision mode of TensorRT. Default is "float32".
-        trt_use_static: Whether to use static shape in TensorRT. Default is False.
-        collect_shape: Whether to collect shape. Default is False.
-        enable_new_ir: Whether to enable new IR. Default is True.
-        exp_enable_use_cutlass: Whether to enable use cutlass. Default is False.
-        delete_pass_lists: The list of pass names to delete. Default is None.
+        memory_pool_init_size_mb(int, optional): The memory pool init size in MB. Default is 1000.
+        precision_mode(str, optional): The precision mode. Default is "float32".
+        switch_ir_optim(bool, optional): Whether to enable IR optim. Default is True.
+        switch_ir_debug(bool, optional): Whether to enable IR debug. Default is False.
+        enable_cinn(bool, optional): Whether to enable CINN. Default is False.
+        with_trt(bool, optional): Whether to enable TensorRT. Default is False.
+        trt_precision_mode(str, optional): The precision mode of TensorRT. Default is "float32".
+        trt_use_static(bool, optional): Whether to use static shape in TensorRT. Default is False.
+        collect_shape(bool, optional): Whether to collect shape. Default is False.
+        enable_new_ir(bool, optional): Whether to enable new IR. Default is True.
+        exp_enable_use_cutlass(bool, optional): Whether to enable use cutlass. Default is False.
+        delete_pass_lists(list[str], optional): The list of pass names to delete. Default is None.
 
     Returns:
         function (callable): the decorated function which can be used for inference.
