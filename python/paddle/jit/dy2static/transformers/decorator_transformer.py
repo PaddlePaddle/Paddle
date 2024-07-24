@@ -30,7 +30,7 @@ IGNORE_NAMES = [
     'staticmethod',
     'classmethod',
     'decorator',
-    'paddle_inference_decorator',
+    'inference',
 ]
 
 

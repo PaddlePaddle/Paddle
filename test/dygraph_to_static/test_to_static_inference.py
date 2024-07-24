@@ -66,9 +66,7 @@ class TestToStaticInfenrenceModel(Dy2StTestBase):
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer1(hidd)
         result0 = my_layer(x).numpy()
-        my_static_layer = paddle.incubate.jit.paddle_inference_decorator(
-            my_layer, backend="inference"
-        )
+        my_static_layer = paddle.incubate.jit.inference(my_layer)
         result1 = my_layer(x).numpy()
         np.testing.assert_allclose(result0, result1, rtol=0.001, atol=1e-05)
 
@@ -84,9 +82,7 @@ class TestToStaticInfenrenceTensorRTModel(Dy2StTestBase):
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer1(hidd)
         result0 = my_layer(x).numpy()
-        my_static_layer = paddle.incubate.jit.paddle_inference_decorator(
-            my_layer, backend="inference", with_trt=True
-        )
+        my_static_layer = paddle.incubate.jit.inference(my_layer, with_trt=True)
         result1 = my_layer(x).numpy()
         np.testing.assert_allclose(result0, result1, rtol=0.001, atol=1e-05)
 
@@ -105,9 +101,7 @@ class TestToStaticInfenrenceFunc(Dy2StTestBase):
         result_x0 = my_layer(x).numpy()
         result_y0 = my_layer(y).numpy()
 
-        my_layer.func = paddle.incubate.jit.paddle_inference_decorator(
-            my_layer.func, backend="inference"
-        )
+        my_layer.func = paddle.incubate.jit.inference(my_layer.func)
 
         result_x1 = my_layer(x).numpy()
         result_y1 = my_layer(y).numpy()
@@ -124,10 +118,7 @@ class TestToStaticInputListModel(Dy2StTestBase):
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer2(hidd)
         result0 = my_layer([x, x]).numpy()
-        my_static_layer = paddle.incubate.jit.paddle_inference_decorator(
-            my_layer,
-            backend="inference",
-        )
+        my_static_layer = paddle.incubate.jit.inference(my_layer)
 
         result1 = my_layer([x, x]).numpy()
         np.testing.assert_allclose(result0, result1, rtol=0.001, atol=1e-05)
