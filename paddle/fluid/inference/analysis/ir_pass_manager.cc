@@ -202,7 +202,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       PADDLE_ENFORCE_EQ(
           int8_valid,
           true,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "When you are in TRT INT8 mode, and load model from "
               "memory, you should set optim_cache_dir using "
               "config.SetOptimCacheDir()"));
@@ -210,7 +210,7 @@ void IRPassManager::CreatePasses(Argument *argument,
         PADDLE_ENFORCE_EQ(
             optim_cache_dir.empty(),
             false,
-            platform::errors::PreconditionNotMet(
+            phi::errors::PreconditionNotMet(
                 "When you are using Paddle-TRT, and using load model "
                 "from memory, and also set the use_static to true. "
                 "you must set optim_cache_dir using "
@@ -222,7 +222,7 @@ void IRPassManager::CreatePasses(Argument *argument,
           PADDLE_ENFORCE_NE(
               MKDIR(optim_cache_dir.c_str()),
               -1,
-              platform::errors::PreconditionNotMet(
+              phi::errors::PreconditionNotMet(
                   "Can not create optimize cache directory: %s, Make sure you "
                   "have permission to write",
                   optim_cache_dir));
@@ -309,7 +309,7 @@ void IRPassManager::CreatePasses(Argument *argument,
 
 std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   PADDLE_ENFORCE_NOT_NULL(
-      graph.get(), platform::errors::InvalidArgument("Graph cannot be null."));
+      graph.get(), phi::errors::InvalidArgument("Graph cannot be null."));
   // Apply all the passes
   for (const auto &pass : passes_) {
     if (pass->Type() != "graph_viz_pass" && !disable_logs_) {

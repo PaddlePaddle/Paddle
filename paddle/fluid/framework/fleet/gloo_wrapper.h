@@ -220,10 +220,10 @@ class GlooWrapper {
           static_cast<void (*)(void*, const void*, const void*, size_t)>(
               &gloo::min<T>));
     } else {
-      PADDLE_ENFORCE_EQ(0,
-                        1,
-                        paddle::platform::errors::InvalidArgument(
-                            "AllReduce mode not known: " + mode));
+      PADDLE_ENFORCE_EQ(
+          0,
+          1,
+          phi::errors::InvalidArgument("AllReduce mode not known: " + mode));
     }
     gloo::allreduce(opts);
 #else

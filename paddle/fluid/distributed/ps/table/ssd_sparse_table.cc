@@ -14,20 +14,20 @@
 
 #include "paddle/fluid/distributed/ps/table/ssd_sparse_table.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/common/local_random.h"
 #include "paddle/fluid/distributed/common/topk_calculator.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/utils/string/string_helper.h"
 PD_DECLARE_bool(pserver_print_missed_key_num_every_push);
 PD_DECLARE_bool(pserver_create_value_when_push);
 PD_DECLARE_bool(pserver_enable_create_feasign_randomly);
 PD_DEFINE_bool(pserver_open_strict_check, false, "pserver_open_strict_check");
 PD_DEFINE_int32(pserver_load_batch_size, 5000, "load batch size for ssd");
-PADDLE_DEFINE_EXPORTED_string(rocksdb_path,
-                              "database",
-                              "path of sparse table rocksdb file");
+PHI_DEFINE_EXPORTED_string(rocksdb_path,
+                           "database",
+                           "path of sparse table rocksdb file");
 
 namespace paddle {
 namespace distributed {

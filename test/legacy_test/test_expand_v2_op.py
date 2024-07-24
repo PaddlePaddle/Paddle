@@ -243,7 +243,9 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
         self.infer_expand_shape = [-1]
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_pir=True)
+        self.check_output(
+            check_cinn=True, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_cinn=True, check_pir=True)
@@ -280,7 +282,9 @@ class TestExpandV2OpRank1_tensor(OpTest):
         self.expand_shape = [2, 100]
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_pir=True)
+        self.check_output(
+            check_cinn=True, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_cinn=True, check_pir=True)

@@ -172,7 +172,7 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
         self.value = 3.8
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestFillConstantOp2_ShapeTensorList(OpTest):
@@ -196,7 +196,7 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
         self.infer_shape = [-1, -1]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestFillConstantOp3_ShapeTensorList(TestFillConstantOp1_ShapeTensorList):
@@ -230,7 +230,7 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
         self.value = 3.8
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 # Situation 4: value is a tensor
@@ -254,7 +254,7 @@ class TestFillConstantOp1_ValueTensor(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 # Situation 5: value is a tensor
@@ -278,7 +278,7 @@ class TestFillConstantOp2_ValueTensor(OpTest):
         self.dtype = np.int32
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 # Test python API

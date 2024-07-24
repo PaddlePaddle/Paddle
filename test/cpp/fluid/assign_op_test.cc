@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 TEST(AssignOp, AssignLoDTensor) {
   phi::CPUPlace cpu_place;

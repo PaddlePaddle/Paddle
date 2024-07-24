@@ -49,7 +49,7 @@ inline void AddPostResetCallbackIfCapturingCUDAGraph(Callback &&callback) {
         std::forward<Callback>(callback));
   }
 #endif
-  callback();
+  callback({});
 }
 
 template <typename T>
@@ -62,7 +62,9 @@ inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
     void *new_host_mem = new uint8_t[nbytes];
     std::memcpy(new_host_mem, host_mem, nbytes);
     AddPostResetCallbackIfCapturingCUDAGraph(
-        [new_host_mem] { delete[] reinterpret_cast<uint8_t *>(new_host_mem); });
+        [=](paddle::optional<const CUDAGraph &> graph) {
+          delete[] reinterpret_cast<uint8_t *>(new_host_mem);
+        });
     return reinterpret_cast<T *>(new_host_mem);
   }
 #endif

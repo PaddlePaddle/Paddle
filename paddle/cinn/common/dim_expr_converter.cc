@@ -104,9 +104,15 @@ struct DimExprToIrExprVisitor {
     return min;
   }
 
+  // convert Broadcast to Max
   ir::Expr operator()(const Broadcast<DimExpr>& dim_expr) {
-    PADDLE_THROW(phi::errors::Fatal(
-        "no support for converting from Broadcast<DimExpr> to ir::Expr"));
+    const auto& [operands] = dim_expr;
+    CHECK(!operands->empty());
+    ir::Expr max = ConvertToIrExpr(operands->at(0));
+    for (std::size_t i = 1; i < operands->size(); ++i) {
+      max = ir::Max::Make(max, ConvertToIrExpr(operands->at(i)));
+    }
+    return max;
   }
 };
 

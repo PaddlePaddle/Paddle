@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
@@ -21,7 +22,6 @@
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
-#include "paddle/fluid/platform/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
@@ -294,9 +294,9 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
                !var->IsInitialized()) {
       return var->template GetMutable<paddle::framework::RawTensor>();
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported `%s` type when get tensor.",
-          framework::ToTypeName(var->Type())));
+      PADDLE_THROW(
+          phi::errors::Unimplemented("Unsupported `%s` type when get tensor.",
+                                     framework::ToTypeName(var->Type())));
     }
   } else {
     VLOG(4) << "Var is nullptr";
@@ -305,7 +305,7 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
 }
 
 template <class TensorType>
-void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
+void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
                           const phi::Place& place,
                           const phi::DataType& dtype,
                           const phi::DataLayout& layout,
@@ -335,12 +335,12 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
 
   // set place
   if (tensor->initialized()) {  // avoid overwriting valid data
-    platform::DeviceContext* dev_ctx_for_copy = nullptr;
+    phi::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
-      dev_ctx_for_copy = platform::DeviceContextPool::Instance().Get(place);
+      dev_ctx_for_copy = phi::DeviceContextPool::Instance().Get(place);
     } else {
       dev_ctx_for_copy =
-          platform::DeviceContextPool::Instance().Get(tensor->place());
+          phi::DeviceContextPool::Instance().Get(tensor->place());
     }
     phi::Copy(*dev_ctx_for_copy, *tensor, place, /*blocking=*/true, tensor);
   } else {
@@ -373,7 +373,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
           << ", place = " << place << ", layout = " << layout;
 }
 
-void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
+void FakeInitializeTensorBase(const phi::DeviceContext& dev_ctx,
                               const phi::Place& place,
                               const phi::DataType& dtype,
                               const phi::DataLayout& layout,
@@ -415,7 +415,7 @@ void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
   auto* scope_var = scope.FindVar(op.Output("Scope"));
   PADDLE_ENFORCE_NOT_NULL(
       scope_var,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Expect Scope variable to be set in conditional_block_op, but "
           "got a null Scope variable. Please set the Scope variable."));
 
@@ -442,7 +442,7 @@ void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
       << "[ControlFlow][ConditionalBlock] New Executor is Running.";
 
   VLOG(10) << "[interpreterCore cache]" << core.get();
-  VLOG_IF(10, core) << platform::is_same_place(core->GetPlace(), dev_place);
+  VLOG_IF(10, core) << phi::is_same_place(core->GetPlace(), dev_place);
 
   framework::interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
@@ -462,7 +462,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
                                  const OperatorBase& op) {
   PADDLE_ENFORCE_NOT_NULL(
       scope.FindVar(op.Input("Condition")),
-      platform::errors::NotFound("Input(Condition) of WhileOp is not found."));
+      phi::errors::NotFound("Input(Condition) of WhileOp is not found."));
 
 #ifdef PADDLE_WITH_DNNL
   // Executor on being destroyed clears oneDNN cache and resets
@@ -473,7 +473,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
   auto* block = op.Attr<framework::BlockDesc*>("sub_block");
 
   // get device context from pool
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(dev_place);
 
   bool is_test = op.Attr<bool>("is_test");
@@ -510,7 +510,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
                          ->GetMutable<std::vector<framework::Scope*>>();
 
   if (!step_scopes->empty()) {
-    platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
+    phi::DeviceContextPool::Instance().Get(dev_place)->Wait();
     for (auto& s : *step_scopes) {
       if (scope.HasKid(s)) {
         scope.DeleteScope(s);
@@ -521,7 +521,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
 
   PADDLE_ENFORCE_EQ(step_scopes->size(),
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "The Output(StepScope) of WhileOp should be empty."));
 
   auto& skip_vars =
@@ -654,8 +654,7 @@ void FakeInitializeOutputsForOperatorBase(
     return;
   }
 
-  phi::DeviceContext* dev_ctx =
-      platform::DeviceContextPool::Instance().Get(place);
+  phi::DeviceContext* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
 
   if (op_type == "conditional_block" || op_type == "while") {
     // Note(sonder): skip fake init for conditional_block when there is no
@@ -793,13 +792,13 @@ void FakeInitializeOutputsForFunctionKernel(
     const phi::Kernel& phi_kernel,
     const phi::KernelSignature& kernel_sig,
     const RuntimeContext& runtime_ctx,
-    const platform::DeviceContext& dev_ctx) {
+    const phi::DeviceContext& dev_ctx) {
   const std::string& op_type = op.Type();
   auto output_names = kernel_sig.output_names;
   auto output_defs = phi_kernel.args_def().output_defs();
   PADDLE_ENFORCE_EQ(output_names.size(),
                     output_defs.size(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of outputs_args names (%d) must be equal to "
                         "the size of kernel output_defs (%d).",
                         output_names.size(),

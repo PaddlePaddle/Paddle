@@ -82,7 +82,7 @@ void XPUQuantizeSquashPass::DequantQuantSquash(
     PADDLE_ENFORCE_NE(
         nodes_keep_counter->find(dequant_out),
         nodes_keep_counter->end(),
-        platform::errors::NotFound("The dequant output node is not found."));
+        phi::errors::NotFound("The dequant output node is not found."));
 
     // check if dequantize op should be kept or removed, decrease the counter
     bool keep_dequant = (*nodes_keep_counter)[dequant_out]-- > 1;
@@ -276,7 +276,7 @@ void XPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
 
     PADDLE_ENFORCE_NE(scale,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Quantize scale(%f) should not be equal 0.", scale));
 
     for (int iter = prev_out->outputs.size() - 1; iter >= 0; iter--) {
@@ -294,9 +294,9 @@ void XPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
         PADDLE_ENFORCE_NE(
             last_op_input_name.empty(),
             true,
-            platform::errors::NotFound("Operator after quantize operator(%s) "
-                                       "should have quantize output as input.",
-                                       quant_out->Name()));
+            phi::errors::NotFound("Operator after quantize operator(%s) "
+                                  "should have quantize output as input.",
+                                  quant_out->Name()));
 
         // update the next operator input,
         // by replacing quant_out with first_quant_out
@@ -323,7 +323,7 @@ void XPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
 void XPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The graph in function XPUQuantizeSquashPass::ApplyImpl is null."));
   FusePassBase::Init("xpu_quantize_squash_pass", graph);
 

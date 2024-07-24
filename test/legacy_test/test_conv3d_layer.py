@@ -85,6 +85,43 @@ class Conv3DTestCase(unittest.TestCase):
         else:
             self.bias = None
 
+    def base_layer(self, place):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
+                input_shape = (
+                    (-1, -1, -1, -1, self.num_channels)
+                    if self.channel_last
+                    else (-1, self.num_channels, -1, -1, -1)
+                )
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
+                weight_attr = paddle.nn.initializer.Assign(self.weight)
+                if self.bias is None:
+                    bias_attr = False
+                else:
+                    bias_attr = paddle.nn.initializer.Assign(self.bias)
+                y_var = paddle.nn.Conv3D(
+                    in_channels=self.num_channels,
+                    out_channels=self.num_filters,
+                    kernel_size=self.filter_size,
+                    stride=self.stride,
+                    padding=self.padding,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    padding_mode="zeros",
+                    weight_attr=weight_attr,
+                    bias_attr=bias_attr,
+                    data_format=self.data_format,
+                )(x_var)
+        feed_dict = {"input": self.input}
+        exe = base.Executor(place)
+        exe.run(start)
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        return y_np
+
     def functional(self, place):
         main = base.Program()
         start = base.Program()
@@ -149,10 +186,12 @@ class Conv3DTestCase(unittest.TestCase):
 
     def _test_pir_equivalence(self, place):
         with paddle.pir_utils.IrGuard():
-            result1 = self.functional(place)
+            result1 = self.base_layer(place)
+            result2 = self.functional(place)
         with dg.guard(place):
-            result2, g1 = self.paddle_nn_layer()
+            result3, g1 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
+        np.testing.assert_array_almost_equal(result2, result3)
 
     def runTest(self):
         place = base.CPUPlace()

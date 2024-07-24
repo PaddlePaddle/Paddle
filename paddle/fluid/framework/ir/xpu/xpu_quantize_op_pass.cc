@@ -54,7 +54,7 @@ void XPUQuantizeOpPass::QuantizeInput(Graph* g,
       std::find(inputs.begin(), inputs.end(), input_arg_name) != inputs.end();
   PADDLE_ENFORCE_EQ(name_found,
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Var(%s) isn't the input of the %s operator.",
                         input_arg_name,
                         op->Op()->Type()));
@@ -97,7 +97,7 @@ void XPUQuantizeOpPass::DequantizeOutput(Graph* g,
       outputs.end();
   PADDLE_ENFORCE_EQ(name_found,
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Var(%s) isn't the output of the %s operator.",
                         output_arg_name,
                         op->Op()->Type()));
@@ -332,11 +332,10 @@ void XPUQuantizeOpPass::QuantizeQkvAttention(ir::Graph* graph) const {
 void XPUQuantizeOpPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Insert quantize/dequantize op to the graph.";
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
   PADDLE_ENFORCE_NOT_NULL(
-      param_scope(),
-      platform::errors::InvalidArgument("Scope cannot be nullptr."));
+      param_scope(), phi::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GetQuantInfo(graph);
   QuantizeConv(graph);

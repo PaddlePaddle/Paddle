@@ -17,8 +17,8 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/stream.h"
 

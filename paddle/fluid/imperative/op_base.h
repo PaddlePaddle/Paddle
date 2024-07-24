@@ -25,7 +25,7 @@
 #include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace imperative {
@@ -58,16 +58,16 @@ class OpBase {
   }
 
   const framework::OpInfo& Info() const {
-    PADDLE_ENFORCE_NOT_NULL(op_,
-                            platform::errors::PreconditionNotMet(
-                                "OpBase::Info() should be called after "
-                                "OpBase::SetType() is called"));
+    PADDLE_ENFORCE_NOT_NULL(
+        op_,
+        phi::errors::PreconditionNotMet("OpBase::Info() should be called after "
+                                        "OpBase::SetType() is called"));
     return op_->Info();
   }
 
   const framework::OperatorBase& InnerOp() const {
     PADDLE_ENFORCE_NOT_NULL(op_,
-                            platform::errors::PreconditionNotMet(
+                            phi::errors::PreconditionNotMet(
                                 "OpBase::InnerOp() should be called after "
                                 "OpBase::SetType() is called"));
     return *op_;
@@ -120,7 +120,7 @@ class OpBase {
 
   void SetBlockAttr(const std::string& name UNUSED,
                     framework::BlockDesc* block UNUSED) {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(phi::errors::PermissionDenied(
         "SetBlockAttr is not support in dygraph OpBase"));
   }
 
@@ -148,7 +148,7 @@ class OpBase {
       PADDLE_ENFORCE_NE(
           it_default,
           default_attrs_->end(),
-          platform::errors::NotFound("can not find attribute [%s]", name));
+          phi::errors::NotFound("can not find attribute [%s]", name));
       return it_default->second;
     }
   }
@@ -170,7 +170,7 @@ class OpBase {
     PADDLE_ENFORCE_NE(
         ins_.empty() && outs_.empty(),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Inputs and outputs of %s do not exist. This may be because:\n"
             "1. You use some output variables of the previous batch as the "
             "inputs of the current batch. Please try to call \"stop_gradient "

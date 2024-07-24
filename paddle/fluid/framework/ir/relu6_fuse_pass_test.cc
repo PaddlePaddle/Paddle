@@ -30,7 +30,7 @@ void AddVarToScope(Scope* param_scope,
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   auto* data = cpu_ctx->Alloc<T>(tensor);
   for (int64_t i = 0; i < tensor->numel(); i++) {
     data[i] = value;
@@ -59,7 +59,7 @@ TEST(Relu6FusePass, basic) {
   auto clip_num = GetNumOpNodes(graph, "clip");
   PADDLE_ENFORCE_EQ(clip_num,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "clip should be mapped to relu6 after pass."));
 }
 

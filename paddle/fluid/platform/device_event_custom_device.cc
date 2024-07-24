@@ -22,7 +22,7 @@ namespace platform {
 struct CustomDeviceEventWrapper {
   explicit CustomDeviceEventWrapper(const phi::Place& place) {
     PADDLE_ENFORCE_EQ(
-        platform::is_custom_place(place),
+        phi::is_custom_place(place),
         true,
         phi::errors::PreconditionNotMet(
             "Required device shall be CustomPlace, but received %d. ", place));

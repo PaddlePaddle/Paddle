@@ -18,7 +18,7 @@ limitations under the License. */
 
 TEST(InitDevices, CPU) {
   using paddle::framework::InitDevices;
-  using paddle::platform::DeviceContextPool;
+  using phi::DeviceContextPool;
 
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_XPU) && \
     !defined(PADDLE_WITH_HIP)
@@ -30,7 +30,7 @@ TEST(InitDevices, CPU) {
 
 TEST(InitDevices, CUDA) {
   using paddle::framework::InitDevices;
-  using paddle::platform::DeviceContextPool;
+  using phi::DeviceContextPool;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int count = paddle::platform::GetGPUDeviceCount();
@@ -42,7 +42,7 @@ TEST(InitDevices, CUDA) {
 
 TEST(InitDevices, XPU) {
   using paddle::framework::InitDevices;
-  using paddle::platform::DeviceContextPool;
+  using phi::DeviceContextPool;
 
 #ifdef PADDLE_WITH_XPU
   int count = paddle::platform::GetXPUDeviceCount();
