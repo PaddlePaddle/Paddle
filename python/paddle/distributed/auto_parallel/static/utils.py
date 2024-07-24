@@ -835,7 +835,11 @@ def get_dist_attr(program, dist_context=None):
     if use_pir_api():
         ops = program.global_block().ops
         for op in ops:
-            if op.name() == "builtin.parameter" or op.name() == "pd_op.data":
+            if op.name() == "builtin.parameter" or (
+                op.name() == "pd_op.data"
+                and op.has_attr("persistable")
+                and op.attrs()["persistable"]
+            ):
                 op_dist_attr = op.dist_attr
                 var_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
                 var_name = (

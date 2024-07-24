@@ -159,8 +159,6 @@ class TestLlamaAuto:
         dist_model.train()
 
         state_dict = dist_model.state_dict()
-        for k, v in state_dict.items():
-            print(k, v.shape, v.dtype, v._md5sum())
 
         loss_before_save = []
         for step, inputs in enumerate(dist_loader()):
