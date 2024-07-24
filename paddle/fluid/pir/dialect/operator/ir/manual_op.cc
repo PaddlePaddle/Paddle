@@ -3138,8 +3138,8 @@ bool ExpandOp::InferSymbolicShape(
             if (shape_data.data()) {
               expand_shape.emplace_back(shape_data.data()->at(0));
             } else {
-              infer_context->SetSymbolForValueByStaticShape(out());
-              return;
+              expand_shape.emplace_back(
+                  symbol::DimExpr{infer_context->GetNextSymName()});
             }
           }
           DealWithMinusOneAndSetOutput(expand_shape);
