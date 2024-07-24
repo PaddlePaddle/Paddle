@@ -908,7 +908,12 @@ class CompOpCost(OpCost):
         )
 
     def calc_time(self):
-        device_gflops = self.get_rank_gflops(self.rank, self.op_desc["dtype"])
+        if self.rank is None or self.op_desc is None:
+            device_gflops = 7800
+        else:
+            device_gflops = self.get_rank_gflops(
+                self.rank, self.op_desc["dtype"]
+            )
         flops_count = self.calc_flops()
         utilization_rate = 0.65
         return flops_count / (utilization_rate * device_gflops) * 1e-3
