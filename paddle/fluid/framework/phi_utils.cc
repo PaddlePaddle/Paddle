@@ -27,8 +27,7 @@ limitations under the License. */
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
  public:
@@ -359,5 +358,4 @@ phi::IntArray MakePhiIntArrayFromVarList(
   return result;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

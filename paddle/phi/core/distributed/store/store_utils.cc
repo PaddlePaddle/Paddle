@@ -22,8 +22,7 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 using auto_parallel::str_split;
 
 namespace {
@@ -84,5 +83,4 @@ std::shared_ptr<Store> CreateOrGetGlobalTCPStore() {
   return store;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -162,5 +161,4 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
           ToArgDistAttr(output_dist_attrs)};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

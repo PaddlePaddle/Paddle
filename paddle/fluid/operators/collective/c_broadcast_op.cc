@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CBroadcastOp : public framework::OperatorWithKernel {
  public:
@@ -55,8 +54,7 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

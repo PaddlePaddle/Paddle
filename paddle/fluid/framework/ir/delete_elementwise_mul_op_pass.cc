@@ -23,16 +23,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 struct FillMulPattern : public PatternBase {
   FillMulPattern(PDPattern* pattern, const std::string& name_scope);
@@ -68,7 +63,8 @@ FillMulPattern::FillMulPattern(PDPattern* pattern,
   mul->LinksFrom({fill_out, mul_in}).LinksTo({mul_out});
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 /*
 Delete "elementwise" if one of inputs is "1".
@@ -114,9 +110,7 @@ void DeleteElementwiseMulOpPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(delete_elementwise_mul_op_pass,
               paddle::framework::ir::DeleteElementwiseMulOpPass);

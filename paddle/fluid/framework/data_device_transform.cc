@@ -13,8 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_device_transform.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void TransDataDevice(const phi::DenseTensor &in,
                      const phi::Place &dst_place,
@@ -52,5 +51,4 @@ void TransDataDevice(const phi::DenseTensor &in,
   TensorCopySync(in, dst_place, out);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

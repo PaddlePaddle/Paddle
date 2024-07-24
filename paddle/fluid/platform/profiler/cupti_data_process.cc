@@ -21,9 +21,7 @@
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 
-namespace paddle {
-namespace platform {
-namespace details {
+namespace paddle::platform::details {
 #ifdef PADDLE_WITH_CUPTI
 void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
                      uint64_t start_ns,
@@ -375,6 +373,4 @@ void ProcessCuptiActivityRecord(
   }
 }
 #endif
-}  // namespace details
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform::details

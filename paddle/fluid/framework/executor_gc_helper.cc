@@ -28,8 +28,7 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void OpInOutInfo::Build(const OperatorBase *op) {
   is_built_ = true;
@@ -350,5 +349,4 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
   return result;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

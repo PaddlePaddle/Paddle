@@ -14,18 +14,12 @@
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 class ComputationOpHandle;
 class ShareTensorBufferOpHandle;
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void MemoryReusePass::ApplyImpl(Graph *graph) const {
   graph_ = graph;
@@ -405,6 +399,4 @@ void MemoryReusePass::UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
   in_var_info_iter->second->SetRefCnt(1);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

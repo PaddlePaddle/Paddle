@@ -15,8 +15,7 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/attribute_storage.h"
 #include "paddle/phi/core/enforce.h"
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 ///
 /// \brief ProcessMeshAttribute interface.
 ///
@@ -159,8 +158,7 @@ OperationDistAttribute OperationDistAttribute::get(
   return Base::get(ctx, mesh, operands, results);
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ProcessMeshAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::TensorDistAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperationDistAttribute)
