@@ -34,7 +34,7 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     inputs.push_back(input1);
     inputs.push_back(input2);
     auto get_persistable_data = [&](const std::string& arg_name,
-                                    framework::DDim* dims) -> float* {
+                                    phi::DDim* dims) -> float* {
       std::string var_name = op_desc.Input(arg_name).front();
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
@@ -43,7 +43,7 @@ class PrelnResidualBiasOpConverter : public OpConverter {
           engine_->GetFp32TrtWeight(var_name, *temp_tensor).get().values));
       return temp_data;
     };
-    framework::DDim bias_dims, scale_dims, ele_bias_dims;
+    phi::DDim bias_dims, scale_dims, ele_bias_dims;
     auto* bias = get_persistable_data("LnBias", &bias_dims);
     auto* scale = get_persistable_data("LnScale", &scale_dims);
     auto const& vars = op_desc.Inputs(false);

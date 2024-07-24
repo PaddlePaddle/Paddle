@@ -42,7 +42,7 @@ class BitwiseAndConverter : public OpConverter {
                                    *y_tensor,
                                    nvinfer1::ElementWiseOperation::kAND);
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "bitwise_and TRT converter is only supported on bool"));
     }
 

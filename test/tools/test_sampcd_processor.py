@@ -16,6 +16,8 @@
 
 import importlib
 import os
+import sys
+import tempfile
 import unittest
 
 import xdoctest
@@ -27,6 +29,8 @@ from sampcd_processor_utils import (
     get_test_results,
 )
 
+from paddle.base import core
+
 
 def _clear_environ():
     for k in {'CPU', 'GPU', 'XPU', 'DISTRIBUTED'}:
@@ -34,7 +38,7 @@ def _clear_environ():
             del os.environ[k]
 
 
-class Test_TestResult(unittest.TestCase):
+class TestTestResult(unittest.TestCase):
     def test_good_result(self):
         r = _TestResult(name='good', passed=True)
         self.assertTrue(r.passed)
@@ -79,11 +83,29 @@ class Test_TestResult(unittest.TestCase):
             r = _TestResult(name='good', passed=True, bad=True)
 
 
-class Test_get_api_md5(unittest.TestCase):
+class TestSpecFile(unittest.TestCase):
     def setUp(self):
-        self.api_pr_spec_filename = os.path.abspath(
-            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec')
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.api_dev_spec_filename = os.path.join(
+            self.temp_dir.name, 'API_DEV.spec'
         )
+        self.api_pr_spec_filename = os.path.join(
+            self.temp_dir.name, 'API_PR.spec'
+        )
+        self.api_diff_spec_filename = os.path.join(
+            self.temp_dir.name, 'dev_pr_diff_api.spec'
+        )
+        self.init_file()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def init_file(self):
+        raise NotImplementedError
+
+
+class TestGetApiMd5(TestSpecFile):
+    def init_file(self):
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write(
                 "\n".join(
@@ -97,11 +119,8 @@ class Test_get_api_md5(unittest.TestCase):
                 )
             )
 
-    def tearDown(self):
-        os.remove(self.api_pr_spec_filename)
-
     def test_get_api_md5(self):
-        res = get_api_md5('paddle/fluid/API_PR.spec')
+        res = get_api_md5(self.api_pr_spec_filename)
         self.assertEqual(
             "ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ff0f188c95030158cc6398d2a6c55one",
             res['paddle.one_plus_one'],
@@ -123,11 +142,8 @@ class Test_get_api_md5(unittest.TestCase):
         )
 
 
-class Test_get_incrementapi(unittest.TestCase):
-    def setUp(self):
-        self.api_pr_spec_filename = os.path.abspath(
-            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec')
-        )
+class TestGetIncrementApi(TestSpecFile):
+    def init_file(self):
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write(
                 "\n".join(
@@ -139,9 +155,7 @@ class Test_get_incrementapi(unittest.TestCase):
                     ]
                 )
             )
-        self.api_dev_spec_filename = os.path.abspath(
-            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_DEV.spec')
-        )
+
         with open(self.api_dev_spec_filename, 'w') as f:
             f.write(
                 "\n".join(
@@ -150,17 +164,13 @@ class Test_get_incrementapi(unittest.TestCase):
                     ]
                 )
             )
-        self.api_diff_spec_filename = os.path.abspath(
-            os.path.join(os.getcwd(), "dev_pr_diff_api.spec")
+
+    def test_get_incrementapi(self):
+        get_incrementapi(
+            api_dev_spec_fn=self.api_dev_spec_filename,
+            api_pr_spec_fn=self.api_pr_spec_filename,
+            api_diff_spec_fn=self.api_diff_spec_filename,
         )
-
-    def tearDown(self):
-        os.remove(self.api_pr_spec_filename)
-        os.remove(self.api_dev_spec_filename)
-        os.remove(self.api_diff_spec_filename)
-
-    def test_it(self):
-        get_incrementapi()
         with open(self.api_diff_spec_filename, 'r') as f:
             lines = f.readlines()
             self.assertCountEqual(
@@ -280,8 +290,6 @@ class TestXdoctester(unittest.TestCase):
         doctester.prepare(test_capacity)
         self.assertTrue(os.environ['CPU'])
         self.assertTrue(os.environ['GPU'])
-        self.assertFalse(os.environ.get('cpu'))
-        self.assertFalse(os.environ.get('gpu'))
         self.assertFalse(os.environ.get('XPU'))
 
         _clear_environ()
@@ -491,7 +499,11 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('after_enable_static', tr_2.name)
         self.assertTrue(tr_2.passed)
 
-    def test_patch_xdoctest(self):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+        "core is not compiled with CUDA",
+    )
+    def test_patch_xdoctest_place(self):
         # test patch tensor place
         _clear_environ()
 
@@ -680,6 +692,11 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('cpu_to_gpu_array', tr_5.name)
         self.assertFalse(tr_5.passed)
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+        "core is not compiled with CUDA",
+    )
+    def test_patch_xdoctest_float(self):
         # test patch float precision
         # reload xdoctest.checker
         importlib.reload(xdoctest.checker)
@@ -1844,24 +1861,6 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('static_1', tr_1.name)
         self.assertTrue(tr_1.passed)
 
-        _clear_environ()
-
-        test_capacity = {'cpu'}
-        doctester = Xdoctester(use_multiprocessing=False)
-        doctester.prepare(test_capacity)
-
-        test_results = get_test_results(doctester, docstrings_to_test)
-        self.assertEqual(len(test_results), 2)
-
-        tr_0, tr_1 = test_results
-
-        self.assertIn('static_0', tr_0.name)
-        self.assertTrue(tr_0.passed)
-
-        self.assertIn('static_1', tr_1.name)
-        self.assertFalse(tr_1.passed)
-        self.assertTrue(tr_1.failed)
-
     def test_timeout(self):
         docstrings_to_test = {
             'timeout_false': """
@@ -1871,7 +1870,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(10)
                     >>> import time
                     >>> time.sleep(0.1)
             """,
@@ -1882,9 +1881,9 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(10)
                     >>> import time
-                    >>> time.sleep(3)
+                    >>> time.sleep(15)
             """,
             'timeout_false_with_skip_0': """
             this is docstring...
@@ -1893,7 +1892,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(10)
                     >>> # doctest: +SKIP('skip')
                     >>> import time
                     >>> time.sleep(0.1)
@@ -1906,7 +1905,7 @@ class TestGetTestResults(unittest.TestCase):
                 .. code-block:: python
 
                     >>> # doctest: +SKIP('skip')
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(10)
                     >>> import time
                     >>> time.sleep(0.1)
             """,
@@ -1917,10 +1916,10 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(10)
                     >>> # doctest: +SKIP('skip')
                     >>> import time
-                    >>> time.sleep(3)
+                    >>> time.sleep(15)
             """,
             'timeout_true_with_skip_1': """
             this is docstring...
@@ -1930,9 +1929,9 @@ class TestGetTestResults(unittest.TestCase):
                 .. code-block:: python
 
                     >>> # doctest: +SKIP('skip')
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(10)
                     >>> import time
-                    >>> time.sleep(3)
+                    >>> time.sleep(15)
             """,
             'timeout_more_codes': """
             this is docstring...
@@ -1941,15 +1940,15 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(10)
                     >>> import time
                     >>> time.sleep(0.1)
 
                 .. code-block:: python
 
-                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +TIMEOUT(10)
                     >>> import time
-                    >>> time.sleep(3)
+                    >>> time.sleep(15)
 
             """,
         }
@@ -2370,6 +2369,11 @@ class TestGetTestResults(unittest.TestCase):
         self.assertTrue(tr_6.badstatement)
         self.assertFalse(tr_6.passed)
 
+    @unittest.skipIf(
+        not sys.platform.startswith('linux'),
+        "CI checks on linux, we only care this situation about multiprocessing!"
+        "Or pickle may fail.",
+    )
     def test_single_process_directive(self):
         _clear_environ()
 

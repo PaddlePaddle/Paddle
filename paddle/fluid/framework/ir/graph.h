@@ -152,12 +152,12 @@ class Graph {
     PADDLE_ENFORCE_EQ(
         Has(attr_name),
         true,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "%s attribute not registered for current graph.", attr_name));
     try {
       return *paddle::any_cast<AttrType *>(attrs_.at(attr_name));
     } catch (paddle::bad_any_cast &) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Invalid attribute type of %s, expected: %s, received: %s.",
           attr_name,
           platform::demangle(typeid(AttrType *).name()),  // NOLINT
@@ -175,7 +175,7 @@ class Graph {
     PADDLE_ENFORCE_EQ(
         attrs_.count(attr_name),
         0,
-        platform::errors::AlreadyExists(
+        phi::errors::AlreadyExists(
             "The attribute %s to be set already exists in the graph.",
             attr_name));
     attrs_[attr_name] = attr;
@@ -195,9 +195,9 @@ class Graph {
     PADDLE_ENFORCE_EQ(
         attrs_.count(attr_name),
         0,
-        platform::errors::AlreadyExists("The attribute %s to be set(not owned) "
-                                        "already exists in the graph.",
-                                        attr_name));
+        phi::errors::AlreadyExists("The attribute %s to be set(not owned) "
+                                   "already exists in the graph.",
+                                   attr_name));
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = []() {};
   }
@@ -211,7 +211,7 @@ class Graph {
     PADDLE_ENFORCE_NE(
         attrs_.count(attr_name),
         0,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "The attribute %s to be erased does not exist in the graph.",
             attr_name));
     attr_dels_[attr_name]();
@@ -237,7 +237,7 @@ class Graph {
     }
     PADDLE_ENFORCE_NOT_NULL(
         var_desc,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The VarDesc used to create variable node is null."));
     auto *x =
         AddNode(new ir::Node(var_desc, block_id == -1 ? block_id_ : block_id));
@@ -255,7 +255,7 @@ class Graph {
     }
     PADDLE_ENFORCE_NOT_NULL(
         op_desc,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The OpDesc used to create operator node is null."));
     auto *x = AddNode(new ir::Node(op_desc));
     x->SetId(num_node_created_++);
@@ -322,7 +322,7 @@ class Graph {
     }
     PADDLE_ENFORCE_EQ(node_set_.find(node) != node_set_.end(),
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The node to be removed does not exist."));
     std::unique_ptr<ir::Node> ret;
     ret.reset(nodes_.at(node).release());
@@ -368,7 +368,7 @@ class Graph {
     }
     PADDLE_ENFORCE_EQ(node_set_.find(node) == node_set_.end(),
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The node to be added already exists."));
     nodes_[node].reset(node);
     node_set_.insert(node);
@@ -390,11 +390,10 @@ class Graph {
     PADDLE_ENFORCE_EQ(
         this->IsMainGraph(),
         true,
-        platform::errors::InvalidArgument("This graph is not main_graph"));
-    PADDLE_ENFORCE_LT(
-        idx,
-        sub_graphs_.size(),
-        platform::errors::InvalidArgument("Invalid sub_graph index"));
+        phi::errors::InvalidArgument("This graph is not main_graph"));
+    PADDLE_ENFORCE_LT(idx,
+                      sub_graphs_.size(),
+                      phi::errors::InvalidArgument("Invalid sub_graph index"));
     return sub_graphs_.at(idx).get();
   }
 
@@ -411,7 +410,7 @@ class Graph {
     PADDLE_ENFORCE_EQ(
         this->IsMainGraph(),
         true,
-        platform::errors::InvalidArgument("This graph is not main_graph"));
+        phi::errors::InvalidArgument("This graph is not main_graph"));
     return sub_graphs_.size();
   }
 
@@ -446,7 +445,7 @@ class Graph {
     PADDLE_ENFORCE_EQ(
         this->IsMainGraph(),
         true,
-        platform::errors::InvalidArgument("This graph is not main_graph"));
+        phi::errors::InvalidArgument("This graph is not main_graph"));
     sub_graphs_.clear();
   }
 
@@ -454,10 +453,10 @@ class Graph {
     PADDLE_ENFORCE_EQ(
         this->IsMainGraph(),
         true,
-        platform::errors::InvalidArgument("This graph is not main_graph"));
+        phi::errors::InvalidArgument("This graph is not main_graph"));
     PADDLE_ENFORCE_EQ(sub_graphs_.size(),
                       sub_graph->block_id_,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "sub_graph idx is not equal to block_id_"));
     sub_graphs_.push_back(std::move(sub_graph));
   }

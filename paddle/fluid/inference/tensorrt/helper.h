@@ -23,8 +23,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/dynload/tensorrt.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/utils/data_type.h"
 
@@ -50,7 +50,7 @@ namespace tensorrt {
 #define TRT_NOEXCEPT
 #endif
 
-namespace dy = paddle::platform::dynload;
+namespace dy = phi::dynload;
 
 // TensorRT data type to size
 const int kDataTypeSize[] = {
@@ -291,7 +291,7 @@ static nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
   if (!with_dynamic_shape) {
     if (shape.size() == 4UL) {
       if (shape[2] == -1 || shape[3] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "The input [%s] shape of trt subgraph is %s, please enable "
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
             input,
