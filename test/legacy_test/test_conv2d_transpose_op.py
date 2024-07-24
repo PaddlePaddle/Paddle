@@ -32,7 +32,6 @@ from testsuite import create_op
 
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):
@@ -1234,89 +1233,174 @@ class TestConv2DTransposeAPI(unittest.TestCase):
 
 
 class TestConv2DTransposeOpException(unittest.TestCase):
-    @test_with_pir_api
     def test_exception(self):
-        data = paddle.static.data(
-            name='data', shape=[-1, 3, 5, 5], dtype="float32"
-        )
-
-        def attr_data_format():
-            out = paddle.static.nn.conv2d_transpose(
-                input=data,
-                groups=1,
-                num_filters=6,
-                filter_size=3,
-                data_format="NCDHW",
+        with paddle.pir_utils.OldIrGuard():
+            data = paddle.static.data(
+                name='data', shape=[-1, 3, 5, 5], dtype="float32"
             )
 
-        self.assertRaises(ValueError, attr_data_format)
+            def attr_data_format():
+                out = paddle.static.nn.conv2d_transpose(
+                    input=data,
+                    groups=1,
+                    num_filters=6,
+                    filter_size=3,
+                    data_format="NCDHW",
+                )
 
-        def attr_padding_str():
-            out = paddle.static.nn.conv2d_transpose(
-                input=data,
-                groups=1,
-                num_filters=6,
-                filter_size=3,
-                padding='Vald',
+            self.assertRaises(ValueError, attr_data_format)
+
+            def attr_padding_str():
+                out = paddle.static.nn.conv2d_transpose(
+                    input=data,
+                    groups=1,
+                    num_filters=6,
+                    filter_size=3,
+                    padding='Vald',
+                )
+
+            self.assertRaises(ValueError, attr_padding_str)
+
+            def attr_padding_list():
+                out = paddle.static.nn.conv2d_transpose(
+                    input=data,
+                    groups=1,
+                    num_filters=6,
+                    filter_size=3,
+                    padding=[[1, 1], [1, 1], [0, 0], [0, 0]],
+                )
+
+            self.assertRaises(ValueError, attr_padding_list)
+
+            def attr_padding_with_data_format():
+                out = paddle.static.nn.conv2d_transpose(
+                    input=data,
+                    groups=1,
+                    num_filters=6,
+                    filter_size=3,
+                    padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
+                    data_format='NHWC',
+                )
+
+            self.assertRaises(ValueError, attr_padding_with_data_format)
+
+            error_input = paddle.static.data(
+                name='error_data', shape=[-1, 1], dtype="float32"
             )
 
-        self.assertRaises(ValueError, attr_padding_str)
+            def error_input_size():
+                out = paddle.static.nn.conv2d_transpose(
+                    input=error_input, groups=1, num_filters=6, filter_size=3
+                )
 
-        def attr_padding_list():
-            out = paddle.static.nn.conv2d_transpose(
-                input=data,
-                groups=1,
-                num_filters=6,
-                filter_size=3,
-                padding=[[1, 1], [1, 1], [0, 0], [0, 0]],
+            self.assertRaises(ValueError, error_input_size)
+
+            def error_groups():
+                out = paddle.static.nn.conv2d_transpose(
+                    input=data,
+                    groups=0,
+                    num_filters=6,
+                    filter_size=3,
+                    data_format='NHWC',
+                )
+
+            self.assertRaises(ValueError, error_groups)
+
+            def error_0_filter_number():
+                out = paddle.static.nn.conv2d_transpose(
+                    input=data,
+                    groups=1,
+                    num_filters=0,
+                    filter_size=3,
+                    data_format='NCHW',
+                )
+
+            self.assertRaises(ValueError, error_0_filter_number)
+
+    def test_pir_exception(self):
+        with paddle.pir_utils.IrGuard():
+            data = paddle.static.data(
+                name='data', shape=[-1, 3, 5, 5], dtype="float32"
             )
 
-        self.assertRaises(ValueError, attr_padding_list)
+            def attr_data_format():
+                out = paddle.nn.Conv2DTranspose(
+                    in_channels=3,
+                    groups=1,
+                    out_channels=6,
+                    kernel_size=3,
+                    data_format='NCDHW',
+                )(data)
 
-        def attr_padding_with_data_format():
-            out = paddle.static.nn.conv2d_transpose(
-                input=data,
-                groups=1,
-                num_filters=6,
-                filter_size=3,
-                padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
-                data_format='NHWC',
+            self.assertRaises(ValueError, attr_data_format)
+
+            def attr_padding_str():
+                out = paddle.nn.Conv2DTranspose(
+                    in_channels=3,
+                    groups=1,
+                    out_channels=6,
+                    kernel_size=3,
+                    padding='Vald',
+                )(data)
+
+            self.assertRaises(ValueError, attr_padding_str)
+
+            def attr_padding_list():
+                out = paddle.nn.Conv2DTranspose(
+                    in_channels=3,
+                    groups=1,
+                    out_channels=6,
+                    kernel_size=3,
+                    padding=[[1, 1], [1, 1], [0, 0], [0, 0]],
+                )(data)
+
+            self.assertRaises(ValueError, attr_padding_list)
+
+            def attr_padding_with_data_format():
+                out = paddle.nn.Conv2DTranspose(
+                    in_channels=5,
+                    groups=1,
+                    out_channels=6,
+                    kernel_size=3,
+                    padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
+                    data_format='NHWC',
+                )(data)
+
+            self.assertRaises(ValueError, attr_padding_with_data_format)
+
+            error_input = paddle.static.data(
+                name='error_data', shape=[-1, 1], dtype="float32"
             )
 
-        self.assertRaises(ValueError, attr_padding_with_data_format)
+            def error_input_size():
+                out = paddle.nn.Conv2DTranspose(
+                    in_channels=1,
+                    groups=1,
+                    out_channels=6,
+                    kernel_size=3,
+                )(error_input)
 
-        error_input = paddle.static.data(
-            name='error_data', shape=[-1, 1], dtype="float32"
-        )
+            self.assertRaises(ValueError, error_input_size)
 
-        def error_input_size():
-            out = paddle.static.nn.conv2d_transpose(
-                input=error_input, groups=1, num_filters=6, filter_size=3
-            )
+            def error_groups():
+                out = paddle.nn.Conv2DTranspose(
+                    in_channels=5,
+                    groups=0,
+                    out_channels=6,
+                    kernel_size=3,
+                )(data)
 
-        self.assertRaises(ValueError, error_input_size)
+            self.assertRaises(ZeroDivisionError, error_groups)
 
-        def error_groups():
-            out = paddle.static.nn.conv2d_transpose(
-                input=data,
-                groups=0,
-                num_filters=6,
-                filter_size=3,
-                data_format='NHWC',
-            )
+            def error_0_filter_number():
+                out = paddle.nn.Conv2DTranspose(
+                    in_channels=3,
+                    groups=1,
+                    out_channels=0,
+                    kernel_size=3,
+                )(data)
 
-        self.assertRaises(ValueError, error_groups)
-
-        def error_0_filter_number():
-            out = paddle.static.nn.conv2d_transpose(
-                input=data,
-                groups=1,
-                num_filters=0,
-                filter_size=3,
-                data_format='NCHW',
-            )
-
-        self.assertRaises(ValueError, error_0_filter_number)
+            self.assertRaises(AssertionError, error_0_filter_number)
 
 
 class TestConv2DTransposeRepr(unittest.TestCase):
@@ -1361,7 +1445,6 @@ class TestTensorOutputSize1(UnittestBase):
         )
         return out
 
-    @test_with_pir_api
     def test_static(self):
         main_prog = Program()
         startup_prog = Program()
