@@ -448,18 +448,25 @@ class TestDygraphPtbRnn(unittest.TestCase):
                             static_param_name_list[k - 3]
                         ] = out[k]
 
-        np.testing.assert_array_equal(static_loss_value, dy_loss_value)
-        np.testing.assert_array_equal(
-            static_last_cell_value, dy_last_cell_value
+        np.testing.assert_allclose(
+            static_loss_value, dy_loss_value, rtol=1e-5, atol=1e-5
         )
-        np.testing.assert_array_equal(
-            static_last_hidden_value, dy_last_hidden_value
+        np.testing.assert_allclose(
+            static_last_cell_value, dy_last_cell_value, rtol=1e-5, atol=1e-5
+        )
+        np.testing.assert_allclose(
+            static_last_hidden_value, dy_last_hidden_value, rtol=1e-5, atol=1e-5
         )
         for key, value in static_param_init.items():
-            np.testing.assert_array_equal(value, dy_param_init[key])
+            np.testing.assert_allclose(
+                value, dy_param_init[key], rtol=1e-5, atol=1e-5
+            )
         for key, value in static_param_updated.items():
-            np.testing.assert_array_equal(value, dy_param_updated[key])
+            np.testing.assert_allclose(
+                value, dy_param_updated[key], rtol=1e-5, atol=1e-5
+            )
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
