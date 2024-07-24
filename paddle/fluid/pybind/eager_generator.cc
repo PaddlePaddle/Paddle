@@ -3799,5 +3799,5 @@ int run_generator(int argc, char* argv[]) {
 
   paddle::framework::DygraphCodeGeneration(eager_root, split_count);
 
-  return 0
+  return 0;
 }
