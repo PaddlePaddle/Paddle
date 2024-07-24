@@ -28,8 +28,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/os_info.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
@@ -164,7 +164,7 @@ static std::once_flag init_devices_flag;
 void InitDevices() {
   std::call_once(init_devices_flag, []() {
     // set name at the entry point of Paddle
-    platform::SetCurrentThreadName("MainThread");
+    phi::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA

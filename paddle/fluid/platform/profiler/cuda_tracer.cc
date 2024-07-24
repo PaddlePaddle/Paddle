@@ -19,8 +19,8 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/cupti_data_process.h"
+#include "paddle/phi/core/os_info.h"
 
 #define CUPTI_CALL(call)                                                     \
   do {                                                                       \
@@ -62,7 +62,7 @@ void CudaTracer::StartTracing() {
       true,
       phi::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
   ConsumeBuffers();
-  tracing_start_ns_ = PosixInNsec();
+  tracing_start_ns_ = phi::PosixInNsec();
   state_ = TracerState::STARTED;
 }
 
