@@ -32,7 +32,8 @@ pir::Type ProgramReader::RecoverType(Json* type_json) {
 
 pir::AttributeMap ProgramReader::RecoverOpAttributesMap(Json* attrs_json) {
   Json empty_json = Json::array();
-  return ReadAttributesMap(attrs_json, &empty_json);
+  std::unordered_map<std::string, Json> attr_patch;
+  return ReadAttributesMap(attrs_json, &empty_json, attr_patch);
 }
 
 void ProgramReader::ReadProgram(Json* program_json, pir::Program* program) {
