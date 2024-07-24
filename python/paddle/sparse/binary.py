@@ -36,6 +36,15 @@ _int_dtype_ = [
     core.VarDesc.VarType.BOOL,
 ]
 
+_pir_int_dtype_ = {
+    core.DataType.UINT8: 1,
+    core.DataType.INT8: 1,
+    core.DataType.INT16: 2,
+    core.DataType.INT32: 4,
+    core.DataType.INT64: 8,
+    core.DataType.BOOL: 1,
+}
+
 
 @dygraph_only
 def matmul(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
@@ -425,6 +434,8 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     if x.dtype in _int_dtype_:
         x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
+    if x.dtype in _pir_int_dtype_:
+        x = _C_ops.sparse_cast(x, None, core.DataType.FLOAT32)
 
     if isinstance(y, (int, float)):
         return _C_ops.sparse_divide_scalar(x, float(y))
