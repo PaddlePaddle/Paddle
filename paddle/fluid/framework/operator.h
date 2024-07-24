@@ -590,7 +590,7 @@ class ExecutionContext : public phi::KernelContext {
 #endif
 
   template <typename T, typename DevContext>
-  phi::DenseTensor AllocateTmpTensor(const framework::DDim& dim,
+  phi::DenseTensor AllocateTmpTensor(const phi::DDim& dim,
                                      const DevContext& dev_ctx) const {
     phi::DenseTensor tmp;
     tmp.Resize(dim);
