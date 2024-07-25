@@ -551,13 +551,9 @@ void ProgramTranslator::TranslateReshapeGradOperation(
 
   pir::Value xshape_value;
   VLOG(10) << "create data op for " << input_xshape_name;
-  auto var_desc = legacy_program_->Block(0).FindVarRecursive(input_xshape_name);
+  auto var_desc = op->Block()->FindVarRecursive(input_xshape_name);
   auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
   auto shape_vec = var_desc->GetShape();
-  VLOG(0) << "shape_vec.size() = " << shape_vec.size();
-  for (size_t i = 0; i < shape_vec.size(); ++i) {
-    VLOG(0) << "shape_vec[" << i << "] = " << shape_vec[i];
-  }
   shape_vec.erase(shape_vec.begin());
   xshape_value = builder
                      .Build<paddle::dialect::DataOp>(
