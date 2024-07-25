@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "glog/logging.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -25,7 +26,6 @@
 #include "paddle/fluid/inference/utils/table_printer.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/utils/string/split.h"
 
@@ -1539,8 +1539,8 @@ void AnalysisConfig::EnableCustomPasses(const std::vector<std::string> &passes,
   custom_pass_only_ = custom_pass_only;
 }
 
-void AnalysisConfig::DeletePass(const std::vector<std::string> &passes) {
-  deleted_passes_ = passes;
+void AnalysisConfig::DeletePass(const std::string &pass_name) {
+  deleted_passes_.push_back(pass_name);
 }
 
 void AnalysisConfig::SetOptimizationLevel(int opt_level) {

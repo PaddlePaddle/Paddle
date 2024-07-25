@@ -66,9 +66,15 @@ class TestDataFeeder(unittest.TestCase):
 
             self.assertEqual(result['sentences'].shape(), [9, 1])
             self.assertEqual(result['label'].shape(), [3, 1])
-            self.assertEqual(
-                result['sentences'].recursive_sequence_lengths(), [[3, 2, 4]]
-            )
+            if paddle.framework.use_pir_api():
+                self.assertEqual(
+                    result['sentences'].recursive_sequence_lengths(), []
+                )
+            else:
+                self.assertEqual(
+                    result['sentences'].recursive_sequence_lengths(),
+                    [[3, 2, 4]],
+                )
             self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
     def test_lod_level_2_converter(self):
@@ -94,10 +100,16 @@ class TestDataFeeder(unittest.TestCase):
 
             self.assertEqual(result['paragraphs'].shape(), [9, 1])
             self.assertEqual(result['label'].shape(), [2, 1])
-            self.assertEqual(
-                result['paragraphs'].recursive_sequence_lengths(),
-                [[2, 1], [3, 2, 4]],
-            )
+            if paddle.framework.use_pir_api():
+                self.assertEqual(
+                    result['paragraphs'].recursive_sequence_lengths(),
+                    [],
+                )
+            else:
+                self.assertEqual(
+                    result['paragraphs'].recursive_sequence_lengths(),
+                    [[2, 1], [3, 2, 4]],
+                )
             self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
     def test_errors(self):
