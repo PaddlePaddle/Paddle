@@ -18,7 +18,6 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_l3_strategy.h"
 #endif
-#include <unordered_set>
 
 namespace paddle {
 
@@ -91,7 +90,6 @@ class InferXPUContext : public phi::XPUContext {
   mutable std::unordered_map<phi::Allocation*,
                              std::pair<phi::Allocation*, bool>>
       holder_map_;
-
   phi::XPUL3Planner l3_plan_;
 };
 #endif
