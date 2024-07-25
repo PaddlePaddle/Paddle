@@ -39,11 +39,6 @@ pir::Operation* ProcessDyShapeGroup(const OpLoweringGroupPtr& group,
           optional_broadcast_tree.value();
       const auto& value_to_dim_expr_idx =
           GetGroupDimExprInfo(group).value_to_dim_expr_idx;
-      std::vector<pir::Type> output_types;
-      auto group_output_values = group->GetGroupOutputValues();
-      for (size_t i = 0; i < group_output_values.size(); ++i) {
-        output_types.push_back(group_output_values[i].type());
-      }
       return CompileBroadcastTree(
           group, *broadcast_tree, value_to_dim_expr_idx);
     } else {
