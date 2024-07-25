@@ -239,15 +239,46 @@ struct BroadcastDataInit {
 
 template <int Index, int VecSize>
 struct BroadcastDataSetter {
-  template <typename Array, typename ArgsT>
+  template <typename Array, typename Array2, typename ArgsT>
   static __device__ __forceinline__ void Apply(const Array &ins,
                                                ArgsT *args,
+                                               const Array2 &configs,
                                                uint32_t index_bc[][VecSize]) {
     using Type = std::tuple_element_t<Index, ArgsT>;
+
+    if (configs[Index].in_numel == 1) {
+      Type temp = reinterpret_cast<const _ptr_ Type *>(ins[Index])[index_bc[Index][0]];
+#pragma unroll
+      for (int k = 0; k < VecSize; ++k) {
+        std::get<Index>(args[k]) = temp;
+      }
+      return;
+    }
+
+    using VecType = phi::kps::details::VectorType<Type, VecSize>;
+    Type vec_temp[4];
+    VecType *__restrict__ vec_temp_ptr = reinterpret_cast<VecType *>(vec_temp);
+    const VecType *__restrict__ ins_src = reinterpret_cast<const VecType *>(ins[Index]);
+    uint32_t index_src0;
+    uint32_t idx_diff;
+    bool vecRead = false;
+
+    index_src0 = index_bc[Index][0] / VecSize;
+    if (index_src0 * VecSize + VecSize <= configs[Index].in_numel) {
+      vecRead = true;
+      *vec_temp_ptr = ins_src[index_src0];
+      index_src0 *= VecSize;
+    }
+
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
-      std::get<Index>(args[k]) =
-          reinterpret_cast<const _ptr_ Type *>(ins[Index])[index_bc[Index][k]];
+      uint32_t idx_diff = index_bc[Index][k] - index_src0;
+      Type tmp = vec_temp[idx_diff & (VecSize - 1)];
+
+      std::get<Index>(args[k]) = (idx_diff < VecSize && vecRead)
+                                     ? tmp
+                                     : reinterpret_cast<const _ptr_ Type *>(
+                                           ins[Index])[index_bc[Index][k]];
     }
   }
 };
@@ -328,7 +359,7 @@ __device__ void VectorizedBroadcastKernelImpl(
         }
       }
     }
-    Unroller<BroadcastDataSetter, VecSize, Arity>::step(ins, args, index_bc);
+    Unroller<BroadcastDataSetter, VecSize, Arity>::step(ins, args, configs, index_bc);
   } else {
     BcUnroller<BroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::step(
         ins, args, configs, use_broadcast, block_offset, num, numel, read_lens);

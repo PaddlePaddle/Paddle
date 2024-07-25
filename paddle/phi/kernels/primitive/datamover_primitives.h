@@ -863,6 +863,7 @@ __device__ __forceinline__ void ReadDataBc(
   uint32_t index_src0;
   uint32_t idx_diff;
   bool vecRead = false;
+  constexpr int shift = (NX == 8) ? 3 : (NX == 4) ? 2 : (NX == 2) ? 1 : 0;
 
   if (config.in_numel == 1) {
     T temp = src[0];
@@ -891,11 +892,13 @@ __device__ __forceinline__ void ReadDataBc(
       index_output = fast_divmoder.val[0];
       index_src += fast_divmoder.val[1] * config.strides[i];
     }
-    if (nx == 0 && index_src + NX <= config.in_numel) {
-      vecRead = true;
-      index_src0 = index_src / NX;
-      *vec_temp_ptr = vec_src[index_src0];
-      index_src0 *= NX;
+
+    if (nx == 0) {
+      index_src0 = index_src >> shift << shift;
+      if (index_src0 + NX <= config.in_numel) {
+        vecRead = true;
+        *vec_temp_ptr = vec_src[index_src0 >> shift];
+      }
     }
     idx_diff = index_src - index_src0;
     T tmp = vec_temp[idx_diff & (NX - 1)];
