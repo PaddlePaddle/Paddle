@@ -60,6 +60,13 @@ function make_cuda123cudnn900trt8616() {
   sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
 }
 
+function make_cuda124cudnn900trt8616() {
+  sed 's/<baseimg>/12.4.1-cudnn-devel-rockylinux8/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc122 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-12.2/bin:\$PATH \nRUN bash build_scripts/install_cudnn.sh cudnn900 \nENV CUDNN_VERSION=9.0.0 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#build_scripts/install_trt.sh#build_scripts/install_trt.sh trt8616#g" Dockerfile.tmp
+  sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
+}
+
 function main() {
   local CMD=$1
   case $CMD in
@@ -80,6 +87,9 @@ function main() {
      ;;
     cuda123cudnn900trt8616)
      make_cuda123cudnn900trt8616
+     ;;
+    cuda124cudnn900trt8616)
+     make_cuda124cudnn900trt8616
      ;;
     *)
       echo "Make dockerfile error, Without this paramet."
