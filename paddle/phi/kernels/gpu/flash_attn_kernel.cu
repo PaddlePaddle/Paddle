@@ -33,6 +33,12 @@
 
 namespace phi {
 
+static void InternalMemFree_flash_attn_fwd(void* ptr) {
+
+}
+
+
+
 inline bool is_pad_mask(const DenseTensor& mask, const DenseTensor& query) {
   return mask.dims().size() == 2 && mask.dims()[0] == query.dims()[0] &&
       mask.dims()[1] == query.dims()[2];
@@ -303,8 +309,15 @@ void FlashAttnKernel(const Context& ctx,
                                       GPUDNNDataLayout::kNCHW,
                                       common::vectorize<int>(dropout_mask.dims()));    
 
+  Allocator::AllocationPtr memory_for_mudnn; //this is a unique ptr so the memory it holds will be free when it is out of its scope
+
+  auto InternalMemAlloc_flash_attn_fwd = [&memory_for_mudnn, &ctx](size_t s) {
+    memory_for_mudnn = std::move(phi::memory_utils::Alloc(ctx.GetPlace(),s,phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream()))));
+    return dynload::MemoryHandler(memory_for_mudnn->ptr(), InternalMemFree_flash_attn_fwd);
+  };
+
   sdpa.desc_.RunFlash(*handle, out_desc, logsumexp_desc, trans_q_desc, trans_k_desc, trans_v_desc,
-   con_mask_desc, dropout_mask_desc, phi::backends::gpu::InternalMemAlloc);
+   con_mask_desc, dropout_mask_desc, InternalMemAlloc_flash_attn_fwd);
 #else
   RaiseNotSupportedError();
 #endif

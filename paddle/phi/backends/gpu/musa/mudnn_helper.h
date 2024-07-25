@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "gtest/internal/gtest-internal.h"
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/dynload/mudnn.h"
 #include "paddle/phi/common/bfloat16.h"
