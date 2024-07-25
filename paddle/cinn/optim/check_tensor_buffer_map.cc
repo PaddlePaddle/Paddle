@@ -408,7 +408,7 @@ void CheckTensorBufferMap(const std::vector<ir::Expr> &expr,
     PADDLE_ENFORCE_EQ(
         flag,
         true,
-        common::errors::InvalidArgument("CheckTensorBufferMap fail"));
+        ::common::errors::InvalidArgument("CheckTensorBufferMap fail"));
   }
 }
 
@@ -423,7 +423,7 @@ void CheckTensorBufferMap(const std::vector<ir::Expr *> &expr,
     PADDLE_ENFORCE_EQ(
         flag,
         true,
-        common::errors::InvalidArgument("CheckTensorBufferMap fail"));
+        ::common::errors::InvalidArgument("CheckTensorBufferMap fail"));
   }
 }
 
@@ -434,7 +434,9 @@ void CheckTensorBufferMap(const Expr *expr, const std::string &process) {
             << " has wrong tensor-buffer map in " << expr;
   }
   PADDLE_ENFORCE_EQ(
-      flag, true, common::errors::InvalidArgument("CheckTensorBufferMap fail"));
+      flag,
+      true,
+      ::common::errors::InvalidArgument("CheckTensorBufferMap fail"));
 }
 
 void CheckTensorBufferMap(const Expr &expr, const std::string &process) {
@@ -444,7 +446,9 @@ void CheckTensorBufferMap(const Expr &expr, const std::string &process) {
             << " has wrong tensor-buffer map in " << expr;
   }
   PADDLE_ENFORCE_EQ(
-      flag, true, common::errors::InvalidArgument("CheckTensorBufferMap fail"));
+      flag,
+      true,
+      ::common::errors::InvalidArgument("CheckTensorBufferMap fail"));
 }
 
 }  // namespace optim

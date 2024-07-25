@@ -225,7 +225,7 @@ class GiNaCToExprVisitor : public GiNaC::symbol::visitor,
     PADDLE_ENFORCE_EQ(
         intv->value,
         -1,
-        common::errors::InvalidArgument("The power value should be -1."));
+        ::common::errors::InvalidArgument("The power value should be -1."));
 
     cur = Div::Make(Expr(1), a);
   }
@@ -302,12 +302,12 @@ std::tuple<Expr, bool /*positive*/> Solve(Expr lhs, Expr rhs, Var var) {
   PADDLE_ENFORCE_EQ(
       res.nops(),
       1,
-      common::errors::InvalidArgument("The res npos should be 1."));
+      ::common::errors::InvalidArgument("The res npos should be 1."));
   auto item = res.op(0);
   PADDLE_ENFORCE_EQ(
       item.nops(),
       2,
-      common::errors::InvalidArgument("The item npos should be 2."));
+      ::common::errors::InvalidArgument("The item npos should be 2."));
   Expr value = converter.GinacToExpr(item.op(1));
 
   // tell the symbol

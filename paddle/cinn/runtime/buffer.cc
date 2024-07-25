@@ -27,7 +27,7 @@ Shape::Shape(const Shape &other)
 void Shape::Resize(int ndim) {
   PADDLE_ENFORCE_GT(ndim,
                     0,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Target dimension to resize must be greater than 0."));
   ndims_ = ndim;
   if (data_) delete data_;
@@ -36,21 +36,21 @@ void Shape::Resize(int ndim) {
 
 Shape::value_type &Shape::operator[](int i) {
   PADDLE_ENFORCE_GT(
-      ndims_, 0, common::errors::InvalidArgument("Shape is empty."));
+      ndims_, 0, ::common::errors::InvalidArgument("Shape is empty."));
   PADDLE_ENFORCE_LT(
       i,
       ndims_,
-      common::errors::OutOfRange("Index %d out of range %d.", i, ndims_));
+      ::common::errors::OutOfRange("Index %d out of range %d.", i, ndims_));
   return data_[i];
 }
 
 Shape::value_type Shape::operator[](int i) const {
   PADDLE_ENFORCE_GT(
-      ndims_, 0, common::errors::InvalidArgument("Shape is empty."));
+      ndims_, 0, ::common::errors::InvalidArgument("Shape is empty."));
   PADDLE_ENFORCE_LT(
       i,
       ndims_,
-      common::errors::OutOfRange("Index %d out of range %d.", i, ndims_));
+      ::common::errors::OutOfRange("Index %d out of range %d.", i, ndims_));
   return data_[i];
 }
 

@@ -106,11 +106,11 @@ class ModularEvaluator : public ir::IRVisitorRequireReImpl<ModularEntry> {
   static int gcd(int a, int b) {
     PADDLE_ENFORCE_GE(a,
                       0,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "a should be greater than or equal to 0"));
     PADDLE_ENFORCE_GE(b,
                       0,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "b should be greater than or equal to 0"));
     if (a < b) std::swap(a, b);
     if (b == 0) return a;

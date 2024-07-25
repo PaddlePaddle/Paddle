@@ -233,14 +233,14 @@ struct ExprNode : public IrNode {
     PADDLE_ENFORCE_LT(
         i,
         operands().size(),
-        common::errors::InvalidArgument("The index %d is out of range", i));
+        ::common::errors::InvalidArgument("The index %d is out of range", i));
     return operands()[i];
   }
   const Expr& operand(int i) const {
     PADDLE_ENFORCE_LT(
         i,
         operands().size(),
-        common::errors::InvalidArgument("The index %d is out of range", i));
+        ::common::errors::InvalidArgument("The index %d is out of range", i));
     return operands()[i];
   }
 
@@ -512,7 +512,7 @@ static std::ostream& operator<<(std::ostream& os, MemoryType t) {
 
     default:
       PADDLE_THROW(
-          common::errors::InvalidArgument("Not supported memory type"));
+          ::common::errors::InvalidArgument("Not supported memory type"));
 #undef __
   }
   return os;
@@ -520,7 +520,7 @@ static std::ostream& operator<<(std::ostream& os, MemoryType t) {
 
 template <typename T>
 Expr ExprNode<T>::Copy() const {
-  PADDLE_THROW(common::errors::Unimplemented("Not Implemented"));
+  PADDLE_THROW(::common::errors::Unimplemented("Not Implemented"));
   return Expr();
 }
 

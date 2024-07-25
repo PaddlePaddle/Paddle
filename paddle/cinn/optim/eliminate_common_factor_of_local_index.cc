@@ -147,7 +147,7 @@ int ExtractMulNumberFromExpr(const ir::Expr& expr) {
     VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
     return 1;
   }
-  PADDLE_THROW(common::errors::Fatal("Dead code"));
+  PADDLE_THROW(::common::errors::Fatal("Dead code"));
 }
 
 int ExtractAddNumberFromExpr(const ir::Expr& expr) {
@@ -162,7 +162,7 @@ int ExtractAddNumberFromExpr(const ir::Expr& expr) {
     VLOG(6) << "Not supported for calculating offset, expr = " << expr;
     return 0;
   }
-  PADDLE_THROW(common::errors::Fatal("Dead code"));
+  PADDLE_THROW(::common::errors::Fatal("Dead code"));
 }
 
 int gcd(int a, int b) {

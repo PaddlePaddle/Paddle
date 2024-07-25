@@ -300,7 +300,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                               }
                             },
                             [&](common::HygonDCUArchHIP) {
-                              PADDLE_THROW(common::errors::Unimplemented(
+                              PADDLE_THROW(::common::errors::Unimplemented(
                                   "CINN old obsolete code!"));
                             });
         } else if (data_format == "NHWC") {
@@ -316,7 +316,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                                 dilation[1],
                                 tensor_name);
         } else {
-          PADDLE_THROW(common::errors::InvalidArgument(
+          PADDLE_THROW(::common::errors::InvalidArgument(
               "Only support NCHW and NHWC data layout\n"));
         }
 
@@ -349,15 +349,15 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     ir_sch.MergeExprs();
     target.arch.Match(
         [&](common::UnknownArch) {
-          PADDLE_THROW(common::errors::InvalidArgument(
+          PADDLE_THROW(::common::errors::InvalidArgument(
               "This target [%s] is not supported yet.", target));
         },
         [&](common::X86Arch) {
-          PADDLE_THROW(common::errors::InvalidArgument(
+          PADDLE_THROW(::common::errors::InvalidArgument(
               "This target [%s] is not supported yet.", target));
         },
         [&](common::ARMArch) {
-          PADDLE_THROW(common::errors::InvalidArgument(
+          PADDLE_THROW(::common::errors::InvalidArgument(
               "This target [%s] is not supported yet.", target));
         },
         [&](common::NVGPUArch) {
@@ -390,7 +390,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         },
         [&](common::HygonDCUArchHIP) {
           PADDLE_THROW(
-              common::errors::Unimplemented("CINN old obsolete code!"));
+              ::common::errors::Unimplemented("CINN old obsolete code!"));
         });
   });
 
@@ -474,7 +474,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                                                           tensor_name);
                         },
                         [&](common::HygonDCUArchHIP) {
-                          PADDLE_THROW(common::errors::Unimplemented(
+                          PADDLE_THROW(::common::errors::Unimplemented(
                               "CINN old obsolete code!"));
                         });
     } else if (data_format == "NHWC") {
@@ -486,7 +486,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                                       stride[1],
                                       tensor_name);
     } else {
-      PADDLE_THROW(common::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "Only support NCHW and NHWC data layout\n"));
     }
 
@@ -529,7 +529,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                             pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
                           },
                           [&](common::HygonDCUArchHIP) {
-                            PADDLE_THROW(common::errors::Unimplemented(
+                            PADDLE_THROW(::common::errors::Unimplemented(
                                 "CINN old obsolete code!"));
                           });
         std::vector<cinn::common::CINNValue> res{
@@ -624,7 +624,7 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
                       "strategy.batchnorm.x86",
                       1);
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
+    PADDLE_THROW(::common::errors::InvalidArgument(
         "BatchNorm op with dtype != float32 is not implemented yet!"));
   }
   return strategy;
@@ -845,7 +845,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       width_index = 3;
       data_format = "NCHW";
     } else {
-      PADDLE_THROW(common::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "Only support 'NCHW' or 'NHWC' or 'AnyLayout' data_format.\n"));
     }
     kernel_size = {A_tensor->shape[height_index].as_int32(),
@@ -1009,7 +1009,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
                       }
                     },
                     [&](common::HygonDCUArchHIP) {
-                      PADDLE_THROW(common::errors::Unimplemented(
+                      PADDLE_THROW(::common::errors::Unimplemented(
                           "CINN todo: new hardware HygonDCUArchHIP"));
                     });
   strategy->AddImpl(pool2d_compute, pool2d_schedule, "strategy.pool2d.x86", 1);
@@ -1432,7 +1432,7 @@ std::shared_ptr<OpStrategy> StrategyForGradOp(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  PADDLE_THROW(common::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "Gradient operator will be decomposed into several primitive "
       "operators. Please Use Decomposer Program Pass."));
 }

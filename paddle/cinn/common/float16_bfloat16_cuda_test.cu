@@ -30,7 +30,7 @@ namespace common {
     if (status != cudaSuccess) {                           \
       std::stringstream ss;                                \
       ss << "CUDA Error : " << cudaGetErrorString(status); \
-      PADDLE_THROW(common::errors::Fatal(ss.str()));       \
+      PADDLE_THROW(::common::errors::Fatal(ss.str()));     \
     }                                                      \
   }
 
@@ -42,12 +42,12 @@ class CudaMem {
     PADDLE_ENFORCE_GT(
         bytes,
         0,
-        common::errors::InvalidArgument("Cannot allocate empty memory!"));
+        ::common::errors::InvalidArgument("Cannot allocate empty memory!"));
     if (ptr) {
       PADDLE_ENFORCE_EQ(
           bytes,
           bytes_,
-          common::errors::InvalidArgument("Try allocate memory twice!"));
+          ::common::errors::InvalidArgument("Try allocate memory twice!"));
       return ptr;
     }
     CUDA_CALL(cudaMalloc(&ptr, bytes));
@@ -76,7 +76,7 @@ class CudaMem {
     PADDLE_ENFORCE_LE(
         bytes,
         bytes_,
-        common::errors::InvalidArgument("Too many data need copy"));
+        ::common::errors::InvalidArgument("Too many data need copy"));
     CUDA_CALL(cudaMemcpyAsync(ptr, src, bytes, cudaMemcpyHostToDevice, stream));
   }
 
@@ -84,7 +84,7 @@ class CudaMem {
     PADDLE_ENFORCE_LE(
         bytes,
         bytes_,
-        common::errors::InvalidArgument("Too many data need copy"));
+        ::common::errors::InvalidArgument("Too many data need copy"));
     CUDA_CALL(cudaMemcpyAsync(dst, ptr, bytes, cudaMemcpyDeviceToHost, stream));
   }
 

@@ -39,7 +39,7 @@ TEST(parallel_run, Basic) {
   auto worker_fn = [&results](int index) {
     PADDLE_ENFORCE_LT(index,
                       results.size(),
-                      common::errors::InvalidArgument("invalid index!"));
+                      ::common::errors::InvalidArgument("invalid index!"));
     results[index] = index;
   };
   // check process every index in the extent of [0, 100) with step 1

@@ -31,9 +31,9 @@ SequenceDispatcher::SequenceDispatcher(int begin, int end, int step)
   PADDLE_ENFORCE_LE(
       begin,
       end,
-      common::errors::InvalidArgument("begin[%d] > end[%d]", begin, end));
+      ::common::errors::InvalidArgument("begin[%d] > end[%d]", begin, end));
   PADDLE_ENFORCE_GT(
-      step, 0, common::errors::InvalidArgument("step is less than 0."));
+      step, 0, ::common::errors::InvalidArgument("step is less than 0."));
 }
 
 int SequenceDispatcher::Next() const {
@@ -53,7 +53,7 @@ void parallel_run(const WorkerFuncType& fn,
   }
   PADDLE_ENFORCE_GT(num_threads,
                     0,
-                    common::errors::PreconditionNotMet(
+                    ::common::errors::PreconditionNotMet(
                         "num_threads should be greater than 0"));
 
   // worker function of a thread
@@ -95,7 +95,7 @@ void parallel_run(const WorkerFuncType& fn,
   } catch (const std::exception& e) {
     std::stringstream ss;
     ss << "parallel_run incurs error: " << e.what();
-    PADDLE_THROW(common::errors::Fatal(ss.str()));
+    PADDLE_THROW(::common::errors::Fatal(ss.str()));
   }
 
   // join threads

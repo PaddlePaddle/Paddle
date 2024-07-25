@@ -26,11 +26,11 @@
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                                    \
-  }                                                                            \
-  catch (const utils::ErrorHandler& err_handler) {                             \
-    PADDLE_THROW(                                                              \
-        common::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)              \
+  }                                                      \
+  catch (const utils::ErrorHandler& err_handler) {       \
+    PADDLE_THROW(::common::errors::Fatal(                \
+        err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 namespace cinn {
@@ -119,7 +119,7 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
 
   PADDLE_ENFORCE_LE(loops.size(),
                     block_loops.size(),
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of loops should be less than or "
                         "equal to the size of block_loops."));
 

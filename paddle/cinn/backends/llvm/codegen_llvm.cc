@@ -208,7 +208,7 @@ llvm::Value *CodeGenLLVM::EmitBinaryOp(llvm::Value *lhs,
   PADDLE_ENFORCE_EQ(
       lhs->getType(),
       rhs->getType(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "the types of operands of binary operation are mismatch"));
 
   switch (opcode) {
@@ -264,7 +264,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::FloatImm *op) {
   } else if (op->type().is_float16()) {
     return llvm::ConstantFP::get(b_->getHalfTy(), op->value);
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument("illegal float type."));
+    PADDLE_THROW(::common::errors::InvalidArgument("illegal float type."));
   }
   return nullptr;
 }
@@ -884,7 +884,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Load *op) {
       alignment = 8;
       PADDLE_ENFORCE_GT(alignment,
                         0,
-                        common::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "alignment should be greater than 0"));
       load_inst->setAlignment(llvm::Align(std::min(alignment, 8)));
     }
@@ -956,7 +956,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
       alignment = 8;
       PADDLE_ENFORCE_GT(alignment,
                         0,
-                        common::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "alignment should be greater than 0"));
       store_inst->setAlignment(llvm::Align(std::min(alignment, 8)));
     }
@@ -1070,7 +1070,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_LoweredFunc_ *op) {
   PADDLE_ENFORCE_EQ(
       op->alloc_output_buffer_exprs.size(),
       op->dealloc_output_buffer_exprs.size(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "the count of allocation and deallocation expressions is not "
           "match"));
 
@@ -1241,7 +1241,7 @@ llvm::Value *CodeGenLLVM::EmitCall_debug_info(const ir::Call *op) {
   auto callee = m_->getFunction(runtime::intrinsic::debug_log_repr);
   PADDLE_ENFORCE_GE(op->read_args.size(),
                     1UL,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The arguments of debug_log_repr should be greater "
                         "than 1"));
   std::vector<llvm::Value *> args;
@@ -1333,7 +1333,7 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
   PADDLE_ENFORCE_EQ(
       slices.size(),
       1UL,
-      common::errors::InvalidArgument("slices size should be 1."));
+      ::common::errors::InvalidArgument("slices size should be 1."));
 
   return slices[0];
 }
@@ -1344,9 +1344,9 @@ llvm::Value *CodeGenLLVM::CreateBufferVecPtr(Type t,
   PADDLE_ENFORCE_GT(
       t.lanes(),
       1,
-      common::errors::InvalidArgument("type lanes should be greater "
-                                      "than 1, but received %d",
-                                      t.lanes()));
+      ::common::errors::InvalidArgument("type lanes should be greater "
+                                        "than 1, but received %d",
+                                        t.lanes()));
   llvm::PointerType *btype =
       llvm::dyn_cast<llvm::PointerType>(buffer->getType());
   CHECK(btype);
@@ -1364,9 +1364,9 @@ llvm::Value *CodeGenLLVM::CreateBufferPtr(Type t,
   PADDLE_ENFORCE_EQ(
       t.lanes(),
       1,
-      common::errors::InvalidArgument("type lanes should be 1, but "
-                                      "received %d",
-                                      t.lanes()));
+      ::common::errors::InvalidArgument("type lanes should be 1, but "
+                                        "received %d",
+                                        t.lanes()));
   auto *btype = llvm::dyn_cast<llvm::PointerType>(buffer->getType());
   CHECK(btype);
   auto *ptype =
@@ -1385,7 +1385,7 @@ llvm::Value *CodeGenLLVM::CreateVecSlice(llvm::Value *vec,
       llvm::dyn_cast<llvm::VectorType>(vec->getType())->getNumElements();
   PADDLE_ENFORCE_LE(begin + lanes,
                     total_lanes,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "begin + lanes should be less than total_lanes"));
   if (lanes == total_lanes && begin == 0) return vec;  // full slice
   std::vector<llvm::Constant *> indices;
@@ -1398,7 +1398,7 @@ llvm::Value *CodeGenLLVM::CreateVecSlice(llvm::Value *vec,
 }
 
 int GetNaiveVecAlignmentImpl(common::UnknownArch, const Target &target) {
-  PADDLE_THROW(common::errors::InvalidArgument("unknown Arch found"));
+  PADDLE_THROW(::common::errors::InvalidArgument("unknown Arch found"));
 }
 
 int GetNaiveVecAlignmentImpl(common::X86Arch, const Target &target) {
@@ -1407,7 +1407,7 @@ int GetNaiveVecAlignmentImpl(common::X86Arch, const Target &target) {
   } else if (target.bits == Target::Bit::k64) {
     return 512;
   }
-  PADDLE_THROW(common::errors::InvalidArgument("get unknown bits"));
+  PADDLE_THROW(::common::errors::InvalidArgument("get unknown bits"));
 }
 
 int GetNaiveVecAlignmentImpl(common::ARMArch, const Target &target) {
@@ -1460,7 +1460,7 @@ void CodeGenLLVM::AddTbaaMetadata(llvm::Instruction *inst,
         PADDLE_ENFORCE_GE(
             base,
             0,
-            common::errors::InvalidArgument("base should be greater than 0"));
+            ::common::errors::InvalidArgument("base should be greater than 0"));
         width = NextPowerOfTwo(ramp->lanes * stride);
 
         while (base % width) {
@@ -1639,37 +1639,37 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BuiltinIntrin *op) {
     if (func_name == "bitwise_and") {
       PADDLE_ENFORCE_GE(op->args.size(),
                         2U,
-                        common::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "bitwise_and should have at least 2 arguments"));
       return b_->CreateAnd(Visit(&op->args[0]), Visit(&op->args[1]));
     } else if (func_name == "bitwise_or") {
       PADDLE_ENFORCE_GE(op->args.size(),
                         2U,
-                        common::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "bitwise_or should have at least 2 arguments"));
       return b_->CreateOr(Visit(&op->args[0]), Visit(&op->args[1]));
     } else if (func_name == "bitwise_xor") {
       PADDLE_ENFORCE_GE(op->args.size(),
                         2U,
-                        common::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "bitwise_xor should have at least 2 arguments"));
       return b_->CreateXor(Visit(&op->args[0]), Visit(&op->args[1]));
     } else if (func_name == "bitwise_not") {
       PADDLE_ENFORCE_GE(op->args.size(),
                         1U,
-                        common::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "bitwise_not should have at least 1 argument"));
       return b_->CreateNot(Visit(&op->args[0]));
     } else if (func_name == "left_shift") {
       PADDLE_ENFORCE_GE(op->args.size(),
                         2U,
-                        common::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "left_shift should have at least 2 arguments"));
       return b_->CreateShl(Visit(&op->args[0]), Visit(&op->args[1]));
     } else if (func_name == "right_shift") {
       PADDLE_ENFORCE_GE(op->args.size(),
                         2U,
-                        common::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "right_shift should have at least 2 arguments"));
       if (op->args[0]->type().is_int()) {
         return b_->CreateAShr(Visit(&op->args[0]), Visit(&op->args[1]));
@@ -1679,7 +1679,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BuiltinIntrin *op) {
     } else if (func_name == "isnan") {
       PADDLE_ENFORCE_GE(op->args.size(),
                         1U,
-                        common::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "isnan should have at least 1 argument"));
       llvm::Value *v = Visit(&op->args[0]);
       return b_->CreateFCmpUNO(v, v);
@@ -1741,7 +1741,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::PodValueToX *op) {
   } else {
     std::stringstream ss;
     ss << "Not supported type: " << to_type;
-    PADDLE_THROW(common::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 
   CHECK(callee);

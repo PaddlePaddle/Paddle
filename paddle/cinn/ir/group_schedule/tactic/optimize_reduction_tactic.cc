@@ -40,13 +40,13 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
   ir::ScheduleBlockRealize* block_realize =
       block_expr.As<ir::ScheduleBlockRealize>();
   PADDLE_ENFORCE_NOT_NULL(block_realize,
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The block is not a ScheduleBlockRealize"));
   ir::ScheduleBlock* sch_block =
       block_realize->schedule_block.As<ir::ScheduleBlock>();
   PADDLE_ENFORCE_NOT_NULL(
       sch_block,
-      common::errors::InvalidArgument("The block is not a ScheduleBlock"));
+      ::common::errors::InvalidArgument("The block is not a ScheduleBlock"));
   analyzer::AnalyzeScheduleBlockReadWriteBuffer(sch_block);
 
   // 1. The block must have write buffer
@@ -137,7 +137,7 @@ void OptimizeReductionTactic::Apply(ir::IRSchedule* sch,
   PADDLE_ENFORCE_LT(
       first_reduce_loop_idx,
       loops.size(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "first_reduce_loop_idx should be less than number of loop."));
   ir::Expr block = sch->GetBlock(block_id);
   ir::Tensor reduce_tensor = analyzer::GetStoreTensorOfSBlock(block);

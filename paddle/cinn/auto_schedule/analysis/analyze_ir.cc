@@ -194,13 +194,13 @@ std::unordered_set<std::string> GetReduceLoopVarNames(const ir::Expr block) {
   const ir::ScheduleBlockRealize* block_realize =
       block.As<ir::ScheduleBlockRealize>();
   PADDLE_ENFORCE_NOT_NULL(block_realize,
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The block is not a ScheduleBlockRealize"));
   const ir::ScheduleBlock* block_node =
       block_realize->schedule_block.As<ir::ScheduleBlock>();
   PADDLE_ENFORCE_NOT_NULL(
       block_node,
-      common::errors::InvalidArgument("The block is not a ScheduleBlock"));
+      ::common::errors::InvalidArgument("The block is not a ScheduleBlock"));
   std::vector<ir::Expr> iter_values = block_realize->iter_values;
   std::vector<ir::Var> iter_vars = block_node->iter_vars;
 
@@ -223,13 +223,13 @@ std::string GetBlockName(const ir::Expr block) {
   const ir::ScheduleBlockRealize* block_realize =
       block.As<ir::ScheduleBlockRealize>();
   PADDLE_ENFORCE_NOT_NULL(block_realize,
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The block is not a ScheduleBlockRealize"));
   const ir::ScheduleBlock* block_node =
       block_realize->schedule_block.As<ir::ScheduleBlock>();
   PADDLE_ENFORCE_NOT_NULL(
       block_node,
-      common::errors::InvalidArgument("The block is not a ScheduleBlock"));
+      ::common::errors::InvalidArgument("The block is not a ScheduleBlock"));
   return block_node->name;
 }
 

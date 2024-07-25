@@ -39,7 +39,7 @@ struct CasInterval {
   CasInterval(T l, T r) : l(l), r(r) {
     PADDLE_ENFORCE_LE(l,
                       r,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "left should not be larger than right"));
   }
 

@@ -290,34 +290,34 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
     void operator()(const std::string &v) { scalar_ = Expr(v); }
     void operator()(const std::vector<int> &) {
       PADDLE_THROW(
-          common::errors::InvalidArgument("wrong type std::vector<int>"));
+          ::common::errors::InvalidArgument("wrong type std::vector<int>"));
     }
     void operator()(const std::vector<int64_t> &) {
       PADDLE_THROW(
-          common::errors::InvalidArgument("wrong type std::vector<int64_t>"));
+          ::common::errors::InvalidArgument("wrong type std::vector<int64_t>"));
     }
     void operator()(const std::vector<float> &) {
       PADDLE_THROW(
-          common::errors::InvalidArgument("wrong type std::vector<float>"));
+          ::common::errors::InvalidArgument("wrong type std::vector<float>"));
     }
     void operator()(const std::vector<double> &) {
       PADDLE_THROW(
-          common::errors::InvalidArgument("wrong type std::vector<double>"));
+          ::common::errors::InvalidArgument("wrong type std::vector<double>"));
     }
     void operator()(const std::vector<bool> &) {
       PADDLE_THROW(
-          common::errors::InvalidArgument("wrong type std::vector<bool>"));
+          ::common::errors::InvalidArgument("wrong type std::vector<bool>"));
     }
     void operator()(const std::vector<std::string> &) {
-      PADDLE_THROW(common::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "wrong type std::vector<std::string>"));
     }
     void operator()(const std::vector<symbol::DimExpr> &) {
-      PADDLE_THROW(common::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "wrong type std::vector<symbol::DimExpr>"));
     }
     void operator()(const std::vector<cinn::dialect::SymbolBinding> &) {
-      PADDLE_THROW(common::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "wrong type std::vector<cinn::dialect::SymbolBinding>"));
     }
   };
@@ -371,7 +371,7 @@ std::shared_ptr<OpStrategy> StrategyForSum(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  PADDLE_THROW(common::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "The operator will be decomposed into several primitive "
       "operators. Please Use Decomposer Program Pass."));
 }
@@ -520,7 +520,7 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
     else {  // NOLINT
       std::stringstream ss;
       ss << "Assign value not support the type " << out_type[0];
-      PADDLE_THROW(common::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     }
 #undef EXPAND_VALUE_TO_TENSOR
 
@@ -1111,35 +1111,35 @@ std::shared_ptr<OpStrategy> StrategyForTril(
       [=](lang::Args args, lang::RetValue *ret) {
         PADDLE_ENFORCE_EQ(args.size(),
                           size_t(1),
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The input arguments of tril compute is empty"));
         CINNValuePack pack_args = args[0];
         PADDLE_ENFORCE_GE(pack_args.size(),
                           size_t(1),
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "only 1 input tensor for tril compute"));
         Expr A = pack_args[0];
         PADDLE_ENFORCE_NOT_NULL(
             A.as_tensor(),
-            common::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "first input argument in tril should be tensor"));
         int diagonal = absl::get<int>(attrs.attr_store.at("diagonal"));
         auto tensor_A = A.as_tensor_ref();
 
         PADDLE_ENFORCE_NE(output_shapes.size(),
                           size_t(0),
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "output shape of tril should not be empty."));
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           size_t(2),
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "args of tril compute should be equal to 2"));
         PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
                           true,
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The second argument of tril should be string"));
         std::string tensor_name = pack_args[1].operator std::string();
 

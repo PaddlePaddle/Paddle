@@ -63,7 +63,7 @@ std::vector<T> GetVectorFromIntArrayAttribute(
   if (vector_attr.size() > 0) {
     PADDLE_ENFORCE_EQ(vector_attr[0].isa<::pir::Int64Attribute>(),
                       true,
-                      common::errors::Unimplemented(
+                      ::common::errors::Unimplemented(
                           "the 0th elementwise MUST be ir::Int64Attribute"));
     for (size_t i = 0; i < vector_attr.size(); ++i) {
       result.push_back(vector_attr[i].dyn_cast<::pir::Int64Attribute>().data());
@@ -261,7 +261,7 @@ class ReshapeOpPattern
     if (out_shape_attr.size() > 0) {
       PADDLE_ENFORCE_EQ(out_shape_attr[0].isa<::pir::Int64Attribute>(),
                         true,
-                        common::errors::Unimplemented(
+                        ::common::errors::Unimplemented(
                             "the 0th elementwise MUST be ir::Int64Attribute"));
       for (size_t i = 0; i < out_shape_attr.size(); ++i) {
         vec_out_shape.push_back(
@@ -898,7 +898,7 @@ class SqueezeOpPattern
           PADDLE_ENFORCE_EQ(
               in_shape[i],
               1,
-              common::errors::PreconditionNotMet(
+              ::common::errors::PreconditionNotMet(
                   "sequeze dim MUST be 1, but recive axis [%d] is [%d]",
                   i,
                   in_shape[i]));

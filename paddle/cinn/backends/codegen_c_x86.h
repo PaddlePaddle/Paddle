@@ -116,7 +116,7 @@ void CodeGenCX86::VisitBinaryOp(const Op *op,
                                 const std::string &op_repr) {
   PADDLE_ENFORCE_EQ(a.type(),
                     b.type(),
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The type of a and b should be the same."));
 
   // scalar.

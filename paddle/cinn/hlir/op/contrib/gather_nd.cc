@@ -165,7 +165,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
                                                  lang::RetValue *ret) {
     PADDLE_ENFORCE_EQ(!args.empty(),
                       true,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input argument of gather_nd_schedule "
                           "is empty! Please check.\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
@@ -179,7 +179,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
     PADDLE_ENFORCE_EQ(
         !vec_ast.empty(),
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The vec_ast of gather_nd_schedule is empty! Please check.\n"));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);

@@ -50,14 +50,14 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
   std::string index_func_name;
   target.arch.Match(
       [&](common::UnknownArch) {
-        PADDLE_THROW(common::errors::Fatal(
+        PADDLE_THROW(::common::errors::Fatal(
             "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
       },
       [&](common::X86Arch) {
         find_func_name.assign("cinn_host_next_smallest_int32");
       },
       [&](common::ARMArch) {
-        PADDLE_THROW(common::errors::Fatal(
+        PADDLE_THROW(::common::errors::Fatal(
             "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
       },
       [&](common::NVGPUArch) {

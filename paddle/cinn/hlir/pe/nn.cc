@@ -55,7 +55,7 @@ std::string Type2StrForNN(cinn::common::Type type) {
   }
   std::stringstream ss;
   ss << "NN Not Support " << type;
-  PADDLE_THROW(common::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   return "";
 }
 
@@ -99,7 +99,7 @@ Tensor PRelu(const Tensor &A,
   PADDLE_ENFORCE_LT(
       axis,
       A->shape.size(),
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The axis should be less than the rank of input tensor."));
   CHECK(A->shape[axis] == slope->shape[0])
       << "Wrong slope shape: " << slope->shape[0] << std::endl;
@@ -122,12 +122,12 @@ std::vector<ir::Tensor> Conv2d_winograd_NCHW(const ir::Tensor &input,
                                              const std::string &output_name) {
   PADDLE_ENFORCE_EQ(input->shape.size(),
                     4U,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Input's dimension of Conv2d_winograd_NCHW "
                         "op is not 4! Please check."));
   PADDLE_ENFORCE_EQ(weights->shape.size(),
                     4U,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Weight's dimension of Conv2d_winograd_NCHW "
                         "op is not 4! Please check."));
   std::vector<Expr> output_shape;
@@ -314,12 +314,12 @@ std::vector<ir::Tensor> Conv2d_NCHW(const ir::Tensor &input,
   PADDLE_ENFORCE_EQ(
       input->shape.size(),
       4U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Input's dimension of Conv2d_NCHW op is not 4! Please check."));
   PADDLE_ENFORCE_EQ(
       weights->shape.size(),
       4U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Weight's dimension of Conv2d_NCHW op is not 4! Please check."));
   std::vector<int> output_shape_int;
   std::vector<int> new_weights_shape_int;
@@ -356,10 +356,10 @@ std::vector<ir::Tensor> Conv2d_NCHW(const ir::Tensor &input,
                                     Expr(input_pad_shape_int[1]),
                                     Expr(input_pad_shape_int[2]),
                                     Expr(input_pad_shape_int[3])};
-  PADDLE_ENFORCE_EQ(
-      weights->shape.size(),
-      4,
-      common::errors::InvalidArgument("The dimension of weights should be 4."));
+  PADDLE_ENFORCE_EQ(weights->shape.size(),
+                    4,
+                    ::common::errors::InvalidArgument(
+                        "The dimension of weights should be 4."));
   CHECK(weights->shape[2].is_constant());
   CHECK(weights->shape[3].is_constant());
   int kh = weights->shape[2].as_int32();
@@ -460,11 +460,11 @@ std::vector<ir::Tensor> Conv2d_NCHW_5D(const ir::Tensor &input,
   PADDLE_ENFORCE_EQ(
       shape_input.size(),
       4U,
-      common::errors::InvalidArgument("input's shape size should be 4"));
+      ::common::errors::InvalidArgument("input's shape size should be 4"));
   PADDLE_ENFORCE_EQ(
       shape_weights.size(),
       4U,
-      common::errors::InvalidArgument("weight's shape size should be 4"));
+      ::common::errors::InvalidArgument("weight's shape size should be 4"));
   Expr c_in = cinn::common::AutoSimplify(shape_input[1]);
   Expr c_filter = cinn::common::AutoSimplify(shape_weights[1]);
   Expr c_out = cinn::common::AutoSimplify(shape_weights[0]);
@@ -525,10 +525,10 @@ std::vector<ir::Tensor> Conv2d_NCHW_5D(const ir::Tensor &input,
                               stride_w,
                               dilation_h,
                               dilation_w);
-  PADDLE_ENFORCE_EQ(
-      tensors.size(),
-      2U,
-      common::errors::InvalidArgument("Conv2d_NCHWc should return 2 tensors"));
+  PADDLE_ENFORCE_EQ(tensors.size(),
+                    2U,
+                    ::common::errors::InvalidArgument(
+                        "Conv2d_NCHWc should return 2 tensors"));
   auto packed_out = tensors[0];
   auto input_pad = tensors[1];
   // 5D back to 4D, NCHWc->NCHW
@@ -570,11 +570,11 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
   PADDLE_ENFORCE_EQ(
       shape_input.size(),
       5U,
-      common::errors::InvalidArgument("input's shape size should be 5"));
+      ::common::errors::InvalidArgument("input's shape size should be 5"));
   PADDLE_ENFORCE_EQ(
       shape_weights.size(),
       6U,
-      common::errors::InvalidArgument("weight's shape size should be 6"));
+      ::common::errors::InvalidArgument("weight's shape size should be 6"));
 
   Expr batch = shape_input[0];
   Expr c_in_outer = cinn::common::AutoSimplify(shape_input[1]);
@@ -694,12 +694,12 @@ std::vector<ir::Tensor> Conv2d_NCHW_ONEDNN(const ir::Tensor &input,
   PADDLE_ENFORCE_EQ(
       input->shape.size(),
       4U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Input's dimension of Conv2d_NCHW op is not 4! Please check."));
   PADDLE_ENFORCE_EQ(
       weights->shape.size(),
       4U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Weight's dimension of Conv2d_NCHW op is not 4! Please check."));
   std::vector<Expr> output_shape;
   std::vector<Expr> new_weights_shape;
@@ -707,7 +707,7 @@ std::vector<ir::Tensor> Conv2d_NCHW_ONEDNN(const ir::Tensor &input,
   int group = input->shape[1].as_int32() / weights->shape[1].as_int32();
   PADDLE_ENFORCE_EQ(input->shape[1].as_int32(),
                     weights->shape[1].as_int32() * group,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "input channel should be divisible by filter channel"));
   auto call = Compute(
       {Expr(1)},
@@ -751,12 +751,12 @@ std::vector<ir::Tensor> Conv2d_NHWC(const ir::Tensor &input,
   PADDLE_ENFORCE_EQ(
       input->shape.size(),
       4U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Input's dimension of Conv2d_NHWC op is not 4! Please check."));
   PADDLE_ENFORCE_EQ(
       weights->shape.size(),
       4U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Weight's dimension of Conv2d_NHWC op is not 4! Please check."));
   std::vector<Expr> output_shape;
   std::vector<Expr> new_weights_shape;
@@ -841,12 +841,12 @@ std::vector<Tensor> Depthwise_Conv2d_NCHW(const Tensor &input,
                                           const std::string output_name) {
   PADDLE_ENFORCE_EQ(input->shape.size(),
                     4U,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Input's dimension of Depthwise_Conv2d_NCHW "
                         "is not 4! Please check."));
   PADDLE_ENFORCE_EQ(weight->shape.size(),
                     4U,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Weight's dimension of Depthwise_Conv2d_NCHW is not 4! "
                         "Please check."));
   Expr in_h = input->shape[2];
@@ -909,12 +909,12 @@ std::vector<Tensor> Depthwise_Conv2d_NHWC(const Tensor &input,
                                           const std::string output_name) {
   PADDLE_ENFORCE_EQ(input->shape.size(),
                     4U,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Input's dimension of Depthwise_Conv2d_NHWC "
                         "is not 4! Please check."));
   PADDLE_ENFORCE_EQ(weight->shape.size(),
                     4U,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Weight's dimension of Depthwise_Conv2d_NHWC is not 4! "
                         "Please check."));
   Expr in_h = input->shape[1];
@@ -971,27 +971,27 @@ ir::Tensor BatchNorm_NCHW(const ir::Tensor &input,
   PADDLE_ENFORCE_EQ(
       input->shape.size(),
       4U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Input's dimension of BatchNorm op is not 4! Please check."));
   PADDLE_ENFORCE_EQ(
       scale->shape.size(),
       1U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Scale's dimension of BatchNorm op is not 1! Please check."));
   PADDLE_ENFORCE_EQ(
       bias->shape.size(),
       1U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Bias's dimension of BatchNorm op is not 1! Please check."));
   PADDLE_ENFORCE_EQ(
       mean->shape.size(),
       1U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Mean's dimension of BatchNorm op is not 1! Please check."));
   PADDLE_ENFORCE_EQ(
       variance->shape.size(),
       1U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Variance's dimension of BatchNorm op is not 1! Please check."));
   auto res = Compute(
       input->shape,
@@ -1015,27 +1015,27 @@ ir::Tensor BatchNorm_NCHWc(const ir::Tensor &input,
   PADDLE_ENFORCE_EQ(
       input->shape.size(),
       5U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Input's dimension of BatchNorm op is not 5! Please check."));
   PADDLE_ENFORCE_EQ(
       scale->shape.size(),
       1U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Scale's dimension of BatchNorm op is not 1! Please check."));
   PADDLE_ENFORCE_EQ(
       bias->shape.size(),
       1U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Bias's dimension of BatchNorm op is not 1! Please check."));
   PADDLE_ENFORCE_EQ(
       mean->shape.size(),
       1U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Mean's dimension of BatchNorm op is not 1! Please check."));
   PADDLE_ENFORCE_EQ(
       variance->shape.size(),
       1U,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Variance's dimension of BatchNorm op is not 1! Please check."));
   Expr ic_bn = input->shape.back();
   auto res = Compute(
@@ -1109,7 +1109,7 @@ std::vector<ir::Tensor> SoftmaxONEDNN(const ir::Tensor &A,
                                       const std::string &output_name) {
   PADDLE_ENFORCE_LE(A->shape.size(),
                     4U,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Input's dimension of onednn softmax op is "
                         "less than 4! Please check."));
   if (axis == -1) {
@@ -1183,7 +1183,7 @@ Tensor Pad(const Tensor &tensor,
   CHECK(!pad_before.empty());
   PADDLE_ENFORCE_EQ(pad_before.size(),
                     pad_after.size(),
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "pad_before and pad_after should have the same size"));
   std::vector<Expr> output_shape;
   for (auto &ele : pad_before) {
@@ -1294,16 +1294,16 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
   PADDLE_ENFORCE_EQ(
       stride_size.size(),
       k_size,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Pooling stride_size must have same elements as kernel"));
   PADDLE_ENFORCE_EQ(
       padding_size.size(),
       k_size * 2,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Pooling padding_size must have double elements as kernel"));
   PADDLE_ENFORCE_EQ(axis.size(),
                     k_size,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Axis must have same elements as kernel"));
 
   std::string pool_type;
@@ -1427,16 +1427,16 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
   if (adaptive) {
     PADDLE_ENFORCE_EQ(pool_type,
                       "avg",
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Adaptive pooling only support avg pooling"));
     std::vector<Expr> out_shape = tensor->shape;
     PADDLE_ENFORCE_EQ(k_size,
                       2,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Adaptive pooling only support 2D pooling"));
     PADDLE_ENFORCE_EQ(k_size,
                       (int)axis.size(),
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Adaptive pooling only support 2D pooling"));
     for (int i = 0; i < k_size; i++) {
       out_shape[axis[i]] = Expr(kernel_size[i]);
@@ -1509,11 +1509,11 @@ std::vector<Tensor> Pool1d(const Tensor &tensor,
   } else {
     std::stringstream ss;
     ss << "Unsupported data format: " << data_format << std::endl;
-    PADDLE_THROW(common::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   PADDLE_ENFORCE_EQ(tensor->shape.size(),
                     3U,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "pool1d requires tensor's shape_size to be 3"));
   std::vector<int> axis = {width_axis};
   return PoolImpl(tensor,
@@ -1573,7 +1573,8 @@ std::vector<Tensor> GlobalPool2d(const Tensor &tensor,
         UniqName(output_name));
     return {ret, temp};
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument("unsupported pooling type."));
+    PADDLE_THROW(
+        ::common::errors::InvalidArgument("unsupported pooling type."));
   }
   return {};
 }
@@ -1602,7 +1603,7 @@ std::vector<Tensor> Pool2d(const Tensor &tensor,
   } else {
     std::stringstream ss;
     ss << "Unsupported data format: " << data_format << std::endl;
-    PADDLE_THROW(common::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   CHECK(tensor->shape.size() == 4U || tensor->shape.size() == 5U)
       << "pool2d requires tensor's shape_size to be 4 or 5\n";
@@ -1642,11 +1643,11 @@ std::vector<Tensor> Pool3d(const Tensor &tensor,
   } else {
     std::stringstream ss;
     ss << "Unsupported data format: " << data_format << std::endl;
-    PADDLE_THROW(common::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   PADDLE_ENFORCE_EQ(tensor->shape.size(),
                     5U,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "pool3d requires tensor's shape_size to be 5"));
   std::vector<int> axis = {depth_axis, height_axis, width_axis};
   return PoolImpl(tensor,
@@ -1678,7 +1679,7 @@ Tensor DropoutInfer(const ir::Tensor &tensor,
     // fusion schedule.
     return Identity(tensor, output_name).front();
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
+    PADDLE_THROW(::common::errors::InvalidArgument(
         "dropout_implementation attr must be 'downgrade_in_infer' or "
         "'upscale_in_train'\n"));
   }
