@@ -43,7 +43,7 @@ TEST(Status, pd_exception) {
   CHECK(!status.ok());
   CHECK(status == status);
   CHECK(!(status != status));
-  CHECK_EQ(status.code(), paddle::platform::error::INVALID_ARGUMENT + 1);
+  CHECK_EQ(status.code(), phi::ErrorCode::INVALID_ARGUMENT + 1);
   LOG(INFO) << status.error_message();
 }
 
