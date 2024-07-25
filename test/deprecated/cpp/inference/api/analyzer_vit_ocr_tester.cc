@@ -30,12 +30,10 @@ struct Record {
 Record ProcessALine(const std::string &line) {
   std::vector<std::string> columns;
   split(line, '\t', &columns);
-  PADDLE_ENFORCE_EQ(
-      columns.size(), 2UL,
-      platform::errors::InvalidArgument(
-          "Data format is invalid, should be <data>\t<shape>" )
-  );
-
+  PADDLE_ENFORCE_EQ(columns.size(),
+                    2UL,
+                    platform::errors::InvalidArgument(
+                        "Data format is invalid, should be <data>\t<shape>"));
 
   Record record;
   std::vector<std::string> data_strs;
@@ -107,16 +105,14 @@ TEST(Analyzer_vit_ocr, fuse_status) {
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
 
-  PADDLE_ENFORCE_EQ(
-      fuse_statis.at("fc_onednn_pass"), 33, 
-      platform::errors::InvalidArgument(
-          "Fuse static %d is illegal, expected value is 33.")
-  );
-  PADDLE_ENFORCE_EQ(
-      fuse_statis.at("fused_conv2d_gelu_onednn_fuse_pass"), 2,
-      platform::errors::InvalidArgument(
-          "Fuse static %d is illegal, expected value is 2.")
-  );
+  PADDLE_ENFORCE_EQ(fuse_statis.at("fc_onednn_pass"),
+                    33,
+                    platform::errors::InvalidArgument(
+                        "Fuse static %d is illegal, expected value is 33."));
+  PADDLE_ENFORCE_EQ(fuse_statis.at("fused_conv2d_gelu_onednn_fuse_pass"),
+                    2,
+                    platform::errors::InvalidArgument(
+                        "Fuse static %d is illegal, expected value is 2."));
 }
 #endif
 
