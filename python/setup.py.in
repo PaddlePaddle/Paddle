@@ -1168,7 +1168,7 @@ if '${WITH_CPP_DIST}' == 'ON':
     install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir)
 
 # type hints
-package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
+package_data['paddle'] = package_data.get('paddle', []) + ['py.typed', '*.pyi']
 package_data['paddle.framework'] = package_data.get(
     'paddle.framework', []
 ) + ['*.pyi']

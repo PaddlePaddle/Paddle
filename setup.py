@@ -1392,7 +1392,10 @@ def get_package_data_and_package_dir():
         ext_modules = []
 
     # type hints
-    package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
+    package_data['paddle'] = package_data.get('paddle', []) + [
+        'py.typed',
+        '*.pyi',
+    ]
     package_data['paddle.framework'] = package_data.get(
         'paddle.framework', []
     ) + ['*.pyi']
