@@ -20,6 +20,7 @@
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace hlir {
