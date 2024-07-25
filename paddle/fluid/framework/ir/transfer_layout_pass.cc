@@ -275,10 +275,11 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
 
         auto op_inputs = op_node->inputs;
         for (auto *in_var_node : op_inputs) {
-          PADDLE_ENFORCE_EQ(in_var_node->IsVar(),
-                            true,
-                            phi::errors::InvalidArgument(
-                                "The node should be a variable, but it's not."));
+          PADDLE_ENFORCE_EQ(
+              in_var_node->IsVar(),
+              true,
+              phi::errors::InvalidArgument(
+                  "The node should be a variable, but it's not."));
           if (in_var_node->Var()->Persistable() &&
               in_var_node->Var()->Name() == filter_name) {
             auto from_shape = in_var_node->Var()->GetShape();
