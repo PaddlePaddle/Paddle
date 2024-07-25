@@ -394,7 +394,7 @@ class TestFp16Guard(AmpTestBase):
             paddle.is_compiled_with_xpu()
             and len(paddle.static.xpu_places()) > 0
         ):
-            with paddle.pir_utils.IrGuard():
+            with paddle.pir_utils.OldIrGuard():
                 run_example_code()
         paddle.disable_static()
 
