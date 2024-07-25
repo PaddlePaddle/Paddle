@@ -345,6 +345,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
 
       set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass_pir
                            PROPERTIES TIMEOUT 120)
+      set_tests_properties(test_mkldnn_conv_gelu_fuse_pass_pir
+                           PROPERTIES TIMEOUT 300)
       set_tests_properties(test_mkldnn_conv_hard_sigmoid_fuse_pass_pir
                            PROPERTIES TIMEOUT 300)
       set_tests_properties(test_mkldnn_conv_hard_swish_fuse_pass_pir
