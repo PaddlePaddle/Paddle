@@ -17,9 +17,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from vjp_interface_black_list import vjp_interface_black_list
+
 if TYPE_CHECKING:
     from op_gen import OpInfoParser
-from vjp_interface_black_list import vjp_interface_black_list
 
 CHECK_INPUT_TEMPLATE = """
     PADDLE_ENFORCE_EQ(
