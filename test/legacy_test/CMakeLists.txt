@@ -246,7 +246,7 @@ if(APPLE)
   endif()
   message(
     WARNING
-      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass_deprecated \n test_detection_map_op \n test_dist_se_resnext_*"
+      "These tests has been disabled in OSX before being fixed: \n test_detection_map_op \n test_dist_se_resnext_*"
   )
   # this op is not support on mac
   list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
@@ -1025,6 +1025,7 @@ set(TEST_CINN_OPS
     test_scatter_op
     test_reverse_op
     test_roll_op
+    test_metrics
     test_meshgrid_op
     test_index_select_op
     test_mean_op
@@ -1116,7 +1117,8 @@ set(STATIC_BUILD_TESTS
     test_shuffle_batch_op
     test_update_loss_scaling_op
     test_segment_ops
-    test_while_op)
+    test_while_op
+    test_tensor_array_to_tensor)
 
 if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
