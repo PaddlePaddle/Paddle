@@ -6882,7 +6882,7 @@ def view_as(x: Tensor, other: Tensor, name: str | None = None) -> Tensor:
         :align: center
 
     Args:
-        x (Tensor): A N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
         other (Tensor): The result tensor has the same size as other.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
