@@ -51,7 +51,7 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
   PADDLE_ENFORCE_GT(
       ndim,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The dimension of input tensor must be greater than 0."));
 
   int pos_axis = axis;
@@ -61,18 +61,18 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
   PADDLE_ENFORCE_LT(
       pos_axis,
       ndim,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The axis must be less than the dimension of input tensor."));
   PADDLE_ENFORCE_GE(pos_axis,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The axis must be greater than or equal to 0."));
 
   std::vector<Expr> output_shape;
   for (int i = 0; i < shape.size(); ++i) {
     PADDLE_ENFORCE_EQ(shape[i].is_constant(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The shape of input tensor must be constant value."));
     if (pos_axis == i) {
       if (keep_dims) {
@@ -126,29 +126,29 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
     PADDLE_ENFORCE_EQ(
         !args.empty(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input argument of argmax compute is empty! Please check."));
     cinn::common::CINNValuePack pack_args = args[0];
     std::string tensor_name = UniqName("Argmax_out");
     PADDLE_ENFORCE_GE(pack_args.size(),
                       1U,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "There should be 1 input args for argmax compute."));
     Expr in_expr = pack_args[0];
     PADDLE_ENFORCE_EQ(
         in_expr.as_tensor(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input argument of argmax compute must be a tensor."));
     Tensor in_tensor = in_expr.as_tensor_ref();
     PADDLE_ENFORCE_EQ(pack_args.size(),
                       2U,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input argument of argmax compute must be 2."));
     PADDLE_ENFORCE_EQ(
         pack_args[1].is_string(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input argument of argmax compute must be a string."));
     tensor_name = pack_args[1].operator std::string();
     std::vector<ir::Tensor> out_tensor =
@@ -165,7 +165,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
     PADDLE_ENFORCE_EQ(
         !args.empty(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input argument of argmax_schedule is empty! Please check."));
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
@@ -173,12 +173,13 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
       if (arg_pack[i].is_expr()) {
         Expr temp = arg_pack[i];
         vec_ast.emplace_back(temp);
+        ß
       }
     }
-    PADDLE_ENFORCE_EQ(!vec_ast.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The vector of AST should not be empty."));
+    PADDLE_ENFORCE_EQ(
+        !vec_ast.empty(),
+        true,
+        phi::errors::InvalidArgument("The vector of AST should not be empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
