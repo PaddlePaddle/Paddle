@@ -2251,6 +2251,74 @@ void swiglu_grad(const Tensor& x,
   set_output<T>(x_grad, dx);
 }
 
+template <typename T>
+void cross_entropy_with_softmax_grad(const Tensor& label,
+                                     const Tensor& softmax,
+                                     const Tensor& loss_grad,
+                                     bool soft_label,
+                                     bool use_softmax,
+                                     bool numeric_stable_mode,
+                                     int ignore_index,
+                                     int axis,
+                                     Tensor* logits_grad) {
+  Tensor label_cast = label;
+  if (!soft_label) {
+    label_cast = cast<T>(label, DataType::INT64);
+  }
+  auto softmax_dims = softmax.dims();
+  const int rank = softmax_dims.size();
+  const int axis_v = axis < 0 ? axis + rank : axis;
+  int axis_dim = static_cast<int>(softmax_dims[axis_v]);
+  int n = 1, d = 1;
+  for (int i = 0; i < rank; i++) {
+    if (i < axis_v) {
+      n = n * softmax_dims[i];
+    } else {
+      d = d * softmax_dims[i];
+    }
+  }
+  int remain = d / axis_dim;
+
+  Tensor label_3d, softmax_3d, out_grad_3d, logit_grad;
+  if (soft_label) {
+    label_3d = reshape<T>(label_cast, {n, axis_dim, remain});
+  } else {
+    label_3d = reshape<T>(label_cast, {n, 1, label.numel() / n});
+  }
+  softmax_3d = reshape<T>(softmax, {n, axis_dim, remain});
+  out_grad_3d = reshape<T>(loss_grad, {n, 1, remain});
+
+  if (!use_softmax) {
+    if (soft_label) {
+      logit_grad = -label_3d / softmax_3d * out_grad_3d;
+    } else {
+      logit_grad = full<T>(softmax_3d.shape(), 0, out_grad_3d.dtype());
+      Tensor tmp_grad = take_along_axis<T>(softmax_3d, label_3d, 1);
+      tmp_grad = (-1 / tmp_grad) * out_grad_3d;
+      Tensor ignore_index_tensor =
+          full<T>(label_3d.shape(), ignore_index, label_3d.dtype());
+      Tensor zeros = full<T>(tmp_grad.shape(), 0, softmax_3d.dtype());
+      tmp_grad = where<T>(label_3d == ignore_index_tensor, zeros, tmp_grad);
+      logit_grad = put_along_axis<T>(logit_grad, label_3d, tmp_grad, 1);
+    }
+  } else {
+    if (soft_label) {
+      logit_grad = (softmax_3d - label_3d) * out_grad_3d;
+    } else {
+      Tensor tmp_grad = take_along_axis<T>(softmax_3d, label_3d, 1) - 1;
+      logit_grad = put_along_axis<T>(softmax_3d, label_3d, tmp_grad, 1);
+      logit_grad = out_grad_3d * logit_grad;
+      Tensor label_3d_expand = expand<T>(label_3d, logit_grad.shape());
+      Tensor ignore_label =
+          full<T>(label_3d.shape(), ignore_index, label_3d.dtype());
+      Tensor zeros = full<T>(logit_grad.shape(), 0, logit_grad.dtype());
+      logit_grad = where<T>(label_3d_expand == ignore_label, zeros, logit_grad);
+    }
+  }
+  logit_grad = reshape<T>(logit_grad, softmax.shape());
+  set_output<T>(logit_grad, logits_grad);
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle

@@ -122,6 +122,7 @@ PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
 
 CUSTOM_VJP = [
     'batch_norm_grad',
+    'cross_entropy_with_softmax_grad',
     'dropout_grad',
     'gelu_grad',
     'group_norm_grad',
