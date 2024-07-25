@@ -1851,14 +1851,17 @@ AnalysisMiddleVariable(const Program &program,
   std::unordered_set<pir::Value> backward_inputs;
   std::unordered_set<pir::Value> x_or_param(forward_inputs.begin(),
                                             forward_inputs.end());
-  range_block_do(
-      program.block(), backward_range, [&backward_inputs](Operation *op) {
-        pir::Walk(op, [&](Operation *inner_op) {
-          for (auto &t : inner_op->operands()) {
-            backward_inputs.insert(t.source());
-          }
-        });
-      });
+  int backword_end_index =
+      static_cast<int>(const_cast<Program &>(program).num_ops());
+  range_block_do(program.block(),
+                 {backward_range[0], backword_end_index},
+                 [&backward_inputs](Operation *op) {
+                   pir::Walk(op, [&](Operation *inner_op) {
+                     for (auto &t : inner_op->operands()) {
+                       backward_inputs.insert(t.source());
+                     }
+                   });
+                 });
 
   range_block_do(
       program.block(),
