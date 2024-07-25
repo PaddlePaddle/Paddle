@@ -30,13 +30,11 @@ import yaml
 from pybind11_stubgen import (
     CLIArgs,
     Printer,
-    QualifiedName,
     Writer,
     run,
     stub_parser_from_args,
     to_output_and_subdir,
 )
-from pybind11_stubgen.parser.mixins.fix import FixMissingImports
 
 PYBIND11_ATTR_MAPPING = {
     'capsule': 'typing_extensions.CapsuleType',
@@ -125,6 +123,7 @@ PYBIND11_ATTR_MAPPING = {
     # symbol::DimExpr
 }
 
+# some bad expression pybind11-stubgen can not catch as invalid exp
 PYBIND11_IMPORT_MAPPING = {
     'float16': 'numpy.float16',
     'Variant': 'typing.Any',
@@ -228,26 +227,9 @@ def _patch_pybind11_invalid_exp():
     Printer.print_invalid_exp = print_invalid_exp
 
 
-def _patch_pybind11_missing_import():
-    # patch imports
-    def wrap_import(func):
-        @functools.wraps(func)
-        def wrapper(self, name: QualifiedName) -> None:
-            if str(name) in PYBIND11_IMPORT_MAPPING:
-                name = QualifiedName.from_str(
-                    PYBIND11_IMPORT_MAPPING[str(name)]
-                )
-            return func(self, name)
-
-        return wrapper
-
-    FixMissingImports._add_import = wrap_import(FixMissingImports._add_import)
-
-
 def patch_pybind11_stubgen_printer():
     _patch_pybind11_invalid_name()
     _patch_pybind11_invalid_exp()
-    _patch_pybind11_missing_import()
 
 
 def gen_stub(
