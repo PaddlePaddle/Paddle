@@ -67,7 +67,7 @@ ir::Tensor OneHot(const ir::Tensor& indices,
       1U,
       phi::errors::InvalidArgument("The shape of on_value must be [1]"));
   PADDLE_ENFORCE_EQ(
-      on_value->shape[0].as_int32,
+      on_value->shape[0].as_int32(),
       1U,
       phi::errors::InvalidArgument("The shape of on_value must be [1]"));
 
@@ -76,7 +76,7 @@ ir::Tensor OneHot(const ir::Tensor& indices,
       1U,
       phi::errors::InvalidArgument("The shape of off_value must be [1]"));
   PADDLE_ENFORCE_EQ(
-      off_value->shape[0].as_int32,
+      off_value->shape[0].as_int32(),
       1U,
       phi::errors::InvalidArgument("The shape of off_value must be [1]"));
 
@@ -161,18 +161,15 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
         Expr indices_expr = pack_args[0];
         Expr on_value_expr = pack_args[1];
         Expr off_value_expr = pack_args[2];
-        PADDLE_ENFORCE_EQ(indices_expr.as_tensor(),
-                          true,
-                          phi::errors::InvalidArgument(
-                              "First input cannot be converted into tensor"));
-        PADDLE_ENFORCE_EQ(on_value_expr.as_tensor(),
-                          true,
-                          phi::errors::InvalidArgument(
-                              "Second input cannot be converted into tensor"));
-        PADDLE_ENFORCE_EQ(off_value_expr.as_tensor(),
-                          true,
-                          phi::errors::InvalidArgument(
-                              "Third input cannot be converted into tensor"));
+        PADDLE_ENFORCE(indices_expr.as_tensor(),
+                       phi::errors::InvalidArgument(
+                           "First input cannot be converted into tensor"));
+        PADDLE_ENFORCE(on_value_expr.as_tensor(),
+                       phi::errors::InvalidArgument(
+                           "Second input cannot be converted into tensor"));
+        PADDLE_ENFORCE(off_value_expr.as_tensor(),
+                       phi::errors::InvalidArgument(
+                           "Third input cannot be converted into tensor"));
 
         ir::Tensor indices = indices_expr.as_tensor_ref();
         ir::Tensor on_value = on_value_expr.as_tensor_ref();
