@@ -52,7 +52,7 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
       ndim,
       0,
       phi::errors::InvalidArgument(
-          "The dimension of input tensor must be greater than 0."));
+          "The dimension of input tensor must be greater than 0\n"));
 
   int pos_axis = axis;
   if (axis < 0) {
@@ -62,18 +62,19 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
       pos_axis,
       ndim,
       phi::errors::InvalidArgument(
-          "The axis must be less than the dimension of input tensor."));
+          "The axis must be less than the dimension of input tensor\n"));
   PADDLE_ENFORCE_GE(pos_axis,
                     0,
                     phi::errors::InvalidArgument(
-                        "The axis must be greater than or equal to 0."));
+                        "The axis must be greater than or equal to 0\n"));
 
   std::vector<Expr> output_shape;
   for (int i = 0; i < shape.size(); ++i) {
-    PADDLE_ENFORCE_EQ(shape[i].is_constant(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The shape of input tensor must be constant value."));
+    PADDLE_ENFORCE_EQ(
+        shape[i].is_constant(),
+        true,
+        phi::errors::InvalidArgument(
+            "The shape of input tensor must be constant value\n"));
     if (pos_axis == i) {
       if (keep_dims) {
         output_shape.push_back(Expr(1));
@@ -115,7 +116,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
   if (attrs.attr_store.count("axis")) {
     axis = absl::get<int>(attrs.attr_store.at("axis"));
   } else {
-    PADDLE_THROW(phi::errors::Fatal("Reduce dimension is not set!"));
+    PADDLE_THROW(phi::errors::Fatal("Reduce dimension is not set!\n"));
   }
   if (attrs.attr_store.count("keep_dim")) {
     keep_dims = absl::get<bool>(attrs.attr_store.at("keep_dim"));
@@ -127,29 +128,29 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
         !args.empty(),
         true,
         phi::errors::InvalidArgument(
-            "The input argument of argmax compute is empty! Please check."));
+            "The input argument of argmax compute is empty! Please check\n"));
     cinn::common::CINNValuePack pack_args = args[0];
     std::string tensor_name = UniqName("Argmax_out");
     PADDLE_ENFORCE_GE(pack_args.size(),
                       1U,
                       phi::errors::InvalidArgument(
-                          "There should be 1 input args for argmax compute."));
+                          "There should be 1 input args for argmax compute\n"));
     Expr in_expr = pack_args[0];
     PADDLE_ENFORCE_EQ(
         in_expr.as_tensor(),
         true,
         phi::errors::InvalidArgument(
-            "The input argument of argmax compute must be a tensor."));
+            "The input argument of argmax compute must be a tensor\n"));
     Tensor in_tensor = in_expr.as_tensor_ref();
     PADDLE_ENFORCE_EQ(pack_args.size(),
                       2U,
                       phi::errors::InvalidArgument(
-                          "The input argument of argmax compute must be 2."));
+                          "The input argument of argmax compute must be 2\n"));
     PADDLE_ENFORCE_EQ(
         pack_args[1].is_string(),
         true,
         phi::errors::InvalidArgument(
-            "The input argument of argmax compute must be a string."));
+            "The input argument of argmax compute must be a string\n"));
     tensor_name = pack_args[1].operator std::string();
     std::vector<ir::Tensor> out_tensor =
         Argmax(in_tensor, target, axis, keep_dims, tensor_name);
@@ -166,7 +167,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
         !args.empty(),
         true,
         phi::errors::InvalidArgument(
-            "The input argument of argmax_schedule is empty! Please check."));
+            "The input argument of argmax_schedule is empty! Please check\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -176,10 +177,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
         ß
       }
     }
-    PADDLE_ENFORCE_EQ(
-        !vec_ast.empty(),
-        true,
-        phi::errors::InvalidArgument("The vector of AST should not be empty."));
+    PADDLE_ENFORCE_EQ(!vec_ast.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The vector of AST should not be empty\n"));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
