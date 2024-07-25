@@ -6,4 +6,4 @@ cc_library(
 cc_library(
   pir_analysis_name
   SRCS analysis_name.cc
-  DEPS pir)
+  DEPS op_dialect op_dialect_vjp pir)
