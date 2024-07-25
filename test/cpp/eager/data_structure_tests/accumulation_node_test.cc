@@ -77,7 +77,7 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
                     static_cast<float>(10.0f),
                     platform::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
-                        "should be 10.0f"));
+                        "should be 10.0f."));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
   paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
@@ -157,7 +157,7 @@ TEST(AccumulationNode, SelectedRowsMerge) {
                     static_cast<float>(10.0f),
                     platform::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
-                        "should be 10.0f.");
+                        "should be 10.0f."));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
   paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
@@ -186,7 +186,7 @@ TEST(AccumulationNode, SelectedRowsMerge) {
                     static_cast<float>(30.0f),
                     platform::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
-                        "should be 30.0f.");
+                        "should be 30.0f."));
 }
 
 TEST(AccumulationNode, SelectedRowsAddTensor) {
@@ -239,7 +239,7 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
                     static_cast<float>(10.0f),
                     platform::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
-                        "should be 10.0f");
+                        "should be 10.0f."));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
   paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
@@ -327,7 +327,7 @@ TEST(AccumulationNode, Tensor) {
                     phi::dtype::float16(10.0f),
                     platform::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
-                        "should be 10.0f"));
+                        "should be 10.0f."));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
   paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
