@@ -14,7 +14,7 @@
 
 #pragma once
 #include "glog/logging.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 
 namespace paddle {
