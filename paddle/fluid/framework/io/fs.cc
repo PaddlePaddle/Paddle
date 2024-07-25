@@ -74,8 +74,7 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
     // CHECK_EQ(0, setvbuf(&*fp, buffer, _IOFBF, buffer_size));
     PADDLE_ENFORCE_EQ(0, setvbuf(&*fp, buffer, _IOFBF, buffer_size));
     fp = {&*fp, [fp, buffer](FILE*) mutable {  // NOLINT
-            // CHECK(fp.unique());                // NOLINT
-            PADDLE_ENFORCE(fp.unique());  // NOLINT
+            CHECK(fp.unique());                // NOLINT
             fp = nullptr;
             delete[] buffer;
           }};
