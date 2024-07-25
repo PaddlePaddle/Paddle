@@ -842,7 +842,8 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
   if (!output_padding.empty()) {
     PADDLE_ENFORCE_EQ(
         strides.size(),
-        output_padding.size() phi::errors::InvalidArgument(
+        output_padding.size(),
+        phi::errors::InvalidArgument(
             "Required strides.size should be equal to output_padding.size, "
             "but received strides.size() =  %d,  output_padding.size() = %d",
             strides.size(),
