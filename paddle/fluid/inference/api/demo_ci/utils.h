@@ -56,10 +56,10 @@ Record ProcessALine(const std::string& line) {
   std::vector<std::string> columns;
   split(line, '\t', &columns);
 
-  PADDLE_ENFORCE_EQ(
-      columns.size(), 2UL,
-      platform::errors::InvalidArgument(
-          "data format error, should be <data>\t<shape>"));
+  PADDLE_ENFORCE_EQ(columns.size(),
+                    2UL,
+                    platform::errors::InvalidArgument(
+                        "data format error, should be <data>\t<shape>"));
   )
   Record record;
   std::vector<std::string> data_strs;
@@ -93,14 +93,16 @@ void CheckOutput(const std::string& referfile,
   VLOG(3) << "predictor output numel " << numel;
   VLOG(3) << "reference output numel " << refer.data.size();
   PADDLE_ENFORCE_EQ(
-      numel, refer.shape.size(),
+      numel,
+      refer.shape.size(),
       platform::errors::InvalidArgument(
           "predictor shape size should be equal to reference shape size"));
   switch (output.dtype) {
     case PaddleDType::INT64: {
       for (size_t i = 0; i < numel; ++i) {
         PADDLE_ENFORCE_EQ(
-            static_cast<int64_t*>(output.data.data())[i], refer.data[i],
+            static_cast<int64_t*>(output.data.data())[i],
+            refer.data[i],
             platform::errors::InvalidArgument(
                 "predictor output should be equal to reference output"));
       }
@@ -119,7 +121,8 @@ void CheckOutput(const std::string& referfile,
     case PaddleDType::INT32: {
       for (size_t i = 0; i < numel; ++i) {
         PADDLE_ENFORCE_EQ(
-            static_cast<int32_t*>(output.data.data())[i], refer.data[i],
+            static_cast<int32_t*>(output.data.data())[i],
+            refer.data[i],
             platform::errors::InvalidArgument(
                 "predictor output should be equal to reference output"));
       }
