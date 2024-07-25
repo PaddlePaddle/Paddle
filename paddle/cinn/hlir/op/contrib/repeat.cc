@@ -170,7 +170,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
       }
     }
     PADDLE_ENFORCE_EQ(
-        !vec_ast.empty(), true, "Input args is empty! Please check.");
+        !vec_ast.empty(),
+        true,
+        phi::errors::InvalidArgument("Input args is empty! Please check."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
