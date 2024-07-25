@@ -203,6 +203,7 @@ bool HaveUnkDim(const ::pir::Operation& op) {
   for (size_t i = 0; i < op.num_operands(); ++i) {
     auto value = op.operand_source(i);
     if (!value || !value.type()) continue;
+    // TODO(Hongqing-work): check if tensor array is needed
     if (auto vector_type = value.type().dyn_cast<::pir::VectorType>()) {
       if (HasUnkDimInVT(vector_type.data())) return true;
     } else if (HasNegDim(value.type())) {
@@ -313,6 +314,81 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
   return OpRegistry::Global()->Find(CompatibleInfo::OpName(op)) != nullptr;
 }
 
+std::unordered_set<std::string> CollectValueShapeSymbols(
+    const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  std::unordered_set<std::string> res;
+  const auto& CollectVectorDimExprSymbols =
+      [&](const std::vector<symbol::DimExpr>& dim_exprs) {
+        for (const auto& dim_expr : dim_exprs) {
+          const auto& single_dim_expr_symbols =
+              symbol::CollectDimExprSymbols(dim_expr);
+          res.insert(single_dim_expr_symbols.begin(),
+                     single_dim_expr_symbols.end());
+        }
+      };
+
+  const auto& CollectTensorDimExprSymbols =
+      [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
+        CollectVectorDimExprSymbols(tensor_shape_or_data.shape());
+        if (tensor_shape_or_data.data()) {
+          CollectVectorDimExprSymbols(tensor_shape_or_data.data().value());
+        }
+      };
+
+  shape_or_data.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs& impl) {
+        CollectTensorDimExprSymbols(impl);
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs& impl) {
+        for (const auto& tensor_shape_or_data : impl) {
+          CollectTensorDimExprSymbols(tensor_shape_or_data);
+        }
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs& impl) {
+        // Tensor array no need to collect symbols.
+        return;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr& impl) { return; });
+
+  return res;
+}
+
+bool CauseNewSymbolicShape(const ::pir::Operation& op) {
+  if (FLAGS_disable_dyshape_in_train) {
+    return false;
+  }
+  if (!HaveUnkDim(op)) {
+    return false;
+  }
+  auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
+      const_cast<::pir::Operation&>(op).GetParentProgram());
+  std::unordered_set<std::string> input_exprs = [&]() {
+    std::unordered_set<std::string> res;
+    for (const auto& input_value : op.operands_source()) {
+      const auto& single_value_symbol = CollectValueShapeSymbols(
+          shape_analysis.GetShapeOrDataForValue(input_value));
+      input_exprs.insert(single_value_symbol.begin(),
+                         single_value_symbol.end());
+    }
+    return res;
+  }();
+
+  bool outputs_have_new_symbol = [&]() {
+    for (const auto& output_value : op.results()) {
+      const auto& single_value_symbol = CollectValueShapeSymbols(
+          shape_analysis.GetShapeOrDataForValue(output_value));
+      for (const auto& symbol : single_value_symbol) {
+        if (input_exprs.find(symbol) == input_exprs.end()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }();
+
+  return outputs_have_new_symbol;
+}
+
 #define PD_OP_NAME(op) paddle::dialect::op::name()
 // For op supports AttributeTensor but has handled in
 // pd_to_cinn_pass. Such as cinn_op.reshape, except pd_op.reshape;
@@ -347,10 +423,12 @@ bool IsSupportInCinn(const ::pir::Operation& op) {
   const bool is_denied = IsDeniedInCinn(op);
   const bool is_registered = IsRegisteredInCINN(op);
   const bool is_handled = HasHandledInPass(op);
+  const bool cause_new_symbolic_shape = CauseNewSymbolicShape(op);
   VLOG(5) << op.name() << ": IsDeniedInCinn = " << is_denied
           << ", IsRegisteredInCINN = " << is_registered
-          << ", HasHandledInPass = " << is_handled;
-  return !is_denied && is_registered && is_handled;
+          << ", HasHandledInPass = " << is_handled
+          << ", CauseNewSymbolicShape = " << cause_new_symbolic_shape;
+  return !is_denied && is_registered && is_handled && !cause_new_symbolic_shape;
 }
 }  // namespace
 
