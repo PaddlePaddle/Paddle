@@ -225,7 +225,7 @@ void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
 }
 
 void InferXPUContext::L3CacheAutotune() {
-  if (l3_autotune_size_ == 0) return;
+  if (l3_autotune_size_ == 0 || l3_blocks_.size() == 0) return;
   if (holder_map_.empty()) {
     l3_plan_.RunAutotune(l3_blocks_, l3_size_);
     auto* plan = l3_plan_.plan();
@@ -249,19 +249,13 @@ void InferXPUContext::L3CacheAutotune() {
         phi::Allocation* l3_holder =
             new phi::Allocation(l3_block->data(), l3_block->size(), place);
         holder_map_[holder] = std::make_pair(l3_holder, true);
-
-        if (output_holder_set_.find(holder) != output_holder_set_.end()) {
-          VLOG(4) << "Insert output tensor's l3 holder:" << l3_holder->ptr();
-          SetOutHolder(l3_holder);
-        }
       }
     }
   } else {
     for (auto& holders : holder_map_) {
       auto* holder = holders.first;
       auto& holder_pair = holders.second;
-      if (!holder_pair.second &&
-          output_holder_set_.find(holder) == output_holder_set_.end()) {
+      if (!holder_pair.second) {
         swap(*holder, *(holder_pair.first));
         holder_pair.second = true;
       }
@@ -269,9 +263,6 @@ void InferXPUContext::L3CacheAutotune() {
   }
 }
 
-void InferXPUContext::SetOutHolder(phi::Allocation* holder) {
-  output_holder_set_.insert(holder);
-}
 #endif
 
 }  // namespace paddle

@@ -80,8 +80,6 @@ class InferXPUContext : public phi::XPUContext {
                          bool fc_autotune_file_writeback,
                          const phi::Place& place);
 
-  void SetOutHolder(phi::Allocation* holder);
-
  private:
   size_t l3_size_{0};
   void* l3_ptr_{nullptr};
@@ -94,7 +92,6 @@ class InferXPUContext : public phi::XPUContext {
                              std::pair<phi::Allocation*, bool>>
       holder_map_;
 
-  mutable std::unordered_set<phi::Allocation*> output_holder_set_;
   phi::XPUL3Planner l3_plan_;
 };
 #endif
