@@ -95,7 +95,7 @@ PYBIND11_MAPPING = {
     'phi::CustomPlace': 'CustomPlace',
     'phi::DenseTensor': 'paddle.Tensor',
     'phi::GPUPinnedPlace': 'GPUPinnedPlace',
-    'phi::GPUPlace': 'GPUPlace',
+    # phi::GPUPlace
     'phi::IPUPlace': 'IPUPlace',
     'phi::Place': 'Place',
     'phi::SelectedRows': 'SelectedRows',
@@ -165,6 +165,10 @@ OPTIONAL_TYPES_TRANS = {
     'Place': 'paddle._typing.PlaceLike',
     'DataLayout': 'paddle._typing.DataLayoutND',
     'DataType': 'paddle._typing.DTypeLike',
+}
+OUTPUT_TYPE_MAP = {
+    'Tensor': 'paddle.Tensor',
+    'Tensor[]': 'list[paddle.Tensor]',
 }
 
 PATTERN_FUNCTION = re.compile(r'^def (?P<name>.*)\(\*args, \*\*kwargs\):')
@@ -434,10 +438,6 @@ def _parse_input_and_attr(api_name, args_config, optional_vars=[]):
 # ref: paddle/phi/api/generator/api_base.py
 def _parse_output(api_name, output_config):
     def parse_output_item(output_item):
-        output_type_map = {
-            'Tensor': 'Tensor',
-            'Tensor[]': 'list[Tensor]',
-        }
         result = re.search(
             r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*(?P<name>\([a-zA-Z0-9_@]+\))?\s*(?P<expr>\{[^\}]+\})?",
             output_item,
@@ -447,7 +447,7 @@ def _parse_output(api_name, output_config):
         ), f"{api_name} : the output config parse error."
         out_type = result.group('out_type')
         assert (
-            out_type in output_type_map
+            out_type in OUTPUT_TYPE_MAP
         ), f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
                 but now is {out_type}."
 
@@ -459,7 +459,7 @@ def _parse_output(api_name, output_config):
         out_size_expr = (
             None if result.group('expr') is None else result.group('expr')[1:-1]
         )
-        return output_type_map[out_type], out_name, out_size_expr
+        return OUTPUT_TYPE_MAP[out_type], out_name, out_size_expr
 
     temp_list = output_config.split(',')
 
