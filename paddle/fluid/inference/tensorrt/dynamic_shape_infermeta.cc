@@ -816,7 +816,8 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
                       true,
                       phi::errors::InvalidArgument(
                           "Required strides[i] should be greater than 0",
-                          "but received strides[i] = %d" strides[i]));
+                          "but received strides[i] = %d",
+                          strides[i]));
   }
 
   int in_sub_stride_size = x_dims.nbDims - stride_size;
