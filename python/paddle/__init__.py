@@ -79,6 +79,7 @@ from .framework.dtype import (
 )
 
 if typing.TYPE_CHECKING:
+    from .base import libpaddle  # noqa: F401
     from .tensor.tensor import Tensor
 else:
     Tensor = framework.core.eager.Tensor
