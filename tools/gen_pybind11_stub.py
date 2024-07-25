@@ -94,7 +94,7 @@ PYBIND11_MAPPING = {
     'phi::CudaEvent': 'CudaEvent',
     'phi::CustomPlace': 'CustomPlace',
     'phi::DenseTensor': 'paddle.Tensor',
-    'phi::GPUPinnedPlace': 'GPUPinnedPlace',
+    # phi::GPUPinnedPlace
     # phi::GPUPlace
     'phi::IPUPlace': 'IPUPlace',
     'phi::Place': 'Place',
