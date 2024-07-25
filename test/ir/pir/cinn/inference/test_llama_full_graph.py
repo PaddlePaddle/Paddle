@@ -17,7 +17,17 @@ import sys
 import unittest
 from os.path import dirname
 
+os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
+os.environ['FLAGS_group_schedule_tiling_first'] = '1'
+os.environ['FLAGS_prim_all'] = 'true'
+os.environ['FLAGS_prim_enable_dynamic'] = 'true'
+os.environ['FLAGS_print_ir'] = '1'
+os.environ['FLAGS_enable_pir_api'] = '1'
+os.environ['FLAGS_use_cinn'] = '1'
+os.environ['FLAGS_cinn_bucket_compile'] = '1'
+os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
 os.environ['FLAGS_prim_forward_blacklist'] = 'pd_op.embedding'
+
 
 import numpy as np
 
@@ -101,8 +111,13 @@ class TestLlamaModel(unittest.TestCase):
         if mode == "prim":
             with decomp.prim_guard():
                 decomp.decompose_dist_program(main_program)
+                decomp.auto_recompute_pir_program(main_program, [loss])
+                from paddle.base.libpaddle.pir import apply_cinn_pass
+
+                apply_cinn_pass(main_program)
 
         exe.run(paddle.static.default_startup_program())
+        print("main_program************ \n", main_program)
 
         res = exe.run(
             feed={

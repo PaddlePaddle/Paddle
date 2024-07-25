@@ -158,9 +158,7 @@ FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op,
                                std::vector<size_t> fake_reduce_iter_idx);
 
 std::vector<ir::Var> GetAllIterVars(const ir::Expr& expr);
-
 std::vector<ir::Var> GetAllForIters(const ir::Expr& expr);
-
 }  // namespace trivial_fusion_detail
 
 struct FusionGroupInfo {
