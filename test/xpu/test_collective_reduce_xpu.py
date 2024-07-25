@@ -39,6 +39,7 @@ class TestCollectiveReduceAPI(TestDistBase):
                 "collective_reduce_api.py",
                 "reduce",
                 dtype=dtype,
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     @unittest.skipIf(
