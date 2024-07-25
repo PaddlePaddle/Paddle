@@ -91,7 +91,7 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
             << "at least one input tensor for " << op_name << " compute\n";
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           2,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The input argument's size of reciprocal op "
                               "should be 2."));
         CHECK(pack_args[1].is_string());
@@ -106,7 +106,7 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
 
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           2U,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The input argument's size of reciprocal op "
                               "should be 2."));
 
@@ -145,7 +145,7 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
             << "at least one input tensor for " << op_name << " compute\n";
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           2,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The input argument's size of reciprocal op "
                               "should be 2."));
         CHECK(pack_args[1].is_string());
@@ -159,7 +159,7 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           2U,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The input argument's size of reciprocal op "
                               "should be 2."));
         tensor_name = pack_args[1].operator std::string();

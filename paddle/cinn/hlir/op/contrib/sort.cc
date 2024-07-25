@@ -171,7 +171,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
         CINNValuePack pack_args = args[0];
         PADDLE_ENFORCE_GE(pack_args.size(),
                           1U,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "At least 1 input tensors for Sort compute\n"));
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
@@ -181,7 +181,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           2U,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The input argument's size of Sort should be 2"));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
@@ -258,7 +258,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
                       1U,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input arguments' size of ArgSort should be 1"));
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
@@ -269,7 +269,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
     PADDLE_ENFORCE_EQ(pack_args.size(),
                       3U,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input argument's size of ArgSort should be 3"));
     CHECK(pack_args[1].is_string());
     std::string tensor_name = pack_args[1].operator std::string();
