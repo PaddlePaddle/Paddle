@@ -49,8 +49,10 @@ void InsertLayoutTransOp(ir::Graph *graph,
       desc.SetAttr("dst_layout", static_cast<int>(to_layout));
       desc.Flush();
     };
-    PADDLE_ENFORCE_NOT_NULL(block_desc, phi::errors::PreconditionNotMet(
-    "BlockDesc should not be null when inserting layout transfer op."));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_desc,
+        phi::errors::PreconditionNotMet(
+            "BlockDesc should not be null when inserting layout transfer op."));
     if (cache->count(prev_node) == 0) {
       framework::OpDesc op_desc(block_desc);
       update_op_desc(op_desc, in_var_name, out_var_name);
@@ -156,8 +158,12 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
-      PADDLE_ENFORCE_EQ(filter_tensor.dims().size(), 4UL, phi::errors::InvalidArgument(
-    "The 'Filter' tensor should have 4 dimensions, but received %d.", filter_tensor.dims().size()));
+      PADDLE_ENFORCE_EQ(
+          filter_tensor.dims().size(),
+          4UL,
+          phi::errors::InvalidArgument(
+              "The 'Filter' tensor should have 4 dimensions, but received %d.",
+              filter_tensor.dims().size()));
       int oc = static_cast<int>(filter_tensor.dims()[0]);
       int ic = static_cast<int>(filter_tensor.dims()[1]);
       bool cudnn_can_support =
@@ -180,8 +186,10 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
   };
 
   for (auto *op_node : op_nodes) {
-    PADDLE_ENFORCE_EQ(op_node->IsOp(), true, phi::errors::InvalidArgument(
-    "The node should be an operation, but it's not."));
+    PADDLE_ENFORCE_EQ(op_node->IsOp(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The node should be an operation, but it's not."));
     // some common check.
     if (op_node->Op()->Type() != target_op_type) {
       continue;
@@ -205,8 +213,10 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
 
   // The target operators that share weights either run nhwc or not at all.
   for (auto *op_node : op_nodes) {
-    PADDLE_ENFORCE_EQ(op_node->IsOp(), true, phi::errors::InvalidArgument(
-    "The node should be an operation, but it's not."));
+    PADDLE_ENFORCE_EQ(op_node->IsOp(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The node should be an operation, but it's not."));
     if (valid_ops.count(op_node)) {
       auto filter_names = op_node->Op()->Input("Filter");
       for (const auto &filter_name : filter_names) {
@@ -225,9 +235,10 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
 
   // Insert transfer_layout op
   for (auto *op_node : op_nodes) {
-    PADDLE_ENFORCE_EQ(op_node->IsOp(), true, phi::errors::InvalidArgument(
-    "The node should be an operation, but it's not."));
-
+    PADDLE_ENFORCE_EQ(op_node->IsOp(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The node should be an operation, but it's not."));
 
     if (valid_ops.count(op_node)) {
       auto *op_desc = op_node->Op();
@@ -277,8 +288,10 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
       // transfer outputs
       auto op_outputs = op_node->outputs;
       for (auto *out_var_node : op_outputs) {
-        PADDLE_ENFORCE_EQ(out_var_node->IsVar(), true, phi::errors::InvalidArgument(
-    "The node should be a variable, but it's not."));
+        PADDLE_ENFORCE_EQ(out_var_node->IsVar(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "The node should be a variable, but it's not."));
 
         if (out_var_node->Var()->Persistable()) continue;
 
@@ -291,9 +304,10 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
       // Insert transfer_layout for intermidiate var.
       auto op_inputs = op_node->inputs;
       for (auto *in_var_node : op_inputs) {
-        PADDLE_ENFORCE_EQ(out_var_node->IsVar(), true, phi::errors::InvalidArgument(
-    "The node should be a variable, but it's not."));
-
+        PADDLE_ENFORCE_EQ(out_var_node->IsVar(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "The node should be a variable, but it's not."));
 
         if (in_var_node->Var()->Persistable()) continue;
         if (vars_shape_nhwc.count(in_var_node)) continue;
@@ -309,9 +323,10 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
     } else {
       auto op_inputs = op_node->inputs;
       for (auto *in_var_node : op_inputs) {
-        PADDLE_ENFORCE_EQ(out_var_node->IsVar(), true, phi::errors::InvalidArgument(
-    "The node should be a variable, but it's not."));
-
+        PADDLE_ENFORCE_EQ(out_var_node->IsVar(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "The node should be a variable, but it's not."));
 
         if (vars_shape_nhwc.count(in_var_node)) {
           InsertLayoutTransOp(graph,
