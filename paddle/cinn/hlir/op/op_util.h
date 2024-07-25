@@ -72,11 +72,9 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
   PADDLE_ENFORCE_EQ(
       type,
       cinn::common::type_of<T>(),
-      phi::errors::InvalidArgument(
-          "Cannot get %s value from %s vector!",
-          cinn::common::type_of<T>(),
-          type
-      ));
+      phi::errors::InvalidArgument("Cannot get %s value from %s vector!",
+                                   cinn::common::type_of<T>(),
+                                   type));
 
   std::vector<T> shape_v;
   if (type.is_bool()) {
