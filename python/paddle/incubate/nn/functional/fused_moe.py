@@ -35,11 +35,11 @@ def fused_moe(
 
     Args:
         x (Tensor): the input Tensor. Its shape is [bsz, seq_len, d_model].
-        gate (Tensor): the gate Tensor to choose expert. Its shape is [bsz, seq_len, e].
-        bmm0_weight (Tensor): the first batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward].
-        bmm0_bias (Tensor): the first batch matrix matmul bias. Its shape is [e, 1, d_feed_forward].
-        bmm1_weight (Tensor): the second batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward].
-        bmm1_bias (Tensor): the second batch matrix matmul bias. Its shape is [e, 1, d_feed_forward].
+        gate_weight (Tensor): the gate Tensor to choose expert. Its shape is [bsz, seq_len, e].
+        ffn1_weight (Tensor): the first batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward].
+        ffn1_bias (Tensor): the first batch matrix matmul bias. Its shape is [e, 1, d_feed_forward].
+        ffn2_weight (Tensor): the second batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward].
+        ffn2_bias (Tensor): the second batch matrix matmul bias. Its shape is [e, 1, d_feed_forward].
         int8_moe_method (string): Currently not supported.
         moe_topk: Select the top k experts for each token.
 
@@ -55,13 +55,13 @@ def fused_moe(
 
             >>> paddle.set_device('gpu')
             >>> x = paddle.randn([10, 128, 1024])
-            >>> gate = paddle.randn([10, 128, 8])
-            >>> bmm0_weight = paddle.randn([8, 1024, 4096])
-            >>> bmm0_bias = paddle.randn([8, 1024, 4096])
-            >>> bmm1_weight = paddle.randn([8, 1024, 4096])
-            >>> bmm1_bias = paddle.randn([8, 1024, 4096])
+            >>> gate_weight = paddle.randn([10, 128, 8])
+            >>> ffn1_weight = paddle.randn([8, 1024, 4096])
+            >>> ffn1_bias = paddle.randn([8, 1024, 4096])
+            >>> ffn2_weight = paddle.randn([8, 1024, 4096])
+            >>> ffn2_bias = paddle.randn([8, 1024, 4096])
             >>> moe_topk = 2
-            >>> out = fused_moe(x, gate, bmm0_weight, bmm0_bias, bmm1_weight, bmm1_bias, int8_moe_method="", moe_topk)
+            >>> out = fused_moe(x, gate_weight, ffn1_weight, ffn1_bias, ffn2_weight, ffn2_bias, int8_moe_method="", moe_topk)
             >>> print(out.shape)
             [10, 128, 1024]
 
