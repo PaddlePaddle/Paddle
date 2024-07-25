@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import functools
-import inspect
 import keyword
 import logging
 import os
@@ -35,9 +34,9 @@ from pybind11_stubgen import (
     stub_parser_from_args,
     to_output_and_subdir,
 )
+from pybind11_stubgen.structs import InvalidExpression
 
 PYBIND11_ATTR_MAPPING = {
-    'capsule': 'typing_extensions.CapsuleType',
     '<Precision.Float32: 0>': 'AnalysisConfig.Precision.Float32',
     '<ReduceOp.SUM: 0>': 'ReduceOp.SUM',
     '<ReduceType.kRedSum: 0>': 'ReduceType.kRedSum',
@@ -124,7 +123,7 @@ PYBIND11_ATTR_MAPPING = {
 }
 
 # some bad expression pybind11-stubgen can not catch as invalid exp
-PYBIND11_IMPORT_MAPPING = {
+PYBIND11_INVALID_MAPPING = {
     'float16': 'numpy.float16',
     'Variant': 'typing.Any',
     'capsule': 'typing_extensions.CapsuleType',
@@ -136,6 +135,11 @@ PYBIND11_IMPORT_MAPPING = {
     'Numberic': 'paddle._typing.Numberic',
     'TypeGuard': 'typing_extensions.TypeGuard',
     '_Interpolation': 'paddle.tensor.stat._Interpolation',
+    'Dep': 'Node.Dep',
+    'ParamAttrLike': 'paddle._typing.ParamAttrLike',
+    '_POrder': 'paddle.tensor.linalg._POrder',
+    'TensorOrTensors': 'paddle._typing.TensorOrTensors',
+    'NestedSequence': 'paddle._typing.NestedSequence',
 }
 
 
@@ -144,7 +148,6 @@ INPUT_TYPES_MAP = {
     'Tensor[]': 'list[paddle.Tensor]',
 }
 ATTR_TYPES_MAP = {
-    'capsule': 'typing_extensions.CapsuleType',
     'IntArray': 'list[int]',
     'Scalar': 'float',
     'Scalar(int)': 'int',
@@ -171,7 +174,6 @@ ATTR_TYPES_MAP = {
     'int[]': 'list[int]',
 }
 OPTIONAL_TYPES_TRANS = {
-    'capsule': 'typing_extensions.CapsuleType',
     'Tensor': 'paddle.Tensor',
     'Tensor[]': 'list[paddle.Tensor]',
     'int': 'int',
@@ -185,7 +187,6 @@ OPTIONAL_TYPES_TRANS = {
     'DataType': 'paddle._typing.DTypeLike',
 }
 OUTPUT_TYPE_MAP = {
-    'capsule': 'typing_extensions.CapsuleType',
     'Tensor': 'paddle.Tensor',
     'Tensor[]': 'list[paddle.Tensor]',
 }
@@ -202,20 +203,29 @@ def _patch_pybind11_invalid_name():
     # patch name with suffix '_' if `name` is a keyword like `in` to `in_`
     def wrap_name(func):
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            for arg in args:
-                if hasattr(arg, 'name') and keyword.iskeyword(arg.name):
-                    arg.name += '_'
-            for k, w in kwargs.items():
-                if hasattr(w, 'name') and keyword.iskeyword(arg.name):
-                    kwargs[k].name += '_'
-            return func(*args, **kwargs)
+        def wrapper(self, arg: Any):
+            if hasattr(arg, 'name') and keyword.iskeyword(arg.name):
+                arg.name += '_'
+            return func(self, arg)
 
         return wrapper
 
-    for name, value in inspect.getmembers(Printer):
-        if inspect.isfunction(value) and name.startswith('print_'):
-            setattr(Printer, name, wrap_name(getattr(Printer, name)))
+    Printer.print_argument = wrap_name(Printer.print_argument)
+    Printer.print_function = wrap_name(Printer.print_function)
+
+
+def _patch_pybind11_invalid_annotation():
+    # patch invalid annotaion as `InvalidExpression`, e.g. 'capsule' to 'typing_extensions.CapsuleType'
+    def wrap_name(func):
+        @functools.wraps(func)
+        def wrapper(self, arg: Any):
+            if str(arg) in PYBIND11_INVALID_MAPPING:
+                arg = InvalidExpression(PYBIND11_INVALID_MAPPING[str(arg)])
+            return func(self, arg)
+
+        return wrapper
+
+    Printer.print_annotation = wrap_name(Printer.print_annotation)
 
 
 def _patch_pybind11_invalid_exp():
@@ -229,6 +239,7 @@ def _patch_pybind11_invalid_exp():
 
 def patch_pybind11_stubgen_printer():
     _patch_pybind11_invalid_name()
+    _patch_pybind11_invalid_annotation()
     _patch_pybind11_invalid_exp()
 
 
