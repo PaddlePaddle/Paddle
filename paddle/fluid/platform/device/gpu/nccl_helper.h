@@ -33,11 +33,11 @@
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
 
 #define NCCL_ID_VARNAME "NCCLID"
 
@@ -129,25 +129,11 @@ struct NCCLContext {
 
   explicit NCCLContext(int dev_id) : comm_{nullptr} {
     ctx_.reset(new phi::GPUContext(phi::GPUPlace(dev_id)));
-    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(phi::GPUPlace(dev_id), ctx_->stream())
-                           .get());
-    ctx_->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(phi::CPUPlace())
-            .get());
-    ctx_->SetZeroAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(phi::GPUPlace(dev_id))
-            .get());
-    ctx_->SetHostZeroAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(phi::CPUPlace())
-            .get());
-    ctx_->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(phi::GPUPinnedPlace())
-            .get());
+    ctx_->SetAllocator(phi::memory_utils::GetAllocator(dev_id, ctx_->stream()));
+    ctx_->SetHostAllocator(phi::memory_utils::GetHostAllocator());
+    ctx_->SetZeroAllocator(phi::memory_utils::GetZeroAllocator(dev_id));
+    ctx_->SetHostZeroAllocator(phi::memory_utils::GetHostZeroAllocator());
+    ctx_->SetPinnedAllocator(phi::memory_utils::GetPinnedAllocator());
     ctx_->PartialInitWithAllocator();
   }
 
@@ -205,7 +191,7 @@ class NCCLContextMap {
           }
           VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
-          SetDeviceId(gpu_id);
+          phi::backends::gpu::SetDeviceId(gpu_id);
           PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));
         }
