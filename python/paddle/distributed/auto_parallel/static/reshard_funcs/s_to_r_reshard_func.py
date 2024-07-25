@@ -147,7 +147,7 @@ class SToRReshardFunction(ReshardFunction):
                 src_mesh, [src_dist_attr], [new_dist_attr]
             )
         )
-        allgather_value.get_defining_op().dist_attr.execution_stream = (
+        allgather_value.get_defining_op().set_execution_stream(
             AutoParallelStreamType.CALC_STREAM.value
         )
 
