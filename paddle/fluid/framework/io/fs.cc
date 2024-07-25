@@ -71,9 +71,11 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
 
   if (buffer_size > 0) {
     char* buffer = new char[buffer_size];
-    CHECK_EQ(0, setvbuf(&*fp, buffer, _IOFBF, buffer_size));
+    // CHECK_EQ(0, setvbuf(&*fp, buffer, _IOFBF, buffer_size));
+    PADDLE_ENFORCE_EQ(0, setvbuf(&*fp, buffer, _IOFBF, buffer_size));
     fp = {&*fp, [fp, buffer](FILE*) mutable {  // NOLINT
-            CHECK(fp.unique());                // NOLINT
+            // CHECK(fp.unique());                // NOLINT
+            PADDLE_ENFORCE(fp.unique());  // NOLINT
             fp = nullptr;
             delete[] buffer;
           }};
@@ -580,7 +582,8 @@ void fs_mkdir(const std::string& path) {
 void fs_mv(const std::string& src, const std::string& dest) {
   int s = fs_select_internal(src);
   int d = fs_select_internal(dest);
-  CHECK_EQ(s, d);
+  // CHECK_EQ(s, d);
+  PADDLE_ENFORCE_EQ(s, d);
   switch (s) {
     case 0:
       return localfs_mv(src, dest);
