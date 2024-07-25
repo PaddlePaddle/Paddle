@@ -19,6 +19,7 @@ from functools import reduce
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
 
@@ -667,8 +668,8 @@ class Inserter:
         group = new_process_group(ranks)
         idx_offset = 0
 
-        # insert c_allgather op
-        op_type = 'c_allgather'
+        # insert all_gather op
+        op_type = 'all_gather'
         # to avoid name conflict with framework
         helper = LayerHelper(op_type + "@RESHARD", **locals())
         insert_operation = (
@@ -690,16 +691,18 @@ class Inserter:
         allgather_op = insert_operation(
             idx + idx_offset,
             type=op_type,
-            inputs={'X': [tensor]},
-            outputs={'Out': [allgather_out]},
+            inputs={'x': [tensor]},
+            outputs={'out': [allgather_out]},
             attrs={
                 'ring_id': group.id,
-                'use_calc_stream': True,
                 'nranks': group.nranks,
                 'op_role': op_role,
             },
         )
         allgather_op._set_attr('op_namescope', "/auto_parallel/reshard")
+        allgather_op.dist_attr.execution_stream = (
+            AutoParallelStreamType.CALC_STREAM.value
+        )
         idx_offset += 1
 
         # insert split op
@@ -3202,7 +3205,7 @@ class Resharder:
                     group_ranks = op_desc.group
                     shape = op_desc.shape
                     allgather_desc = build_comm_desc(
-                        "c_allgather", group_ranks, dtype, shape
+                        "all_gather", group_ranks, dtype, shape
                     )
                     split_inputs_shape = []
                     for idx, dim in enumerate(shape):
