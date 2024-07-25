@@ -272,6 +272,7 @@
     func : argmin
     data_type : x
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : argsort
   args : (Tensor x, int axis=-1, bool descending=false, bool stable=false)
