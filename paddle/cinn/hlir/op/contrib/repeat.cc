@@ -123,9 +123,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
                       phi::errors::InvalidArgument(
                           "at least 1 input tensors for Repeat compute\n"));
     Expr A = pack_args[0];
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE(
         A.as_tensor(),
-        true,
         phi::errors::InvalidArgument("Input cannot be converted into tensor"));
     PADDLE_ENFORCE_EQ(
         !output_shapes.empty(),
