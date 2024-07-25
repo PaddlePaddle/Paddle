@@ -359,12 +359,6 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
 
   std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
 
-  auto ref_cnt_pass = ir::PassRegistry::Instance().Get("reference_count_pass");
-  ref_cnt_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
-  ref_cnt_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-  graph = ref_cnt_pass->Apply(graph);
-  VLOG(10) << "ReferenceCountPass Applied";
-
   if (build_strategy_.enable_addto_) {
     auto addto_pass = ir::PassRegistry::Instance().Get("inplace_addto_op_pass");
     addto_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
@@ -404,7 +398,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
                  "build_strategy.memory_optimize = True or garbage collection "
                  "strategy is disabled, which is not recommended";
   }
-
+  return graph;
   if (!is_gc_enabled) {
     return graph;
   }
@@ -1032,7 +1026,6 @@ std::vector<ir::Graph *> CompiledProgram::CompileGraphWithBuildStrategy(
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
 USE_PASS(buffer_shared_inplace_pass);
 USE_PASS(buffer_shared_cross_op_memory_reuse_pass);

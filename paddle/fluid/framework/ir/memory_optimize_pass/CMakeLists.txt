@@ -17,11 +17,7 @@ cc_library(
 cc_library(
   reference_count_pass_helper
   SRCS reference_count_pass_helper.cc
-  DEPS garbage_collector) #
-cc_library(
-  reference_count_pass
-  SRCS reference_count_pass.cc
-  DEPS graph graph_helper pass op_graph_view reference_count_pass_helper)
+  DEPS garbage_collector)
 
 set(EAGER_DELETETION_PASS_DEPS
     graph
@@ -49,7 +45,7 @@ cc_library(
 cc_library(
   buffer_shared_cross_op_memory_reuse_pass
   SRCS buffer_shared_cross_op_memory_reuse_pass.cc
-  DEPS memory_reuse_pass)
+  DEPS memory_reuse_pass op_graph_view)
 
 cc_library(
   inplace_addto_op_pass

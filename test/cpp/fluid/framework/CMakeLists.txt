@@ -270,5 +270,3 @@ cc_test(
   workqueue_test
   SRCS new_executor/workqueue_test.cc
   DEPS standalone_executor)
-
-add_subdirectory(ir)
