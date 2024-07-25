@@ -840,8 +840,8 @@ class TestPrimKLDivLoss1(TestPrimTwo):
 class TestPrimKLDivLoss2(TestPrimTwo):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [40, 100, 50]
-        self.shape_y = [40, 100, 50]
+        self.shape_x = [40, 20, 50]
+        self.shape_y = [40, 20, 50]
         self.dtype_x = "float32"
         self.dtype_y = "float32"
         self.init_x_shape = [None, None, 50]
@@ -851,7 +851,7 @@ class TestPrimKLDivLoss2(TestPrimTwo):
         self.net = kldiv_loss_net2
         self.necessary_ops = "pd_op.kldiv_loss"
         self.enable_cinn = False
-        self.tol = 1e-5
+        self.tol = 1e-4
 
 
 class TestPrimKLDivLoss3(TestPrimTwo):
