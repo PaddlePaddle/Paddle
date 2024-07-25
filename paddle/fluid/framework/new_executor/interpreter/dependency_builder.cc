@@ -17,13 +17,13 @@
 #include <queue>
 #include <sstream>
 #include <stack>
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/platform/flags.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     add_dependency_for_communication_op,
     true,
     "Whether to add dependency for communication Ops. It is just a temporary "
@@ -35,15 +35,15 @@ PADDLE_DEFINE_EXPORTED_bool(
 // Program, while "serial_run" ensures that all Ops are scheduled in a signal
 // thread. In standalone executor, "sequential_run" is also "serial_run", while
 // "serial_run" is not necessarily "sequential_run".
-PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
-                            false,
-                            "Enable sequential execution for standalone "
-                            "executor, only applied to GPU OPs.");
+PHI_DEFINE_EXPORTED_bool(new_executor_sequential_run,
+                         false,
+                         "Enable sequential execution for standalone "
+                         "executor, only applied to GPU OPs.");
 COMMON_DECLARE_int32(enable_adjust_op_order);
 // add debug info
-PADDLE_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
-                            false,
-                            "Enable dependency builder debug info");
+PHI_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
+                         false,
+                         "Enable dependency builder debug info");
 
 namespace paddle::framework::interpreter {
 

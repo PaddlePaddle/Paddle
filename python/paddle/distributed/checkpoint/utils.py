@@ -35,6 +35,16 @@ def get_coordinator(mesh: Union[np.array, List[List[int]]], rank: int):
     )
 
 
+# NOTE(zhangbo): Refer to the BalancedSplit function in the reshard_utils.cc file.
+def balanced_split(total_nums, num_of_pieces):
+    has_remainder = total_nums % num_of_pieces != 0
+    result = [(total_nums + num_of_pieces - 1) // num_of_pieces] * num_of_pieces
+    if has_remainder:
+        last_value = result[-1]
+        result[-1] = last_value - (last_value * num_of_pieces - total_nums)
+    return result
+
+
 def compute_local_shape_and_global_offset(
     global_shape: List[int],
     process_mesh: core.ProcessMesh,
@@ -52,12 +62,10 @@ def compute_local_shape_and_global_offset(
             continue
         else:
             i = placement.get_dim()
-            assert (
-                global_shape[i] % process_mesh.shape[dim] == 0
-            ), f"i:{i}, global_shape[i]:{global_shape[i]}, process_mesh.shape[dim]:{process_mesh.shape[dim]}"
-            local_shape[i] = global_shape[i] // process_mesh.shape[dim]
             chunk_idx = rank_coordinator[dim]
-            global_offset[i] = chunk_idx * local_shape[i]
+            chunks = balanced_split(global_shape[i], process_mesh.shape[dim])
+            local_shape[i] = chunks[chunk_idx]
+            global_offset[i] = sum(chunks[:chunk_idx])
 
     return tuple(local_shape), tuple(global_offset)
 

@@ -16,6 +16,7 @@
 
 #include <algorithm>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -35,7 +36,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -492,13 +492,13 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
               << " by device_guard.";
     } else {
       PADDLE_THROW(
-          platform::errors::Fatal("Unsupported current place %s", op_device));
+          phi::errors::Fatal("Unsupported current place %s", op_device));
     }
   }
 }
 
-platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
-                                                const phi::Place& place) {
+phi::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
+                                           const phi::Place& place) {
   auto& pool = phi::DeviceContextPool::Instance();
   auto* default_dev_ctx = pool.Get(place);
 
@@ -932,7 +932,7 @@ void BuildOpFuncList(const phi::Place& place,
             // avoid overwriting valid data
             if (static_build && original_tensor->initialized()) {
               const phi::Place& target_place = transformed_tensor->place();
-              platform::DeviceContext* dev_ctx_for_copy = nullptr;
+              phi::DeviceContext* dev_ctx_for_copy = nullptr;
               if (target_place.GetType() != AllocationType::CPU) {
                 dev_ctx_for_copy = pool.Get(target_place);
               } else {
@@ -1211,7 +1211,7 @@ void BuildVariableScope(const framework::BlockDesc& block,
 }
 
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
-                          platform::DeviceContext* dev_ctx) {
+                          phi::DeviceContext* dev_ctx) {
   if (operator_base->HasAttr("ring_id")) {
     int ring_id = operator_base->Attr<int>("ring_id");
     const auto& comm_context_manager =
@@ -1228,8 +1228,7 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
   }
 }
 
-void SetDeviceCommContext(pir::Operation* op,
-                          platform::DeviceContext* dev_ctx) {
+void SetDeviceCommContext(pir::Operation* op, phi::DeviceContext* dev_ctx) {
   auto op_attributes = op->attributes();
   if (op_attributes.count("ring_id") != 0) {
     int ring_id =

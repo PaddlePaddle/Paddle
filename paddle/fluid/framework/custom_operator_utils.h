@@ -40,7 +40,7 @@ static T* DynLoad(void* handle, std::string name) {
 #endif  // !_WIN32
   PADDLE_ENFORCE_NOT_NULL(
       func,
-      platform::errors::NotFound(
+      phi::errors::NotFound(
           "Failed to load dynamic operator library, error message(%s).",
           errorno));
   return func;
