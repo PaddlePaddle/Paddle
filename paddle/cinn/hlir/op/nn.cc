@@ -255,12 +255,14 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
             stride.size(),
             2,
             phi::errors::InvalidArgument(
-                "The size of stride in conv2d op should be 2, but got %d."));
+                "The size of stride in conv2d op should be 2, but got %d.",
+                stride.size()));
         PADDLE_ENFORCE_EQ(
             dilation.size(),
             2,
             phi::errors::InvalidArgument(
-                "The size of dilation in conv2d op should be 2, but got %d."));
+                "The size of dilation in conv2d op should be 2, but got %d.",
+                dilation.size()));
         std::vector<ir::Tensor> out;
         VLOG(3) << "input shape: "
                 << utils::Join(A.as_tensor_ref()->shape, ", ");
