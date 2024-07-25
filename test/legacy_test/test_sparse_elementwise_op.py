@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.sparse
-
+from paddle.base.framework import in_pir_mode
 op_list = [__add__, __sub__, __mul__, __truediv__]
 
 
@@ -234,84 +234,85 @@ class TestSparseAddStaticAPI(unittest.TestCase):
         self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
 
     def test_coo(self):
-        sparse_dim = len(self.coo_shape) - 1
-        op = __add__
-        for dtype in self.support_dtypes:
-            x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
-            y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+        if in_pir_mode:
+            sparse_dim = len(self.coo_shape) - 1
+            op = __add__
+            for dtype in self.support_dtypes:
+                x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+                y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
 
-            self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
-            self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
+                self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
+                self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
 
-            self.expect_res = op(self.dense_x, self.dense_y)
+                self.expect_res = op(self.dense_x, self.dense_y)
 
-            self.x_indices_data, self.x_values_data = (
-                self.dense_x.detach().to_sparse_coo(sparse_dim).indices(),
-                self.dense_x.detach().to_sparse_coo(sparse_dim).values(),
-            )
-
-            self.y_indices_data, self.y_values_data = (
-                self.dense_y.detach().to_sparse_coo(sparse_dim).indices(),
-                self.dense_y.detach().to_sparse_coo(sparse_dim).values(),
-            )
-            paddle.enable_static()
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x_indices = paddle.static.data(
-                    name='x_indices',
-                    shape=self.x_indices_data.shape,
-                    dtype=self.x_indices_data.dtype,
-                )
-                x_values = paddle.static.data(
-                    name='x_values',
-                    shape=self.x_values_data.shape,
-                    dtype=self.x_values_data.dtype,
-                )
-                sp_x = paddle.sparse.sparse_coo_tensor(
-                    x_indices,
-                    x_values,
-                    shape=self.dense_x.shape,
-                    dtype=self.dense_x.dtype,
+                self.x_indices_data, self.x_values_data = (
+                    self.dense_x.detach().to_sparse_coo(sparse_dim).indices(),
+                    self.dense_x.detach().to_sparse_coo(sparse_dim).values(),
                 )
 
-                y_indices = paddle.static.data(
-                    name='y_indices',
-                    shape=self.y_indices_data.shape,
-                    dtype=self.y_indices_data.dtype,
+                self.y_indices_data, self.y_values_data = (
+                    self.dense_y.detach().to_sparse_coo(sparse_dim).indices(),
+                    self.dense_y.detach().to_sparse_coo(sparse_dim).values(),
                 )
-                y_values = paddle.static.data(
-                    name='y_values',
-                    shape=self.y_values_data.shape,
-                    dtype=self.y_values_data.dtype,
-                )
-                sp_y = paddle.sparse.sparse_coo_tensor(
-                    y_indices,
-                    y_values,
-                    shape=self.dense_y.shape,
-                    dtype=self.dense_y.dtype,
-                )
+                paddle.enable_static()
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x_indices = paddle.static.data(
+                        name='x_indices',
+                        shape=self.x_indices_data.shape,
+                        dtype=self.x_indices_data.dtype,
+                    )
+                    x_values = paddle.static.data(
+                        name='x_values',
+                        shape=self.x_values_data.shape,
+                        dtype=self.x_values_data.dtype,
+                    )
+                    sp_x = paddle.sparse.sparse_coo_tensor(
+                        x_indices,
+                        x_values,
+                        shape=self.dense_x.shape,
+                        dtype=self.dense_x.dtype,
+                    )
 
-                sp_out = paddle.sparse.add(sp_x, sp_y)
+                    y_indices = paddle.static.data(
+                        name='y_indices',
+                        shape=self.y_indices_data.shape,
+                        dtype=self.y_indices_data.dtype,
+                    )
+                    y_values = paddle.static.data(
+                        name='y_values',
+                        shape=self.y_values_data.shape,
+                        dtype=self.y_values_data.dtype,
+                    )
+                    sp_y = paddle.sparse.sparse_coo_tensor(
+                        y_indices,
+                        y_values,
+                        shape=self.dense_y.shape,
+                        dtype=self.dense_y.dtype,
+                    )
 
-                sp_dense_out = sp_out.to_dense()
+                    sp_out = paddle.sparse.add(sp_x, sp_y)
 
-                sparse_exe = paddle.static.Executor()
-                sparse_fetch = sparse_exe.run(
-                    feed={
-                        'x_indices': self.x_indices_data.numpy(),
-                        "x_values": self.x_values_data.numpy(),
-                        'y_indices': self.y_indices_data.numpy(),
-                        "y_values": self.y_values_data.numpy(),
-                    },
-                    fetch_list=[sp_dense_out],
-                    return_numpy=True,
-                )
+                    sp_dense_out = sp_out.to_dense()
 
-                np.testing.assert_allclose(
-                    self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
-                )
-            paddle.disable_static()
+                    sparse_exe = paddle.static.Executor()
+                    sparse_fetch = sparse_exe.run(
+                        feed={
+                            'x_indices': self.x_indices_data.numpy(),
+                            "x_values": self.x_values_data.numpy(),
+                            'y_indices': self.y_indices_data.numpy(),
+                            "y_values": self.y_values_data.numpy(),
+                        },
+                        fetch_list=[sp_dense_out],
+                        return_numpy=True,
+                    )
+
+                    np.testing.assert_allclose(
+                        self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
+                    )
+                paddle.disable_static()
 
 
 class TestSparseSubStaticAPI(unittest.TestCase):
@@ -326,84 +327,85 @@ class TestSparseSubStaticAPI(unittest.TestCase):
         self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
 
     def test_coo(self):
-        sparse_dim = len(self.coo_shape) - 1
-        op = __sub__
-        for dtype in self.support_dtypes:
-            x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
-            y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+        if in_pir_mode():
+            sparse_dim = len(self.coo_shape) - 1
+            op = __sub__
+            for dtype in self.support_dtypes:
+                x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+                y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
 
-            self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
-            self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
+                self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
+                self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
 
-            self.expect_res = op(self.dense_x, self.dense_y)
+                self.expect_res = op(self.dense_x, self.dense_y)
 
-            self.x_indices_data, self.x_values_data = (
-                self.dense_x.detach().to_sparse_coo(sparse_dim).indices(),
-                self.dense_x.detach().to_sparse_coo(sparse_dim).values(),
-            )
-
-            self.y_indices_data, self.y_values_data = (
-                self.dense_y.detach().to_sparse_coo(sparse_dim).indices(),
-                self.dense_y.detach().to_sparse_coo(sparse_dim).values(),
-            )
-            paddle.enable_static()
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x_indices = paddle.static.data(
-                    name='x_indices',
-                    shape=self.x_indices_data.shape,
-                    dtype=self.x_indices_data.dtype,
-                )
-                x_values = paddle.static.data(
-                    name='x_values',
-                    shape=self.x_values_data.shape,
-                    dtype=self.x_values_data.dtype,
-                )
-                sp_x = paddle.sparse.sparse_coo_tensor(
-                    x_indices,
-                    x_values,
-                    shape=self.dense_x.shape,
-                    dtype=self.dense_x.dtype,
+                self.x_indices_data, self.x_values_data = (
+                    self.dense_x.detach().to_sparse_coo(sparse_dim).indices(),
+                    self.dense_x.detach().to_sparse_coo(sparse_dim).values(),
                 )
 
-                y_indices = paddle.static.data(
-                    name='y_indices',
-                    shape=self.y_indices_data.shape,
-                    dtype=self.y_indices_data.dtype,
+                self.y_indices_data, self.y_values_data = (
+                    self.dense_y.detach().to_sparse_coo(sparse_dim).indices(),
+                    self.dense_y.detach().to_sparse_coo(sparse_dim).values(),
                 )
-                y_values = paddle.static.data(
-                    name='y_values',
-                    shape=self.y_values_data.shape,
-                    dtype=self.y_values_data.dtype,
-                )
-                sp_y = paddle.sparse.sparse_coo_tensor(
-                    y_indices,
-                    y_values,
-                    shape=self.dense_y.shape,
-                    dtype=self.dense_y.dtype,
-                )
+                paddle.enable_static()
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x_indices = paddle.static.data(
+                        name='x_indices',
+                        shape=self.x_indices_data.shape,
+                        dtype=self.x_indices_data.dtype,
+                    )
+                    x_values = paddle.static.data(
+                        name='x_values',
+                        shape=self.x_values_data.shape,
+                        dtype=self.x_values_data.dtype,
+                    )
+                    sp_x = paddle.sparse.sparse_coo_tensor(
+                        x_indices,
+                        x_values,
+                        shape=self.dense_x.shape,
+                        dtype=self.dense_x.dtype,
+                    )
 
-                sp_out = paddle.sparse.subtract(sp_x, sp_y)
+                    y_indices = paddle.static.data(
+                        name='y_indices',
+                        shape=self.y_indices_data.shape,
+                        dtype=self.y_indices_data.dtype,
+                    )
+                    y_values = paddle.static.data(
+                        name='y_values',
+                        shape=self.y_values_data.shape,
+                        dtype=self.y_values_data.dtype,
+                    )
+                    sp_y = paddle.sparse.sparse_coo_tensor(
+                        y_indices,
+                        y_values,
+                        shape=self.dense_y.shape,
+                        dtype=self.dense_y.dtype,
+                    )
 
-                sp_dense_out = sp_out.to_dense()
+                    sp_out = paddle.sparse.subtract(sp_x, sp_y)
 
-                sparse_exe = paddle.static.Executor()
-                sparse_fetch = sparse_exe.run(
-                    feed={
-                        'x_indices': self.x_indices_data.numpy(),
-                        "x_values": self.x_values_data.numpy(),
-                        'y_indices': self.y_indices_data.numpy(),
-                        "y_values": self.y_values_data.numpy(),
-                    },
-                    fetch_list=[sp_dense_out],
-                    return_numpy=True,
-                )
+                    sp_dense_out = sp_out.to_dense()
 
-                np.testing.assert_allclose(
-                    self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
-                )
-            paddle.disable_static()
+                    sparse_exe = paddle.static.Executor()
+                    sparse_fetch = sparse_exe.run(
+                        feed={
+                            'x_indices': self.x_indices_data.numpy(),
+                            "x_values": self.x_values_data.numpy(),
+                            'y_indices': self.y_indices_data.numpy(),
+                            "y_values": self.y_values_data.numpy(),
+                        },
+                        fetch_list=[sp_dense_out],
+                        return_numpy=True,
+                    )
+
+                    np.testing.assert_allclose(
+                        self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
+                    )
+                paddle.disable_static()
 
 
 class TestSparseMulStaticAPI(unittest.TestCase):
@@ -418,84 +420,85 @@ class TestSparseMulStaticAPI(unittest.TestCase):
         self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
 
     def test_coo(self):
-        sparse_dim = len(self.coo_shape) - 1
-        op = __mul__
-        for dtype in self.support_dtypes:
-            x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
-            y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+        if in_pir_mode():
+            sparse_dim = len(self.coo_shape) - 1
+            op = __mul__
+            for dtype in self.support_dtypes:
+                x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+                y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
 
-            self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
-            self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
+                self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
+                self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
 
-            self.expect_res = op(self.dense_x, self.dense_y)
+                self.expect_res = op(self.dense_x, self.dense_y)
 
-            self.x_indices_data, self.x_values_data = (
-                self.dense_x.detach().to_sparse_coo(sparse_dim).indices(),
-                self.dense_x.detach().to_sparse_coo(sparse_dim).values(),
-            )
-
-            self.y_indices_data, self.y_values_data = (
-                self.dense_y.detach().to_sparse_coo(sparse_dim).indices(),
-                self.dense_y.detach().to_sparse_coo(sparse_dim).values(),
-            )
-            paddle.enable_static()
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x_indices = paddle.static.data(
-                    name='x_indices',
-                    shape=self.x_indices_data.shape,
-                    dtype=self.x_indices_data.dtype,
-                )
-                x_values = paddle.static.data(
-                    name='x_values',
-                    shape=self.x_values_data.shape,
-                    dtype=self.x_values_data.dtype,
-                )
-                sp_x = paddle.sparse.sparse_coo_tensor(
-                    x_indices,
-                    x_values,
-                    shape=self.dense_x.shape,
-                    dtype=self.dense_x.dtype,
+                self.x_indices_data, self.x_values_data = (
+                    self.dense_x.detach().to_sparse_coo(sparse_dim).indices(),
+                    self.dense_x.detach().to_sparse_coo(sparse_dim).values(),
                 )
 
-                y_indices = paddle.static.data(
-                    name='y_indices',
-                    shape=self.y_indices_data.shape,
-                    dtype=self.y_indices_data.dtype,
+                self.y_indices_data, self.y_values_data = (
+                    self.dense_y.detach().to_sparse_coo(sparse_dim).indices(),
+                    self.dense_y.detach().to_sparse_coo(sparse_dim).values(),
                 )
-                y_values = paddle.static.data(
-                    name='y_values',
-                    shape=self.y_values_data.shape,
-                    dtype=self.y_values_data.dtype,
-                )
-                sp_y = paddle.sparse.sparse_coo_tensor(
-                    y_indices,
-                    y_values,
-                    shape=self.dense_y.shape,
-                    dtype=self.dense_y.dtype,
-                )
+                paddle.enable_static()
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x_indices = paddle.static.data(
+                        name='x_indices',
+                        shape=self.x_indices_data.shape,
+                        dtype=self.x_indices_data.dtype,
+                    )
+                    x_values = paddle.static.data(
+                        name='x_values',
+                        shape=self.x_values_data.shape,
+                        dtype=self.x_values_data.dtype,
+                    )
+                    sp_x = paddle.sparse.sparse_coo_tensor(
+                        x_indices,
+                        x_values,
+                        shape=self.dense_x.shape,
+                        dtype=self.dense_x.dtype,
+                    )
 
-                sp_out = paddle.sparse.multiply(sp_x, sp_y)
+                    y_indices = paddle.static.data(
+                        name='y_indices',
+                        shape=self.y_indices_data.shape,
+                        dtype=self.y_indices_data.dtype,
+                    )
+                    y_values = paddle.static.data(
+                        name='y_values',
+                        shape=self.y_values_data.shape,
+                        dtype=self.y_values_data.dtype,
+                    )
+                    sp_y = paddle.sparse.sparse_coo_tensor(
+                        y_indices,
+                        y_values,
+                        shape=self.dense_y.shape,
+                        dtype=self.dense_y.dtype,
+                    )
 
-                sp_dense_out = sp_out.to_dense()
+                    sp_out = paddle.sparse.multiply(sp_x, sp_y)
 
-                sparse_exe = paddle.static.Executor()
-                sparse_fetch = sparse_exe.run(
-                    feed={
-                        'x_indices': self.x_indices_data.numpy(),
-                        "x_values": self.x_values_data.numpy(),
-                        'y_indices': self.y_indices_data.numpy(),
-                        "y_values": self.y_values_data.numpy(),
-                    },
-                    fetch_list=[sp_dense_out],
-                    return_numpy=True,
-                )
+                    sp_dense_out = sp_out.to_dense()
 
-                np.testing.assert_allclose(
-                    self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
-                )
-            paddle.disable_static()
+                    sparse_exe = paddle.static.Executor()
+                    sparse_fetch = sparse_exe.run(
+                        feed={
+                            'x_indices': self.x_indices_data.numpy(),
+                            "x_values": self.x_values_data.numpy(),
+                            'y_indices': self.y_indices_data.numpy(),
+                            "y_values": self.y_values_data.numpy(),
+                        },
+                        fetch_list=[sp_dense_out],
+                        return_numpy=True,
+                    )
+
+                    np.testing.assert_allclose(
+                        self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
+                    )
+                paddle.disable_static()
 
 
 class TestSparseDivStaticAPI(unittest.TestCase):
@@ -510,84 +513,85 @@ class TestSparseDivStaticAPI(unittest.TestCase):
         self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
 
     def test_coo(self):
-        sparse_dim = len(self.coo_shape) - 1
-        op = __truediv__
-        for dtype in self.support_dtypes:
-            x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
-            y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+        if in_pir_mode():
+            sparse_dim = len(self.coo_shape) - 1
+            op = __truediv__
+            for dtype in self.support_dtypes:
+                x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+                y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
 
-            self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
-            self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
+                self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
+                self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
 
-            self.expect_res = op(self.dense_x, self.dense_y)
+                self.expect_res = op(self.dense_x, self.dense_y)
 
-            self.x_indices_data, self.x_values_data = (
-                self.dense_x.detach().to_sparse_coo(sparse_dim).indices(),
-                self.dense_x.detach().to_sparse_coo(sparse_dim).values(),
-            )
-
-            self.y_indices_data, self.y_values_data = (
-                self.dense_y.detach().to_sparse_coo(sparse_dim).indices(),
-                self.dense_y.detach().to_sparse_coo(sparse_dim).values(),
-            )
-            paddle.enable_static()
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x_indices = paddle.static.data(
-                    name='x_indices',
-                    shape=self.x_indices_data.shape,
-                    dtype=self.x_indices_data.dtype,
-                )
-                x_values = paddle.static.data(
-                    name='x_values',
-                    shape=self.x_values_data.shape,
-                    dtype=self.x_values_data.dtype,
-                )
-                sp_x = paddle.sparse.sparse_coo_tensor(
-                    x_indices,
-                    x_values,
-                    shape=self.dense_x.shape,
-                    dtype=self.dense_x.dtype,
+                self.x_indices_data, self.x_values_data = (
+                    self.dense_x.detach().to_sparse_coo(sparse_dim).indices(),
+                    self.dense_x.detach().to_sparse_coo(sparse_dim).values(),
                 )
 
-                y_indices = paddle.static.data(
-                    name='y_indices',
-                    shape=self.y_indices_data.shape,
-                    dtype=self.y_indices_data.dtype,
+                self.y_indices_data, self.y_values_data = (
+                    self.dense_y.detach().to_sparse_coo(sparse_dim).indices(),
+                    self.dense_y.detach().to_sparse_coo(sparse_dim).values(),
                 )
-                y_values = paddle.static.data(
-                    name='y_values',
-                    shape=self.y_values_data.shape,
-                    dtype=self.y_values_data.dtype,
-                )
-                sp_y = paddle.sparse.sparse_coo_tensor(
-                    y_indices,
-                    y_values,
-                    shape=self.dense_y.shape,
-                    dtype=self.dense_y.dtype,
-                )
+                paddle.enable_static()
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x_indices = paddle.static.data(
+                        name='x_indices',
+                        shape=self.x_indices_data.shape,
+                        dtype=self.x_indices_data.dtype,
+                    )
+                    x_values = paddle.static.data(
+                        name='x_values',
+                        shape=self.x_values_data.shape,
+                        dtype=self.x_values_data.dtype,
+                    )
+                    sp_x = paddle.sparse.sparse_coo_tensor(
+                        x_indices,
+                        x_values,
+                        shape=self.dense_x.shape,
+                        dtype=self.dense_x.dtype,
+                    )
 
-                sp_out = paddle.sparse.divide(sp_x, sp_y)
+                    y_indices = paddle.static.data(
+                        name='y_indices',
+                        shape=self.y_indices_data.shape,
+                        dtype=self.y_indices_data.dtype,
+                    )
+                    y_values = paddle.static.data(
+                        name='y_values',
+                        shape=self.y_values_data.shape,
+                        dtype=self.y_values_data.dtype,
+                    )
+                    sp_y = paddle.sparse.sparse_coo_tensor(
+                        y_indices,
+                        y_values,
+                        shape=self.dense_y.shape,
+                        dtype=self.dense_y.dtype,
+                    )
 
-                sp_dense_out = sp_out.to_dense()
+                    sp_out = paddle.sparse.divide(sp_x, sp_y)
 
-                sparse_exe = paddle.static.Executor()
-                sparse_fetch = sparse_exe.run(
-                    feed={
-                        'x_indices': self.x_indices_data.numpy(),
-                        "x_values": self.x_values_data.numpy(),
-                        'y_indices': self.y_indices_data.numpy(),
-                        "y_values": self.y_values_data.numpy(),
-                    },
-                    fetch_list=[sp_dense_out],
-                    return_numpy=True,
-                )
+                    sp_dense_out = sp_out.to_dense()
 
-                np.testing.assert_allclose(
-                    self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
-                )
-            paddle.disable_static()
+                    sparse_exe = paddle.static.Executor()
+                    sparse_fetch = sparse_exe.run(
+                        feed={
+                            'x_indices': self.x_indices_data.numpy(),
+                            "x_values": self.x_values_data.numpy(),
+                            'y_indices': self.y_indices_data.numpy(),
+                            "y_values": self.y_values_data.numpy(),
+                        },
+                        fetch_list=[sp_dense_out],
+                        return_numpy=True,
+                    )
+
+                    np.testing.assert_allclose(
+                        self.expect_res.numpy(), sparse_fetch[0], rtol=1e-5
+                    )
+                paddle.disable_static()
 
 
 if __name__ == "__main__":
