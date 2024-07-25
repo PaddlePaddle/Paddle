@@ -186,7 +186,7 @@ struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
       PADDLE_ENFORCE_LT(
           it->second.level,
           forloop_stack.size(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Required it->second.level shall be less than "
               "forloop_stack.size()."
               "But receive it->second.level = %d, forloop_stack.size() = %d ",
@@ -229,7 +229,7 @@ struct MarkUnrollMutator : public ir::IRMutator<Expr*> {
         VLOG(1) << "Mark " << level << " Unrolled";
         PADDLE_ENFORCE_LT(level,
                           stack.size(),
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Required level shall be less than stack.size()."
                               "But receive level = %d, stack.size() = %d ",
                               level,
@@ -271,12 +271,11 @@ struct MarkParallelMutator : public ir::IRMutator<Expr*> {
         VLOG(1) << "Mark " << level << " Parallelled";
         PADDLE_ENFORCE_LT(level,
                           stack.size(),
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Required level shall be less than stack.size()."
                               "But receive level = %d, stack.size() = %d ",
                               level,
                               stack.size()));
-        CHECK_LT(level, stack.size());
         stack[level]->set_parallel();
       }
     }
