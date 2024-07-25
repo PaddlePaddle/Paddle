@@ -21,7 +21,7 @@ from paddle import _C_ops
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
-from ...framework import in_dynamic_mode
+from ...framework import in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
     from typing_extensions import Never
@@ -38,7 +38,7 @@ def l2_norm(
     if len(x.shape) == 1:
         axis = 0
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out, norm = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
         return paddle.squeeze(norm, axis=[axis])
 

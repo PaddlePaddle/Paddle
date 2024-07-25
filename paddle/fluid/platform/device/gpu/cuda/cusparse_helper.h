@@ -18,8 +18,8 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/dynload/cusparse.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/dynload/cusparse.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 
 namespace paddle {
@@ -32,8 +32,8 @@ class CusparseHandleHolder {
 #if defined(PADDLE_WITH_CUDA)
 // The generic APIs is supported from CUDA10.1
 #if CUDA_VERSION >= 11000
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseCreate(&handle_));
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseSetStream(handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusparseCreate(&handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusparseSetStream(handle_, stream));
 #endif
 #endif
   }
@@ -42,7 +42,7 @@ class CusparseHandleHolder {
   ~CusparseHandleHolder() PADDLE_MAY_THROW {
 #if defined(PADDLE_WITH_CUDA)
 #if CUDA_VERSION >= 11000
-    PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseDestroy(handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusparseDestroy(handle_));
 #endif
 #endif
   }

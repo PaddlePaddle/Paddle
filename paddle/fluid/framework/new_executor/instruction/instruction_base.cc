@@ -214,7 +214,7 @@ InstructionBase::InstructionBase(size_t id, const phi::Place& place)
 
 OpFuncType InstructionBase::KernelType() const { return type_; }
 
-const platform::DeviceContext& InstructionBase::DeviceContext() const {
+const phi::DeviceContext& InstructionBase::DeviceContext() const {
   return *dev_ctx_;
 }
 
