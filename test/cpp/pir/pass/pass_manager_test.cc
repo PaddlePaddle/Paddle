@@ -80,10 +80,12 @@ class AddOp : public pir::Op<AddOp> {
 };
 void AddOp::VerifySig() {
   if (num_operands() != 2) {
-    PADDLE_THROW(phi::errors::Fatal("The size of inputs must be equal to 2."));
+    PADDLE_THROW(
+        common::errors::Fatal("The size of inputs must be equal to 2."));
   }
   if (num_results() != 1) {
-    PADDLE_THROW(phi::errors::Fatal("The size of outputs must be equal to 1."));
+    PADDLE_THROW(
+        common::errors::Fatal("The size of outputs must be equal to 1."));
   }
 }
 void AddOp::Build(pir::Builder &,
@@ -103,7 +105,7 @@ struct CountOpAnalysis {
     PADDLE_ENFORCE_GT(
         container_op->num_regions(),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "op must be a container with zero or multiple regions."));
 
     LOG(INFO) << "In CountOpAnalysis, op is " << container_op->name() << "\n";
