@@ -533,6 +533,8 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS custom_operator_node)
     list(APPEND PYBIND_DEPS eager_tensor_operants)
     list(APPEND PYBIND_DEPS pybind_util)
+    # pir utils
+    list(APPEND PYBIND_DEPS pir_analysis_name)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,

@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/pir/utils/analysis_name.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/data_transform.h"
@@ -103,53 +104,55 @@ static auto GetNameFromValue(const ::pir::Block *block,
       true,
       phi::errors::InvalidArgument(
           "GetNameFromValue should allow input or output at least one."));
-  // we use name here, later value is used directly.
-  std::unordered_map<::pir::Value, std::string> value2name;
-  if (allow_input) {
-    for (auto &kwarg : block->kwargs()) {
-      value2name[kwarg.second] = kwarg.first;
-    }
-  }
-  for (auto &op : *block) {
-    std::string name;
-    if (allow_input && op.name() == "pd_op.data") {
-      name =
-          op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-      value2name[op.results()[0].Value::impl()] = name;
-    } else if (allow_output && op.name() == "builtin.set_parameter") {
-      name = op.attributes()
-                 .at("parameter_name")
-                 .dyn_cast<pir::StrAttribute>()
-                 .AsString();
-      value2name[op.operand(0).source()] = name;
-    } else if (allow_output && op.name() == "builtin.shadow_output") {
-      name = op.attributes()
-                 .at("output_name")
-                 .dyn_cast<pir::StrAttribute>()
-                 .AsString();
-      value2name[op.operand(0).source()] = name;
-    } else if (allow_input && op.name() == "builtin.parameter") {
-      name = op.attributes()
-                 .at("parameter_name")
-                 .dyn_cast<pir::StrAttribute>()
-                 .AsString();
-      value2name[op.result(0).Value::impl()] = name;
-    } else if (allow_input && op.name() == "builtin.constant") {
-      if (op.isa<pir::ConstantTensorOp>()) {
-        name = op.dyn_cast<pir::ConstantTensorOp>().tensor_name();
-        value2name[op.result(0).Value::impl()] = name;
-      }
-    }
-  }
+  // // we use name here, later value is used directly.
+  // std::unordered_map<::pir::Value, std::string> value2name;
+  // if (allow_input) {
+  //   for (auto &kwarg : block->kwargs()) {
+  //     value2name[kwarg.second] = kwarg.first;
+  //   }
+  // }
+  // for (auto &op : *block) {
+  //   std::string name;
+  //   if (allow_input && op.name() == "pd_op.data") {
+  //     name =
+  //         op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+  //     value2name[op.results()[0].Value::impl()] = name;
+  //   } else if (allow_output && op.name() == "builtin.set_parameter") {
+  //     name = op.attributes()
+  //                .at("parameter_name")
+  //                .dyn_cast<pir::StrAttribute>()
+  //                .AsString();
+  //     value2name[op.operand(0).source()] = name;
+  //   } else if (allow_output && op.name() == "builtin.shadow_output") {
+  //     name = op.attributes()
+  //                .at("output_name")
+  //                .dyn_cast<pir::StrAttribute>()
+  //                .AsString();
+  //     value2name[op.operand(0).source()] = name;
+  //   } else if (allow_input && op.name() == "builtin.parameter") {
+  //     name = op.attributes()
+  //                .at("parameter_name")
+  //                .dyn_cast<pir::StrAttribute>()
+  //                .AsString();
+  //     value2name[op.result(0).Value::impl()] = name;
+  //   } else if (allow_input && op.name() == "builtin.constant") {
+  //     if (op.isa<pir::ConstantTensorOp>()) {
+  //       name = op.dyn_cast<pir::ConstantTensorOp>().tensor_name();
+  //       value2name[op.result(0).Value::impl()] = name;
+  //     }
+  //   }
+  // }
 
   std::vector<std::string> names;
   std::transform(values.begin(),
                  values.end(),
                  std::back_inserter(names),
-                 [&value2name](const ::pir::Value &v) {
-                   if (!value2name.count(v))
+                 [](const ::pir::Value &v) {
+                   auto name =
+                       pir::utils::name_analysis::TryGetValueFirstName(v);
+                   if (!name.has_value())
                      return std::string(paddle::framework::kFakeVarName);
-                   return value2name.at(v);
+                   return name.value();
                  });
   return names;
 }
