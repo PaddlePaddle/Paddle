@@ -139,8 +139,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
         CHECK(!args.empty()) << "The input arguments of " << op_name
                              << " compute is empty! Please check.\n";
         CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 2U)
-            << "2 input tensors for " << op_name << " compute\n";
+        PADDLE_ENFORCE_GE(pack_args.size(),
+                          2U,
+                          platform::errors::InvalidArgument(
+                              "2 input tensors for %s compute\n", op_name));
         Expr x = pack_args[0];
         Expr index = pack_args[1];
         CHECK(x.as_tensor());
@@ -151,7 +153,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
         VLOG(3) << "x shape: " << utils::Join(tensor_x->shape, ", ")
                 << ", index shape: " << utils::Join(tensor_index->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        CHECK_EQ(pack_args.size(), 3U);
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          3U,
+                          platform::errors::InvalidArgument(
+                              "The size of pack_args should be 3, but got %d\n",
+                              pack_args.size()));
         std::string tensor_name = pack_args[2].operator std::string();
         ir::Tensor out = GatherNd(tensor_x, tensor_index, tensor_name);
         std::vector<CINNValue> res;
@@ -227,8 +233,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
         CHECK(!args.empty()) << "The input arguments of " << op_name
                              << " compute is empty! Please check.\n";
         CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 2U)
-            << "2 input tensors for " << op_name << " compute\n";
+        PADDLE_ENFORCE_GE(pack_args.size(),
+                          2U,
+                          platform::errors::InvalidArgument(
+                              "2 input tensors for %s compute\n", op_name));
         Expr x = pack_args[0];
         Expr index = pack_args[1];
         CHECK(x.as_tensor());
@@ -239,7 +247,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
         VLOG(3) << "x shape: " << utils::Join(tensor_x->shape, ", ")
                 << ", index shape: " << utils::Join(tensor_index->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        CHECK_EQ(pack_args.size(), 3U);
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          3U,
+                          platform::errors::InvalidArgument(
+                              "The size of pack_args should be 3, but got %d\n",
+                              pack_args.size()));
         std::string tensor_name = pack_args[2].operator std::string();
         ir::Tensor out = GatherNdSymbolic(tensor_x, tensor_index, tensor_name);
         std::vector<CINNValue> res;
