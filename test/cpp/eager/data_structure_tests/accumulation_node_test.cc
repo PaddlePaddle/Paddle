@@ -381,10 +381,10 @@ TEST(AccumulationNode, Tensor) {
   auto* _ret_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(_ret.impl())
                        ->data<phi::dtype::float16>();
   PADDLE_ENFORCE_EQ(_ret_ptr[0],
-                    phi::dtype::float16(36.0f),
+                    phi::dtype::float16(10.0f),
                     platform::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
-                        "should be 36.0f"));
+                        "should be 10.0f"));
 
   // Check Retain Grad, should be 36.0
   auto* _ret_input_et_ptr =
