@@ -394,7 +394,6 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type_deprecated)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op_deprecated)
 list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
-
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
@@ -643,12 +642,8 @@ set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
-<<<<<<< HEAD
 set_tests_properties(test_dygraph_multi_forward PROPERTIES TIMEOUT 120)
-
-=======
 set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
->>>>>>> c18b45a9263e0b128ca2e8538114008ff119f8ac
 set_tests_properties(test_regularizer_deprecated PROPERTIES TIMEOUT 150)
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_slice_op_deprecated PROPERTIES TIMEOUT 120)

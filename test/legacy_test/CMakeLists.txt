@@ -544,13 +544,10 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
-<<<<<<< HEAD
 py_test_modules(
   test_imperative_ocr_attention_model MODULES
   test_imperative_ocr_attention_model ENVS FLAGS_cudnn_deterministic=1)
-=======
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
->>>>>>> c18b45a9263e0b128ca2e8538114008ff119f8ac
 if(WITH_GPU
    OR WITH_XPU
    OR WITH_ASCEND
