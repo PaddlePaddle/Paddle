@@ -347,8 +347,8 @@ class HeterComm {
     }
     void check(const size_t& len,
                const size_t& value_bytes = sizeof(GradType)) {
-      CHECK_GE(all_keys_mem->size(), len);
-      CHECK_GE(all_grads_mem->size(), len * value_bytes);
+      PADDLE_ENFORCE_GE(all_keys_mem->size(), len);
+      PADDLE_ENFORCE_GE(all_grads_mem->size(), len * value_bytes);
     }
     void init_pull(const size_t& len) {
       pull_res.h_recv_fea_num = len;
