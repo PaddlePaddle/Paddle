@@ -62,7 +62,7 @@ class TestDistOp(OpTest):
 
     def init_data_type(self):
         self.data_type = (
-            np.float32 if core.is_compiled_with_rocm() else np.float64
+            np.float32 if core.is_compiled_with_rocm() else np.float32
         )
 
     def calc_gradient(self):
@@ -240,7 +240,7 @@ class TestDistFP16OpCase5(TestDistFP16Op):
 class TestDistAPI(unittest.TestCase):
     def init_data_type(self):
         self.data_type = (
-            'float32' if core.is_compiled_with_rocm() else 'float64'
+            'float32' if core.is_compiled_with_rocm() else 'float32'
         )
 
     @test_with_pir_api

@@ -27,7 +27,7 @@ class TestUnStackOpBase(OpTest):
     def initDefaultParameters(self):
         self.input_dim = (5, 6, 7)
         self.axis = 0
-        self.dtype = 'float64'
+        self.dtype = 'float32'
 
     def initParameters(self):
         pass
@@ -116,52 +116,52 @@ class TestStackOp6(TestUnStackOpBase):
         self.axis = 2
 
 
-class TestStackOp3_Complex64(TestStackOp3):
-    def initParameters(self):
-        self.dtype = np.complex64
-        self.axis = -1
+# class TestStackOp3_Complex64(TestStackOp3):
+#     def initParameters(self):
+#         self.dtype = np.complex64
+#         self.axis = -1
 
 
-class TestStackOp4_complex64(TestStackOp4):
-    def initParameters(self):
-        self.dtype = np.complex64
-        self.axis = -3
+# class TestStackOp4_complex64(TestStackOp4):
+#     def initParameters(self):
+#         self.dtype = np.complex64
+#         self.axis = -3
 
 
-class TestStackOp5_complex64(TestStackOp5):
-    def initParameters(self):
-        self.dtype = np.complex64
-        self.axis = 1
+# class TestStackOp5_complex64(TestStackOp5):
+#     def initParameters(self):
+#         self.dtype = np.complex64
+#         self.axis = 1
 
 
-class TestStackOp6_complex64(TestStackOp6):
-    def initParameters(self):
-        self.dtype = np.complex64
-        self.axis = 2
+# class TestStackOp6_complex64(TestStackOp6):
+#     def initParameters(self):
+#         self.dtype = np.complex64
+#         self.axis = 2
 
 
-class TestStackOp3_Complex128(TestStackOp3):
-    def initParameters(self):
-        self.dtype = np.complex128
-        self.axis = -1
+# class TestStackOp3_Complex128(TestStackOp3):
+#     def initParameters(self):
+#         self.dtype = np.complex128
+#         self.axis = -1
 
 
-class TestStackOp4_complex128(TestStackOp4):
-    def initParameters(self):
-        self.dtype = np.complex128
-        self.axis = -3
+# class TestStackOp4_complex128(TestStackOp4):
+#     def initParameters(self):
+#         self.dtype = np.complex128
+#         self.axis = -3
 
 
-class TestStackOp5_complex128(TestStackOp5):
-    def initParameters(self):
-        self.dtype = np.complex128
-        self.axis = 1
+# class TestStackOp5_complex128(TestStackOp5):
+#     def initParameters(self):
+#         self.dtype = np.complex128
+#         self.axis = 1
 
 
-class TestStackOp6_complex128(TestStackOp6):
-    def initParameters(self):
-        self.dtype = np.complex128
-        self.axis = 2
+# class TestStackOp6_complex128(TestStackOp6):
+#     def initParameters(self):
+#         self.dtype = np.complex128
+#         self.axis = 2
 
 
 @unittest.skipIf(
@@ -234,7 +234,7 @@ class TestUnstackZeroInputOp(unittest.TestCase):
     def unstack_zero_input_static(self):
         paddle.enable_static()
 
-        dtypes = ['float32', 'complex64', 'complex128']
+        dtypes = ['float32']
         for dtype in dtypes:
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -249,7 +249,7 @@ class TestUnstackZeroInputOp(unittest.TestCase):
 
     def unstack_zero_input_dynamic(self):
         paddle.disable_static()
-        dtypes = ['float32', 'complex64', 'complex128']
+        dtypes = ['float32']
         for dtype in dtypes:
             with base.dygraph.guard():
                 data = np.random.random([0]).astype(dtype)

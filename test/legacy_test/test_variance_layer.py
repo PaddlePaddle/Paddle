@@ -31,7 +31,7 @@ def ref_var(x, axis=None, unbiased=True, keepdim=False):
 
 class TestVarAPI(unittest.TestCase):
     def setUp(self):
-        self.dtype = 'float64'
+        self.dtype = 'float32'
         self.shape = [1, 3, 4, 10]
         self.axis = [1, 3]
         self.keepdim = False

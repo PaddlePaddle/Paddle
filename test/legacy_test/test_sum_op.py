@@ -56,7 +56,7 @@ class TestSumOp(OpTest):
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def init_kernel_type(self):
-        self.dtype = np.float64
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output(
@@ -82,7 +82,7 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         self.height = 10
         self.row_numel = 12
         self.rows = [0, 1, 2, 3, 4, 5, 6]
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.init_kernel_type()
 
     def check_with_place(self, place, inplace):
@@ -256,7 +256,7 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
         self.height = 10
         self.row_numel = 12
         self.rows = [0, 1, 2, 2, 4, 5, 6]
-        self.dtype = np.float64
+        self.dtype = np.float32
 
     def check_with_place(self, place, inplace):
         scope = core.Scope()
@@ -398,10 +398,10 @@ class API_Test_Add_n(unittest.TestCase):
     def test_api(self):
         with base.program_guard(base.Program(), base.Program()):
             input0 = paddle.tensor.fill_constant(
-                shape=[2, 3], dtype='int64', value=5
+                shape=[2, 3], dtype='int32', value=5
             )
             input1 = paddle.tensor.fill_constant(
-                shape=[2, 3], dtype='int64', value=3
+                shape=[2, 3], dtype='int32', value=3
             )
             expected_result = np.empty((2, 3))
             expected_result.fill(8)
@@ -568,9 +568,9 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
     def init_data(self):
         self.pd_api = paddle.sum
         self.np_api = np.sum
-        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
-        self.np_axis = np.array((1, 2), dtype='int64')
-        self.tensor_axis = paddle.to_tensor(self.np_axis, dtype='int64')
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float32')
+        self.np_axis = np.array((1, 2), dtype='int32')
+        self.tensor_axis = paddle.to_tensor(self.np_axis, dtype='int32')
 
     def test_dygraph(self):
         self.x.stop_gradient = False
@@ -599,7 +599,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
                     if isinstance(item, int):
                         axis.append(item)
                     else:
-                        axis.append(paddle.full([1], self.np_axis[i], 'int64'))
+                        axis.append(paddle.full([1], self.np_axis[i], 'int32'))
 
             linear = paddle.nn.Linear(x.shape[-1], 5)
             linear_out = linear(x)
@@ -639,12 +639,12 @@ class TestSumWithTensorAxis1(TestReduceOPTensorAxisBase):
     def init_data(self):
         self.pd_api = paddle.sum
         self.np_api = np.sum
-        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
-        self.np_axis = np.array([0, 1, 2], dtype='int64')
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float32')
+        self.np_axis = np.array([0, 1, 2], dtype='int32')
         self.tensor_axis = [
             0,
-            paddle.to_tensor([1], 'int64'),
-            paddle.to_tensor([2], 'int64'),
+            paddle.to_tensor([1], 'int32'),
+            paddle.to_tensor([2], 'int32'),
         ]
 
 
