@@ -75,7 +75,7 @@ PYBIND11_MAPPING = {
     'paddle::framework::ir::Pass': 'Pass',
     'paddle::framework::ir::PassBuilder': 'PassBuilder',
     'paddle::framework::proto::AttrType': 'AttrType',
-    'paddle::framework::proto::VarType_Type': 'VarType',
+    'paddle::framework::proto::VarType_Type': 'VarDesc.VarType',
     'paddle::imperative::AmpAttrs': 'AmpAttrs',
     'paddle::imperative::Tracer': 'Tracer',
     # paddle::imperative::VarBase
@@ -91,7 +91,7 @@ PYBIND11_MAPPING = {
     'paddle_infer::Tensor': 'paddle.Tensor',
     'phi::CPUPlace': 'CPUPlace',
     'phi::CUDAStream': 'CUDAStream',
-    'phi::CudaEvent': 'CudaEvent',
+    # phi::CudaEvent
     'phi::CustomPlace': 'CustomPlace',
     'phi::DenseTensor': 'paddle.Tensor',
     # phi::GPUPinnedPlace
@@ -128,6 +128,7 @@ INPUT_TYPES_MAP = {
     'Tensor[]': 'list[paddle.Tensor]',
 }
 ATTR_TYPES_MAP = {
+    'capsule': 'typing_extensions.CapsuleType',
     'IntArray': 'list[int]',
     'Scalar': 'float',
     'Scalar(int)': 'int',
@@ -154,6 +155,7 @@ ATTR_TYPES_MAP = {
     'int[]': 'list[int]',
 }
 OPTIONAL_TYPES_TRANS = {
+    'capsule': 'typing_extensions.CapsuleType',
     'Tensor': 'paddle.Tensor',
     'Tensor[]': 'list[paddle.Tensor]',
     'int': 'int',
@@ -167,6 +169,7 @@ OPTIONAL_TYPES_TRANS = {
     'DataType': 'paddle._typing.DTypeLike',
 }
 OUTPUT_TYPE_MAP = {
+    'capsule': 'typing_extensions.CapsuleType',
     'Tensor': 'paddle.Tensor',
     'Tensor[]': 'list[paddle.Tensor]',
 }
