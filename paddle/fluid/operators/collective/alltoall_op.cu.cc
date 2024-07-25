@@ -76,6 +76,11 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm_ctx->GetStream();
       nranks = comm_ctx->GetSize();
       VLOG(3) << "new comm_context_manager has rid " << ring_id;
+    } else {
+      comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+      stream = comm->stream();
+      nranks = comm->nranks();
+      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
 
     if (ctx.Attr<bool>("use_calc_stream")) {
