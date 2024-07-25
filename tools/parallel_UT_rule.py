@@ -1138,6 +1138,7 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_sigmoid_focal_loss',
     'test_manual_seed',
     'test_lrn_op',
+    'test_dataset_dataloader',
     'test_complex_variable',
     'test_neg_op',
     'test_view_op_reuse_allocation',
