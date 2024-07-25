@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import argparse
 import logging
@@ -18,8 +19,7 @@ import math
 import os
 import pathlib
 import sys
-from collections import namedtuple
-from typing import Dict, List, Tuple
+from typing import Any, NamedTuple
 
 import yaml
 from decomp_interface_gen_op_list import (
@@ -351,7 +351,10 @@ ONEDNN_MANUAL_OP_LIST = {
     'expand',
 }
 
-OpNamePair = namedtuple('OpNamePair', ['phi_name', 'fluid_name'])
+
+class OpNamePair(NamedTuple):
+    phi_name: str
+    fluid_name: str
 
 
 def to_phi_and_fluid_op_name(op_item: str) -> OpNamePair:
@@ -366,9 +369,9 @@ def to_phi_and_fluid_op_name(op_item: str) -> OpNamePair:
         return OpNamePair(phi_name, fluid_name)
 
 
-def to_phi_and_fluid_grad_op_name(op_item: str) -> List[OpNamePair]:
+def to_phi_and_fluid_grad_op_name(op_item: str) -> list[OpNamePair]:
     # Template: sum_grad (reduce_sum_grad), sum_double_grad
-    return map(to_phi_and_fluid_op_name, op_item.split(', '))
+    return list(map(to_phi_and_fluid_op_name, op_item.split(', ')))
 
 
 # =====================================
@@ -392,7 +395,9 @@ class OpCompatParser:
                         return compat
         return None
 
-    def parse_support_tensor(self, op) -> Tuple[Dict, Dict]:
+    def parse_support_tensor(
+        self, op
+    ) -> tuple[dict[str, dict[str, bool]], dict[str, dict[str, bool]]]:
         scalar_item = {}
         int_array_item = {}
         for support_tensor_attr in op['support_tensor']:
@@ -420,6 +425,9 @@ class OpInfoParser:
         self.yaml_file = yaml_file
         self.is_sparse_op = self.parse_op_type()
         self.op_phi_name = self.parse_op_phi_name()
+        self.class_name: str | None = None
+        self.kernel_input_type_list: list[str] | None = None
+        self.kernel_output_type_list: list[str] | None = None
 
         self.kernel_map = self.parse_kernel_map()
 
@@ -1068,7 +1076,7 @@ class OpInfoParser:
 
 
 def get_input_grad_semantic(
-    op_info: OpInfoParser, op_info_items: Dict[str, OpInfoParser]
+    op_info: OpInfoParser, op_info_items: dict[str, OpInfoParser]
 ):
     input_grad_semantics = []
     num_inputs = len(op_info.input_name_list)
@@ -1105,7 +1113,7 @@ def get_input_grad_semantic(
 
 
 def get_mutable_attribute_grad_semantic(
-    op_info: OpInfoParser, op_info_items: Dict[str, OpInfoParser]
+    op_info: OpInfoParser, op_info_items: dict[str, OpInfoParser]
 ):
     mutable_attribute_grad_semantics = []
     fwd_mutable_attribute_list = op_info.mutable_attribute_name_list
@@ -1136,7 +1144,7 @@ def get_mutable_attribute_grad_semantic(
     return mutable_attribute_grad_semantics
 
 
-def split_ops(op_info_items: dict, cc_file: str, split_nums: int):
+def split_ops(op_info_items: dict[str, Any], cc_file: str, split_nums: int):
     op_list = list(op_info_items.keys())
     ops_max_size = math.ceil(len(op_list) / split_nums)
     split_op_info_items = []
@@ -1243,9 +1251,9 @@ pir::Attribute attr_{attr_name} = pir::ArrayAttribute::get(pir::IrContext::Insta
 
 def AutoCodeGen(
     args: argparse.Namespace,
-    op_info_items: Dict[str, OpInfoParser],
-    all_op_info_items: Dict[str, OpInfoParser],
-    namespaces: List[str],
+    op_info_items: dict[str, OpInfoParser],
+    all_op_info_items: dict[str, OpInfoParser],
+    namespaces: list[str],
     dialect_name: str,
 ):
     # (3) CodeGen: Traverse op_info_items and generate
@@ -1449,7 +1457,7 @@ def AutoCodeGen(
                         op_dialect_name = (
                             dialect_name
                             + "."
-                            + kernel_func_name
+                            + kernel_func_name  # type: ignore
                             + "_"
                             + op_dialect_name_inplace_suffix
                         )
@@ -1462,7 +1470,7 @@ def AutoCodeGen(
                         op_dialect_name = (
                             dialect_name
                             + "."
-                            + kernel_func_name
+                            + kernel_func_name  # type: ignore
                             + op_dialect_name_suffix
                         )
                 if kernel_func_name is None:
@@ -2106,16 +2114,16 @@ def AutoCodeGen(
 
 def OpGenerator(
     args: argparse.Namespace,
-    op_yaml_files: List[str],
-    op_compat_yaml_file: str | None,
-    namespaces: List[str],
-    dialect_name: str | None,
-    op_def_h_file: str | None,
+    op_yaml_files: list[str],
+    op_compat_yaml_file: str,
+    namespaces: list[str],
+    dialect_name: str,
+    op_def_h_file: str,
     op_info_file: str,
-    op_def_cc_file: List[str],
+    op_def_cc_file: list[str],
     op_vjp_cc_file: str,
-    op_cc_split_num: int | None,
-    bwd_op_cc_split_num: int | None,
+    op_cc_split_num: int,
+    bwd_op_cc_split_num: int,
     onednn_yaml_file: str | None,
     ops_onednn_extra_yaml_file: str | None,
 ):
@@ -2132,6 +2140,10 @@ def OpGenerator(
     op_compat_parser = OpCompatParser(op_compat_yaml_file)
 
     if dialect_name == "onednn_op":
+        if onednn_yaml_file is None or ops_onednn_extra_yaml_file is None:
+            raise ValueError(
+                "onednn_op should provide onednn_yaml_file and ops_onednn_extra_yaml_file"
+            )
         with open(ops_onednn_extra_yaml_file, "r") as f:
             ops_onednn_extra = yaml.safe_load(f)
             ops_onednn_extra_map = {}
@@ -2160,8 +2172,8 @@ def OpGenerator(
                 ops_onednn_extra_map[op_name] = item
         op_yaml_files.insert(0, onednn_yaml_file)
 
-    op_infos: List[Dict[str, OpInfoParser]] = []
-    all_op_info_items: Dict[str, OpInfoParser] = {}
+    op_infos: list[dict[str, OpInfoParser]] = []
+    all_op_info_items: dict[str, OpInfoParser] = {}
     new_op_def_cc_file = []
     first_file = True
     onednn_only_op_list = []
@@ -2193,7 +2205,11 @@ def OpGenerator(
             ):
                 op_compat_item = op_compat_item.pop('scalar')
 
-            if 'support_tensor' in op.keys() and op['support_tensor']:
+            if (
+                op_compat_item is not None
+                and 'support_tensor' in op.keys()
+                and op['support_tensor']
+            ):
                 (
                     scalar_item,
                     int_array_item,

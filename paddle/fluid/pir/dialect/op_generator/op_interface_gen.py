@@ -13,7 +13,12 @@
 # limitations under the License.
 
 # generator interfaces
-from op_gen import OpInfoParser
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from op_gen import OpInfoParser
 from vjp_interface_black_list import vjp_interface_black_list
 
 CHECK_INPUT_TEMPLATE = """
