@@ -45,11 +45,18 @@ std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor,
                                int axis,
                                const std::string &output_name) {
   int ndim = static_cast<int>(tensor->shape.size());
-  CHECK(-ndim - 1 <= axis && axis <= ndim)
-      << "repeat only accepts `axis` in [-data.ndim - 1, data.ndim]"
-      << ", but got axis = " << axis << ", and data.ndim = " << ndim;
-  CHECK(repeats >= 1) << "repeat only accepts `repeats >= 1`"
-                      << ", but got repeats = " << repeats;
+  PADDLE_ENFORCE_EQ(-ndim - 1 <= axis && axis <= ndim,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "repeat only accepts `axis` in [-data.ndim - 1, "
+                        "data.ndim], but got axis = %d, and data.ndim = %d",
+                        axis,
+                        ndim));
+  PADDLE_ENFORCE_GE(
+      repeats,
+      1,
+      phi::errors::InvalidArgument(
+          "repeat only accepts `repeats >= 1`, but got repeats = %d", repeats));
 
   if (axis < 0) {
     // Calculate offset from last dimension
@@ -97,28 +104,48 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     }
   }
 
-  CHECK(repeats >= 1) << "repeat only accepts `repeats >= 1`"
-                      << ", but got repeats = " << repeats;
+  PADDLE_ENFORCE_GE(
+      repeats,
+      1,
+      phi::errors::InvalidArgument(
+          "repeat only accepts `repeats >= 1`, but got repeats = %d", repeats));
 
   framework::CINNCompute repeat_compute([=](lang::Args args,
                                             lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input arguments of Repeat compute is empty! Please check.\n";
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input arguments of Repeat compute is empty! Please check.\n"));
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 1U)
-        << "at least 1 input tensors for Repeat compute\n";
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "at least 1 input tensors for Repeat compute\n"));
     Expr A = pack_args[0];
-    CHECK(A.as_tensor());
-    CHECK(!output_shapes.empty());
+    PADDLE_ENFORCE_EQ(
+        A.as_tensor(),
+        true,
+        phi::errors::InvalidArgument("Input cannot be converted into tensor"));
+    PADDLE_ENFORCE_EQ(
+        !output_shapes.empty(),
+        true,
+        phi::errors::InvalidArgument("Output shape is not given"));
     auto tensor_A = A.as_tensor_ref();
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    CHECK_EQ(pack_args.size(), 2U);
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "Received %u args, 2 args needed", pack_args.size()));
     std::string tensor_name = pack_args[1].operator std::string();
 
     std::vector<ir::Tensor> out = Repeat(tensor_A, repeats, axis, tensor_name);
-    CHECK(out.size() == 1U) << "The size of Repeat's output should be 1";
+    PADDLE_ENFORCE_EQ(out.size(),
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "The size of Repeat's output should be 1"));
 
     std::vector<cinn::common::CINNValue> res;
     for (auto &t : out) {
@@ -130,8 +157,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
 
   framework::CINNSchedule repeat_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of repeat schedule is empty! Please check.\n";
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of repeat schedule is empty! Please check.\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -140,7 +170,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
         vec_ast.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_EQ(
+        !vec_ast.empty(), true, "Input args is empty! Please check.");
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
