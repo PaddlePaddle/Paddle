@@ -148,18 +148,18 @@ static T convert(const std::string &item,
     std::string message =
         "invalid_argument exception when try to convert : " + item;
     LOG(ERROR) << message;
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "invalid_argument exception when try to convert %s.", item));
   } catch (std::out_of_range &e) {
     std::string message =
         "out_of_range exception when try to convert : " + item;
     LOG(ERROR) << message;
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "out_of_range exception when try to convert %s.", item));
   } catch (...) {
     std::string message = "unexpected exception when try to convert " + item;
     LOG(ERROR) << message;
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "unexpected exception when try to convert %s.", item));
   }
   return res;
@@ -238,7 +238,7 @@ void CheckAssignedData(const std::vector<std::vector<T>> &data,
   PADDLE_ENFORCE_EQ(
       num,
       num_elems,
-      platform::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "The number of elements out of bounds. "
           "Expected number of elements = %d. But received %d. Suggested Fix: "
           "If the tensor is expected to assign %d elements, check the number "
@@ -409,9 +409,7 @@ static void PrintTime(int batch_size,
                       const framework::proto::VarType::Type data_type =
                           framework::proto::VarType::FP32) {
   PADDLE_ENFORCE_GT(
-      batch_size,
-      0,
-      platform::errors::InvalidArgument("Non-positive batch size."));
+      batch_size, 0, phi::errors::InvalidArgument("Non-positive batch size."));
   double sample_latency = batch_latency / batch_size;
   LOG(INFO) << "====== threads: " << num_threads << ", thread id: " << tid
             << " ======";

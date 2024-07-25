@@ -67,7 +67,6 @@ if(WITH_RPC)
                   common)
 endif()
 if(WITH_GPU OR WITH_ROCM)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
 endif()
 
@@ -81,10 +80,6 @@ endif()
 if(WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-endif()
-
-if(WITH_XPU)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_xpti)
 endif()
 
 if(WITH_XPU_BKCL)
@@ -123,6 +118,7 @@ set(PYBIND_SRCS
     inference_api.cc
     control_flow_api.cc
     pir.cc
+    pir_utils.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc

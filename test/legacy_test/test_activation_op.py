@@ -313,7 +313,13 @@ class TestExpm1API(unittest.TestCase):
         self.x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         self.out_ref = np.expm1(self.x)
 
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 

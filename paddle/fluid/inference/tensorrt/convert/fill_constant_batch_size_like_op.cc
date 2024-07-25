@@ -31,7 +31,7 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     // be float
     PADDLE_ENFORCE_EQ(dtype,
                       5,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "fill_constant_batch_size_like's input data type "
                           "must be float in Paddle-TRT."));
 

@@ -88,6 +88,37 @@ bool AllcloseOpInferSymbolicShape(
   return true;
 }
 
+bool BceLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &label_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  int rank = input_shape.shape().size();
+  PADDLE_ENFORCE_EQ(rank,
+                    label_shape.shape().size(),
+                    common::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        rank,
+                        label_shape.shape().size()));
+
+  for (int i = 0; i < rank; ++i) {
+    infer_context->AddEqualCstr(input_shape.shape()[i], label_shape.shape()[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
+
+  return true;
+}
+
+bool BceLoss_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BceLossOpInferSymbolicShape(op, infer_context);
+}
+
 bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<int> strides =
@@ -215,6 +246,10 @@ bool ExpandAsOpInferSymbolicShape(
   std::vector<int> target_shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
   const std::vector<symbol::DimExpr> &output_dims = [&] {
+    if (op->operand_source(0)) {
+      return infer_context->GetShapeOrDataForValue(op->operand_source(1))
+          .shape();
+    }
     std::vector<symbol::DimExpr> output_dims;
     output_dims.reserve(target_shape.size());
     for (int shape : target_shape) {

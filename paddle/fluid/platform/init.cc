@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/cupti.h"
+#include "paddle/phi/backends/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -52,9 +52,9 @@ limitations under the License. */
 #endif
 
 #include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
@@ -118,14 +118,14 @@ void InitCupti() {
 #define MULTIPLY_ATTR_VALUE(attr)                                 \
   {                                                               \
     PADDLE_ENFORCE_EQ(                                            \
-        !platform::dynload::cuptiActivityGetAttribute(            \
+        !phi::dynload::cuptiActivityGetAttribute(                 \
             attr, &attrValueSize, &attrValue),                    \
         true,                                                     \
         phi::errors::Unavailable("Get cupti attribute failed.")); \
     attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
     LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
     PADDLE_ENFORCE_EQ(                                            \
-        !platform::dynload::cuptiActivitySetAttribute(            \
+        !phi::dynload::cuptiActivitySetAttribute(                 \
             attr, &attrValueSize, &attrValue),                    \
         true,                                                     \
         phi::errors::Unavailable("Set cupti attribute failed.")); \

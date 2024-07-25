@@ -21,7 +21,6 @@
 #include <unordered_set>
 #include <vector>
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/flags.h"
 
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
@@ -128,7 +127,7 @@ inline void SetDeviceId(const phi::Place& place) {
   // TODO(zhiqiu): reduce the cost
   if (phi::is_gpu_place(place)) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Cannot run operator on place %s, please recompile paddle or "
         "reinstall Paddle with CUDA support.",
         place));
@@ -138,7 +137,7 @@ inline void SetDeviceId(const phi::Place& place) {
 #endif
   } else if (phi::is_xpu_place(place)) {
 #ifndef PADDLE_WITH_XPU
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Cannot run operator on place %s, please recompile paddle or "
         "reinstall Paddle with XPU support.",
         place));
@@ -148,7 +147,7 @@ inline void SetDeviceId(const phi::Place& place) {
 #endif
   } else if (phi::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Cannot run operator on place %s, please recompile paddle or "
         "reinstall Paddle with CustomDevice support.",
         place));
