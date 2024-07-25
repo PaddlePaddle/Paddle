@@ -44,6 +44,16 @@ def get_inference_precision(precision_str):
         raise AssertionError(f"unsupported precision {precision_str}")
 
 
+def register_triton_custom_ops(model_dir):
+    for root, dirs, files in os.walk(model_dir):
+        for file in files:
+            if file.endswith("_package.so"):
+                so_full_path = os.path.join(root, file)
+                paddle.utils.cpp_extension.load_op_meta_info_and_register_op(
+                    so_full_path
+                )
+
+
 # get paddle.Tensor for paddle inference use.
 def get_tensor(run_time_args, arg_name):
     if isinstance(run_time_args, paddle.Tensor):
@@ -260,6 +270,8 @@ class InferenceEngine:
                     self.d2s_input_names[d2s_shapes_id] = arg_names[i]
                 d2s_shapes_id += 1
 
+        os.environ["TRITON_KERNEL_CACHE_DIR"] = self.save_model_dir
+
         print(
             f"now will use paddle.jit.save to save the {func.__name__} function to {self.save_path}.pdmodel"
         )
@@ -393,11 +405,8 @@ class InferenceEngine:
         if self.predictor is not None:
             self.predictor = None
 
-        if self.enable_new_ir:
-            config.delete_pass(self.delete_pass_lists)
-        else:
-            for pass_name in self.delete_pass_lists:
-                config.delete_pass(pass_name)
+        for pass_name in self.delete_pass_lists:
+            config.delete_pass(pass_name)
 
         self.predictor = create_predictor(config)
 
@@ -608,6 +617,9 @@ def inference(
                 infer_engine.to_static_model(
                     func, input_tensor_lists, *args, **kwargs
                 )
+            else:
+                # we need register some triton ops.
+                register_triton_custom_ops(infer_engine.save_model_dir)
 
             infer_engine.create_predictor(input_tensor_lists)
 
