@@ -37,6 +37,20 @@ struct IndicesAndExtent {
   std::vector<ForVarExtent> for_var_extents;
 };
 
+struct ConditionForVar {
+  ir::Expr condition;
+  std::vector<ForVarExtent> for_var_extents;
+};
+
+/**
+ * Store condition operator or if expr (e.g. condition ? true_branch :
+ * false_branch)
+ */
+struct ConditionAndBranch {
+  ConditionForVar condition_for_var;
+  bool branch;
+};
+
 std::unordered_map<ir::Var, ir::Var> ConstructForVarReplaceMap(
     const std::vector<ForVarExtent>& lhs_extents,
     const std::vector<ForVarExtent>& rhs_extents) {
@@ -55,6 +69,29 @@ std::unordered_map<ir::Var, ir::Var> ConstructForVarReplaceMap(
     }
   }
   return ret;
+}
+
+template <typename ExprType>
+bool ConditionEqual(const ir::Expr lhs_condition,
+                    const ir::Expr rhs_condition) {
+  if (lhs_condition.As<ExprType>() && rhs_condition.As<ExprType>()) {
+    auto lhs = lhs_condition.As<ExprType>();
+    auto rhs = rhs_condition.As<ExprType>();
+    if (lhs->a().is_cmp() || rhs->a().is_cmp() || lhs->b().is_cmp() ||
+        rhs->b().is_cmp()) {
+      return true;
+    }
+    ir::Expr lhs_equal =
+        cinn::common::AutoSimplify(ir::Sub::Make(lhs->a(), rhs->a()));
+    ir::Expr rhs_equal =
+        cinn::common::AutoSimplify(ir::Sub::Make(lhs->b(), rhs->b()));
+    if ((lhs_equal == ir::Expr(0)) && (rhs_equal == ir::Expr(0))) {
+      VLOG(6) << "Proved equal conditoin, expr: " << lhs_condition
+              << " with expr: " << rhs_condition;
+      return true;
+    }
+  }
+  return false;
 }
 
 struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
@@ -128,12 +165,109 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       return AllIndiceAndExtentEqual(indice_and_extent);
     };
 
+    auto ConditionContainsLoad = [&](const ir::Expr condition) {
+      std::set<Expr> load_tensors = ir::ir_utils::CollectLoadTensors(
+          condition, /*teller=*/[&](const Expr*) -> bool { return true; });
+      if (load_tensors.size() > 0) {
+        return true;
+      }
+      return false;
+    };
+
+    auto ConditionEqualHelper = [&](const ir::Expr lhs_condition,
+                                    const ir::Expr rhs_condition) -> bool {
+      if (ConditionContainsLoad(lhs_condition) ||
+          ConditionContainsLoad(rhs_condition))
+        return false;
+      if (ConditionEqual<ir::EQ>(lhs_condition, rhs_condition)) return true;
+      if (ConditionEqual<ir::NE>(lhs_condition, rhs_condition)) return true;
+      if (ConditionEqual<ir::LT>(lhs_condition, rhs_condition)) return true;
+      if (ConditionEqual<ir::LE>(lhs_condition, rhs_condition)) return true;
+      if (ConditionEqual<ir::GT>(lhs_condition, rhs_condition)) return true;
+      if (ConditionEqual<ir::GE>(lhs_condition, rhs_condition)) return true;
+      return false;
+    };
+
+    auto ConditionWithForVar =
+        [&](const ConditionForVar& condition_for_var,
+            const std::unordered_map<ir::Var, ir::Var> for_var_map)
+        -> ir::Expr {
+      ir::Expr condition = condition_for_var.condition;
+      ir::Expr ret = ir::ir_utils::IRCopy(condition);
+      for (const auto& [var, sb_expr] : var_to_sb_expr_) {
+        ReplaceVarWithExpr(&ret, var, ir::ir_utils::IRCopy(sb_expr));
+      }
+      for (const auto& [lhs_var, rhs_var] : for_var_map) {
+        ReplaceVarWithExpr(&ret, lhs_var, ir::ir_utils::IRCopy(rhs_var));
+      }
+      return ret;
+    };
+
+    auto ConditionAndBranchEqual =
+        [&](const std::vector<ConditionAndBranch>& condition_and_branch1,
+            const std::vector<ConditionAndBranch>& condition_and_branch2)
+        -> bool {
+      if (condition_and_branch1.size() != condition_and_branch2.size()) {
+        return false;
+      }
+      for (size_t i = 0; i < condition_and_branch1.size(); ++i) {
+        if (condition_and_branch1[i].branch !=
+            condition_and_branch2[i].branch) {
+          return false;
+        }
+        const ConditionForVar& lhs = condition_and_branch1[i].condition_for_var;
+        const ConditionForVar& rhs = condition_and_branch2[i].condition_for_var;
+        std::unordered_map<ir::Var, ir::Var> for_var_map =
+            ConstructForVarReplaceMap(lhs.for_var_extents, rhs.for_var_extents);
+        ir::Expr new_lhs = ConditionWithForVar(lhs, for_var_map);
+        ir::Expr new_rhs = ConditionWithForVar(rhs, for_var_map);
+        if (!ConditionEqualHelper(new_lhs, new_rhs)) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    auto AllConditionAndBranchEqual =
+        [&](const std::string buffer_name) -> bool {
+      if (buffer_to_condition_and_branch_.find(buffer_name) ==
+          buffer_to_condition_and_branch_.end()) {
+        return true;
+      }
+      const std::vector<std::vector<ConditionAndBranch>>
+          condition_and_branches =
+              buffer_to_condition_and_branch_.at(buffer_name);
+      // There are only 0 or 1 conditions, no need to check
+      // if the elements are equal.
+      if (condition_and_branches.size() <= 1) {
+        return true;
+      }
+      PADDLE_ENFORCE_GE(
+          condition_and_branches.size(),
+          2,
+          ::common::errors::InvalidArgument(
+              "The size of condition_and_branch should greater_equal to 2"));
+      for (size_t i = 1; i < condition_and_branches.size(); ++i) {
+        if (!ConditionAndBranchEqual(condition_and_branches[0],
+                                     condition_and_branches[i])) {
+          return false;
+        }
+      }
+      return true;
+    };
+
     std::unordered_set<std::string> global_buffer_name;
     for (const auto& [buffer_name, indice_and_extent] :
          buffer_to_indice_and_extent_) {
       // For buffers disobey SSA principle, we don't substitute them.
       if (global_store_buffer_names_.find(buffer_name) !=
           global_store_buffer_names_.end()) {
+        continue;
+      }
+      if (!AllConditionAndBranchEqual(buffer_name)) {
+        VLOG(6)
+            << "Buffer's condition and branch not equal, use global buffer: "
+            << buffer_name;
         continue;
       }
       if (IsGlobalTensorNeedEliminate(indice_and_extent)) {
@@ -173,6 +307,21 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
   }
 
   void Visit(const ir::Load* op, ir::Expr* expr) override {
+    auto RecordCondition = [&](const std::string buffer_name) {
+      if (condition_non_buffer_names_.find(buffer_name) !=
+          condition_non_buffer_names_.end()) {
+        return;
+      }
+      // Indicate no condition constraints.
+      if (current_condition_and_branches_.empty()) {
+        condition_non_buffer_names_.insert(buffer_name);
+        buffer_to_condition_and_branch_[buffer_name].clear();
+      } else {
+        buffer_to_condition_and_branch_[buffer_name].push_back(
+            current_condition_and_branches_);
+      }
+    };
+
     auto* node = expr->As<ir::Load>();
     CHECK(node);
     const auto& load_buffer = node->tensor.as_tensor_ref()->buffer;
@@ -187,6 +336,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       }
       buffer_to_indice_and_extent_[load_buffer->name].push_back(
           {tensor_indices, for_var_extents_});
+      RecordCondition(load_buffer->name);
     }
   }
 
@@ -197,6 +347,21 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
     if (store_buffer->memory_type == ir::MemoryType::Heap) {
       global_store_buffer_names_.insert(store_buffer->name);
     }
+    ir::IRMutator<>::Visit(op, expr);
+  }
+
+  void Visit(const ir::Select* op, ir::Expr* expr) override {
+    auto node = expr->As<ir::Select>();
+    // The conditional expression does not affect itself,
+    // but is constrained by the previous conditions, so that
+    // push element after condition get visited.
+    ir::IRMutator<>::Visit(&node->condition, &node->condition);
+    current_condition_and_branches_.push_back(
+        {{node->condition, for_var_extents_}, true});
+    ir::IRMutator<>::Visit(&node->true_value, &node->true_value);
+    current_condition_and_branches_.back().branch = false;
+    ir::IRMutator<>::Visit(&node->false_value, &node->false_value);
+    current_condition_and_branches_.pop_back();
   }
 
   std::vector<ForVarExtent> for_var_extents_;
@@ -204,6 +369,10 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
   std::unordered_map<std::string, std::vector<IndicesAndExtent>>
       buffer_to_indice_and_extent_;
   std::unordered_set<std::string> global_store_buffer_names_;
+  std::vector<ConditionAndBranch> current_condition_and_branches_;
+  std::unordered_map<std::string, std::vector<std::vector<ConditionAndBranch>>>
+      buffer_to_condition_and_branch_;
+  std::unordered_set<std::string> condition_non_buffer_names_;
 };
 
 struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
@@ -214,6 +383,16 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
  private:
+  void Visit(const ir::Select* op, ir::Expr* expr) override {
+    auto node = expr->As<ir::Select>();
+    ir::IRMutator<>::Visit(&node->condition, &node->condition);
+    // When eliminating, extents is not necessary.
+    current_condition_and_branches_.push_back({{node->condition, {}}, true});
+    ir::IRMutator<>::Visit(&node->true_value, &node->true_value);
+    current_condition_and_branches_.back().branch = false;
+    ir::IRMutator<>::Visit(&node->false_value, &node->false_value);
+  }
+
   void Visit(const ir::Block* op, Expr* expr) override {
     auto* node = expr->As<ir::Block>();
     CHECK(node);
@@ -242,6 +421,29 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
     SubstituteGlobalTensor(node, buffer_name);
   }
 
+  ir::Expr MakeConditionStore(int index, ir::Expr load_expr) {
+    if (index >= current_condition_and_branches_.size()) {
+      return load_expr;
+    }
+    const ConditionAndBranch condition_and_branch =
+        current_condition_and_branches_[index];
+    const ir::Expr sub_expr = MakeConditionStore(index + 1, load_expr);
+    ir::Expr dummy_expr = ir::Zero(sub_expr.type());
+    VLOG(10) << "Origin type: " << sub_expr.type()
+             << " Dummy type: " << dummy_expr.type();
+    if (condition_and_branch.branch) {
+      return ir::Select::Make(condition_and_branch.condition_for_var.condition,
+                              sub_expr,
+                              dummy_expr);
+    } else {
+      return ir::Select::Make(condition_and_branch.condition_for_var.condition,
+                              dummy_expr,
+                              sub_expr);
+    }
+    PADDLE_THROW(phi::errors::Fatal(
+        "Dead code. Fail to make condition store for local buffer."));
+  }
+
   void InsertLocalTensorBlock(ir::Load* load_node,
                               const std::string& buffer_name) {
     ir::Expr sb = ir::ir_utils::IRCopy(current_sbr_->schedule_block);
@@ -257,9 +459,12 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
                            old_tensor->reduce_axis);
     new_tensor.as_tensor_ref()->WithBuffer(
         "local", new_tensor.as_tensor_ref()->name + "_buffer");
+    constexpr int kmake_condition_store_start = 0;
+    ir::Expr condition_store =
+        MakeConditionStore(kmake_condition_store_start, ir::Expr(load_node));
     ir::Expr new_body =
         ir::Store::Make(new_tensor,
-                        ir::ir_utils::IRCopy(ir::Expr(load_node)),
+                        ir::ir_utils::IRCopy(condition_store),
                         ir::ir_utils::IRCopy(load_node->indices));
     ir::Expr new_sb = ir::ScheduleBlock::Make(
         sb_node->iter_vars, {}, {}, sb_node->name + "_local", new_body);
@@ -289,6 +494,7 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
 
   std::unordered_set<std::string> eliminate_buffer_names_;
   std::unordered_map<std::string, ir::Expr> global_buffer_to_local_buffer_;
+  std::vector<ConditionAndBranch> current_condition_and_branches_;
 
   ir::Block* current_block_;
   ir::ScheduleBlockRealize* current_sbr_;
