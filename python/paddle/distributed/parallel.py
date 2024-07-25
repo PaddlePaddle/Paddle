@@ -136,8 +136,8 @@ def _split_tensors(coalesced_grads_and_grad_vars):
 @imperative_base.no_grad
 @framework.dygraph_only
 def build_groups(
-    vars: Layer, group_size: int
-) -> list[list[Tensor, list[Tensor], list[int]]]:
+    vars: list[Tensor], group_size: int
+) -> list[list[Tensor | list[Tensor] | list[int]]]:
     group_idx = 0
     memory_counter = 0
     var_groups = OrderedDict()
@@ -365,7 +365,7 @@ class DataParallel(Layer):
     find_unused_parameters: bool
     grad_need_sync: bool
     group: Group | None
-    var_dtype: core.VarDesc.VarType
+    var_dtype: Tensor
     comm_buffer_size: int
     last_comm_buffer_size: int
 
@@ -377,7 +377,7 @@ class DataParallel(Layer):
         last_comm_buffer_size: float = 1,
         find_unused_parameters: bool = False,
         group: Group | None = None,
-    ):
+    ) -> None:
         super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
@@ -513,7 +513,7 @@ class DataParallel(Layer):
         return []
 
     @contextmanager
-    def no_sync(self) -> Generator[Any, Any, Any]:
+    def no_sync(self) -> Generator[None, None, None]:
         """
         A context manager to stop gradient synchronization. Within no_sync(),
         gradients of parameters will only be accumulated on model and not
@@ -628,7 +628,7 @@ class DataParallel(Layer):
     @framework.deprecate_stat_dict
     def set_state_dict(
         self, state_dict: _StateDict, use_structured_name: bool = True
-    ) -> tuple[list[str], list[str]]:
+    ) -> None:
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
@@ -825,7 +825,7 @@ class ParallelEnv:
         return self._device_type
 
     @property
-    def current_endpoint(self) -> list[str]:
+    def current_endpoint(self) -> str:
         """
         The endpoint of current trainer, it is in the form of (node IP + port).
 
