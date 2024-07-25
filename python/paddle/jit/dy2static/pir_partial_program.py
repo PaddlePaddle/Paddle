@@ -47,6 +47,8 @@ __all__ = []
 
 prog_logger = TranslatorLogger()
 
+# TODO: check the var not found fallback to FakeVar
+
 
 def get_value_name(value):
     if is_fake_value(value):
