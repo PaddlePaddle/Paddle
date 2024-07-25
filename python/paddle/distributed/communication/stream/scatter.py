@@ -115,12 +115,12 @@ def _scatter_in_static_mode(
         'scatter',
     )
 
-    op_type = 'c_scatter'
+    op_type = 'scatter'
     helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
-        inputs={'X': [input_tensor]},
-        outputs={'Out': [tensor]},
+        inputs={'x': [input_tensor]},
+        outputs={'out': [tensor]},
         attrs={
             'ring_id': ring_id,
             'root': src_rank_in_group,

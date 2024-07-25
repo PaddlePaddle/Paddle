@@ -69,7 +69,7 @@ def _all_to_all_in_static_mode(
     sync_op,
     use_calc_stream,
 ):
-    op_type = 'alltoall'
+    op_type = 'all_to_all'
     ring_id = 0 if group is None else group.id
     nranks = dist.get_world_size()
     helper = framework.LayerHelper(op_type, **locals())
@@ -102,8 +102,8 @@ def _all_to_all_in_static_mode(
     )
     helper.append_op(
         type=op_type,
-        inputs={'X': [in_tensor]},
-        outputs={'Out': [out_tensor]},
+        inputs={'x': [in_tensor]},
+        outputs={'out': [out_tensor]},
         attrs={
             'ring_id': ring_id,
             'use_calc_stream': sync_op,
