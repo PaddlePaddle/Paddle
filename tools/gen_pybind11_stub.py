@@ -44,7 +44,7 @@ PYBIND11_MAPPING = {
     'paddle::DistConfig': 'DistConfig',
     'paddle::MkldnnQuantizerConfig': 'MkldnnQuantizerConfig',
     'paddle::PaddlePassBuilder': 'PaddlePassBuilder',
-    'paddle::Tensor': 'Tensor',
+    'paddle::Tensor': 'paddle.Tensor',
     'paddle::ZeroCopyTensor': 'ZeroCopyTensor',
     'paddle::dialect::AssertOp': 'AssertOp',
     # paddle::dialect::OperationDistAttribute
@@ -87,20 +87,20 @@ PYBIND11_MAPPING = {
     'paddle::pybind::PyIfOp': 'IfOp',
     'paddle::pybind::PyWhileOp': 'WhileOp',
     # paddle::small_vector<std::vector<egr::GradSlotMeta, std::allocator<egr::GradSlotMeta> >, 15u>
-    'paddle::variant<phi::DenseTensor': 'Tensor',
-    'paddle_infer::Tensor': 'Tensor',
+    'paddle::variant<phi::DenseTensor': 'paddle.Tensor',
+    'paddle_infer::Tensor': 'paddle.Tensor',
     'phi::CPUPlace': 'CPUPlace',
     'phi::CUDAStream': 'CUDAStream',
     'phi::CudaEvent': 'CudaEvent',
     'phi::CustomPlace': 'CustomPlace',
-    'phi::DenseTensor': 'Tensor',
+    'phi::DenseTensor': 'paddle.Tensor',
     'phi::GPUPinnedPlace': 'GPUPinnedPlace',
     'phi::GPUPlace': 'GPUPlace',
     'phi::IPUPlace': 'IPUPlace',
     'phi::Place': 'Place',
     'phi::SelectedRows': 'SelectedRows',
-    'phi::SparseCooTensor>': 'Tensor',
-    'phi::TensorArray': 'Tensor',
+    'phi::SparseCooTensor>': 'paddle.Tensor',
+    'phi::TensorArray': 'paddle.Tensor',
     'phi::TracerEventType': 'TracerEventType',
     'phi::TracerMemEventType': 'TracerMemEventType',
     'phi::XPUPlace': 'XPUPlace',
@@ -124,8 +124,8 @@ PYBIND11_MAPPING = {
 }
 
 INPUT_TYPES_MAP = {
-    'Tensor': 'Tensor',
-    'Tensor[]': 'list[Tensor]',
+    'Tensor': 'paddle.Tensor',
+    'Tensor[]': 'list[paddle.Tensor]',
 }
 ATTR_TYPES_MAP = {
     'IntArray': 'list[int]',
@@ -154,8 +154,8 @@ ATTR_TYPES_MAP = {
     'int[]': 'list[int]',
 }
 OPTIONAL_TYPES_TRANS = {
-    'Tensor': 'Tensor',
-    'Tensor[]': 'list[Tensor]',
+    'Tensor': 'paddle.Tensor',
+    'Tensor[]': 'list[paddle.Tensor]',
     'int': 'int',
     'int32_t': 'int',
     'int64_t': 'int',
@@ -172,7 +172,7 @@ FUNCTION_VALUE_TRANS = {
     'true': 'True',
     'false': 'False',
 }
-OPS_YAML_IMPORTS = ['import paddle\n', 'from paddle import Tensor\n']
+OPS_YAML_IMPORTS = ['import paddle\n']
 
 
 def patch_pybind11_stubgen_printer():
