@@ -143,57 +143,59 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
       phi::errors::InvalidArgument(
           "one_hot only accepts `depth` > 0, but got depth = %d", depth));
 
-  framework::CINNCompute one_hot_compute(
-      [=](lang::Args args, lang::RetValue* ret) {
-        PADDLE_ENFORCE_EQ(
-            !args.empty(),
-            true,
-            "The input argument of one_hot compute is empty! Please check.\n");
-        cinn::common::CINNValuePack pack_args = args[0];
-        PADDLE_ENFORCE_EQ(!pack_args.empty(),
-                          true,
-                          "at least one input tensor for transpose compute\n");
-        PADDLE_ENFORCE_GE(
-            pack_args.size(),
-            3U,
-            phi::errors::InvalidArgument(
-                "Given %u args, at least 3 args are needed", pack_args.size()));
-        Expr indices_expr = pack_args[0];
-        Expr on_value_expr = pack_args[1];
-        Expr off_value_expr = pack_args[2];
-        PADDLE_ENFORCE(indices_expr.as_tensor(),
-                       phi::errors::InvalidArgument(
-                           "First input cannot be converted into tensor"));
-        PADDLE_ENFORCE(on_value_expr.as_tensor(),
-                       phi::errors::InvalidArgument(
-                           "Second input cannot be converted into tensor"));
-        PADDLE_ENFORCE(off_value_expr.as_tensor(),
-                       phi::errors::InvalidArgument(
-                           "Third input cannot be converted into tensor"));
+  framework::CINNCompute one_hot_compute([=](lang::Args args,
+                                             lang::RetValue* ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of one_hot compute is empty! Please check.\n"));
+    cinn::common::CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_EQ(!pack_args.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "at least one input tensor for transpose compute\n"));
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        3U,
+        phi::errors::InvalidArgument(
+            "Given %u args, at least 3 args are needed", pack_args.size()));
+    Expr indices_expr = pack_args[0];
+    Expr on_value_expr = pack_args[1];
+    Expr off_value_expr = pack_args[2];
+    PADDLE_ENFORCE(indices_expr.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "First input cannot be converted into tensor"));
+    PADDLE_ENFORCE(on_value_expr.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "Second input cannot be converted into tensor"));
+    PADDLE_ENFORCE(off_value_expr.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "Third input cannot be converted into tensor"));
 
-        ir::Tensor indices = indices_expr.as_tensor_ref();
-        ir::Tensor on_value = on_value_expr.as_tensor_ref();
-        ir::Tensor off_value = off_value_expr.as_tensor_ref();
+    ir::Tensor indices = indices_expr.as_tensor_ref();
+    ir::Tensor on_value = on_value_expr.as_tensor_ref();
+    ir::Tensor off_value = off_value_expr.as_tensor_ref();
 
-        PADDLE_ENFORCE_EQ(
-            pack_args.size(),
-            4U,
-            phi::errors::InvalidArgument("Given %d args, need 4 args"),
-            pack_args.size());
-        std::string tensor_name = pack_args[3].operator std::string();
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        4U,
+        phi::errors::InvalidArgument("Given %d args, need 4 args"),
+        pack_args.size());
+    std::string tensor_name = pack_args[3].operator std::string();
 
-        ir::Tensor out = OneHot(indices,
-                                on_value,
-                                off_value,
-                                depth,
-                                axis,
-                                cinn::common::Str2Type(dtype),
-                                tensor_name);
+    ir::Tensor out = OneHot(indices,
+                            on_value,
+                            off_value,
+                            depth,
+                            axis,
+                            cinn::common::Str2Type(dtype),
+                            tensor_name);
 
-        std::vector<cinn::common::CINNValue> res;
-        res.push_back(cinn::common::CINNValue(out));
-        *ret = cinn::common::CINNValuePack{res};
-      });
+    std::vector<cinn::common::CINNValue> res;
+    res.push_back(cinn::common::CINNValue(out));
+    *ret = cinn::common::CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(one_hot_compute,
