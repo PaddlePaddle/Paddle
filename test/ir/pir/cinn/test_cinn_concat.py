@@ -20,7 +20,7 @@ import paddle
 from paddle.base import core
 
 
-class GroupNormSubGraph(paddle.nn.Layer):
+class ConcatNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -29,7 +29,7 @@ class GroupNormSubGraph(paddle.nn.Layer):
         return x1 + x1
 
 
-class TestGroupNormSubGraph(unittest.TestCase):
+class TestConcat(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
         self.shape = [1, 33, 256, 256]
@@ -44,7 +44,7 @@ class TestGroupNormSubGraph(unittest.TestCase):
     def eval(self, use_cinn, use_prim=False):
         if use_prim:
             core._set_prim_all_enabled(True)
-        net = GroupNormSubGraph()
+        net = ConcatNet()
         net = utils.apply_to_static(net, use_cinn=use_cinn)
         net.eval()
         out = net(self.x, self.y)
