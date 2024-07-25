@@ -78,7 +78,6 @@ from .dy2static.program_translator import (
     SymbolicStaticFunction,
     unwrap_decorators,
 )
-from .inference import paddle_inference_decorator
 from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
 from .translated_layer import (
     INFER_MODEL_SUFFIX,
@@ -98,7 +97,7 @@ ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 _LayerT = TypeVar("_LayerT", bound=Layer)
 _RetT = TypeVar("_RetT")
 _InputT = ParamSpec("_InputT")
-Backends: TypeAlias = Literal["CINN", 'inference']
+Backends: TypeAlias = Literal["CINN"]
 
 
 @contextmanager
@@ -154,9 +153,9 @@ def ignore_module(modules: list[ModuleType]) -> None:
 
 
 def _check_and_set_backend(backend, build_strategy):
-    if backend not in ['CINN', 'inference', None]:
+    if backend not in ['CINN', None]:
         raise ValueError(
-            f"The backend of to_static should be 'CINN' or 'inference' or None, but received {backend}."
+            f"The backend of to_static should be 'CINN' or None, but received {backend}."
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
@@ -165,20 +164,6 @@ def _check_and_set_backend(backend, build_strategy):
 class _ToStaticOptions(TypedDict):
     property: NotRequired[bool]
     full_graph: NotRequired[bool]
-    # below args are only useful when backend='inference'
-    cache_static_model: NotRequired[bool]
-    save_model_dir: NotRequired[str]
-    precision_mode: NotRequired[str]
-    switch_ir_optim: NotRequired[bool]
-    switch_ir_debug: NotRequired[bool]
-    enable_cinn: NotRequired[bool]
-    with_trt: NotRequired[bool]
-    trt_precision_mode: NotRequired[str]
-    trt_use_static: NotRequired[bool]
-    collect_shape: NotRequired[bool]
-    delete_pass_lists: NotRequired[list[str]]
-    enable_new_ir: NotRequired[bool]
-    exp_enable_use_cutlass: NotRequired[bool]
 
 
 class _ToStaticDecorator(Protocol):
@@ -251,11 +236,9 @@ def to_static(
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        backend(str, Optional): Specifies compilation backend, which can be `CINN` `inference` or
+        backend(str, Optional): Specifies compilation backend, which can be `CINN` or
             None. When backend is `CINN`, CINN compiler will be used to speed up
-            training and inference. when backend is `inference`, we will automatically
-            use jit.save to save the dynamic function into static model in the disk, and
-            then use paddle inference for speeding up inference, without traning.
+            training and inference.
         kwargs: Support keys including `property`, set `property` to True if the function
             is python property.
 
@@ -331,10 +314,6 @@ def to_static(
             f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
         )
     _check_and_set_backend(backend, build_strategy)
-
-    # This is for inference use.
-    if backend == "inference":
-        return paddle_inference_decorator(function, **kwargs)
 
     # for usage: `to_static(foo, ...)`
     if function is not None:
