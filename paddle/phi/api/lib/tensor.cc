@@ -54,10 +54,10 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
                std::shared_ptr<AbstractAutogradMeta> autograd_meta,
-               const std::string &name)
+               std::string name)
     : impl_(std::move(tensor_impl)),
       autograd_meta_(std::move(autograd_meta)),
-      name_(name) {
+      name_(std::move(name)) {
   PADDLE_ENFORCE_NOT_NULL(
       impl_,
       phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
@@ -97,9 +97,8 @@ Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
                            phi::DataLayout::NCHW));
 }
 
-Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
-               const std::string &name)
-    : impl_(std::move(tensor_impl)), name_(name) {}
+Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl, std::string name)
+    : impl_(std::move(tensor_impl)), name_(std::move(name)) {}
 
 /* Part 2: Dimension, DataType and DataLayout methods */
 
