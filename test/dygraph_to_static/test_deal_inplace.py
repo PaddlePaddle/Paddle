@@ -43,6 +43,15 @@ class ParamInplaceNet(paddle.nn.Layer):
             return paddle._C_ops.assign_(self.weight)
 
 
+class ParamDirectlyReturnNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.weight = self.create_parameter(shape=[10], dtype='float32')
+
+    def forward(self, x):
+        return paddle.assign(self.weight)
+
+
 class TestDealInplace(Dy2StTestBase):
     def copy_inputs(self, inputs):
         # Make a copy for inputs to avoid inplace effect.
@@ -81,6 +90,12 @@ class TestDealInplace(Dy2StTestBase):
     @test_pir_only
     def test_param_inplace(self):
         net = ParamInplaceNet()
+        x = paddle.to_tensor(np.random.random(10).astype('float32'))
+        self.run_test(fn_with_inplace_op, net, x, static_n_times=2)
+
+    @test_pir_only
+    def test_param_directly_return(self):
+        net = ParamDirectlyReturnNet()
         x = paddle.to_tensor(np.random.random(10).astype('float32'))
         self.run_test(fn_with_inplace_op, net, x, static_n_times=2)
 

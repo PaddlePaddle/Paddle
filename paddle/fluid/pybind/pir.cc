@@ -237,7 +237,7 @@ Value GetParameterValueByName(const Program &program, const std::string &name) {
   return value;
 }
 
-void SetValueAllNamesWith(Value value, const std::string name) {
+void SetValueName(Value value, const std::string name) {
   pir::Operation *define_op = value.defining_op();
   if (define_op->isa<pir::ParameterOp>()) {
     define_op->set_attribute(
@@ -262,6 +262,72 @@ void SetValueAllNamesWith(Value value, const std::string name) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only set name of Value that "
         "is persistable"));
+  }
+}
+
+void RenameValue(Value value, const std::string &new_name, Block *block) {
+  VLOG(0) << "Strating to rename value to " << new_name;
+  // Handle kwarg
+  for (auto [name, kwarg] : block->kwargs()) {
+    if (kwarg == value) {
+      if (name == new_name) {
+        break;
+      }
+      Value new_value;
+      if (block->kwargs().count(new_name)) {
+        new_value = block->kwargs().at(new_name);
+      } else {
+        new_value = block->AddKwarg(new_name, value.type());
+      }
+      value.ReplaceAllUsesWith(new_value);
+      block->EraseKwarg(name);
+      value = new_value;
+      break;
+    }
+  }
+
+  auto defining_op = value.defining_op();
+  if (defining_op) {
+    // Handle DataOp
+    if (defining_op->isa<paddle::dialect::DataOp>()) {
+      VLOG(5) << "Value is defined by DataOp, rename it to " << new_name;
+      defining_op->set_attribute(
+          "name", StrAttribute::get(pir::IrContext::Instance(), new_name));
+    }
+
+    // Handle ParameterOp
+    if (defining_op->isa<pir::ParameterOp>()) {
+      VLOG(5) << "Value is defined by ParameterOp, rename it to " << new_name;
+      defining_op->set_attribute(
+          "parameter_name",
+          StrAttribute::get(pir::IrContext::Instance(), new_name));
+    }
+
+    // Handle ConstantTensorOp
+    if (defining_op->isa<::pir::ConstantTensorOp>()) {
+      VLOG(5) << "Value is defined by ConstantTensorOp, rename it to "
+              << new_name;
+      defining_op->set_attribute(
+          "tensor_name",
+          StrAttribute::get(pir::IrContext::Instance(), new_name));
+    }
+  }
+
+  for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+    if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+      // Handle ShadowOutputOp
+      VLOG(5) << "Value is used by ShadowOutputOp, rename it to " << new_name;
+      iter->owner()->set_attribute(
+          "output_name",
+          StrAttribute::get(pir::IrContext::Instance(), new_name));
+
+    } else if (iter->owner()->isa<::pir::SetParameterOp>()) {
+      // Handle SetParameterOp
+      VLOG(5) << "Value is used by SetParameterOp, rename it to " << new_name;
+      iter->owner()->set_attribute(
+          "parameter_name",
+          StrAttribute::get(pir::IrContext::Instance(), new_name));
+    }
   }
 }
 
@@ -1351,7 +1417,7 @@ void BindValue(py::module *m) {
             return name_analysis::GetValueFirstName(self);
           },
           [](Value self, const std::string &name) {
-            name_analysis::SetValueAllNamesWith(self, name);
+            name_analysis::SetValueName(self, name);
           })
       .def_property_readonly(
           "has_name",
@@ -1469,6 +1535,7 @@ void BindValue(py::module *m) {
       .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
+      .def("_rename", &name_analysis::RenameValue)
       .def("detach",
            [](Value self) {
              auto share_data_op =
@@ -2239,18 +2306,10 @@ static void inline CreateVariableIfNotExist(
   return;
 }
 
-void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  if (op->isa<pir::ShadowOutputOp>()) {
-    op->set_attribute("output_name", StrAttribute::get(ctx, name));
-  }
-}
-
 void BindUtils(pybind11::module *m) {
   m->def("create_loaded_parameter", CreateVariableIfNotExist);
   m->def("clone_program", CloneProgram);
   m->def("get_op_inplace_info", GetOpInplaceInfo);
-  m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
   m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("append_shadow_output", AppendShadowOutput);

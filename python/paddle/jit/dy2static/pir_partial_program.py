@@ -127,9 +127,8 @@ class RunnableProgram:
     """
 
     @staticmethod
-    def _get_name_value_map_from_program(program) -> dict[str, Value]:
-        name_to_value_dict: dict[str, Value] = {FAKE_VALUE_NAME: fake_value()}
-        all_values: list[Value] = []
+    def _get_program_all_values(program):
+        all_values = []
         all_values.extend(
             arg for arg in program.global_block().kwargs().values()
         )
@@ -138,7 +137,12 @@ class RunnableProgram:
             for op in program.global_block().ops
             for result in op.results()
         )
-        for value in all_values:
+        return all_values
+
+    @staticmethod
+    def _get_name_value_map_from_program(program) -> dict[str, Value]:
+        name_to_value_dict: dict[str, Value] = {FAKE_VALUE_NAME: fake_value()}
+        for value in RunnableProgram._get_program_all_values(program):
             for name in value._names:
                 name_to_value_dict[name] = value
         return name_to_value_dict
@@ -315,7 +319,32 @@ class RunnableProgram:
             else:
                 raise ValueError(f"Unknown program attr: {k}")
             value_program_attr[k] = values
+
+        rename_mapping = {}
+        rename_mapping = RunnableProgram.unify_value_names(
+            self.forward_program, rename_mapping
+        )
+        rename_mapping = RunnableProgram.unify_value_names(
+            self.backward_program, rename_mapping
+        )
         return value_program_attr
+
+    @staticmethod
+    def unify_value_names(
+        program, rename_mapping: dict[str, str]
+    ) -> dict[str, str]:
+        rename_mapping = dict(rename_mapping)
+        for value in RunnableProgram._get_program_all_values(program):
+            if not value.has_name:
+                continue
+            new_name = value.name
+            new_name = rename_mapping.get(new_name, new_name)
+            for name in value._names:
+                if name == new_name:
+                    continue
+                rename_mapping[name] = new_name
+            value._rename(new_name, program.global_block())
+        return rename_mapping
 
     @cached_property
     def program_name_attr(self):
