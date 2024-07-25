@@ -270,7 +270,7 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #endif
       },
       [&](common::HygonDCUArchHIP) -> std::string {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "CINN todo: new hardware HygonDCUArchHIP"));
       });
 }
@@ -381,7 +381,7 @@ void Compiler::CompileCudaModule(const Module& module,
 
 void Compiler::CompileHipModule(const Module& module, const std::string& code) {
   PADDLE_THROW(
-      phi::errors::Unimplemented("CINN todo: new hardware HygonDCUArchHIP"));
+      common::errors::Unimplemented("CINN todo: new hardware HygonDCUArchHIP"));
 }
 
 void Compiler::CompileX86Module(const Module& module) {

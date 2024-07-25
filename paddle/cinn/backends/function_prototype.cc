@@ -45,18 +45,18 @@ void FunctionProto::AssertMatch(const ir::Call *op) const {
   PADDLE_ENFORCE_EQ(
       name,
       op->name,
-      phi::errors::InvalidArgument("function proto's op name check failed"));
+      common::errors::InvalidArgument("function proto's op name check failed"));
   PADDLE_ENFORCE_EQ(
       ret_type,
       op->type(),
-      phi::errors::InvalidArgument("function proto's op type check failed"));
+      common::errors::InvalidArgument("function proto's op type check failed"));
   PADDLE_ENFORCE_EQ(op->read_args.size(),
                     readonly_arg_types.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "function proto's readonly arg types check failed"));
   PADDLE_ENFORCE_EQ(op->write_args.size(),
                     mutable_arg_types.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "function proto's mutable arg types check failed"));
 
   auto get_type = [](Expr u) {
@@ -73,7 +73,7 @@ void FunctionProto::AssertMatch(const ir::Call *op) const {
       PADDLE_ENFORCE_EQ(
           get_type(op->read_args[i]),
           readonly_arg_types[i],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "function proto's readonly arg types check failed"));
     }
   }
@@ -83,7 +83,7 @@ void FunctionProto::AssertMatch(const ir::Call *op) const {
     } else {
       PADDLE_ENFORCE_EQ(get_type(op->write_args[i]),
                         mutable_arg_types[i],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "function proto's mutable arg types check failed"));
     }
   }
@@ -105,7 +105,7 @@ FunctionProto::shape_inference_t FunctionProto::ShapeFollowNthArgument(int n) {
     PADDLE_ENFORCE_LT(
         n,
         args.size(),
-        phi::errors::InvalidArgument("The argument index is out of range"));
+        common::errors::InvalidArgument("The argument index is out of range"));
     auto x = args[n].as_tensor();
     CHECK(x);
     return x->shape;

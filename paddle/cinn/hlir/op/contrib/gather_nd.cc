@@ -163,11 +163,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
 
   framework::CINNSchedule gather_nd_schedule([=](lang::Args args,
                                                  lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        !args.empty(),
-        true,
-        phi::errors::InvalidArgument("The input argument of gather_nd_schedule "
-                                     "is empty! Please check.\n"));
+    PADDLE_ENFORCE_EQ(!args.empty(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The input argument of gather_nd_schedule "
+                          "is empty! Please check.\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -179,7 +179,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
     PADDLE_ENFORCE_EQ(
         !vec_ast.empty(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The vec_ast of gather_nd_schedule is empty! Please check.\n"));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);

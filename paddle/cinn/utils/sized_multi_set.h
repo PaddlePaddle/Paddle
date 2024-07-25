@@ -59,7 +59,7 @@ class SizedMultiSet {
     PADDLE_ENFORCE_GE(
         multi_set_.size(),
         1UL,
-        phi::errors::PreconditionNotMet("Call Pop on empty SizedMultiSet."));
+        common::errors::PreconditionNotMet("Call Pop on empty SizedMultiSet."));
     if (pop_max_when_full_) {
       multi_set_.erase(--multi_set_.end());
     } else {

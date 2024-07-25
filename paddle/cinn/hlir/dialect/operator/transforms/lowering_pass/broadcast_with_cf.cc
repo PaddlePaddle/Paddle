@@ -139,7 +139,7 @@ bool EraseOneExpand(
     auto generate_shape_op =
         expand.shape().defining_op<cinn::dialect::GenerateShapeOp>();
     PADDLE_ENFORCE_NOT_NULL(generate_shape_op,
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "The generate shape op must not be null."));
     rewriter.ReplaceAllUsesWith(expand.out(), expand.x());
     rewriter.EraseOp(expand);
@@ -294,7 +294,7 @@ void SetLeafBlockByGroupView(
   PADDLE_ENFORCE_EQ(
       origin_group->ops().size(),
       new_group->ops().size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of origin group ops and new group ops is not equal,"
           "where the size of origin group ops:%d but the size of new group "
           "ops:%d.",
