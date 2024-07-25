@@ -494,8 +494,9 @@ struct HostBuffer {
     CUDA_CHECK(cudaHostAlloc(reinterpret_cast<void**>(&host_buffer),
                              buf_size * sizeof(T),
                              cudaHostAllocDefault));
-    PADDLE_ENFORCE_NOT_NULL(
-        host_buffer, phi::errors::ResourceExhausted("CUDA out of memory"));
+    PADDLE_ENFORCE_NOT_NULL(host_buffer,
+                            phi::errors::ResourceExhausted(
+                                "Alloc memory failed on CUDA, please Check"));
   }
   void free() {
     if (host_buffer != NULL) {
