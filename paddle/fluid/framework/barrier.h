@@ -33,36 +33,54 @@ class Barrier {
  public:
   explicit Barrier(int count = 1) {
 #ifdef _LINUX
-    PADDLE_ENFORCE_GE(count, 1UL,
-                        platform::errors::InvalidArgument("The value of input number count "
-                        "must not be less than 1. But received count = %d.", count));
+    PADDLE_ENFORCE_GE(count,
+                      1UL,
+                      platform::errors::InvalidArgument(
+                          "The value of input number count "
+                          "must not be less than 1. But received count = %d.",
+                          count));
     int ret = pthread_barrier_init(&_barrier, NULL, count);
-    PADDLE_ENFORCE_EQ(0UL, ret,
-                        platform::errors::InvalidArgument("Fail to initialize the barrier "
-                        "with error code %d.", ret));
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        platform::errors::InvalidArgument("Fail to initialize the barrier "
+                                          "with error code %d.",
+                                          ret));
 #endif
   }
   ~Barrier() {
 #ifdef _LINUX
     int ret = pthread_barrier_destroy(&_barrier);
-    PADDLE_ENFORCE_EQ(0UL, ret,
-                        platform::errors::InvalidArgument("Fail to destroy the barrier "
-                        "with error code %d.", ret));
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        platform::errors::InvalidArgument("Fail to destroy the barrier "
+                                          "with error code %d.",
+                                          ret));
 #endif
   }
   void reset(int count) {
 #ifdef _LINUX
-    PADDLE_ENFORCE_GE(count, 1UL,
-                        platform::errors::InvalidArgument("The value of input number count "
-                        "must not be less than 1. But received count = %d.", count));
+    PADDLE_ENFORCE_GE(count,
+                      1UL,
+                      platform::errors::InvalidArgument(
+                          "The value of input number count "
+                          "must not be less than 1. But received count = %d.",
+                          count));
     int ret = pthread_barrier_destroy(&_barrier);
-    PADDLE_ENFORCE_EQ(0UL, ret,
-                        platform::errors::InvalidArgument("Fail to initialize the barrier "
-                        "with error code %d.", ret));
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        platform::errors::InvalidArgument("Fail to initialize the barrier "
+                                          "with error code %d.",
+                                          ret));
     ret = pthread_barrier_init(&_barrier, NULL, count);
-    PADDLE_ENFORCE_EQ(0UL, ret,
-                        platform::errors::InvalidArgument("Fail to destroy the barrier "
-                        "with error code %d.", ret));
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        platform::errors::InvalidArgument("Fail to destroy the barrier "
+                                          "with error code %d.",
+                                          ret));
 #endif
   }
 
@@ -70,9 +88,12 @@ class Barrier {
 #ifdef _LINUX
     int err = pthread_barrier_wait(&_barrier);
     err = pthread_barrier_wait(&_barrier);
-    PADDLE_ENFORCE_EQ(true, (err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD), 
-                        platform::errors::InvalidArgument("Fail to wait on barrier "
-                        "with error code %d.", err));
+    PADDLE_ENFORCE_EQ(
+        true,
+        (err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD),
+        platform::errors::InvalidArgument("Fail to wait on barrier "
+                                          "with error code %d.",
+                                          err));
 #endif
   }
 
@@ -100,42 +121,57 @@ class Semaphore {
   Semaphore() {
 #ifdef _LINUX
     int ret = sem_init(&_sem, 0, 0);
-    PADDLE_ENFORCE_EQ(0UL, ret,
-                      platform::errors::InvalidArgument("Fail to initialize the semaphore "
-                      "with error code %d.", ret));
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        platform::errors::InvalidArgument("Fail to initialize the semaphore "
+                                          "with error code %d.",
+                                          ret));
 #endif
   }
   ~Semaphore() {
 #ifdef _LINUX
     int ret = sem_destroy(&_sem);
-    PADDLE_ENFORCE_EQ(0UL, ret,
-                      platform::errors::InvalidArgument("Fail to destroy the semaphore "
-                      "with error code %d.", ret));
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        platform::errors::InvalidArgument("Fail to destroy the semaphore "
+                                          "with error code %d.",
+                                          ret));
 #endif
   }
   void post() {
 #ifdef _LINUX
     int ret = sem_post(&_sem);
-    PADDLE_ENFORCE_EQ(0UL, ret,
-                      platform::errors::InvalidArgument("Fail to post the semaphore "
-                      "with error code %d.", ret));
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        platform::errors::InvalidArgument("Fail to post the semaphore "
+                                          "with error code %d.",
+                                          ret));
 #endif
   }
   void wait() {
 #ifdef _LINUX
     int ret = ignore_signal_call(sem_wait, &_sem);
-    PADDLE_ENFORCE_EQ(0UL, ret,
-                      platform::errors::InvalidArgument("Fail to wait the semaphore "
-                      "with error code %d.", ret));
+    PADDLE_ENFORCE_EQ(
+        0UL,
+        ret,
+        platform::errors::InvalidArgument("Fail to wait the semaphore "
+                                          "with error code %d.",
+                                          ret));
 #endif
   }
   bool try_wait() {
     int err = 0;
 #ifdef _LINUX
     err = ignore_signal_call(sem_trywait, &_sem);
-    PADDLE_ENFORCE_EQ(true, (err == 0 || errno == EAGAIN),
-                      platform::errors::InvalidArgument("Fail to ignore signal call "
-                      "with error code %d.", err));
+    PADDLE_ENFORCE_EQ(
+        true,
+        (err == 0 || errno == EAGAIN),
+        platform::errors::InvalidArgument("Fail to ignore signal call "
+                                          "with error code %d.",
+                                          err));
 #endif
     return err == 0;
   }
