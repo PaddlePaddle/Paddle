@@ -17,7 +17,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from paddle import _C_ops
-from paddle.base.framework import core, dygraph_only, in_dynamic_or_pir_mode
+from paddle.base.framework import (
+    core,
+    dygraph_only,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from paddle.base.layer_helper import LayerHelper
 
 from .unary import cast
@@ -341,8 +347,14 @@ def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     if y.dtype != x.dtype:
         y = _C_ops.sparse_cast(y, None, x.dtype)
-    if in_dynamic_or_pir_mode():
+    if in_dygraph_mode():
         return _C_ops.sparse_subtract(x, y)
+    elif in_pir_mode():
+        return _C_ops.sparse_subtract(x, y)
+    else:
+        raise RuntimeError(
+            "We currently only support dynamic graph mode or the new IR mode."
+        )
 
 
 def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
@@ -388,10 +400,14 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     else:
         if y.dtype != x.dtype:
             y = _C_ops.sparse_cast(y, None, x.dtype)
-        if in_dynamic_or_pir_mode():
+        if in_dygraph_mode():
+            return _C_ops.sparse_multiply(x, y)
+        elif in_pir_mode():
             return _C_ops.sparse_multiply(x, y)
         else:
-            pass
+            raise RuntimeError(
+                "We currently only support dynamic graph mode or the new IR mode."
+            )
 
 
 def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
@@ -442,10 +458,14 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     else:
         if y.dtype != x.dtype:
             y = _C_ops.sparse_cast(y, None, x.dtype)
-        if in_dynamic_or_pir_mode():
+        if in_dygraph_mode():
+            return _C_ops.sparse_divide(x, y)
+        elif in_pir_mode():
             return _C_ops.sparse_divide(x, y)
         else:
-            pass
+            raise RuntimeError(
+                "We currently only support dynamic graph mode or the new IR mode."
+            )
 
 
 @dygraph_only
