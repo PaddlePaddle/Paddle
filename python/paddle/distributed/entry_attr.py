@@ -49,7 +49,7 @@ class EntryAttr:
     def __init__(self) -> None:
         self._name = None
 
-    def _to_attr(self):
+    def _to_attr(self) -> str:
         """
         Returns the attributes of this parameter.
 
@@ -100,7 +100,7 @@ class ProbabilityEntry(EntryAttr):
         self._name = "probability_entry"
         self._probability = probability
 
-    def _to_attr(self):
+    def _to_attr(self) -> str:
         return ":".join([self._name, str(self._probability)])
 
 
@@ -148,7 +148,7 @@ class CountFilterEntry(EntryAttr):
         self._name = "count_filter_entry"
         self._count_filter = count_filter
 
-    def _to_attr(self):
+    def _to_attr(self) -> str:
         return ":".join([self._name, str(self._count_filter)])
 
 
@@ -193,5 +193,5 @@ class ShowClickEntry(EntryAttr):
         self._show_name = show_name
         self._click_name = click_name
 
-    def _to_attr(self):
+    def _to_attr(self) -> str:
         return ":".join([self._name, self._show_name, self._click_name])
