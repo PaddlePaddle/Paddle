@@ -103,7 +103,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
   for (auto &t : varnames) {
     Variable *var = scope->Var(t);
     phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
-    if (platform::is_gpu_place(tensor->place())) {
+    if (phi::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       Variable *temp_var = xpu_temp_scope_->Var(t);
       phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
@@ -129,13 +129,13 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
     Variable *var = scope->FindVar(t);
     phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
     VLOG(3) << "Communicator::RecvNoBarrier Var " << t << " On gpu? "
-            << platform::is_gpu_place(tensor->place());
+            << phi::is_gpu_place(tensor->place());
 
     float *temp_recv_data = tensor->mutable_data<float>(phi::CPUPlace());
     VLOG(3) << "Communicator::RpcRecvDense Var " << t << " table_id "
             << table_id << " Temp_data[0] " << temp_recv_data[0]
             << " Temp_data[-1] " << temp_recv_data[tensor->numel() - 1];
-    if (platform::is_gpu_place(tensor->place())) {
+    if (phi::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       phi::DenseTensor *temp_tensor =
           xpu_temp_scope_->FindVar(t)->GetMutable<phi::DenseTensor>();
@@ -163,7 +163,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
     Variable *var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
     phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
-    if (platform::is_gpu_place(tensor->place())) {
+    if (phi::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       Variable *temp_var = xpu_temp_scope_->Var(t);
       phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
@@ -480,8 +480,8 @@ void AsyncCommunicator::RecvNoBarrier() {
       Variable *var = recv_scope_->FindVar(t);
       phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
       VLOG(3) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
-              << platform::is_gpu_place(tensor->place());
-      if (platform::is_gpu_place(tensor->place())) {
+              << phi::is_gpu_place(tensor->place());
+      if (phi::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
         phi::DenseTensor *temp_tensor =
             xpu_temp_scope_->FindVar(t)->GetMutable<phi::DenseTensor>();

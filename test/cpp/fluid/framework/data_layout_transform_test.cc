@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 TEST(DataTransform, DataLayoutFunction) {
   auto place = phi::CPUPlace();
@@ -44,13 +44,11 @@ TEST(DataTransform, DataLayoutFunction) {
 TEST(DataTransformBf16, GetDataFromTensorDNNL) {
   auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
-  in.mutable_data<paddle::platform::bfloat16>(common::make_ddim({2, 3, 1, 2}),
-                                              place);
+  in.mutable_data<phi::dtype::bfloat16>(common::make_ddim({2, 3, 1, 2}), place);
 
   void* in_data =
       phi::funcs::GetDataFromTensor(in, dnnl::memory::data_type::bf16);
-  EXPECT_EQ(in_data,
-            phi::funcs::to_void_cast(in.data<paddle::platform::bfloat16>()));
+  EXPECT_EQ(in_data, phi::funcs::to_void_cast(in.data<phi::dtype::bfloat16>()));
 }
 
 TEST(DataTransformInt32, GetDataFromTensorDNNL) {

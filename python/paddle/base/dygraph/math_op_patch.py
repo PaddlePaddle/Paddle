@@ -18,9 +18,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
-from .. import core, framework
+from .. import core
 from ..framework import convert_np_dtype_to_dtype_
 
 if TYPE_CHECKING:
@@ -102,10 +102,7 @@ def monkey_patch_math_tensor():
     def _scalar_elementwise_op_(
         var: Tensor, scale: float, bias: float
     ) -> Tensor:
-        if framework.in_dygraph_mode():
-            return _C_ops.scale(var, float(scale), bias, True)
-        else:
-            return _legacy_C_ops.scale(var, 'scale', scale, 'bias', bias)
+        return _C_ops.scale(var, float(scale), bias, True)
 
     def _neg_(var: Tensor) -> Tensor:
         return _scalar_elementwise_op_(var, -1.0, 0.0)

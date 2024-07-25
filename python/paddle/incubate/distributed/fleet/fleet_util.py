@@ -56,6 +56,7 @@ class FleetUtil:
 
     def __init__(self, mode="pslib"):
         global fleet
+        self.mode = mode
         if mode == "pslib":
             from paddle.incubate.distributed.fleet.parameter_server.pslib import (
                 fleet as fleet_pslib,
@@ -68,6 +69,9 @@ class FleetUtil:
             )
 
             fleet = fleet_transpiler
+
+        elif mode == "pscore":
+            from paddle.distributed import fleet
         else:
             raise ValueError(
                 "Please choose one mode from [\"pslib\", \"transpiler\"]"
@@ -241,7 +245,10 @@ class FleetUtil:
         if scope.find_var(stat_pos) is None or scope.find_var(stat_neg) is None:
             self.rank0_print("not found auc bucket")
             return None
-        fleet._role_maker._barrier_worker()
+        if self.mode == "pscore":
+            fleet.barrier_worker()
+        else:
+            fleet._role_maker._barrier_worker()
         # auc pos bucket
         pos = np.array(scope.find_var(stat_pos).get_tensor())
         # auc pos bucket shape
@@ -286,7 +293,10 @@ class FleetUtil:
         else:
             auc_value = area / (pos * neg)
 
-        fleet._role_maker._barrier_worker()
+        if self.mode == "pscore":
+            fleet.barrier_worker()
+        else:
+            fleet._role_maker._barrier_worker()
         return auc_value
 
     def load_fleet_model_one_table(self, table_id, path):
@@ -491,7 +501,10 @@ class FleetUtil:
                 self.rank0_error(
                     f"write {day}/{pass_id} {donefile_name} succeed"
                 )
-        fleet._role_maker._barrier_worker()
+        if self.mode == "pscore":
+            fleet.barrier_worker()
+        else:
+            fleet._role_maker._barrier_worker()
 
     def write_xbox_donefile(
         self,
@@ -609,7 +622,10 @@ class FleetUtil:
                 self.rank0_error(
                     f"write {day}/{pass_id} {donefile_name} succeed"
                 )
-        fleet._role_maker._barrier_worker()
+        if self.mode == "pscore":
+            fleet.barrier_worker()
+        else:
+            fleet._role_maker._barrier_worker()
 
     def write_cache_donefile(
         self,
@@ -687,7 +703,10 @@ class FleetUtil:
                     f.write(meta_str)
                 client.upload(donefile_name, model_path)
                 self.rank0_error(f"write {donefile_path} succeed")
-        fleet._role_maker._barrier_worker()
+        if self.mode == "pscore":
+            fleet.barrier_worker()
+        else:
+            fleet._role_maker._barrier_worker()
 
     def load_model(self, output_path, day, pass_id):
         """
@@ -904,7 +923,10 @@ class FleetUtil:
                 >>> fleet_util.pull_all_dense_params(my_scope, my_program)
 
         """
-        fleet._role_maker._barrier_worker()
+        if self.mode == "pscore":
+            fleet.barrier_worker()
+        else:
+            fleet._role_maker._barrier_worker()
         if fleet._role_maker.is_first_worker():
             prog_id = str(id(program))
             tables = (
@@ -1019,7 +1041,10 @@ class FleetUtil:
 
             client.upload(model_name, dest, multi_processes=5, overwrite=True)
 
-        fleet._role_maker._barrier_worker()
+        if self.mode == "pscore":
+            fleet.barrier_worker()
+        else:
+            fleet._role_maker._barrier_worker()
 
     def save_paddle_params(
         self,
@@ -1123,7 +1148,10 @@ class FleetUtil:
                 client.mkdirs(dest)
             client.upload(model_name, dest, multi_processes=5, overwrite=True)
 
-        fleet._role_maker._barrier_worker()
+        if self.mode == "pscore":
+            fleet.barrier_worker()
+        else:
+            fleet._role_maker._barrier_worker()
 
     def get_last_save_xbox_base(
         self,
@@ -1444,7 +1472,10 @@ class FleetUtil:
             return [None] * 9
 
         # barrier worker to ensure all workers finished training
-        fleet._role_maker._barrier_worker()
+        if self.mode == "pscore":
+            fleet.barrier_worker()
+        else:
+            fleet._role_maker._barrier_worker()
 
         # get auc
         auc = self.get_global_auc(scope, stat_pos_name, stat_neg_name)

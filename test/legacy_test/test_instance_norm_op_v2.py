@@ -81,7 +81,16 @@ def _reference_instance_norm_grad(x, scale, mean, var):
 
 class TestInstanceNorm(unittest.TestCase):
     def test_error(self):
-        places = [base.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda()
+            and core.op_support_gpu("instance_norm")
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu(
             "instance_norm"
         ):
@@ -116,7 +125,16 @@ class TestInstanceNorm(unittest.TestCase):
                 self.assertRaises(ValueError, error3d)
 
     def test_dygraph(self):
-        places = [base.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda()
+            and core.op_support_gpu("instance_norm")
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu(
             "instance_norm"
         ):
@@ -144,7 +162,16 @@ class TestInstanceNorm(unittest.TestCase):
     @test_with_pir_api
     def test_static(self):
         with static_guard():
-            places = [base.CPUPlace()]
+            places = []
+            if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+                '1',
+                'true',
+                'on',
+            ] or not (
+                core.is_compiled_with_cuda()
+                and core.op_support_gpu("instance_norm")
+            ):
+                places.append(base.CPUPlace())
             if core.is_compiled_with_cuda() and core.op_support_gpu(
                 "instance_norm"
             ):

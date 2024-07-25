@@ -412,7 +412,7 @@ void FleetWrapper::PullDenseVarsSync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    if (!platform::is_gpu_place(tensor->place())) {
+    if (!phi::is_gpu_place(tensor->place())) {
       float* w = tensor->data<float>();
       ::paddle::distributed::Region reg(w, tensor->numel());
       regions.emplace_back(std::move(reg));
@@ -432,7 +432,7 @@ void FleetWrapper::PushDenseParamSync(
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    if (!platform::is_gpu_place(tensor->place())) {
+    if (!phi::is_gpu_place(tensor->place())) {
       float* g = tensor->mutable_data<float>(place);
       ::paddle::distributed::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));

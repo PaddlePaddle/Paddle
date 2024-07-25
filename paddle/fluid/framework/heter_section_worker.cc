@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 
 void SetMicroId(paddle::framework::Scope* scope,
-                platform::DeviceContext* dev_ctx,
+                phi::DeviceContext* dev_ctx,
                 const phi::Place& place,
                 int micro_id) {
   // create microbatch_id variable
@@ -35,14 +35,14 @@ void SetMicroId(paddle::framework::Scope* scope,
   PADDLE_ENFORCE_EQ(
       var->IsType<phi::DenseTensor>(),
       1,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "the type of microbatch_id  should be phi::DenseTensor"));
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   std::vector<int> dims{1};
   tensor->Resize(common::make_ddim(dims));
   void* tensor_data = tensor->mutable_data(
       place, framework::TransToPhiDataType(framework::proto::VarType::FP32));
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     std::vector<char> temp;
     temp.resize(tensor->numel() * phi::SizeOf(tensor->dtype()));
@@ -73,7 +73,7 @@ uint64_t HeterSectionWorker::batch_id_(0);
 void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   trainer_desc_ = desc;
   fetch_config_ = desc.fetch_config();
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
   program_.reset(new ProgramDesc(
       desc.heter_section_param().section_config().program_desc()));
   thread_queue_.reset(
@@ -118,7 +118,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
 void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   trainer_desc_ = desc;
   fetch_config_ = desc.fetch_config();
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
   program_.reset(new ProgramDesc(
       desc.heter_section_param().section_config().program_desc()));
   thread_queue_.reset(
@@ -207,13 +207,13 @@ void HeterSectionWorker::MiniBatchBarrier() {
     auto micro_id = task.second;
     PADDLE_ENFORCE_EQ(message_name.find("backward") != std::string::npos,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "cpu trainers only receive backward data"));
     PADDLE_ENFORCE_EQ(
         micro_ids.find(micro_id) == micro_ids.end(),
         true,
-        platform::errors::InvalidArgument("minibatch_scope_ can not be nullptr "
-                                          "when create MicroBatch Scope"));
+        phi::errors::InvalidArgument("minibatch_scope_ can not be nullptr "
+                                     "when create MicroBatch Scope"));
     micro_ids.insert(micro_id);
     // backward data has been deserialized to micro scope
     // now run backward computation
@@ -302,7 +302,7 @@ void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
 void HeterSectionWorker::CreateMicrobatchScopes() {
   PADDLE_ENFORCE_NOT_NULL(
       minibatch_scope_,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "minibatch_scope_ can not be nullptr when create MicroBatch Scopes"));
   if (microbatch_scopes_.get() == nullptr) {
     microbatch_scopes_.reset(new std::vector<paddle::framework::Scope*>{});
@@ -412,7 +412,7 @@ void HeterSectionWorker::Run() {
       if (is_last_stage) {
         PADDLE_ENFORCE_EQ(message_name.find("forward") != std::string::npos,
                           1,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "last stage only receive forward data"));
         RunForward(micro_id);
         RunBackward(micro_id);

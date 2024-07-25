@@ -14,7 +14,7 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 template <typename Place, typename T>
@@ -107,17 +107,13 @@ TEST(SaveLoadOp, XPU) {
   r = SaveLoadOpTest<phi::CPUPlace, int>(cpu_place, 2, 128);
   EXPECT_EQ(r, 0);
 
-  r = SaveLoadOpTest<phi::XPUPlace, paddle::platform::float16>(
-      xpu_place, 2, 128);
+  r = SaveLoadOpTest<phi::XPUPlace, phi::dtype::float16>(xpu_place, 2, 128);
   EXPECT_EQ(r, 0);
-  r = SaveLoadOpTest<phi::CPUPlace, paddle::platform::float16>(
-      cpu_place, 2, 128);
+  r = SaveLoadOpTest<phi::CPUPlace, phi::dtype::float16>(cpu_place, 2, 128);
   EXPECT_EQ(r, 0);
 
-  r = SaveLoadOpTest<phi::XPUPlace, paddle::platform::bfloat16>(
-      xpu_place, 4, 32);
+  r = SaveLoadOpTest<phi::XPUPlace, phi::dtype::bfloat16>(xpu_place, 4, 32);
   EXPECT_EQ(r, 0);
-  r = SaveLoadOpTest<phi::CPUPlace, paddle::platform::bfloat16>(
-      cpu_place, 4, 32);
+  r = SaveLoadOpTest<phi::CPUPlace, phi::dtype::bfloat16>(cpu_place, 4, 32);
   EXPECT_EQ(r, 0);
 }

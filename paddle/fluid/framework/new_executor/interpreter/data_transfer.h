@@ -89,9 +89,9 @@ inline bool need_device_transform(const phi::KernelKey& kernel_type_for_var,
   }
 
   phi::Place expected_place = phi::TransToPhiPlace(expected_backend);
-  if (platform::is_same_place(tensor->place(), expected_place) ||
-      (platform::is_cuda_pinned_place(tensor->place()) &&
-       platform::is_cpu_place(expected_place))) {
+  if (phi::is_same_place(tensor->place(), expected_place) ||
+      (phi::is_cuda_pinned_place(tensor->place()) &&
+       phi::is_cpu_place(expected_place))) {
     return false;
   }
   return true;

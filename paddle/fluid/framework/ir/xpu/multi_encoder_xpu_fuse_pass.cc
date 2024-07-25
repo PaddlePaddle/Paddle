@@ -620,7 +620,7 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
 
 void MultiEncoderXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   int single_encoder_fused_counts = 0;
@@ -779,7 +779,7 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
 
     phi::DenseTensor fc_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     fc_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
     fc_max_in_cpu_tensor.Resize({max_ptr_size});
     std::vector<float> output_scales(max_ptr_size, input_max[i]);
@@ -821,7 +821,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
       {q_w_t.dims()[0] + k_w_t.dims()[0] + v_w_t.dims()[0], q_w_t.dims()[1]}));
   qkv_w_intx_t.set_type(q_w_t.type());
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   paddle::experimental::CheckAndTrans2Contiguous(&q_w_t);
   paddle::experimental::CheckAndTrans2Contiguous(&k_w_t);
   paddle::experimental::CheckAndTrans2Contiguous(&v_w_t);
@@ -920,7 +920,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
           scope->FindVar(qkv_w_max_name),
-          platform::errors::Fatal(
+          phi::errors::Fatal(
               "qkv_w_max(%s) variable should not be nullptr if qkv_w_intx(%s) "
               "variable is exist.",
               qkv_w_max_name,
@@ -928,18 +928,18 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
       if (is_per_channel) {
         PADDLE_ENFORCE_NOT_NULL(
             scope->FindVar(qkv_scale_max_name),
-            platform::errors::Fatal("qkv_scale_max(%s) variable should not be "
-                                    "nullptr if qkv_w_intx(%s) "
-                                    "variable is exist.",
-                                    qkv_scale_max_name,
-                                    qkv_w_intx_name));
+            phi::errors::Fatal("qkv_scale_max(%s) variable should not be "
+                               "nullptr if qkv_w_intx(%s) "
+                               "variable is exist.",
+                               qkv_scale_max_name,
+                               qkv_w_intx_name));
       }
     }
   } else {
     *qkv_w_max = FindNodeWithName(graph, qkv_w_max_name);
     PADDLE_ENFORCE_NOT_NULL(
         *qkv_w_max,
-        platform::errors::Fatal(
+        phi::errors::Fatal(
             "qkv_w_max(%s) variable should not be nullptr if qkv_w_intx(%s) "
             "variable is exist.",
             qkv_w_max_name,
@@ -972,7 +972,7 @@ void MultiEncoderXPUFusePass::PrepareQKVBias(Graph* graph,
   qkv_bias_tensor.Resize(DDim({q_bias_fp32_size * 3}));
   qkv_bias_tensor.set_type(phi::DataType::FLOAT32);
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   auto* qkv_bias_data = cpu_ctx->Alloc<float>(&qkv_bias_tensor);
   memcpy(qkv_bias_data,
          q_bias_fp32_tensor.data(),

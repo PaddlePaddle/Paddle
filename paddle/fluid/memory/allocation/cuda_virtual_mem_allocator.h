@@ -23,7 +23,7 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #if CUDA_VERSION >= 10020
 
