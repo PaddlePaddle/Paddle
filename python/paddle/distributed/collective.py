@@ -193,8 +193,8 @@ def _set_custom_gid(gid):
 
 
 def new_group(
-    ranks: list | None = None,
-    backend: str | None = None,
+    ranks: list[int] | None = None,
+    backend: Literal['nccl'] | None = None,
     timeout: datetime.timedelta = _default_timeout,
     nccl_comm_init_option: int = 0,
 ) -> Group:
