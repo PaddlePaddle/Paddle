@@ -20,13 +20,43 @@ class FusedMoe(Layer):
     r"""A FusedMoe Layer.
 
     Parameters:
+        hidden_size (int): The dim size of input units.
+        inter_size (int): The dim size of feed forward network.
+        num_expert (int): The number of experts.
+        int8_moe_method (string): Currently not supported.
+        weight_attr (ParamAttr, optional): The attribute for the learnable
+            weight of this layer. The default value is None and the weight will be
+            initialized to zero. For detailed information, please refer to
+            paddle.ParamAttr.
+        bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
+            of this layer. If it is set to False, no bias will be added to the output.
+            If it is set to None or one kind of ParamAttr, a bias parameter will
+            be created according to ParamAttr. For detailed information, please refer
+            to paddle.ParamAttr. The default value is None and the bias will be
+            initialized to zero.
+        moe_topk: Select the top k experts for each token.
 
     Attribute:
+        **weight** (Parameter): the learnable weight of this layer.
+        **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
+        - input: Multi-dimensional tensor with shape :math:`[batch\_size, seq\_len, d\_model]` .
+        - output: Multi-dimensional tensor with shape :math:`[batch\_size, seq\_len, d\_model]` .
 
     Examples:
+        .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> from paddle.incubate.nn.layer.fused_moe import FusedMoe
+
+            >>> x = paddle.randn([10, 128, 1024]) # [bsz, seq_len, d_model]
+            >>> fused_moe = FusedMoe(1024, 4096, 8, int8_moe_method="", moe_topk=2)
+            >>> y = fused_moe(x)
+            >>> print(y.shape)
+            [10, 128, 1024]
     """
 
     def __init__(
@@ -34,7 +64,7 @@ class FusedMoe(Layer):
         hidden_size,
         inter_size,
         num_experts,
-        act_type=None,
+        int8_moe_method="",
         weight_attr=None,
         bias_attr=None,
         moe_topk=2,
@@ -62,7 +92,7 @@ class FusedMoe(Layer):
         self.bmm_bias1 = self.create_parameter(
             shape=bias1_shape, attr=bias_attr, dtype=dtype, is_bias=True
         )
-        self.act_type = act_type
+        self.int8_moe_method = int8_moe_method
 
     def forward(self, x):
         return F.fused_moe(
@@ -72,6 +102,6 @@ class FusedMoe(Layer):
             self.bmm_bias0,
             self.bmm_weight1,
             self.bmm_bias1,
-            None,
+            self.int8_moe_method,
             2,
         )
