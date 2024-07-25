@@ -103,7 +103,17 @@ ${kernel_func_declare}
 std::vector<std::function<cutlass::Status(const GemmEpilogueAllParams)>>
     ${func_name}_all_func =  {${all_kernel_func_name}};
 
-std::map<std::vector<int>, int> map_problem_${func_name};
+std::map<std::vector<int>, int> map_problem_${func_name} = 
+{
+    {{2, 1152, 256}, 207},
+    {{2, 1152, 1152}, 207},
+    {{2, 6912, 1152}, 213},
+    {{512, 3456, 1152}, 54},
+    {{512, 1152, 4608} , 180},
+    {{512, 4608, 1152}, 12},
+    {{512, 1152, 1152}, 180},
+    {{512, 3456, 11152}, 45},
+};
 std::mutex ${func_name}_mutex;
 
 void ${func_name}(GemmEpilogueAllParams params) {
@@ -114,7 +124,7 @@ void ${func_name}(GemmEpilogueAllParams params) {
   int ldb = params.ldb;
   int ldd = params.ldd;
 
-  std::vector<int> problem_size = {m, n, k, lda, ldb, ldd};
+  std::vector<int> problem_size = {m, n, k};
 
   if (map_problem_${func_name}.count(problem_size)) {
     ${func_name}_all_func[map_problem_${func_name}.at(problem_size)](
