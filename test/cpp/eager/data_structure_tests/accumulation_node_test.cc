@@ -73,23 +73,46 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et0.impl())
           ->value()
           .data<float>();
-  CHECK_EQ(ret_et0_ptr[0], static_cast<float>(10.0f));
+  PADDLE_ENFORCE_EQ(ret_et0_ptr[0],
+                    static_cast<float>(10.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the selected rows "
+                        "should be 10.0f, but got %f.",
+                        ret_et0_ptr[0]));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
   paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et1.impl())
           ->data<float>();
-  CHECK_EQ(ret_et1_ptr[0], static_cast<float>(20.0f));
-  // Check Retain Grad
-  CHECK_EQ(std::dynamic_pointer_cast<phi::SelectedRows>(et0.impl())
-               ->value()
-               .data<float>()[0],
-           static_cast<float>(10.0f));
-  paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
-  auto* grad_ptr =
-      std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())->data<float>();
-  CHECK_EQ(grad_ptr[0], static_cast<float>(30.0f));
+  PADDLE_ENFORCE_EQ(ret_et1_ptr[0],
+                    static_cast<float>(20.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the dense tensor "
+                        "should be 20.0f, but got %f.",
+                        ret_et1_ptr[0]));
+    );
+    // Check Retain Grad
+    PADDLE_ENFORCE_EQ(
+        std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+            ->value()
+            .data<float>()[0],
+        static_cast<float>(10.0f),
+        platform::errors::InvalidArgument(
+            "The value of the first element of the dense tensor should be "
+            "10.0f, but got %f.",
+            std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+                ->data<float>()[0]));
+
+    paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
+    auto* grad_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())
+                         ->data<float>();
+    PADDLE_ENFORCE_EQ(grad_ptr[0],
+                      static_cast<float>(30.0f),
+                      platform::errors::InvalidArgument(
+                          "The value of the first element of the dense tensor "
+                          "should be 30.0f, but got %f.",
+                          grad_ptr[0]));
 }
 
 TEST(AccumulationNode, SelectedRowsMerge) {
@@ -136,7 +159,12 @@ TEST(AccumulationNode, SelectedRowsMerge) {
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et0.impl())
           ->value()
           .data<float>();
-  CHECK_EQ(ret_et0_ptr[0], static_cast<float>(10.0f));
+  PADDLE_ENFORCE_EQ(ret_et0_ptr[0],
+                    static_cast<float>(10.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the selected rows "
+                        "should be 10.0f, but got %f.",
+                        ret_et0_ptr[0]));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
   paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
@@ -144,17 +172,33 @@ TEST(AccumulationNode, SelectedRowsMerge) {
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et1.impl())
           ->value()
           .data<float>();
-  CHECK_EQ(ret_et1_ptr[0], static_cast<float>(20.0f));
+  PADDLE_ENFORCE_EQ(ret_et1_ptr[0],
+                    static_cast<float>(20.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the selected rows "
+                        "should be 20.0f, but got %f.",
+                        ret_et1_ptr[0]));
   // Check Retain Grad
-  CHECK_EQ(std::dynamic_pointer_cast<phi::SelectedRows>(et0.impl())
-               ->value()
-               .data<float>()[0],
-           static_cast<float>(10.0f));
+  PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::SelectedRows>(et0.impl())
+                        ->value()
+                        .data<float>()[0],
+                    static_cast<float>(10.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the selected rows "
+                        "should be 10.0f, but got %f.",
+                        std::dynamic_pointer_cast<phi::SelectedRows>(et0.impl())
+                            ->value()
+                            .data<float>()[0]));
   paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
   auto* grad_ptr = std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl())
                        ->value()
                        .data<float>();
-  CHECK_EQ(grad_ptr[0], static_cast<float>(30.0f));
+  PADDLE_ENFORCE_EQ(grad_ptr[0],
+                    static_cast<float>(30.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the selected rows "
+                        "should be 30.0f, but got %f.",
+                        grad_ptr[0]));
 }
 
 TEST(AccumulationNode, SelectedRowsAddTensor) {
@@ -203,7 +247,12 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et0.impl())
           ->value()
           .data<float>();
-  CHECK_EQ(ret_et0_ptr[0], static_cast<float>(10.0f));
+  PADDLE_ENFORCE_EQ(ret_et0_ptr[0],
+                    static_cast<float>(10.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the selected rows "
+                        "should be 10.0f, but got %f.",
+                        ret_et0_ptr[0]));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
   paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
@@ -211,16 +260,32 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et1.impl())
           ->value()
           .data<float>();
-  CHECK_EQ(ret_et1_ptr[0], static_cast<float>(20.0f));
+  PADDLE_ENFORCE_EQ(ret_et1_ptr[0],
+                    static_cast<float>(20.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the selected rows "
+                        "should be 20.0f, but got %f.",
+                        ret_et1_ptr[0]));
   // Check Retain Grad
-  CHECK_EQ(std::dynamic_pointer_cast<phi::SelectedRows>(et0.impl())
-               ->value()
-               .data<float>()[0],
-           static_cast<float>(10.0f));
+  PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::SelectedRows>(et0.impl())
+                        ->value()
+                        .data<float>()[0],
+                    static_cast<float>(10.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the selected rows "
+                        "should be 10.0f, but got %f.",
+                        std::dynamic_pointer_cast<phi::SelectedRows>(et0.impl())
+                            ->value()
+                            .data<float>()[0]));
   paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
   auto* grad_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())->data<float>();
-  CHECK_EQ(grad_ptr[0], static_cast<float>(30.0f));
+  PADDLE_ENFORCE_EQ(grad_ptr[0],
+                    static_cast<float>(30.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the dense tensor "
+                        "should be 30.0f, but got %f.",
+                        grad_ptr[0]));
 }
 
 TEST(AccumulationNode, Tensor) {
@@ -276,8 +341,12 @@ TEST(AccumulationNode, Tensor) {
   auto* ret_et0_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et0.impl())
           ->data<phi::dtype::float16>();
-  CHECK_EQ(ret_et0_ptr[0], phi::dtype::float16(10.0f));
-
+  PADDLE_ENFORCE_EQ(ret_et0_ptr[0],
+                    phi::dtype::float16(10.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the dense tensor "
+                        "should be 10.0f, but got %f.",
+                        ret_et0_ptr[0]));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
   paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
@@ -285,23 +354,41 @@ TEST(AccumulationNode, Tensor) {
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et1.impl())
           ->data<phi::dtype::float16>();
-  CHECK_EQ(ret_et1_ptr[0], phi::dtype::float16(20.0f));
-
+  PADDLE_ENFORCE_EQ(ret_et1_ptr[0],
+                    phi::dtype::float16(20.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the dense tensor "
+                        "should be 20.0f, but got %f.",
+                        ret_et1_ptr[0]));
   // Check Retain Grad
-  CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
-               ->data<phi::dtype::float16>()[0],
-           phi::dtype::float16(10.0f));
+  PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+                        ->data<phi::dtype::float16>()[0],
+                    phi::dtype::float16(10.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the dense tensor "
+                        "should be 10.0f, but got %f.",
+                        std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+                            ->data<phi::dtype::float16>()[0]));
   paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
   auto* grad_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())
                        ->data<phi::dtype::float16>();
-  CHECK_EQ(grad_ptr[0], phi::dtype::float16(30.0f));
+  PADDLE_ENFORCE_EQ(grad_ptr[0],
+                    phi::dtype::float16(30.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the dense tensor "
+                        "should be 30.0f, but got %f.",
+                        grad_ptr[0]));
 
   // Reduce Hook case 1: Call RegisterReduceHook and run operator()
   VLOG(6) << "Test Reduce Hook";
-  CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
-               ->data<phi::dtype::float16>()[0],
-           phi::dtype::float16(10.0f));
-
+  PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+                        ->data<phi::dtype::float16>()[0],
+                    phi::dtype::float16(10.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the dense tensor "
+                        "should be 10.0f, but got %f.",
+                        std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+                            ->data<phi::dtype::float16>()[0]));
   auto reduce_hook_1 = [&]() -> void {
     auto* input_et_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(input_et.impl())
@@ -318,14 +405,23 @@ TEST(AccumulationNode, Tensor) {
   // Check operator() result, should be 36.0
   auto* _ret_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(_ret.impl())
                        ->data<phi::dtype::float16>();
-  CHECK_EQ(_ret_ptr[0], phi::dtype::float16(10.0f));
+  PADDLE_ENFORCE_EQ(_ret_ptr[0],
+                    phi::dtype::float16(36.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the dense tensor "
+                        "should be 36.0f, but got %f.",
+                        _ret_ptr[0]));
 
   // Check Retain Grad, should be 36.0
   auto* _ret_input_et_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(input_et.impl())
           ->data<phi::dtype::float16>();
-  CHECK_EQ(_ret_input_et_ptr[0], phi::dtype::float16(36.0f));
-
+  PADDLE_ENFORCE_EQ(_ret_input_et_ptr[0],
+                    phi::dtype::float16(36.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the dense tensor "
+                        "should be 36.0f, but got %f.",
+                        _ret_input_et_ptr[0]));
   // Reduce Hook case 2: Call RegisterReduceHook and ApplyReduceHooks directly
   VLOG(6) << "Test Reduce Hook";
   auto reduce_hook_2 = [&]() -> void {
@@ -339,7 +435,12 @@ TEST(AccumulationNode, Tensor) {
   node->ApplyReduceHooks();
 
   // Check ApplyReduceHooks result
-  CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
-               ->data<phi::dtype::float16>()[0],
-           phi::dtype::float16(100.0f));
+  PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+                        ->data<phi::dtype::float16>()[0],
+                    phi::dtype::float16(100.0f),
+                    platform::errors::InvalidArgument(
+                        "The value of the first element of the dense tensor "
+                        "should be 100.0f, but got %f.",
+                        std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+                            ->data<phi::dtype::float16>()[0]));
 }
