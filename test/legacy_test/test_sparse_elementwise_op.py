@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 import paddle.sparse
 from paddle.base.framework import in_pir_mode
+
 op_list = [__add__, __sub__, __mul__, __truediv__]
 
 
@@ -238,11 +239,19 @@ class TestSparseAddStaticAPI(unittest.TestCase):
             sparse_dim = len(self.coo_shape) - 1
             op = __add__
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
-                y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+                x = np.random.randint(-255, 255, size=self.coo_shape).astype(
+                    dtype
+                )
+                y = np.random.randint(-255, 255, size=self.coo_shape).astype(
+                    dtype
+                )
 
-                self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
-                self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
+                self.dense_x = paddle.to_tensor(
+                    x, dtype=dtype, stop_gradient=True
+                )
+                self.dense_y = paddle.to_tensor(
+                    y, dtype=dtype, stop_gradient=True
+                )
 
                 self.expect_res = op(self.dense_x, self.dense_y)
 
@@ -331,11 +340,19 @@ class TestSparseSubStaticAPI(unittest.TestCase):
             sparse_dim = len(self.coo_shape) - 1
             op = __sub__
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
-                y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+                x = np.random.randint(-255, 255, size=self.coo_shape).astype(
+                    dtype
+                )
+                y = np.random.randint(-255, 255, size=self.coo_shape).astype(
+                    dtype
+                )
 
-                self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
-                self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
+                self.dense_x = paddle.to_tensor(
+                    x, dtype=dtype, stop_gradient=True
+                )
+                self.dense_y = paddle.to_tensor(
+                    y, dtype=dtype, stop_gradient=True
+                )
 
                 self.expect_res = op(self.dense_x, self.dense_y)
 
@@ -424,11 +441,19 @@ class TestSparseMulStaticAPI(unittest.TestCase):
             sparse_dim = len(self.coo_shape) - 1
             op = __mul__
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
-                y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+                x = np.random.randint(-255, 255, size=self.coo_shape).astype(
+                    dtype
+                )
+                y = np.random.randint(-255, 255, size=self.coo_shape).astype(
+                    dtype
+                )
 
-                self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
-                self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
+                self.dense_x = paddle.to_tensor(
+                    x, dtype=dtype, stop_gradient=True
+                )
+                self.dense_y = paddle.to_tensor(
+                    y, dtype=dtype, stop_gradient=True
+                )
 
                 self.expect_res = op(self.dense_x, self.dense_y)
 
@@ -517,11 +542,19 @@ class TestSparseDivStaticAPI(unittest.TestCase):
             sparse_dim = len(self.coo_shape) - 1
             op = __truediv__
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
-                y = np.random.randint(-255, 255, size=self.coo_shape).astype(dtype)
+                x = np.random.randint(-255, 255, size=self.coo_shape).astype(
+                    dtype
+                )
+                y = np.random.randint(-255, 255, size=self.coo_shape).astype(
+                    dtype
+                )
 
-                self.dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=True)
-                self.dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=True)
+                self.dense_x = paddle.to_tensor(
+                    x, dtype=dtype, stop_gradient=True
+                )
+                self.dense_y = paddle.to_tensor(
+                    y, dtype=dtype, stop_gradient=True
+                )
 
                 self.expect_res = op(self.dense_x, self.dense_y)
 
