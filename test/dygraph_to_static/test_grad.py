@@ -155,7 +155,7 @@ class TestNoGradLinear(TestGradLinear):
         self.temp_dir.cleanup()
 
 
-class LayerCase(paddle.nn.Layer):
+class UnuseGradVarLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -171,7 +171,7 @@ class LayerCase(paddle.nn.Layer):
 class TestUnuseGradVar(Dy2StTestBase):
     @test_pir_only
     def test_run(self):
-        layer = LayerCase()
+        layer = UnuseGradVarLayer()
         layer = paddle.jit.to_static(layer)
 
         x = paddle.to_tensor([1.0])
