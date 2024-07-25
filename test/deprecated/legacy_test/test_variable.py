@@ -392,20 +392,19 @@ class TestVariable(unittest.TestCase):
                 self.assertTrue((result[1] == feed_data).all())
                 self.assertTrue((result[0] == result[1]).all())
 
-                if not paddle.framework.use_pir_api():
-                    modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
-                    detach_x.set_value(modified_value, scope)
-                    result = exe.run(main, fetch_list=[x, detach_x])
-                    self.assertTrue((result[1] == modified_value).all())
-                    self.assertTrue((result[0] == result[1]).all())
+                modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
+                detach_x.set_value(modified_value, scope)
+                result = exe.run(main, fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == modified_value).all())
+                self.assertTrue((result[0] == result[1]).all())
 
-                    modified_value = np.random.uniform(
-                        -1, 1, size=[3, 2, 1]
-                    ).astype('float32')
-                    x.set_value(modified_value, scope)
-                    result = exe.run(main, fetch_list=[x, detach_x])
-                    self.assertTrue((result[1] == modified_value).all())
-                    self.assertTrue((result[0] == result[1]).all())
+                modified_value = np.random.uniform(
+                    -1, 1, size=[3, 2, 1]
+                ).astype('float32')
+                x.set_value(modified_value, scope)
+                result = exe.run(main, fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == modified_value).all())
+                self.assertTrue((result[0] == result[1]).all())
 
 
 class TestVariableSlice(unittest.TestCase):
