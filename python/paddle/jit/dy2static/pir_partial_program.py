@@ -48,6 +48,12 @@ __all__ = []
 prog_logger = TranslatorLogger()
 
 
+def get_value_name(value):
+    if is_fake_value(value):
+        return "FakeVar"
+    return value.name
+
+
 class NestSequence:
     """
     A wrapper class that easily to flatten and restore the nest structure of
@@ -116,78 +122,57 @@ class RunnableProgram:
         - backward_range (tuple(Int, Int)) | None
     """
 
-    @cached_property
-    def get_value_name_map(self) -> ValueDict:
-        return self._get_value_name_map_from_program(self.program)
-
-    @classmethod
-    def _get_value_name_map_from_program(cls, program) -> ValueDict:
-        ret = ValueDict()
-        ret[fake_value()] = "FakeVar"
-        for keyword, arg in program.global_block().kwargs().items():
-            ret[arg] = keyword
-        for op in program.global_block().ops:
-            if op.name() == "builtin.set_parameter":
-                ret[op.operand(0).source()] = op.attrs()["parameter_name"]
-            elif op.name() == "builtin.parameter":
-                ret[op.result(0)] = op.attrs()["parameter_name"]
-            elif op.name() == "builtin.shadow_output":
-                ret[op.operand(0).source()] = op.attrs()["output_name"]
-            elif op.name() == "pd_op.data":
-                ret[op.result(0)] = op.attrs()["name"]
-        return ret
-
-    @classmethod
-    def _get_name_defining_op(cls, program, value):
-        for op in program.global_block().ops:
-            if op.name() == "builtin.set_parameter":
-                if value.is_same(op.operand(0).source()):
-                    return op
-            elif op.name() == "builtin.parameter":
-                if value.is_same(op.result(0)):
-                    return op
-            elif op.name() == "builtin.shadow_output":
-                if value.is_same(op.operand(0).source()):
-                    return op
-            elif op.name() == "pd_op.data":
-                if value.is_same(op.result(0)):
-                    return op
-        return None
+    @staticmethod
+    def _get_name_value_map_from_program(program) -> dict[str, Value]:
+        name_to_value_dict: dict[str, Value] = {}
+        all_values: list[Value] = []
+        all_values.extend(
+            arg for arg in program.global_block().kwargs().values()
+        )
+        all_values.extend(
+            result
+            for op in program.global_block().ops
+            for result in op.results()
+        )
+        for value in all_values:
+            for name in value._names:
+                name_to_value_dict[name] = value
+        return name_to_value_dict
 
     @cached_property
-    def get_name_value_map(self):
-        return {v: k for k, v in self.get_value_name_map.items()}
+    def name_value_map(self):
+        return RunnableProgram._get_name_value_map_from_program(self.program)
 
     def convert_name(self, values):
         if len(values) == 0:
             return []
         if isinstance(values[0], str):
             return values
-        return [self.get_value_name_map.get(v, "FakeVar") for v in values]
+        return [get_value_name(v) for v in values]
 
     @cached_property
     def x_values(self):
-        return [self.get_name_value_map[v] for v in self.x_names]
+        return [self.name_value_map[v] for v in self.x_names]
 
     @cached_property
     def param_values(self):
-        return [self.get_name_value_map[v] for v in self.param_names]
+        return [self.name_value_map[v] for v in self.param_names]
 
     @cached_property
     def out_values(self):
-        return [self.get_name_value_map[v] for v in self.out_names]
+        return [self.name_value_map[v] for v in self.out_names]
 
     @cached_property
     def x_grad_values(self):
-        return [self.get_name_value_map[v] for v in self.x_grad_names]
+        return [self.name_value_map[v] for v in self.x_grad_names]
 
     @cached_property
     def param_grad_values(self):
-        return [self.get_name_value_map[v] for v in self.p_grad_names]
+        return [self.name_value_map[v] for v in self.p_grad_names]
 
     @cached_property
     def out_grad_values(self):
-        return [self.get_name_value_map[v] for v in self.o_grad_names]
+        return [self.name_value_map[v] for v in self.o_grad_names]
 
     def __init__(
         self,
@@ -309,18 +294,12 @@ class RunnableProgram:
         ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
         # can't apply pass after call this function.
         self.finish_pass = True
-        fwd_map = {
-            v: k
-            for k, v in self._get_value_name_map_from_program(
-                self.forward_program
-            ).items()
-        }
-        bwd_map = {
-            v: k
-            for k, v in self._get_value_name_map_from_program(
-                self.backward_program
-            ).items()
-        }
+        fwd_map = RunnableProgram._get_name_value_map_from_program(
+            self.forward_program
+        )
+        bwd_map = RunnableProgram._get_name_value_map_from_program(
+            self.backward_program
+        )
         value_program_attr = {}
         for k, ns in self.program_name_attr.items():
             if k.startswith("f"):
@@ -337,19 +316,9 @@ class RunnableProgram:
     @cached_property
     def program_name_attr(self):
         origin_attr = self._forward_backward_program[1]
-        fwd_map = self._get_value_name_map_from_program(self.forward_program)
-        bwd_map = self._get_value_name_map_from_program(self.backward_program)
         _program_attr = {}
         for k, vs in origin_attr.items():
-            if k.startswith("f"):
-                names = [fwd_map[v] for v in vs]
-            elif k.startswith("b"):
-                names = [bwd_map[v] for v in vs]
-            elif k == "no_need_buffers":
-                names = [fwd_map[v] for v in vs]
-            else:
-                raise ValueError(f"Unknown program attr: {k}")
-            _program_attr[k] = names
+            _program_attr[k] = [get_value_name(v) for v in vs]
         return _program_attr
 
     @cached_property
