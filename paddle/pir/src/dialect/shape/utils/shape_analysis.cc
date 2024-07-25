@@ -98,7 +98,7 @@ InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
     return null_shape_or_data;
   }
   if (!HasShapeOrDataForValue(val)) {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Fail to GetShapeOrDataForValue on InferSymbolicShape!"));
   }
 
@@ -140,7 +140,7 @@ void InferSymbolicShapeContext::SetSymbolForValueByStaticShape(Value val) {
     symbol::TensorListShapeOrDataDimExprs shape_data_list;
     for (const auto& vec : vec_data) {
       if (!vec.isa<DenseTensorType>()) {
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "Set static shape ONLY SUPPORT inner type DenseTensorType!"));
       } else {
         const DenseTensorType& type_info = vec.dyn_cast<DenseTensorType>();
@@ -151,7 +151,7 @@ void InferSymbolicShapeContext::SetSymbolForValueByStaticShape(Value val) {
     SetShapeOrDataForValue(val, shape_data_list);
     return;
   }
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(common::errors::Fatal(
       "Set static shape ONLY SUPPORT DenseTensorType and VectorType!"));
 }
 
@@ -472,8 +472,8 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
           continue;
         }
         if (!context_.HasShapeOrDataForValue(result_value)) {
-          PADDLE_THROW(phi::errors::Fatal(op->name() +
-                                          " HAS ERROR on InferSymbolicShape!"));
+          PADDLE_THROW(common::errors::Fatal(
+              op->name() + " HAS ERROR on InferSymbolicShape!"));
         }
       }
     } else {
@@ -554,7 +554,7 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
       lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
           rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently, IsShapeEqual only support TensorShapeOrDataDimExprs "
           "but not TensorListShapeOrDataDimExprs."));
 
@@ -600,7 +600,7 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
       lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
           rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
           "but not TensorListShapeOrDataDimExprs."));
 
