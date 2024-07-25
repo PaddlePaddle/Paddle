@@ -3179,6 +3179,20 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
   }
 };
 
+struct TopPSamplingOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "seed") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    } else if (info.name == "k") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 0);
+    } else if (info.name == "mode") {
+      (*attribute_map)[info.name] = pir::StrAttribute::get(ctx, "truncated");
+    }
+  }
+};
+
 struct FusedElemwiseAddActivationOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -3629,6 +3643,7 @@ OpTranslator::OpTranslator() {
   special_handlers["slice"] = SliceOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
+  special_handlers["top_p_sampling"] = TopPSamplingOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["tril_triu_grad"] = TrilAndTriuGradOpTranscriber();
   special_handlers["matmul"] = LegacyMatmulOpTranscriber();

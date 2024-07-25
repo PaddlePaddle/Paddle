@@ -524,14 +524,14 @@ inline void PirRunProgramAPI(
         program_id,
         global_inner_scope,
         place_hash_key);
-    // Step 3. get all eager gc vars
-    // std::set<std::string> skip_eager_delete_vars =
-    // paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
-    // *backward_program);
-
+    // Step 3. get all eager gc vars (skip_names = backward_inputs -
+    // no_need_buffers + outputs)
+    std::vector<std::string> skip_names;
     // update interpretercore skip_gc_var
-    auto skip_names = details::GetNameFromValue(
-        forward_program->block(), middle_values, false, true);
+    std::vector<pir::Value> kwargs_values;
+    for (auto &kwarg : backward_program->block()->kwargs()) {
+      skip_names.push_back(kwarg.first);
+    }
     auto skip_names_set =
         std::set<std::string>(skip_names.begin(), skip_names.end());
     auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
@@ -545,9 +545,7 @@ inline void PirRunProgramAPI(
     skip_names = details::GetNameFromValue(
         forward_program->block(), output_values, false, true);
     skip_names_set.insert(skip_names.begin(), skip_names.end());
-    skip_names = details::GetNameFromValue(
-        forward_program->block(), input_values, true, false);
-    skip_names_set.insert(skip_names.begin(), skip_names.end());
+
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
 
@@ -757,6 +755,7 @@ inline void RunProgramAPI(
     // all out_vars are skip_eager_var
     skip_eager_delete_vars.insert(output_names.begin(), output_names.end());
     // update interpretercore skip_gc_var
+    details::print_collection(skip_eager_delete_vars);
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
 
     std::set<std::string> input_vars;

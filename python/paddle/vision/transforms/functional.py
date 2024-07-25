@@ -25,6 +25,7 @@ import paddle
 from paddle._typing import unreached
 
 from ...base.framework import Variable
+from ...base.libpaddle.pir import Value
 from . import (
     functional_cv2 as F_cv2,
     functional_pil as F_pil,
@@ -64,7 +65,7 @@ def _is_tensor_image(img: _ImageDataType) -> TypeGuard[Tensor]:
     """
     Return True if img is a Tensor for dynamic mode or Variable for static graph mode.
     """
-    return isinstance(img, (paddle.Tensor, Variable))
+    return isinstance(img, (paddle.Tensor, Variable, Value))
 
 
 def _is_numpy_image(img: _ImageDataType) -> TypeGuard[npt.NDArray[Any]]:

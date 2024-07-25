@@ -212,7 +212,7 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
     }
 #else
     PADDLE_THROW(
-        platform::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
+        phi::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
 #endif
   } else if (phi::is_cpu_place(place)) {
     gc = std::make_unique<CPUGarbageCollector>(place, max_memory_size);
@@ -221,14 +221,14 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
     gc = std::make_unique<XPUGarbageCollector>(place, max_memory_size);
 #else
     PADDLE_THROW(
-        platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
+        phi::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
   } else if (phi::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
     gc = std::make_unique<IPUGarbageCollector>(place, max_memory_size);
 #else
     PADDLE_THROW(
-        platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
+        phi::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
 #endif
   } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -242,7 +242,7 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
           place, max_memory_size);
     }
 #else
-    PADDLE_THROW(platform::errors::Unimplemented("No CustomDevice gc found"));
+    PADDLE_THROW(phi::errors::Unimplemented("No CustomDevice gc found"));
 #endif
   }
   return std::unique_ptr<GarbageCollector>(gc.release());
