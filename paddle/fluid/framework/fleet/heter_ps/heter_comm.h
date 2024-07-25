@@ -347,8 +347,15 @@ class HeterComm {
     }
     void check(const size_t& len,
                const size_t& value_bytes = sizeof(GradType)) {
-      PADDLE_ENFORCE_GE(all_keys_mem->size(), len);
-      PADDLE_ENFORCE_GE(all_grads_mem->size(), len * value_bytes);
+      PADDLE_ENFORCE_GE(
+          all_keys_mem->size(),
+          phi::errors::InvalidArgument("The given length is not equal to the "
+                                       "memory length, Please Check!"));
+      PADDLE_ENFORCE_GE(
+          all_grads_mem->size(),
+          len * value_bytes,
+          phi::errors::InvalidArgument("The given length is not equal to the "
+                                       "memory length, Please Check!"));
     }
     void init_pull(const size_t& len) {
       pull_res.h_recv_fea_num = len;
