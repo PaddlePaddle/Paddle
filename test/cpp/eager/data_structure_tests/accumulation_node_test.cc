@@ -91,7 +91,7 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
                         "should be 20.0f"));
   // Check Retain Grad
   PADDLE_ENFORCE_EQ(
-      std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+      std::dynamic_pointer_cast<phi::SelectedRows>(et0.impl())
           ->value()
           .data<float>()[0],
       static_cast<float>(10.0f),
