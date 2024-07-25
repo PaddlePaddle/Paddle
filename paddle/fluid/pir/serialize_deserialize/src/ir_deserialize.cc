@@ -25,6 +25,17 @@ void ProgramReader::RecoverProgram(Json* program_json,
   VLOG(6) << "Finish json to program.";
   return;
 }
+
+pir::Type ProgramReader::RecoverType(Json* type_json) {
+  return ReadType(type_json);
+}
+
+pir::AttributeMap ProgramReader::RecoverOpAttributesMap(Json* attrs_json) {
+  Json empty_json = Json::array();
+  std::unordered_map<std::string, Json> attr_patch;
+  return ReadAttributesMap(attrs_json, &empty_json, attr_patch);
+}
+
 void ProgramReader::ReadProgram(Json* program_json, pir::Program* program) {
   auto top_level_op = program->module_op();
   PADDLE_ENFORCE_EQ(

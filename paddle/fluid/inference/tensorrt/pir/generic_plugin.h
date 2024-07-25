@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,70 +18,23 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/op_desc.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/type_defs.h"
-#include "paddle/fluid/inference/tensorrt/engine.h"
-#include "paddle/fluid/inference/tensorrt/helper.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
-#include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
-#include "paddle/fluid/memory/allocation/cuda_allocator.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_context.h"
+#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/platform/tensorrt/trt_plugin.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/pir/include/core/operation.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
-namespace plugin {
+namespace paddle::inference::tensorrt::pir {
 
-enum class GeneratePluginDataType {
-  PLUGIN_BOOL,
-  PLUGIN_UINT8,
-  PLUGIN_INT8,
-  PLUGIN_INT16,
-  PLUGIN_INT32,
-  PLUGIN_INT64,
-  PLUGIN_FP16,
-  PLUGIN_FP32,
-  PLUGIN_FP64,
-  PLUGIN_BF16,
-  PLUGIN_SIZE_T,
-  PLUGIN_COMPLEX64,
-  PLUGIN_COMPLEX128,
-  PLUGIN_OPTIONAL,
-};
-
-GeneratePluginDataType ProtoTypeToGeneratePluginDataType(
-    framework::proto::VarType_Type proto_type);
-
-void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
-                               phi::KernelContext* kernel_context,
-                               const phi::KernelSignature& signature,
-                               const phi::Kernel* phi_kernel);
-
-class GenericPlugin : public DynamicPluginTensorRT {
- public:
-  struct InputOutPutVarInfo {
-    std::vector<GeneratePluginDataType> inputs_data_type;
-    std::vector<GeneratePluginDataType> outputs_data_type;
-  };
-
+class GenericPlugin : public paddle::platform::DynamicPluginTensorRT {
  public:
   GenericPlugin() {}
 
-  GenericPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
-                const InputOutPutVarInfo& in_out_info,
-                bool with_fp16_ = false);
-
-  GenericPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
-                const std::vector<GeneratePluginDataType>& inputs_data_type,
-                const std::vector<GeneratePluginDataType>& outputs_data_type,
-                bool with_fp16_ = false);
+  GenericPlugin(const std::string& op_name,
+                const std::string& attrs_info,
+                const std::vector<std::string>& inputs_type_info,
+                const std::vector<std::string>& outputs_type_info,
+                bool with_fp16 = false);
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
@@ -89,9 +42,9 @@ class GenericPlugin : public DynamicPluginTensorRT {
 
   // IPluginV2 method
   const char* getPluginType() const TRT_NOEXCEPT override {
-    return "generic_plugin";
+    return "pir_generic_plugin";
   }
-
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
   int getNbOutputs() const TRT_NOEXCEPT override;
 
   int getNbInputs() const TRT_NOEXCEPT;
@@ -106,10 +59,26 @@ class GenericPlugin : public DynamicPluginTensorRT {
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     size_t sum = 0;
-    sum += SerializedSize(inputs_data_type_);
-    sum += SerializedSize(outputs_data_type_);
-    sum += SerializedSize(with_fp16_);
-    sum += op_meta_data_.size();
+    sum += paddle::platform::SerializedSize(with_fp16_);
+    sum += paddle::platform::SerializedSize(static_cast<int>(op_name_.size()));
+    sum += op_name_.size();
+    sum += paddle::platform::SerializedSize(
+        static_cast<int>(attrs_map_info_.size()));
+    sum += attrs_map_info_.size();
+    sum += paddle::platform::SerializedSize(
+        static_cast<int>(inputs_type_info_.size()));
+    for (auto i = 0; i < inputs_type_info_.size(); i++) {
+      sum += paddle::platform::SerializedSize(
+          static_cast<int>(inputs_type_info_[i].size()));
+      sum += inputs_type_info_[i].size();
+    }
+    sum += paddle::platform::SerializedSize(
+        static_cast<int>(outputs_type_info_.size()));
+    for (auto i = 0; i < outputs_type_info_.size(); i++) {
+      sum += paddle::platform::SerializedSize(
+          static_cast<int>(outputs_type_info_[i].size()));
+      sum += outputs_type_info_[i].size();
+    }
     return sum;
   }
 
@@ -155,9 +124,14 @@ class GenericPlugin : public DynamicPluginTensorRT {
   }
 
  private:
-  std::string op_meta_data_;
-  framework::proto::OpDesc proto_op_desc_;
-  framework::OpDesc op_desc_;
+  std::string op_name_;
+  std::string attrs_map_info_;
+  std::vector<std::string> inputs_type_info_;
+  std::vector<std::string> outputs_type_info_;
+  ::pir::AttributeMap attrs_map_;
+  std::vector<::pir::Type> inputs_type_;
+  std::vector<::pir::Type> outputs_type_;
+  std::unique_ptr<paddle::dialect::OpYamlInfoParser> op_yaml_info_ = nullptr;
 
  private:
   std::unordered_map<nvinfer1::DataType, std::unique_ptr<phi::Kernel>>
@@ -167,19 +141,19 @@ class GenericPlugin : public DynamicPluginTensorRT {
 
   std::vector<phi::DenseTensor>* dense_tensor_inputs_{nullptr};
   std::vector<phi::DenseTensor>* dense_tensor_outputs_{nullptr};
-
- private:
-  std::vector<GeneratePluginDataType> inputs_data_type_;
-  std::vector<GeneratePluginDataType> outputs_data_type_;
 };
 
-class GenericPluginCreator : public TensorRTPluginCreator {
+class PIRGenericPluginCreator : public paddle::platform::TensorRTPluginCreator {
  public:
   const char* getPluginName() const TRT_NOEXCEPT override {
-    return "generic_plugin";
+    return "pir_generic_plugin";
   }
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
+
+  nvinfer1::IPluginV2* createPlugin(const char* name,
+                                    const nvinfer1::PluginFieldCollection* fc)
+      TRT_NOEXCEPT override;
 
   nvinfer1::IPluginV2DynamicExt* deserializePlugin(const char* name,
                                                    const void* serial_data,
@@ -189,9 +163,4 @@ class GenericPluginCreator : public TensorRTPluginCreator {
   }
 };
 
-REGISTER_TRT_PLUGIN_V2(GenericPluginCreator);
-
-}  // namespace plugin
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt::pir
