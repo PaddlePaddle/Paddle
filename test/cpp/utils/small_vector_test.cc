@@ -19,6 +19,7 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/platform/enforce.h"
 
 template <typename T, unsigned N>
 static std::vector<T> ToStdVector(const paddle::small_vector<T, N> &vec) {
