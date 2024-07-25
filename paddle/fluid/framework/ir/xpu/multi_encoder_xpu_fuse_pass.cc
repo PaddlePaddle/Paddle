@@ -1365,7 +1365,6 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
                             "The rank of q_cos_embedding should be greater "
                             "than or equal to 2, but received %d.",
                             q_cos_emb_shape.size()));
-      << q_cos_emb_shape.size();
       auto size_per_head = q_reshape_out->Var()->GetShape()[3];
       PADDLE_ENFORCE_EQ(
           size_per_head,
