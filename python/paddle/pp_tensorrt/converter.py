@@ -206,6 +206,8 @@ class PaddleToTensorRTConverter:
 
         config = builder.create_builder_config()
         config.add_optimization_profile(profile)
+        config.builder_optimization_level = 5
+        config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
         trt_engine = builder.build_engine(network, config)
         trt_params = paddle.base.libpaddle.TRTEngineParams()
         trt_params.min_input_shape = min_shape_map
