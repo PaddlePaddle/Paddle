@@ -642,8 +642,6 @@ set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dygraph_multi_forward PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_regularizer_deprecated PROPERTIES TIMEOUT 150)
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_slice_op_deprecated PROPERTIES TIMEOUT 120)
