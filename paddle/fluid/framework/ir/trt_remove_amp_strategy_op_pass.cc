@@ -62,7 +62,12 @@ void TrtRemoveAMPStrategyOpPass::ApplyImpl(Graph *graph) const {
   std::unordered_set<ir::Node *> fp16_vars;
   std::unordered_set<ir::Node *> cast_ops;
   for (auto *op_node : op_nodes) {
-    CHECK_EQ(op_node->IsOp(), true);
+    PADDLE_ENFORCE_EQ(
+        op_node->IsOp(),
+        true,
+        phi::errors::InvalidArgument(
+            "The 'op_node' must be an operator node, but it is not."));
+
     auto *op_desc = op_node->Op();
     if (op_desc->Type() == "cast") {
       auto input_dtype = op_node->inputs[0]->Var()->GetDataType();

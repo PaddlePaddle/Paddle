@@ -254,7 +254,12 @@ void FleetWrapper::HeterPushSparseVars(
     show_index = 1;
     click_index = 2;
   }
-  CHECK_GE(grad_dim, 0);
+  PADDLE_ENFORCE_GE(
+      grad_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The 'grad_dim' must be greater than or equal to 0, but received %d.",
+          grad_dim));
 
   sparse_push_keys.clear();
   sparse_push_keys.reserve(fea_keys.size() + 1);
@@ -973,7 +978,12 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     show_index = 1;
     click_index = 2;
   }
-  CHECK_GE(grad_dim, 0);
+  PADDLE_ENFORCE_GE(
+      grad_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The 'grad_dim' must be greater than or equal to 0, but received %d.",
+          grad_dim));
 
   sparse_push_keys->clear();
   sparse_push_keys->reserve(fea_keys.size() + 1);
