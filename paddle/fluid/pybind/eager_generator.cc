@@ -729,7 +729,7 @@ static void PurifyGradNodeGenerationInfo(const proto::OpProto& op_proto,
 
               PADDLE_ENFORCE(
                   grad_outs->count(grad_output_name) > 0,
-                  paddle::platform::errors::Fatal(
+                  phi::errors::Fatal(
                       "Unable to find gradient output name in grad_outs."));
               // grad_outs
               grad_outs->erase(grad_output_name);
