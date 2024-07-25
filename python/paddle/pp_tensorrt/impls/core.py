@@ -245,6 +245,23 @@ def conv2d_converter(network, paddle_op, inputs):
 
     return conv_layer
 
+@converter_registry.register("pd_op.nonzero", trt_version="8.x")
+def non_zero_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    cast_layer = network.add_cast(input_tensor, trt.float32)
+    non_zero_layer = network.add_non_zero(cast_layer.get_output(0))
+    
+    return non_zero_layer
+
+@converter_registry.register("pd_op.gather_nd", trt_version="8.x")
+def gather_nd_converter(network, paddle_op, inputs):
+    input_tensor, indices_tensor = inputs
+    shuffle_layer = network.add_shuffle(indices_tensor)
+    shuffle_layer.first_transpose = trt.Permutation([1, 0])
+    # import pdb;pdb.set_trace()
+    non_zero_layer = network.add_gather_v2(input_tensor, shuffle_layer.get_output(0), trt.GatherMode.ND)
+    return non_zero_layer
+
 
 @converter_registry.register("pd_op.pool2d", trt_version="8.x")
 def pool2d_converter(network, paddle_op, inputs):
