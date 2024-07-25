@@ -49,10 +49,12 @@ prog_logger = TranslatorLogger()
 
 # TODO: check the var not found fallback to FakeVar
 
+FAKE_VALUE_NAME = "FakeValue"
+
 
 def get_value_name(value):
     if is_fake_value(value):
-        return "FakeVar"
+        return FAKE_VALUE_NAME
     return value.name
 
 
@@ -126,7 +128,7 @@ class RunnableProgram:
 
     @staticmethod
     def _get_name_value_map_from_program(program) -> dict[str, Value]:
-        name_to_value_dict: dict[str, Value] = {}
+        name_to_value_dict: dict[str, Value] = {FAKE_VALUE_NAME: fake_value()}
         all_values: list[Value] = []
         all_values.extend(
             arg for arg in program.global_block().kwargs().values()
