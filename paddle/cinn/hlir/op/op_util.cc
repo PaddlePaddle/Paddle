@@ -35,7 +35,7 @@ CINNSchedule GetElementwiseScheduleFunc(
     PADDLE_ENFORCE_GT(
         arg_pack.size(),
         0U,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "arg_pack.size() must contains at least one element."))
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
