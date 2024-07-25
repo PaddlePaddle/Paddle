@@ -100,18 +100,20 @@ TEST(cpuQuantizePass, ConvReLU6) {
   int fused_conv2d_num = 0;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op() && node->Op()->Type() == "fused_conv2d") {
-      PADDLE_ENFORCE_EQ(
-          node->Op()->GetAttrIfExists<float>("fuse_beta"),
-          6,
-          platform::errors::InvalidArgument("Attr fuse_beta must equal to 6."));
+      PADDLE_ENFORCE_EQ(node->Op()->GetAttrIfExists<float>("fuse_beta"),
+                        6,
+                        platform::errors::InvalidArgument(
+                            "Attr fuse_beta must equal to 6, but got %d.",
+                            node->Op()->GetAttrIfExists<float>("fuse_beta")));
       fused_conv2d_num++;
     }
   }
-  PADDLE_ENFORCE_GT(
-      fused_conv2d_num,
-      0,
-      platform::errors::InvalidArgument("fused_conv2d_num must equal to 0."
-                                        "Graph must contain fused_conv2d."));
+  PADDLE_ENFORCE_GT(fused_conv2d_num,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "fused_conv2d_num must equal to 0, but got %d."
+                        "Graph must contain fused_conv2d.",
+                        fused_conv2d_num));
 }
 
 }  // namespace pass

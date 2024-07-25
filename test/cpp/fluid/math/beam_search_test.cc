@@ -49,13 +49,13 @@ void PrepareCPUTensors(phi::DenseTensor* ids,
                     phi::errors::InvalidArgument(
                         "The ids's dimensions should be %d, but got %d.",
                         ids_vec_data.size(),
-                        static_cast<size_t>(ids->numel()).size()));
+                        static_cast<size_t>(ids->numel())));
   PADDLE_ENFORCE_EQ(static_cast<size_t>(ids->numel()),
                     scores_vec_data.size(),
                     phi::errors::InvalidArgument(
                         "The ids's dimensions should be %d, but got %d.",
                         scores_vec_data.size(),
-                        static_cast<size_t>(ids->numel()).size()));
+                        static_cast<size_t>(ids->numel())));
 
   for (int i = 0; i < ids->numel(); i++) {
     ids_data[i] = ids_vec_data[i];
