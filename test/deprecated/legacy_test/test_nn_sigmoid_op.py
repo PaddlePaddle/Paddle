@@ -50,7 +50,12 @@ class TestNNSigmoidAPI(unittest.TestCase):
         exe = paddle.static.Executor(place)
         out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
         np.testing.assert_allclose(out[0], self.y, rtol=1e-05)
-        self.assertTrue(y.name.startswith("api_sigmoid"))
+
+        if paddle.framework.in_pir_mode():
+            y_name = y.get_defining_op().name()
+            self.assertTrue(y_name.startswith("pd_op.sigmoid"))
+        else:
+            self.assertTrue(y.name.startswith("api_sigmoid"))
 
     def check_dynamic_api(self, place):
         paddle.disable_static(place)

@@ -309,10 +309,6 @@ if(WITH_GPU)
     test_limit_gpu_memory
     SRCS test_limit_gpu_memory.cu
     DEPS gpu_info phi common)
-  nv_library(
-    cuda_device_guard
-    SRCS cuda_device_guard.cc
-    DEPS gpu_info)
 endif()
 
 if(WITH_ROCM)
@@ -324,10 +320,6 @@ if(WITH_ROCM)
     test_limit_gpu_memory
     SRCS test_limit_gpu_memory.cu
     DEPS gpu_info phi common)
-  hip_library(
-    cuda_device_guard
-    SRCS cuda_device_guard.cc
-    DEPS gpu_info)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
