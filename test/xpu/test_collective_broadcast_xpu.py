@@ -38,6 +38,7 @@ class TestCBroadcastOp(TestDistBase):
                 "collective_broadcast_api.py",
                 "broadcast",
                 dtype=dtype,
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     @unittest.skipIf(
