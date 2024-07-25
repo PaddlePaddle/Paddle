@@ -93,8 +93,7 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
                           2,
                           platform::errors::InvalidArgument(
                               "The input argument's size of reciprocal op "
-                              "should be 2, but got %d.",
-                              pack_args.size()));
+                              "should be 2."));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
 
@@ -148,8 +147,7 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
                           2,
                           platform::errors::InvalidArgument(
                               "The input argument's size of reciprocal op "
-                              "should be 2, but got %d.",
-                              pack_args.size()));
+                              "should be 2."));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
 

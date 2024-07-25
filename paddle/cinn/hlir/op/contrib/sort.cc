@@ -179,12 +179,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
         auto tensor_A = A.as_tensor_ref();
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        PADDLE_ENFORCE_EQ(
-            pack_args.size(),
-            2U,
-            platform::errors::InvalidArgument(
-                "The input argument's size of Sort should be 2, but got %d.",
-                pack_args.size()));
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          2U,
+                          platform::errors::InvalidArgument(
+                              "The input argument's size of Sort should be 2"));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         std::vector<ir::Tensor> out =
@@ -258,12 +256,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     CHECK(!args.empty())
         << "The input arguments of ArgSort compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_GE(
-        pack_args.size(),
-        1U,
-        platform::errors::InvalidArgument(
-            "The input arguments' size of ArgSort should be 1, but got %d.",
-            pack_args.size()));
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      1U,
+                      platform::errors::InvalidArgument(
+                          "The input arguments' size of ArgSort should be 1"));
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -271,12 +267,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
 
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    PADDLE_ENFORCE_EQ(
-        pack_args.size(),
-        3U,
-        platform::errors::InvalidArgument(
-            "The input argument's size of ArgSort should be 3, but got %d.",
-            pack_args.size()));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      3U,
+                      platform::errors::InvalidArgument(
+                          "The input argument's size of ArgSort should be 3"));
     CHECK(pack_args[1].is_string());
     std::string tensor_name = pack_args[1].operator std::string();
     auto out = ArgSort(tensor_A, target, axis, is_ascend, tensor_name);

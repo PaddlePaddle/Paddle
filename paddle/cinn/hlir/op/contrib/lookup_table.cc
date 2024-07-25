@@ -51,14 +51,11 @@ ir::Tensor LookupTable(const ir::Tensor& table,
   PADDLE_ENFORCE_EQ(
       table->shape.size(),
       2,
-      platform::errors::InvalidArgument(
-          "The shape of table should be 2, but got %d.", table->shape.size()));
-  PADDLE_ENFORCE_GT(
-      ids->shape.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "The shape of ids should be greater than 1, but got %d.",
-          ids->shape.size()));
+      platform::errors::InvalidArgument("The shape of table should be 2."));
+  PADDLE_ENFORCE_GT(ids->shape.size(),
+                    1,
+                    platform::errors::InvalidArgument(
+                        "The shape of ids should be greater than 1."));
   auto output_shape = ids->shape;
   output_shape.back() = table->shape.back();
 
@@ -102,10 +99,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
     PADDLE_ENFORCE_GE(pack_args.size(),
                       2U,
                       platform::errors::InvalidArgument(
-                          "The input arguments' size of %s should be greater "
-                          "than 2, but got %d.",
-                          op_name,
-                          pack_args.size()));
+                          "The input arguments' size should be greater "
+                          "than 2"));
     Expr A = pack_args[0];
     Expr B = pack_args[1];
     CHECK(A.as_tensor());
@@ -116,13 +111,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", B shape: " << utils::Join(tensor_B->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    PADDLE_ENFORCE_EQ(
-        pack_args.size(),
-        3U,
-        platform::errors::InvalidArgument(
-            "The input arguments' size of %s should be 3, but got %d.",
-            op_name,
-            pack_args.size()));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      3U,
+                      platform::errors::InvalidArgument(
+                          "The input arguments' size should be 3"));
     std::string tensor_name = pack_args[2].operator std::string();
 
     ir::Tensor out = LookupTable(tensor_A, tensor_B, padding_idx, tensor_name);
