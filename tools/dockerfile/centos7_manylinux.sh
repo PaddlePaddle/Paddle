@@ -67,6 +67,7 @@ function make_cuda124cudnn900trt8616() {
   sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
 }
 
+
 function main() {
   local CMD=$1
   case $CMD in
