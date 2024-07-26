@@ -213,6 +213,25 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
 
+bool CtcAlignOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &input_dims = input_shape_or_data.shape();
+
+  infer_context->SetShapeOrDataForValue(op->result(0), input_shape_or_data);
+
+  if (infer_context->HasValue(op->operand_source(1))) {
+    std::vector<symbol::DimExpr> output_length_shape = {input_dims[0], 1};
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(output_length_shape)});
+  }
+
+  return true;
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<symbol::DimExpr> &x_dims =
