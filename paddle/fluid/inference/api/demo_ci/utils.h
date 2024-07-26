@@ -58,7 +58,7 @@ Record ProcessALine(const std::string& line) {
 
   PADDLE_ENFORCE_EQ(columns.size(),
                     2UL,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "data format error, should be <data>\t<shape>"));
   Record record;
   std::vector<std::string> data_strs;
@@ -94,7 +94,7 @@ void CheckOutput(const std::string& referfile,
   PADDLE_ENFORCE_EQ(
       numel,
       refer.shape.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "predictor shape size should be equal to reference shape size"));
   switch (output.dtype) {
     case PaddleDType::INT64: {
@@ -102,7 +102,7 @@ void CheckOutput(const std::string& referfile,
         PADDLE_ENFORCE_EQ(
             static_cast<int64_t*>(output.data.data())[i],
             refer.data[i],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "predictor output should be equal to reference output"));
       }
       break;
@@ -112,8 +112,7 @@ void CheckOutput(const std::string& referfile,
         PADDLE_ENFORCE_LT(
             fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]),
             threshold,
-            platform::errors::InvalidArgument(
-                "diff should be less than threshold"));
+            phi::errors::InvalidArgument("diff should be less than threshold"));
       }
       break;
     }
@@ -122,7 +121,7 @@ void CheckOutput(const std::string& referfile,
         PADDLE_ENFORCE_EQ(
             static_cast<int32_t*>(output.data.data())[i],
             refer.data[i],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "predictor output should be equal to reference output"));
       }
       break;
