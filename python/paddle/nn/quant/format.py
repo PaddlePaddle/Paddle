@@ -51,7 +51,8 @@ class LinearQuanter(Layer):
         zero_point=None,
         quant_axis=None,
         bit_length=8,
-        group_size=128,
+        group_size=None,
+        group_axis=None,
     ):
         super().__init__()
         scales = paddle.to_tensor(scales, dtype="float32")
@@ -78,6 +79,7 @@ class LinearQuanter(Layer):
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
         self._group_size = group_size
+        self._group_axis = group_axis
         if isinstance(self._bit_length, tuple):
             if (
                 self._bit_length[0] == 4
@@ -105,13 +107,30 @@ class LinearQuanter(Layer):
 
     def forward(self, input):
         if in_dynamic_mode():
-            # todo: groupwise
-            quant_tensor = paddle.clip(
-                paddle.round(input.cast('float32') / self._scales)
-                + self._zero_point,
-                self._qmin,
-                self._qmax,
-            )
+            bnt = (1 << (self._bit_length - 1)) - 1
+            if self._group_size is not None:
+                input_shape = input.shape
+                new_shape = [
+                    *input_shape[: self._group_axis],
+                    input_shape[self._group_axis] // self._group_size,
+                    self._group_size,
+                    *input_shape[self._group_axis + 1 :],
+                ]
+                grouped_input = input.reshape(new_shape)
+                quant_tensor = paddle.clip(
+                    paddle.round(grouped_input.cast('float32') / self._scales)
+                    + self._zero_point,
+                    -bnt - 1,
+                    bnt,
+                )
+                quant_tensor = quant_tensor.reshape(input_shape)
+            else:
+                quant_tensor = paddle.clip(
+                    paddle.round(input.cast('float32') / self._scales)
+                    + self._zero_point,
+                    -bnt - 1,
+                    bnt,
+                )
             return quant_tensor.cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
@@ -139,6 +158,8 @@ class LinearQuanter(Layer):
             zero_point=quanter.zero_points(),
             quant_axis=quanter.quant_axis(),
             bit_length=quanter.bit_length(),
+            group_size=quanter.group_size(),
+            group_axis=quanter.group_axis(),
         )
 
 
@@ -149,7 +170,8 @@ class LinearDequanter(Layer):
         zero_point=None,
         quant_axis=None,
         bit_length=8,
-        group_size=128,
+        group_size=None,
+        group_axis=None,
     ):
         super().__init__()
         scales = paddle.to_tensor(scales, dtype="float32")
@@ -176,6 +198,7 @@ class LinearDequanter(Layer):
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
         self._group_size = group_size
+        self._group_axis = group_axis
         if isinstance(self._bit_length, tuple):
             if (
                 self._bit_length[0] == 4
@@ -203,10 +226,23 @@ class LinearDequanter(Layer):
 
     def forward(self, input):
         if in_dynamic_mode():
-            # todo: groupwise
-            quant_dequant_tensor = (
-                input.cast('float32') - self._zero_point
-            ) * self._scales
+            if self._group_size is not None:
+                input_shape = input.shape
+                new_shape = [
+                    *input_shape[: self._group_axis],
+                    input_shape[self._group_axis] // self._group_size,
+                    self._group_size,
+                    *input_shape[self._group_axis + 1 :],
+                ]
+                grouped_input = input.reshape(new_shape)
+                quant_dequant_tensor = (
+                    grouped_input.cast('float32') - self._zero_point
+                ) * self._scales
+                quant_dequant_tensor = quant_dequant_tensor.reshape(input_shape)
+            else:
+                quant_dequant_tensor = (
+                    input.cast('float32') - self._zero_point
+                ) * self._scales
             return quant_dequant_tensor.cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
@@ -234,6 +270,8 @@ class LinearDequanter(Layer):
             zero_point=quanter.zero_points(),
             quant_axis=quanter.quant_axis(),
             bit_length=quanter.bit_length(),
+            group_size=quanter.group_size(),
+            group_axis=quanter.group_axis(),
         )
 
 
