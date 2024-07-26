@@ -308,7 +308,7 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(
 pir::Attribute ProgramReader::ReadAttribute(Json* attr_json) {
   VLOG(6) << "Begin Read Attribute. ";
   auto attr_type = attr_json->at(ATTR_TYPE).at(ID).template get<std::string>();
-  if (patch_builder->HasAttrPatch(attr_type)) {
+  if (patch_builder && patch_builder->HasAttrPatch(attr_type)) {
     VLOG(8) << attr_type << " brefore: " << *attr_json;
     Json attr_patch = patch_builder->GetJsonAttrPatch(attr_type);
     patch_builder->ApplyAttrTypePatches(
@@ -321,7 +321,7 @@ pir::Attribute ProgramReader::ReadAttribute(Json* attr_json) {
 pir::Type ProgramReader::ReadType(Json* type_json) {
   VLOG(6) << "Begin Read Type. ";
   auto type_name = type_json->at(ID).template get<std::string>();
-  if (patch_builder->HasOpPatch(type_name)) {
+  if (patch_builder && patch_builder->HasOpPatch(type_name)) {
     VLOG(8) << type_name << " brefore: " << *type_json;
     Json type_patch = patch_builder->GetJsonTypePatch(type_name);
     patch_builder->ApplyTypePatches(type_name, type_json, type_patch);
