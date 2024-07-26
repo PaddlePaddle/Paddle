@@ -183,7 +183,11 @@ class GlooWrapper {
   }
 
   void Barrier() {
-    CHECK_EQ(is_initialized_, true);
+    PADDLE_ENFORCE_EQ(
+        is_initialized_,
+        true,
+        phi::errors::PreconditionNotMet(
+            "GlooWrapper should be initialized before calling Barrier."));
 #ifdef PADDLE_WITH_GLOO
     gloo::BarrierOptions opts(context_);
     gloo::barrier(opts);
@@ -200,9 +204,20 @@ class GlooWrapper {
   template <typename T>
   std::vector<T> AllReduce(std::vector<T>& sendbuf,            // NOLINT
                            const std::string& mode = "sum") {  // NOLINT
-    CHECK_EQ(is_initialized_, true);
+    PADDLE_ENFORCE_EQ(
+        is_initialized_,
+        true,
+        phi::errors::PreconditionNotMet(
+            "GlooWrapper should be initialized before calling AllReduce."));
     std::vector<T> recvbuf(sendbuf.size(), T());
-    CHECK_EQ(sendbuf.size() == recvbuf.size(), true);
+    PADDLE_ENFORCE_EQ(
+        sendbuf.size(),
+        recvbuf.size(),
+        phi::errors::InvalidArgument(
+            "The size of send buffer and receive buffer should be equal, but "
+            "received send buffer size = %d and receive buffer size = %d.",
+            sendbuf.size(),
+            recvbuf.size()));
 #ifdef PADDLE_WITH_GLOO
     gloo::AllreduceOptions opts(context_);
     opts.setInput(sendbuf.data(), sendbuf.size());
@@ -234,7 +249,11 @@ class GlooWrapper {
 
   template <typename T>
   std::vector<T> AllGather(T& input) {  // NOLINT
-    CHECK_EQ(is_initialized_, true);
+    PADDLE_ENFORCE_EQ(
+        is_initialized_,
+        true,
+        phi::errors::PreconditionNotMet(
+            "GlooWrapper should be initialized before calling AllGather."));
     std::vector<T> ret(size_, T());
 #ifdef PADDLE_WITH_GLOO
     gloo::AllgatherOptions opts(context_);
@@ -256,7 +275,11 @@ class GlooWrapper {
   void AllGatherVector(T* input_ptr,
                        T* output_ptr,
                        std::vector<size_t>& element_nums) {  // NOLINT
-    CHECK_EQ(is_initialized_, true);
+    PADDLE_ENFORCE_EQ(
+        is_initialized_,
+        true,
+        phi::errors::PreconditionNotMet(
+            "GlooWrapper should be initialized before calling AllGather."));
 #ifdef PADDLE_WITH_GLOO
     gloo::AllgathervOptions opts(context_);
     opts.setInput(input_ptr, element_nums[rank_]);
@@ -271,7 +294,11 @@ class GlooWrapper {
   void AllGatherVector(T* input_ptr,
                        T* output_ptr,
                        size_t element_num) {  // NOLINT
-    CHECK_EQ(is_initialized_, true);
+    PADDLE_ENFORCE_EQ(
+        is_initialized_,
+        true,
+        phi::errors::PreconditionNotMet("GlooWrapper should be initialized "
+                                        "before calling AllGatherVector."));
 #ifdef PADDLE_WITH_GLOO
     gloo::AllgatherOptions opts(context_);
     opts.setInput(input_ptr, element_num);
