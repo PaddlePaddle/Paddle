@@ -30,6 +30,8 @@ paddle_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc)
 paddle_test(save_load_op_test SRCS save_load_op_test.cc)
 if(WITH_XPU)
   paddle_test(save_load_op_test_xpu SRCS save_load_op_test_xpu.cc)
+  paddle_test(save_load_combine_op_test_xpu SRCS
+              save_load_combine_op_test_xpu.cc)
 endif()
 paddle_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc)
 if(WITH_CINN)

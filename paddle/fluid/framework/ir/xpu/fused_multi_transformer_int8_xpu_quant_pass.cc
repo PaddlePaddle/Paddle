@@ -295,7 +295,7 @@ class FusedMultiTransformerInt8XPUQuantPass : public FusePassBase {
 
 void FusedMultiTransformerInt8XPUQuantPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   VLOG(3) << "in FusedMultiTransformerInt8XPUQuantPass::ApplyImpl";
 
@@ -401,7 +401,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
     std::vector<std::vector<std::string>> old_weight_max_names_vec(4);
 
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     auto attr2weight = [&](const std::string& src_name,
                            std::vector<Node*>* input_max_node,
                            std::vector<std::string>* input_max_name) {
@@ -488,7 +488,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
           PADDLE_ENFORCE_NE(
               curr_tensor,
               nullptr,
-              platform::errors::Fatal("tensor node should not be nullptr"));
+              phi::errors::Fatal("tensor node should not be nullptr"));
           // Create dst node
           // Update dst var_desc in block
           VarDesc dst_desc(dst_name);
@@ -545,7 +545,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
         PADDLE_ENFORCE_NE(
             curr_tensor,
             nullptr,
-            platform::errors::Fatal("tensor node should not be nullptr"));
+            phi::errors::Fatal("tensor node should not be nullptr"));
         CastToFp32(curr_tensor);
 
         Node* curr_node = FindNodeWithName(graph, name);

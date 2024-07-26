@@ -21,17 +21,9 @@ from op_test import OpTest
 import paddle
 import paddle.distributed as dist
 from paddle import _C_ops, _legacy_C_ops
-from paddle.framework import in_dynamic_mode
 
 
 def test_squared_l2_norm(x):
-    if in_dynamic_mode():
-        return _C_ops.squared_l2_norm(x)
-    else:
-        return _legacy_C_ops.squared_l2_norm(x)
-
-
-def test_squared_l2_norm_prim(x):
     return _C_ops.squared_l2_norm(x)
 
 
@@ -85,7 +77,7 @@ class TestL2LossOp(OpTest):
     def setUp(self):
         self.config()
         self.python_api = test_squared_l2_norm
-        self.public_python_api = test_squared_l2_norm_prim
+        self.public_python_api = test_squared_l2_norm
         self.op_type = "squared_l2_norm"
         self.prim_op_type = "comp"
         self.max_relative_error = 0.05

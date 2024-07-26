@@ -19,7 +19,7 @@
 #include <memory>
 #include <mutex>
 
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/cpu/forwards.h"
 #include "paddle/phi/common/place.h"

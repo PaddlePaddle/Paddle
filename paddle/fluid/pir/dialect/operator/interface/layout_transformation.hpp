@@ -19,6 +19,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/type_name.h"
@@ -56,12 +57,11 @@ namespace dialect {
 
 template <typename ConcreteOp>
 common::DataLayout PreferLayoutImpl(pir::Operation* op) {
-  return common::DataLayout::ALL_LAYOUT;
-}
-
-template <typename ConcreteOp>
-common::DataLayout CurrentLayoutImpl(pir::Operation* op) {
-  return common::DataLayout::UNDEFINED;
+  auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
+  if (!data_format_attr) {
+    return common::DataLayout::ALL_LAYOUT;
+  }
+  return common::StringToDataLayout(data_format_attr.AsString());
 }
 
 template <typename ConcreteOp>

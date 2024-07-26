@@ -21,32 +21,31 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/flags.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/miopen.h"
+#include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #else
-#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
+#include "paddle/phi/backends/dynload/cuda_driver.h"
 #endif
 #else  // PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/rocm_driver.h"
+#include "paddle/phi/backends/dynload/rocm_driver.h"
 #endif
 
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -59,14 +58,14 @@ PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
                          false,
                          "Whether to print the message of gpu memory usage "
                          "at exit, mainly used for UT and CI.");
-PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
-                            true,
-                            "Whether to print the message of gpu memory usage "
-                            "MB as a unit of measurement.");
-PADDLE_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
-                              ULLONG_MAX,
-                              "Amount of reserved memory in bytes to hold onto "
-                              "before trying to release memory back to the OS");
+PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
+                         true,
+                         "Whether to print the message of gpu memory usage "
+                         "MB as a unit of measurement.");
+PHI_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
+                           ULLONG_MAX,
+                           "Amount of reserved memory in bytes to hold onto "
+                           "before trying to release memory back to the OS");
 
 namespace paddle::platform {
 
@@ -240,6 +239,7 @@ class RecordedGpuMallocHelper {
                                size,
                                platform::TracerMemEventType::ReservedAllocate);
 #ifdef PADDLE_WITH_TESTING
+      std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
       gpu_ptrs.insert(*ptr);
 #endif
 
@@ -308,6 +308,7 @@ class RecordedGpuMallocHelper {
                                size,
                                platform::TracerMemEventType::ReservedAllocate);
 #ifdef PADDLE_WITH_TESTING
+      std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
       gpu_ptrs.insert(*ptr);
 #endif
 
@@ -358,6 +359,7 @@ class RecordedGpuMallocHelper {
                                     // hipErrorDeinitialized
     }
 #ifdef PADDLE_WITH_TESTING
+    std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
     gpu_ptrs.erase(ptr);
 #endif
   }
@@ -393,6 +395,7 @@ class RecordedGpuMallocHelper {
                                     // hipErrorDeinitialized
     }
 #ifdef PADDLE_WITH_TESTING
+    std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
     gpu_ptrs.erase(ptr);
 #endif
 
@@ -403,6 +406,7 @@ class RecordedGpuMallocHelper {
   }
   void *GetBasePtr(void *ptr) {
 #ifdef PADDLE_WITH_TESTING
+    std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
     auto it = gpu_ptrs.upper_bound(ptr);
     if (it == gpu_ptrs.begin()) {
       return nullptr;
@@ -434,7 +438,7 @@ class RecordedGpuMallocHelper {
     }
 
     if (NeedRecord()) {
-      std::lock_guard<std::mutex> guard(*mtx_);
+      std::lock_guard<std::mutex> lock_guard(*mtx_);
       *avail = std::min(*actual_avail, limit_size_ - cur_size_.load());
       *total = std::min(*actual_total, limit_size_);
       return *total < *actual_total;
@@ -457,8 +461,7 @@ class RecordedGpuMallocHelper {
                      size_t size,
                      const CUmemAllocationProp *prop,
                      unsigned long long flags) {  // NOLINT
-    auto result =
-        paddle::platform::dynload::cuMemCreate(handle, size, prop, flags);
+    auto result = phi::dynload::cuMemCreate(handle, size, prop, flags);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_add(size);
     }
@@ -466,7 +469,7 @@ class RecordedGpuMallocHelper {
   }
 
   CUresult MemRelease(CUmemGenericAllocationHandle handle, size_t size) {
-    auto result = paddle::platform::dynload::cuMemRelease(handle);
+    auto result = phi::dynload::cuMemRelease(handle);
     if (result == CUDA_SUCCESS) {
       cur_size_.fetch_sub(size);
     }
@@ -479,8 +482,7 @@ class RecordedGpuMallocHelper {
                        size_t size,
                        const hipMemAllocationProp *prop,
                        unsigned long long flags) {  // NOLINT
-    auto result =
-        paddle::platform::dynload::hipMemCreate(handle, size, prop, flags);
+    auto result = phi::dynload::hipMemCreate(handle, size, prop, flags);
     if (result == hipSuccess) {
       cur_size_.fetch_add(size);
     }
@@ -488,7 +490,7 @@ class RecordedGpuMallocHelper {
   }
 
   hipError_t MemRelease(hipMemGenericAllocationHandle_t handle, size_t size) {
-    auto result = paddle::platform::dynload::hipMemRelease(handle);
+    auto result = phi::dynload::hipMemRelease(handle);
     if (result == hipSuccess) {
       cur_size_.fetch_sub(size);
     }
@@ -513,8 +515,11 @@ class RecordedGpuMallocHelper {
 
   mutable std::unique_ptr<std::mutex> mtx_;
   static std::once_flag once_flag_;
-  std::set<void *> gpu_ptrs;  // just for testing
-};                            // NOLINT
+
+  // just for testing
+  std::set<void *> gpu_ptrs;
+  std::mutex gpu_ptrs_mutex;
+};  // NOLINT
 
 std::once_flag RecordedGpuMallocHelper::once_flag_;
 
@@ -608,7 +613,7 @@ bool IsGpuMallocRecorded(int dev_id) {
 void EmptyCache() {
   std::vector<int> devices = GetSelectedDevices();
   for (auto device : devices) {
-    memory::Release(CUDAPlace(device));
+    memory::Release(phi::GPUPlace(device));
   }
 }
 

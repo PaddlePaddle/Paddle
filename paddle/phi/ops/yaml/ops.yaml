@@ -25,6 +25,7 @@
   kernel :
     func : accuracy
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : accuracy_check
@@ -145,6 +146,7 @@
     data_type : x
   inplace: (input -> out)
   backward : addmm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : affine_channel
   args: (Tensor x, Tensor scale, Tensor bias, str data_layout = "AnyLayout")
@@ -177,6 +179,17 @@
   kernel :
     func : all
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : all_gather
+  args : (Tensor x, int ring_id = 0, int nranks=0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllGatherInferMeta
+    param: [x, nranks]
+  kernel :
+    func : all_gather
+    param: [x, nranks]
 
 - op : allclose
   args : (Tensor x, Tensor y, Scalar(double) rtol=1e-5, Scalar(double) atol=1e-8, bool equal_nan=false)
@@ -187,6 +200,7 @@
   kernel :
     func : allclose
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -196,6 +210,7 @@
   kernel :
     func : amax
   backward : amax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : amin
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -205,6 +220,7 @@
   kernel :
     func : amin
   backward : amin_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : angle
   args : (Tensor x)
@@ -224,6 +240,7 @@
   kernel :
     func : any
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : apply_per_channel_scale
   args: (Tensor x, Tensor scales)
@@ -255,6 +272,7 @@
     func : argmin
     data_type : x
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : argsort
   args : (Tensor x, int axis=-1, bool descending=false, bool stable=false)
@@ -425,6 +443,7 @@
     func : auc
     data_type : x
   optional : ins_tag_weight
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : average_accumulates_
   args : (Tensor param, Tensor in_sum_1, Tensor in_sum_2, Tensor in_sum_3, Tensor in_num_accumulates, Tensor in_old_num_accumulates, Tensor in_num_updates, float average_window = 0, int64_t max_average_window = INT64_MAX, int64_t min_average_window = 10000L)
@@ -456,6 +475,7 @@
     data_type : input
   inplace : (input -> out)
   backward : bce_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : beam_search
   args: (Tensor pre_ids, Tensor pre_scores, Tensor ids, Tensor scores, int level,
@@ -501,6 +521,7 @@
     func : bilinear
   optional : bias
   backward : bilinear_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
@@ -889,6 +910,17 @@
   kernel :
     func : coalesce_tensor
     data_type : dtype
+
+- op : collect_fpn_proposals
+  args: (Tensor[] multi_level_rois, Tensor[] multi_level_scores, Tensor[] multi_level_rois_num,
+    int post_nms_topn)
+  output: Tensor (fpn_rois), Tensor (rois_num)
+  infer_meta:
+    func: CollectFpnProposalsInferMeta
+  kernel:
+    func: collect_fpn_proposals
+    data_type: multi_level_rois
+  optional: multi_level_rois_num, rois_num
 
 - op : complex
   args : (Tensor real, Tensor imag)
@@ -1696,6 +1728,7 @@
   kernel :
     func : fft_c2c
   backward : fft_c2c_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fft_c2r
   args : (Tensor x, int64_t[] axes, str normalization, bool forward, int64_t last_dim_size=0L)
@@ -1705,6 +1738,7 @@
   kernel :
     func : fft_c2r
   backward : fft_c2r_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fft_r2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward, bool onesided)
@@ -1714,6 +1748,7 @@
   kernel :
     func : fft_r2c
   backward : fft_r2c_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fill
   args : (Tensor x, Scalar(double) value=0)
@@ -1725,6 +1760,7 @@
     func : fill
   inplace : (x -> out)
   backward: fill_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fill_diagonal
   args : (Tensor x, float value=0, int offset=0, bool wrap=false)
@@ -1736,6 +1772,7 @@
     data_type : x
   inplace : (x -> out)
   backward : fill_diagonal_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fill_diagonal_tensor
   args : (Tensor x, Tensor y, int64_t offset = 0, int dim1 = 0, int dim2 = 1)
@@ -1746,6 +1783,7 @@
     func : fill_diagonal_tensor
   inplace : (x -> out)
   backward : fill_diagonal_tensor_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flash_attn
   args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
@@ -2093,6 +2131,7 @@
   output : Tensor(out)
   infer_meta :
     func : GatherNdInferMeta
+    spmd_rule : GatherNdInferSpmd
   kernel :
     func : gather_nd
     data_type : x
@@ -4261,6 +4300,7 @@
   output : Tensor(out)
   infer_meta :
     func : SquaredL2NormInferMeta
+    spmd_rule : SquaredL2NormInferSpmd
   kernel :
     func : squared_l2_norm
   backward : squared_l2_norm_grad

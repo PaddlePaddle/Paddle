@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -32,7 +32,7 @@ namespace paddle {
 namespace imperative {
 
 void GLOOParallelContext::Init() {
-  // PADDLE_THROW(platform::errors::OutOfRange(
+  // PADDLE_THROW(phi::errors::OutOfRange(
   //  "Still not implement Init"));
   VLOG(4) << "Start GLOOParallelContext initialization";
   auto gloo_wrapper = framework::GlooWrapper::GetInstance();
@@ -61,8 +61,7 @@ void GLOOParallelContext::Init() {
 }
 
 void GLOOParallelContext::InitWithRingID(int ring_id) {
-  PADDLE_THROW(
-      platform::errors::OutOfRange("Still not implement InitWithRingID"));
+  PADDLE_THROW(phi::errors::OutOfRange("Still not implement InitWithRingID"));
 }
 
 #define GLOO_CASE(type, T, gw)                                  \
@@ -99,7 +98,7 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
       *dst = std::move(tmp_dst);
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
         "LoDTensor and SelectedRows are supported.",
         platform::demangle(framework::ToTypeName(src.Type()))));
@@ -117,7 +116,7 @@ void GLOOParallelContext::AllReduce(const phi::DenseTensor &src_tensor,
     GLOO_CASE(framework::proto::VarType::INT64, int64_t, gloo_wrapper);
     default: {
       PADDLE_THROW(
-          platform::errors::InvalidArgument("Invalid datatype for allreduce"));
+          phi::errors::InvalidArgument("Invalid datatype for allreduce"));
     }
   }
   gloo_wrapper->Barrier();
@@ -186,18 +185,17 @@ void GLOOParallelContext::AllReduce(const phi::SelectedRows &src,
         framework::proto::VarType::INT64, int64_t, gloo_wrapper);
     default: {
       PADDLE_THROW(
-          platform::errors::InvalidArgument("Invalid datatype for allreduce"));
+          phi::errors::InvalidArgument("Invalid datatype for allreduce"));
     }
   }
 }
 
 void GLOOParallelContext::Broadcast(framework::Variable *src, int ring_id) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Unimplemented inter-broadcast for CPU now."));
+  PADDLE_THROW(
+      phi::errors::Unimplemented("Unimplemented inter-broadcast for CPU now."));
 }
 
-paddle::platform::DeviceContext *GLOOParallelContext::GetDeviceContext(
-    int ring_id) {
+phi::DeviceContext *GLOOParallelContext::GetDeviceContext(int ring_id) {
   // return the CPUContext
   return device_.get();
 }

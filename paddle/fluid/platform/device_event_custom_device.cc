@@ -16,13 +16,13 @@
 
 #include "paddle/fluid/platform/device/custom/custom_device_resource_pool.h"
 #include "paddle/fluid/platform/device_event_base.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
 namespace paddle {
 namespace platform {
 struct CustomDeviceEventWrapper {
   explicit CustomDeviceEventWrapper(const phi::Place& place) {
     PADDLE_ENFORCE_EQ(
-        platform::is_custom_place(place),
+        phi::is_custom_place(place),
         true,
         phi::errors::PreconditionNotMet(
             "Required device shall be CustomPlace, but received %d. ", place));

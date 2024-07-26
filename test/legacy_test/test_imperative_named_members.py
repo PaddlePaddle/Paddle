@@ -32,6 +32,32 @@ class MyLayer(paddle.nn.Layer):
         return x
 
 
+class MyLayerDuplicatedParamters(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.fc = paddle.nn.Linear(1, 1)
+        w_tmp = self.create_parameter([2, 3])
+        self.add_parameter("w_tmp1", w_tmp)
+        self.add_parameter("w_tmp2", w_tmp)
+
+    def forward(self, x):
+        x = self.fc(x)
+        return x
+
+
+class MyLayerDuplicatedBuffers(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.fc = paddle.nn.Linear(1, 1)
+        buffer_tmp = paddle.ones([2, 3])
+        self.register_buffer('buffer1', buffer_tmp)
+        self.register_buffer('buffer2', buffer_tmp)
+
+    def forward(self, x):
+        x = self.fc(x)
+        return x
+
+
 class TestImperativeNamedSubLayers(unittest.TestCase):
     def test_named_sublayers(self):
         with base.dygraph.guard():
@@ -60,6 +86,36 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
                 [l for _, l in list(model.named_sublayers(include_self=True))],
                 [model] + expected_sublayers,
             )
+
+
+class TestImperativeNamedSublayersDuplicated(unittest.TestCase):
+    def test_not_remove_duplicate(self):
+        with base.dygraph.guard():
+            l = paddle.nn.Linear(10, 3)
+            model = paddle.nn.Sequential(l, l)
+            named_sublayers = model.named_sublayers(remove_duplicate=False)
+            list_named_sublayers = list(named_sublayers)
+
+            expected_sublayers = [l, l]
+            self.assertEqual(len(list_named_sublayers), len(expected_sublayers))
+            for (name, sublayer), expected_sublayer in zip(
+                list_named_sublayers, expected_sublayers
+            ):
+                self.assertEqual(sublayer, expected_sublayer)
+
+    def test_remove_duplicate(self):
+        with base.dygraph.guard():
+            l = paddle.nn.Linear(10, 3)
+            model = paddle.nn.Sequential(l, l)
+            named_sublayers = model.named_sublayers(remove_duplicate=True)
+            list_named_sublayers = list(named_sublayers)
+
+            expected_sublayers = [l]
+            self.assertEqual(len(list_named_sublayers), len(expected_sublayers))
+            for (name, sublayer), expected_sublayer in zip(
+                list_named_sublayers, expected_sublayers
+            ):
+                self.assertEqual(sublayer, expected_sublayer)
 
 
 class TestImperativeNamedParameters(unittest.TestCase):
@@ -128,6 +184,42 @@ class TestImperativeNamedParameters(unittest.TestCase):
                 "weight" in expected_members,
                 "model should contain parameter: weight",
             )
+
+
+class TestImperativeNamedParametersDuplicated(unittest.TestCase):
+    def test_not_remove_duplicate(self):
+        with base.dygraph.guard():
+            model = MyLayerDuplicatedParamters()
+
+            named_parameters = list(
+                model.named_parameters(remove_duplicate=False)
+            )
+            self.assertEqual(len(named_parameters), 4)
+
+    def test_remove_duplicate(self):
+        with base.dygraph.guard():
+            model = MyLayerDuplicatedParamters()
+
+            named_parameters = list(
+                model.named_parameters(remove_duplicate=True)
+            )
+            self.assertEqual(len(named_parameters), 3)
+
+
+class TestImperativeNamedBuffersDuplicated(unittest.TestCase):
+    def test_not_remove_duplicate(self):
+        with base.dygraph.guard():
+            model = MyLayerDuplicatedBuffers()
+
+            named_parameters = list(model.named_buffers(remove_duplicate=False))
+            self.assertEqual(len(named_parameters), 2)
+
+    def test_remove_duplicate(self):
+        with base.dygraph.guard():
+            model = MyLayerDuplicatedBuffers()
+
+            named_parameters = list(model.named_buffers(remove_duplicate=True))
+            self.assertEqual(len(named_parameters), 1)
 
 
 if __name__ == '__main__':

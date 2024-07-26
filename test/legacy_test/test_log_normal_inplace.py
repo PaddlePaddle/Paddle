@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -44,7 +45,13 @@ class TestLogNormalRandomInplaceOpDtype(unittest.TestCase):
             tensor_fp64.log_normal_()
             self.assertEqual(tensor_fp64.dtype, paddle.float64)
 
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if base.core.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:
@@ -107,7 +114,13 @@ class TestLogNormalRandomInplaceOpDistribution(unittest.TestCase):
 
 class TestLogNormalRandomInplaceOpEmptyTensor(unittest.TestCase):
     def test_log_normal_inplace_op_empty_tensor(self):
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if base.core.is_compiled_with_cuda():
             places.append('gpu')
         test_shapes = [(200, 0), (0, 200)]
@@ -137,7 +150,13 @@ class TestLogNormalRandomInplaceGrad(unittest.TestCase):
             log_normal_grad = tensor_b.grad.numpy()
             self.assertTrue((log_normal_grad == 0).all())
 
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if base.core.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:

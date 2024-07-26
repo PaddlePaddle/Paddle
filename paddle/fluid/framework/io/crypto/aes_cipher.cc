@@ -152,11 +152,10 @@ std::string AESCipher::AuthenticatedDecryptInternal(
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
   CryptoPP::StringSource ss(
       ciphertext.substr(ciphertext_beg), true, filter_redirector);
-  PADDLE_ENFORCE_EQ(
-      m_filter->GetLastResult(),
-      true,
-      paddle::platform::errors::InvalidArgument("Integrity check failed. "
-                                                "Invalid ciphertext input."));
+  PADDLE_ENFORCE_EQ(m_filter->GetLastResult(),
+                    true,
+                    phi::errors::InvalidArgument("Integrity check failed. "
+                                                 "Invalid ciphertext input."));
   return plaintext;
 }
 
@@ -194,7 +193,7 @@ void AESCipher::BuildCipher(
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
         **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Create cipher error. "
         "Cipher name %s is error, or has not been implemented.",
         aes_cipher_name_));
@@ -216,7 +215,7 @@ void AESCipher::BuildAuthEncCipher(
         CryptoPP::DEFAULT_CHANNEL,
         CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Create cipher error. "
         "Cipher name %s is error, or has not been implemented.",
         aes_cipher_name_));
@@ -237,7 +236,7 @@ void AESCipher::BuildAuthDecCipher(
         tag_size_ / 8,
         CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Create cipher error. "
         "Cipher name %s is error, or has not been implemented.",
         aes_cipher_name_));

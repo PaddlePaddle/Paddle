@@ -252,7 +252,7 @@ void QkQkvAttentionXPUFusePass::ApplyQkQkvAttentionXPUFuse(
 
         phi::DenseTensor input_max_in_cpu_tensor;
         auto* cpu_ctx = static_cast<phi::CPUContext*>(
-            platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+            phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
         input_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
         input_max_in_cpu_tensor.Resize({max_ptr_size});
         std::vector<float> input_max(max_ptr_size, input_max_vec[i]);
@@ -338,7 +338,7 @@ void QkQkvAttentionXPUFusePass::ApplyQkQkvAttentionXPUFuse(
 
 void QkQkvAttentionXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   for (auto with_q_scale : {true, false}) {

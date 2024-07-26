@@ -32,14 +32,10 @@ cc_test(
   SRCS os_info_test.cc
   DEPS phi common)
 
-cc_library(
-  place
-  SRCS place.cc
-  DEPS enforce phi common)
 cc_test(
   place_test
   SRCS place_test.cc
-  DEPS place glog phi common)
+  DEPS glog phi common)
 
 if(WITH_ONEDNN)
   set(ONEDNN_CTX_DEPS onednn)
@@ -48,7 +44,6 @@ else()
 endif()
 
 add_subdirectory(device)
-add_subdirectory(dynload)
 
 cc_library(
   cpu_helper
@@ -65,11 +60,11 @@ if(WITH_DGC)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
+  set(GPU_CTX_DEPS phi common)
 endif()
 
 if(WITH_XPU)
-  set(XPU_CTX_DEPS dynload_xpti dynamic_loader)
+  set(XPU_CTX_DEPS phi common)
 endif()
 
 if(WITH_IPU)
@@ -120,7 +115,6 @@ cc_library(
        allocator
        xxhash
        ${STREAM_CALLBACK_DEPS}
-       place
        eigen3
        cpu_helper
        framework_proto
@@ -160,7 +154,7 @@ set(DEVICE_EVENT_LIBS)
 cc_library(
   device_event_base
   SRCS device_event_base.cc
-  DEPS place enforce device_context op_registry common)
+  DEPS enforce device_context op_registry phi common)
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
@@ -247,7 +241,6 @@ cc_library(
   SRCS lodtensor_printer.cc
   DEPS phi
        common
-       place
        tensor
        scope
        lod_tensor
@@ -264,13 +257,7 @@ if(WITH_GPU)
   nv_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS phi
-         common
-         gpu_info
-         enforce
-         dynload_cuda
-         op_proto_maker
-         shape_inference)
+    DEPS phi common gpu_info enforce op_proto_maker shape_inference)
 elseif(WITH_ROCM)
   hip_library(
     profiler
@@ -280,7 +267,7 @@ elseif(WITH_XPU)
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS phi common enforce dynload_xpti op_proto_maker shape_inference)
+    DEPS phi common enforce op_proto_maker shape_inference)
 else()
   cc_library(
     profiler
@@ -322,10 +309,6 @@ if(WITH_GPU)
     test_limit_gpu_memory
     SRCS test_limit_gpu_memory.cu
     DEPS gpu_info phi common)
-  nv_library(
-    cuda_device_guard
-    SRCS cuda_device_guard.cc
-    DEPS gpu_info)
 endif()
 
 if(WITH_ROCM)
@@ -337,10 +320,6 @@ if(WITH_ROCM)
     test_limit_gpu_memory
     SRCS test_limit_gpu_memory.cu
     DEPS gpu_info phi common)
-  hip_library(
-    cuda_device_guard
-    SRCS cuda_device_guard.cc
-    DEPS gpu_info)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
@@ -371,3 +350,7 @@ cc_test(
   init_phi_test
   SRCS init_phi_test.cc
   DEPS phi common init_phi)
+
+if(TENSORRT_FOUND)
+  add_subdirectory(tensorrt)
+endif()

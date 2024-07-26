@@ -48,8 +48,10 @@ class ProgramReader {
   void ReadRegion(Json* region_json, pir::Region* region);
   void ReadBlock(Json* block_json, pir::Block* block);
   pir::Operation* ReadOp(Json* op_json);
-  pir::AttributeMap ReadAttributesMap(Json* attrs_json,
-                                      Json* operesult_attrs_json);
+  pir::AttributeMap ReadAttributesMap(
+      Json* attrs_json,
+      Json* operesult_attrs_json,
+      const std::unordered_map<std::string, Json>& attr_patch);
   pir::Attribute ReadAttribute(Json* attr_json);
   pir::Type ReadType(Json* type_json);
 

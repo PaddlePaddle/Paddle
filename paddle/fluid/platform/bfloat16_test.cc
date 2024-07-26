@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
@@ -21,7 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using bfloat16 = paddle::platform::bfloat16;
+using bfloat16 = phi::dtype::bfloat16;
+using namespace phi::dtype;  // NOLINT
 
 TEST(bfloat16, conversion_cpu) {
   // Conversion from float

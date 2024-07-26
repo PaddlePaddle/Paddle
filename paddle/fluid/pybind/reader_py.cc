@@ -31,7 +31,7 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(reader_queue_speed_test_mode);
@@ -63,7 +63,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShape(
 
   PADDLE_ENFORCE_GE(tensor_shape[0],
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Tensor shape at dim 0 must not be less than 0"));
 
   if (!tensor.lod().empty()) {
@@ -90,7 +90,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShape(
     PADDLE_ENFORCE_GE(
         tensor_shape[idx],
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Tensor shape at dim %d must not be less than 0", idx));
     if (target_shape[idx] >= 0 &&
         tensor_shape[static_cast<int>(idx)] != target_shape[idx]) {
@@ -182,8 +182,8 @@ class MultiDeviceFeedReader {
             framework::MakeDecoratedReader<operators::reader::BufferedReader>(
                 reader, p, 2, pin_memory_));
       } else {
-        if (platform::is_gpu_place(p)) {
-          PADDLE_THROW(platform::errors::PermissionDenied(
+        if (phi::is_gpu_place(p)) {
+          PADDLE_THROW(phi::errors::PermissionDenied(
               "Place cannot be CUDAPlace when use_double_buffer is False"));
         }
         holder->Reset(reader);
@@ -213,7 +213,7 @@ class MultiDeviceFeedReader {
       auto &ret = result.back();
       PADDLE_ENFORCE_EQ(names_.size(),
                         item.size(),
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The sample number of reader's input data and the "
                             "input number of feed list are not equal.\n"
                             "Possible reasons are:\n"
@@ -271,9 +271,9 @@ class MultiDeviceFeedReader {
         if (UNLIKELY(each_status == Status::kException)) {
           PADDLE_ENFORCE_NOT_NULL(
               exceptions_[i],
-              platform::errors::NotFound("exceptions_[%d] is NULL, but the "
-                                         "result status is Status::kException",
-                                         i));
+              phi::errors::NotFound("exceptions_[%d] is NULL, but the "
+                                    "result status is Status::kException",
+                                    i));
           *e = exceptions_[i];
           exceptions_[i] = nullptr;
         }
@@ -316,11 +316,11 @@ class MultiDeviceFeedReader {
     Status status = WaitFutures(&e);
 
     if (UNLIKELY(e)) {
-      PADDLE_ENFORCE_EQ(status,
-                        Status::kException,
-                        platform::errors::NotFound(
-                            "The exception raised is not NULL, but "
-                            "the result status is not Status::kException"));
+      PADDLE_ENFORCE_EQ(
+          status,
+          Status::kException,
+          phi::errors::NotFound("The exception raised is not NULL, but "
+                                "the result status is not Status::kException"));
       std::rethrow_exception(e);
     }
 
@@ -330,11 +330,11 @@ class MultiDeviceFeedReader {
       throw py::stop_iteration();
     }
 
-    PADDLE_ENFORCE_EQ(status,
-                      Status::kSuccess,
-                      platform::errors::NotFound(
-                          "The function executed successfully, but "
-                          "the result status is not Status::kSuccess"));
+    PADDLE_ENFORCE_EQ(
+        status,
+        Status::kSuccess,
+        phi::errors::NotFound("The function executed successfully, but "
+                              "the result status is not Status::kSuccess"));
   }
 
   std::shared_ptr<QueueType> queue_;

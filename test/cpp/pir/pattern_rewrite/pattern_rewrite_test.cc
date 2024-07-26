@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -32,7 +33,6 @@
 #include "paddle/fluid/pir/transforms/gpu/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
@@ -444,8 +444,8 @@ void BuildConstantFoldingProgram(pir::Program *program,
 
   phi::DenseTensorMeta meta(
       phi::DataType::FLOAT32, dims, data_layout, lod, offset);
-  paddle::platform::DeviceContext *dev_ctx =
-      phi::DeviceContextPool::Instance().Get(paddle::platform::CPUPlace());
+  phi::DeviceContext *dev_ctx =
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
 
   auto op1 = builder.Build<pir::ConstantTensorOp>("a", dense_tensor_dtype);
   auto op2 = builder.Build<pir::ConstantTensorOp>("b", dense_tensor_dtype);

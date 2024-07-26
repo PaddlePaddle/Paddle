@@ -87,61 +87,62 @@ class TestCUDAGraphInStaticMode(unittest.TestCase):
         self.assertEqual(loss_cuda_graph, loss_no_cuda_graph)
 
     def cuda_graph_static_graph_main(self, seed, use_cuda_graph):
-        batch_size = 1
-        class_num = 10
-        image_shape = [batch_size, 784]
-        label_shape = [batch_size, 1]
+        with paddle.pir_utils.OldIrGuard():
+            batch_size = 1
+            class_num = 10
+            image_shape = [batch_size, 784]
+            label_shape = [batch_size, 1]
 
-        paddle.seed(seed)
-        np.random.seed(seed)
-        startup = paddle.static.Program()
-        main = paddle.static.Program()
+            paddle.seed(seed)
+            np.random.seed(seed)
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
 
-        image, label, loss, lr = build_program(
-            main, startup, batch_size, class_num
-        )
-
-        place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        scope = paddle.static.Scope()
-        with paddle.static.scope_guard(scope):
-            exe.run(startup)
-            build_strategy = paddle.static.BuildStrategy()
-            build_strategy.allow_cuda_graph_capture = True
-            build_strategy.fuse_all_optimizer_ops = True
-            compiled_program = paddle.static.CompiledProgram(
-                main, build_strategy=build_strategy
+            image, label, loss, lr = build_program(
+                main, startup, batch_size, class_num
             )
-            image_t = scope.var(image.name).get_tensor()
-            label_t = scope.var(label.name).get_tensor()
-            loss_t = scope.var(loss.name).get_tensor()
-            lr_var = main.global_block().var(lr._var_name)
-            self.assertTrue(lr_var.persistable)
-            lr_t = scope.var(lr_var.name).get_tensor()
-            cuda_graph = None
-            for batch_id in range(20):
-                image_np = np.random.rand(*image_shape).astype('float32')
-                label_np = np.random.randint(
-                    low=0, high=class_num, size=label_shape, dtype='int64'
+
+            place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            scope = paddle.static.Scope()
+            with paddle.static.scope_guard(scope):
+                exe.run(startup)
+                build_strategy = paddle.static.BuildStrategy()
+                build_strategy.allow_cuda_graph_capture = True
+                build_strategy.fuse_all_optimizer_ops = True
+                compiled_program = paddle.static.CompiledProgram(
+                    main, build_strategy=build_strategy
                 )
-                image_t.set(image_np, place)
-                label_t.set(label_np, place)
+                image_t = scope.var(image.name).get_tensor()
+                label_t = scope.var(label.name).get_tensor()
+                loss_t = scope.var(loss.name).get_tensor()
+                lr_var = main.global_block().var(lr._var_name)
+                self.assertTrue(lr_var.persistable)
+                lr_t = scope.var(lr_var.name).get_tensor()
+                cuda_graph = None
+                for batch_id in range(20):
+                    image_np = np.random.rand(*image_shape).astype('float32')
+                    label_np = np.random.randint(
+                        low=0, high=class_num, size=label_shape, dtype='int64'
+                    )
+                    image_t.set(image_np, place)
+                    label_t.set(label_np, place)
 
-                if batch_id == 1 and use_cuda_graph:
-                    cuda_graph = CUDAGraph(place, mode="global")
-                    cuda_graph.capture_begin()
-                    exe.run(compiled_program)
-                    cuda_graph.capture_end()
+                    if batch_id == 1 and use_cuda_graph:
+                        cuda_graph = CUDAGraph(place, mode="global")
+                        cuda_graph.capture_begin()
+                        exe.run(compiled_program)
+                        cuda_graph.capture_end()
 
+                    if cuda_graph:
+                        lr_t.set(np.array([lr()], dtype='float32'), place)
+                        cuda_graph.replay()
+                    else:
+                        exe.run(compiled_program)
+                    lr.step()
                 if cuda_graph:
-                    lr_t.set(np.array([lr()], dtype='float32'), place)
-                    cuda_graph.replay()
-                else:
-                    exe.run(compiled_program)
-                lr.step()
-            if cuda_graph:
-                cuda_graph.reset()
-        return np.array(loss_t)
+                    cuda_graph.reset()
+            return np.array(loss_t)
 
 
 if __name__ == "__main__":

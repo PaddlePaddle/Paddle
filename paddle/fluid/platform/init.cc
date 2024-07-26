@@ -23,13 +23,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/cupti.h"
+#include "paddle/phi/backends/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/os_info.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/os_info.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
@@ -52,9 +52,9 @@ limitations under the License. */
 #endif
 
 #include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
@@ -118,14 +118,14 @@ void InitCupti() {
 #define MULTIPLY_ATTR_VALUE(attr)                                 \
   {                                                               \
     PADDLE_ENFORCE_EQ(                                            \
-        !platform::dynload::cuptiActivityGetAttribute(            \
+        !phi::dynload::cuptiActivityGetAttribute(                 \
             attr, &attrValueSize, &attrValue),                    \
         true,                                                     \
         phi::errors::Unavailable("Get cupti attribute failed.")); \
     attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
     LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
     PADDLE_ENFORCE_EQ(                                            \
-        !platform::dynload::cuptiActivitySetAttribute(            \
+        !phi::dynload::cuptiActivitySetAttribute(                 \
             attr, &attrValueSize, &attrValue),                    \
         true,                                                     \
         phi::errors::Unavailable("Set cupti attribute failed.")); \
@@ -164,7 +164,7 @@ static std::once_flag init_devices_flag;
 void InitDevices() {
   std::call_once(init_devices_flag, []() {
     // set name at the entry point of Paddle
-    platform::SetCurrentThreadName("MainThread");
+    phi::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA
