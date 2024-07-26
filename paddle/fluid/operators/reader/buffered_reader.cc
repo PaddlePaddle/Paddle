@@ -132,7 +132,7 @@ void BufferedReader::ReadAsync(size_t i) {
         PADDLE_ENFORCE_EQ(
             cuda.size(),
             cpu.size(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Input tensor number on GPU and CPU devices are not matched."));
       }
       if (pin_memory_) {
@@ -255,7 +255,7 @@ void BufferedReader::ReadAsync(size_t i) {
         PADDLE_ENFORCE_EQ(
             xpu.size(),
             cpu.size(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Input tensor number on XPU and CPU devices are not matched. "
                 "The number on XPU is %d, on CPU is %d",
                 xpu.size(),
@@ -313,7 +313,7 @@ void BufferedReader::ReadAsync(size_t i) {
       } else {
         PADDLE_ENFORCE_EQ(custom_device.size(),
                           cpu.size(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Input tensor number on CustomDevice and CPU "
                               "devices are not matched. "
                               "The number on CustomDevice is %d, on CPU is %d",

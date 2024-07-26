@@ -47,19 +47,19 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_GE(rank,
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "greater than or equal to 0.",
                           rank));
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_concat must be "
                           "greater than or equal to 2.",
                           nranks));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "less than that of nranks (%d).",
                           rank,
@@ -95,7 +95,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       if (FLAGS_dynamic_static_unified_comm) {
         PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "You choose to use new communication library by "
                               "setting environment "
                               "variable FLAGS_dynamic_static_unified_comm "
@@ -107,7 +107,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_NE(
             comm_ctx,
             nullptr,
-            phi::errors::Unavailable(
+            common::errors::Unavailable(
                 "NCCLCommContext is nullptr, collective op should "
                 "has ring_id attr."));
         stream = comm_ctx->GetStream();
@@ -117,7 +117,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             nranks,
             comm->nranks(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "nranks: %s should equal to %s", nranks, comm->nranks()));
         stream = comm->stream();
         VLOG(3) << "old NCCLCommContext has rid " << rid;
@@ -156,7 +156,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
     auto& dev_ctx2 = ctx.template device_context<phi::GPUContext>();
     functor(dev_ctx2, inputs, axis, out);
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }

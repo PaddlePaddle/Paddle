@@ -49,8 +49,8 @@ static void CopyNCCLIDToVar(const std::vector<ncclUniqueId>& nccl_ids,
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::NotFound("Variable with name %s is not found",
-                              var_name.c_str()));
+        common::errors::NotFound("Variable with name %s is not found",
+                                 var_name.c_str()));
     auto nccl_id = var->GetMutable<ncclUniqueId>();
     memcpy(nccl_id, &nccl_ids[i], sizeof(ncclUniqueId));
   }
@@ -74,14 +74,14 @@ class GenNCCLIdOp : public framework::OperatorBase {
     PADDLE_ENFORCE_GE(
         trainer_id,
         0,
-        phi::errors::InvalidArgument("trainer_id %d is less than 0. Its "
-                                     "valid range is [0, trainer_size)"));
+        common::errors::InvalidArgument("trainer_id %d is less than 0. Its "
+                                        "valid range is [0, trainer_size)"));
     PADDLE_ENFORCE_LT(
         trainer_id,
         static_cast<int>(trainers.size()),
-        phi::errors::OutOfRange("trainer_id %d is out of range. Its valid "
-                                "range is [0, trainer_size)",
-                                trainer_id));
+        common::errors::OutOfRange("trainer_id %d is out of range. Its valid "
+                                   "range is [0, trainer_size)",
+                                   trainer_id));
 
     int nccl_comm_num = Attr<int>("nccl_comm_num");
     int use_hierarchical_allreduce = Attr<bool>("use_hierarchical_allreduce");
@@ -93,18 +93,18 @@ class GenNCCLIdOp : public framework::OperatorBase {
       PADDLE_ENFORCE_GT(
           trainers.size(),
           1,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The number of collective trainers %llu <= 1", trainers.size()));
       PADDLE_ENFORCE_GT(
           inter_nranks,
           1,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "inter_nranks %d <= 1 while in hierarchical allreduce mode",
               inter_nranks));
       PADDLE_ENFORCE_EQ(
           trainers.size() % inter_nranks,
           0,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The number of trainers %llu mod inter_nranks %d is not equal 0",
               trainers.size(),
               inter_nranks));
