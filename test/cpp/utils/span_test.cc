@@ -38,11 +38,7 @@ TEST(default_ctor, span) {
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end());
 #else
-    PADDLE_ENFORCE_EQ(s.begin(),
-                      s.end(),
-                      phi::errors::InvalidArgument(
-                          "Begin iterator does not match end iterator. "
-                          "Expected begin iterator to equal end iterator."));
+    CHECK(s.begin() == s.end());
 #endif
   }
 
@@ -54,11 +50,7 @@ TEST(default_ctor, span) {
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end());
 #else
-    PADDLE_ENFORCE_EQ(s.begin(),
-                      s.end(),
-                      phi::errors::InvalidArgument(
-                          "Begin iterator does not match end iterator. "
-                          "Expected begin iterator to equal end iterator."));
+    CHECK(s.begin() == s.end());
 #endif
   }
 }
@@ -450,7 +442,7 @@ TEST(std_array_ctor, span) {
 
   // const, dynamic size
   {
-    std::array<int, 3> arr = {1, 2, 3};
+    int_array_t arr = {1, 2, 3};
     span<int const, 3> s{arr};
     PADDLE_ENFORCE_EQ(
         s.size(),
@@ -736,7 +728,7 @@ TEST(subview, span) {
         l.end(),
         std::end(arr),
         phi::errors::InvalidArgument(
-            "End iterator mismatch. Expected end iterator of arr."));
+            "End iterator mismatch. Expected end iterator of std::end(arr)."));
   }
 
   // subspan<N>
@@ -819,7 +811,7 @@ TEST(subview, span) {
         l.end(),
         std::end(arr),
         phi::errors::InvalidArgument(
-            "End iterator mismatch. Expected end iterator of arr."));
+            "End iterator mismatch. Expected end iterator of std::end(arr)."));
   }
 
   // subspan(n)
@@ -868,21 +860,18 @@ TEST(element_access, span) {
   constexpr int arr[] = {1, 2, 3};  // NOLINT
   span<const int> s{arr};
 
-  PADDLE_ENFORCE_EQ(
-      s[0],
-      arr[0],
-      phi::errors::InvalidArgument(
-          "Element mismatch at index 0. Expected value: %d", arr[0]));
-  PADDLE_ENFORCE_EQ(
-      s[1],
-      arr[1],
-      phi::errors::InvalidArgument(
-          "Element mismatch at index 1. Expected value: %d", arr[1]));
-  PADDLE_ENFORCE_EQ(
-      s[2],
-      arr[2],
-      phi::errors::InvalidArgument(
-          "Element mismatch at index 2. Expected value: %d", arr[2]));
+  PADDLE_ENFORCE_EQ(s[0],
+                    arr[0],
+                    phi::errors::InvalidArgument(
+                        "Element access mismatch. Expected arr[0]."));
+  PADDLE_ENFORCE_EQ(s[1],
+                    arr[1],
+                    phi::errors::InvalidArgument(
+                        "Element access mismatch. Expected arr[1]."));
+  PADDLE_ENFORCE_EQ(s[2],
+                    arr[2],
+                    phi::errors::InvalidArgument(
+                        "Element access mismatch. Expected arr[2]."));
 }
 
 TEST(iterator, span) {
@@ -890,16 +879,12 @@ TEST(iterator, span) {
     std::vector<int> vec;
     span<int> s{vec};
     std::sort(s.begin(), s.end());
-    PADDLE_ENFORCE_EQ(std::is_sorted(vec.cbegin(), vec.cend()),
-                      true,
-                      phi::errors::InvalidArgument("Vector is not sorted."));
+    CHECK(std::is_sorted(vec.cbegin(), vec.cend()));
   }
 
   {
     const std::vector<int> vec{1, 2, 3};
     span<const int> s{vec};
-    PADDLE_ENFORCE_EQ(std::equal(s.rbegin(), s.rend(), vec.crbegin()),
-                      true,
-                      phi::errors::InvalidArgument("Span is not reversed."));
+    CHECK(std::equal(s.rbegin(), s.rend(), vec.crbegin()));
   }
 }
