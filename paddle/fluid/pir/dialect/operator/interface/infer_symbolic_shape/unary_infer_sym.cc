@@ -408,30 +408,29 @@ bool Flatten_OpInferSymbolicShape(
   return FlattenOpInferSymbolicShape(op, infer_context);
 }
 
-bool FoldOpInferSymbolicShape(
-    pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
-  const auto& x_shape =
+bool FoldOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  const auto& output_sizes =
+  const auto &output_sizes =
       paddle::dialect::details::GetVectorAttr<int>(op, "output_sizes");
-  const auto& kernel_sizes =
+  const auto &kernel_sizes =
       paddle::dialect::details::GetVectorAttr<int>(op, "kernel_sizes");
-  const auto& strides =
+  const auto &strides =
       paddle::dialect::details::GetVectorAttr<int>(op, "strides");
-  const auto& paddings =
+  const auto &paddings =
       paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-  const auto& dilations =
+  const auto &dilations =
       paddle::dialect::details::GetVectorAttr<int>(op, "dilations");
-  PADDLE_ENFORCE_EQ(
-      x_shape.size(),
-      4,
-      phi::errors::InvalidArgument(
-          "The input tensor of fold must be 4-dimensional."));
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The input tensor of fold must be 4-dimensional."));
 
-  const symbol::DimExpr& batch_size = x_shape[0];
-  const symbol::DimExpr& channels = x_shape[1];
-  const symbol::DimExpr& input_height = x_shape[2];
-  const symbol::DimExpr& input_width = x_shape[3];
+  const symbol::DimExpr &batch_size = x_shape[0];
+  const symbol::DimExpr &channels = x_shape[1];
+  const symbol::DimExpr &input_height = x_shape[2];
+  const symbol::DimExpr &input_width = x_shape[3];
   symbol::DimExpr output_height = output_sizes[0];
   symbol::DimExpr output_width = output_sizes[1];
 
@@ -439,7 +438,8 @@ bool FoldOpInferSymbolicShape(
       batch_size, channels, output_height, output_width};
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(output_shape)});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
 
   return true;
 }
