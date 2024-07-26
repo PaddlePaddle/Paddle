@@ -486,6 +486,29 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
+bool MaxOutOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &in_x_dims = x_shape_or_data.shape();
+
+  int groups = op->attribute<pir::Int32Attribute>("groups").data();
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+
+  if (axis < 0) {
+    axis += in_x_dims.size();
+  }
+
+  std::vector<symbol::DimExpr> output_shape = in_x_dims;
+  output_shape[axis] = in_x_dims[axis] / groups;
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorListShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
+
 bool MinOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   return MaxOpInferSymbolicShape(op, infer_context);

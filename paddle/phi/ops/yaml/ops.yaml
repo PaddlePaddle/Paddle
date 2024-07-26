@@ -3038,6 +3038,7 @@
   kernel :
     func : maxout
   backward : maxout_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mean
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
