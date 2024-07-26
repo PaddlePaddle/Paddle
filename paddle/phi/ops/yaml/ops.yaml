@@ -649,6 +649,7 @@
     func: BoxClipInferMeta
   kernel:
     func: box_clip
+  interfaces: paddle::dialect::InferSymbolicShapeInterface
 
 - op : box_coder
   args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type = "encode_center_size", bool box_normalized = true, int axis = 0, float[] variance = {})

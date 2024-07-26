@@ -87,6 +87,56 @@ bool AllcloseOpInferSymbolicShape(
           symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{})});
   return true;
 }
+bool BoxClipOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &im_info_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  // Check rank and dimensions of input tensors
+  if (op->attribute<pir::BoolAttribute>("is_runtime").data()) {
+    const auto &input_dims = input_shape.shape();
+    const auto &im_info_dims = im_info_shape.shape();
+
+    PADDLE_ENFORCE_EQ(
+        input_dims.size(),
+        4,
+        common::errors::InvalidArgument("The rank of Input(input) in BoxClipOp "
+                                        "must be 4. But received rank = %d",
+                                        input_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        input_dims[input_dims.size() - 1],
+        4,
+        common::errors::InvalidArgument(
+            "The last dimension of Input(input) in BoxClipOp must be 4. "
+            "But received last dimension = %d",
+            input_dims[input_dims.size() - 1]));
+
+    PADDLE_ENFORCE_EQ(im_info_dims.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "The rank of Input(im_info) in BoxClipOp must be 2. "
+                          "But received rank = %d",
+                          im_info_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        im_info_dims[1],
+        3,
+        common::errors::InvalidArgument(
+            "The last dimension of Input(im_info) of BoxClipOp must be 3. "
+            "But received last dimension = %d",
+            im_info_dims[1]));
+  }
+
+  // Set output shape to be the same as input shape
+  std::vector<symbol::DimExpr> output_shape = input_shape.shape();
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
 
 bool BceLossOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
