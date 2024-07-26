@@ -123,8 +123,6 @@ bool BinomialOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &count_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &prob_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
   infer_context->SetShapeOrDataForValue(op->result(0), count_shape);
 
