@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/utils/analysis_name.h"
+#include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
 namespace pir {
