@@ -158,11 +158,8 @@ bool BipartiteMatchOpInferSymbolicShape(
       phi::errors::InvalidArgument("The rank of Input(DistMat) must be 2."));
 
   infer_context->SetShapeOrDataForValue(op->result(0), dist_mat_shape_or_data);
-  infer_context->SetDtypeForValue(op->result(0), pir::DataType::INT32);
 
   infer_context->SetShapeOrDataForValue(op->result(1), dist_mat_shape_or_data);
-  infer_context->SetDtypeForValue(
-      op->result(1), infer_context->GetDtypeForValue(op->operand_source(0)));
 
   return true;
 }
