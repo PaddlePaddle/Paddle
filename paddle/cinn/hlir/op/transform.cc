@@ -66,14 +66,23 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
     CHECK(!args.empty())
         << "The input arguments of Matmul compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 2U)
-        << "at least 2 input tensors for Matmul compute\n";
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        2U,
+        phi::errors::InvalidArgument("the size of pack_args should be greater "
+                                     "than or equal to 2, but got %d.",
+                                     pack_args.size()));
     Expr A = pack_args[0];
     Expr B = pack_args[1];
     CHECK(A.as_tensor());
     CHECK(B.as_tensor());
 
-    CHECK_GE(pack_args.size(), 3);
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        3,
+        phi::errors::InvalidArgument("the size of pack_args should be greater "
+                                     "than or equal to 3, but got %d.",
+                                     pack_args.size()));
     CHECK(pack_args[2].is_string());
     std::string tensor_name = pack_args[2].operator std::string();
 
@@ -160,7 +169,12 @@ std::shared_ptr<OpStrategy> StrategyForSplit(
 
   CHECK(!output_shapes.empty())
       << "The Spilt Op's output shape list should not empty.";
-  CHECK_LT(axis, static_cast<int>(output_shapes[0].size()));
+  PADDLE_ENFORCE_LT(axis,
+                    static_cast<int>(output_shapes[0].size()),
+                    phi::errors::InvalidArgument(
+                        "the value of axis should be less than %d, but got %d.",
+                        static_cast<int>(output_shapes[0].size()),
+                        axis));
   CHECK(!sections.empty())
       << "The Split op doesn't find [num_or_sections] attribute! It it a "
          "mandatory attribute ! Please check.";
@@ -177,7 +191,12 @@ std::shared_ptr<OpStrategy> StrategyForSplit(
         ir::Tensor A = A_expr.as_tensor_ref();
 
         std::vector<std::string> tensor_names;
-        CHECK_EQ(pack_args.size(), output_shapes.size() + 1);
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          output_shapes.size() + 1,
+                          phi::errors::InvalidArgument(
+                              "the size of pack_args should be %d, but got %d.",
+                              output_shapes.size() + 1,
+                              pack_args.size()));
         for (int idx = 1; idx < pack_args.size(); ++idx) {
           CHECK(pack_args[idx].is_string());
           tensor_names.push_back(pack_args[idx].operator std::string());
@@ -234,8 +253,12 @@ std::shared_ptr<OpStrategy> StrategyForConcat(
         << "Output type of Concat is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
     int input_size = pack_args.size() - 1;
-    CHECK_GE(input_size, 1UL)
-        << "at least 2 input tensors for Concat compute\n";
+    PADDLE_ENFORCE_GE(input_size,
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "the num of input tensors for Concat compute should "
+                          "be greater than or equal to 2, but got %d.",
+                          input_size));
     CHECK(!output_shapes.empty());
     int axis = 0;
     if (attrs.attr_store.count("axis")) {
@@ -279,8 +302,12 @@ std::shared_ptr<OpStrategy> StrategyForConcatSymbolic(
         << "Output type of Concat is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
     int input_size = pack_args.size() - 1;
-    CHECK_GE(input_size, 1UL)
-        << "at least 2 input tensors for Concat compute\n";
+    PADDLE_ENFORCE_GE(input_size,
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "the num of input tensors for Concat compute should "
+                          "be greater than or equal to 2, but got %d.",
+                          input_size));
     CHECK(!output_shapes.empty());
     int axis = 0;
     if (attrs.attr_store.count("axis")) {
@@ -314,7 +341,11 @@ std::shared_ptr<OpStrategy> StrategyForMul(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  CHECK_EQ(inputs.size(), 2UL) << "mul should have 2 input";
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "the size of inputs should be 2, but got %d.", inputs.size()));
   const auto &attr_store = attrs.attr_store;
   int x_num_col_dims = SafeGetAttr(attr_store, "x_num_col_dims", 1);
   int y_num_col_dims = SafeGetAttr(attr_store, "y_num_col_dims", 1);
@@ -415,36 +446,45 @@ std::shared_ptr<OpStrategy> StrategyForCublasGemm(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute gemm_compute(
-      [attrs](lang::Args args, lang::RetValue *ret) {
-        auto &attr_store = attrs.attr_store;
-        CHECK(attr_store.contains("trans_a"))
-            << "The cublas_gemm should have an attr named `trans_a`.";
-        CHECK(attr_store.contains("trans_b"))
-            << "The cublas_gemm should have an attr named `trans_b`.";
-        CHECK(!args.empty())
-            << "The input `args` of cublas_gemm is empty! Please check.";
+  framework::CINNCompute gemm_compute([attrs](lang::Args args,
+                                              lang::RetValue *ret) {
+    auto &attr_store = attrs.attr_store;
+    CHECK(attr_store.contains("trans_a"))
+        << "The cublas_gemm should have an attr named `trans_a`.";
+    CHECK(attr_store.contains("trans_b"))
+        << "The cublas_gemm should have an attr named `trans_b`.";
+    CHECK(!args.empty())
+        << "The input `args` of cublas_gemm is empty! Please check.";
 
-        CINNValuePack input_args = args[0];
-        CHECK_GE(input_args.size(), 3U)
-            << "The input number of cublas_gemm should be equal to 3.";
-        Expr lhs = input_args[0];
-        Expr rhs = input_args[1];
-        Expr bias = input_args[2];
-        CHECK(lhs.as_tensor());
-        CHECK(rhs.as_tensor());
-        CHECK(bias.as_tensor());
-        auto bias_tensor = bias.as_tensor_ref();
-        // dummy gemm computation, which will be replaced by
-        // cinn_gpu_cublas_gemm in the GemmRewriter pass.
+    CINNValuePack input_args = args[0];
+    PADDLE_ENFORCE_GE(
+        input_args.size(),
+        3U,
+        phi::errors::InvalidArgument(
+            "The input number of cublas_gemm should be equal to 3, but got %d.",
+            input_args.size()));
+    Expr lhs = input_args[0];
+    Expr rhs = input_args[1];
+    Expr bias = input_args[2];
+    CHECK(lhs.as_tensor());
+    CHECK(rhs.as_tensor());
+    CHECK(bias.as_tensor());
+    auto bias_tensor = bias.as_tensor_ref();
+    // dummy gemm computation, which will be replaced by
+    // cinn_gpu_cublas_gemm in the GemmRewriter pass.
 
-        CHECK_EQ(input_args.size(), 4);
-        CHECK(input_args[3].is_string());
-        std::string tensor_name = input_args[3].operator std::string();
-        auto out = pe::Identity(bias_tensor, tensor_name).front();
-        std::vector<CINNValue> res{CINNValue(out)};
-        *ret = CINNValuePack{res};
-      });
+    PADDLE_ENFORCE_EQ(
+        input_args.size(),
+        4,
+        phi::errors::InvalidArgument(
+            "The input number of cublas_gemm should be equal to 4, but got %d.",
+            input_args.size()));
+    CHECK(input_args[3].is_string());
+    std::string tensor_name = input_args[3].operator std::string();
+    auto out = pe::Identity(bias_tensor, tensor_name).front();
+    std::vector<CINNValue> res{CINNValue(out)};
+    *ret = CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(gemm_compute,
@@ -479,7 +519,12 @@ std::shared_ptr<OpStrategy> StrategyForLayoutTransform(
     Expr A = input_args[0];
     CHECK(A.as_tensor());
 
-    CHECK_EQ(input_args.size(), 2);
+    PADDLE_ENFORCE_EQ(
+        input_args.size(),
+        2,
+        phi::errors::InvalidArgument("The input number of layout_transform "
+                                     "should be equal to 2, but got %d.",
+                                     input_args.size()));
     CHECK(input_args[1].is_string());
     std::string tensor_name = input_args[1].operator std::string();
 
@@ -561,7 +606,12 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
     Expr A = input_args[0];
     CHECK(A.as_tensor());
 
-    CHECK_EQ(input_args.size(), 2);
+    PADDLE_ENFORCE_EQ(
+        input_args.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "The input number of reverse should be equal to 2, but got %d.",
+            input_args.size()));
     CHECK(input_args[1].is_string());
     std::string tensor_name = input_args[1].operator std::string();
 
@@ -613,7 +663,12 @@ std::shared_ptr<OpStrategy> StrategyForReverseSymbolic(
     Expr A = input_args[0];
     CHECK(A.as_tensor());
 
-    CHECK_EQ(input_args.size(), 2);
+    PADDLE_ENFORCE_EQ(
+        input_args.size(),
+        2,
+        phi::errors::InvalidArgument("The input number of reverse_sybmbolic "
+                                     "should be equal to 2, but got %d.",
+                                     input_args.size()));
     CHECK(input_args[1].is_string());
     std::string tensor_name = input_args[1].operator std::string();
     auto out = pe::Reverse(A.as_tensor_ref(), axis, tensor_name);
@@ -641,16 +696,32 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
   auto input_shape = inputs[0]->shape;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
     axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
-    CHECK_EQ(axis.size(), output_shapes[0].size())
-        << "axis size is not equal output_shapes size! Please check setting.\n";
+    PADDLE_ENFORCE_EQ(
+        axis.size(),
+        output_shapes[0].size(),
+        phi::errors::InvalidArgument("the size of axis should be equal to "
+                                     "output_shapes(%d), but got %d.",
+                                     output_shapes[0].size(),
+                                     axis.size()));
     // check axis and shape
     for (int idx = 0; idx < axis.size(); ++idx) {
       CHECK(axis[idx] >= 0 && axis[idx] < axis.size());
       for (int idy = idx + 1; idy < axis.size(); ++idy) {
-        CHECK_NE(axis[idx], axis[idy]) << "axis can't repeat!";
+        PADDLE_ENFORCE_NE(
+            axis[idx],
+            axis[idy],
+            phi::errors::InvalidArgument(
+                "axis[%d] is equal to axis[%d], but axis can't repeat!",
+                idx,
+                idy));
       }
-      CHECK_EQ(output_shapes[0][idx], input_shape[axis[idx]].as_int32())
-          << "output shape is not equal! Please check!\n";
+      PADDLE_ENFORCE_EQ(
+          output_shapes[0][idx],
+          input_shape[axis[idx]].as_int32(),
+          phi::errors::InvalidArgument(
+              "output shape should be equal to input shape(%d), but got %d.",
+              input_shape[axis[idx]].as_int32(),
+              output_shapes[0][idx]));
     }
   } else {
     PADDLE_THROW(
@@ -666,7 +737,12 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
         << "at least one input tensor for transpose compute\n";
     Expr A = input_args[0];
     CHECK(A.as_tensor());
-    CHECK_EQ(input_args.size(), 2);
+    PADDLE_ENFORCE_EQ(
+        input_args.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "the size of input arguments should be 2, but got %d.",
+            input_args.size()));
     CHECK(input_args[1].is_string());
     std::string tensor_name = input_args[1].operator std::string();
 
@@ -791,14 +867,23 @@ std::shared_ptr<OpStrategy> StrategyForGather(
         CHECK(!args.empty()) << "The input args are empty! Please check again.";
         CINNValuePack input_args = args[0];
         int input_size = input_args.size();
-        CHECK_GE(input_size, 2U)
-            << "Require 2 input tensors for Gather compute.";
+        PADDLE_ENFORCE_GE(input_size,
+                          2U,
+                          phi::errors::InvalidArgument(
+                              "Require greater than or equal to 2 input "
+                              "tensors for Gather compute, but got %d.",
+                              input_size));
         Expr x = input_args[0];
         CHECK(x.as_tensor());
         Expr index = input_args[1];
         CHECK(index.as_tensor());
 
-        CHECK_EQ(input_args.size(), 3U);
+        PADDLE_ENFORCE_EQ(
+            input_args.size(),
+            3U,
+            phi::errors::InvalidArgument(
+                "The size of input arguments should be 3, but got %d.",
+                input_args.size()));
         CHECK(input_args[2].is_string());
         std::string tensor_name = input_args[2].operator std::string();
 
@@ -908,8 +993,12 @@ std::shared_ptr<OpStrategy> StrategyForScatterAssign(
                             "empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     int input_size = arg_pack.size();
-    CHECK_GE(input_size, 3U)
-        << "at least 3 input tensors for ScatterAssign compute\n";
+    PADDLE_ENFORCE_GE(
+        input_size,
+        3U,
+        phi::errors::InvalidArgument(
+            "at least 3 input tensors for ScatterAssign compute, but got %d.",
+            input_size));
     CHECK(!output_shapes.empty());
 
     Expr expr_input = arg_pack[0];
@@ -924,7 +1013,11 @@ std::shared_ptr<OpStrategy> StrategyForScatterAssign(
     CHECK(expr_index.as_tensor());
     auto tensor_index = expr_index.as_tensor_ref();
 
-    CHECK_EQ(arg_pack.size(), 4U);
+    PADDLE_ENFORCE_EQ(
+        arg_pack.size(),
+        4U,
+        phi::errors::InvalidArgument(
+            "the size of arg_pack should be 4, but got %d.", arg_pack.size()));
     CHECK(arg_pack[3].is_string());
     std::string tensor_name = arg_pack[3].operator std::string();
 
@@ -963,8 +1056,12 @@ std::shared_ptr<OpStrategy> StrategyForScatterAdd(
                             "empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     int input_size = arg_pack.size();
-    CHECK_GE(input_size, 3U)
-        << "at least 3 input tensors for ScatterAdd compute\n";
+    PADDLE_ENFORCE_GE(
+        input_size,
+        3U,
+        phi::errors::InvalidArgument(
+            "at least 3 input tensors for ScatterAdd compute, but got %d.",
+            input_size));
     CHECK(!output_shapes.empty());
 
     Expr expr_input = arg_pack[0];
@@ -979,7 +1076,11 @@ std::shared_ptr<OpStrategy> StrategyForScatterAdd(
     CHECK(expr_index.as_tensor());
     auto tensor_index = expr_index.as_tensor_ref();
 
-    CHECK_EQ(arg_pack.size(), 4U);
+    PADDLE_ENFORCE_EQ(
+        arg_pack.size(),
+        4U,
+        phi::errors::InvalidArgument(
+            "the size of arg_pack should be 4, but got %d.", arg_pack.size()));
     CHECK(arg_pack[3].is_string());
     std::string tensor_name = arg_pack[3].operator std::string();
 
@@ -1029,20 +1130,36 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
                             "it a mandatory attribute, please check.";
   CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attribute! It it a "
                           "mandatory attribute, please check.";
-  CHECK_EQ(starts.size(), ends.size())
-      << "The size of [starts] and [ends] must be identical! Please check.";
+  PADDLE_ENFORCE_EQ(starts.size(),
+                    ends.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of [starts] and [ends] must be identical!But "
+                        "the size of [starts] is %d, the size of [ends] is %d.",
+                        starts.size(),
+                        ends.size()));
   if (!axes.empty()) {
-    CHECK_EQ(starts.size(), axes.size())
-        << "The size of [starts] and [axes] must be identical! Please check.";
+    PADDLE_ENFORCE_EQ(
+        starts.size(),
+        axes.size(),
+        phi::errors::InvalidArgument(
+            "The size of [starts] and [axes] must be identical! But the size "
+            "of [starts] is %d, the size of [axes] is %d.",
+            starts.size(),
+            axes.size()));
   } else {
     for (int i = 0; i < starts.size(); i++) {
       axes.push_back(i);
     }
   }
   if (!strides.empty()) {
-    CHECK_EQ(starts.size(), strides.size())
-        << "The size of [starts] and [strides] must be identical! Please "
-           "check.";
+    PADDLE_ENFORCE_EQ(
+        starts.size(),
+        strides.size(),
+        phi::errors::InvalidArgument(
+            "The size of [starts] and [strides] must be identical! But "
+            "the size of [starts] is %d, the size of [strides] is %d.",
+            starts.size(),
+            strides.size()));
   } else {
     for (int i = 0; i < starts.size(); i++) {
       strides.push_back(1);
@@ -1065,7 +1182,11 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
 
-        CHECK_EQ(arg_pack.size(), 2U);
+        PADDLE_ENFORCE_EQ(arg_pack.size(),
+                          2U,
+                          phi::errors::InvalidArgument(
+                              "the size of arg_pack should be 2, but got %d.",
+                              arg_pack.size()));
         CHECK(arg_pack[1].is_string());
         std::string tensor_name = arg_pack[1].operator std::string();
 
@@ -1167,13 +1288,30 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
   CHECK(!ends_expr.empty())
       << "The Slice op doesn't find [ends] attribute! It it a "
          "mandatory attribute, please check.";
-  CHECK_EQ(starts_expr.size(), ends_expr.size())
-      << "The size of [starts] and [ends] must be identical! Please check.";
-  CHECK_EQ(starts_expr.size(), axes.size())
-      << "The size of [starts] and [axes] must be identical! Please check.";
-  CHECK_EQ(starts_expr.size(), strides_expr.size())
-      << "The size of [starts] and [strides] must be identical! Please "
-         "check.";
+  PADDLE_ENFORCE_EQ(
+      starts_expr.size(),
+      ends_expr.size(),
+      phi::errors::InvalidArgument(
+          "The size of [starts] and [ends] must be identical! But the size of "
+          "[starts] is %d, the size of [ends] is %d.",
+          starts_expr.size(),
+          ends_expr.size()));
+  PADDLE_ENFORCE_EQ(
+      starts_expr.size(),
+      axes.size(),
+      phi::errors::InvalidArgument(
+          "The size of [starts] and [axes] must be identical! But the size of "
+          "[starts] is %d, the size of [axes] is %d.",
+          starts_expr.size(),
+          axes.size()));
+  PADDLE_ENFORCE_EQ(
+      starts_expr.size(),
+      strides_expr.size(),
+      phi::errors::InvalidArgument(
+          "The size of [starts] and [strides] must be identical! But the "
+          "size of [starts] is %d, the size of [strides] is %d.",
+          starts_expr.size(),
+          strides_expr.size()));
 
   std::vector<Expr> output_shape;
   for (auto &i : output_shapes[0]) {
@@ -1226,8 +1364,12 @@ std::shared_ptr<OpStrategy> StrategyForSliceAssign(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  CHECK_EQ(inputs.size(), 2)
-      << "the number of input tensors must be equal to 2";
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "the number of input tensors must be equal to 2, but got %d.",
+          inputs.size()));
   CHECK(!output_shapes.empty() && !output_shapes[0].empty())
       << "The shape of output is empty! Please check again.";
   VLOG(4) << "The output passed in StrategyForSliceAssign: "
@@ -1255,52 +1397,77 @@ std::shared_ptr<OpStrategy> StrategyForSliceAssign(
   CHECK(!ends.empty())
       << "The SliceAssign op doesn't find [ends] attribute! It "
          "it a mandatory attribute, please check.";
-  CHECK_EQ(starts.size(), ends.size())
-      << "The size of [starts] and [ends] must be identical! Please check.";
+  PADDLE_ENFORCE_EQ(
+      starts.size(),
+      ends.size(),
+      phi::errors::InvalidArgument(
+          "The size of [starts] and [ends] must be identical! But the size of "
+          "[starts] is %d, the size of [ends] is %d.",
+          starts.size(),
+          ends.size()));
   if (!axes.empty()) {
-    CHECK_EQ(starts.size(), axes.size())
-        << "The size of [starts] and [axes] must be identical! Please check.";
+    PADDLE_ENFORCE_EQ(
+        starts.size(),
+        axes.size(),
+        phi::errors::InvalidArgument(
+            "The size of [starts] and [axes] must be identical! But the size "
+            "of [starts] is %d, the size of [axes] is %d.",
+            starts.size(),
+            axes.size()));
   } else {
     for (int i = 0; i < starts.size(); i++) {
       axes.push_back(i);
     }
   }
   if (!strides.empty()) {
-    CHECK_EQ(starts.size(), strides.size())
-        << "The size of [starts] and [strides] must be identical! Please "
-           "check.";
+    PADDLE_ENFORCE_EQ(
+        starts.size(),
+        strides.size(),
+        phi::errors::InvalidArgument(
+            "The size of [starts] and [strides] must be identical! But the "
+            "size of [starts] is %d, the size of [strides] is %d.",
+            starts.size(),
+            strides.size()));
   } else {
     for (int i = 0; i < starts.size(); i++) {
       strides.push_back(1);
     }
   }
 
-  framework::CINNCompute slice_assign_compute{
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input args are empty! Please check again.";
-        CINNValuePack arg_pack = args[0];
-        int input_size = arg_pack.size();
-        CHECK_GE(input_size, 2U)
-            << "Require 2 input tensors for SliceAssign compute.";
-        Expr input = arg_pack[0];
-        CHECK(input.as_tensor());
-        Expr assign = arg_pack[1];
-        CHECK(assign.as_tensor());
+  framework::CINNCompute slice_assign_compute{[=](lang::Args args,
+                                                  lang::RetValue *ret) {
+    CHECK(!args.empty()) << "The input args are empty! Please check again.";
+    CINNValuePack arg_pack = args[0];
+    int input_size = arg_pack.size();
+    PADDLE_ENFORCE_GE(
+        input_size,
+        2U,
+        phi::errors::InvalidArgument("Require at least 2 input tensors for "
+                                     "SliceAssign compute, but got %d.",
+                                     input_size));
+    Expr input = arg_pack[0];
+    CHECK(input.as_tensor());
+    Expr assign = arg_pack[1];
+    CHECK(assign.as_tensor());
 
-        CHECK_EQ(arg_pack.size(), 3U);
-        CHECK(arg_pack[2].is_string());
-        std::string tensor_name = arg_pack[2].operator std::string();
+    PADDLE_ENFORCE_EQ(
+        arg_pack.size(),
+        3U,
+        phi::errors::InvalidArgument(
+            "the size of arg_pack should be 3, but got %d.", arg_pack.size()));
+    CHECK(arg_pack[2].is_string());
+    std::string tensor_name = arg_pack[2].operator std::string();
 
-        auto out = pe::SliceAssign(input.as_tensor_ref(),
-                                   assign.as_tensor_ref(),
-                                   axes,
-                                   starts,
-                                   ends,
-                                   strides,
-                                   tensor_name);
-        std::vector<CINNValue> res{CINNValue(out)};
-        *ret = CINNValuePack{res};
-      }};
+    auto out = pe::SliceAssign(input.as_tensor_ref(),
+                               assign.as_tensor_ref(),
+                               axes,
+                               starts,
+                               ends,
+                               strides,
+                               tensor_name);
+    std::vector<CINNValue> res{CINNValue(out)};
+    *ret = CINNValuePack{res};
+  }};
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(slice_assign_compute,

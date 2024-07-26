@@ -236,7 +236,10 @@ def argmax(
         flatten = True
         axis = 0
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
+    elif in_pir_mode():
+        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmax')
         return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmax", **locals())
@@ -255,7 +258,7 @@ def argmax(
             ],
             'paddle.argmax',
         )
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
+        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmax')
         attrs = {}
         out = helper.create_variable_for_type_inference(var_dtype)
         attrs['keepdims'] = keepdim
@@ -334,7 +337,10 @@ def argmin(
         flatten = True
         axis = 0
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
+    elif in_pir_mode():
+        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
         return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmin", **locals())

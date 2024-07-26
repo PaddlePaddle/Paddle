@@ -48,7 +48,10 @@ std::vector<Tensor> Argmin(const Tensor &in_tensor,
                            const std::string &name) {
   auto shape = in_tensor->shape;
   auto ndim = shape.size();
-  CHECK_GT(ndim, 0) << "tensor's dim must be more than 0";
+  PADDLE_ENFORCE_GT(
+      ndim,
+      0,
+      phi::errors::InvalidArgument("tensor's dim must be more than 0"));
 
   int pos_axis = axis;
   if (axis < 0) {

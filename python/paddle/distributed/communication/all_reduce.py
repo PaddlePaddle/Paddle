@@ -11,13 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distributed.communication import stream
 from paddle.distributed.communication.reduce import ReduceOp
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
-def all_reduce(tensor, op=ReduceOp.SUM, group=None, sync_op=True):
+
+def all_reduce(
+    tensor: Tensor,
+    op: ReduceOp = ReduceOp.SUM,
+    group: Group | None = None,
+    sync_op: bool = True,
+) -> task:
     """
 
     Reduce a tensor over all ranks so that all get the result.
@@ -34,7 +47,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, sync_op=True):
         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD|ReduceOp.AVG, optional): The operation used. Default value is ReduceOp.SUM.
-        group (Group, optional): The group instance return by new_group or None for global default group.
+        group (Group|None, optional): The group instance return by new_group or None for global default group.
         sync_op (bool, optional): Wether this op is a sync op. Default value is True.
 
     Returns:

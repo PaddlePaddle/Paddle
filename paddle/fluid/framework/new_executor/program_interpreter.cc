@@ -21,11 +21,11 @@
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/os_info.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #ifdef PADDLE_WITH_DNNL
@@ -962,7 +962,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
           "infer_shape",
           platform::TracerEventType::OperatorInner,
           1,
-          platform::EventRole::kInnerOp);
+          phi::EventRole::kInnerOp);
 
       // see OperatorWithKernel::RunImpl in operator.cc for why
       if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
@@ -1006,7 +1006,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
         "compute",
         platform::TracerEventType::OperatorInner,
         1,
-        platform::EventRole::kInnerOp);
+        phi::EventRole::kInnerOp);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (is_in_op_profiling_mode_) {
@@ -1169,7 +1169,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
                   : (instr_node.KernelType() == OpFuncType::kGpuSync
                          ? "kGpuSync"
                          : "kGpuAsync"))
-          << " runs on " << platform::GetCurrentThreadName();
+          << " runs on " << phi::GetCurrentThreadName();
 
   auto* op = instr_node.OpBase();
   platform::RecordEvent instruction_event(
