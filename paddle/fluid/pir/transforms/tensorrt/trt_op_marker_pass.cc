@@ -807,28 +807,22 @@ class CastOpPattern
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      
       return false;
     }
-    if (!op->HasAttribute("dtype") ){
-            VLOG(3) << "the cast op" 
-                    << " does not have attr dtype";
-            return false;
-    }
-        auto dtype = op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
-        if (dtype == phi::DataType::BOOL){
-          #if IS_TRT_VERSION_GE(8400)
-            VLOG(3) << "the cast op supports inputs and outputs of BOOL by "
-                          "trt8.4 above ";
-            op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-            return true;
-        #endif
-              return false;
-      }
-
 #if !IS_TRT_VERSION_GE(7000)
       return false;
 #endif
+    if (!op->HasAttribute("dtype") ){
+        VLOG(3) << "the cast op does not have attr dtype ";  
+        return false;
+    }
+    auto dtype = op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
+    if (dtype == phi::DataType::BOOL){
+        #if IS_TRT_VERSION_LT(8400)
+          VLOG(3) << "the cast op supports inputs and outputs of BOOL by trt8.4 above ";
+          return false;
+        #endif
+    }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
