@@ -122,13 +122,25 @@ TEST(PatternRewrite, broadcast_elementwise) {
                 .block()
                 ->begin();
 
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::AddOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::AddOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected AddOp but found: %s", it->dump()));
 }
 
 TEST(PatternRewrite, broadcast_elementwise_both) {
@@ -151,15 +163,30 @@ TEST(PatternRewrite, broadcast_elementwise_both) {
                 .block()
                 ->begin();
 
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::AddOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::AddOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected AddOp but found: %s", it->dump()));
 }
 
 TEST(PatternRewrite, broadcast_elementwise_sub_both) {
@@ -182,13 +209,28 @@ TEST(PatternRewrite, broadcast_elementwise_sub_both) {
                 .block()
                 ->begin();
 
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected FullOp but found: %s", it->dump()));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::SubtractOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::SubtractOp>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Expected SubtractOp but found: %s", it->dump()));
 }
