@@ -1881,6 +1881,7 @@
   kernel:
     func: fold
   backward: fold_grad
+  interfaces: paddle::dialect::InferSymbolicShapeInterface
 
 - op : fractional_max_pool2d
   args : (Tensor x, int[] output_size, int[] kernel_size = {0, 0}, float random_u = 0.0, bool return_mask = true)
