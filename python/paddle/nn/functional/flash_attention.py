@@ -72,9 +72,7 @@ def _math_attention(
     query = paddle.transpose(query, [0, 2, 1, 3])
     key = paddle.transpose(key, [0, 2, 1, 3])
     value = paddle.transpose(value, [0, 2, 1, 3])
-    product = paddle.matmul(
-        x=query * (head_dim**-0.5), y=key, transpose_y=True
-    )
+    product = paddle.matmul(x=query * (head_dim**-0.5), y=key, transpose_y=True)
 
     if not causal:
         weights = F.softmax(product)
@@ -849,6 +847,7 @@ def flashmask_attention(
     *,
     dropout=0.0,
     causal=False,
+    window_size=None,
     return_softmax_lse=False,
     return_seed_offset=False,
     fixed_seed_offset=None,
@@ -1077,6 +1076,7 @@ def flashmask_attention(
                 left lower triangular mask and the start and end row indices of the right upper triangular mask in the dense mask. The values r1, r2, r3, r4 in startend_row_indices indicate that elements in the lower left triangle of the Score matrix starting from the r1-th row downwards (inclusive) but above the r2-th row (exclusive) will be masked, and elements in the upper right triangle starting from the r3-th row downwards (inclusive) but above the r4-th row (exclusive) will be masked.
         - **dropout** (float) - The dropout ratio. Default is 0.0.
         - **causal** (bool) - Whether to enable causal mode. Default is False.
+        - **window_size* (int, optional) - Window size in sliding window attention. Default is None, will not use sliding window attention. (Not implemented!)
         - **return_softmax_lse** (bool) - Whether to return the log-sum-exp of the softmax. Default is False.
         - **return_seed_offset** (bool) - Whether to return the random seed offset. Default is False.
         - **fixed_seed_offset** (Tensor, optional): With fixed seed, offset for dropout mask.
@@ -1135,6 +1135,7 @@ def flashmask_attention(
             >>> # doctest: -SKIP
 
     """
+    assert window_size is None, "window is not implemented now."
 
     assert (
         startend_row_indices is not None
