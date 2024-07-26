@@ -152,7 +152,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
         !PyObject_CheckIRVectorOfValue(shape_obj) &&
         !PyObject_CheckIRValue(value_obj)) {
       std::vector<int64_t> shape = CastPyArg2Longs(shape_obj, "full", 0);
-      float value = CastPyArg2Float(value_obj, "full", 1);
+      double value = CastPyArg2Double(value_obj, "full", 1);
       CallStackRecorder callstack_recoder("full");
       callstack_recoder.Record();
       auto static_api_out = paddle::dialect::full(shape, value, dtype, place);
@@ -176,7 +176,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       if (PyObject_CheckIRValue(value_obj)) {
         value = CastPyArg2Value(value_obj, "full", 1, false);
       } else {
-        float value_tmp = CastPyArg2Float(value_obj, "full", 1);
+        double value_tmp = CastPyArg2Double(value_obj, "full", 1);
         value = paddle::dialect::full(std::vector<int64_t>{1},
                                       value_tmp,
                                       phi::DataType::FLOAT32,
@@ -272,7 +272,6 @@ static PyObject *static_api_array_length(PyObject *self,
     return nullptr;
   }
 }
-
 static PyObject *static_api_array_read(PyObject *self,
                                        PyObject *args,
                                        PyObject *kwargs) {
@@ -300,6 +299,33 @@ static PyObject *static_api_array_read(PyObject *self,
     CallStackRecorder callstack_recoder("array_read");
     callstack_recoder.Record();
     auto static_api_out = paddle::dialect::array_read(array, i);
+    callstack_recoder.AttachToOps();
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+static PyObject *static_api_fetch(PyObject *self,
+                                  PyObject *args,
+                                  PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add fetch op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *value_obj = PyTuple_GET_ITEM(args, 0);
+    auto value = CastPyArg2Value(value_obj, "fetch", 0, false);
+
+    std::string name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
+    int col = CastPyArg2Int(PyTuple_GET_ITEM(args, 2), "array_read", 2);
+
+    // Call ir static api
+    CallStackRecorder callstack_recoder("fetch");
+    callstack_recoder.Record();
+    auto static_api_out = paddle::dialect::fetch(value, name, col);
     callstack_recoder.AttachToOps();
 
     return ToPyObject(static_api_out);
@@ -362,7 +388,7 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
       std::vector<pir::Value> x_tmp =
           CastPyArg2VectorOfValue(x_obj, "array_to_tensor", 0, false);
       if (x_tmp.size() != 1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Input x expects only one input, but %d are given.",
             x_tmp.size()));  // NOLINT
       }
@@ -707,7 +733,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
           attr_name_and_type[0],
           pir::ArrayAttribute::get(pir::IrContext::Instance(), array_attr));
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -970,7 +996,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
 
     PyObject *param_obj = PyTuple_GET_ITEM(args, 1);
     if (!PyObject_TypeCheck(param_obj, g_tensorrt_engine_params_pytype)) {
-      PADDLE_THROW(platform::errors::InvalidType(
+      PADDLE_THROW(phi::errors::InvalidType(
           "tensorrt_engine(): argument (position %d) must be "
           "EngineParams, but got %s",
           2,
@@ -995,7 +1021,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
         outputs_shape.emplace_back(CastPyArg2VectorOfInt64(item, 4));
       }
     } else {
-      PADDLE_THROW(platform::errors::InvalidType(
+      PADDLE_THROW(phi::errors::InvalidType(
           "argument (position %d) must be "
           "list but got %s",
           5,
@@ -1014,7 +1040,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
             CastPyArg2DataTypeDirectly(item, "tensorrt_engine", 5));
       }
     } else {
-      PADDLE_THROW(platform::errors::InvalidType(
+      PADDLE_THROW(phi::errors::InvalidType(
           "argument (position %d) must be "
           "list but got %s",
           6,
@@ -1092,6 +1118,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_array_read,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for array_read."},
+    {"fetch",
+     (PyCFunction)(void (*)(void))static_api_fetch,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for fetch."},
     {"array_write_",
      (PyCFunction)(void (*)(void))static_api_array_write_,
      METH_VARARGS | METH_KEYWORDS,

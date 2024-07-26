@@ -278,7 +278,7 @@ void RegisterAllCustomOperator(bool use_pir) {
                 }
                 custom_attrs.emplace_back(vec_string_attr);
               } else {
-                PADDLE_THROW(platform::errors::Unimplemented(
+                PADDLE_THROW(phi::errors::Unimplemented(
                     "Unsupported `%s` type value as custom attribute now. "
                     "Supported data types include `bool`, `int`, `float`, "
                     "`int64_t`, `std::string`, `std::vector<int>`, "

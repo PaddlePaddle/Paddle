@@ -76,9 +76,9 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
@@ -91,11 +91,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -133,6 +131,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
@@ -473,7 +473,7 @@ struct iinfo {
         dtype = "uint8";
         break;
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "the argument of paddle.iinfo can only be paddle.int8, "
             "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"));
         break;
@@ -494,13 +494,13 @@ struct finfo {
   explicit finfo(const framework::proto::VarType::Type &type) {
     switch (type) {
       case framework::proto::VarType::FP16:
-        eps = std::numeric_limits<paddle::platform::float16>::epsilon();
-        min = std::numeric_limits<paddle::platform::float16>::lowest();
-        max = std::numeric_limits<paddle::platform::float16>::max();
-        smallest_normal = std::numeric_limits<paddle::platform::float16>::min();
+        eps = std::numeric_limits<phi::dtype::float16>::epsilon();
+        min = std::numeric_limits<phi::dtype::float16>::lowest();
+        max = std::numeric_limits<phi::dtype::float16>::max();
+        smallest_normal = std::numeric_limits<phi::dtype::float16>::min();
         tiny = smallest_normal;
-        resolution = std::pow(
-            10, -std::numeric_limits<paddle::platform::float16>::digits10);
+        resolution =
+            std::pow(10, -std::numeric_limits<phi::dtype::float16>::digits10);
         bits = 16;
         dtype = "float16";
         break;
@@ -527,19 +527,18 @@ struct finfo {
         dtype = "float64";
         break;
       case framework::proto::VarType::BF16:
-        eps = std::numeric_limits<paddle::platform::bfloat16>::epsilon();
-        min = std::numeric_limits<paddle::platform::bfloat16>::lowest();
-        max = std::numeric_limits<paddle::platform::bfloat16>::max();
-        smallest_normal =
-            std::numeric_limits<paddle::platform::bfloat16>::min();
+        eps = std::numeric_limits<phi::dtype::bfloat16>::epsilon();
+        min = std::numeric_limits<phi::dtype::bfloat16>::lowest();
+        max = std::numeric_limits<phi::dtype::bfloat16>::max();
+        smallest_normal = std::numeric_limits<phi::dtype::bfloat16>::min();
         tiny = smallest_normal;
-        resolution = std::pow(
-            10, -std::numeric_limits<paddle::platform::bfloat16>::digits10);
+        resolution =
+            std::pow(10, -std::numeric_limits<phi::dtype::bfloat16>::digits10);
         bits = 16;
         dtype = "bfloat16";
         break;
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "the argument of paddle.finfo can only be paddle.float32, "
             "paddle.float64, paddle.float16, paddle.bfloat16"
             "paddle.complex64, or paddle.complex128"));
@@ -575,7 +574,7 @@ static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
   for (auto &para : state_dict) {
     PyObject *py_obj = para.second.ptr();
     if (!py_obj || py_obj == Py_None) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The parameter [%s] to save is None", para.first));
     }
     vec_res.emplace_back(
@@ -592,8 +591,8 @@ static std::vector<std::string> inline GetNameList(
   PyObject *py_obj = py_handle.ptr();  // get underlying PyObject
   // Python None is not nullptr in C++!
   if (!py_obj || py_obj == Py_None) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "The parameter list to save is None"));
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The parameter list to save is None"));
   }
 
   if (PyList_Check(py_obj)) {
@@ -607,14 +606,14 @@ static std::vector<std::string> inline GetNameList(
       PyObject *py_name =
           PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
       PADDLE_ENFORCE_NOT_NULL(py_name,
-                              platform::errors::InvalidArgument(
+                              phi::errors::InvalidArgument(
                                   "The name of parameter to save is None"));
       vec_res.emplace_back(PyObjectCast<std::string>(py_name));
       Py_DECREF(py_name);
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "The parameters to save is not a list"));
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The parameters to save is not a list"));
   }
   return vec_res;
 }
@@ -629,7 +628,7 @@ static void inline CreateVariableIfNotExist(
   // Python None is not nullptr in C++!
   if (!py_obj || py_obj == Py_None) {
     PADDLE_THROW(
-        platform::errors::InvalidArgument("The parameter list to set is None"));
+        phi::errors::InvalidArgument("The parameter list to set is None"));
   }
 
   if (PyList_Check(py_obj)) {
@@ -643,16 +642,16 @@ static void inline CreateVariableIfNotExist(
     for (size_t i = 0; i < len; ++i) {
       PyObject *py_name =
           PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
-      PADDLE_ENFORCE_NOT_NULL(py_name,
-                              platform::errors::InvalidArgument(
-                                  "The name of parameter to set is None"));
+      PADDLE_ENFORCE_NOT_NULL(
+          py_name,
+          phi::errors::InvalidArgument("The name of parameter to set is None"));
       auto para_name = PyObjectCast<std::string>(py_name);
       Py_DECREF(py_name);
 
       auto var = scope.FindVar(para_name);
       if (var == nullptr) {
         PADDLE_ENFORCE_NOT_NULL(exe,
-                                platform::errors::InvalidArgument(
+                                phi::errors::InvalidArgument(
                                     "Parameter not Initialized, "
                                     "Please set argument [executor] not None "
                                     "or run startup program first"));
@@ -660,7 +659,7 @@ static void inline CreateVariableIfNotExist(
             PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kVarDescField);
         PADDLE_ENFORCE_NOT_NULL(
             py_var_desc,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The var_desc of parameter to set is None"));
         auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
         Py_DECREF(py_var_desc);
@@ -673,8 +672,8 @@ static void inline CreateVariableIfNotExist(
       }
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "The parameters to set is not a list"));
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The parameters to set is not a list"));
   }
 
   return;
@@ -698,7 +697,7 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
   }
   PADDLE_ENFORCE_EQ(ops.empty(),
                     true,
-                    platform::errors::Unimplemented(
+                    phi::errors::Unimplemented(
                         "OperatorWithKernel [%s] have only static graph grad "
                         "maker or have only dygraph grad maker, which is not "
                         "allowed",
@@ -709,10 +708,10 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
 static int GetNCCLVersion() {
 #if NCCL_VERSION_CODE >= 2304
   int ver;
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetVersion(&ver));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetVersion(&ver));
   return ver;
 #else
-  PADDLE_THROW(platform::errors::External(
+  PADDLE_THROW(phi::errors::External(
       "Cannot get NCCL version successfully when nccl version < 2.3.4"));
 #endif
 }
@@ -1266,7 +1265,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
     PADDLE_ENFORCE_NOT_NULL(
         dmt,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "from_dlpack received an invalid capsule. "
             "Note that a DLPack tensor can be consumed only once."));
 
@@ -1478,7 +1477,7 @@ PYBIND11_MODULE(libpaddle, m) {
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
-  m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
+  m.def("_set_paddle_lib_path", &phi::dynload::SetPaddleLibPath);
 
   m.def("set_current_thread_name", &paddle::platform::SetCurrentThreadName);
 
@@ -1564,7 +1563,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](Variable &self) -> framework::ReaderHolder * {
             PADDLE_ENFORCE_EQ(self.IsType<framework::ReaderHolder>(),
                               true,
-                              platform::errors::InvalidArgument(
+                              phi::errors::InvalidArgument(
                                   "The variable is not type of ReaderHolder."));
             return self.GetMutable<framework::ReaderHolder>();
           },
@@ -1576,7 +1575,7 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE_GT(
                 scope_vec->size(),
                 0,
-                platform::errors::InvalidArgument(
+                phi::errors::InvalidArgument(
                     "The size of scope_vec should be greater than 0"));
             return scope_vec->front();
           },
@@ -1711,7 +1710,7 @@ All parameter, weight, gradient are variables in Paddle.
         PADDLE_ENFORCE_EQ(
             info.Proto().SerializeToString(&str),
             true,
-            platform::errors::Fatal(
+            phi::errors::Fatal(
                 "Serialize OpProto Error. This could be a bug of Paddle."));
         ret_values.emplace_back(str);
       }
@@ -1804,7 +1803,7 @@ All parameter, weight, gradient are variables in Paddle.
             // Normally, proto_ should not be null, except some special
             // operators, such as LeaklyReluDoubleGrad op.
             std::string type = op_desc.Type();
-            PADDLE_THROW(platform::errors::NotFound(
+            PADDLE_THROW(phi::errors::NotFound(
                 "Neither operator %s's GradOpMaker nor CompGradOpMaker has "
                 "been registered.\nPlease check whether (%s) operator has "
                 "gradient operator.\nIf not, please set stop_gradient to be "
@@ -1938,34 +1937,33 @@ All parameter, weight, gradient are variables in Paddle.
       .def("empty", []() { return kEmptyVarName; })
       .def("temp", []() { return kTempVarName; });
 
-  py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
+  py::class_<phi::DeviceContext>(m, "DeviceContext")
+      .def_static("create",
+                  [](phi::CPUPlace &place) -> phi::DeviceContext * {
+                    auto *context = new phi::CPUContext();
+                    context->SetAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(place)
+                            .get());
+                    context->SetHostAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(phi::CPUPlace())
+                            .get());
+                    context->SetZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(place)
+                            .get());
+                    context->SetHostZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(phi::CPUPlace())
+                            .get());
+                    return context;
+                  })
       .def_static(
           "create",
-          [](phi::CPUPlace &place) -> paddle::platform::DeviceContext * {
-            auto *context = new phi::CPUContext();
-            context->SetAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetAllocator(place)
-                    .get());
-            context->SetHostAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetAllocator(phi::CPUPlace())
-                    .get());
-            context->SetZeroAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetZeroAllocator(place)
-                    .get());
-            context->SetHostZeroAllocator(
-                paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetZeroAllocator(phi::CPUPlace())
-                    .get());
-            return context;
-          })
-      .def_static(
-          "create",
-          [](phi::XPUPlace &place) -> paddle::platform::DeviceContext * {
+          [](phi::XPUPlace &place) -> phi::DeviceContext * {
 #ifndef PADDLE_WITH_XPU
-            PADDLE_THROW(platform::errors::PermissionDenied(
+            PADDLE_THROW(phi::errors::PermissionDenied(
                 "Cannot use XPUPlace in CPU/GPU version, "
                 "Please recompile or reinstall Paddle with XPU support."));
 #else
@@ -1989,23 +1987,22 @@ All parameter, weight, gradient are variables in Paddle.
             return context;
 #endif
           })
-      .def_static(
-          "create",
-          [](phi::CustomPlace &place) -> paddle::platform::DeviceContext * {
+      .def_static("create",
+                  [](phi::CustomPlace &place) -> phi::DeviceContext * {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-            PADDLE_THROW(platform::errors::PermissionDenied(
-                "Cannot use CustomPlace in CPU/GPU/XPU version, "
-                "Please recompile or reinstall Paddle with "
-                "CustomDevice support."));
+                    PADDLE_THROW(phi::errors::PermissionDenied(
+                        "Cannot use CustomPlace in CPU/GPU/XPU version, "
+                        "Please recompile or reinstall Paddle with "
+                        "CustomDevice support."));
 #else
             return new paddle::platform::CustomDeviceContext(place);
 #endif
-          })
+                  })
       .def_static(
           "create",
-          [](phi::GPUPlace &place) -> paddle::platform::DeviceContext * {
+          [](phi::GPUPlace &place) -> phi::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-            PADDLE_THROW(platform::errors::PermissionDenied(
+            PADDLE_THROW(phi::errors::PermissionDenied(
                 "Cannot use CUDAPlace in CPU only version, "
                 "Please recompile or reinstall Paddle with CUDA support."));
 #else
@@ -2035,10 +2032,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
           })
       .def_static(
-          "create",
-          [](phi::GPUPinnedPlace &place) -> paddle::platform::DeviceContext * {
+          "create", [](phi::GPUPinnedPlace &place) -> phi::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-            PADDLE_THROW(platform::errors::PermissionDenied(
+            PADDLE_THROW(phi::errors::PermissionDenied(
                 "Cannot use CUDAPinnedPlace in CPU only version, "
                 "Please recompile or reinstall Paddle with CUDA support."));
 #else
@@ -2130,11 +2126,11 @@ All parameter, weight, gradient are variables in Paddle.
                     proto::OpDesc desc;
                     PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin),
                                       true,
-                                      platform::errors::InvalidArgument(
+                                      phi::errors::InvalidArgument(
                                           "Cannot parse user input to OpDesc"));
                     PADDLE_ENFORCE_EQ(desc.IsInitialized(),
                                       true,
-                                      platform::errors::InvalidArgument(
+                                      phi::errors::InvalidArgument(
                                           "The provided OpDesc is not "
                                           "initialized, the reason is: %s",
                                           desc.InitializationErrorString()));
@@ -2539,7 +2535,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](LoDTensorArray &self, size_t i, const phi::DenseTensor &t) {
              PADDLE_ENFORCE_LT(i,
                                self.size(),
-                               platform::errors::InvalidArgument(
+                               phi::errors::InvalidArgument(
                                    "The index to set is larger than the size "
                                    "of LoDTensorArray."));
              self[i].ShareDataWith(t);
@@ -2764,9 +2760,9 @@ All parameter, weight, gradient are variables in Paddle.
     PADDLE_ENFORCE_EQ(
         framework::ir::PassRegistry::Instance().Has(pass_type),
         false,
-        platform::errors::AlreadyExists("Pass '%s' is registered more than "
-                                        "once. Please use another name.",
-                                        pass_type));
+        phi::errors::AlreadyExists("Pass '%s' is registered more than "
+                                   "once. Please use another name.",
+                                   pass_type));
     callable.inc_ref();
     framework::ir::PassRegistry::Instance().Insert(
         pass_type, [pass_type, callable]() {
@@ -3014,7 +3010,7 @@ All parameter, weight, gradient are variables in Paddle.
                    } else if (py::isinstance<py::int_>(option)) {
                      option_val = std::to_string(option.cast<std::uint64_t>());
                    } else {
-                     PADDLE_THROW(platform::errors::Unimplemented(
+                     PADDLE_THROW(phi::errors::Unimplemented(
                          "Failed to convert type: %s when set IpuStrategy "
                          "option: %s",
                          option.get_type(),
@@ -3061,7 +3057,7 @@ All parameter, weight, gradient are variables in Paddle.
                      } else if (option_key == "version") {
                        version = option.second.cast<int>();
                      } else {
-                       PADDLE_THROW(platform::errors::InvalidArgument(
+                       PADDLE_THROW(phi::errors::InvalidArgument(
                            "Invalid argument, key must be one of paddle_op, "
                            "popart_op, domain or version, but revecived %s",
                            option_key));
@@ -3078,7 +3074,7 @@ All parameter, weight, gradient are variables in Paddle.
                        option_val =
                            std::to_string(option.second.cast<std::uint64_t>());
                      } else {
-                       PADDLE_THROW(platform::errors::Unimplemented(
+                       PADDLE_THROW(phi::errors::Unimplemented(
                            "Failed to convert value type: %s when set "
                            "IpuStrategy option: %s",
                            option.second.get_type(),
@@ -3089,7 +3085,7 @@ All parameter, weight, gradient are variables in Paddle.
                    }
                  }
                } else {
-                 PADDLE_THROW(platform::errors::InvalidArgument(
+                 PADDLE_THROW(phi::errors::InvalidArgument(
                      "Invalid IpuStrategy option value type: %s, please check "
                      "input value for option: %s",
                      element.second.get_type(),

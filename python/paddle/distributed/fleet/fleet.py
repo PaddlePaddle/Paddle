@@ -1315,7 +1315,7 @@ class Fleet:
                 >>> fleet.set_date(0, "20250101")
 
         """
-        self._runtime_handle._set_date(table_id, day_id)
+        self._runtime_handle._set_date(table_id, str(day_id))
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -1902,6 +1902,7 @@ class Fleet:
                 raise ValueError(
                     "startup_program can't be None when loss is list."
                 )
+        ori_startup_programs = startup_programs.copy()
         self.origin_startup_program = startup_programs[0].clone(for_test=False)
         context["origin_startup_program"] = startup_programs[0]
         context["origin_startup_programs"] = []
@@ -1941,7 +1942,9 @@ class Fleet:
 
         # if id(default_program) != id(losses[0].block.program):
         #     paddle.framework.switch_main_program(losses[0].block.program)
-
+        # join phase program add communication ops from startup_programs. But python return original startup_program
+        for i in range(len(ori_startup_programs)):
+            ori_startup_programs[i]._rebuild_from_desc(startup_programs[i].desc)
         context["program_optimize_ops"] = optimize_ops
         context["program_params_grads"] = params_grads
 

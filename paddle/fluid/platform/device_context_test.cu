@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 
 TEST(Device, Init) {
-  using paddle::platform::DeviceContext;
+  using phi::DeviceContext;
   using phi::GPUContext;
   using phi::GPUPlace;
 

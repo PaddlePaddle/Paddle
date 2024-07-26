@@ -75,11 +75,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -110,6 +108,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -374,7 +374,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   m.def("is_bfloat16_supported", [](const phi::GPUPlace &place) -> bool {
   // Only GPUs with Compute Capability >= 80 support bfloat16
 #ifdef PADDLE_WITH_HIP
-    return false;
+    return true;
 #else
     return platform::GetGPUComputeCapability(place.device) >= 80;
 #endif
@@ -534,7 +534,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   cudapinnedplace
       .def(py::init([]() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-        PADDLE_THROW(platform::errors::PermissionDenied(
+        PADDLE_THROW(phi::errors::PermissionDenied(
             "Cannot use CUDAPinnedPlace in CPU only version, "
             "Please recompile or reinstall Paddle with CUDA support."));
 #endif

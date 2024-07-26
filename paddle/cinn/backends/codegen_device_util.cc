@@ -51,7 +51,7 @@ ir::Module CreateSwitchWithBroadcastConditionModule(
       ir::Argument(kernel_args_num, ir::Argument::IO::kInput),
       ir::Argument(tensor_shape_args, ir::Argument::IO::kOutput)};
 
-  const auto &CreateSymbolArgDefines = [&]() -> std::vector<ir::Expr> {
+  const auto &symbolic_arg_define = [&]() -> std::vector<ir::Expr> {
     std::vector<ir::Expr> arg_defs;
     for (const auto &item : symbolic_shape_var_index) {
       ir::Expr call_get_value_in_kernel_args =
@@ -68,13 +68,13 @@ ir::Module CreateSwitchWithBroadcastConditionModule(
       arg_defs.push_back(stmt);
     }
     return arg_defs;
-  };
+  }();
 
   const auto &CreateSwitchFunction =
       [&](std::vector<ir::Argument> func_arguments,
           const std::vector<ir::Expr> &read_args,
           std::string name_extend) -> ir::Expr {
-    std::vector<ir::Expr> body_stmts(CreateSymbolArgDefines());
+    std::vector<ir::Expr> body_stmts(symbolic_arg_define);
     for (int i = 0; i < broadcast_conditions.size(); ++i) {
       ir::Expr callee = ir::Call::Make(Void(),
                                        case_func_names[i] + name_extend,
@@ -113,8 +113,11 @@ ir::Module CreateSwitchWithBroadcastConditionModule(
   module_builder.AddFunctionWithoutOptim(
       infer_shape_func_caller.as_lowered_func_ref());
   // no need cx86 func
-  ir::Expr cx86_func_caller = ir::_LoweredFunc_::Make(
-      wrapper_func_name + "_CX86", host_func_arguments, ir::Expr(), {});
+  ir::Expr cx86_func_caller =
+      ir::_LoweredFunc_::Make(wrapper_func_name + "_CX86",
+                              host_func_arguments,
+                              ir::Block::Make({}),
+                              {});
   module_builder.AddFunctionWithoutOptim(
       cx86_func_caller.as_lowered_func_ref());
   return module_builder.Build();
@@ -137,6 +140,8 @@ struct PredicatePrinter : public ir::IrPrinter {
   void Visit(const ir::GE *x) { PrintBinaryOp("GE", x); }
   void Visit(const ir::And *x) { PrintBinaryOp("AND", x); }
   void Visit(const ir::Or *x) { PrintBinaryOp("OR", x); }
+  void Visit(const ir::Max *x) { PrintBinaryOp("MAX", x); }
+  void Visit(const ir::Min *x) { PrintBinaryOp("MIN", x); }
 
   template <typename IRN>
   void PrintBinaryOp(const std::string &op, const ir::BinaryOpNode<IRN> *x) {
