@@ -58,24 +58,17 @@ std::vector<pir::Value> GetBlockOutsideInput(
   return vec_res;
 }
 
-std::unordered_map<OpLoweringGroupPtr,
-                   std::unordered_map<std::string, pir::Attribute>>
-CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list) {
+std::unordered_map<std::string, pir::Attribute>
+CompileBroadcastGroupsAsOpAttribute(
+    const std::vector<OpLoweringGroupPtr>& leaf_groups,
+    OpLoweringGroupPtr origin_group) {
   PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
-  auto fn_ptr_res = pir_compiler.Build(group_list);
-
-  std::unordered_map<OpLoweringGroupPtr,
-                     std::unordered_map<std::string, pir::Attribute>>
-      result;
-  for (size_t i = 0; i < group_list.size(); ++i) {
-    std::unordered_map<std::string, ::pir::Attribute> op_attrs{
-        {cinn::dialect::JitKernelOp::kAttrName,
-         cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),
-                                                     fn_ptr_res[i])},
-    };
-    result.insert({group_list[i], op_attrs});
-  }
-  return result;
+  auto fn_ptr_res = pir_compiler.BuildBroadcastTree(leaf_groups, origin_group);
+  std::unordered_map<std::string, ::pir::Attribute> op_attrs{
+      {cinn::dialect::JitKernelOp::kAttrName,
+       cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),
+                                                   fn_ptr_res)}};
+  return op_attrs;
 }
 
 std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
