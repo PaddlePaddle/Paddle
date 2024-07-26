@@ -1086,6 +1086,17 @@ struct Conv2dOpTranscriber : public OpTranscriber {
 };
 
 struct EmbeddingOpTranscriber : public OpTranscriber {
+  pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
+                           const OpDesc& op_desc) override {
+    auto op_info = ctx->GetRegisteredOpInfo("pd_op.embedding");
+    if (!op_info) {
+      IR_THROW("Op %d should have corresponding OpInfo %d",
+               op_desc.Type(),
+               "pd_op.embedding");
+    }
+    return op_info;
+  }
+
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
                                   const OpAttributeInfo& info) override {
@@ -3565,6 +3576,37 @@ struct CEmbeddingOpTranscriber : public OpTranscriber {
   }
 };
 
+struct GatherOpTranscriber : public OpTranscriber {
+  pir::Value GetAttributeAsInput(pir::IrContext* ctx,
+                                 pir::Block* block,
+                                 const OpDesc& op_desc,
+                                 const OpInputInfo& input_info) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+
+    auto legacy_attr_name =
+        op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
+
+    if (!op_desc.HasAttr(legacy_attr_name)) {
+      VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+               << " name: " << legacy_attr_name << " not found and fill 0.";
+      pir::Attribute new_attr = pir::Int64Attribute::get(ctx, 0);
+      pir::Operation* defining_op =
+          InsertFullOperationForAttributeInput(ctx, block, new_attr);
+      return defining_op->result(0);
+    } else {
+      paddle::framework::Attribute legacy_attr =
+          op_desc.GetAttr(legacy_attr_name);
+      VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+               << " name: " << legacy_attr_name << " " << legacy_attr.index();
+      pir::Attribute new_attr = attribute_translator(legacy_attr);
+      pir::Operation* defining_op =
+          InsertFullOperationForAttributeInput(ctx, block, new_attr);
+      return defining_op->result(0);
+    }
+  }
+};
+
 struct QuantizeLinearOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -3625,6 +3667,7 @@ OpTranslator::OpTranslator() {
       FakeQuantizeOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
+  special_handlers["lookup_table"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
@@ -3682,6 +3725,7 @@ OpTranslator::OpTranslator() {
   special_handlers["c_embedding"] = CEmbeddingOpTranscriber();
   special_handlers["quantize_linear"] = QuantizeLinearOpTranscriber();
   special_handlers["dequantize_linear"] = QuantizeLinearOpTranscriber();
+  special_handlers["gather"] = GatherOpTranscriber();
 }
 
 }  // namespace translator

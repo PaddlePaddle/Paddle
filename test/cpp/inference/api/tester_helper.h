@@ -118,6 +118,11 @@ constexpr ::paddle::PaddleDType GetPaddleDType<float>() {
   return ::paddle::PaddleDType::FLOAT32;
 }
 
+template <>
+constexpr ::paddle::PaddleDType GetPaddleDType<double>() {
+  return ::paddle::PaddleDType::FLOAT64;
+}
+
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
   const auto *analysis_config =
       reinterpret_cast<const AnalysisConfig *>(config);
