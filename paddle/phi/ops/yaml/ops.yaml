@@ -3079,6 +3079,7 @@
   kernel :
     func : mean_all
   backward : mean_all_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : memcpy_d2h
   args : (Tensor x, int dst_place_type)
