@@ -1288,7 +1288,11 @@ struct OperatorWithKernel::CacheImpl {
     bool ret{false};
     if (last_ddims_.empty() || tensors_.empty()) ret = true;
     if (!ret) {
-      CHECK_EQ(last_ddims_.size(), tensors_.size());
+      PADDLE_ENFORCE_EQ(
+          last_ddims_.size(),
+          tensors_.size(),
+          phi::errors::InvalidArgument(
+              "The size of last_ddims_ should be equal to tensors_. "));
       for (size_t i = 0; i < last_ddims_.size(); ++i) {
         if (tensors_[i]->dims() != last_ddims_[i]) {
           ret = true;
