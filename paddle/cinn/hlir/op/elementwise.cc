@@ -83,7 +83,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
         1U,
         phi::errors::InvalidArgument("the size of pack_args should be greater "
                                      "than or equal to 1, but got %d.",
-                                     pack_args.size()))
+                                     pack_args.size()));
 
     PADDLE_ENFORCE_EQ(
         pack_args.size(),
@@ -130,7 +130,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
         1U,
         phi::errors::InvalidArgument("the size of pack_args should be greater "
                                      "than or equal to 1, but got %d.",
-                                     pack_args.size()))
+                                     pack_args.size()));
 
     PADDLE_ENFORCE_EQ(
         pack_args.size(),
@@ -652,7 +652,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
         1U,
         phi::errors::InvalidArgument("the size of pack_args should be "
                                      "equal to 1, but got %d.",
-                                     pack_args.size()))
+                                     pack_args.size()));
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -705,7 +705,7 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
         1U,
         phi::errors::InvalidArgument(
             "the input_size should be greater than or equal to 1, but got %d",
-            input_size))
+            input_size));
     Expr x = input_args[0];
     CHECK(x.as_tensor());
 
@@ -749,7 +749,7 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
                       phi::errors::InvalidArgument(
                           "the size of pack_args should be greater than or "
                           "equal to 1, but got %d.",
-                          pack_args.size()))
+                          pack_args.size()));
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -803,7 +803,7 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
                       phi::errors::InvalidArgument(
                           "the size of pack_args should be greater than or "
                           "equal to 1, but got %d.",
-                          pack_args.size()))
+                          pack_args.size()));
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -851,7 +851,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCast(
                           phi::errors::InvalidArgument(
                               "the size of pack_args should be greater than or "
                               "equal to 1, but got %d.",
-                              pack_args.size()))
+                              pack_args.size()));
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
@@ -897,7 +897,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCastSymbolic(
                           phi::errors::InvalidArgument(
                               "the size of pack_args should be greater than or "
                               "equal to 1, but got %d.",
-                              pack_args.size()))
+                              pack_args.size()));
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
@@ -940,7 +940,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStore(
                           phi::errors::InvalidArgument(
                               "the size of pack_args should be greater than or "
                               "equal to 1, but got %d.",
-                              pack_args.size()))
+                              pack_args.size()));
 
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
@@ -987,7 +987,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStoreSymbolic(
                           phi::errors::InvalidArgument(
                               "the size of pack_args should be greater than or "
                               "equal to 1, but got %d.",
-                              pack_args.size()))
+                              pack_args.size()));
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
@@ -1296,8 +1296,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssignOutSymbolic(
         3U,
         phi::errors::InvalidArgument("the size of pack_args should be "
                                      "equal to 3, but got %d.",
-                                     pack_args.size()))
-        << "3 input tensors is needed for AssignOut compute\n";
+                                     pack_args.size()));
     Expr x = pack_args[0];
     CHECK(x.as_tensor());
     Expr out = pack_args[1];
@@ -1366,7 +1365,7 @@ std::shared_ptr<OpStrategy> StrategyForIsClose(
             input_size,
             2,
             phi::errors::InvalidArgument(
-                "the input_size should be 2, but got %d.", input_size))
+                "the input_size should be 2, but got %d.", input_size));
 
         // the input tensor are in front
         Expr x_expr = pack_args[0];
@@ -1429,7 +1428,7 @@ std::shared_ptr<OpStrategy> StrategyForIsCloseSymbolic(
             input_size,
             2,
             phi::errors::InvalidArgument(
-                "the input_size should be 2, but got %d.", input_size))
+                "the input_size should be 2, but got %d.", input_size));
 
         // the input tensor are in front
         Expr x_expr = pack_args[0];
