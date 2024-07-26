@@ -1965,6 +1965,7 @@
     param : [input, shape, value, dtype, input_dim_idx, output_dim_idx]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : full_int_array
   args : (int64_t[] value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())

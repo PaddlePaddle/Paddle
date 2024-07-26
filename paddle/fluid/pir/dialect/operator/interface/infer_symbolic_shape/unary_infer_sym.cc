@@ -408,6 +408,46 @@ bool Flatten_OpInferSymbolicShape(
   return FlattenOpInferSymbolicShape(op, infer_context);
 }
 
+bool FullBatchSizeLikeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+
+  std::vector<int> shape =
+      paddle::dialect::details::GetVectorAttr<int>(op, "shape");
+  int x_batch_size_dim =
+      op->attribute<pir::Int32Attribute>("x_batch_size_dim").data();
+  int out_batch_size_dim =
+      op->attribute<pir::Int32Attribute>("out_batch_size_dim").data();
+
+  PADDLE_ENFORCE_LT(
+      x_batch_size_dim,
+      x_dims.size(),
+      phi::errors::InvalidArgument(
+          "x_batch_size_dim should be less than the rank of input tensor."));
+  PADDLE_ENFORCE_LT(
+      out_batch_size_dim,
+      shape.size(),
+      phi::errors::InvalidArgument("out_batch_size_dim should be less than the "
+                                   "size of shape attribute."));
+
+  std::vector<symbol::DimExpr> out_dims(shape.size());
+  for (size_t i = 0; i < shape.size(); ++i) {
+    if (static_cast<int>(i) == out_batch_size_dim) {
+      out_dims[i] = x_dims[x_batch_size_dim];
+    } else {
+      out_dims[i] = shape[i];
+    }
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
 bool KthvalueOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
