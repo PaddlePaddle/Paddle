@@ -1001,13 +1001,13 @@ def launch():
                 mem_allnodes = [i[0].decode() for i in result]
 
                 for mem in mem_allnodes:
-                    if mem is None:
+                    if mem is None or cur_cfg["max_mem_usage"] is None:
                         continue
                     if mem == "OOM":
                         cur_cfg["max_mem_usage"] = mem
                         break
                     cur_cfg["max_mem_usage"] = max(
-                        int(mem), int(cur_cfg["max_mem_usage"])
+                        int(float(mem)), int(float(cur_cfg["max_mem_usage"]))
                     )
 
             # if need accurate peak memory
