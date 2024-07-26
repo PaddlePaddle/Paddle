@@ -242,9 +242,8 @@ void TensorAdd(const VarType& src, VarType* dst) {
 
 #define PADDLE_TENSOR_ADD_CUSTOM(T)                              \
   if (data_type == framework::DataTypeTrait<T>::DataType()) {    \
-    platform::CustomDeviceContext* ctx =                         \
-        static_cast<platform::CustomDeviceContext*>(             \
-            phi::DeviceContextPool::Instance().Get(place));      \
+    phi::CustomContext* ctx = static_cast<phi::CustomContext*>(  \
+        phi::DeviceContextPool::Instance().Get(place));          \
     phi::stream::Stream stream(place, ctx->stream());            \
     auto device = phi::DeviceManager::GetDeviceWithPlace(place); \
     device->BlasAXPBY<T>(stream,                                 \

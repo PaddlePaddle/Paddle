@@ -139,10 +139,6 @@ namespace xpu = baidu::xpu::api;
 using CUDAPinnedDeviceContext = phi::GPUPinnedContext;
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-using CustomDeviceContext = phi::CustomContext;
-#endif
-
 void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,

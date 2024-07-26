@@ -248,8 +248,8 @@ void Tensor::CopyFromCpu(const T *data) {
     phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     phi::CustomPlace custom_place(device_type_, device_);
     auto *t_data = tensor->mutable_data<T>(custom_place);
-    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
-        pool.Get(custom_place));
+    auto *dev_ctx =
+        static_cast<const phi::CustomContext *>(pool.Get(custom_place));
     paddle::memory::Copy(custom_place,
                          static_cast<void *>(t_data),
                          phi::CPUPlace(),
@@ -468,8 +468,8 @@ void Tensor::CopyToCpuImpl(T *data,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto custom_place = t_place;
-    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
-        pool.Get(custom_place));
+    auto *dev_ctx =
+        static_cast<const phi::CustomContext *>(pool.Get(custom_place));
     paddle::memory::Copy(phi::CPUPlace(),
                          static_cast<void *>(data),
                          custom_place,

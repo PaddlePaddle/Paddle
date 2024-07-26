@@ -223,7 +223,7 @@ void EmplaceDeviceContexts(
 #endif
     } else if (phi::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      EmplaceDeviceContext<CUDAPinnedDeviceContext>(
+      EmplaceDeviceContext<phi::GPUPinnedContext>(
           place_to_device_context,
           place,
           disable_setting_default_stream_for_allocator,

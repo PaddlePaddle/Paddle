@@ -344,8 +344,8 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto custom_place = place;
-    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
-        pool.Get(custom_place));
+    auto *dev_ctx =
+        static_cast<const phi::CustomContext *>(pool.Get(custom_place));
     memory::Copy(custom_place,
                  static_cast<void *>(input_ptr),
                  phi::CPUPlace(),
