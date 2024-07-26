@@ -14,9 +14,8 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Callable, TypeAlias, Union
+from typing import TYPE_CHECKING, Callable
 
-import paddle
 import paddle.distributed as dist
 from paddle import framework
 from paddle.distributed.communication.group import (
@@ -26,11 +25,10 @@ from paddle.distributed.communication.group import (
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle.base.core import task
     from paddle.distributed import Group
 
-    _OpDateType: TypeAlias = Union[
-        paddle.distributed.isend, paddle.distributed.irecv
-    ]
+    _P2POpType = Callable[[Tensor, int, Group], task]
 
 
 class P2POp:
@@ -72,18 +70,18 @@ class P2POp:
 
     """
 
-    op: _OpDateType
+    op: _P2POpType
     tensor: Tensor
     peer: int
     group: Group | None
 
     def __init__(
         self,
-        op: Callable[..., _OpDateType],
+        op: _P2POpType,
         tensor: Tensor,
         peer: int,
         group: Group | None = None,
-    ):
+    ) -> None:
         if op not in [dist.isend, dist.irecv]:
             raise RuntimeError(
                 "Invalid ``op`` function. Expected ``op`` "
@@ -129,7 +127,7 @@ def _check_p2p_op_list(p2p_op_list):
         raise RuntimeError("All groups need to use the same backend.")
 
 
-def batch_isend_irecv(p2p_op_list: list[P2POp]) -> list[P2POp]:
+def batch_isend_irecv(p2p_op_list: list[P2POp]) -> list[task]:
     """
     Send or Receive a batch of tensors asynchronously and return a list of requests.
 
