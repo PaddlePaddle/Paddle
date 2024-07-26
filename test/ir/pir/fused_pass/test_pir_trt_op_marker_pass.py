@@ -328,7 +328,6 @@ class TestSliceTRTPattern(PassTest):
                 ends = [3, 2, 4]
 
                 sliced_1 = paddle.slice(x, axes=axes, starts=starts, ends=ends)
-                # print("Sliced output shape:", sliced_1.shape)
 
                 out = paddle.assign(sliced_1)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
@@ -396,7 +395,6 @@ class TestCastTRTPattern(PassTest):
                     name='x', shape=[3,4], dtype='float32'
                 )
                 cast_out = paddle.cast(x, 'bool')
-                print(f'cast_out:{cast_out}')
                 out = paddle.assign(cast_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
