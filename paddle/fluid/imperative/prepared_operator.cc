@@ -522,7 +522,7 @@ static void PreparedOpRunImpl(
     platform::RecordEvent record_event("infer_shape",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(&ins,
                                                       &outs,
                                                       &attrs,
@@ -541,7 +541,7 @@ static void PreparedOpRunImpl(
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
 
     func(DygraphExecutionContext<VarType>(
         op, empty_scope, *dev_ctx, ctx, ins, outs, attrs, default_attrs));
@@ -595,7 +595,7 @@ static void PreparedOpRunPtImpl(
     platform::RecordEvent record_event("infer_shape",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(&ins,
                                                       &outs,
                                                       &attrs,
@@ -614,7 +614,7 @@ static void PreparedOpRunPtImpl(
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
 
     if (phi_kernel.GetKernelRegisteredType() ==
         phi::KernelRegisteredType::FUNCTION) {
