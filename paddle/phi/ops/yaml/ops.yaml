@@ -1908,6 +1908,7 @@
   kernel :
     func : frame
   backward : frame_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : frobenius_norm
   args : (Tensor x, IntArray axis,  bool keep_dim,  bool reduce_all)

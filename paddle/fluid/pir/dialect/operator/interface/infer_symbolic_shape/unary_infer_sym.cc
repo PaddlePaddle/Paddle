@@ -408,6 +408,87 @@ bool Flatten_OpInferSymbolicShape(
   return FlattenOpInferSymbolicShape(op, infer_context);
 }
 
+bool FrameOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  const int x_rank = x_dims.size();
+
+  PADDLE_ENFORCE_GE(x_rank,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Input(X) of FrameOp should be a tensor which contains "
+                        "at least 1 dimension, but got rank %s.",
+                        x_rank));
+
+  int hop_length = op->attribute<pir::Int32Attribute>("hop_length").data();
+  int frame_length = op->attribute<pir::Int32Attribute>("frame_length").data();
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+
+  PADDLE_ENFORCE_GT(
+      hop_length,
+      0,
+      phi::errors::InvalidArgument("Attribute(hop_length) of FrameOp should be "
+                                   "greater than 0, but got %s.",
+                                   hop_length));
+  PADDLE_ENFORCE_EQ(
+      (axis == 0 || axis == -1),
+      true,
+      phi::errors::InvalidArgument(
+          "Attribute(axis) of FrameOp should be 0 or -1, but got %s.", axis));
+
+  std::vector<symbol::DimExpr> output_shape;
+  symbol::DimExpr seq_length;
+  symbol::DimExpr n_frames;
+
+  int start_axis = 0;
+  int end_axis = 0;
+
+  if (axis == 0) {
+    seq_length = x_dims[0];
+    start_axis = 1;
+    end_axis = x_rank - 1;
+  } else {
+    seq_length = x_dims[x_rank - 1];
+    start_axis = 0;
+    end_axis = x_rank - 2;
+  }
+
+  PADDLE_ENFORCE_LE(frame_length,
+                    seq_length,
+                    phi::errors::InvalidArgument(
+                        "Attribute(frame_length) of FrameOp should be less "
+                        "equal than sequence length, but got (%s) > (%s).",
+                        frame_length,
+                        seq_length));
+
+  for (int i = start_axis; i <= end_axis; i++) {
+    output_shape.push_back(x_dims[i]);
+  }
+
+  if (seq_length.is_known()) {
+    n_frames = 1 + (seq_length - frame_length) / hop_length;
+  } else {
+    n_frames = symbol::DimExpr(-1);
+  }
+
+  if (axis == 0) {
+    output_shape.insert(output_shape.begin(), frame_length);
+    output_shape.insert(output_shape.begin(), n_frames);
+  } else {
+    output_shape.push_back(frame_length);
+    output_shape.push_back(n_frames);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
+
 bool KthvalueOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
