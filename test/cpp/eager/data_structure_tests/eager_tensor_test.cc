@@ -34,8 +34,14 @@ TEST(Tensor, Constructor) {
   paddle::Tensor et1 = paddle::Tensor();
   paddle::Tensor et2 = paddle::Tensor("et2");
 
-  PADDLE_ENFORCE_EQ(et1.defined(), false, "Tensor et1 should not be defined");
-  PADDLE_ENFORCE_EQ(et2.name(), "et2", "Tensor et2 should have name 'et2'");
+  PADDLE_ENFORCE_EQ(
+      et1.defined(),
+      false,
+      phi::errors::PreconditionNotMet("Tensor et1 should not be defined"));
+  PADDLE_ENFORCE_EQ(
+      et2.name(),
+      "et2",
+      phi::errors::PreconditionNotMet("Tensor et2 should have name 'et2'"));
 
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
@@ -49,21 +55,39 @@ TEST(Tensor, Constructor) {
   paddle::Tensor et3 = paddle::Tensor(dt);
   auto* et3_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();
-  PADDLE_ENFORCE_EQ(et3_ptr[0], 5.0f, "Tensor et3 data[0] should be 5.0");
-  PADDLE_ENFORCE_EQ(et3_ptr[1], 10.0f, "Tensor et3 data[1] should be 10.0");
+  PADDLE_ENFORCE_EQ(
+      et3_ptr[0],
+      5.0f,
+      phi::errors::PreconditionNotMet("Tensor et3 data[0] should be 5.0"));
+  PADDLE_ENFORCE_EQ(
+      et3_ptr[1],
+      10.0f,
+      phi::errors::PreconditionNotMet("Tensor et3 data[1] should be 10.0"));
 
   // copy constructor
   paddle::Tensor et4(et3);
   auto* et4_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et4.impl())->data<float>();
-  PADDLE_ENFORCE_EQ(et4_ptr[0], 5.0f, "Tensor et4 data[0] should be 5.0");
-  PADDLE_ENFORCE_EQ(et4_ptr[1], 10.0f, "Tensor et4 data[1] should be 10.0");
+  PADDLE_ENFORCE_EQ(
+      et4_ptr[0],
+      5.0f,
+      phi::errors::PreconditionNotMet("Tensor et4 data[0] should be 5.0"));
+  PADDLE_ENFORCE_EQ(
+      et4_ptr[1],
+      10.0f,
+      phi::errors::PreconditionNotMet("Tensor et4 data[1] should be 10.0"));
 
   paddle::Tensor et5(std::move(et4));
   auto* et5_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et5.impl())->data<float>();
-  PADDLE_ENFORCE_EQ(et5_ptr[0], 5.0f, "Tensor et5 data[0] should be 5.0");
-  PADDLE_ENFORCE_EQ(et5_ptr[1], 10.0f, "Tensor et5 data[1] should be 10.0");
+  PADDLE_ENFORCE_EQ(
+      et5_ptr[0],
+      5.0f,
+      phi::errors::PreconditionNotMet("Tensor et5 data[0] should be 5.0"));
+  PADDLE_ENFORCE_EQ(
+      et5_ptr[1],
+      10.0f,
+      phi::errors::PreconditionNotMet("Tensor et5 data[1] should be 10.0"));
 }
 
 TEST(Tensor, MemberFunction) {
@@ -80,45 +104,90 @@ TEST(Tensor, MemberFunction) {
   VLOG(6) << "Make Dense Tensor";
   et3.set_name("et3");
   VLOG(6) << "Set Name";
-  PADDLE_ENFORCE_EQ(et3.name(), "et3", "Tensor et3 should have name 'et3'");
-  PADDLE_ENFORCE_EQ(et3.defined(), false, "Tensor et3 should not be defined");
+  PADDLE_ENFORCE_EQ(
+      et3.name(),
+      "et3",
+      phi::errors::PreconditionNotMet("Tensor et3 should have name 'et3'"));
+  PADDLE_ENFORCE_EQ(
+      et3.defined(),
+      false,
+      phi::errors::PreconditionNotMet("Tensor et3 should not be defined"));
   et3.set_impl(dt);
   VLOG(6) << "Set impl";
   PADDLE_ENFORCE_EQ(
-      et3.initialized(), true, "Tensor et3 should be initialized");
-  PADDLE_ENFORCE_EQ(et3.is_cpu(), true, "Tensor et3 should be on CPU");
-  PADDLE_ENFORCE_EQ(et3.is_gpu(), false, "Tensor et3 should not be on GPU");
-  PADDLE_ENFORCE_EQ(et3.numel(), 2, "Tensor et3 should have 2 elements");
+      et3.initialized(),
+      true,
+      phi::errors::PreconditionNotMet("Tensor et3 should be initialized"));
+  PADDLE_ENFORCE_EQ(
+      et3.is_cpu(),
+      true,
+      phi::errors::PreconditionNotMet("Tensor et3 should be on CPU"));
+  PADDLE_ENFORCE_EQ(
+      et3.is_gpu(),
+      false,
+      phi::errors::PreconditionNotMet("Tensor et3 should not be on GPU"));
+  PADDLE_ENFORCE_EQ(
+      et3.numel(),
+      2,
+      phi::errors::PreconditionNotMet("Tensor et3 should have 2 elements"));
   auto expected_dim = common::make_ddim({1, 2});
+  PADDLE_ENFORCE_EQ(et3.dims(),
+                    expected_dim,
+                    phi::errors::PreconditionNotMet(
+                        "Tensor et3 dimensions should be {1, 2}"));
   PADDLE_ENFORCE_EQ(
-      et3.dims(), expected_dim, "Tensor et3 dimensions should be {1, 2}");
+      et3.type(),
+      phi::DataType::FLOAT32,
+      phi::errors::PreconditionNotMet("Tensor et3 type should be FLOAT32"));
   PADDLE_ENFORCE_EQ(
-      et3.type(), phi::DataType::FLOAT32, "Tensor et3 type should be FLOAT32");
+      et3.layout(),
+      phi::DataLayout::NCHW,
+      phi::errors::PreconditionNotMet("Tensor et3 layout should be NCHW"));
   PADDLE_ENFORCE_EQ(
-      et3.layout(), phi::DataLayout::NCHW, "Tensor et3 layout should be NCHW");
-  PADDLE_ENFORCE_EQ(
-      phi::is_cpu_place(et3.place()), true, "Tensor et3 should be on CPUPlace");
+      phi::is_cpu_place(et3.place()),
+      true,
+      phi::errors::PreconditionNotMet("Tensor et3 should be on CPUPlace"));
   VLOG(6) << "Get impl";
   auto* dt3_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();
-  PADDLE_ENFORCE_EQ(dt3_ptr[0], 5.0f, "Tensor et3 data[0] should be 5.0");
-  PADDLE_ENFORCE_EQ(dt3_ptr[1], 10.0f, "Tensor et3 data[1] should be 10.0");
+  PADDLE_ENFORCE_EQ(
+      dt3_ptr[0],
+      5.0f,
+      phi::errors::PreconditionNotMet("Tensor et3 data[0] should be 5.0"));
+  PADDLE_ENFORCE_EQ(
+      dt3_ptr[1],
+      10.0f,
+      phi::errors::PreconditionNotMet("Tensor et3 data[1] should be 10.0"));
 
   paddle::Tensor et4 = et3;
   VLOG(6) << "copy =";
   PADDLE_ENFORCE_EQ(
-      et4.initialized(), true, "Tensor et4 should be initialized");
+      et4.initialized(),
+      true,
+      phi::errors::PreconditionNotMet("Tensor et4 should be initialized"));
   auto* dt4_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et4.impl())->data<float>();
-  PADDLE_ENFORCE_EQ(dt4_ptr[0], 5.0f, "Tensor et4 data[0] should be 5.0");
-  PADDLE_ENFORCE_EQ(dt4_ptr[1], 10.0f, "Tensor et4 data[1] should be 10.0");
+  PADDLE_ENFORCE_EQ(
+      dt4_ptr[0],
+      5.0f,
+      phi::errors::PreconditionNotMet("Tensor et4 data[0] should be 5.0"));
+  PADDLE_ENFORCE_EQ(
+      dt4_ptr[1],
+      10.0f,
+      phi::errors::PreconditionNotMet("Tensor et4 data[1] should be 10.0"));
 
   VLOG(6) << "move =";
   paddle::Tensor et5 = std::move(et4);
   auto* dt5_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et5.impl())->data<float>();
-  PADDLE_ENFORCE_EQ(dt5_ptr[0], 5.0f, "Tensor et5 data[0] should be 5.0");
-  PADDLE_ENFORCE_EQ(dt5_ptr[1], 10.0f, "Tensor et5 data[1] should be 10.0");
+  PADDLE_ENFORCE_EQ(
+      dt5_ptr[0],
+      5.0f,
+      phi::errors::PreconditionNotMet("Tensor et5 data[0] should be 5.0"));
+  PADDLE_ENFORCE_EQ(
+      dt5_ptr[1],
+      10.0f,
+      phi::errors::PreconditionNotMet("Tensor et5 data[1] should be 10.0"));
 
   VLOG(6) << "AutogradMeta";
   auto autograd_meta_test = std::make_shared<eager_test::AutogradMetaTest>(2);
@@ -126,7 +195,9 @@ TEST(Tensor, MemberFunction) {
   auto* tmp_autograd_meta_test =
       static_cast<eager_test::AutogradMetaTest*>(et3.get_autograd_meta());
   PADDLE_ENFORCE_EQ(
-      tmp_autograd_meta_test->val_, 2, "AutogradMetaTest value should be 2");
+      tmp_autograd_meta_test->val_,
+      2,
+      phi::errors::PreconditionNotMet("AutogradMetaTest value should be 2"));
 }
 
 TEST(EagerVariable, Constructor) {
@@ -143,31 +214,51 @@ TEST(EagerVariable, Constructor) {
   VLOG(6) << "Make Dense Tensor";
   t3.set_name("t3");
   VLOG(6) << "Set Name";
-  PADDLE_ENFORCE_EQ(t3.name(), "t3", "Tensor t3 should have name 't3'");
-  PADDLE_ENFORCE_EQ(t3.defined(), false, "Tensor t3 should not be defined");
+  PADDLE_ENFORCE_EQ(
+      t3.name(),
+      "t3",
+      phi::errors::PreconditionNotMet("Tensor t3 should have name 't3'"));
+  PADDLE_ENFORCE_EQ(
+      t3.defined(),
+      false,
+      phi::errors::PreconditionNotMet("Tensor t3 should not be defined"));
   t3.set_impl(dt);
 
   egr::EagerVariable et3 = egr::EagerVariable(t3);
   VLOG(6) << "SyncToVar";
   PADDLE_ENFORCE_EQ(et3.Var().Get<phi::DenseTensor>().data<float>()[0],
                     5.0f,
-                    "EagerVariable et3 data[0] should be 5.0");
+                    phi::errors::PreconditionNotMet(
+                        "EagerVariable et3 data[0] should be 5.0"));
   PADDLE_ENFORCE_EQ(et3.Var().Get<phi::DenseTensor>().data<float>()[1],
                     10.0f,
-                    "EagerVariable et3 data[1] should be 10.0");
+                    phi::errors::PreconditionNotMet(
+                        "EagerVariable et3 data[1] should be 10.0"));
 
   VLOG(6) << "SyncToTensor";
   paddle::Tensor t4;
   t4.set_impl(et3.GetTensorBase());
-  PADDLE_ENFORCE_EQ(t4.initialized(), true, "Tensor t4 should be initialized");
+  PADDLE_ENFORCE_EQ(
+      t4.initialized(),
+      true,
+      phi::errors::PreconditionNotMet("Tensor t4 should be initialized"));
 
   VLOG(6) << "Check Tensor";
   auto* dt3_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t4.impl())->data<float>();
-  PADDLE_ENFORCE_EQ(dt3_tmp_ptr[0], 5.0f, "Tensor t4 data[0] should be 5.0");
-  PADDLE_ENFORCE_EQ(dt3_tmp_ptr[1], 10.0f, "Tensor t4 data[1] should be 10.0");
+  PADDLE_ENFORCE_EQ(
+      dt3_tmp_ptr[0],
+      5.0f,
+      phi::errors::PreconditionNotMet("Tensor t4 data[0] should be 5.0"));
+  PADDLE_ENFORCE_EQ(
+      dt3_tmp_ptr[1],
+      10.0f,
+      phi::errors::PreconditionNotMet("Tensor t4 data[1] should be 10.0"));
   t4.reset();
-  PADDLE_ENFORCE_EQ(t4.defined(), false, "Tensor t4 should not be defined");
+  PADDLE_ENFORCE_EQ(
+      t4.defined(),
+      false,
+      phi::errors::PreconditionNotMet("Tensor t4 should not be defined"));
 
   VLOG(6) << "Check Tensor Copy_";
   std::vector<int64_t> rows = {1, 2};
@@ -193,8 +284,14 @@ TEST(EagerVariable, Constructor) {
   auto* dt9_tmp_ptr = std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())
                           ->value()
                           .data<float>();
-  PADDLE_ENFORCE_EQ(dt9_tmp_ptr[0], 6.0f, "Tensor t9 data[0] should be 6.0");
-  PADDLE_ENFORCE_EQ(dt9_tmp_ptr[1], 11.0f, "Tensor t9 data[1] should be 11.0");
+  PADDLE_ENFORCE_EQ(
+      dt9_tmp_ptr[0],
+      6.0f,
+      phi::errors::PreconditionNotMet("Tensor t9 data[0] should be 6.0"));
+  PADDLE_ENFORCE_EQ(
+      dt9_tmp_ptr[1],
+      11.0f,
+      phi::errors::PreconditionNotMet("Tensor t9 data[1] should be 11.0"));
   PADDLE_ENFORCE_EQ(
       std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())->height(),
       2,
@@ -205,14 +302,26 @@ TEST(EagerVariable, Constructor) {
   t6.copy_(t5, phi::CPUPlace(), false);
   auto* dt6_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t6.impl())->data<float>();
-  PADDLE_ENFORCE_EQ(dt6_tmp_ptr[0], 5.0f, "Tensor t6 data[0] should be 5.0");
-  PADDLE_ENFORCE_EQ(dt6_tmp_ptr[1], 10.0f, "Tensor t6 data[1] should be 10.0");
+  PADDLE_ENFORCE_EQ(
+      dt6_tmp_ptr[0],
+      5.0f,
+      phi::errors::PreconditionNotMet("Tensor t6 data[0] should be 5.0"));
+  PADDLE_ENFORCE_EQ(
+      dt6_tmp_ptr[1],
+      10.0f,
+      phi::errors::PreconditionNotMet("Tensor t6 data[1] should be 10.0"));
 #else
   t5.copy_(t3, phi::CPUPlace(), false);
   auto* dt5_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t5.impl())->data<float>();
-  PADDLE_ENFORCE_EQ(dt5_tmp_ptr[0], 5.0f, "Tensor t5 data[0] should be 5.0");
-  PADDLE_ENFORCE_EQ(dt5_tmp_ptr[1], 10.0f, "Tensor t5 data[1] should be 10.0");
+  PADDLE_ENFORCE_EQ(
+      dt5_tmp_ptr[0],
+      5.0f,
+      phi::errors::PreconditionNotMet("Tensor t5 data[0] should be 5.0"));
+  PADDLE_ENFORCE_EQ(
+      dt5_tmp_ptr[1],
+      10.0f,
+      phi::errors::PreconditionNotMet("Tensor t5 data[1] should be 10.0"));
 #endif
 
   VLOG(6) << "Finish";
@@ -237,11 +346,15 @@ TEST(EagerVariable, DataLayout) {
   auto eager_var = std::make_shared<egr::EagerVariable>(tensor);
   auto layout = paddle::imperative::GetDataLayout(eager_var);
   PADDLE_ENFORCE_EQ(
-      layout, phi::DataLayout::UNDEFINED, "Data layout should be UNDEFINED");
+      layout,
+      phi::DataLayout::UNDEFINED,
+      phi::errors::PreconditionNotMet("Data layout should be UNDEFINED"));
   paddle::imperative::SetDataLayout(eager_var, phi::DataLayout::NCHW);
   layout = paddle::imperative::GetDataLayout(eager_var);
   PADDLE_ENFORCE_EQ(
-      layout, phi::DataLayout::NCHW, "Data layout should be NCHW");
+      layout,
+      phi::DataLayout::NCHW,
+      phi::errors::PreconditionNotMet("Data layout should be NCHW"));
 }
 
 TEST(VariableCompatTensor, MemberFunction) {
