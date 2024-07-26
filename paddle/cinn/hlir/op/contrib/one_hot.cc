@@ -128,6 +128,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
     CHECK(!pack_args.empty())
         << "at least one input tensor for transpose compute\n";
     CHECK_GE(pack_args.size(), 3U);
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        3U,
+        phi::errors::InvalidArgument("The input args size is %d, should be 3",
+                                     pack_args.size()));
     Expr indices_expr = pack_args[0];
     Expr on_value_expr = pack_args[1];
     Expr off_value_expr = pack_args[2];
