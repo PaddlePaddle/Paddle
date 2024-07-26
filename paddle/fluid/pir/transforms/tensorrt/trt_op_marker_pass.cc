@@ -816,8 +816,6 @@ class CastOpPattern
             return false;
     }
         auto dtype = op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
-        LOG(INFO)<<"dtype:"<<dtype;
-      //   phi::DataType::dtype =op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
         if (dtype == phi::DataType::BOOL){
           #if IS_TRT_VERSION_GE(8400)
             VLOG(3) << "the cast op supports inputs and outputs of BOOL by "
