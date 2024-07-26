@@ -2108,49 +2108,36 @@ SplitedResult SplitForwardBackward(
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = forward_outputs.size();
 
-  auto create_output_fn_forward =
-      [&ctx, &forward_value_map, &counter, &forward_program, &forward_params](
-          const pir::Value &v) {
-        if (v.impl() == nullptr) {
-          return;
-        }
-        // Skip the value that already in forward_params.
-        if (std::find(forward_params.begin(), forward_params.end(), v) !=
-            forward_params.end()) {
-          return;
-        }
-        std::string shadow_output_name =
-            std::string("output_") + std::to_string(counter);
-        if (auto names = name_analysis::TryGetValueFirstName(v)) {
-          shadow_output_name = names.value();
-        }
-        auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
-        pir::AttributeMap attribute_map = {
-            {"output_name", StrAttribute::get(ctx, shadow_output_name)},
-        };
-        pir::Operation *operation = pir::Operation::Create(
-            {forward_value_map[v]}, attribute_map, {}, op_info);
-        forward_program->block()->push_back(operation);
-        counter += 1;
-      };
-
-  auto create_output_fn_backward = [&ctx,
-                                    &backward_value_map,
-                                    &counter,
-                                    &backward_program](const pir::Value &v) {
+  auto create_output_fn = [&ctx, &counter](
+                              std::unordered_map<Value, Value> value_map,
+                              std::shared_ptr<Program> program,
+                              const pir::Value &v) {
     if (v.impl() == nullptr) {
       return;
     }
+    std::string shadow_output_name =
+        std::string("output_") + std::to_string(counter);
+    if (auto names = name_analysis::TryGetValueFirstName(v)) {
+      shadow_output_name = names.value();
+    }
     auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
-        {"output_name",
-         StrAttribute::get(ctx,
-                           std::string("output_") + std::to_string(counter))},
+        {"output_name", StrAttribute::get(ctx, shadow_output_name)},
     };
-    pir::Operation *operation = pir::Operation::Create(
-        {backward_value_map.at(v)}, attribute_map, {}, op_info);
-    backward_program->block()->push_back(operation);
+    pir::Operation *operation =
+        pir::Operation::Create({value_map.at(v)}, attribute_map, {}, op_info);
+    program->block()->push_back(operation);
     counter += 1;
+  };
+  auto create_output_fn_forward = [&forward_value_map,
+                                   &forward_program,
+                                   &create_output_fn](const pir::Value &v) {
+    create_output_fn(forward_value_map, forward_program, v);
+  };
+  auto create_output_fn_backward = [&backward_value_map,
+                                    &backward_program,
+                                    &create_output_fn](const pir::Value &v) {
+    create_output_fn(backward_value_map, backward_program, v);
   };
 
   VLOG(4) << "start create forward outputs, inserting shadow_output ops.";

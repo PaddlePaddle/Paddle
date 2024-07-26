@@ -543,8 +543,9 @@ class PartialProgramLayer:
 
         self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
         assert isinstance(self._build_strategy, BuildStrategy)
-
-        self._origin_main_program = self._verify_program(main_program)
+        self._origin_main_program = self._verify_program(
+            main_program, self._outputs
+        )
         if parameters is not None:
             parameters[0][:] = self._params
             parameters[1][:] = self._param_values
@@ -807,7 +808,7 @@ class PartialProgramLayer:
     def infer_program(self):
         return self._create_program(is_infer_mode=True)
 
-    def _verify_program(self, main_program):
+    def _verify_program(self, main_program, outputs):
         """
         Verify that the program parameter is initialized, prune some unused params,
         and remove redundant op callstack.
@@ -815,7 +816,7 @@ class PartialProgramLayer:
         # 1. Check all params from main program can be found in self._params
         self._check_params_all_inited(main_program)
         # 2. Prune the parameters not used anywhere in the program.
-        self._prune_unused_params(main_program)
+        self._prune_unused_params(main_program, outputs)
 
         return main_program
 
@@ -1043,7 +1044,7 @@ class PartialProgramLayer:
             (backward_start_op_index, backward_end_op_index),
         )
 
-    def _prune_unused_params(self, program):
+    def _prune_unused_params(self, program, outputs):
         """
         Prune the parameters not used anywhere in the program.
         The `@to_static` may only decorated a sub function which
@@ -1055,7 +1056,9 @@ class PartialProgramLayer:
         required_param_values = []
         block = program.global_block()
         for param, param_value in zip(self._params, self._param_values):
-            if not param_value.use_empty():
+            if not param_value.use_empty() or any(
+                out.is_same(param_value) for out in outputs
+            ):
                 required_params.append(param)
                 required_param_values.append(param_value)
             else:
