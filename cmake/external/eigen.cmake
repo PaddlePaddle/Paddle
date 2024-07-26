@@ -15,16 +15,11 @@
 include(ExternalProject)
 
 # update eigen to the commit id f612df27 on 03/16/2021
-if(NOT DEFINED ENV{MACA_PATH})
-    MESSAGE(FATAL_ERROR "MACA_PATH undefined, Eigen3 not found!")
-else()
-    set(EIGEN_SRC_PATH "$ENV{MACA_PATH}/include/eigen3")
-    set(EIGEN_PREFIX_DIR ${EIGEN_SRC_PATH})
-    set(SOURCE_DIR ${EIGEN_SRC_PATH})
-endif()
-if(NOT EXISTS ${EIGEN_SRC_PATH})
-    MESSAGE(FATAL_ERROR "eigen3 not found in MACA_PATH!")
-endif()
+set(EIGEN_PREFIX_DIR ${THIRD_PARTY_PATH}/eigen3)
+set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
+set(EIGEN_TAG 9cce7ac69fbd989ffcc9103d15d93ee4523854ca)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/eigen3)
+
 if(WIN32)
   add_definitions(-DEIGEN_STRONG_INLINE=inline)
 elseif(LINUX)
@@ -70,8 +65,18 @@ endif()
 set(EIGEN_INCLUDE_DIR ${SOURCE_DIR})
 include_directories(${EIGEN_INCLUDE_DIR})
 
+ExternalProject_Add(
+  extern_eigen3
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
+  PREFIX ${EIGEN_PREFIX_DIR}
+  UPDATE_COMMAND ""
+  PATCH_COMMAND ${EIGEN_PATCH_COMMAND}
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  INSTALL_COMMAND ""
+  TEST_COMMAND "")
 
-add_custom_target(extern_eigen3)
 add_library(eigen3 INTERFACE)
 
 add_dependencies(eigen3 extern_eigen3)

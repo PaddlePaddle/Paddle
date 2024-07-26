@@ -96,3 +96,7 @@
 	path = third_party/flashattn
 	url = http://pdegit.metax-internal.com/pde-ai/flashattn-for-paddle.git
 	ignore = dirty
+[submodule "third_party/eigen3"]
+	path = third_party/eigen3
+	url = ssh://gerrit.metax-internal.com:29418/MACA/library/mcEigen
+	ignore = dirty
