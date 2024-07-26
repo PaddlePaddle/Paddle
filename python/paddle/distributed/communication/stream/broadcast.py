@@ -62,7 +62,8 @@ def _broadcast_in_static_mode(
     ring_id = 0 if group is None else group.id
 
     if in_pir_mode():
-        op_type = _to_inplace_op(op_type)
+        # op_type = _to_inplace_op(op_type) # TODO lizhenxing02
+        op_type = 'c_broadcast_'
         getattr(_C_ops, op_type)(tensor, ring_id, src_rank_in_group, sync_op)
         return
 
