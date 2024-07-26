@@ -486,7 +486,7 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
-bool MaxOutOpInferSymbolicShape(pir::Operation *op,
+bool MaxoutOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
@@ -504,7 +504,7 @@ bool MaxOutOpInferSymbolicShape(pir::Operation *op,
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorListShapeOrDataDimExprs(output_shape)});
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
 
   return true;
 }
