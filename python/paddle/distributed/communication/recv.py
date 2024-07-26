@@ -13,13 +13,14 @@
 # limitations under the License.
 
 from paddle import Tensor
+from paddle.base.core import task
 from paddle.distributed.communication import stream
 from paddle.distributed.communication.group import Group
 
 
 def recv(
     tensor: Tensor, src: int = 0, group: Group = None, sync_op: bool = True
-):
+) -> task:
     """
     Receive a tensor to the sender.
 
@@ -55,7 +56,7 @@ def recv(
     )
 
 
-def irecv(tensor: Tensor, src: int = None, group: Group = None):
+def irecv(tensor: Tensor, src: int = None, group: Group = None) -> task:
     """
     Receive a tensor to the sender.
 
