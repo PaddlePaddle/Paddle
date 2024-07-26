@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextlib
+from typing import Callable, Sequence
 
 import paddle.distributed as dist
 from paddle import Tensor, framework
@@ -64,7 +65,7 @@ class P2POp:
     """
 
     def __init__(
-        self, op: callable, tensor: Tensor, peer: int, group: Group = None
+        self, op: Callable[...], tensor: Tensor, peer: int, group: Group = None
     ):
         if op not in [dist.isend, dist.irecv]:
             raise RuntimeError(
@@ -80,7 +81,7 @@ class P2POp:
 
 
 @contextlib.contextmanager
-def _coalescing_manager(group: Group, tasks: list = None):
+def _coalescing_manager(group: Group, tasks: Sequence[task] = None):
     group = _get_global_group() if group is None else group
     pg = group.process_group
     pg._start_coalescing()
@@ -93,7 +94,7 @@ def _coalescing_manager(group: Group, tasks: list = None):
             pg._end_coalescing(tasks)
 
 
-def _check_p2p_op_list(p2p_op_list: list[P2POp]) -> None:
+def _check_p2p_op_list(p2p_op_list: Sequence[P2POp]) -> None:
     """
     Helper to check that the ``p2p_op_list`` is a list of P2POp instances and
     all ops use the same backend.
@@ -111,7 +112,7 @@ def _check_p2p_op_list(p2p_op_list: list[P2POp]) -> None:
         raise RuntimeError("All groups need to use the same backend.")
 
 
-def batch_isend_irecv(p2p_op_list: list[P2POp]) -> list[task]:
+def batch_isend_irecv(p2p_op_list: Sequence[P2POp]) -> list[task]:
     """
     Send or Receive a batch of tensors asynchronously and return a list of requests.
 

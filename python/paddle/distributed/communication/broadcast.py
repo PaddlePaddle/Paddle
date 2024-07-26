@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional, Sequence
+
 import paddle
 import paddle.distributed as dist
 from paddle import Tensor, framework
@@ -26,7 +28,7 @@ from .serialization_utils import (
 
 
 def broadcast(
-    tensor: Tensor, src: int, group: Group = None, sync_op: bool = True
+    tensor: Tensor, src: int, group: Optional[Group], sync_op: bool = True
 ) -> task:
     """
 
@@ -75,7 +77,7 @@ def broadcast(
 
 
 def broadcast_object_list(
-    object_list: list, src: int, group: Group = None
+    object_list: Sequence[object], src: int, group: Optional[Group]
 ) -> None:
     """
 

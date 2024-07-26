@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional
+
 from paddle import Tensor
 from paddle.base.core import task
 from paddle.distributed.communication import stream
@@ -19,7 +21,10 @@ from paddle.distributed.communication.group import Group
 
 
 def recv(
-    tensor: Tensor, src: int = 0, group: Group = None, sync_op: bool = True
+    tensor: Tensor,
+    src: int = 0,
+    group: Optional[Group] = None,
+    sync_op: bool = True,
 ) -> task:
     """
     Receive a tensor to the sender.
@@ -56,7 +61,7 @@ def recv(
     )
 
 
-def irecv(tensor: Tensor, src: int = None, group: Group = None) -> task:
+def irecv(tensor: Tensor, src: Optional[int], group: Optional[Group]) -> task:
     """
     Receive a tensor to the sender.
 
