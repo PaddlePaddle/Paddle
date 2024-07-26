@@ -410,36 +410,205 @@ bool Flatten_OpInferSymbolicShape(
 
 bool FoldOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  const auto &output_sizes =
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &in_dims = x_shape_or_data.shape();
+
+  std::vector<int> output_sizes =
       paddle::dialect::details::GetVectorAttr<int>(op, "output_sizes");
-  const auto &kernel_sizes =
+  std::vector<int> kernel_sizes =
       paddle::dialect::details::GetVectorAttr<int>(op, "kernel_sizes");
-  const auto &strides =
+  std::vector<int> strides =
       paddle::dialect::details::GetVectorAttr<int>(op, "strides");
-  const auto &paddings =
+  std::vector<int> paddings =
       paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-  const auto &dilations =
+  std::vector<int> dilations =
       paddle::dialect::details::GetVectorAttr<int>(op, "dilations");
-  PADDLE_ENFORCE_EQ(x_shape.size(),
-                    4,
+
+  PADDLE_ENFORCE_EQ(
+      output_sizes.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "It is expected output_size equals to 2, but got size %d",
+          output_sizes.size()));
+  PADDLE_ENFORCE_EQ(
+      kernel_sizes.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "It is expected kernel_size equals to 2, but got size %d",
+          kernel_sizes.size()));
+  PADDLE_ENFORCE_EQ(
+      strides.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "It is expected strides_size equals to 2, but got size %d",
+          strides.size()));
+  PADDLE_ENFORCE_EQ(
+      paddings.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "It is expected paddings_size equals to 4, but got size %d",
+          paddings.size()));
+  PADDLE_ENFORCE_EQ(
+      dilations.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "It is expected dilations_size equals to 2, but got size %d",
+          dilations.size()));
+
+  int output_height = output_sizes[0];
+  int output_width = output_sizes[1];
+  int kernel_height = kernel_sizes[0];
+  int kernel_width = kernel_sizes[1];
+  int dilation_height = dilations[0];
+  int dilation_width = dilations[1];
+  int stride_height = strides[0];
+  int stride_width = strides[1];
+
+  PADDLE_ENFORCE_GT(kernel_height,
+                    0,
                     phi::errors::InvalidArgument(
-                        "The input tensor of fold must be 4-dimensional."));
+                        "The `kernel_sizes` should be greater than zero, but "
+                        "received kernel_height: %d kernel_width: %d.",
+                        kernel_height,
+                        kernel_width));
+  PADDLE_ENFORCE_GT(kernel_width,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The `kernel_sizes` should be greater than zero, but "
+                        "received kernel_height: %d kernel_width: %d.",
+                        kernel_height,
+                        kernel_width));
+  PADDLE_ENFORCE_GT(stride_height,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The `strides` should be greater than zero, but "
+                        "received strides_height: %d strides_width: %d.",
+                        stride_height,
+                        stride_width));
+  PADDLE_ENFORCE_GT(stride_width,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The `strides` should be greater than zero, but "
+                        "received strides_height: %d strides_width: %d.",
+                        stride_height,
+                        stride_width));
+  PADDLE_ENFORCE_GT(
+      output_height,
+      1,
+      phi::errors::InvalidArgument("The `output_height` should be greater than "
+                                   "one, but received output_height: %d .",
+                                   output_height));
+  PADDLE_ENFORCE_GT(
+      output_width,
+      1,
+      phi::errors::InvalidArgument("The `output_width` should be greater than "
+                                   "one, but received output_width: %d .",
+                                   output_width));
+  PADDLE_ENFORCE_GT(dilation_height,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The `dilations` should be greater than zero, but "
+                        "received dilations_height: %d dilations_width: %d.",
+                        dilation_height,
+                        dilation_width));
+  PADDLE_ENFORCE_GT(dilation_width,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The `dilations` should be greater than zero, but "
+                        "received dilations_height: %d dilations_width: %d.",
+                        dilation_height,
+                        dilation_width));
 
-  const symbol::DimExpr &batch_size = x_shape[0];
-  const symbol::DimExpr &channels = x_shape[1];
-  const symbol::DimExpr &input_height = x_shape[2];
-  const symbol::DimExpr &input_width = x_shape[3];
-  symbol::DimExpr output_height = output_sizes[0];
-  symbol::DimExpr output_width = output_sizes[1];
+  std::vector<symbol::DimExpr> out_dims;
+  out_dims.push_back(in_dims[0]);  // batch_size
 
-  std::vector<symbol::DimExpr> output_shape = {
-      batch_size, channels, output_height, output_width};
+  symbol::DimExpr output_channels = in_dims[1] / (kernel_width * kernel_height);
+  out_dims.push_back(output_channels);
+
+  symbol::DimExpr blocks_height =
+      (output_height + 2 * paddings[0] -
+       (dilation_height * (kernel_height - 1) + 1)) /
+          stride_height +
+      1;
+  symbol::DimExpr blocks_width = (output_width + 2 * paddings[1] -
+                                  (dilation_width * (kernel_width - 1) + 1)) /
+                                     stride_width +
+                                 1;
+
+  PADDLE_ENFORCE_GT(
+      blocks_height,
+      0,
+      phi::errors::InvalidArgument(
+          "The sliding blocks calculated from input spatial size (%d, %d), "
+          "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), is "
+          "(%d, %d), which should be a positive integer.",
+          in_dims[2],
+          in_dims[3],
+          kernel_height,
+          kernel_width,
+          stride_height,
+          stride_width,
+          dilation_height,
+          dilation_width,
+          output_height,
+          output_width));
+
+  PADDLE_ENFORCE_GT(
+      blocks_width,
+      0,
+      phi::errors::InvalidArgument(
+          "The sliding blocks calculated from input spatial size (%d, %d), "
+          "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), is "
+          "(%d, %d), which should be a positive integer.",
+          in_dims[2],
+          in_dims[3],
+          kernel_height,
+          kernel_width,
+          stride_height,
+          stride_width,
+          dilation_height,
+          dilation_width,
+          output_height,
+          output_width));
+
+  PADDLE_ENFORCE_EQ(
+      blocks_height * blocks_width,
+      in_dims[2],
+      phi::errors::InvalidArgument(
+          "Given input output_size (%d, %d), kernel_sizes (%d, %d), strides "
+          "(%d, %d), dilations (%d, %d), which should be expected size of "
+          "input's dimension 2 to match the calculated number of %d * %d = %d, "
+          "but got %d",
+          output_height,
+          output_width,
+          kernel_height,
+          kernel_width,
+          stride_height,
+          stride_width,
+          dilation_height,
+          dilation_width,
+          blocks_height,
+          blocks_width,
+          blocks_height * blocks_width,
+          in_dims[2]));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims[1] % (kernel_height * kernel_width),
+      0,
+      phi::errors::InvalidArgument(
+          "Expected size of input's dimension 1 to be divisible by the product "
+          "of kernel_size, but got input.size(1)=%d and kernel_size=(%d, %d).",
+          in_dims[1],
+          kernel_height,
+          kernel_width));
+
+  out_dims.push_back(output_height);
+  out_dims.push_back(output_width);
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(output_shape)});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
 
   return true;
 }
