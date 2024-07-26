@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import contextlib
-from typing import Callable, Sequence
+from typing import Callable, Optional, Sequence
 
 import paddle.distributed as dist
 from paddle import Tensor, framework
@@ -69,7 +69,7 @@ class P2POp:
         op: Callable[..., task],
         tensor: Tensor,
         peer: int,
-        group: Group = None,
+        group: Optional[Group],
     ):
         if op not in [dist.isend, dist.irecv]:
             raise RuntimeError(
