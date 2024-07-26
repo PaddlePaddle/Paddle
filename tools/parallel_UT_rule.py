@@ -1616,6 +1616,7 @@ CPU_PARALLEL_JOB = [
     'test_while_op',
     'test_weight_quantization_mobilenetv1',
     'test_version',
+    'test_var_info_deprecated'
     'test_var_conv_2d',
     'test_utils',
     'test_unique_name',
