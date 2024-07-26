@@ -26,7 +26,10 @@ class TestCollectiveGlobalGatherAPI(TestDistBase):
     def test_global_gather_nccl(self):
         paddle.enable_static()
         self.check_with_place(
-            "collective_global_gather.py", "global_gather", "nccl"
+            "collective_global_gather.py",
+            "global_gather",
+            "nccl",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
     def test_global_gather_nccl_dygraph_eager(self):
