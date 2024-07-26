@@ -555,6 +555,26 @@ bool PadOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool OneHotOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  const auto &depth_t_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  int depth = depth_t_shape_or_data.data().to<int>();
+
+  std::vector<symbol::DimExpr> out_dims_vec = x_dims;
+  out_dims_vec.push_back(symbol::DimExpr(depth));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_dims_vec)});
+
+  return true;
+}
+
 bool Pad3dOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
