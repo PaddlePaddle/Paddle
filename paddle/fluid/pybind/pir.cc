@@ -265,8 +265,11 @@ void SetValueName(Value value, const std::string name) {
   }
 }
 
-void RenameValue(Value value, const std::string &new_name, Block *block) {
-  VLOG(0) << "Strating to rename value to " << new_name;
+std::map<std::string, std::string> RenameValue(Value value,
+                                               const std::string &new_name,
+                                               Block *block) {
+  std::map<std::string, std::string> rename_mapping;
+  VLOG(5) << "Strating to rename value to " << new_name;
   // Handle kwarg
   for (auto [name, kwarg] : block->kwargs()) {
     if (kwarg == value) {
@@ -282,53 +285,87 @@ void RenameValue(Value value, const std::string &new_name, Block *block) {
       value.ReplaceAllUsesWith(new_value);
       block->EraseKwarg(name);
       value = new_value;
+      VLOG(5) << "Value is kwarg, rename it from " << name << " to "
+              << new_name;
+      rename_mapping.insert({name, new_name});
       break;
     }
   }
 
+  // Handle inputs
   auto defining_op = value.defining_op();
   if (defining_op) {
     // Handle DataOp
     if (defining_op->isa<paddle::dialect::DataOp>()) {
-      VLOG(5) << "Value is defined by DataOp, rename it to " << new_name;
-      defining_op->set_attribute(
-          "name", StrAttribute::get(pir::IrContext::Instance(), new_name));
+      auto name = defining_op->attribute<StrAttribute>("name").AsString();
+      if (name != new_name) {
+        defining_op->set_attribute(
+            "name", StrAttribute::get(pir::IrContext::Instance(), new_name));
+        VLOG(5) << "Value is defined by DataOp, rename it from " << name
+                << " to " << new_name;
+        rename_mapping.insert({name, new_name});
+      }
     }
 
     // Handle ParameterOp
     if (defining_op->isa<pir::ParameterOp>()) {
-      VLOG(5) << "Value is defined by ParameterOp, rename it to " << new_name;
-      defining_op->set_attribute(
-          "parameter_name",
-          StrAttribute::get(pir::IrContext::Instance(), new_name));
+      auto name =
+          defining_op->attribute<StrAttribute>("parameter_name").AsString();
+      if (name != new_name) {
+        defining_op->set_attribute(
+            "parameter_name",
+            StrAttribute::get(pir::IrContext::Instance(), new_name));
+        VLOG(5) << "Value is defined by ParameterOp, rename it from " << name
+                << " to " << new_name;
+        rename_mapping.insert({name, new_name});
+      }
     }
 
     // Handle ConstantTensorOp
     if (defining_op->isa<::pir::ConstantTensorOp>()) {
-      VLOG(5) << "Value is defined by ConstantTensorOp, rename it to "
-              << new_name;
-      defining_op->set_attribute(
-          "tensor_name",
-          StrAttribute::get(pir::IrContext::Instance(), new_name));
+      auto name =
+          defining_op->attribute<StrAttribute>("tensor_name").AsString();
+      if (name != new_name) {
+        defining_op->set_attribute(
+            "tensor_name",
+            StrAttribute::get(pir::IrContext::Instance(), new_name));
+        VLOG(5) << "Value is defined by ConstantTensorOp, rename it from "
+                << name << " to " << new_name;
+        rename_mapping.insert({name, new_name});
+      }
     }
   }
 
+  // Handle outputs
   for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
-    if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+    auto user_op = iter->owner();
+    if (user_op->isa<::pir::ShadowOutputOp>()) {
       // Handle ShadowOutputOp
-      VLOG(5) << "Value is used by ShadowOutputOp, rename it to " << new_name;
-      iter->owner()->set_attribute(
+      auto name = user_op->attribute<StrAttribute>("output_name").AsString();
+      if (name == new_name) {
+        continue;
+      }
+      user_op->set_attribute(
           "output_name",
           StrAttribute::get(pir::IrContext::Instance(), new_name));
-
-    } else if (iter->owner()->isa<::pir::SetParameterOp>()) {
+      VLOG(5) << "Value is used by ShadowOutputOp, rename it from " << name
+              << " to " << new_name;
+      rename_mapping.insert({name, new_name});
+    } else if (user_op->isa<::pir::SetParameterOp>()) {
       // Handle SetParameterOp
-      VLOG(5) << "Value is used by SetParameterOp, rename it to " << new_name;
-      iter->owner()->set_attribute(
+      auto name = user_op->attribute<StrAttribute>("parameter_name").AsString();
+      if (name == new_name) {
+        continue;
+      }
+      user_op->set_attribute(
           "parameter_name",
           StrAttribute::get(pir::IrContext::Instance(), new_name));
+      VLOG(5) << "Value is used by SetParameterOp, rename it from " << name
+              << " to " << new_name;
+      rename_mapping.insert({name, new_name});
     }
   }
+  return rename_mapping;
 }
 
 std::optional<std::string> GetValueInputName(Value value) {

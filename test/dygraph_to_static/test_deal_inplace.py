@@ -79,24 +79,28 @@ class TestDealInplace(Dy2StTestBase):
     def test_deal_view(self):
         bn_layer = paddle.nn.BatchNorm2D(10)
         x = paddle.to_tensor(np.random.random((2, 10, 3, 3)).astype('float32'))
+        x.stop_gradient = False
         self.run_test(fn_with_inplace_op, bn_layer, x, static_n_times=2)
 
     @test_pir_only
     def test_deal_inplace(self):
         sigmoid_layer = paddle.nn.Sigmoid()
         x = paddle.to_tensor(np.random.random((2, 10, 3, 3)).astype('float32'))
+        x.stop_gradient = False
         self.run_test(fn_with_inplace_op, sigmoid_layer, x, static_n_times=2)
 
     @test_pir_only
     def test_param_inplace(self):
         net = ParamInplaceNet()
         x = paddle.to_tensor(np.random.random(10).astype('float32'))
+        x.stop_gradient = False
         self.run_test(fn_with_inplace_op, net, x, static_n_times=2)
 
     @test_pir_only
     def test_param_directly_return(self):
         net = ParamDirectlyReturnNet()
         x = paddle.to_tensor(np.random.random(10).astype('float32'))
+        x.stop_gradient = False
         self.run_test(fn_with_inplace_op, net, x, static_n_times=2)
 
 

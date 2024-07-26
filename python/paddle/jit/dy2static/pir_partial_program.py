@@ -47,7 +47,6 @@ __all__ = []
 
 prog_logger = TranslatorLogger()
 
-# TODO: check the var not found fallback to FakeVar
 
 FAKE_VALUE_NAME = "FakeValue"
 
@@ -333,17 +332,16 @@ class RunnableProgram:
     def unify_value_names(
         program, rename_mapping: dict[str, str]
     ) -> dict[str, str]:
+        """Ensure every value at most has one name in the program."""
         rename_mapping = dict(rename_mapping)
         for value in RunnableProgram._get_program_all_values(program):
             if not value.has_name:
                 continue
-            new_name = value.name
+            new_name = value.name  # get first name
             new_name = rename_mapping.get(new_name, new_name)
-            for name in value._names:
-                if name == new_name:
-                    continue
-                rename_mapping[name] = new_name
-            value._rename(new_name, program.global_block())
+            rename_mapping.update(
+                value._rename(new_name, program.global_block())
+            )
         return rename_mapping
 
     @cached_property
