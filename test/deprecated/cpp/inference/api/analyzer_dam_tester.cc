@@ -72,7 +72,11 @@ struct DataRecord {
                                 response_mask.begin() + batch_end);
       CHECK(!data.response.empty());
       CHECK(!data.response_mask.empty());
-      CHECK_EQ(data.response.size(), data.response_mask.size());
+      PADDLE_ENFORCE_EQ(data.response.size(),
+                        data.response_mask.size(),
+                        phi::errors::InvalidArgument(
+                            "Required data.response.size() should be equal to "
+                            "data.response_mask.size() . "));
     }
     batch_iter += batch_size;
     return data;
@@ -87,7 +91,11 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, ',', &data);
-      CHECK_EQ(data.size(), (size_t)(2 * FLAGS_max_turn_num + 3));
+      PADDLE_ENFORCE_EQ(data.size(),
+                        (size_t)(2 * FLAGS_max_turn_num + 3),
+                        phi::errors::InvalidArgument(
+                            "Required data.size() should be equal to "
+                            "(size_t)(2 * FLAGS_max_turn_num + 3) . "));
       // load turn data
       std::vector<int64_t> turns_tmp[FLAGS_max_turn_num];
       for (int i = 0; i < FLAGS_max_turn_num; ++i) {
@@ -131,7 +139,10 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   PADDLE_ENFORCE(!one_batch.response.empty(),
                  ::phi::errors::Fatal("The response of one batch is empty."));
   int size = one_batch.response[0].size();
-  CHECK_EQ(size, kMaxTurnLen);
+  PADDLE_ENFORCE_EQ(size,
+                    kMaxTurnLen,
+                    phi::errors::InvalidArgument(
+                        "Required size should be equal to kMaxTurnLen . "));
   // turn tensor assignment
   for (int i = 0; i < FLAGS_max_turn_num; ++i) {
     turns_tensor[i].name = turn_pre + std::to_string(i);
