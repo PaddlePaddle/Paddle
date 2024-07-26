@@ -707,42 +707,49 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
     return [fwd_prog, bwd_prog, opt_prog]
 
 
+def forward_complete_op_role(main_program):
+    all_ops = main_program.global_block().ops
+    ops_len = len(all_ops)
+    if len(all_ops) == 0:
+        return
+
+    iop = 0
+    first_left_op_role = None
+    first_right_op_role = None
+    while iop < ops_len:
+        if all_ops[iop].op_role is not None:
+            first_left_op_role = all_ops[iop].op_role
+            iop += 1
+            continue
+        else:
+            right_idx = iop + 1
+            while right_idx < ops_len and all_ops[right_idx].op_role is None:
+                right_idx += 1
+            if right_idx >= ops_len:  # [first_left_op_role, xx, xx, xx, xx]
+                assert (
+                    first_left_op_role is not None
+                ), "first_left_op_role can't be None."
+                for idx in range(iop, right_idx):
+                    all_ops[idx].op_role = first_left_op_role
+                break
+            else:  # [first_left_op_role, xx, xx, xx, xx, first_right_op_role]
+                first_right_op_role = all_ops[right_idx].op_role
+                assert (
+                    first_left_op_role is None
+                    or first_left_op_role == first_right_op_role
+                ), f"The left and right operators of (idx[{iop}]) have different op_role."
+                for idx in range(iop, right_idx):
+                    all_ops[idx].op_role = first_right_op_role
+                    iop = right_idx + 1
+    if first_left_op_role is None and first_right_op_role is None:
+        raise ValueError("all the ops don't have the op_role.")
+
+
 def _pir_program_for_fthenb_and_1f1b(
     main_program, enable_send_recv_overlap=False
 ):
+    forward_complete_op_role(main_program)
     complete_ops = main_program.global_block().ops
-
-    def complete_op_type_without_op_role(op_idx, all_ops):
-        ops_len = len(all_ops)
-        prev_idx = op_idx
-        while prev_idx >= 0 and all_ops[prev_idx].op_role is None:
-            prev_idx -= 1
-        next_idx = op_idx
-        while next_idx < ops_len and all_ops[next_idx].op_role is None:
-            next_idx -= 1
-        #
-        ref_op_role = None
-        if prev_idx >= 0 and next_idx < ops_len:
-            assert (
-                all_ops[prev_idx].op_role == all_ops[next_idx].op_role
-            ), f"prev_idx op_role[{all_ops[prev_idx].op_role}] must be the same with next_idx{[all_ops[next_idx].op_role]}"
-            ref_op_role = all_ops[prev_idx].op_role
-            for i in range(prev_idx, next_idx):
-                all_ops[i].op_role = ref_op_role
-        elif prev_idx < 0 and next_idx < ops_len:
-            ref_op_role = all_ops[next_idx].op_role
-            for i in range(prev_idx + 1, next_idx):
-                all_ops[i].op_role = ref_op_role
-        elif prev_idx >= 0 and next_idx >= ops_len:
-            ref_op_role = all_ops[prev_idx].op_role
-            for i in range(prev_idx, next_idx):
-                all_ops[i].op_role = ref_op_role
-        else:
-            raise ValueError("all the ops don't have the op_role.")
-
-    for id, op in enumerate(complete_ops):
-        if op.op_role is None:
-            complete_op_type_without_op_role(id, complete_ops)
 
     fwd_program = main_program.clone()
     bwd_program = main_program.clone()
@@ -762,14 +769,6 @@ def _pir_program_for_fthenb_and_1f1b(
                 region = "fwd"
             elif complete_ops[op_idx].op_role == 2:
                 region = "opt"
-
-        # if (
-        #     complete_ops[op_idx].name() == "pd_op.data"
-        #     and "learning_rate" in complete_ops[op_idx].attrs()["name"]
-        # ):
-        #     fwd_ops[op_idx].erase()
-        #     bwd_ops[op_idx].erase()
-        #     continue
 
         if region == "opt":
             fwd_ops[op_idx].erase()

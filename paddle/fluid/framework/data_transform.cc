@@ -62,7 +62,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
       PADDLE_ENFORCE_EQ(
           !(lin == DataLayout::ONEDNN && lout == DataLayout::ONEDNN),
           true,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "No layout transform needed between two oneDNN OPKernels."));
 
       if (lin != DataLayout::ONEDNN && lout == DataLayout::ONEDNN) {
@@ -85,7 +85,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
         // Case2 - transform from ONEDNN OPKernel to Non-ONEDNN OPKernel
         // Do transform via ONEDNN lib
         PADDLE_ENFORCE(lin == DataLayout::ONEDNN && lout != DataLayout::ONEDNN,
-                       platform::errors::InvalidArgument(
+                       phi::errors::InvalidArgument(
                            "TransDataLayoutFromOneDNN only supports "
                            "transform from ONEDNN to non-ONEDNN"));
 
@@ -127,7 +127,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
   PADDLE_ENFORCE_EQ(
       transformed,
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "No transform is applied for the data needs to be transformed."));
   // get output data
   output_tensor->ShareDataWith(in);
@@ -152,7 +152,7 @@ void SetTensorToVariable(const Variable &in_var,
     trans_selected_rows->set_rows(in_selected_rows.rows());
     trans_selected_rows->mutable_value()->ShareDataWith(tensor);
   } else {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported variable type, only supports phi::DenseTensor or "
         "SelectedRows, "
         "but the input variable type is %s.",

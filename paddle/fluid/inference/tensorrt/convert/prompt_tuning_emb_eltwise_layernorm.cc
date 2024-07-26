@@ -27,7 +27,7 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
                "tensorrt layer";
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
-                         framework::DDim* dim) -> TensorRTEngine::Weight {
+                         phi::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       *dim = temp_tensor->dims();
@@ -49,8 +49,8 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
     std::vector<nvinfer1::Weights> input_embs;
     std::vector<int> emb_sizes;
     TensorRTEngine::Weight weight;
-    framework::DDim emb_dims;
-    framework::DDim bias_dims, scale_dims;
+    phi::DDim emb_dims;
+    phi::DDim bias_dims, scale_dims;
     TensorRTEngine::Weight bias_weight, scale_weight;
 
     int64_t bias_size = common::product(bias_dims);

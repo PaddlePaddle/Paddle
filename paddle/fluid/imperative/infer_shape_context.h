@@ -31,7 +31,7 @@ namespace imperative {
 
 template <typename VarType>
 class DygraphInferShapeContext : public framework::InferShapeContext {
-  using DDim = framework::DDim;
+  using DDim = phi::DDim;
 
  public:
   DygraphInferShapeContext(

@@ -24,7 +24,6 @@ from test_to_static_pir_program import (
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.distributed import ParallelEnv
 from paddle.distributed.fleet import auto
 
 BATCH_SIZE = 4
@@ -167,8 +166,7 @@ class TestMLPPipelineParallel(unittest.TestCase):
         np.random.seed(1024)
         random.seed(1024)
 
-    def to_static_program(self):
-        self.init_env()
+    def test_to_static_program(self):
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
         mesh1 = dist.ProcessMesh([0], dim_names=["x"])
         mesh2 = dist.ProcessMesh([1], dim_names=["y"])
@@ -191,7 +189,9 @@ class TestMLPPipelineParallel(unittest.TestCase):
                 loss0 = loss
         return loss0
 
-    def split_program(self, schedule_mode="FThenB", accumulate_steps=1):
+    def _pipeline_schedule(
+        self, enable_schedule=False, schedule_mode="FThenB", accumulate_steps=1
+    ):
         self.init_env()
         paddle.set_flags({'FLAGS_enable_pir_api': 1})
         mesh1 = dist.ProcessMesh([0], dim_names=["x"])
@@ -205,7 +205,7 @@ class TestMLPPipelineParallel(unittest.TestCase):
             BATCH_SIZE, BATCH_NUM, IMAGE_SIZE, CLASS_NUM
         )
         strategy = dist.Strategy()
-        strategy.pipeline.enable = True
+        strategy.pipeline.enable = enable_schedule
         strategy.pipeline.schedule_mode = schedule_mode
         strategy.pipeline.accumulate_steps = accumulate_steps
 
@@ -229,35 +229,17 @@ class TestMLPPipelineParallel(unittest.TestCase):
             loss0 = np.mean(loss0)
         return loss0
 
-    def get_engine(
-        self, schedule_mode="FThenB", enable_send_recv_overlap=False
-    ):
-        reset_prog()
-
-        mesh1 = dist.ProcessMesh([0], dim_names=["x"])
-        mesh2 = dist.ProcessMesh([1], dim_names=["y"])
-        strategy = apply_pass(schedule_mode, enable_send_recv_overlap)
-        opt = paddle.optimizer.SGD(learning_rate=0.1)
-        pp_layer = PPDemoNet(mesh1, mesh2)
-        loss_fn = nn.MSELoss()
-
-        engine = auto.Engine(pp_layer, loss_fn, opt, strategy=strategy)
-        paddle.distributed.fleet.init(is_collective=True)
-        place = paddle.base.CUDAPlace(ParallelEnv().dev_id)
-        engine._executor = paddle.static.Executor(place)
-        return engine
-
     def test_pp_pass(self):
         self.init_env()
-        ref_loss = self.to_static_program()
+        ref_loss = self._pipeline_schedule()
         # only split_program
-        loss_split_prog_acc1 = self.split_program(
-            schedule_mode="FThenB", accumulate_steps=1
+        loss_split_prog_acc1 = self._pipeline_schedule(
+            enable_schedule=False, schedule_mode="FThenB", accumulate_steps=1
         )
         self.assertEqual(ref_loss, loss_split_prog_acc1)
 
-        loss_split_prog_acc4 = self.split_program(
-            schedule_mode="FThenB", accumulate_steps=4
+        loss_split_prog_acc4 = self._pipeline_schedule(
+            enable_schedule=True, schedule_mode="FThenB", accumulate_steps=4
         )
         if ref_loss is None:
             self.assertEqual(ref_loss, loss_split_prog_acc4)

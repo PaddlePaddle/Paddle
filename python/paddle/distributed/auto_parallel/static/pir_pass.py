@@ -114,6 +114,7 @@ def apply_partition_pass(program):
             if ref_op_role is not None:
                 insert_pos = paddle.pir.get_current_insertion_point()
                 insert_pos.prev().op_role = ref_op_role
+                paddle.pir.set_insertion_point_after(op)
 
             if old_dist_attr == result.dist_attr():
                 continue
