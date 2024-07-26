@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <optional>
+#include <string>
+#include <vector>
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 

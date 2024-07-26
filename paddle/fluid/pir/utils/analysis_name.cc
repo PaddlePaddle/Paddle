@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/utils/analysis_name.h"
-#include <vector>
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
 namespace pir {
