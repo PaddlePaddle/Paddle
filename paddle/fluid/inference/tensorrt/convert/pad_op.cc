@@ -46,9 +46,9 @@ class PadOpConverter : public OpConverter {
                                        pre_pad,
                                        post_pad);
 
-    PADDLE_ENFORCE_NOT_NULL(layer,
-                            platform::errors::External(
-                                "add padding layer to tensorrt engine error"));
+    PADDLE_ENFORCE_NOT_NULL(
+        layer,
+        phi::errors::External("add padding layer to tensorrt engine error"));
     auto output_name = op_desc.Output("Out")[0];
     ReplenishLayerAndOutput(layer, "pad", {output_name}, test_mode);
   }

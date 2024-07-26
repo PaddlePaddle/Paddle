@@ -31,8 +31,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
@@ -77,19 +77,19 @@ static void RunKernelFunc(
         auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
         PADDLE_ENFORCE_NE(vec_x.empty(),
                           true,
-                          platform::errors::NotFound(
+                          phi::errors::NotFound(
                               "Input vector<tensor> (%s) is empty.", in_name));
         for (size_t i = 0; i < vec_x.size(); ++i) {
           auto* x = vec_x[i];
           PADDLE_ENFORCE_NOT_NULL(
               x,
-              platform::errors::NotFound(
+              phi::errors::NotFound(
                   "The %d-th tensor in input vector<tensor> (%s) is nullptr.",
                   i,
                   in_name));
           PADDLE_ENFORCE_EQ(x->IsInitialized(),
                             true,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "The %d-th tensor in input vector<tensor> (%s) "
                                 "is not initialized.",
                                 i,
@@ -117,13 +117,12 @@ static void RunKernelFunc(
     } else {                        // inputs Tensor
       if (ctx.HasInput(in_name)) {  // general Tensor inputs
         auto* x = ctx.Input<phi::DenseTensor>(in_name);
-        PADDLE_ENFORCE_NOT_NULL(x,
-                                platform::errors::NotFound(
-                                    "Input tensor (%s) is nullptr.", in_name));
+        PADDLE_ENFORCE_NOT_NULL(
+            x, phi::errors::NotFound("Input tensor (%s) is nullptr.", in_name));
         PADDLE_ENFORCE_EQ(
             x->IsInitialized(),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Input tensor (%s) is not initialized.", in_name));
         paddle::Tensor custom_in;
         custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
@@ -175,7 +174,7 @@ static void RunKernelFunc(
     } else if (attr_type_str == "std::vector<std::string>") {
       kernel_ctx.EmplaceBackAttr(ctx.Attr<std::vector<std::string>>(attr_name));
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -224,7 +223,7 @@ static void RunKernelFunc(
         auto* out = vec_out[j];
         PADDLE_ENFORCE_NOT_NULL(
             out,
-            platform::errors::NotFound(
+            phi::errors::NotFound(
                 "The %d-th tensor in output vector<tensor> (%s) is nullptr.",
                 j,
                 out_name));
@@ -257,9 +256,9 @@ static void RunKernelFunc(
       }
       // general/inplace Tensor outputs
       auto* out = ctx.Output<phi::DenseTensor>(out_name);
-      PADDLE_ENFORCE_NOT_NULL(out,
-                              platform::errors::NotFound(
-                                  "Output tensor (%s) is nullptr.", out_name));
+      PADDLE_ENFORCE_NOT_NULL(
+          out,
+          phi::errors::NotFound("Output tensor (%s) is nullptr.", out_name));
       true_out_ptrs.emplace_back(out);
       paddle::Tensor custom_out;
       // here only can copy the output tensor into context
@@ -288,7 +287,7 @@ static void RunKernelFunc(
     PADDLE_ENFORCE_EQ(
         true_out_ptrs.size(),
         calc_outs->size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of element in custom operator outputs is wrong, "
             "expected contains %d Tensors, but actually contains %d "
             "Tensors.",
@@ -302,7 +301,7 @@ static void RunKernelFunc(
       }
       PADDLE_ENFORCE(
           true_out != nullptr && calc_outs->at(i).defined(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The returned Tensor is not defined in the KernelFn or custom "
               "operator passes wrong output in static mode."));
       auto calc_out =
@@ -323,9 +322,9 @@ static void RunKernelFunc(
   } catch (platform::EnforceNotMet& exception) {
     throw exception;
   } catch (std::exception& ex) {
-    PADDLE_THROW(platform::errors::External("%s", ex.what()));
+    PADDLE_THROW(phi::errors::External("%s", ex.what()));
   } catch (...) {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Custom operator raises an unknown exception in runtime."));
   }
 }
@@ -600,7 +599,7 @@ static void RunDefaultInferDtypeFunc(
     PADDLE_ENFORCE_EQ(
         inputs.size(),
         1UL,
-        platform::errors::Unavailable(
+        phi::errors::Unavailable(
             "Your custom operator contains multiple inputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the InferDtypeFn. "
@@ -611,7 +610,7 @@ static void RunDefaultInferDtypeFunc(
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         1UL,
-        platform::errors::Unavailable(
+        phi::errors::Unavailable(
             "Your custom operator contains multiple outputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the InferDtypeFn. "
@@ -930,7 +929,7 @@ static void RegisterOperatorKernel(
             << " with raw op kernel func";
     PADDLE_ENFORCE_NOT_NULL(
         dso_handle,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The dso handle must be provided if kernel_func is nullptr."));
     using OpKernelFuncPtr = void(const framework::ExecutionContext&);
     auto symbol_name = "PD_" + name + "_raw_op_kernel_func";
@@ -1012,7 +1011,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   PADDLE_ENFORCE_EQ(
       info.proto_->IsInitialized(),
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Fail to initialize %s's OpProto, because %s is not initialized.",
           op_name,
           info.proto_->InitializationErrorString()));
@@ -1203,7 +1202,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
               PADDLE_ENFORCE_EQ(
                   grad_op_inputs.size() == 1UL && grad_op_outputs.size() == 1UL,
                   true,
-                  platform::errors::Unavailable(
+                  phi::errors::Unavailable(
                       "Custom grad operator infershape error. "
                       "If a custom grad operator contains only one input and "
                       "only one output, the input shape will be directly set "
@@ -1306,7 +1305,7 @@ void RegisterOperatorWithMetaInfoMap(
 // load op api
 const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
 LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
-  void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
+  void* handle = phi::dynload::GetOpDsoHandle(dso_name);
   VLOG(3) << "load custom_op lib: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =

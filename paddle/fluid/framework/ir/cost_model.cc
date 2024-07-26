@@ -16,10 +16,10 @@
 
 #include <memory>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -237,8 +237,8 @@ CostData CostModel::ProfileMeasure(
     profiler_state = platform::ProfilerState::kAll;
     place = phi::GPUPlace();
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Not support %s in CostModel now", device));
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Not support %s in CostModel now", device));
   }
 
   Executor executor(place);

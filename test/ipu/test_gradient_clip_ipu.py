@@ -63,11 +63,14 @@ class TestBase(IPUOpTest):
         image = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
-        conv1 = paddle.static.nn.conv2d(
-            image, num_filters=3, filter_size=3, bias_attr=False
-        )
+        conv1 = paddle.nn.Conv2D(
+            in_channels=image.shape[1],
+            out_channels=3,
+            kernel_size=3,
+            bias_attr=False,
+        )(image)
         loss = paddle.mean(conv1)
-        self.fetch_list = [loss.name]
+        self.fetch_list = [loss]
 
         weight_decay = self.attrs['weight_decay']
         # Only support ClipGradByGlobalNorm

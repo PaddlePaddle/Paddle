@@ -246,7 +246,7 @@ if(APPLE)
   endif()
   message(
     WARNING
-      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext_*"
+      "These tests has been disabled in OSX before being fixed: \n test_detection_map_op \n test_dist_se_resnext_*"
   )
   # this op is not support on mac
   list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
@@ -543,6 +543,7 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
+set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 if(WITH_GPU
    OR WITH_XPU
    OR WITH_ASCEND
@@ -778,6 +779,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 # setting timeout value as 15S
+set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
@@ -988,6 +990,7 @@ set(TEST_CINN_OPS
     test_assign_op
     test_reduce_op
     test_scatter_nd_op
+    test_scale_op
     test_layer_norm_op
     test_atan2_op
     test_cast_op
@@ -1013,6 +1016,7 @@ set(TEST_CINN_OPS
     test_scatter_op
     test_reverse_op
     test_roll_op
+    test_metrics
     test_meshgrid_op
     test_index_select_op
     test_mean_op
@@ -1032,7 +1036,8 @@ set(TEST_CINN_OPS
     test_strided_slice_op
     test_pad_op
     test_pool2d_op
-    test_erf_op)
+    test_erf_op
+    test_cumsum_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -1068,6 +1073,7 @@ set(STATIC_BUILD_TESTS
     test_layer_norm_op
     test_eigh_op
     test_matmul_v2_op
+    test_momentum_op
     test_paddle_save_load_binary
     test_fetch_lod_tensor_array
     test_assign_pos_op
@@ -1102,7 +1108,8 @@ set(STATIC_BUILD_TESTS
     test_shuffle_batch_op
     test_update_loss_scaling_op
     test_segment_ops
-    test_while_op)
+    test_while_op
+    test_tensor_array_to_tensor)
 
 if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)

@@ -60,7 +60,7 @@ struct TEST_API ExecutorPrepareContext {
 class TEST_API Executor {
  public:
   // TODO(dzhwinter) : Do not rely on this function, it will be removed
-  explicit Executor(const platform::DeviceContext& device)
+  explicit Executor(const phi::DeviceContext& device)
       : Executor(device.GetPlace()) {}
 
   explicit Executor(const phi::Place& place);

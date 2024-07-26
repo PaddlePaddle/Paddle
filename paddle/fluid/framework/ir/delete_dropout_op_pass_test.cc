@@ -61,14 +61,14 @@ TEST(DeleteDropoutOpsPass, dropout) {
       PADDLE_ENFORCE_EQ(
           num_dropout_nodes_after,
           0,
-          platform::errors::InvalidArgument("num_dropout_nodes_after = %d.",
-                                            num_dropout_nodes_after));
+          phi::errors::InvalidArgument("num_dropout_nodes_after = %d.",
+                                       num_dropout_nodes_after));
 
       if (dropout_implementation == "downgrade_in_infer") {
         PADDLE_ENFORCE_EQ(
             num_dropout_nodes_before,
             num_scale_nodes_after - num_scale_nodes_before,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "num_dropout_nodes_before = %d, num_scale_nodes_after = %d, "
                 "num_scale_nodes_before = %d.",
                 num_dropout_nodes_before,
@@ -78,7 +78,7 @@ TEST(DeleteDropoutOpsPass, dropout) {
         PADDLE_ENFORCE_EQ(
             num_scale_nodes_after - num_scale_nodes_before,
             0,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "num_scale_nodes_after = %d, num_scale_nodes_before = %d.",
                 num_scale_nodes_after,
                 num_scale_nodes_before));

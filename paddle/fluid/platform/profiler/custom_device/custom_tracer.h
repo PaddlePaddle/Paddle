@@ -18,7 +18,7 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
 
 namespace paddle {
