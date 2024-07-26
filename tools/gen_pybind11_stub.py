@@ -63,7 +63,7 @@ PYBIND11_ATTR_MAPPING = {
     'paddle::framework::DataFeedDesc': 'paddle.base.data_feed_desc.DataFeedDesc',
     'paddle::framework::Dataset': 'paddle.base.core.Dataset',
     'paddle::framework::Executor': 'paddle.base.core.Executor',
-    # paddle::framework::LoDRankTable
+    'paddle::framework::LoDRankTable': 'paddle.base.core.LodRankTable',
     'paddle::framework::OpDesc': 'paddle.base.core.OpDesc',
     'paddle::framework::PhiVector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >': 'str',
     'paddle::framework::ProgramDesc': 'paddle.base.core.ProgramDesc',
@@ -82,7 +82,7 @@ PYBIND11_ATTR_MAPPING = {
     'paddle::framework::proto::VarType_Type': 'paddle.base.core.VarDesc.VarType',
     'paddle::imperative::AmpAttrs': 'paddle.base.core.AmpAttrs',
     'paddle::imperative::Tracer': 'paddle.base.core.Tracer',
-    # paddle::imperative::VarBase
+    'paddle::imperative::VarBase': 'paddle.Tensor',
     # paddle::inference::analysis::Argument
     'paddle::jit::Function': 'paddle.base.core.Function',
     'paddle::jit::FunctionInfo': 'paddle.base.core.FunctionInfo',
@@ -95,7 +95,7 @@ PYBIND11_ATTR_MAPPING = {
     'paddle_infer::Tensor': 'paddle.Tensor',
     'phi::CPUPlace': 'CPUPlace',
     'phi::CUDAStream': 'CUDAStream',
-    # phi::CudaEvent
+    'phi::CudaEvent': 'CUDAEvent',
     'phi::CustomPlace': 'CustomPlace',
     'phi::DenseTensor': 'paddle.Tensor',
     # phi::GPUPinnedPlace
