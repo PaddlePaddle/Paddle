@@ -15,7 +15,8 @@ gather_srcs(
   extern_func_jit_register.cc
   modular.cc
   compiler.cc
-  codegen_device_util.cc)
+  codegen_device_util.cc
+  codegen_gpu_dev.cc)
 
 if(WITH_CUDA)
   add_subdirectory(nvrtc)
