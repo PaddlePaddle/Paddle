@@ -265,10 +265,14 @@ def _patch_pybind11_invalid_annotation():
 def _patch_pybind11_invalid_exp():
     # patch invalid exp with `"xxx"` as a `typing.Any`
     def print_invalid_exp(self, invalid_expr: InvalidExpression) -> str:
-        if self.invalid_expr_as_ellipses:
-            return "typing.Any"
         _text = invalid_expr.text
-        return PYBIND11_ATTR_MAPPING.get(_text, f'"{_text}"')
+        _text = PYBIND11_ATTR_MAPPING.get(_text, f'"{_text}"')
+        if (
+            self.invalid_expr_as_ellipses
+            and _text not in PYBIND11_INVALID_FULL_MAPPING.values()
+        ):
+            return "typing.Any"
+        return _text
 
     Printer.print_invalid_exp = print_invalid_exp
 
