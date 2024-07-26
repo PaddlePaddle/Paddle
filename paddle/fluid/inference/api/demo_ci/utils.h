@@ -60,7 +60,6 @@ Record ProcessALine(const std::string& line) {
                     2UL,
                     platform::errors::InvalidArgument(
                         "data format error, should be <data>\t<shape>"));
-  )
   Record record;
   std::vector<std::string> data_strs;
   split(columns[0], ' ', &data_strs);
