@@ -130,12 +130,12 @@ def fused_dot_product_attention(
     query: Tensor,
     key: Tensor,
     value: Tensor,
-    attn_mask: Tensor = None,
+    attn_mask: Tensor | None = None,
     dropout_p: float = 0.0,
     is_causal: bool = False,
-    scaling_factor: float = None,
+    scaling_factor: float | None = None,
     training: bool = True,
-    name: str = None,
+    name: str | None = None,
 ):
     r"""
     Fused Dot Product Attention. This is a fusion operator to compute scaled dot product attention in transformer
