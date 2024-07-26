@@ -55,7 +55,7 @@ def recv(
     )
 
 
-def irecv(tensor: Tensor, src: str = None, group: Group = None):
+def irecv(tensor: Tensor, src: int = None, group: Group = None):
     """
     Receive a tensor to the sender.
 
