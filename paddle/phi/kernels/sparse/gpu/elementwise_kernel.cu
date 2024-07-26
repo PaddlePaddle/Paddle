@@ -15,6 +15,7 @@ limitations under the License. */
 #include <thrust/equal.h>
 #include <thrust/execution_policy.h>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/sparse/elementwise_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
@@ -22,6 +23,8 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
+
+COMMON_DECLARE_bool(jump_sparse_add_input_equal);
 
 namespace phi {
 namespace sparse {
@@ -41,14 +44,19 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
           "The numel of x.indices() and y.indices() should be equal"));
   const IntT* x_indices_ptr = x_indices.data<IntT>();
   const IntT* y_indices_ptr = y_indices.data<IntT>();
+  bool is_same = false;
+  if (FLAGS_jump_sparse_add_input_equal) {
+    is_same = true;
+  } else {
 #ifdef PADDLE_WITH_HIP
-  bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
+    is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
+    is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
-                               x_indices_ptr,
-                               x_indices_ptr + x_indices.numel(),
-                               y_indices_ptr);
+                            x_indices_ptr,
+                            x_indices_ptr + x_indices.numel(),
+                            y_indices_ptr);
+  }
   PADDLE_ENFORCE_EQ(
       is_same,
       true,

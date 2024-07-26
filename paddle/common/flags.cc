@@ -83,6 +83,18 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Operator related FLAG
+ * Name: FLAGS_jump_sparse_add_input_equal
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Checking whether operator produce NAN/INF or not.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    jump_sparse_add_input_equal,
+    false,
+    "Jumping sparse_add input equal case. If true, then skip such cases");
+/**
+ * Operator related FLAG
  * Name: FLAGS_check_nan_inf_level
  * Since Version: 2.5.0
  * Value Range: int32, default=0
