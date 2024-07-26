@@ -1953,7 +1953,7 @@
     param : [shape, value, dtype]
     data_type : dtype
     backend : place
-
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 - op : full_batch_size_like
   args : (Tensor input, int[] shape, DataType dtype, Scalar(double) value, int input_dim_idx, int output_dim_idx, Place place=CPUPlace())
   output: Tensor(out)
