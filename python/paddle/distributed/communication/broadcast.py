@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import paddle
 import paddle.distributed as dist
@@ -81,7 +81,7 @@ def broadcast(
 
 
 def broadcast_object_list(
-    object_list: list[dict[str, Tensor]], src: int, group: Group | None = None
+    object_list: list[Any], src: int, group: Group | None = None
 ) -> None:
     """
 
