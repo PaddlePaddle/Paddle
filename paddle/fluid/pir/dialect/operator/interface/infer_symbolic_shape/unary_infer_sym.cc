@@ -1003,6 +1003,22 @@ bool SplitWithNumOpInferSymbolicShape(
   return true;
 }
 
+bool SquaredL2NormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_dtype = x_shape_or_data.dtype();
+
+  // Setting output dimensions to be {1} and dtype to be the same as input
+  std::vector<symbol::DimExpr> out_dims = {symbol::DimExpr(1)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims),
+                                  x_dtype});
+
+  return true;
+}
+
 bool SumOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
@@ -1024,6 +1040,56 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
         phi::errors::Unimplemented("SumOpInferSymbolicShape: 'axis' only "
                                    "support FullIntArrayOp's result now."));
   }
+
+  return true;
+}
+
+bool TemporalShiftOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input(X) rank should be 4 in shape of "
+                                   "[N*T, C, H, W], but received X rank(%d)",
+                                   x_dims.size()));
+
+  int seg_num = op->attribute<pir::Int32Attribute>("seg_num").data();
+  float shift_ratio = op->attribute<pir::FloatAttribute>("shift_ratio").data();
+
+  PADDLE_ENFORCE_GT(
+      seg_num,
+      0,
+      phi::errors::InvalidArgument(
+          "Attr(seg_num) should be greater than 0, but received %d", seg_num));
+  PADDLE_ENFORCE_GT(
+      shift_ratio,
+      0.,
+      phi::errors::InvalidArgument(
+          "Attr(shift_ratio) should be greater than 0, but received %f",
+          shift_ratio));
+  PADDLE_ENFORCE_LT(
+      shift_ratio,
+      0.5,
+      phi::errors::InvalidArgument(
+          "Attr(shift_ratio) should be less than 0.5, but received %f",
+          shift_ratio));
+
+  if (infer_context->is_runtime()) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0] % seg_num,
+        0,
+        phi::errors::InvalidArgument(
+            "Input(X) dimension[0] should be divided exactly by Attr(seg_num), "
+            "but received X dimension[0](%d) mod seg_num(%d) != 0",
+            x_dims[0],
+            seg_num));
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
 
   return true;
 }

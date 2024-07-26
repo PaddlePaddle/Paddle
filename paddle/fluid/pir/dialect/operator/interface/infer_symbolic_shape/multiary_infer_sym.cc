@@ -816,3 +816,170 @@ bool Where_OpInferSymbolicShape(pir::Operation *op,
 }
 
 }  // namespace paddle::dialect
+
+bool YoloLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &gt_box_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &gt_label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  const std::vector<symbol::DimExpr> &dim_x = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &dim_gtbox = gt_box_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &dim_gtlabel =
+      gt_label_shape_or_data.shape();
+
+  std::vector<int> anchors =
+      paddle::dialect::details::GetVectorAttr<int>(op, "anchors");
+  std::vector<int> anchor_mask =
+      paddle::dialect::details::GetVectorAttr<int>(op, "anchor_mask");
+  int class_num = op->attribute<pir::Int32Attribute>("class_num").data();
+  float ignore_thresh =
+      op->attribute<pir::FloatAttribute>("ignore_thresh").data();
+  int downsample_ratio =
+      op->attribute<pir::Int32Attribute>("downsample_ratio").data();
+  bool use_label_smooth =
+      op->attribute<pir::BoolAttribute>("use_label_smooth").data();
+  float scale_x_y = op->attribute<pir::FloatAttribute>("scale_x_y").data();
+
+  int anchor_num = static_cast<int>(anchors.size() / 2);
+  int mask_num = static_cast<int>(anchor_mask.size());
+
+  PADDLE_ENFORCE_EQ(
+      dim_x.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "Input(X) should be a 4-D tensor. But received X dimension size(%s)",
+          dim_x.size()));
+  PADDLE_ENFORCE_EQ(dim_x[2],
+                    dim_x[3],
+                    phi::errors::InvalidArgument(
+                        "Input(X) dim[3] and dim[4] should be equal. But "
+                        "received dim[3](%s) != dim[4](%s)",
+                        dim_x[2],
+                        dim_x[3]));
+  PADDLE_ENFORCE_EQ(
+      dim_x[1],
+      mask_num * (5 + class_num),
+      phi::errors::InvalidArgument(
+          "Input(X) dim[1] should be equal to (anchor_mask_number * (5 + "
+          "class_num)). But received dim[1](%s) != (anchor_mask_number * "
+          "(5+class_num)(%s).",
+          dim_x[1],
+          mask_num * (5 + class_num)));
+  PADDLE_ENFORCE_EQ(
+      dim_gtbox.size(),
+      3,
+      phi::errors::InvalidArgument("Input(GTBox) should be a 3-D tensor, but "
+                                   "received gtbox dimension size(%s)",
+                                   dim_gtbox.size()));
+  PADDLE_ENFORCE_EQ(
+      dim_gtbox[2],
+      4,
+      phi::errors::InvalidArgument(
+          "Input(GTBox) dim[2] should be 4. But received dim[2](%s) != 4.",
+          dim_gtbox[2]));
+  PADDLE_ENFORCE_EQ(dim_gtlabel.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Input(GTLabel) should be a 2-D tensor. But received "
+                        "Input(GTLabel) dimension size(%s) != 2.",
+                        dim_gtlabel.size()));
+  PADDLE_ENFORCE_EQ(
+      dim_gtlabel[0],
+      dim_gtbox[0],
+      phi::errors::InvalidArgument(
+          "Input(GTBox) dim[0] and Input(GTLabel) dim[0] should be same. But "
+          "received Input(GTLabel) dim[0](%s) != Input(GTBox) dim[0](%s)",
+          dim_gtlabel[0],
+          dim_gtbox[0]));
+  PADDLE_ENFORCE_EQ(
+      dim_gtlabel[1],
+      dim_gtbox[1],
+      phi::errors::InvalidArgument(
+          "Input(GTBox) and Input(GTLabel) dim[1] should be same. But received "
+          "Input(GTBox) dim[1](%s) != Input(GTLabel) dim[1](%s)",
+          dim_gtbox[1],
+          dim_gtlabel[1]));
+  PADDLE_ENFORCE_GT(
+      anchors.size(),
+      0,
+      phi::errors::InvalidArgument("Attr(anchors) length should be greater "
+                                   "than 0. But received anchors length(%s)",
+                                   anchors.size()));
+  PADDLE_ENFORCE_EQ(
+      anchors.size() % 2,
+      0,
+      phi::errors::InvalidArgument("Attr(anchors) length should be an even "
+                                   "integer. But received anchors length(%s)",
+                                   anchors.size()));
+
+  for (auto &item : anchor_mask) {
+    PADDLE_ENFORCE_LT(
+        item,
+        anchor_num,
+        phi::errors::InvalidArgument(
+            "Attr(anchor_mask) should not crossover Attr(anchors). But "
+            "received anchor_mask[i](%s) > anchor_num(%s)",
+            item,
+            anchor_num));
+  }
+
+  PADDLE_ENFORCE_GT(class_num,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Attr(class_num) should be an integer greater than 0. "
+                        "But received class_num(%s) < 0",
+                        class_num));
+
+  if (op->operand_source(3)) {
+    const auto &gt_score_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(3));
+    const std::vector<symbol::DimExpr> &dim_gtscore =
+        gt_score_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
+        dim_gtscore.size(),
+        2,
+        phi::errors::InvalidArgument("Input(GTScore) should be a 2-D tensor. "
+                                     "But received GTScore dimension(%s)",
+                                     dim_gtscore.size()));
+    PADDLE_ENFORCE_EQ(
+        dim_gtscore[0],
+        dim_gtbox[0],
+        phi::errors::InvalidArgument(
+            "Input(GTBox) and Input(GTScore) dim[0] should be same. But "
+            "received GTBox dim[0](%s) != GTScore dim[0](%s)",
+            dim_gtbox[0],
+            dim_gtscore[0]));
+    PADDLE_ENFORCE_EQ(
+        dim_gtscore[1],
+        dim_gtbox[1],
+        phi::errors::InvalidArgument(
+            "Input(GTBox) and Input(GTScore) dim[1] should be same. But "
+            "received GTBox dim[1](%s) != GTScore dim[1](%s)",
+            dim_gtscore[1],
+            dim_gtbox[1]));
+  }
+
+  std::vector<symbol::DimExpr> dim_out = {dim_x[0]};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(dim_out)});
+
+  std::vector<symbol::DimExpr> dim_obj_mask = {
+      dim_x[0], mask_num, dim_x[2], dim_x[3]};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(dim_obj_mask)});
+
+  std::vector<symbol::DimExpr> dim_gt_match_mask = {dim_gtbox[0], dim_gtbox[1]};
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(dim_gt_match_mask)});
+
+  return true;
+}
