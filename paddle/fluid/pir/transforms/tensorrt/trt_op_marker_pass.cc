@@ -818,10 +818,10 @@ class CastOpPattern
     }
     auto dtype = op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
     if (dtype == phi::DataType::BOOL){
-        #if IS_TRT_VERSION_LT(8400)
+#if IS_TRT_VERSION_LT(8400)
           VLOG(3) << "the cast op supports inputs and outputs of BOOL by trt8.4 above ";
           return false;
-        #endif
+#endif
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
