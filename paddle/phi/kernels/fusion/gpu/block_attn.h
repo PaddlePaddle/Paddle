@@ -2599,9 +2599,6 @@ void gqa_rotary_qk_variable(
     bool use_neox_style = false) {
   int elem_nums =
       token_num * (q_head_num + kv_head_num) * dim_head;  // just q and k
-  if (use_neox_style) {
-    elem_nums /= 2;
-  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
@@ -3053,9 +3050,6 @@ void gqa_rotary_qk_variable(
     bool use_neox_style = false) {
   int elem_nums =
       token_num * (q_head_num + 2 * kv_head_num) * dim_head;  // for all q k v
-  if (use_neox_style) {
-    elem_nums /= 2;
-  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
@@ -3463,9 +3457,6 @@ void gqa_rotary_qk_variable(
     bool use_neox_style = false) {
   int elem_nums =
       token_num * (q_head_num + 2 * kv_head_num) * dim_head;  // for all q k v
-  if (use_neox_style) {
-    elem_nums /= 2;
-  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
