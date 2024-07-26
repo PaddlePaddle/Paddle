@@ -272,6 +272,7 @@
     func : argmin
     data_type : x
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : argsort
   args : (Tensor x, int axis=-1, bool descending=false, bool stable=false)
@@ -1727,6 +1728,7 @@
   kernel :
     func : fft_c2c
   backward : fft_c2c_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fft_c2r
   args : (Tensor x, int64_t[] axes, str normalization, bool forward, int64_t last_dim_size=0L)
@@ -1736,6 +1738,7 @@
   kernel :
     func : fft_c2r
   backward : fft_c2r_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fft_r2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward, bool onesided)
@@ -1745,6 +1748,7 @@
   kernel :
     func : fft_r2c
   backward : fft_r2c_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fill
   args : (Tensor x, Scalar(double) value=0)
@@ -1756,6 +1760,7 @@
     func : fill
   inplace : (x -> out)
   backward: fill_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fill_diagonal
   args : (Tensor x, float value=0, int offset=0, bool wrap=false)
@@ -1767,6 +1772,7 @@
     data_type : x
   inplace : (x -> out)
   backward : fill_diagonal_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fill_diagonal_tensor
   args : (Tensor x, Tensor y, int64_t offset = 0, int dim1 = 0, int dim2 = 1)
@@ -1777,6 +1783,7 @@
     func : fill_diagonal_tensor
   inplace : (x -> out)
   backward : fill_diagonal_tensor_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flash_attn
   args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")

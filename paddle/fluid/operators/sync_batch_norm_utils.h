@@ -483,11 +483,11 @@ void SyncBatchNormGradFunctor(
   const auto *saved_inv_var =
       saved_variance.template data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-  auto alloc_ptr = phi::memory_utils::Alloc(
-      ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-  auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
+  phi::DenseTensor stats_tensor;
+  stats_tensor.Resize({static_cast<int64_t>(bytes)});
+  ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
+  auto *stats_data = stats_tensor.data<BatchNormParamType<T>>();
+  auto *stats = reinterpret_cast<BatchNormParamType<T> *>(stats_data);
 
   const int block = 512;
   const int threads = 256;
@@ -603,17 +603,7 @@ void SyncBatchNormGradFunctor(
       auto comm_ctx =
           static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
       if (comm_ctx) {
-        comm = comm_ctx->GetNcclComm();
-        int dtype = paddle::platform::ToNCCLDataType(scale.dtype());
-        // In-place operation
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::ncclAllReduce(stats,
-                                        stats,
-                                        2 * C + 1,
-                                        static_cast<ncclDataType_t>(dtype),
-                                        ncclSum,
-                                        comm,
-                                        stream));
+        comm_ctx->AllReduce(&stats_tensor, stats_tensor, ncclSum, stream);
         VLOG(3) << "Sync result using all reduce";
       }
     }

@@ -2602,19 +2602,31 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
              const auto &compare_func =
                  [&](const std::vector<int64_t> &expect,
                      const std::vector<symbol::DimExpr> &actual) -> bool {
+               const auto print_expect_and_actual = [&]() {
+                 std::ostringstream sout;
+                 sout << "expect: [";
+                 std::copy(expect.begin(),
+                           expect.end(),
+                           std::ostream_iterator<int64_t>(sout, ","));
+                 sout << "]" << std::endl;
+
+                 sout << "actual:" << actual << std::endl;
+                 LOG(ERROR) << sout.str();
+               };
+
                if (actual.size() != expect.size()) {
                  LOG(ERROR) << "expect size " << expect.size()
                             << " is not equal to actual size " << actual.size()
-                            << " .";
+                            << " . The detailed infermation is as follows:";
+                 print_expect_and_actual();
                  return false;
                } else if (actual.empty()) {
                  return true;
                }
+
                for (size_t i = 0; i < actual.size(); i++) {
                  if (!actual.at(i).isa<int64_t>()) {
-                   LOG(ERROR)
-                       << "expect[" << i << "]: " << expect.at(i) << " actual["
-                       << i << "]: " << actual.at(i) << " .";
+                   print_expect_and_actual();
                    PADDLE_THROW(phi::errors::InvalidArgument(
                        "In OpTest, only supports cases where the type of "
                        "DimExpr "
@@ -2624,7 +2636,9 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                  if (actual.at(i) != expect.at(i)) {
                    LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
                               << " is not equal to actual[" << i
-                              << "]: " << actual.at(i) << " .";
+                              << "]: " << actual.at(i)
+                              << " . The detailed infermation is as follows:";
+                   print_expect_and_actual();
                    return false;
                  }
                }

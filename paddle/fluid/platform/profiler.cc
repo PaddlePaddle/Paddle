@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/os_info.h"
+#include "paddle/phi/core/os_info.h"
 
 COMMON_DECLARE_bool(enable_record_memory);
 
@@ -64,7 +64,7 @@ RecordInstantEvent::RecordInstantEvent(const char *name,
   if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
-  auto start_end_ns = PosixInNsec();
+  auto start_end_ns = phi::PosixInNsec();
   HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
       name, start_end_ns, start_end_ns, EventRole::kOrdinary, type);
 }
@@ -89,7 +89,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   }
 
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
+      phi::PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
 }
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
@@ -114,7 +114,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   }
   uint64_t op_id = 0;
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
+      phi::PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
 }
 
 bool RecordMemEvent::IsEnabled() { return FLAGS_enable_record_memory; }
@@ -497,7 +497,7 @@ void MemEventRecorder::PushMemRecord(const void *ptr,
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
     HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
-        PosixInNsec(),
+        phi::PosixInNsec(),
         reinterpret_cast<uint64_t>(ptr),
         type,
         size,
@@ -546,7 +546,7 @@ void MemEventRecorder::PopMemRecord(const void *ptr,
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
     HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
-        PosixInNsec(),
+        phi::PosixInNsec(),
         reinterpret_cast<uint64_t>(ptr),
         type,
         -size,
@@ -579,7 +579,7 @@ MemEventRecorder::RecordMemEvent::RecordMemEvent(const Place &place,
                                                  size_t bytes)
     : place_(place),
       bytes_(bytes),
-      start_ns_(PosixInNsec()),
+      start_ns_(phi::PosixInNsec()),
       end_ns_(0),
       alloc_in_(phi::CurAnnotationName()) {
   PushMemEvent(start_ns_, end_ns_, bytes_, place_, alloc_in_);
@@ -587,7 +587,7 @@ MemEventRecorder::RecordMemEvent::RecordMemEvent(const Place &place,
 
 MemEventRecorder::RecordMemEvent::~RecordMemEvent() {  // NOLINT
   phi::DeviceTracer *tracer = phi::GetDeviceTracer();
-  end_ns_ = PosixInNsec();
+  end_ns_ = phi::PosixInNsec();
 
   auto annotation_free = phi::CurAnnotationName();
   if (tracer) {
@@ -603,7 +603,7 @@ MemEventRecorder::RecordMemEvent::~RecordMemEvent() {  // NOLINT
 }
 
 RecordBlock::RecordBlock(int block_id)
-    : is_enabled_(false), start_ns_(PosixInNsec()) {
+    : is_enabled_(false), start_ns_(phi::PosixInNsec()) {
   // lock is not needed, the code below is thread-safe
   if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
@@ -621,7 +621,7 @@ RecordBlock::~RecordBlock() {
     // same timeline lane. and distinguish the using thread_id.
     tracer->AddCPURecords(name_,
                           start_ns_,
-                          PosixInNsec(),
+                          phi::PosixInNsec(),
                           phi::BlockDepth(),
                           phi::ProfilerHelper::g_thread_id);
   }
@@ -709,9 +709,9 @@ void ResetProfiler() {
   }
 }
 
-static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart();
+static std::map<uint64_t, phi::ThreadEvents> DockHostEventRecorderHostPart();
 static void DockHostEventRecorderDevicePart(
-    const std::map<uint64_t, ThreadEvents> &thr_events);
+    const std::map<uint64_t, phi::ThreadEvents> &thr_events);
 
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string &profile_path) {
@@ -865,7 +865,7 @@ std::string PrintHostEvents() {
 
 static void EmulateEventPushAndPop(
     const HostEventSection<CommonEvent> &host_sec,
-    std::map<uint64_t, ThreadEvents> *out) {
+    std::map<uint64_t, phi::ThreadEvents> *out) {
   for (const auto &thr_sec : host_sec.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
     auto cur_thr_list = std::make_shared<EventList<Event>>();
@@ -929,7 +929,7 @@ static void EmulateCPURecordsAdd(
 }
 
 static void EmulateCorrelation(
-    const std::map<uint64_t, ThreadEvents> &thr_events) {
+    const std::map<uint64_t, phi::ThreadEvents> &thr_events) {
   phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   if (tracer == nullptr) {
     return;
@@ -937,8 +937,8 @@ static void EmulateCorrelation(
   tracer->AddAnnotations(thr_events);
 }
 
-static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
-  std::map<uint64_t, ThreadEvents> thr_events;
+static std::map<uint64_t, phi::ThreadEvents> DockHostEventRecorderHostPart() {
+  std::map<uint64_t, phi::ThreadEvents> thr_events;
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return thr_events;
   }
@@ -950,7 +950,7 @@ static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
 }
 
 static void DockHostEventRecorderDevicePart(
-    const std::map<uint64_t, ThreadEvents> &thr_events) {
+    const std::map<uint64_t, phi::ThreadEvents> &thr_events) {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
