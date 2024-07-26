@@ -525,6 +525,20 @@ bool KthvalueOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(op->result(1), shape_data);
   return true;
 }
+bool InverseInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  auto x_dims = x_shape_or_data.shape();
+
+  std::vector<symbol::DimExpr> output_dims = x_dims;
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+
+  return true;
+}
 
 bool LogcumsumexpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
