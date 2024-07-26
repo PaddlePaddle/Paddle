@@ -613,8 +613,7 @@ set_tests_properties(test_imperative_lod_tensor_to_selected_rows_deprecated
 
 set_tests_properties(test_deformable_conv_op_deprecated PROPERTIES TIMEOUT 200)
 set_tests_properties(test_regularizer_api_deprecated PROPERTIES TIMEOUT 150)
-set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
-                                                                        120)
+
 if(NOT WIN32)
   if(WITH_NV_JETSON)
     set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 1200)
