@@ -38,7 +38,7 @@ def fused_gate_attention(
     attn_mask: Tensor | None = None,
     has_gating: bool = True,
     merge_qkv: bool = True,
-    use_flash_attn=False,
+    use_flash_attn: bool = False,
 ) -> Tensor:
     r"""
     Attention maps queries and a set of key-value pairs to outputs, and
