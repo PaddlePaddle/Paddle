@@ -30,7 +30,6 @@ from utils import static_guard
 
 import paddle
 import paddle.nn.functional as F
-import paddle.static
 from paddle import base
 from paddle.base import core
 
@@ -103,9 +102,10 @@ class TestGroupNormOpError(unittest.TestCase):
                         name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
                     )
                     groups = 2
-                    paddle.nn.GroupNorm(num_channels=2, num_groups=groups)(x2)
+                    paddle.static.nn.group_norm(x2, groups)
 
-                self.assertRaises(TypeError, test_x_dtype)
+                with paddle.pir_utils.OldIrGuard():
+                    self.assertRaises(TypeError, test_x_dtype)
 
 
 def group_norm_wrapper(
@@ -704,6 +704,8 @@ class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
 class TestGroupNormAPI_With_NHWC(unittest.TestCase):
     def test_case1(self):
         with paddle_static_guard():
+            pre_dtype = paddle.get_default_dtype()
+            paddle.set_default_dtype("float64")
             data1 = paddle.static.data(
                 name='data1', shape=[None, 3, 3, 4], dtype='float64'
             )
@@ -724,12 +726,14 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
 
             place = core.CPUPlace()
             exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             results = exe.run(
                 base.default_main_program(),
                 feed={"data1": data1_np, "data2": data2_np},
                 fetch_list=[out1, out2],
                 return_numpy=True,
             )
+            paddle.set_default_dtype(pre_dtype)
             expect_res1 = group_norm_naive(
                 data1_np,
                 scale,
