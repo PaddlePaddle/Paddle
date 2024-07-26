@@ -1481,6 +1481,7 @@
     func : eigvalsh
     data_type : x
   backward : eigvalsh_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : elu
   args : (Tensor x, float alpha = 1.0f)
