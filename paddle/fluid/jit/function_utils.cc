@@ -57,7 +57,7 @@ void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
   PADDLE_ENFORCE_EQ(
       tensors.size(),
       ordered_input_names.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "tensors.size() should be equal to ordered_input_names.size()."));
   for (size_t i = 0; i < tensors.size(); ++i) {
     VLOG(3) << "share into scope: " << ordered_input_names[i];
@@ -108,5 +108,7 @@ void RemoveFeedFetch(framework::ProgramDesc *program_desc) {
     }
   }
 }
+
+void RemoveFeedFetch(pir::Program *program) {}
 
 }  // namespace paddle::jit::utils

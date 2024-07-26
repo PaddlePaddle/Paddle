@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 
@@ -751,7 +752,13 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
 
 class TestGroupNormFunctionalAPI_With_NLC(unittest.TestCase):
     def test_case1(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if base.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -791,7 +798,13 @@ class TestGroupNormFunctionalAPI_With_NLC(unittest.TestCase):
 
 class TestGroupNormFunctionalAPI_With_NHWC(unittest.TestCase):
     def test_case1(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if base.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -831,7 +844,13 @@ class TestGroupNormFunctionalAPI_With_NHWC(unittest.TestCase):
 
 class TestGroupNormFunctionalAPI_With_NDHWC(unittest.TestCase):
     def test_case1(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if base.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -965,7 +984,13 @@ class TestGroupNormEager_fp16(unittest.TestCase):
             )
 
 
-places = [paddle.CPUPlace()]
+places = []
+if (
+    os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+    in ['1', 'true', 'on']
+    or not paddle.is_compiled_with_cuda()
+):
+    places.append(paddle.CPUPlace())
 if paddle.is_compiled_with_cuda():
     places.append(paddle.CUDAPlace(0))
 

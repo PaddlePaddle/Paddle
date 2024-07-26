@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/flags.h"
-PADDLE_DEFINE_EXPORTED_int32(rpc_send_thread_num,
-                             12,
-                             "number of threads for rpc send");
+PHI_DEFINE_EXPORTED_int32(rpc_send_thread_num,
+                          12,
+                          "number of threads for rpc send");
 
 namespace paddle {
 namespace operators {
