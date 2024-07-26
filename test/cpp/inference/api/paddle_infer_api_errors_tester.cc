@@ -45,7 +45,7 @@ TEST(Status, pd_exception) {
   CHECK(!(status != status));
   PADDLE_ENFORCE_EQ(
       status.code(),
-      paddle::platform::error::INVALID_ARGUMENT + 1,
+      phi::ErrorCode::INVALID_ARGUMENT + 1,
       phi::errors::InvalidArgument(
           "Required status.code() should be equal to INVALID_ARGUMENT + 1. "));
   LOG(INFO) << status.error_message();

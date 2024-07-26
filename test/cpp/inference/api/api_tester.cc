@@ -99,7 +99,7 @@ TEST(paddle_inference_api, AnalysisConfigCopyCtor) {
   for (auto const &ps : passes) {
     PADDLE_ENFORCE_NE(ps,
                       delete_pass,
-                      phi::errors::InvalidArgument(
+                      ::phi::errors::InvalidArgument(
                           "Required ps shouldn't be euqal to delete_pass. "));
   }
 }
