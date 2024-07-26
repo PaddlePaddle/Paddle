@@ -64,6 +64,42 @@ inline void UpdatePaddingAndDilation(
 }  // namespace
 namespace paddle::dialect {
 
+bool Atan2OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &inputx_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &inputy_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  int x_dims = inputx_shape.shape().size();
+  int y_dims = inputy_shape.shape().size();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims,
+      y_dims,
+      phi::errors::InvalidArgument("The rank (%d) of X shall be same as "
+                                   "rank (%d) of Y.",
+                                   x_dims,
+                                   y_dims));
+  if (x_dims > 0)
+    PADDLE_ENFORCE_LE(inputx_shape.shape()[0],
+                      inputy_shape.shape()[0],
+                      phi::errors::InvalidArgument(
+                          "The count (%d) of elements of X shall not "
+                          "greater than count (%d) of elements of Y.",
+                          inputx_shape.shape()[0],
+                          inputy_shape.shape()[0]));
+
+  int rank = inputx_shape.shape().size();
+  for (int i = 0; i < rank; ++i) {
+    infer_context->AddEqualCstr(inputx_shape.shape()[i],
+                                inputy_shape.shape()[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), inputx_shape);
+
+  return true;
+}
+
 bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<int> strides =

@@ -388,6 +388,7 @@
   kernel :
     func : atan2
   backward : atan2_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : atanh
   args : (Tensor x)
