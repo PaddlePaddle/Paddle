@@ -1596,6 +1596,15 @@ Tensor kldiv_loss_decomp(const Tensor& x,
   return loss;
 }
 
+template <typename T>
+Tensor softsign_decomp(const Tensor& x) {
+  // softsign = x / (1 + abs(x))
+
+  Tensor x_abs = abs<T>(x);
+  Tensor one = full_scalar<T>(1.0, x.dtype());
+  return x / (one + x_abs);
+}
+
 }  // namespace details
 
 }  // namespace primitive
