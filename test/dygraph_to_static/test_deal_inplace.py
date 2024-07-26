@@ -111,7 +111,7 @@ class TestDealInplace(Dy2StTestBase):
         net = ParamInplaceNet()
         x = paddle.to_tensor(np.random.random(10).astype('float32'))
         x.stop_gradient = False
-        self.run_test(fn_with_inplace_op, net, x, static_n_times=2)
+        self.run_test(net, x, static_n_times=2)
 
     @test_pir_only
     def test_param_directly_return(self):
