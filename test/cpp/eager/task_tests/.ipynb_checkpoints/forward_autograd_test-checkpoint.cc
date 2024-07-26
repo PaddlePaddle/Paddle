@@ -170,10 +170,6 @@ TEST(Forward, LinearNodes) {
         grad_node1->OutputMeta();
     const auto& node1_meta = node1_metas[0];
 
-    CHECK_EQ(static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().first),
-             0);
-    CHECK_EQ(static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().second),
-             0);
     PADDLE_ENFORCE_EQ(
         static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().first),
         0,
@@ -186,7 +182,6 @@ TEST(Forward, LinearNodes) {
         phi::errors::InvalidArgument(
             "static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().second)"
             "is not 0"));
-    CHECK_EQ(node1_meta[0].GetEdge().GetGradNode(), grad_node0);
     PADDLE_ENFORCE_EQ(
         node1_meta[0].GetEdge().GetGradNode(),
         grad_node0,
