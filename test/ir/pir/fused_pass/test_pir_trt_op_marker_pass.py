@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+ # Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -328,7 +328,6 @@ class TestSliceTRTPattern(PassTest):
                 ends = [3, 2, 4]
 
                 sliced_1 = paddle.slice(x, axes=axes, starts=starts, ends=ends)
-                # print("Sliced output shape:", sliced_1.shape)
 
                 out = paddle.assign(sliced_1)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
@@ -384,7 +383,36 @@ class TestIndexSelectTRTPattern(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
+class TestCastTRTPattern(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+    def sample_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[3,4], dtype='float32'
+                )
+                cast_out = paddle.cast(x, 'bool')
+                out = paddle.assign(cast_out)
+                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
+                self.feeds = {
+                    "x": np.random.random([3,4]).astype("float32"),
+                }
 
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "pd_op.fusion_transpose_flatten_concat": 0,
+                }
+                yield [main_prog, start_prog], False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct()
 
 if __name__ == "__main__":
     unittest.main()
