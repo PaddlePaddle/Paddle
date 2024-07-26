@@ -84,7 +84,6 @@ class TestDistOpCost(unittest.TestCase):
                 gelu_out = paddle.nn.functional.gelu(linear_out)
                 # default op with dp
                 tmp = paddle.nn.LayerNorm(gelu_out.shape[1:])(gelu_out)
-                # tmp = paddle.static.nn.layer_norm(gelu_out)
                 error_cost = paddle.nn.functional.square_error_cost(tmp, label)
                 loss = paddle.mean(error_cost)
             return main_program, start_program, loss

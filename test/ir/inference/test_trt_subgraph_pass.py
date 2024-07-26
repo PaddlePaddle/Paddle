@@ -31,7 +31,10 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            fc_out = paddle.nn.Linear(64, 1000)(data)
+            flatten_data = paddle.nn.Flatten()(data)
+            fc_out = paddle.nn.Linear(flatten_data.shape[-1], 1000)(
+                flatten_data
+            )
             reshape_out = paddle.reshape(x=fc_out, shape=[1, 1000])
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
