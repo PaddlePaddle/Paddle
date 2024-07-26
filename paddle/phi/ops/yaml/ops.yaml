@@ -552,6 +552,7 @@
     func : BinomialInferMeta
   kernel :
     func : binomial
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bipartite_match
   args: (Tensor dist_mat, str match_type = "bipartite", float dist_threshold = 0.5)

@@ -119,6 +119,27 @@ bool BceLoss_OpInferSymbolicShape(
   return BceLossOpInferSymbolicShape(op, infer_context);
 }
 
+bool BinomialOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &count_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &prob_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  for (int i = 0; i < rank; ++i) {
+    infer_context->AddEqualCstr(count_shape.shape()[i], prob_shape.shape()[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), count_shape);
+
+  return true;
+}
+
+bool Binomial_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BinomialOpInferSymbolicShape(op, infer_context);
+}
+
 bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<int> strides =
