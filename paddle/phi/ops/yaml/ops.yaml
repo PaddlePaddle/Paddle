@@ -4381,7 +4381,7 @@
   kernel :
     func : swish
   backward : swish_grad
-  interfaces : paddle::dialect::LayoutTransformationInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : sync_batch_norm_
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
