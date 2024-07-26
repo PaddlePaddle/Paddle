@@ -25,8 +25,8 @@ namespace paddle {
 namespace framework {
 
 using ir::Graph;
-using platform::Event;
-using platform::MemEvent;
+using phi::Event;
+using phi::MemEvent;
 
 const double CostData::NOT_MEASURED = -1;
 
@@ -93,7 +93,7 @@ bool CostData::SetCostData(const ProgramDesc& program,
     while (event_index < main_thread_events.size()) {
       if (StringHasEnding(main_thread_events[event_index].name(), op_type) &&
           main_thread_events[event_index].type() ==
-              platform::EventType::kPushRange) {
+              phi::EventType::kPushRange) {
         break;
       }
       ++event_index;
@@ -112,8 +112,7 @@ bool CostData::SetCostData(const ProgramDesc& program,
       // block
       // TODO(zhhsplendid): make a more strict mapping between push and pop
       if (StringHasEnding(main_thread_events[event_index].name(), op_type) &&
-          main_thread_events[event_index].type() ==
-              platform::EventType::kPopRange) {
+          main_thread_events[event_index].type() == phi::EventType::kPopRange) {
         break;
       }
       ++event_index;
@@ -175,25 +174,21 @@ void PrintEvents(const std::vector<std::vector<Event>>* time_events,
                 << (*time_events)[i][j].attr() << std::endl;
         VLOG(4) << "This: " << &(*time_events)[i][j]
                 << ", Parent: " << (*time_events)[i][j].parent() << std::endl;
-        if ((*time_events)[i][j].role() == platform::EventRole::kInnerOp) {
+        if ((*time_events)[i][j].role() == phi::EventRole::kInnerOp) {
           VLOG(4) << "role kInnerOp" << std::endl;
-        } else if ((*time_events)[i][j].role() ==
-                   platform::EventRole::kUniqueOp) {
+        } else if ((*time_events)[i][j].role() == phi::EventRole::kUniqueOp) {
           VLOG(4) << "role kUniqueOp" << std::endl;
-        } else if ((*time_events)[i][j].role() ==
-                   platform::EventRole::kOrdinary) {
+        } else if ((*time_events)[i][j].role() == phi::EventRole::kOrdinary) {
           VLOG(4) << "role kOrdinary" << std::endl;
-        } else if ((*time_events)[i][j].role() ==
-                   platform::EventRole::kSpecial) {
+        } else if ((*time_events)[i][j].role() == phi::EventRole::kSpecial) {
           VLOG(4) << "role kSpecial" << std::endl;
         }
 
-        if ((*time_events)[i][j].type() == platform::EventType::kPopRange) {
+        if ((*time_events)[i][j].type() == phi::EventType::kPopRange) {
           VLOG(4) << "type kPopRange" << std::endl;
-        } else if ((*time_events)[i][j].type() ==
-                   platform::EventType::kPushRange) {
+        } else if ((*time_events)[i][j].type() == phi::EventType::kPushRange) {
           VLOG(4) << "type kPushRange" << std::endl;
-        } else if ((*time_events)[i][j].type() == platform::EventType::kMark) {
+        } else if ((*time_events)[i][j].type() == phi::EventType::kMark) {
           VLOG(4) << "type kMark" << std::endl;
         }
         VLOG(4) << std::endl;
