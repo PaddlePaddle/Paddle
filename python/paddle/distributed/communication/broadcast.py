@@ -14,8 +14,9 @@
 
 import paddle
 import paddle.distributed as dist
-from paddle import framework
+from paddle import Tensor, framework
 from paddle.distributed.communication import stream
+from paddle.distributed.communication.group import Group
 
 from .serialization_utils import (
     convert_object_to_tensor,
@@ -23,7 +24,9 @@ from .serialization_utils import (
 )
 
 
-def broadcast(tensor, src, group=None, sync_op=True):
+def broadcast(
+    tensor: Tensor, src: int, group: Group = None, sync_op: bool = True
+):
     """
 
     Broadcast a tensor from the source to all others.
@@ -70,7 +73,7 @@ def broadcast(tensor, src, group=None, sync_op=True):
     )
 
 
-def broadcast_object_list(object_list, src, group=None):
+def broadcast_object_list(object_list: list, src: int, group: Group = None):
     """
 
     Broadcast picklable objects from the source to all others. Similiar to broadcast(), but python object can be passed in.
