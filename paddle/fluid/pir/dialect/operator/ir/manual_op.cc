@@ -3318,49 +3318,76 @@ bool ExpandOp::InferSymbolicShape(
 
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
-  const std::vector<symbol::DimExpr> &expand_shape = [&] {
-    std::vector<symbol::DimExpr> dims;
+  const auto &DealWithMinusOneAndSetOutput =
+      [&](std::vector<symbol::DimExpr> &expand_shape) {
+        for (size_t i = 0; i < expand_shape.size(); i++) {
+          if (expand_shape[i] == symbol::DimExpr{-1}) {  // copy the dim from x
+            // the shape is right aligned
+            int index = i - (expand_shape.size() - x_dims.size());
+            PADDLE_ENFORCE_GE(
+                index,
+                0,
+                phi::errors::InvalidArgument("in ExpandOpInferSymbolicShape, "
+                                             "the dim to copy must >= 0, "
+                                             "but got %d",
+                                             index));
 
-    if (expand_shape_shape_or_data
-            .isa<symbol::TensorListShapeOrDataDimExprs>()) {
-      const auto &dims_list =
-          expand_shape_shape_or_data
-              .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-      if (dims_list.size() == 1) {
-        dims = dims_list.at(0).data().value();
-      } else {
-        for (const auto &shape_data : dims_list) {
-          dims.emplace_back(shape_data.data()->at(0));
+            expand_shape[i] = x_dims[index];
+          }
         }
-      }
-    } else {
-      dims = expand_shape_shape_or_data.data().value();
-    }
-    return dims;
-  }();
 
-  std::vector<symbol::DimExpr> out_shape = expand_shape;
-  for (size_t i = 0; i < expand_shape.size(); i++) {
-    if (expand_shape[i] == -1) {  // copy the dim from x
-      // the shape is right aligned
-      int index = i - (expand_shape.size() - x_dims.size());
-      PADDLE_ENFORCE_GE(
-          index,
-          0,
-          phi::errors::InvalidArgument(
-              "in ExpandOpInferSymbolicShape, the dim to copy must >= 0, "
-              "but got %d",
-              index));
+        infer_context->SetShapeOrDataForValue(
+            out(),
+            symbol::ShapeOrDataDimExprs{
+                symbol::TensorShapeOrDataDimExprs(expand_shape)});
+      };
 
-      out_shape[i] = x_dims[index];
-    }
-  }
+  const auto &InferWithTensorShapeOrDataDimExprs =
+      [&](const symbol::TensorShapeOrDataDimExprs &shape_or_data) {
+        if (shape_or_data.data()) {
+          std::vector<symbol::DimExpr> expand_shape =
+              shape_or_data.data().value();
+          DealWithMinusOneAndSetOutput(expand_shape);
+        } else {
+          infer_context->SetSymbolForValueByStaticShape(out());
+        }
+      };
 
-  infer_context->SetShapeOrDataForValue(
-      out(),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  const auto &InferWithTensorListShapeOrDataDimExprs =
+      [&](const symbol::TensorListShapeOrDataDimExprs &shape_or_data_list) {
+        if (shape_or_data_list.size() == 1) {
+          InferWithTensorShapeOrDataDimExprs(shape_or_data_list.at(0));
+        } else {
+          std::vector<symbol::DimExpr> expand_shape;
+          for (const auto &shape_data : shape_or_data_list) {
+            if (shape_data.data()) {
+              expand_shape.emplace_back(shape_data.data()->at(0));
+            } else {
+              expand_shape.emplace_back(
+                  symbol::DimExpr{infer_context->GetNextSymName()});
+            }
+          }
+          DealWithMinusOneAndSetOutput(expand_shape);
+        }
+      };
 
+  expand_shape_shape_or_data.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        InferWithTensorShapeOrDataDimExprs(impl);
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        InferWithTensorListShapeOrDataDimExprs(impl);
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
+        PADDLE_THROW(
+            phi::errors::Fatal("Dead code, TensorArray should not be "
+                               "shape value for expand."));
+      },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) {
+        PADDLE_THROW(
+            phi::errors::Fatal("Dead code, null value should not be "
+                               "shape value for expand."));
+      });
   return true;
 }
 

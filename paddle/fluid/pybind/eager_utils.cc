@@ -1978,8 +1978,8 @@ paddle::Tensor CreateTensorFromValue(const pir::Value& value) {
 
   auto dims = phi::vectorize(GetValueDims(value));
   auto ddims = phi::make_ddim(dims);
-  if (HasValueName(value)) {
-    tensor.set_name(GetValueName(value));
+  if (auto name = name_analysis::TryGetValueFirstName(value)) {
+    tensor.set_name(name.value());
   }
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
