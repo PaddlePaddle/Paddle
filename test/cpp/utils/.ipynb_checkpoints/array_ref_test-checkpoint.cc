@@ -23,41 +23,47 @@
 
 TEST(array_ref, array_ref) {
   paddle::array_ref<int> a;
-  PADDLE_ENFORCE_EQ(
-      a.size(), size_t(0),
-      phi::errors::InvalidArgument(
-          "Array's size is invalid, expected %d but received %d.",
-          size_t(0), a.size()));
-  PADDLE_ENFORCE_EQ(
-      a.data(), static_cast<int*>(nullptr),
-      phi::errors::InvalidArgument(
-          "Array's data is invalid, expected %d but received %d.",
-          static_cast<int*>(nullptr), a.data()));
+  PADDLE_ENFORCE_EQ(a.size(),
+                    size_t(0),
+                    phi::errors::InvalidArgument(
+                        "Array's size is invalid, expected %d but received %d.",
+                        size_t(0),
+                        a.size()));
+  PADDLE_ENFORCE_EQ(a.data(),
+                    static_cast<int*>(nullptr),
+                    phi::errors::InvalidArgument(
+                        "Array's data is invalid, expected %d but received %d.",
+                        static_cast<int*>(nullptr),
+                        a.data()));
 
   paddle::array_ref<int> b(paddle::none);
-  PADDLE_ENFORCE_EQ(
-      b.size(), size_t(0),
-      phi::errors::InvalidArgument(
-          "Array's size is invalid, expected %d but received %d.",
-          size_t(0), b.size()));
-  PADDLE_ENFORCE_EQ(
-      b.data(), static_cast<int*>(nullptr),
-      phi::errors::InvalidArgument(
-          "Array's data is invalid, expected %d but received %d.",
-          static_cast<int*>(nullptr), b.data()));
+  PADDLE_ENFORCE_EQ(b.size(),
+                    size_t(0),
+                    phi::errors::InvalidArgument(
+                        "Array's size is invalid, expected %d but received %d.",
+                        size_t(0),
+                        b.size()));
+  PADDLE_ENFORCE_EQ(b.data(),
+                    static_cast<int*>(nullptr),
+                    phi::errors::InvalidArgument(
+                        "Array's data is invalid, expected %d but received %d.",
+                        static_cast<int*>(nullptr),
+                        b.data()));
 
   int v = 1;
   paddle::array_ref<int> c(v);
-  PADDLE_ENFORCE_EQ(
-      c.size(), size_t(1),
-      phi::errors::InvalidArgument(
-          "Array's size is invalid, expected %d but received %d.",
-          size_t(1), c.size()));
-  PADDLE_ENFORCE_EQ(
-      c.data(), &v,
-      phi::errors::InvalidArgument(
-          "Array's data is invalid, expected %d but received %d.",
-          &v, c.data()));
+  PADDLE_ENFORCE_EQ(c.size(),
+                    size_t(1),
+                    phi::errors::InvalidArgument(
+                        "Array's size is invalid, expected %d but received %d.",
+                        size_t(1),
+                        c.size()));
+  PADDLE_ENFORCE_EQ(c.data(),
+                    &v,
+                    phi::errors::InvalidArgument(
+                        "Array's data is invalid, expected %d but received %d.",
+                        &v,
+                        c.data()));
   PADDLE_ENFORCE_EQ(
       c.equals(paddle::make_array_ref(v)), true,
       phi::errors::InvalidArgument(
@@ -201,10 +207,13 @@ TEST(array_ref, array_ref) {
           size_t(3), front.size()));
   for (size_t i = 0; i < 3; ++i) {
     PADDLE_ENFORCE_ER(
-      front[i], nums[i],
-      phi::errors::InvalidArgument(
-          "front[%d]'s value is invalid, expected %d but received %d.",
-          i, nums[i], front[i]));
+        front[i],
+        nums[i],
+        phi::errors::InvalidArgument(
+            "front[%d]'s value is invalid, expected %d but received %d.",
+            i,
+            nums[i],
+            front[i]));
   }
   auto back = nums.take_back(3);
   PADDLE_ENFORCE_EQ(
@@ -214,9 +223,12 @@ TEST(array_ref, array_ref) {
           size_t(3), back.size()));
   for (size_t i = 0; i < 3; ++i) {
     PADDLE_ENFORCE_ER(
-      back[i], nums[i+5],
-      phi::errors::InvalidArgument(
-          "back[%d]'s value is invalid, expected %d but received %d.",
-          i, nums[i+5], back[i]));
+        back[i],
+        nums[i + 5],
+        phi::errors::InvalidArgument(
+            "back[%d]'s value is invalid, expected %d but received %d.",
+            i,
+            nums[i + 5],
+            back[i]));
   }
 }
