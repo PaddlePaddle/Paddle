@@ -208,6 +208,12 @@ class TestMLPPipelineParallel(unittest.TestCase):
         strategy.pipeline.enable = True
         strategy.pipeline.schedule_mode = schedule_mode
         strategy.pipeline.accumulate_steps = accumulate_steps
+
+        gradient_merge = strategy.gradient_merge
+        gradient_merge.enable = True
+        gradient_merge.k_steps = accumulate_steps
+        gradient_merge.avg = True
+
         dist_loader = dist.shard_dataloader(loader, meshes=[mesh1, mesh2])
         dist_model = dist.to_static(
             pp_layer, dist_loader, loss_fn, opt, strategy
@@ -250,7 +256,6 @@ class TestMLPPipelineParallel(unittest.TestCase):
         )
         self.assertEqual(ref_loss, loss_split_prog_acc1)
 
-        # accumulate_steps > 1, but no gradient merge
         loss_split_prog_acc4 = self.split_program(
             schedule_mode="FThenB", accumulate_steps=4
         )

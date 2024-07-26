@@ -834,6 +834,19 @@ void BindBlock(py::module *m) {
               None
 
         )DOC")
+      .def(
+          "move_op_to_block_end",
+          [](Block &self, Operation *op) { op->MoveTo(&self, self.end()); },
+          R"DOC(
+            Move an op to the end of the block.
+
+            Args:
+                op (pir.Operation): The operator to be moved.
+
+            Returns:
+                None
+
+            )DOC")
       .def("all_parameters",
            [](Block &self) -> py::list {
              py::list param_list;
