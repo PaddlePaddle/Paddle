@@ -32,35 +32,31 @@ namespace cinn::dialect::ir::details {
 
 pir::Operation* ProcessDyShapeGroup(const OpLoweringGroupPtr& group,
                                     pir::PatternRewriter& rewriter) {  // NOLINT
+  std::unordered_map<std::string, ::pir::Attribute> jit_kernel_attr = [&]() {
+    const auto& optional_broadcast_tree = GetBroadcastTreeForOptimize(group);
+    if (optional_broadcast_tree.has_value()) {
+      const std::shared_ptr<BroadcastTree> broadcast_tree =
+          optional_broadcast_tree.value();
+      const auto& value_to_dim_expr_idx =
+          GetGroupDimExprInfo(group).value_to_dim_expr_idx;
+      return CompileBroadcastTree(
+          group, *broadcast_tree, value_to_dim_expr_idx);
+    } else {
+      return GetJitKernelAttr(group);
+    }
+  }();
+
+  // compile group to jit_kernel_op
   const auto& group_inputs = GetBlockOutsideInput(group->ops());
-  const auto& optional_broadcast_tree = GetBroadcastTreeForOptimize(group);
-  if (optional_broadcast_tree.has_value()) {
-    const std::shared_ptr<BroadcastTree> broadcast_tree =
-        optional_broadcast_tree.value();
-    const auto& value_to_dim_expr_idx =
-        GetGroupDimExprInfo(group).value_to_dim_expr_idx;
-    std::vector<pir::Type> output_types;
-    auto group_output_values = group->GetGroupOutputValues();
-    for (size_t i = 0; i < group_output_values.size(); ++i) {
-      output_types.push_back(group_output_values[i].type());
-    }
-    return CompileBroadcastTreeToConditionBlock(group,
-                                                *broadcast_tree,
-                                                value_to_dim_expr_idx,
-                                                group_inputs,
-                                                output_types,
-                                                rewriter);
-  } else {  // no condition block
-    // compile group to jit_kernel_op
-    std::vector<pir::Type> output_types;
-    for (const auto& value : group->output_values()) {
-      output_types.push_back(value.type());
-    }
-    auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
-        group_inputs, GetJitKernelAttr(group), output_types);
-    return jit_kernel_op;
+  std::vector<pir::Type> output_types;
+  for (const auto& value : group->output_values()) {
+    output_types.push_back(value.type());
   }
+  auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
+      group_inputs, jit_kernel_attr, output_types);
+  return jit_kernel_op;
 }
+
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
   FusionOpPattern(::pir::IrContext* context, const GroupInfoMap& group_infos)
