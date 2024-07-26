@@ -150,10 +150,6 @@ class ProgramTranslator {
   void TranslateWhileOperation(const OpDesc* op,
                                TranslationContext* translation_ctx,
                                pir::Block* dst_block);
-
-  void TranslateReshapeGradOperation(const OpDesc* op,
-                                     TranslationContext* translation_ctx,
-                                     pir::Block* dst_block);
 };
 
 }  // namespace translator
