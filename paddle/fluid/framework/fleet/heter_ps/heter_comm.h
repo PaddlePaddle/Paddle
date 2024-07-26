@@ -349,13 +349,18 @@ class HeterComm {
                const size_t& value_bytes = sizeof(GradType)) {
       PADDLE_ENFORCE_GE(
           all_keys_mem->size(),
-          phi::errors::InvalidArgument("The given length is not equal to the "
-                                       "memory length, Please Check!"));
+          len,
+          phi::errors::InvalidArgument("The given length %u is greater than "
+                                       "the memory length %u, Please Check!",
+                                       len,
+                                       all_keys_mem_size()));
       PADDLE_ENFORCE_GE(
           all_grads_mem->size(),
           len * value_bytes,
-          phi::errors::InvalidArgument("The given length is not equal to the "
-                                       "memory length, Please Check!"));
+          phi::errors::InvalidArgument("The given length %u is greater than "
+                                       "the memory length %u, Please Check!",
+                                       len * value_bytes,
+                                       all_grads_sem->size()));
     }
     void init_pull(const size_t& len) {
       pull_res.h_recv_fea_num = len;
