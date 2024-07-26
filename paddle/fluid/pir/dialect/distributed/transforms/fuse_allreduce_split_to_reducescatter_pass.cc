@@ -162,7 +162,7 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
         pat.Op(pir::SliceOp::name(), {{"index", pat.Attr("index")}});
     const auto &assign = pat.Op(paddle::dialect::AssignOp::name());
     const auto &assign1 = pat.Op(paddle::dialect::AssignOp::name());
-    const auto &all_gather = pat.Op(paddle::dialect::CAllgatherOp::name(),
+    const auto &all_gather = pat.Op(paddle::dialect::AllGatherOp::name(),
                                     {{"ring_id", pat.Attr("gather_ring_id")},
                                      {"nranks", pat.Attr("gather_nranks")}});
     const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name(),
@@ -210,7 +210,7 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
                                       {{"axis", pat.Attr("axis")}});
     const auto &res_add_ = res.Op(paddle::dialect::Add_Op::name());
     const auto &res_all_gather =
-        res.Op(paddle::dialect::CAllgatherOp::name(),
+        res.Op(paddle::dialect::AllGatherOp::name(),
                {{"ring_id", pat.Attr("gather_ring_id")},
                 {"nranks", pat.Attr("gather_nranks")}});
     const auto &res_matmul_grad =
