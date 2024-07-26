@@ -1001,26 +1001,19 @@ bool FakeChannelWiseDequantizeMaxAbsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
 
   int quant_axis = op->attribute<pir::Int32Attribute>("quant_axis").data();
-  int x_num_col_dims =
-      op->attribute<pir::Int32Attribute>("x_num_col_dims").data();
-
   PADDLE_ENFORCE_EQ(
       quant_axis == 0 || quant_axis == 1,
       true,
-      common::errors::InvalidArgument(
-          "'quant_axis' should be 0 or 1, but the received is %d", quant_axis));
+      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                   "the received is %d",
+                                   quant_axis));
 
-  PADDLE_ENFORCE_EQ(
-      x_num_col_dims > 0,
-      true,
-      common::errors::InvalidArgument(
-          "'x_num_col_dims' should be larger than 0, but the received is %d",
-          x_num_col_dims));
-
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
 
   return true;
 }
