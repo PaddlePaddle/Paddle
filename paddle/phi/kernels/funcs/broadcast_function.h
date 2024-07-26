@@ -579,6 +579,7 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   // Calculate the max vec_size for all ins and outs.
   int vec_size = GetVectorizedSizeForTensors(ins, *outs);
 #endif
+  vec_size = (Arity == 3) ? 2 : vec_size;
 
   auto classifier =
       BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);

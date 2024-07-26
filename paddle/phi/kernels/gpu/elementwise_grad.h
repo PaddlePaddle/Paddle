@@ -340,31 +340,21 @@ void ElementwiseDivGrad(const GPUContext &dev_ctx,
                         DenseTensor *dy,
                         int axis = -1) {
   const auto place = dev_ctx.GetPlace();
-  // if (dx != nullptr && dy != nullptr) {
-  //   std::vector<const DenseTensor *> ins = {&dout, &out, &y};
-  //   GetGradXAndYOut<T>(dev_ctx,
-  //                      place,
-  //                      axis,
-  //                      ins,
-  //                      dout,
-  //                      dx,
-  //                      dy,
-  //                      funcs::DivGradXYFunctor<T, T>());
-  // } else if (dx != nullptr && dy == nullptr) {
-  //   std::vector<const DenseTensor *> ins = {&dout, &y};
-  //   GetGradXOrYOut<T>(
-  //       dev_ctx, place, axis, ins, dout, dx, funcs::DivGradXFunctor<T>());
-  // } else if (dy != nullptr && dx == nullptr) {
-  //   std::vector<const DenseTensor *> ins = {&dout, &out, &y};
-  //   GetGradXOrYOut<T>(
-  //       dev_ctx, place, axis, ins, dout, dy, funcs::DivGradYFunctor<T>());
-  // }
-  if (dx != nullptr) {
+  if (dx != nullptr && dy != nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &out, &y};
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::DivGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &y};
     GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::DivGradXFunctor<T>());
-  }
-  if (dy != nullptr) {
+  } else if (dy != nullptr && dx == nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &out, &y};
     GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::DivGradYFunctor<T>());
@@ -387,31 +377,21 @@ void ElementwiseMulGrad(const GPUContext &dev_ctx,
                         int axis) {
   const auto place = dev_ctx.GetPlace();
 
-  // if (dx != nullptr && dy != nullptr) {
-  //   std::vector<const DenseTensor *> ins = {&dout, &y, &x};
-  //   GetGradXAndYOut<T>(dev_ctx,
-  //                      place,
-  //                      axis,
-  //                      ins,
-  //                      dout,
-  //                      dx,
-  //                      dy,
-  //                      funcs::MultiplyGradXYFunctor<T, T>());
-  // } else if (dx != nullptr && dy == nullptr) {
-  //   std::vector<const DenseTensor *> ins = {&dout, &y};
-  //   GetGradXOrYOut<T>(
-  //       dev_ctx, place, axis, ins, dout, dx, funcs::MultiplyGradFunctor<T>());
-  // } else if (dx == nullptr && dy != nullptr) {
-  //   std::vector<const DenseTensor *> ins = {&dout, &x};
-  //   GetGradXOrYOut<T>(
-  //       dev_ctx, place, axis, ins, dout, dy, funcs::MultiplyGradFunctor<T>());
-  // }
-  if (dx != nullptr) {
+  if (dx != nullptr && dy != nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &y, &x};
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::MultiplyGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &y};
     GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::MultiplyGradFunctor<T>());
-  }
-  if (dy != nullptr) {
+  } else if (dx == nullptr && dy != nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &x};
     GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::MultiplyGradFunctor<T>());
