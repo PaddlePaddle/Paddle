@@ -4264,6 +4264,7 @@
     func : square {dense -> dense},
            square_sr {selected_rows -> selected_rows}
   backward : square_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : squared_l2_norm
   args : (Tensor x)
