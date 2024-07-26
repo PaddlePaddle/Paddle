@@ -64,7 +64,6 @@ inline void UpdatePaddingAndDilation(
 }  // namespace
 namespace paddle::dialect {
 
-
 bool Atan2OpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   const auto &inputx_shape =
@@ -99,7 +98,6 @@ bool Atan2OpInferSymbolicShape(pir::Operation *op,
   infer_context->SetShapeOrDataForValue(op->result(0), inputx_shape);
 
   return true;
-
 }
 
 bool AllcloseOpInferSymbolicShape(
@@ -151,7 +149,6 @@ bool BceLossOpInferSymbolicShape(
 
   return true;
 }
-
 
 bool BceLoss_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
