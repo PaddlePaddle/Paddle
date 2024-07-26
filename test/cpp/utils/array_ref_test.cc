@@ -52,18 +52,20 @@ TEST(array_ref, array_ref) {
 
   int v = 1;
   paddle::array_ref<int> c(v);
-  PADDLE_ENFORCE_EQ(c.size(),
-                    size_t(1),
-                    phi::errors::InvalidArgument(
-                        "Array's size is invalid, expected %d but received %d.",
-                        size_t(1),
-                        c.size()));
-  PADDLE_ENFORCE_EQ(c.data(),
-                    &v,
-                    phi::errors::InvalidArgument(
-                        "Array's data is invalid, expected %d but received %d.",
-                        &v,
-                        c.data()));
+  PADDLE_ENFORCE_EQ(
+      c.size(),
+      size_t(1),
+      phi::errors::InvalidArgument(
+          "Array's size is invalid, expected %d(size_t(1)) but received %d.",
+          size_t(1),
+          c.size()));
+  PADDLE_ENFORCE_EQ(
+      c.data(),
+      &v,
+      phi::errors::InvalidArgument(
+          "Array's data is invalid, expected %d(&v) but received %d.",
+          &v,
+          c.data()));
   PADDLE_ENFORCE_EQ(
       c.equals(paddle::make_array_ref(v)), true,
       phi::errors::InvalidArgument(
@@ -74,7 +76,7 @@ TEST(array_ref, array_ref) {
   PADDLE_ENFORCE_EQ(
       d.size(), size_t(5),
       phi::errors::InvalidArgument(
-          "Array's size is invalid, expected %d but received %d.",
+          "Array's size is invalid, expected %d(size_t(5)) but received %d.",
           size_t(5), d.size()));
   PADDLE_ENFORCE_EQ(
       d.data(), v1.data(),
@@ -90,12 +92,12 @@ TEST(array_ref, array_ref) {
   PADDLE_ENFORCE_EQ(
       e.size(), size_t(4),
       phi::errors::InvalidArgument(
-          "Array's size is invalid, expected %d but received %d.",
+          "Array's size is invalid, expected %d(size_t(4)) but received %d.",
           size_t(4), e.size()));
   PADDLE_ENFORCE_EQ(
       e.data(), v1.data(),
       phi::errors::InvalidArgument(
-          "Array's data is invalid, expected %d but received %d.",
+          "Array's data is invalid, expected %d(v1.data()) but received %d.",
           v1.data(), e.data()));
   PADDLE_ENFORCE_EQ(
       e.equals(paddle::make_array_ref(&v1[0], &v1[4])), true,
@@ -107,7 +109,7 @@ TEST(array_ref, array_ref) {
   PADDLE_ENFORCE_EQ(
       f.size(), size_t(3),
       phi::errors::InvalidArgument(
-          "Array's size is invalid, expected %d but received %d.",
+          "Array's size is invalid, expected %d(size_t(3)) but received %d.",
           size_t(3), f.size()));
   PADDLE_ENFORCE_EQ(
       f.data(), small_vector.data(),
@@ -124,7 +126,7 @@ TEST(array_ref, array_ref) {
   PADDLE_ENFORCE_EQ(
       g.size(), size_t(3),
       phi::errors::InvalidArgument(
-          "Array's size is invalid, expected %d but received %d.",
+          "Array's size is invalid, expected %d(size_t(3)) but received %d.",
           size_t(3), g.size()));
   PADDLE_ENFORCE_EQ(
       g.data(), vector.data(),
@@ -141,7 +143,7 @@ TEST(array_ref, array_ref) {
   PADDLE_ENFORCE_EQ(
       h.size(), size_t(3),
       phi::errors::InvalidArgument(
-          "Array's size is invalid, expected %d but received %d.",
+          "Array's size is invalid, expected %d(size_t(3)) but received %d.",
           size_t(3), h.size()));
   PADDLE_ENFORCE_EQ(
       h.data(), list.begin(),
@@ -153,7 +155,7 @@ TEST(array_ref, array_ref) {
   PADDLE_ENFORCE_EQ(
       i.size(), size_t(3),
       phi::errors::InvalidArgument(
-          "Array's size is invalid, expected %d but received %d.",
+          "Array's size is invalid, expected %d(size_t(3)) but received %d.",
           size_t(3), i.size()));
   PADDLE_ENFORCE_EQ(
       i.data(), list.begin(),
@@ -173,7 +175,7 @@ TEST(array_ref, array_ref) {
   PADDLE_ENFORCE_EQ(
       slice.size(), size_t(2),
       phi::errors::InvalidArgument(
-          "Slice's size is invalid, expected %d but received %d.",
+          "Slice's size is invalid, expected %d(size_t(2)) but received %d.",
           size_t(2), slice.size()));
   PADDLE_ENFORCE_ER(
       slice[0], 2,
@@ -190,7 +192,7 @@ TEST(array_ref, array_ref) {
   PADDLE_ENFORCE_EQ(
       drop.size(), size_t(1),
       phi::errors::InvalidArgument(
-          "Drop's size is invalid, expected %d but received %d.",
+          "Drop's size is invalid, expected %d(size_t(1)) but received %d.",
           size_t(1), drop.size()));
   PADDLE_ENFORCE_ER(
       drop[0], 3,
