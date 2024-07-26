@@ -615,10 +615,10 @@ class TestAutoParallelMapper(unittest.TestCase):
             self.assertEqual(get_comm_volume(broadcast_op, 0, 1), 400)
             self.assertIsNone(get_comm_volume(broadcast_op, 1, 0))
             allgather_op = train_program.global_block().append_op(
-                type="c_allgather",
-                inputs={'X': input},
+                type="all_gather",
+                inputs={'x': input},
                 attrs={'ring_id': ring_id, 'nranks': nranks},
-                outputs={'Out': output},
+                outputs={'out': output},
             )
             self.assertEqual(get_comm_volume(allgather_op, 0, 1), 400)
             self.assertIsNone(get_comm_volume(allgather_op, 0, 0))
