@@ -102,7 +102,6 @@ TEST(pointer_length_ctor, span) {
   {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s(arr, 3);
-
     PADDLE_ENFORCE_EQ(
         s.size(),
         3UL,
@@ -873,17 +872,17 @@ TEST(element_access, span) {
       s[0],
       arr[0],
       phi::errors::InvalidArgument(
-          "Element mismatch at index 0. Expected value: " << arr[0]));
+          "Element mismatch at index 0. Expected value: %d", arr[0]));
   PADDLE_ENFORCE_EQ(
       s[1],
       arr[1],
       phi::errors::InvalidArgument(
-          "Element mismatch at index 1. Expected value: " << arr[1]));
+          "Element mismatch at index 1. Expected value: %d", arr[1]));
   PADDLE_ENFORCE_EQ(
       s[2],
       arr[2],
       phi::errors::InvalidArgument(
-          "Element mismatch at index 2. Expected value: " << arr[2]));
+          "Element mismatch at index 2. Expected value: %d", arr[2]));
 }
 
 TEST(iterator, span) {
