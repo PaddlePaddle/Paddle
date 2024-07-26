@@ -133,7 +133,6 @@ class IPUDeviceContext
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
-using XPUDeviceContext = phi::XPUContext;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

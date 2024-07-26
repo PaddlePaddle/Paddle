@@ -1967,7 +1967,7 @@ All parameter, weight, gradient are variables in Paddle.
                 "Cannot use XPUPlace in CPU/GPU version, "
                 "Please recompile or reinstall Paddle with XPU support."));
 #else
-            auto *context = new paddle::platform::XPUDeviceContext(place);
+            auto *context = new phi::XPUContext(place);
             context->SetAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
                     .GetAllocator(place)

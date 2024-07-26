@@ -514,8 +514,7 @@ void TensorToStream(std::ostream& os,
 #ifdef PADDLE_WITH_XPU
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
-      auto& xpu_dev_ctx =
-          static_cast<const platform::XPUDeviceContext&>(dev_ctx);
+      auto& xpu_dev_ctx = static_cast<const phi::XPUContext&>(dev_ctx);
       phi::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {

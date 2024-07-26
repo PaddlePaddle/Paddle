@@ -98,12 +98,11 @@ class BKCLGroupGuard {
 };
 
 struct BKCLContext {
-  std::unique_ptr<platform::XPUDeviceContext> ctx_;
+  std::unique_ptr<phi::XPUContext> ctx_;
   BKCLContext_t comm_;
 
   explicit BKCLContext(int dev_id)
-      : ctx_(new platform::XPUDeviceContext(phi::XPUPlace(dev_id))),
-        comm_{nullptr} {}
+      : ctx_(new phi::XPUContext(phi::XPUPlace(dev_id))), comm_{nullptr} {}
 
   XPUStream stream() const { return ctx_->stream(); }
   BKCLContext_t comm() const { return comm_; }
@@ -218,9 +217,9 @@ struct BKCLContextMap {
   BKCLContextMap(const BKCLContextMap &other) = delete;
   BKCLContextMap &operator=(const BKCLContextMap &other) = delete;
 
-  XPUDeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
+  phi::XPUContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
-  XPUDeviceContext *DevCtx(phi::Place p) const { return DevCtx(p.device); }
+  phi::XPUContext *DevCtx(phi::Place p) const { return DevCtx(p.device); }
 
   const BKCLContext &at(phi::Place p) const { return this->at(p.device); }
 
