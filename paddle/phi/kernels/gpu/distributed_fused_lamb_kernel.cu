@@ -1739,8 +1739,6 @@ void DistributedFusedLambKernel(
   int64_t global_rank = 0, local_rank = 0;
   ncclComm_t global_comm = nullptr, local_comm = nullptr,
              external_comm = nullptr;
-  paddle::platform::NCCLComm *nccl_comm_handle = nullptr,
-                             *local_nccl_comm_handle = nullptr;
   distributed::NCCLCommContext *comm_ctx = nullptr, *local_comm_ctx = nullptr,
                                *external_comm_ctx = nullptr;
 
