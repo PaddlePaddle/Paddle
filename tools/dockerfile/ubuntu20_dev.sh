@@ -117,3 +117,5 @@ export ref_CUDA_MAJOR=12.0
 base_image
 export ref_CUDA_MAJOR=12.3
 base_image
+export ref_CUDA_MAJOR=12.4
+base_image
