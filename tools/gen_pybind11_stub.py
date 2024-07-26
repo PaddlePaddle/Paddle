@@ -34,55 +34,60 @@ from pybind11_stubgen import (
     stub_parser_from_args,
     to_output_and_subdir,
 )
-from pybind11_stubgen.structs import InvalidExpression
+from pybind11_stubgen.structs import (
+    Annotation,
+    InvalidExpression,
+    Value,
+)
 
+# some invalid attr from pybind11
 PYBIND11_ATTR_MAPPING = {
-    '<Precision.Float32: 0>': 'AnalysisConfig.Precision.Float32',
-    '<ReduceOp.SUM: 0>': 'ReduceOp.SUM',
-    '<ReduceType.kRedSum: 0>': 'ReduceType.kRedSum',
-    'paddle::DistConfig': 'DistConfig',
-    'paddle::MkldnnQuantizerConfig': 'MkldnnQuantizerConfig',
-    'paddle::PaddlePassBuilder': 'PaddlePassBuilder',
+    '<Precision.Float32: 0>': 'paddle.base.core.AnalysisConfig.Precision.Float32',
+    '<ReduceOp.SUM: 0>': 'paddle.base.core.ReduceOp.SUM',
+    '<ReduceType.kRedSum: 0>': 'paddle.base.core.ReduceType.kRedSum',
+    'paddle::DistConfig': 'paddle.base.core.DistConfig',
+    'paddle::MkldnnQuantizerConfig': 'paddle.base.core.MkldnnQuantizerConfig',
+    'paddle::PaddlePassBuilder': 'paddle.base.core.PaddlePassBuilder',
     'paddle::Tensor': 'paddle.Tensor',
-    'paddle::ZeroCopyTensor': 'ZeroCopyTensor',
+    'paddle::ZeroCopyTensor': 'paddle.base.core.ZeroCopyTensor',
     'paddle::dialect::AssertOp': 'AssertOp',
     # paddle::dialect::OperationDistAttribute
     'paddle::dialect::PyLayerOp': 'PyLayerOp',
     # paddle::dialect::TensorDistAttribute
-    'paddle::distributed::DistModelDataType': 'DistModelDataType',
-    'paddle::distributed::DistModelTensor': 'DistModelTensor',
-    'paddle::distributed::TaskNode': 'TaskNode',
-    'paddle::distributed::auto_parallel::OperatorDistAttr': 'OperatorDistAttr',
-    'paddle::experimental::ScalarBase<paddle::Tensor>': 'Scalar',
-    'paddle::framework::BlockDesc': 'BlockDesc',
+    'paddle::distributed::DistModelDataType': 'paddle.base.core.DistModelDataType',
+    'paddle::distributed::DistModelTensor': 'paddle.base.core.DistModelTensor',
+    'paddle::distributed::TaskNode': 'paddle.base.core.TaskNode',
+    'paddle::distributed::auto_parallel::OperatorDistAttr': 'paddle.base.core.OperatorDistAttr',
+    'paddle::experimental::ScalarBase<paddle::Tensor>': 'paddle.base.core.Scalar',
+    'paddle::framework::BlockDesc': 'paddle.base.core.BlockDesc',
     'paddle::framework::DataFeedDesc': 'paddle.base.data_feed_desc.DataFeedDesc',
-    'paddle::framework::Dataset': 'Dataset',
-    'paddle::framework::Executor': 'Executor',
-    'paddle::framework::LoDRankTable': 'LoDRankTable',
-    'paddle::framework::OpDesc': 'OpDesc',
+    'paddle::framework::Dataset': 'paddle.base.core.Dataset',
+    'paddle::framework::Executor': 'paddle.base.core.Executor',
+    # paddle::framework::LoDRankTable
+    'paddle::framework::OpDesc': 'paddle.base.core.OpDesc',
     'paddle::framework::PhiVector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >': 'str',
-    'paddle::framework::ProgramDesc': 'ProgramDesc',
+    'paddle::framework::ProgramDesc': 'paddle.base.core.ProgramDesc',
     # paddle::framework::ReaderHolder
-    'paddle::framework::Scope': '_Scope',
-    'paddle::framework::VarDesc': 'VarDesc',
+    'paddle::framework::Scope': 'paddle._typing.libs.libpaddle._Scope',
+    'paddle::framework::VarDesc': 'paddle.base.core.VarDesc',
     'paddle::framework::Vocab': 'dict[str, int]',
     'paddle::framework::interpreter::Plan': 'Plan',
-    'paddle::framework::ir::Graph': 'Graph',
-    'paddle::framework::ir::Node': 'Node',
-    'paddle::framework::ir::Node::Dep': 'Dep',
-    'paddle::framework::ir::Node::Type': 'Type',
-    'paddle::framework::ir::Pass': 'Pass',
-    'paddle::framework::ir::PassBuilder': 'PassBuilder',
-    'paddle::framework::proto::AttrType': 'AttrType',
-    'paddle::framework::proto::VarType_Type': 'VarDesc.VarType',
-    'paddle::imperative::AmpAttrs': 'AmpAttrs',
-    'paddle::imperative::Tracer': 'Tracer',
+    'paddle::framework::ir::Graph': 'paddle.base.core.Graph',
+    'paddle::framework::ir::Node': 'paddle.base.core.Node',
+    'paddle::framework::ir::Node::Dep': 'paddle.base.core.Node.Dep',
+    'paddle::framework::ir::Node::Type': 'paddle.base.core.Node.Type',
+    'paddle::framework::ir::Pass': 'paddle.base.core.Pass',
+    'paddle::framework::ir::PassBuilder': 'paddle.base.core.PassBuilder',
+    'paddle::framework::proto::AttrType': 'paddle.base.core.AttrType',
+    'paddle::framework::proto::VarType_Type': 'paddle.base.core.VarDesc.VarType',
+    'paddle::imperative::AmpAttrs': 'paddle.base.core.AmpAttrs',
+    'paddle::imperative::Tracer': 'paddle.base.core.Tracer',
     # paddle::imperative::VarBase
     # paddle::inference::analysis::Argument
-    'paddle::jit::Function': 'Function',
-    'paddle::jit::FunctionInfo': 'FunctionInfo',
-    'paddle::platform::HostPythonNode': 'HostPythonNode',
-    'paddle::platform::ProfilerOptions': 'ProfilerOptions',
+    'paddle::jit::Function': 'paddle.base.core.Function',
+    'paddle::jit::FunctionInfo': 'paddle.base.core.FunctionInfo',
+    'paddle::platform::HostPythonNode': 'paddle.base.core.HostPythonNode',
+    'paddle::platform::ProfilerOptions': 'paddle.base.core.ProfilerOptions',
     'paddle::pybind::PyIfOp': 'IfOp',
     'paddle::pybind::PyWhileOp': 'WhileOp',
     # paddle::small_vector<std::vector<egr::GradSlotMeta, std::allocator<egr::GradSlotMeta> >, 15u>
@@ -122,8 +127,8 @@ PYBIND11_ATTR_MAPPING = {
     # symbol::DimExpr
 }
 
-# some bad expression pybind11-stubgen can not catch as invalid exp
-PYBIND11_INVALID_MAPPING = {
+# some bad full expression pybind11-stubgen can not catch as invalid exp
+PYBIND11_INVALID_FULL_MAPPING = {
     'float16': 'numpy.float16',
     'Variant': 'typing.Any',
     'capsule': 'typing_extensions.CapsuleType',
@@ -135,14 +140,24 @@ PYBIND11_INVALID_MAPPING = {
     'Numberic': 'paddle._typing.Numberic',
     'TypeGuard': 'typing_extensions.TypeGuard',
     '_Interpolation': 'paddle.tensor.stat._Interpolation',
-    'Dep': 'Node.Dep',
     'ParamAttrLike': 'paddle._typing.ParamAttrLike',
     '_POrder': 'paddle.tensor.linalg._POrder',
     'TensorOrTensors': 'paddle._typing.TensorOrTensors',
-    'NestedSequence': 'paddle._typing.NestedSequence',
 }
 
+# some bad patial expression pybind11-stubgen can not catch as invalid exp
+_PYBIND11_INVALID_PART_MAPPING = {
+    'NestedSequence': 'paddle._typing.NestedSequence',
+    'Dep': 'Node.Dep',
+    'Tensor': 'paddle.Tensor',
+    'TypeGuard': 'typing.TypeGuard',
+}
+PYBIND11_INVALID_PART_MAPPING: dict[re.Pattern, str] = {
+    re.compile(rf'(?<![\.a-zA-Z\:]){k}(?![\.a-zA-Z\:])'): v
+    for k, v in _PYBIND11_INVALID_PART_MAPPING.items()
+}
 
+# ref: paddle/phi/api/generator/api_base.py
 INPUT_TYPES_MAP = {
     'Tensor': 'paddle.Tensor',
     'Tensor[]': 'list[paddle.Tensor]',
@@ -191,12 +206,19 @@ OUTPUT_TYPE_MAP = {
     'Tensor[]': 'list[paddle.Tensor]',
 }
 
+# for parse ops yaml
 PATTERN_FUNCTION = re.compile(r'^def (?P<name>.*)\(\*args, \*\*kwargs\):')
 FUNCTION_VALUE_TRANS = {
     'true': 'True',
     'false': 'False',
 }
 OPS_YAML_IMPORTS = ['import paddle\n']
+
+
+def _get_pybind11_stubgen_annotation_text(annotation: Annotation) -> str:
+    if isinstance(annotation, InvalidExpression):
+        return annotation.text
+    return str(annotation)
 
 
 def _patch_pybind11_invalid_name():
@@ -215,12 +237,24 @@ def _patch_pybind11_invalid_name():
 
 
 def _patch_pybind11_invalid_annotation():
-    # patch invalid annotaion as `InvalidExpression`, e.g. 'capsule' to 'typing_extensions.CapsuleType'
+    # patch invalid annotaion as `Value`, e.g. 'capsule' to 'typing_extensions.CapsuleType'
     def wrap_name(func):
         @functools.wraps(func)
-        def wrapper(self, arg: Any):
-            if str(arg) in PYBIND11_INVALID_MAPPING:
-                arg = InvalidExpression(PYBIND11_INVALID_MAPPING[str(arg)])
+        def wrapper(self, arg: Annotation):
+            _arg_str = _get_pybind11_stubgen_annotation_text(arg)
+            if _arg_str in PYBIND11_INVALID_FULL_MAPPING:
+                arg = Value(PYBIND11_INVALID_FULL_MAPPING[_arg_str])
+            else:
+                _arg = _arg_str
+                for (
+                    sig_pattern,
+                    mapping,
+                ) in PYBIND11_INVALID_PART_MAPPING.items():
+                    _arg = sig_pattern.sub(mapping, _arg)
+
+                if _arg != _arg_str:
+                    arg = Value(_arg)
+
             return func(self, arg)
 
         return wrapper
@@ -230,7 +264,9 @@ def _patch_pybind11_invalid_annotation():
 
 def _patch_pybind11_invalid_exp():
     # patch invalid exp with `"xxx"` as a `typing.Any`
-    def print_invalid_exp(self, invalid_expr) -> str:
+    def print_invalid_exp(self, invalid_expr: InvalidExpression) -> str:
+        if self.invalid_expr_as_ellipses:
+            return "typing.Any"
         _text = invalid_expr.text
         return PYBIND11_ATTR_MAPPING.get(_text, f'"{_text}"')
 
@@ -244,7 +280,10 @@ def patch_pybind11_stubgen_printer():
 
 
 def gen_stub(
-    output_dir: str, module_name: str, ignore_all_errors: bool = False
+    output_dir: str,
+    module_name: str,
+    ignore_all_errors: bool = False,
+    print_invalid_expressions_as_is: bool = False,
 ) -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -262,7 +301,7 @@ def gen_stub(
         numpy_array_wrap_with_annotated=False,
         numpy_array_use_type_var=False,
         numpy_array_remove_parameters=False,
-        print_invalid_expressions_as_is=True,
+        print_invalid_expressions_as_is=print_invalid_expressions_as_is,
         print_safe_value_reprs=None,
         exit_code=False,
         dry_run=False,
@@ -316,6 +355,14 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--print-invalid-expressions-as-is",
+        default=False,
+        action="store_true",
+        help="Suppress the replacement with 'typing.Any' of invalid expressions"
+        "found in annotations",
+    )
+
+    parser.add_argument(
         "--ops-yaml",
         nargs='*',
         help="Parse ops yaml, the input should be `<yaml path>;<ops module>` or `<yaml path>;<ops module>;<op_prefix>`"
@@ -331,6 +378,7 @@ def generate_stub_file(
     output_dir,
     module_name,
     ignore_all_errors: bool = False,
+    print_invalid_expressions_as_is: bool = False,
     ops_yaml: list[str] | None = None,
 ):
     # patch `pybind11-stubgen`
@@ -343,6 +391,7 @@ def generate_stub_file(
             output_dir=tmpdirname,  # e.g.: 'Paddle/python/',
             module_name=module_name,  # e.g.: 'paddle.base.libpaddle',
             ignore_all_errors=ignore_all_errors,
+            print_invalid_expressions_as_is=print_invalid_expressions_as_is,
         )
 
         # parse ops yaml into file
@@ -697,6 +746,7 @@ def main():
         output_dir=args.output_dir,
         module_name=args.module_name,
         ignore_all_errors=args.ignore_all_errors,
+        print_invalid_expressions_as_is=args.print_invalid_expressions_as_is,
         ops_yaml=args.ops_yaml,
     )
 
