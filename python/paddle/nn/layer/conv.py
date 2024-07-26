@@ -180,7 +180,9 @@ class _ConvNd(Layer):
             default_initializer=_get_default_param_initializer(),
         )
         self.bias = self.create_parameter(
-            attr=self._bias_attr, shape=[self._out_channels], is_bias=True
+            attr=self._bias_attr,
+            shape=[self._out_channels],
+            is_bias=True,
         )
 
         cudnn_version = get_cudnn_version()

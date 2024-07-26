@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/platform/device_event_base.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
 
 namespace py = pybind11;
 
@@ -117,7 +117,7 @@ void BindCudaStream(py::module *m_ptr) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def(
           "wait_event",
-          [](phi::CUDAStream &self, paddle::platform::CudaEvent &event) {
+          [](phi::CUDAStream &self, phi::CudaEvent &event) {
             self.WaitEvent(event.GetRawCudaEvent());
           },
           R"DOC(
@@ -138,7 +138,7 @@ void BindCudaStream(py::module *m_ptr) {
       .def(
           "wait_stream",
           [](phi::CUDAStream &self, phi::CUDAStream &stream) {
-            paddle::platform::CudaEvent event;
+            phi::CudaEvent event;
             event.Record(stream.raw_stream());
             self.WaitEvent(event.GetRawCudaEvent());
           },
@@ -192,9 +192,9 @@ void BindCudaStream(py::module *m_ptr) {
           )DOC")
       .def(
           "record_event",
-          [](phi::CUDAStream &self, paddle::platform::CudaEvent *event) {
+          [](phi::CUDAStream &self, phi::CudaEvent *event) {
             if (event == nullptr) {
-              event = new paddle::platform::CudaEvent();
+              event = new phi::CudaEvent();
             }
             event->Record(self.raw_stream());
             return event;
@@ -315,7 +315,7 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
       });
 
-  py::class_<paddle::platform::CudaEvent>(m, "CUDAEvent", R"DOC(
+  py::class_<phi::CudaEvent>(m, "CUDAEvent", R"DOC(
       The handle of the CUDA event.
 
       Parameters:
@@ -334,7 +334,7 @@ void BindCudaStream(py::module *m_ptr) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def(
           "record",
-          [](paddle::platform::CudaEvent &self, phi::CUDAStream *stream) {
+          [](phi::CudaEvent &self, phi::CUDAStream *stream) {
             if (stream == nullptr) {
               stream = paddle::platform::get_current_stream(-1);
             }
@@ -359,7 +359,7 @@ void BindCudaStream(py::module *m_ptr) {
           py::arg("stream") = nullptr)
       .def(
           "query",
-          [](paddle::platform::CudaEvent &self) { return self.Query(); },
+          [](phi::CudaEvent &self) { return self.Query(); },
           R"DOC(
           Queries the event's status.
 
@@ -377,7 +377,7 @@ void BindCudaStream(py::module *m_ptr) {
           )DOC")
       .def(
           "synchronize",
-          [](paddle::platform::CudaEvent &self) { self.Synchronize(); },
+          [](phi::CudaEvent &self) { self.Synchronize(); },
           R"DOC(
             Waits for an event to complete.
 
@@ -394,14 +394,14 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
       .def(
           "__init__",
-          [](paddle::platform::CudaEvent &self,
+          [](phi::CudaEvent &self,
              bool enable_timing,
              bool blocking,
              bool interprocess) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             unsigned int flags = platform::GenerateDeviceEventFlag(
                 enable_timing, blocking, interprocess);
-            new (&self) paddle::platform::CudaEvent(flags);
+            new (&self) phi::CudaEvent(flags);
 #else
             PADDLE_THROW(phi::errors::Unavailable(
                 "Class CUDAEvent can only be initialized on the GPU "

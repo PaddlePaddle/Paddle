@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/phi/api/profiler/host_event_recorder.h"
+#include "paddle/phi/core/os_info.h"
 
 namespace paddle {
 namespace platform {

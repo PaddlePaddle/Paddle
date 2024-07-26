@@ -551,7 +551,14 @@ inline const void UpdatePaddingAndDilation(
       paddings_wrap->insert(paddings_wrap->begin() + 2 * i + 1, copy_pad);
     }
   } else {
-    CHECK_EQ(hw_dims.size() == paddings_wrap->size(), true);
+    PADDLE_ENFORCE_EQ(
+        hw_dims.size(),
+        paddings_wrap->size(),
+        phi::errors::InvalidArgument(
+            "Required hw_dims.size() should be equal to paddings_wrap->size(), "
+            "But received hw_dims.size() = %d, paddings_wrap->size() = %d",
+            hw_dims.size(),
+            paddings_wrap->size()));
   }
 
   // when padding_algorithm is "VALID" or "SAME"
@@ -762,28 +769,85 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
   }
 
-  CHECK_EQ(padding_algorithm == "EXPLICIT", true);
-  CHECK_EQ(data_format == "NCHW", true);
-  CHECK_EQ(output_size.empty(), true);
-  CHECK_EQ(paddings.size() == 2, true);
-  CHECK_EQ(x_dims.nbDims == 4, true);
-  CHECK_EQ(x_dims.nbDims == filter_dims.nbDims, true);
-  CHECK_EQ(output_padding.empty(), true);
+  PADDLE_ENFORCE_EQ(padding_algorithm,
+                    "EXPLICIT",
+                    phi::errors::InvalidArgument(
+                        "Required padding_algorithm should be 'EXPLICIT', "
+                        "but received padding_algorithm: %s.",
+                        padding_algorithm));
+  PADDLE_ENFORCE_EQ(
+      data_format,
+      "NCHW",
+      phi::errors::InvalidArgument("Required data_format should be 'NCHW', "
+                                   "but received data_format: %s.",
+                                   data_format));
+  PADDLE_ENFORCE_EQ(
+      output_size.empty(),
+      true,
+      phi::errors::InvalidArgument("output_size is not empty! Please Check!"));
+  PADDLE_ENFORCE_EQ(paddings.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Required paddings.size() should be equal to 2, "
+                        "but received paddings.size() =  %d.",
+                        paddings.size()));
+  PADDLE_ENFORCE_EQ(x_dims.nbDims,
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Required x_dims.nbDims should be equal to 4, "
+                        "but received x_dims.nbDims =  %d.",
+                        x_dims.nbDims));
+  PADDLE_ENFORCE_EQ(
+      x_dims.nbDims,
+      filter_dims.nbDims,
+      phi::errors::InvalidArgument(
+          "Required x_dims.nbDims should be equal to filter_dims.nbDims, "
+          "but received x_dims.nbDims =  %d, filter_dims.nbDims = %d",
+          x_dims.nbDims,
+          filter_dims.nbDims));
+  PADDLE_ENFORCE_EQ(output_padding.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "output_padding is not empty! Please Check!"));
 
   int stride_size = strides.size();
   for (int i = 0; i < stride_size; ++i) {
-    CHECK_EQ(strides[i] > 0, true);
+    PADDLE_ENFORCE_EQ(strides[i] > 0,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Required strides[i] should be greater than 0",
+                          "but received strides[i] = %d",
+                          strides[i]));
   }
 
   int in_sub_stride_size = x_dims.nbDims - stride_size;
-  CHECK_EQ(in_sub_stride_size == 2, true);
+  PADDLE_ENFORCE_EQ(in_sub_stride_size,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Required in_sub_stride_size should be equal to 2, "
+                        "but received in_sub_stride_size =  %d",
+                        in_sub_stride_size));
 
   if (!output_size.empty()) {
-    CHECK_EQ(output_size.size() == strides.size(), true);
+    PADDLE_ENFORCE_EQ(
+        output_size.size(),
+        strides.size(),
+        phi::errors::InvalidArgument(
+            "Required output_size.size() should be equal to strides.size(), "
+            "but received output_size.size() =  %d, strides.size() = %d",
+            output_size.size(),
+            strides.size()));
   }
 
   if (!output_padding.empty()) {
-    CHECK_EQ(strides.size() == output_padding.size(), true);
+    PADDLE_ENFORCE_EQ(
+        strides.size(),
+        output_padding.size(),
+        phi::errors::InvalidArgument(
+            "Required strides.size should be equal to output_padding.size, "
+            "but received strides.size() =  %d,  output_padding.size() = %d",
+            strides.size(),
+            output_padding.size()));
   }
 
   std::vector<ExprWrapper> output_dims_wrap(x_dims.nbDims);

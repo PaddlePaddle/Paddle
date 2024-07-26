@@ -992,15 +992,11 @@ PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value) {
 
 PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize) {
-// NOTE(liuyuanle): I encountered a bug(access violation) in windows. ref to
-// https://stackoverflow.com/questions/55598839/how-to-fix-access-violation-error-when-returning-pyobject-from-c-function-usin
-#ifdef _WIN32
+  // NOTE(liuyuanle): I encountered a bug(access violation) in windows. ref to
+  // https://stackoverflow.com/questions/55598839/how-to-fix-access-violation-error-when-returning-pyobject-from-c-function-usin
   PyGILState_STATE gstate = PyGILState_Ensure();
-#endif
   PyObject* result = PyList_New((Py_ssize_t)value.size());
-#ifdef _WIN32
   PyGILState_Release(gstate);
-#endif
 
   for (size_t i = 0; i < value.size(); i++) {
     if (!value[i].initialized() && return_py_none_if_not_initialize) {
@@ -1982,8 +1978,8 @@ paddle::Tensor CreateTensorFromValue(const pir::Value& value) {
 
   auto dims = phi::vectorize(GetValueDims(value));
   auto ddims = phi::make_ddim(dims);
-  if (HasValueName(value)) {
-    tensor.set_name(GetValueName(value));
+  if (auto name = name_analysis::TryGetValueFirstName(value)) {
+    tensor.set_name(name.value());
   }
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);

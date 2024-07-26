@@ -809,29 +809,22 @@ void SetInplaceOutputCorrectDistAttr(
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
     if (dist_tensor->initialized()) {
-      if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(), dist_attr)) {
-        if (use_general_spmd_rule) {
+      if (use_general_spmd_rule) {
+        if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr)) {
           VLOG(6) << "SetInplaceOutputCorrectDistAttr Reshard inplace output"
                   << " to origin dist_attr "
                   << ReshardDebugInfo(*dist_tensor, dist_attr);
           auto* func = phi::distributed::ChooseProperReshardFunction(
               *dist_tensor, dist_attr);
           func->Eval(dev_ctx, *dist_tensor, dist_attr, dist_tensor);
-        } else {
-          // just set correct SPMD dist_attrs
-          VLOG(6) << "SetInplaceOutputCorrectDistAttr input " << tensor.name()
-                  << " set its dist_attr from " << dist_tensor->dist_attr()
-                  << " to " << dist_attr;
-          dist_tensor->unsafe_set_dist_attr(dist_attr);
+          return;
         }
       }
-    } else {
-      VLOG(6) << "SetInplaceOutputCorrectDistAttr has"
-              << " uninitialized DistTensor input " << tensor.name()
-              << ", just set its dist_attr from " << dist_tensor->dist_attr()
-              << " to " << dist_attr;
-      dist_tensor->unsafe_set_dist_attr(dist_attr);
     }
+    VLOG(6) << "SetInplaceOutputCorrectDistAttr for tensor " << tensor.name()
+            << ", just set its dist_attr from " << dist_tensor->dist_attr()
+            << " to " << dist_attr;
+    dist_tensor->unsafe_set_dist_attr(dist_attr);
   }
 }
 
@@ -859,30 +852,23 @@ void SetInplaceOutputCorrectDistAttr(
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
       if (dist_tensor->initialized()) {
-        if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
-                                       dist_attr[i])) {
-          if (use_general_spmd_rule) {
+        if (use_general_spmd_rule) {
+          if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
+                                         dist_attr[i])) {
             VLOG(6) << "SetInplaceOutputCorrectDistAttr Reshard inplace output"
                     << " to origin dist_attr "
                     << ReshardDebugInfo(*dist_tensor, dist_attr[i]);
             auto* func = phi::distributed::ChooseProperReshardFunction(
                 *dist_tensor, dist_attr[i]);
             func->Eval(dev_ctx, *dist_tensor, dist_attr[i], dist_tensor);
-          } else {
-            // just set correct SPMD dist_attrs
-            VLOG(6) << "SetInplaceOutputCorrectDistAttr input "
-                    << tensors[i].name() << " set its dist_attr from "
-                    << dist_tensor->dist_attr() << " to " << dist_attr[i];
-            dist_tensor->unsafe_set_dist_attr(dist_attr[i]);
+            continue;
           }
         }
-      } else {
-        VLOG(6) << "SetInplaceOutputCorrectDistAttr has"
-                << " uninitialized DistTensor input " << tensors[i].name()
-                << ", just set its dist_attr from " << dist_tensor->dist_attr()
-                << " to " << dist_attr[i];
-        dist_tensor->unsafe_set_dist_attr(dist_attr[i]);
       }
+      VLOG(6) << "SetInplaceOutputCorrectDistAttr for tensor "
+              << tensors[i].name() << ", just set its dist_attr from "
+              << dist_tensor->dist_attr() << " to " << dist_attr[i];
+      dist_tensor->unsafe_set_dist_attr(dist_attr[i]);
     }
   }
 }
