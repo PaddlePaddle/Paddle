@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+#include "paddle/common/enforce.h"
 
 namespace paddle {
 namespace inference {
