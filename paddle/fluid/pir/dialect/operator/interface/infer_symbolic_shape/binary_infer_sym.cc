@@ -187,7 +187,7 @@ bool DequantizeAbsMaxOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
-  infer_context->GetShapeOrDataForValue(op->result(0), x_shape);
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
 
   return true;
 }
