@@ -126,10 +126,6 @@ bool BinomialOpInferSymbolicShape(
   const auto &prob_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-  for (int i = 0; i < rank; ++i) {
-    infer_context->AddEqualCstr(count_shape.shape()[i], prob_shape.shape()[i]);
-  }
-
   infer_context->SetShapeOrDataForValue(op->result(0), count_shape);
 
   return true;
