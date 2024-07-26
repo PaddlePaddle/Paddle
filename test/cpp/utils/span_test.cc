@@ -20,6 +20,7 @@ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/n4820.pdf
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/span.h"
 
 using paddle::span;
@@ -70,23 +71,23 @@ TEST(pointer_length_ctor, span) {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int> s(arr, 3);
 
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(s.data(),
                       arr,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Data pointer mismatch. Expected pointer to arr."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         std::begin(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         std::end(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr."));
   }
 
@@ -94,23 +95,23 @@ TEST(pointer_length_ctor, span) {
   {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s(arr, 3);
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(s.data(),
                       arr,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Data pointer mismatch. Expected pointer to arr."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         std::begin(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         std::end(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr."));
   }
 }
@@ -127,23 +128,23 @@ TEST(pointer_pointer_ctor, span) {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int> s{arr, arr + 3};
 
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(s.data(),
                       arr,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Data pointer mismatch. Expected pointer to arr."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         std::begin(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         std::end(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr."));
   }
 
@@ -152,23 +153,23 @@ TEST(pointer_pointer_ctor, span) {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s{arr, arr + 3};
 
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(s.data(),
                       arr,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Data pointer mismatch. Expected pointer to arr."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         std::begin(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         std::end(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr."));
   }
 }
@@ -216,23 +217,23 @@ TEST(c_array_ctor, span) {
   {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(s.data(),
                       arr,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Data pointer mismatch. Expected pointer to arr."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         std::begin(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         std::end(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr."));
   }
 
@@ -240,23 +241,23 @@ TEST(c_array_ctor, span) {
   {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int const> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(s.data(),
                       arr,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Data pointer mismatch. Expected pointer to arr."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         std::begin(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         std::end(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr."));
   }
 
@@ -264,23 +265,23 @@ TEST(c_array_ctor, span) {
   {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(s.data(),
                       arr,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Data pointer mismatch. Expected pointer to arr."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         std::begin(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         std::end(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr."));
   }
 
@@ -288,23 +289,23 @@ TEST(c_array_ctor, span) {
   {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int const, 3> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(s.data(),
                       arr,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Data pointer mismatch. Expected pointer to arr."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         std::begin(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         std::end(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr."));
   }
 }
@@ -369,24 +370,24 @@ TEST(std_array_ctor, span) {
   {
     int_array_t arr = {1, 2, 3};
     span<int> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(
         s.data(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         arr.data() + 3,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr.data() + 3."));
   }
 
@@ -394,24 +395,24 @@ TEST(std_array_ctor, span) {
   {
     int_array_t arr = {1, 2, 3};
     span<int const> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(
         s.data(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         arr.data() + 3,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr.data() + 3."));
   }
 
@@ -419,24 +420,24 @@ TEST(std_array_ctor, span) {
   {
     int_array_t arr = {1, 2, 3};
     span<int, 3> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(
         s.data(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         arr.data() + 3,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr.data() + 3."));
   }
 
@@ -444,24 +445,24 @@ TEST(std_array_ctor, span) {
   {
     int_array_t arr = {1, 2, 3};
     span<int const, 3> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(
         s.data(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         arr.data() + 3,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr.data() + 3."));
   }
 }
@@ -498,24 +499,24 @@ TEST(ctor_from_containers, span) {
   {
     vec_t arr = {1, 2, 3};
     span<int> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(
         s.data(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         arr.data() + 3,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr.data() + 3."));
   }
 
@@ -523,24 +524,24 @@ TEST(ctor_from_containers, span) {
   {
     vec_t arr = {1, 2, 3};
     span<int const> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(
         s.data(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         arr.data() + 3,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr.data() + 3."));
   }
 
@@ -548,24 +549,24 @@ TEST(ctor_from_containers, span) {
   {
     std::array<int, 3> arr = {1, 2, 3};
     span<int, 3> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(
         s.data(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         arr.data() + 3,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr.data() + 3."));
   }
 
@@ -573,24 +574,24 @@ TEST(ctor_from_containers, span) {
   {
     std::array<int, 3> arr = {1, 2, 3};
     span<int const, 3> s{arr};
-    PADDLE_ENFORCE_EQ(s.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(
         s.data(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.begin(),
         arr.data(),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr.data()."));
     PADDLE_ENFORCE_EQ(
         s.end(),
         arr.data() + 3,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr.data() + 3."));
   }
 }
@@ -683,23 +684,23 @@ TEST(subview, span) {
     auto f = s.first<3>();
 
     static_assert(std::is_same<decltype(f), span<int, 3>>::value);
-    PADDLE_ENFORCE_EQ(f.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        f.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(f.data(),
                       arr,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Data pointer mismatch. Expected pointer to arr."));
     PADDLE_ENFORCE_EQ(
         f.begin(),
         arr,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr."));
     PADDLE_ENFORCE_EQ(
         f.end(),
         arr + 3,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr + 3."));
   }
 
@@ -710,24 +711,24 @@ TEST(subview, span) {
     auto l = s.last<3>();
 
     static_assert(std::is_same<decltype(l), span<int, 3>>::value);
-    PADDLE_ENFORCE_EQ(l.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        l.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(
         l.data(),
         arr + 2,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr + 2."));
     PADDLE_ENFORCE_EQ(
         l.begin(),
         arr + 2,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr + 2."));
     PADDLE_ENFORCE_EQ(
         l.end(),
         std::end(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of std::end(arr)."));
   }
 
@@ -738,24 +739,24 @@ TEST(subview, span) {
     auto ss = s.subspan<1, 2>();
 
     static_assert(std::is_same<decltype(ss), span<int, 2>>::value);
-    PADDLE_ENFORCE_EQ(ss.size(),
-                      2UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 2."));
+    PADDLE_ENFORCE_EQ(
+        ss.size(),
+        2UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 2."));
     PADDLE_ENFORCE_EQ(
         ss.data(),
         arr + 1,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr + 1."));
     PADDLE_ENFORCE_EQ(
         ss.begin(),
         arr + 1,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr + 1."));
     PADDLE_ENFORCE_EQ(
         ss.end(),
         arr + 1 + 2,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr + 1 + 2."));
   }
 
@@ -766,23 +767,23 @@ TEST(subview, span) {
     auto f = s.first(3);
 
     static_assert(std::is_same<decltype(f), span<int>>::value);
-    PADDLE_ENFORCE_EQ(f.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        f.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(f.data(),
                       arr,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Data pointer mismatch. Expected pointer to arr."));
     PADDLE_ENFORCE_EQ(
         f.begin(),
         arr,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr."));
     PADDLE_ENFORCE_EQ(
         f.end(),
         arr + 3,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr + 3."));
   }
 
@@ -793,24 +794,24 @@ TEST(subview, span) {
     auto l = s.last(3);
 
     static_assert(std::is_same<decltype(l), span<int>>::value);
-    PADDLE_ENFORCE_EQ(l.size(),
-                      3UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 3."));
+    PADDLE_ENFORCE_EQ(
+        l.size(),
+        3UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 3."));
     PADDLE_ENFORCE_EQ(
         l.data(),
         arr + 2,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr + 2."));
     PADDLE_ENFORCE_EQ(
         l.begin(),
         arr + 2,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr + 2."));
     PADDLE_ENFORCE_EQ(
         l.end(),
         std::end(arr),
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of std::end(arr)."));
   }
 
@@ -821,24 +822,24 @@ TEST(subview, span) {
     auto ss = s.subspan(1, 2);
 
     static_assert(std::is_same<decltype(ss), span<int>>::value);
-    PADDLE_ENFORCE_EQ(ss.size(),
-                      2UL,
-                      paddle::phi::errors::InvalidArgument(
-                          "Size mismatch. Expected size: 2."));
+    PADDLE_ENFORCE_EQ(
+        ss.size(),
+        2UL,
+        phi::errors::InvalidArgument("Size mismatch. Expected size: 2."));
     PADDLE_ENFORCE_EQ(
         ss.data(),
         arr + 1,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Data pointer mismatch. Expected pointer to arr + 1."));
     PADDLE_ENFORCE_EQ(
         ss.begin(),
         arr + 1,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Begin iterator mismatch. Expected begin iterator of arr + 1."));
     PADDLE_ENFORCE_EQ(
         ss.end(),
         arr + 1 + 2,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "End iterator mismatch. Expected end iterator of arr + 1 + 2."));
   }
 
@@ -862,15 +863,15 @@ TEST(element_access, span) {
 
   PADDLE_ENFORCE_EQ(s[0],
                     arr[0],
-                    paddle::phi::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Element access mismatch. Expected arr[0]."));
   PADDLE_ENFORCE_EQ(s[1],
                     arr[1],
-                    paddle::phi::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Element access mismatch. Expected arr[1]."));
   PADDLE_ENFORCE_EQ(s[2],
                     arr[2],
-                    paddle::phi::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Element access mismatch. Expected arr[2]."));
 }
 
