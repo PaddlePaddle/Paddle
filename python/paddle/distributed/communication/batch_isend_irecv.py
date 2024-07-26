@@ -65,7 +65,11 @@ class P2POp:
     """
 
     def __init__(
-        self, op: Callable[...], tensor: Tensor, peer: int, group: Group = None
+        self,
+        op: Callable[..., task],
+        tensor: Tensor,
+        peer: int,
+        group: Group = None,
     ):
         if op not in [dist.isend, dist.irecv]:
             raise RuntimeError(
