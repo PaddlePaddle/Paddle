@@ -731,6 +731,8 @@ def fused_adaLN_scale_residual_kernel(
     seq_size,
     epsilon,
     N_npo2: tl.constexpr,
+    weight_attr: tl.constexpr,
+    bias_attr: tl.constexpr,
 ):
     row = tl.program_id(axis=0)
     mha_out_ptr += row * N
@@ -760,10 +762,10 @@ def fused_adaLN_scale_residual_kernel(
 
     # compute adaLN
     resi_hat = (_resi_outs - mean) * rstd
-    if weight_ptr is not None:
+    if weight_attr:
         weights = tl.load(weight_ptr + all_offs, mask=all_mask, other=0.0)
         resi_hat = resi_hat * weights
-    if bias_ptr is not None:
+    if bias_attr:
         bias = tl.load(bias_ptr + all_offs, mask=all_mask, other=0.0)
         resi_hat = resi_hat + bias
     scales = tl.load(scale_mlp_ptr + all_offs, mask=all_mask, other=0.0)
@@ -833,16 +835,20 @@ def fused_adaLN_scale_residual(
     assert (
         len(x.shape) == 3
     ), "x should be 3-dim [batch_size, seq_size, feature_dim]"
+    weight_attr = 0
     if weight is not None:
         assert len(weight.shape) == 1, "weight should be 1-dim [feature_dim]"
         assert (
             weight.shape[-1] == x.shape[-1]
         ), "x and weight should have same shape[-1] == feature_dim"
+        weight_attr = 1
+    bias_attr = 0
     if bias is not None:
         assert len(bias.shape) == 1, "bias should be 1-dim [feature_dim]"
         assert (
             bias.shape[-1] == x.shape[-1]
         ), "x and bias should have same shape[-1] == feature_dim"
+        bias_attr = 1
     assert (
         len(scale_mlp.shape) == 2 and len(shift_mlp.shape) == 2
     ), "scale and shift should be 2-dim [batch_size, feature_dim]"
@@ -860,10 +866,14 @@ def fused_adaLN_scale_residual(
 
     op_name = "triton_fused_adaLN_scale_residual"
     op_name += get_dtype_str(x.dtype)
-    op_name += f"_{N_npo2}"
+    op_name += f"_{N_npo2}_{weight_attr}_{bias_attr}"
 
     fused_adaLN_scale_residual_kernel_config = [
-        {'num_warps': 1},
+        {'num_warps': 2},
+        {'num_warps': 4},
+        {'num_warps': 8},
+        {'num_warps': 16},
+        {'num_warps': 32},
     ]
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
@@ -878,8 +888,8 @@ def fused_adaLN_scale_residual(
             gate_msa,
             scale_mlp,
             shift_mlp,
-            weight,
-            weight,
+            shift_mlp,
+            shift_mlp,
             resi_out,
             adaLN_out,
             M,
@@ -887,6 +897,8 @@ def fused_adaLN_scale_residual(
             seq_size,
             epsilon,
             N_npo2=N_npo2,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
         )
 
     if in_dynamic_or_pir_mode():
@@ -998,6 +1010,8 @@ def adaptive_layer_norm_kernel(
     seq_size,
     epsilon,
     BLOCK_SIZE: tl.constexpr,
+    weight_attr: tl.constexpr,
+    bias_attr: tl.constexpr,
 ):
     row = tl.program_id(axis=0)
     x_ptr += row * N
@@ -1021,10 +1035,10 @@ def adaptive_layer_norm_kernel(
         mask = cols < N
         eles = tl.load(x_ptr + cols, mask=mask, other=0.0).to(tl.float32)
         x_hat = (eles - mean) * rstd
-        if weight_ptr is not None:
+        if weight_attr:
             weights = tl.load(weight_ptr + cols, mask=mask, other=0.0)
             x_hat = x_hat * weights
-        if bias_ptr is not None:
+        if bias_attr:
             bias = tl.load(bias_ptr + cols, mask=mask, other=0.0)
             x_hat = x_hat + bias
         scales = tl.load(scale_ptr + cols, mask=mask, other=0.0)
@@ -1068,16 +1082,20 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     assert (
         len(x.shape) == 3
     ), "x should be 3-dim [batch_size, seq_size, feature_dim]"
+    weight_attr = 0
     if weight is not None:
         assert len(weight.shape) == 1, "weight should be 1-dim [feature_dim]"
         assert (
             weight.shape[-1] == x.shape[-1]
         ), "x and weight should have same shape[-1] == feature_dim"
+        weight_attr = 1
+    bias_attr = 0
     if bias is not None:
         assert len(bias.shape) == 1, "bias should be 1-dim [feature_dim]"
         assert (
             bias.shape[-1] == x.shape[-1]
         ), "x and bias should have same shape[-1] == feature_dim"
+        bias_attr = 1
     assert (
         len(scale.shape) == 2 and len(shift.shape) == 2
     ), "scale and shift should be 2-dim [batch_size, feature_dim]"
@@ -1095,10 +1113,14 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
 
     op_name = "triton_adaptive_layer_norm"
     op_name += get_dtype_str(x.dtype)
-    op_name += f"_{BLOCK_SIZE}"
+    op_name += f"_{BLOCK_SIZE}_{weight_attr}_{bias_attr}"
 
     adaptive_layer_norm_kernel_config = [
-        {'num_warps': 1},
+        {'num_warps': 2},
+        {'num_warps': 4},
+        {'num_warps': 8},
+        {'num_warps': 16},
+        {'num_warps': 32},
     ]
 
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
@@ -1118,6 +1140,8 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
             seq_size,
             epsilon,
             BLOCK_SIZE=BLOCK_SIZE,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
         )
 
     if in_dynamic_or_pir_mode():
@@ -1211,6 +1235,8 @@ def rms_norm_kernel(
     epsilon,
     BLOCK_SIZE_M: tl.constexpr,
     N_npo2: tl.constexpr,
+    weight_attr: tl.constexpr,
+    bias_attr: tl.constexpr,
 ):
     row = tl.program_id(axis=0)
 
@@ -1229,11 +1255,11 @@ def rms_norm_kernel(
 
     resi_hat = x_eles / tl.sqrt(var[:, None] + epsilon)
 
-    if weight_ptr is not None:
+    if weight_attr:
         weights = tl.load(weight_ptr + offs_an, mask=offs_an < N, other=0.0)
         resi_hat = resi_hat * weights
 
-    if bias_ptr is not None:
+    if bias_attr:
         bias = tl.load(bias_ptr + offs_an, mask=offs_an < N, other=0.0)
         resi_hat = resi_hat + bias
 
@@ -1270,16 +1296,20 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
     '''
 
     assert len(x.shape) == 4, "x should be 4-dim."
+    weight_attr = 0
     if weight is not None:
         assert len(weight.shape) == 1, "weight should be 1-dim"
         assert (
             weight.shape[-1] == x.shape[-1]
         ), "x and weight should have same shape[-1]"
+        weight_attr = 1
+    bias_attr = 0
     if bias is not None:
         assert len(bias.shape) == 1, "bias should be 1-dim"
         assert (
             bias.shape[-1] == x.shape[-1]
         ), "x and bias should have same shape[-1]"
+        bias_attr = 1
 
     M = x.shape[0] * x.shape[1] * x.shape[2]
     N = x.shape[3]
@@ -1308,6 +1338,8 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
             epsilon,
             BLOCK_SIZE_M=4,
             N_npo2=N_npo2,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
         )
 
     if in_dynamic_or_pir_mode():
@@ -1332,3 +1364,268 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
             outputs={'out': out},
         )
         return out
+
+
+fused_rotary_emb_template = (
+    """
+std::vector<paddle::Tensor> ${op_name}_func(
+  const paddle::Tensor &x,
+  const paddle::Tensor &q_norm_weight,
+  const paddle::Tensor &q_norm_bias,
+  const paddle::Tensor &k_norm_weight,
+  const paddle::Tensor &k_norm_bias,
+  const paddle::Tensor &freqs_cis,
+  float epsilon) {
+  int BSZ = x.dims()[0];
+  int SEQ_LEN = x.dims()[1];
+  int HEAD_DIM = freqs_cis.dims()[2];
+  int DIM = q_norm_weight.dims()[0];
+  int NUM_HEAD = DIM / HEAD_DIM;
+  int M = BSZ * SEQ_LEN;
+  int DIM_concat = x.dims()[2];
+
+  auto q_out = paddle::empty({BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM}, x.dtype(), x.place());
+  auto k_out = paddle::empty({BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM}, x.dtype(), x.place());
+  auto v_out = paddle::empty({BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM}, x.dtype(), x.place());
+
+  auto x_ptr = get_tensor_ptr(x);
+  auto q_norm_weight_ptr = get_tensor_ptr(q_norm_weight);
+  auto q_norm_bias_ptr = get_tensor_ptr(q_norm_bias);
+  auto k_norm_weight_ptr = get_tensor_ptr(k_norm_weight);
+  auto k_norm_bias_ptr = get_tensor_ptr(k_norm_bias);
+  auto freqs_cis_ptr = get_tensor_ptr(freqs_cis);
+  auto q_out_ptr = get_tensor_ptr(q_out);
+  auto k_out_ptr = get_tensor_ptr(k_out);
+  auto v_out_ptr = get_tensor_ptr(v_out);
+
+  auto run_stream = q_out.stream();
+"""
+    + tune_and_invoke_part
+    + """
+    return {q_out, k_out, v_out};
+}
+
+std::vector<std::vector<int64_t>> ${op_name}_InferShape(
+        const std::vector<int64_t>& A_shape,
+        const std::vector<int64_t>& B_shape,
+        const std::vector<int64_t>& C_shape,
+        const std::vector<int64_t>& D_shape,
+        const std::vector<int64_t>& E_shape,
+        const std::vector<int64_t>& F_shape) {
+  int BSZ = A_shape[0];
+  int SEQ_LEN = A_shape[1];
+  int HEAD_DIM = F_shape[2];
+  int DIM = B_shape[0];
+  int NUM_HEAD = DIM / HEAD_DIM;
+  std::vector<int64_t> res_shape = {BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM};
+  return {res_shape, res_shape, res_shape};
+}
+
+std::vector<paddle::DataType> ${op_name}_InferDtype(const paddle::DataType& A_dtype) {
+    return {A_dtype, A_dtype, A_dtype};
+}
+
+PD_BUILD_OP(${op_name})
+    .Inputs({"x", "q_norm_weight", "q_norm_bias", "k_norm_weight", "k_norm_bias", "freqs_cis"})
+    .Outputs({"q_out", "k_out", "v_out"})
+    .SetKernelFn(PD_KERNEL(${op_name}_func))
+    .Attrs({"epsilon: float"})
+    .SetInferDtypeFn(PD_INFER_DTYPE(${op_name}_InferDtype))
+    .SetInferShapeFn(PD_INFER_SHAPE(${op_name}_InferShape));
+"""
+)
+
+
+@paddle_use_triton(
+    custom_op_template=fused_rotary_emb_template,
+    key=["M"],
+)
+def fused_rotary_emb_kernel(
+    x_ptr,  # [BSZ, SEQ_LEN, DIM_concat]
+    q_out_ptr,
+    k_out_ptr,  # [BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM, 2]
+    v_out_ptr,  # [BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM]
+    q_norm_weight_ptr,
+    q_norm_bias_ptr,
+    k_norm_weight_ptr,
+    k_norm_bias_ptr,  # [DIM]
+    freqs_cis_ptr,  # [1, seq_len, 1, head_dim, 2]
+    epsilon,
+    SEQ_LEN,
+    M,
+    DIM,
+    DIM_concat,
+    DIM_npo2: tl.constexpr,
+):
+    row = tl.program_id(axis=0)
+    x_ptr += row * DIM_concat
+    offs = tl.arange(0, DIM_npo2)
+    masks = offs < DIM
+    q_eles = tl.load(x_ptr + offs, mask=masks, other=0.0).to(tl.float32)
+    k_eles = tl.load(x_ptr + DIM + offs, mask=masks, other=0.0).to(tl.float32)
+    v_eles = tl.load(x_ptr + 2 * DIM + offs, mask=masks, other=0.0)
+
+    # qk layernorm
+    q_mean = tl.sum(q_eles, axis=0) / DIM
+    q_var = tl.sum(q_eles * q_eles, axis=0) / DIM - q_mean * q_mean
+    q_rstd = 1 / tl.sqrt(q_var + epsilon)
+    q_resi_hat = (q_eles - q_mean) * q_rstd
+    q_weights = tl.load(q_norm_weight_ptr + offs, mask=masks, other=0.0)
+    q_resi_hat = q_resi_hat * q_weights
+    q_bias = tl.load(q_norm_bias_ptr + offs, mask=masks, other=0.0)
+    q_resi_hat = q_resi_hat + q_bias
+
+    k_mean = tl.sum(k_eles, axis=0) / DIM
+    k_var = tl.sum(k_eles * k_eles, axis=0) / DIM - k_mean * k_mean
+    k_rstd = 1 / tl.sqrt(k_var + epsilon)
+    k_resi_hat = (k_eles - k_mean) * k_rstd
+    k_weights = tl.load(k_norm_weight_ptr + offs, mask=masks, other=0.0)
+    k_resi_hat = k_resi_hat * k_weights
+    k_bias = tl.load(k_norm_bias_ptr + offs, mask=masks, other=0.0)
+    k_resi_hat = k_resi_hat + k_bias
+
+    # qk rotary_emb
+    # freqs_cis = [DIM_npo2, 2]
+    freqs_cis_ptr += (row % SEQ_LEN) * DIM * 2
+    freqs_offs = tl.arange(0, DIM_npo2 * 2)
+    freqs_masks = freqs_offs < DIM * 2
+    freqs_cis = tl.load(freqs_cis_ptr + freqs_offs, mask=freqs_masks, other=0.0)
+    freqs_cis = tl.reshape(freqs_cis, (DIM_npo2, 2))
+
+    # q_resi_hat = [DIM_npo2] => [DIM_npo2//2, 1, 2]
+    q_resi_hat = tl.reshape(q_resi_hat, (DIM_npo2 // 2, 1, 2))
+    q_resi_hat = tl.broadcast_to(q_resi_hat, (DIM_npo2 // 2, 2, 2))
+    q_resi_hat = tl.reshape(q_resi_hat, (DIM_npo2, 2))
+    q_res = tl.sum(q_resi_hat * freqs_cis, axis=1)
+
+    k_resi_hat = tl.reshape(k_resi_hat, (DIM_npo2 // 2, 1, 2))
+    k_resi_hat = tl.broadcast_to(k_resi_hat, (DIM_npo2 // 2, 2, 2))
+    k_resi_hat = tl.reshape(k_resi_hat, (DIM_npo2, 2))
+    k_res = tl.sum(k_resi_hat * freqs_cis, axis=1)
+
+    out_offs = row * DIM + offs
+    tl.store(q_out_ptr + out_offs, q_res, mask=masks)
+    tl.store(k_out_ptr + out_offs, k_res, mask=masks)
+    tl.store(v_out_ptr + out_offs, v_eles, mask=masks)
+
+
+def fused_rotary_emb(
+    x,
+    q_norm_weight,
+    q_norm_bias,
+    k_norm_weight,
+    k_norm_bias,
+    freqs_cis,
+    epsilon=1e-5,
+):
+    assert x.is_contiguous()
+    assert q_norm_weight is not None, "q_norm_weight should not be none"
+    assert q_norm_bias is not None, "q_norm_bias should not be none"
+    assert k_norm_weight is not None, "k_norm_weight should not be none"
+    assert k_norm_bias is not None, "k_norm_bias should not be none"
+    DIM = q_norm_weight.shape[0]
+    HEAD_DIM = freqs_cis.shape[-2]
+    assert (DIM % HEAD_DIM) == 0, "dim should be divisible by head_dim"
+    DIM_concat = x.shape[-1]
+    assert (
+        DIM * 3
+    ) == DIM_concat, "not support GQA, qkv num_head should be equal"
+
+    BSZ = x.shape[0]
+    SEQ_LEN = x.shape[1]
+    NUM_HEAD = DIM // HEAD_DIM
+    M = BSZ * SEQ_LEN
+    DIM_npo2 = triton.next_power_of_2(DIM)
+    dtype_ = x.dtype
+
+    # q_out_tensor = paddle.empty([BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM], dtype=dtype_)
+    # k_out_tensor = paddle.empty([BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM], dtype=dtype_)
+    # v_out_tensor = paddle.empty([BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM], dtype=dtype_)
+    # fused_rotary_emb_kernel[(M,)](
+    #     input_tensor, q_out_tensor, k_out_tensor, v_out_tensor,
+    #     q_norm_weight, q_norm_bias, k_norm_weight, k_norm_bias, freqs_cis, epsilon,
+    #     SEQ_LEN, M, DIM, DIM_concat,
+    #     DIM_npo2, num_warps=4,
+    # )
+    # return q_out_tensor, k_out_tensor, v_out_tensor
+
+    op_name = "triton_fused_rotary_emb"
+    op_name += get_dtype_str(dtype_)
+    op_name += f"_{DIM_npo2}"
+
+    fused_rotary_emb_kernel_config = [
+        {'num_warps': 2},
+        {'num_warps': 4},
+        {'num_warps': 8},
+        {'num_warps': 16},
+        {'num_warps': 32},
+    ]
+
+    if op_name not in OpProtoHolder.instance().op_proto_map.keys():
+        empty_dtype = dtype_ if dtype_ != paddle.bfloat16 else paddle.float16
+        q_out_tensor = paddle.empty(
+            [BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM], dtype=empty_dtype
+        ).astype(dtype_)
+        k_out_tensor = paddle.empty(
+            [BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM], dtype=empty_dtype
+        ).astype(dtype_)
+        v_out_tensor = paddle.empty(
+            [BSZ, SEQ_LEN, NUM_HEAD, HEAD_DIM], dtype=empty_dtype
+        ).astype(dtype_)
+        grid = ("M",)
+        fused_rotary_emb_kernel[
+            (op_name, grid, fused_rotary_emb_kernel_config)
+        ](
+            x,
+            q_out_tensor,
+            k_out_tensor,
+            v_out_tensor,
+            q_norm_weight,
+            q_norm_bias,
+            k_norm_weight,
+            k_norm_bias,
+            freqs_cis,
+            epsilon,
+            SEQ_LEN,
+            M,
+            DIM,
+            DIM_concat,
+            DIM_npo2,
+        )
+
+    if in_dynamic_or_pir_mode():
+        print(f"== we are in dynamic mode, op_name: {op_name}")
+        outs = _C_ops._run_custom_op(
+            op_name,
+            x,
+            q_norm_weight,
+            q_norm_bias,
+            k_norm_weight,
+            k_norm_bias,
+            freqs_cis,
+            epsilon,
+        )
+        return outs[0], outs[1], outs[2]
+    else:
+        print(f"== we are in dynamic to static mode, op_name: {op_name}")
+        helper = LayerHelper(op_name, **locals())
+        inputs = {
+            'x': x,
+            'q_norm_weight': q_norm_weight,
+            'q_norm_bias': q_norm_bias,
+            'k_norm_weight': k_norm_weight,
+            'k_norm_bias': k_norm_bias,
+            'freqs_cis': freqs_cis,
+        }
+        q_out = helper.create_variable_for_type_inference(dtype=dtype_)
+        k_out = helper.create_variable_for_type_inference(dtype=dtype_)
+        v_out = helper.create_variable_for_type_inference(dtype=dtype_)
+        helper.append_op(
+            type=op_name,
+            inputs=inputs,
+            attrs={
+                'epsilon': epsilon,
+            },
+            outputs={'q_out': q_out, 'k_out': k_out, 'v_out': v_out},
+        )
+        return q_out, k_out, v_out
