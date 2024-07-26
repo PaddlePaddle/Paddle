@@ -69,7 +69,7 @@ class P2POp:
         op: Callable[..., task],
         tensor: Tensor,
         peer: int,
-        group: Optional[Group],
+        group: Optional[Group] = None,
     ):
         if op not in [dist.isend, dist.irecv]:
             raise RuntimeError(
@@ -85,7 +85,7 @@ class P2POp:
 
 
 @contextlib.contextmanager
-def _coalescing_manager(group: Group, tasks: Sequence[task] = None):
+def _coalescing_manager(group: Group, tasks: Optional[Sequence[task]] = None):
     group = _get_global_group() if group is None else group
     pg = group.process_group
     pg._start_coalescing()

@@ -61,7 +61,9 @@ def recv(
     )
 
 
-def irecv(tensor: Tensor, src: Optional[int], group: Optional[Group]) -> task:
+def irecv(
+    tensor: Tensor, src: Optional[int], group: Optional[Group] = None
+) -> task:
     """
     Receive a tensor to the sender.
 
