@@ -652,7 +652,8 @@ class SqueezeOpPattern
     pir::Value axis_ = op.operand_source(1);
     std::vector<int64_t> axes;
 
-    if (axis_) {      bool is_from_tensor = false;
+    if (axis_) {      
+      bool is_from_tensor = false;
       phi::IntArray axis = phi::IntArray(
           paddle::dialect::ParseValueShape(axis_, &is_from_tensor));
       for (auto a : axis.GetData()) {
@@ -810,19 +811,22 @@ class CastOpPattern
       return false;
     }
     if (!op->HasAttribute("dtype") ){
-            VLOG(3) << "the cast op" << 
+            VLOG(3) << "the cast op" 
                     << " does not have attr dtype";
             return false;
     }
-    int dtype = op->attribute<pir::Int32Attribute>("dtype").data();
-    if(dtype == 0){
-#if IS_TRT_VERSION_GE(8400)
-      VLOG(3) << "the cast op supports inputs and outputs of BOOL by "
-                     "trt8.4 above ";
-      return true;
-#endif
-        return false;
-    }
+        auto dtype = op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
+        LOG(INFO)<<"dtype:"<<dtype;
+      //   phi::DataType::dtype =op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
+        if (dtype == phi::DataType::BOOL){
+          #if IS_TRT_VERSION_GE(8400)
+            VLOG(3) << "the cast op supports inputs and outputs of BOOL by "
+                          "trt8.4 above ";
+            op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+            return true;
+        #endif
+              return false;
+      }
 
 #if !IS_TRT_VERSION_GE(7000)
       return false;
