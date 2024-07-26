@@ -178,11 +178,6 @@ def save_state_dict(
                     )
                     if local_shape is None or global_offset is None:
                         continue
-                    if (
-                        paddle.distributed.get_rank()
-                        not in val.process_mesh.process_ids
-                    ):
-                        continue
                 else:
                     local_shape = tuple(val.shape)
                     global_offset = (

@@ -152,6 +152,7 @@ def filter_all_collective_op_indices(block):
         "c_allreduce_min",
         "c_allgather",
         "c_broadcast",
+        "all_gather",
     }
 
     match_op_indices = []

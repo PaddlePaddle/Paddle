@@ -343,10 +343,11 @@ class TestArgMaxTensorAxis(UnittestBase):
 
 
 class TestArgMinTensorAxis(TestArgMaxTensorAxis):
+    @test_with_pir_api
     def test_static(self):
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
+        main_prog = paddle.base.Program()
+        startup_prog = paddle.base.Program()
+        with paddle.base.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -356,7 +357,8 @@ class TestArgMinTensorAxis(TestArgMaxTensorAxis):
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(paddle.cast(out, 'float32')))
-            self.assertTrue(self.var_prefix() in str(main_prog))
+            if not paddle.framework.use_pir_api():
+                self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)

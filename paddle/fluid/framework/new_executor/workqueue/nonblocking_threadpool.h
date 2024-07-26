@@ -17,8 +17,8 @@
 #include "paddle/fluid/framework/new_executor/workqueue/event_count.h"
 #include "paddle/fluid/framework/new_executor/workqueue/run_queue.h"
 #include "paddle/fluid/framework/new_executor/workqueue/thread_environment.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/os_info.h"
 
 namespace paddle {
 namespace framework {
@@ -249,7 +249,7 @@ class ThreadPoolTempl {
   void WorkerLoop(int thread_id) {
     std::string thr_name = name_ + "_thread_" + std::to_string(thread_id);
     VLOG(1) << thr_name << " started ";
-    platform::SetCurrentThreadName(thr_name);
+    phi::SetCurrentThreadName(thr_name);
     PerThread* pt = GetPerThread();
     pt->pool = this;
     pt->rand = GlobalThreadIdHash();
