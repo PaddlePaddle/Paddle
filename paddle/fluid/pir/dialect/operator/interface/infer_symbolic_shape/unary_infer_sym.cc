@@ -570,6 +570,36 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
 
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
+bool ModeOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> input_dims = x_shape.shape();
+
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  if (axis < 0) {
+    axis += input_dims.size();
+  }
+  bool keepdim = op->attribute<pir::BoolAttribute>("keepdim").data();
+
+  std::vector<symbol::DimExpr> out_dims = input_dims;
+  if (!keepdim) {
+    out_dims.erase(out_dims.begin() + axis);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  std::vector<symbol::DimExpr> indices_dims = out_dims;
+  indices_dims[axis] = symbol::DimExpr(1);
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(indices_dims)});
+
+  return true;
+}
 
 bool MinOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
