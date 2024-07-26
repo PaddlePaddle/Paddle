@@ -1193,7 +1193,6 @@ class PartialProgramLayer:
                     var for var in out_vars if not self._is_no_value(var)
                 )
             else:
-                # isinstance(out_vars, list)
                 res = [var for var in out_vars if not self._is_no_value(var)]
 
             has_removed = len(out_vars) > len(res)
