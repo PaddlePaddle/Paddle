@@ -406,7 +406,6 @@ void reshape_grad(const Tensor& xshape,
                   const Tensor& grad_out,
                   Tensor* grad_x) {
   if (grad_x) {
-    // xshape: （[0] + x.shape） or x.shape
     auto xshape_dims = xshape.dims();
     auto grad_x_tmp = reshape<T>(grad_out, common::vectorize(xshape_dims));
     set_output<T>(grad_x_tmp, grad_x);
