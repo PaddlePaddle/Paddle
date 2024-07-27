@@ -111,7 +111,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     std::string output_name = elementwise_add_out->Name();
 
     std::string act_type = "identity";
-    framework::OpDesc new_op_desc(base_op_desc, nullptr);
+    framework::OpDesc new_op_desc(base_op_desc, conv_op->Op()->Block());
     new_op_desc.SetType("fused_conv2d_add_act");
     new_op_desc.SetInput("Bias", {bias_name});
     new_op_desc.SetInput("ResidualData", {});
@@ -119,6 +119,12 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetOutput("Output", {output_name});
     new_op_desc.SetAttr("is_test", true);
     new_op_desc.SetAttr("use_cudnn", true);
+    // add Attr for aligning fused_conv2d_add_act OP definition
+    float fuse_alpha = 1.f;
+    new_op_desc.SetAttr("fuse_alpha", fuse_alpha);
+    auto split_channel = std::vector<int>{};
+    new_op_desc.SetAttr("split_channels", split_channel);
+    new_op_desc.SetOutput("Outputs", {});
 
     bool is_fp16_precision =
         static_cast<phi::DataType>(Get<int>("model_precision")) ==

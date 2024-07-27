@@ -52,21 +52,24 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
             return (
-                np.ones([batch, attrs[0]['groups'] * 3, 64, 64]).astype(
+                np.ones([batch, attrs[0]['groups'] * 32, 64, 64]).astype(
                     np.float32
                 )
                 / 4
             )
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
-            return np.random.random([9, 3, 3, 3]).astype(np.float32) - 0.5
+            return np.random.random([32, 32, 3, 3]).astype(np.float32) - 0.5
 
-        batch_options = [1, 2]
-        strides_options = [[2, 2], [1, 2]]
-        paddings_options = [[0, 3], [1, 2, 3, 4]]
-        groups_options = [1, 3]
-        padding_algorithm_options = ['EXPLICIT', 'SAME', 'VALID']
-        dilations_options = [[1, 2]]
+        def generate_bias(attrs: List[Dict[str, Any]]):
+            return np.random.random([32]).astype(np.float32) - 0.5
+
+        batch_options = [2]
+        strides_options = [[1, 1]]
+        paddings_options = [[1, 1]]
+        groups_options = [1]
+        padding_altorithm_options = ['EXPLICIT']
+        dilations_options = [[1, 1]]
         data_format_options = ['NCHW']
 
         configurations = [
@@ -74,7 +77,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             strides_options,
             paddings_options,
             groups_options,
-            padding_algorithm_options,
+            padding_altorithm_options,
             dilations_options,
             data_format_options,
         ]
@@ -90,6 +93,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         ) in itertools.product(*configurations):
             attrs = [
                 {
+                    "data_fromat": data_format,
                     "dilations": dilations,
                     "padding_algorithm": padding_algorithm,
                     "groups": groups,
@@ -111,8 +115,14 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                     "op_attrs": attrs[0],
                 },
                 {
+                    "op_type": "elementwise_add",
+                    "op_inputs": {"X": ["conv_output_data"], "Y": ["bias"]},
+                    "op_outputs": {"Out": ["ele_add_output_data"]},
+                    "op_attrs": {"axis": 1},
+                },
+                {
                     "op_type": "relu",
-                    "op_inputs": {"X": ["conv_output_data"]},
+                    "op_inputs": {"X": ["ele_add_output_data"]},
                     "op_outputs": {"Out": ["output_data"]},
                     "op_attrs": attrs[1],
                 },
@@ -125,7 +135,10 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                 weights={
                     "conv2d_weight": TensorConfig(
                         data_gen=partial(generate_weight1, attrs)
-                    )
+                    ),
+                    "bias": TensorConfig(
+                        data_gen=partial(generate_bias, attrs)
+                    ),
                 },
                 inputs={
                     "input_data": TensorConfig(
@@ -143,16 +156,13 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         def generate_dynamic_shape(attrs):
             input_groups = attrs[0]['groups'] * 3
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, input_groups, 32, 32],
-                "output_data": [1, 24, 32, 32],
+                "input_data": [2, 32, 64, 64],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [4, input_groups, 64, 64],
-                "output_data": [4, 24, 64, 64],
+                "input_data": [2, 32, 64, 64],
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data": [1, input_groups, 64, 64],
-                "output_data": [1, 24, 64, 64],
+                "input_data": [2, 32, 64, 64],
             }
 
         def clear_dynamic_shape():

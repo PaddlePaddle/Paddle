@@ -123,6 +123,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
                   bool forbid_dynamic_op_enter_into_trt = false,
+                  bool cutlass_enable = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
@@ -372,6 +373,25 @@ struct SimpleOpTypeSetTeller : public Teller {
                  "tensor in conv2d op, please upgarde your TensorRT.";
           return false;
 #endif
+        }
+      } else {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      // for cutlass HWC FP16/BF16 kernel
+      if (op_type == "fused_conv2d_add_act" &&
+          desc.Input("ResidualData").size() == 0 && cutlass_enable &&
+          desc.HasAttr("use_cudnn") &&
+          !PADDLE_GET_CONST(bool, desc.GetAttr("use_cudnn"))) {
+        auto input_var_name = desc.Input("Input")[0];
+        auto* input_var_desc = block->FindVarRecursive(input_var_name);
+        auto input_dtype = input_var_desc->GetDataType();
+        if (input_dtype == framework::proto::VarType::FP16 ||
+            input_dtype == framework::proto::VarType::BF16) {
+          LOG(INFO) << "fused_conv2d_add_act will use cutlass HWC kernel";
+          return false;
         }
       }
     }
@@ -3243,6 +3263,7 @@ struct GenericPluginTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
                   bool forbid_dynamic_op_enter_into_trt = false,
+                  bool cutlass_enable = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
@@ -3318,6 +3339,7 @@ struct CustomPluginTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
                   bool forbid_dynamic_op_enter_into_trt = false,
+                  bool cutlass_enable = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
     std::string expect_plugin_name;
@@ -3348,6 +3370,7 @@ struct CustomGenericPluginTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
                   bool forbid_dynamic_op_enter_into_trt = false,
+                  bool cutlass_enable = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
@@ -3385,6 +3408,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
                     bool with_dynamic_shape,
                     bool forbid_dynamic_op_enter_into_trt,
+                    bool cutlass_enable,
                     bool use_explicit_quantization) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();

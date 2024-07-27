@@ -153,6 +153,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto use_explicit_quantization = Get<bool>("use_explicit_quantization");
   auto forbid_dynamic_op = Get<bool>("forbid_dynamic_op");
+  bool cutlass_enable = Get<bool>("use_cutlass");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     if (find(trt_disabled_ops.begin(),
@@ -177,6 +178,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
                                                    no_calib_int8,
                                                    with_dynamic_shape,
                                                    forbid_dynamic_op,
+                                                   cutlass_enable,
                                                    use_explicit_quantization);
     if (!is_ok)
       VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";

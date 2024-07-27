@@ -235,8 +235,12 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
               kernel_context->EmplaceBackAttr(data_type);
             } break;
             case phi::AttributeType::STRING:
-              kernel_context->EmplaceBackAttr(
-                  PADDLE_GET_CONST(std::string, attr));
+              if (PADDLE_GET_CONST(std::string, attr) == "NCHW") {
+                kernel_context->EmplaceBackAttr(std::string("NHWC"));
+              } else {
+                kernel_context->EmplaceBackAttr(
+                    PADDLE_GET_CONST(std::string, attr));
+              }
               break;
             case phi::AttributeType::INT64S:
               switch (AttrTypeID(attr)) {
@@ -450,6 +454,18 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 2)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "fused_conv2d_add_act") {
+    // input, weight, bias
+    if (pos == 0 || pos == 1)
+      return in_out[pos].type == nvinfer1::DataType::kHALF &&
+             in_out[pos].format == nvinfer1::TensorFormat::kHWC8;
+    if (pos == 2)
+      return in_out[pos].type == nvinfer1::DataType::kHALF &&
+             in_out[pos].format == nvinfer1::TensorFormat::kLINEAR;
+    // output
+    if (pos == 3)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
@@ -567,6 +583,28 @@ void GenericPlugin::terminate() TRT_NOEXCEPT {
   delete dense_tensor_outputs_;
 }
 
+std::vector<int> GenericPlugin::getHwcShape(
+    const nvinfer1::PluginTensorDesc* oridesc) {
+  auto const& dims = oridesc->dims;
+  std::vector<int> new_shape;
+  for (int j = 0; j < dims.nbDims; j++) {
+    switch (j) {
+      case 1:
+        new_shape.push_back(dims.d[2]);
+        break;
+      case 2:
+        new_shape.push_back(dims.d[3]);
+        break;
+      case 3:
+        new_shape.push_back(dims.d[1]);
+        break;
+      default:
+        new_shape.push_back(dims.d[j]);
+    }
+  }
+  return new_shape;
+}
+
 int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            const nvinfer1::PluginTensorDesc* output_desc,
                            const void* const* inputs,
@@ -609,8 +647,13 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     auto const& input_dims = input_desc[i].dims;
 
     std::vector<int> input_shape;
-    for (int j = 0; j < input_dims.nbDims; j++)
-      input_shape.push_back(input_dims.d[j]);
+    if (output_desc[i].format == nvinfer1::TensorFormat::kHWC8) {
+      input_shape = getHwcShape(&output_desc[i]);
+    } else {
+      for (int j = 0; j < input_dims.nbDims; j++) {
+        input_shape.push_back(input_dims.d[j]);
+      }
+    }
 
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
@@ -631,8 +674,13 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     auto const& output_dims = output_desc[i].dims;
 
     std::vector<int> output_shape;
-    for (int j = 0; j < output_dims.nbDims; j++)
-      output_shape.push_back(output_dims.d[j]);
+    if (output_desc[i].format == nvinfer1::TensorFormat::kHWC8) {
+      output_shape = getHwcShape(&output_desc[i]);
+    } else {
+      for (int j = 0; j < output_dims.nbDims; j++) {
+        output_shape.push_back(output_dims.d[j]);
+      }
+    }
 
     int output_numel = 1;
     for (int k = 0; k < output_shape.size(); k++)
@@ -653,7 +701,16 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         &((*dense_tensor_outputs_)[i]));
   }
 
-  CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
+  if (op_desc_.Type() == "fused_conv2d_add_act") {
+    while (phi_kernel_contexts_[data_type]->InputsSize() <
+           phi_kernels_[data_type]->args_def().input_defs().size()) {
+      phi_kernel_contexts_[data_type]->EmplaceBackInput(nullptr);
+    }
+    CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize() - 1, getNbInputs());
+  } else {
+    CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
+  }
+
   CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
 
