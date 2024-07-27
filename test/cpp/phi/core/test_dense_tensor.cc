@@ -109,9 +109,25 @@ TEST(dense_tensor, resize) {
   auto* alloc = fancy_allocator.get();
   DenseTensor tensor_0(alloc, meta);
 
-  CHECK_EQ(tensor_0.capacity(), 2u);
+  PADDLE_ENFORCE_EQ(
+    tensor_0.capacity(),
+    2u,
+    phi::errors::InvalidArgument(
+      "Wrong capacity of tensor_0."
+      "Expected 2, but received %d",
+      tensor_0.capacity()
+    )
+  );
   tensor_0.ResizeAndAllocate({1, 2, 3});
-  CHECK_EQ(tensor_0.capacity(), 6u);
+  PADDLE_ENFORCE_EQ(
+    tensor_0.capacity(),
+    6u,
+    phi::errors::InvalidArgument(
+      "Wrong capacity of tensor_0."
+      "Expected 6, but received %d",
+      tensor_0.capacity()
+    )
+  );
 }
 
 TEST(dense_tensor, shallow_copy) {
