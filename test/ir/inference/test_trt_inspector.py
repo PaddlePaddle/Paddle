@@ -48,6 +48,9 @@ class TensorRTInspectorTest1(InferencePassTest):
         self.trt_parameters = InferencePassTest.TensorRTParam(
             1 << 30, 1, 0, AnalysisConfig.Precision.Float32, False, False, True
         )
+        self.dynamic_shape_params = TensorRTInspectorTest1.DynamicShapeParam(
+            {'data': [1, 16, 16]}, {'data': [1, 16, 16]}, {'data': [1, 16, 16]}
+        )
         self.fetch_list = [out]
 
     def set_params(self):
@@ -109,6 +112,9 @@ class TensorRTInspectorTest2(InferencePassTest):
             False,
             True,
             True,
+        )
+        self.dynamic_shape_params = TensorRTInspectorTest2.DynamicShapeParam(
+            {'data': [1, 16, 16]}, {'data': [1, 16, 16]}, {'data': [1, 16, 16]}
         )
         self.fetch_list = [out]
 
