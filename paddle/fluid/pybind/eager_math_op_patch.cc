@@ -104,7 +104,7 @@ void InitTensorWithNumpyValue(const py::object& array,
   } else if (phi::is_custom_place(place)) {
     SetTensorFromPyArray<phi::CustomPlace>(impl_ptr, array, place, zero_copy);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Place should be one of "
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
   }

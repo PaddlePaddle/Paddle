@@ -1340,15 +1340,19 @@ Tensor sigmoid_cross_entropy_with_logits_decomp(
   const Tensor zero = full_like_decomp<T>(x, 0, x.type(), x.place());
   const Tensor one = full_like_decomp<T>(x, 1, x.type(), x.place());
   Tensor pos_weight_tensor;
+  Tensor tmp_out;
   if (pos_weight) {
     pos_weight_tensor = pos_weight.get();
+    auto max_val = where<T>(x < zero, -x, zero);
+    auto term1 = (one - label) * x;
+    auto term2 = log<T>(exp<T>(-max_val) + exp<T>(-x - max_val));
+    tmp_out = term1 + pos_weight_tensor * (term2 + max_val);
   } else {
-    pos_weight_tensor = one;
+    auto term1 = where<T>(x > zero, x, zero);
+    auto term2 = x * label;
+    auto term3 = log<T>(one + exp<T>(-abs<T>(x)));
+    tmp_out = term1 - term2 + term3;
   }
-  auto term1 = where<T>(x > zero, x, zero);
-  auto term2 = x * label;
-  auto term3 = log<T>(one + exp<T>(-abs<T>(x)));
-  const Tensor tmp_out = term1 - term2 + term3 * pos_weight_tensor;
   const Tensor ignore_index_tensor =
       full_like_decomp<T>(x, ignore_index, label.type(), label.place());
   auto out = where<T>(label == ignore_index_tensor, zero, tmp_out);
@@ -1549,6 +1553,15 @@ Tensor log_loss_decomp(const Tensor& input,
   Tensor term1 = -label * log<T>(input + eps);
   Tensor term2 = (ones - label) * log<T>(ones - input + eps);
   return term1 - term2;
+}
+
+template <typename T>
+Tensor softsign_decomp(const Tensor& x) {
+  // softsign = x / (1 + abs(x))
+
+  Tensor x_abs = abs<T>(x);
+  Tensor one = full_scalar<T>(1.0, x.dtype());
+  return x / (one + x_abs);
 }
 
 }  // namespace details

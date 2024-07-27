@@ -432,7 +432,6 @@ struct BinaryOpNode : public ExprNode<T> {
     operands().resize(2);
     this->a() = a;
     this->b() = b;
-    // CHECK_EQ(a.type(), b.type()) << "the type of two argument not match";
   }
 
   Expr& a() { return ExprNode<T>::operand(0); }

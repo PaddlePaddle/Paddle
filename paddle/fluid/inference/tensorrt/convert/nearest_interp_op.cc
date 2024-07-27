@@ -93,8 +93,8 @@ class NearestInterpolateOpConverter : public OpConverter {
       scales.push_back(scale_w);
       scales.push_back(1.f);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Data layout must be NCHW or NHWC."));
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Data layout must be NCHW or NHWC."));
     }
     layer->setScales(scales.data(), scales.size());
 

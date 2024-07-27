@@ -1327,6 +1327,14 @@ class ShardingStage3(_ShardingStageBase):
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
             if 'beta' not in key:
                 placements = param.placements
+                if all(
+                    isinstance(placement, dist.Replicate)
+                    for placement in placements
+                ):
+                    placements = get_placement_with_sharding(
+                        param, self._sharding_mesh_axis
+                    )
+
             else:
                 placements = [
                     dist.Replicate()
@@ -2234,10 +2242,19 @@ class DistModel:
                 'all' : The return value contains the variable in the network and optimizer.
                 Default: 'all'
         """
-        local_state_dict = self.dist_main_program(
-            mode=self._engine._mode
-        ).state_dict(mode)
+
+        if use_pir_api():
+            scope = paddle.static.global_scope()
+            local_state_dict = self._engine._pir_dist_main_progs[
+                self._engine._mode
+            ].state_dict(mode, scope)
+        else:
+            local_state_dict = self.dist_main_program(
+                mode=self._engine._mode
+            ).state_dict(mode)
+
         dist_state_dict = self._build_distributed_state_dict(local_state_dict)
+
         mapping_names = [
             (
                 self._parameter_to_structured_name[k]
@@ -2256,10 +2273,18 @@ class DistModel:
         Args:
             local_state_dict(Dict[str, libpaddle.Tensor]): The state dict from program.
         """
-        dist_main_program = self.dist_main_program(mode=self._engine._mode)
-        dist_context = self._engine._dist_contexts[self._mode]
-        # Dict[var.name, Dict["process_shape": process_mesh.shape, "process_group": process_mesh.process_ids, "dims_mapping": dims_mapping]]
-        dist_attrs = get_dist_attr(dist_main_program, dist_context)
+        if use_pir_api():
+            dist_main_program = self._engine._pir_dist_main_progs[
+                self._engine._mode
+            ]
+            dist_attrs = get_dist_attr(dist_main_program)
+
+        else:
+            dist_main_program = self.dist_main_program(mode=self._engine._mode)
+            # Dict[var.name, Dict["process_shape": process_mesh.shape, "process_group": process_mesh.process_ids, "dims_mapping": dims_mapping]]
+            dist_attrs = get_dist_attr(
+                dist_main_program, self._engine._dist_contexts[self._mode]
+            )
 
         def build_distributed_tensor(local_tensor, dist_attr):
             assert isinstance(
@@ -2274,18 +2299,6 @@ class DistModel:
                 dist_attr["dims_mapping"]
             ), f"local tensor shape {local_tensor.shape} not equal to dims_mapping shape {dist_attr['dims_mapping']}."
             global_shape = local_tensor.shape
-            for i, dim in enumerate(dist_attr["dims_mapping"]):
-                assert dim >= -1 and dim < len(
-                    local_tensor.shape
-                ), f"dim {dim} out of range."
-                if dim == -1:
-                    continue
-                elif dim >= 0:
-                    global_shape[i] = (
-                        dist_attr["process_shape"][dim] * local_tensor.shape[i]
-                    )
-                else:
-                    raise ValueError(f"dim {dim} is not supported.")
             mesh = ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
                     dist_attr["process_shape"]
@@ -2799,8 +2812,12 @@ class ShardDataloader:
             if self._all_inputs_in_one_mesh is False:
                 assert len(self._input_keys) == len(self._meshes)
             dist_batch_data = {}
-            for i in range(len(self._input_keys)):
-                key = self._input_keys[i]
+            input_keys = (
+                batch_data.keys()
+                if self._input_keys is None
+                else self._input_keys
+            )
+            for i, key in enumerate(input_keys):
                 input_data = batch_data[key]
                 if isinstance(input_data, (list, tuple)):
                     (

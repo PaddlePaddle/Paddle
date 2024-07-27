@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) && !defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/dynload/flashattn.h"
 #endif
 
@@ -202,7 +202,7 @@ struct GateAttentionConfig {
   }
 
   bool CanUseFlashAttn() const {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) && !defined(PADDLE_WITH_HIP)
     if (!std::is_same<T, phi::dtype::bfloat16>::value &&
         !std::is_same<T, phi::dtype::float16>::value) {
       return false;
@@ -867,7 +867,7 @@ class FlashAttnWithGating {
                       phi::DenseTensor* softmax_lse,
                       phi::DenseTensor* fmha_out,
                       GateAttentionConfig<T>* config) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) && !defined(PADDLE_WITH_HIP)
     bool is_bf16 =
         qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
     TypeDebugInfo<T>();
@@ -982,7 +982,7 @@ class FlashAttnWithGating {
                        phi::DenseTensor* src_mask_grad,
                        phi::DenseTensor* nonbatched_bias_grad,
                        GateAttentionGradConfig<T>* config) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) && !defined(PADDLE_WITH_HIP)
     bool is_bf16 =
         qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
     TypeDebugInfo<T>();

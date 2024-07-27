@@ -79,12 +79,12 @@ def detach_variable(inputs):
 def check_recompute_necessary(inputs):
     necessary_for_each_input = []
     for input_ in inputs:
-        if isinstance(input_, (core.eager.Tensor, paddle.Tensor)):
+        if isinstance(input_, paddle.Tensor):
             necessary_for_each_input.append(input_.stop_gradient)
         elif type(input_) is tuple:
             for i in input_:
                 # traverse all tensors in the tuple
-                if isinstance(i, (core.eager.Tensor, paddle.Tensor)):
+                if isinstance(i, paddle.Tensor):
                     necessary_for_each_input.append(i.stop_gradient)
     if all(necessary_for_each_input):
         logger.warning(
@@ -365,8 +365,14 @@ def _recompute_without_reentrant(
                             inner_x.placements,
                         )
                     else:
+                        if isinstance(inner_x.dtype, paddle.base.core.DataType):
+                            inner_x_dtype = paddle.pir.core.datatype_to_vartype[
+                                inner_x.dtype
+                            ]
+                        else:
+                            inner_x_dtype = inner_x.dtype
                         tmp_tensor = core.eager.Tensor(
-                            inner_x.dtype,
+                            inner_x_dtype,
                             inner_x.shape,
                             inner_x.name + "cpy",
                             core.VarDesc.VarType.LOD_TENSOR,

@@ -80,6 +80,16 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        MetaTensor* output_box,
                        MetaConfig config = MetaConfig());
 
+void CollectFpnProposalsInferMeta(
+    const std::vector<const MetaTensor*>& multi_level_rois,
+    const std::vector<const MetaTensor*>& multi_level_scores,
+    const paddle::optional<std::vector<const MetaTensor*>>&
+        multi_level_rois_num,
+    int post_nms_topn,
+    MetaTensor* fpn_rois,
+    MetaTensor* rois_num,
+    MetaConfig config = MetaConfig());
+
 void DistributedPushSparseInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& shows,

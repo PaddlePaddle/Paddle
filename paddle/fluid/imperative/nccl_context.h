@@ -22,11 +22,11 @@
 #endif
 
 #ifdef PADDLE_WITH_NCCL
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
 
 #ifdef PADDLE_WITH_RCCL
-#include "paddle/fluid/platform/dynload/rccl.h"
+#include "paddle/phi/backends/dynload/rccl.h"
 #endif
 
 #include "paddle/fluid/imperative/parallel_context.h"
@@ -64,7 +64,7 @@ class NCCLParallelContext : public ParallelContext {
 
   void Broadcast(framework::Variable* src, int ring_id) override;
 
-  paddle::platform::DeviceContext* GetDeviceContext(int ring_id) override;
+  phi::DeviceContext* GetDeviceContext(int ring_id) override;
 
   void WaitCompute(int ring_id) override;
 

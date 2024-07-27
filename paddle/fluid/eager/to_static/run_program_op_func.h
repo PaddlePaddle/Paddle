@@ -80,6 +80,29 @@ static void clear_unused_out_var_in_backward(
   delete garbages;
 }
 
+static void pir_clear_unused_out_var_in_backward(
+    const std::vector<pir::Value>& fo,
+    const pir::Block* forward_block,
+    const pir::Block* backward_block,
+    paddle::framework::Scope* scope) {
+  auto out_names = details::GetNameFromValue(forward_block, fo, false, true);
+  std::deque<std::shared_ptr<paddle::memory::Allocation>>* garbages =
+      new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
+  for (auto out_name : out_names) {
+    if (!backward_block->kwargs().count(out_name)) {
+      auto var = scope->FindVar(out_name);
+      if (var == nullptr) {
+        continue;
+      }
+      if (var->IsType<phi::DenseTensor>()) {
+        garbages->emplace_back(
+            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+      }
+    }
+  }
+  delete garbages;
+}
+
 static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(
     const std::vector<paddle::Tensor>& x,
     const std::vector<std::string>& x_names,
@@ -255,15 +278,10 @@ inline void pir_run_program_ad_func(
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
-  std::shared_ptr<PirGradNodeRunProgram> grad_node;
   VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad << ", is_test = " << is_test;
-
-  if (!is_test && require_any_grad) {
-    // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
-    grad_node = std::make_shared<PirGradNodeRunProgram>(1, 2);
-  }
-
+  auto x_tmp = Trans2ContiguousTensors(x);
+  auto params_tmp = Trans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
   int64_t place_hash_key = 0x9e3779b9;
@@ -271,8 +289,6 @@ inline void pir_run_program_ad_func(
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
     place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
-  auto x_tmp = Trans2ContiguousTensors(x);
-  auto params_tmp = Trans2ContiguousTensors(params);
   PirRunProgramAPI(x_tmp,
                    params_tmp,
                    out,
@@ -281,6 +297,9 @@ inline void pir_run_program_ad_func(
                    attrs,
                    place_hash_key);
   if (!is_test && require_any_grad) {
+    // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
+    auto grad_node = std::make_shared<PirGradNodeRunProgram>(1, 2);
+
     // Set place hash keys for backward
     grad_node->SetPlaceHashKey(place_hash_key);
 
@@ -291,6 +310,17 @@ inline void pir_run_program_ad_func(
     auto filter_x = pir_filter_unused_input_var_in_backward(x_tmp, "bx", attrs);
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
+
+    std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
+        std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
+    std::shared_ptr<::pir::Program> forward_program = PADDLE_GET_CONST(
+        std::shared_ptr<::pir::Program>, attrs.at("forward_program"));
+    auto forward_outputs =
+        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo"));
+    pir_clear_unused_out_var_in_backward(forward_outputs,
+                                         forward_program->block(),
+                                         backward_program->block(),
+                                         step_scope[0]);
 
     grad_node->SetFwdParams(params_tmp);
 

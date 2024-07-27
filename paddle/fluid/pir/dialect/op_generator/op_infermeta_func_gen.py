@@ -790,6 +790,7 @@ def GenDistBranch(args, op_info):
   ProcessMeshAttribute op_mesh;
   if(HasDistInput(input_values, &op_mesh)) {{
     {}
+    {}
     CvtAllInputsToDist(input_values, op_mesh);
     auto ctx = pir::IrContext::Instance();
     std::vector<pir::Attribute> dist_operand_attrs, dist_result_attrs;"""
@@ -799,7 +800,15 @@ def GenDistBranch(args, op_info):
         if name == "learning_rate":
             extra_call = "CopyLeafOpToMesh(learning_rate_, op_mesh);"
             break
-    dist_branch_str = TEMPLATE.format(extra_call)
+    merge_input_meshes = ""
+    if (
+        op_info.class_name == 'CheckFiniteAndUnscale_Op'
+        or op_info.class_name == 'UpdateLossScaling_Op'
+    ):
+        merge_input_meshes = "op_mesh = CreateGlobalMesh(input_values);"
+    if op_info.class_name == 'CheckFiniteAndUnscale_Op':
+        extra_call = "CopyLeafOpToMesh(scale_, op_mesh);"
+    dist_branch_str = TEMPLATE.format(merge_input_meshes, extra_call)
     infer_spmd_args_list = []
     # Prepare inputs_meta_tensor & attributes for infer spmd
     for name in op_info.spmd_params:
@@ -844,6 +853,7 @@ def GenDistBranch(args, op_info):
         spmd_rule_func = "VariadicReplicatedInferSpmdDynamic"
     TEMPLATE = """
     auto spmd_info = phi::distributed::{spmd_func}({args});
+    DebugInfoForInferSpmd("{op_name}", spmd_info);
     PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
         "Size of spmd_info.first for op[{op_name}]is unexpected."));
     for(auto& arg_dist : spmd_info.first) {{

@@ -46,7 +46,7 @@ void CollectShapeManager::CollectShapeInfo(
 #endif
 #endif
 
-    framework::DDim dim = tensor.dims();
+    phi::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
@@ -56,7 +56,7 @@ void CollectShapeManager::CollectShapeInfo(
       // This must be a zero dimension tensor.
       PADDLE_ENFORCE_EQ(tensor.numel(),
                         1UL,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "This tensor must have one element, but got %ld.",
                             tensor.numel()));
       std::vector<int32_t> zero_shape(1, 1);
