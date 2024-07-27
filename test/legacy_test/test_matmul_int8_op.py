@@ -283,7 +283,7 @@ class TestMatmulInt8Op18(TestMatmulInt8):
 
     def setUp(self):
         paddle.set_flags({'FLAGS_enable_blaslt_global_search': 1})
-        paddle.set_flags({'FLAGS_cublaslt_device_best_config': 'search.csv'})
+        paddle.set_flags({'FLAGS_cublaslt_device_best_config': './test_matmul_int8_search_config.csv'})
         super().setUp()
     
     def tearDown(self):
