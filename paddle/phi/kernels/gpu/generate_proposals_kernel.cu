@@ -23,6 +23,10 @@
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
+#include <thrust/device_vector.h>
+#include <thrust/remove.h>
+#include <thrust/execution_policy.h>
+#include <thrust/functional.h>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -176,11 +180,8 @@ static __global__ void FilterBBoxes(const T *bboxes,
   T im_w = im_info[1];
 
   int cnt = 0;
-  __shared__ int keep_index[BlockSize];
 
   CUDA_KERNEL_LOOP(i, num) {
-    keep_index[threadIdx.x] = -1;
-    __syncthreads();
 
     int k = i * 4;
     T xmin = bboxes[k];
@@ -190,6 +191,7 @@ static __global__ void FilterBBoxes(const T *bboxes,
     T offset = pixel_offset ? static_cast<T>(1.0) : 0;
     T w = xmax - xmin + offset;
     T h = ymax - ymin + offset;
+    bool val = false;
     if (pixel_offset) {
       T cx = xmin + w / 2.;
       T cy = ymin + h / 2.;
@@ -198,28 +200,12 @@ static __global__ void FilterBBoxes(const T *bboxes,
         w = (xmax - xmin) / im_info[2] + 1.;
         h = (ymax - ymin) / im_info[2] + 1.;
       }
-
-      if (w >= min_size && h >= min_size && cx <= im_w && cy <= im_h) {
-        keep_index[threadIdx.x] = i;
-      }
+      
+      val = (w >= min_size && h >= min_size && cx <= im_w && cy <= im_h);
     } else {
-      if (w >= min_size && h >= min_size) {
-        keep_index[threadIdx.x] = i;
-      }
+      val = (w >= min_size && h >= min_size);
     }
-    __syncthreads();
-    if (threadIdx.x == 0) {
-      int size = (num - i) < BlockSize ? num - i : BlockSize;
-      for (int j = 0; j < size; ++j) {
-        if (keep_index[j] > -1) {
-          keep[cnt++] = keep_index[j];
-        }
-      }
-    }
-    __syncthreads();
-  }
-  if (threadIdx.x == 0) {
-    keep_num[0] = cnt;
+    keep[i] = val ? i : -1;
   }
 }
 
@@ -387,27 +373,24 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   DenseTensor keep_index, keep_num_t;
   keep_index.Resize(common::make_ddim({pre_nms_num}));
   ctx.template Alloc<int>(&keep_index);
-  keep_num_t.Resize(common::make_ddim({1}));
-  ctx.template Alloc<int>(&keep_num_t);
+  // keep_num_t.Resize(common::make_ddim({1}));
+  // ctx.template Alloc<int>(&keep_num_t);
   min_size = std::max(min_size, 1.0f);
+  int block_size = 512;
+  int grid_size = (pre_nms_num + block_size - 1) / block_size;
   auto stream = ctx.stream();
-  FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(proposals.data<T>(),
+  int *keep = keep_index.data<int>();
+  FilterBBoxes<T, 512><<<grid_size, block_size, 0, stream>>>(proposals.data<T>(),
                                               im_shape.data<T>(),
                                               min_size,
                                               pre_nms_num,
-                                              keep_num_t.data<int>(),
-                                              keep_index.data<int>(),
+                                              nullptr,
+                                              keep,
                                               false,
                                               pixel_offset);
-  int keep_num;
-  const auto gpu_place = ctx.GetPlace();
-  memory_utils::Copy(CPUPlace(),
-                     &keep_num,
-                     gpu_place,
-                     keep_num_t.data<int>(),
-                     sizeof(int),
-                     ctx.stream());
+  int *new_ptr = thrust::remove(thrust::device.on(stream), keep, keep + pre_nms_num, -1);
   ctx.Wait();
+  int keep_num = (int)(new_ptr - keep);
   keep_index.Resize(common::make_ddim({keep_num}));
 
   DenseTensor scores_filter, proposals_filter;
