@@ -690,9 +690,70 @@ class CastOpPattern
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
+
   }
 };
+class SplitWithNumOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::SplitWithNumOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SplitWithNumOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::SplitWithNumOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value axis_ = op.operand_source(1);
+    if (!axis_) {
+      VLOG(3)<< "Invalid split axis. Split on batch is not supported in "
+                   "TensorRT with static shape";
+        return false;
+    }
+    bool is_from_tensor = false;
+    phi::IntArray axis = phi::IntArray(
+          paddle::dialect::ParseValueShape(axis_, &is_from_tensor));
+    int64_t axis_value;
+    for (auto a : axis.GetData()) {
+      if (a == 0){
+       VLOG(3)<<"Invalid split axis. Split on batch is not supported in ";
+        return false;
+      }
+      axis_value = a;
+    }
+    if (!op->HasAttribute("num") ) {
+     VLOG(3)<< "split op must has num attributes";
+      return false;
+    }
+    int num = op->attribute<pir::Int32Attribute>("num").data();
 
+    auto input_var_name = op.operand_source(0);
+    auto input_var_name_type = input_var_name.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    LOG(INFO)<<input_var_name_type;
+    auto input_var_name_shape = input_var_name_type.dims();
+    axis_value += (axis_value < 0) ? input_var_name_shape.size() : 0;
+    if (input_var_name_shape[axis_value] == -1) {
+        VLOG(3) << "The (" << axis_value << ") dim of input should not be -1";
+        return false;
+    }
+    std::vector<int32_t> output_lengths;
+    if (num > 0) {
+      int64_t in_axis_dim = input_var_name_shape[axis_value];
+      if (in_axis_dim % num != 0) {
+            VLOG(3) << "Invalid number to split. Tensor split does not result"
+                       " in an equal division of dimensions. Axis dim = "
+                    << in_axis_dim << " num = " << num << "!= 0";
+            return false;
+      }
+      size_t out_axis_dim = in_axis_dim / num;
+      for (int i = 0; i < num; ++i) {
+        output_lengths.push_back(out_axis_dim);
+      }
+    }
+    auto res = op.result(0); 
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -741,6 +802,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<IndexSelectOpPattern>(context));
     ps.Add(std::make_unique<FlattenOpPattern>(context));
     ps.Add(std::make_unique<CastOpPattern>(context));
+    ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
     return ps;
   }
 };
