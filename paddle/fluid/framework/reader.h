@@ -37,13 +37,13 @@ class ReaderBase {
     PADDLE_ENFORCE_EQ(
         shapes_.size(),
         need_check_feed_.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Construct ReaderBase with mismatched sizes of shapes "
             "and need_check_feed"));
     PADDLE_ENFORCE_EQ(
         var_types_.size(),
         need_check_feed_.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Construct ReaderBase with mismatched sizes of var_types "
             "and need_check_feed"));
   }
@@ -113,7 +113,7 @@ class DecoratedReader : public ReaderBase,
         reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The underlying reader of DecoratedReader should not be null"));
   }
 
@@ -156,7 +156,7 @@ class ReaderHolder {
     auto reader_base = std::dynamic_pointer_cast<ReaderBase>(reader);
     PADDLE_ENFORCE_NOT_NULL(
         reader_base,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The underlying reader of ReaderHolder should not be null"));
     reader_ = reader_base;
   }
@@ -168,7 +168,7 @@ class ReaderHolder {
   void ReadNext(paddle::framework::LoDTensorArray* out) {
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The underlying reader of ReaderHolder should not be null"));
     reader_->ReadNext(out);
   }
@@ -188,7 +188,7 @@ class ReaderHolder {
     VLOG(1) << "Shutdown";
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The underlying reader of ReaderHolder should not be null"));
     reader_->Shutdown();
   }
@@ -197,7 +197,7 @@ class ReaderHolder {
     VLOG(1) << "start";
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The underlying reader of ReaderHolder should not be null"));
     reader_->Start();
   }

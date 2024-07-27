@@ -119,7 +119,7 @@ void TensorCopyImpl(const TENSOR& src,
     }
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
@@ -144,13 +144,13 @@ void TensorCopyImpl(const TENSOR& src,
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(ctx_place),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "Source place and context place do not match, source "
                           "place is %s, context place is %s.",
                           src_gpu_place,
@@ -166,13 +166,13 @@ void TensorCopyImpl(const TENSOR& src,
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(ctx_place),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(dst_gpu_place,
                       ctx_gpu_place,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "Destination place and context place do not match, "
                           "destination place is %s, context place is %s.",
                           dst_gpu_place,
@@ -188,14 +188,14 @@ void TensorCopyImpl(const TENSOR& src,
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(ctx_place),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Device context place mismatch. When copying phi::DenseTensor "
             "data from GPU memory to CUDA Pinned memory, current "
             "device context place should be GPU."));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The source GPU device and current device context do "
                           "not match. The source GPU device number is %d, but "
                           "device context GPU number is %d.",
@@ -213,14 +213,14 @@ void TensorCopyImpl(const TENSOR& src,
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(ctx_place),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Device context place mismatch. When copying phi::DenseTensor "
             "data from CUDA Pinned memory to GPU memory, current "
             "device context place should be GPU."));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(dst_gpu_place,
                       ctx_gpu_place,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The target GPU device and current device context do "
                           "not match. The target GPU device number is %d, but "
                           "device context GPU number is %d.",
@@ -238,7 +238,7 @@ void TensorCopyImpl(const TENSOR& src,
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(ctx_place),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
@@ -255,13 +255,13 @@ void TensorCopyImpl(const TENSOR& src,
         memory::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
       } else {
-        PADDLE_THROW(phi::errors::Unavailable(
+        PADDLE_THROW(common::errors::Unavailable(
             "Context place dose not match the source and destination place."));
       }
     }
   }
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Copying from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
@@ -371,7 +371,7 @@ void TensorCopySync(const phi::DenseTensor& src,
     }
   }       // NOLINT
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
@@ -418,7 +418,7 @@ void TensorCopySync(const phi::DenseTensor& src,
         dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size, nullptr);
   }
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
@@ -441,7 +441,7 @@ void TensorCopySync(const phi::DenseTensor& src,
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
@@ -484,7 +484,7 @@ void TensorToStream(std::ostream& os,
     auto* data_ptr = contiguous_tensor.data();
     PADDLE_ENFORCE_LT(size,
                       (std::numeric_limits<std::streamsize>::max)(),
-                      phi::errors::ResourceExhausted(
+                      common::errors::ResourceExhausted(
                           "tensor size %d overflow when writing tensor", size));
     if (phi::is_gpu_place(contiguous_tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -507,7 +507,7 @@ void TensorToStream(std::ostream& os,
         size -= size_to_write;
       }
 #else
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
     } else if (phi::is_xpu_place(contiguous_tensor.place())) {
@@ -531,7 +531,7 @@ void TensorToStream(std::ostream& os,
         size -= size_to_write;
       }
 #else
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
 #endif
     } else if (phi::is_custom_place(contiguous_tensor.place())) {
@@ -556,7 +556,7 @@ void TensorToStream(std::ostream& os,
         size -= size_to_write;
       }
 #else
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "CustomPlace is not supported when not compiled with "
           "CustomDevice"));
 #endif
@@ -594,7 +594,7 @@ void TensorFromStream(std::istream& is,
   PADDLE_ENFORCE_EQ(
       version,
       0U,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "tensor version %u is not supported, Only version 0 is supported",
           version));
 
@@ -605,9 +605,10 @@ void TensorFromStream(std::istream& is,
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
     std::unique_ptr<char[]> buf(new char[size]);  // NOLINT
     is.read(reinterpret_cast<char*>(buf.get()), size);
-    PADDLE_ENFORCE_EQ(desc.ParseFromArray(buf.get(), size),
-                      true,
-                      phi::errors::InvalidArgument("Cannot parse tensor desc"));
+    PADDLE_ENFORCE_EQ(
+        desc.ParseFromArray(buf.get(), size),
+        true,
+        common::errors::InvalidArgument("Cannot parse tensor desc"));
   }
   {  // read tensor
     tensor->Resize(common::make_ddim(shape));
@@ -635,10 +636,10 @@ void TensorFromStream(std::istream& is,
       }
 #else
       if (phi::is_gpu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "CUDAPlace is not supported when not compiled with CUDA"));
       } else if (phi::is_xpu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
       }
 #endif
@@ -659,7 +660,7 @@ void TensorFromStream(std::istream& is,
   PADDLE_ENFORCE_EQ(
       version,
       0U,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "tensor version %u is not supported, Only version 0 is supported",
           version));
   proto::VarType::TensorDesc desc;
@@ -667,18 +668,20 @@ void TensorFromStream(std::istream& is,
      // proto buffer
     int32_t size = -1;
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
-    PADDLE_ENFORCE_EQ(is.good(),
-                      true,
-                      phi::errors::Unavailable("Cannot read tensor desc size"));
-    PADDLE_ENFORCE_GE(
-        size,
-        0,
-        phi::errors::InvalidArgument("phi::DenseTensor desc size should >= 0"));
+    PADDLE_ENFORCE_EQ(
+        is.good(),
+        true,
+        common::errors::Unavailable("Cannot read tensor desc size"));
+    PADDLE_ENFORCE_GE(size,
+                      0,
+                      common::errors::InvalidArgument(
+                          "phi::DenseTensor desc size should >= 0"));
     std::unique_ptr<char[]> buf(new char[size]);  // NOLINT
     is.read(reinterpret_cast<char*>(buf.get()), size);
-    PADDLE_ENFORCE_EQ(desc.ParseFromArray(buf.get(), size),
-                      true,
-                      phi::errors::InvalidArgument("Cannot parse tensor desc"));
+    PADDLE_ENFORCE_EQ(
+        desc.ParseFromArray(buf.get(), size),
+        true,
+        common::errors::InvalidArgument("Cannot parse tensor desc"));
   }
   {  // read tensor
     std::vector<int64_t> dims;
@@ -706,15 +709,15 @@ void TensorFromStream(std::istream& is,
       }
 #else
       if (phi::is_gpu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "CUDAPlace is not supported when not compiled with CUDA"));
       } else if (phi::is_xpu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
       } else {
         PADDLE_THROW(
-            phi::errors::Unimplemented("CustomPlace is not supported when "
-                                       "not compiled with CustomDevice"));
+            common::errors::Unimplemented("CustomPlace is not supported when "
+                                          "not compiled with CustomDevice"));
       }
 #endif
     } else {
@@ -734,7 +737,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
   PADDLE_ENFORCE_LE(
       type.lanes,
       1,
-      phi::errors::Unimplemented("Vector type is not supported currently."));
+      common::errors::Unimplemented("Vector type is not supported currently."));
 
   switch (type.bits) {
     case 8:
@@ -742,7 +745,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
         return static_cast<void*>(dst->mutable_data<int8_t>(dst_place));
       if (type.code == kDLUInt)
         return static_cast<void*>(dst->mutable_data<uint8_t>(dst_place));
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
@@ -755,7 +758,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
       if (type.code == kDLBfloat)
         return static_cast<void*>(
             dst->mutable_data<phi::dtype::bfloat16>(dst_place));
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
@@ -764,7 +767,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
         return static_cast<void*>(dst->mutable_data<int32_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(dst->mutable_data<float>(dst_place));
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
@@ -776,7 +779,7 @@ void* GetDstPtrByDLDataType(DLDataType type,
       if (type.code == kDLComplex)
         return static_cast<void*>(
             dst->mutable_data<phi::dtype::complex<float>>(dst_place));
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
@@ -784,13 +787,13 @@ void* GetDstPtrByDLDataType(DLDataType type,
       if (type.code == kDLComplex)
         return static_cast<void*>(
             dst->mutable_data<phi::dtype::complex<double>>(dst_place));
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     default:
-      PADDLE_THROW(phi::errors::Unimplemented("Unsupported DLDataType.bits %d.",
-                                              type.bits));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported DLDataType.bits %d.", type.bits));
   }
 }
 
@@ -830,7 +833,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  PADDLE_THROW(phi::errors::Unimplemented("XPUPlace is not supported"));
+  PADDLE_THROW(common::errors::Unimplemented("XPUPlace is not supported"));
 #endif
 }
 
@@ -870,7 +873,7 @@ void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
 #endif
   src->deleter(const_cast<DLManagedTensor*>(src));
 #ifdef PADDLE_WITH_XPU
-  PADDLE_THROW(phi::errors::Unimplemented("XPUPlace is not supported"));
+  PADDLE_THROW(common::errors::Unimplemented("XPUPlace is not supported"));
 #endif
 }
 

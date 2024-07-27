@@ -232,8 +232,8 @@ CostData CostModel::ProfileMeasure(
     profiler_state = platform::ProfilerState::kAll;
     place = phi::GPUPlace();
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Not support %s in CostModel now", device));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Not support %s in CostModel now", device));
   }
 
   Executor executor(place);

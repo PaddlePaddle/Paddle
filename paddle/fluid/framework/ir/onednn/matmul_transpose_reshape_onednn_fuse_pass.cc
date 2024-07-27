@@ -35,7 +35,7 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(Graph *graph) const {
 void MatmulTransposeReshapeMKLDNNPass::Fuse(
     Graph *graph, const std::string &matmul_type) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init(matmul_type + "_transpose_reshape_onednn_fuse_pass",
                      graph);

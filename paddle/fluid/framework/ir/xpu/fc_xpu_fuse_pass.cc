@@ -297,7 +297,7 @@ void FcXPUFusePass::CreateTheReplicatedWeights(
   PADDLE_ENFORCE_EQ(
       mul != nullptr,
       true,
-      phi::errors::InvalidArgument("mul node ptr can not be null"));
+      common::errors::InvalidArgument("mul node ptr can not be null"));
   auto mul_w_name = mul->Op()->Input("Y")[0];
   std::string replicated_w_name = mul_w_name + "_copy_" +
                                   std::to_string(block->ID()) + "_" +
@@ -335,22 +335,22 @@ Node* FcXPUFusePass::GetNodeFromNodesMap(
   PADDLE_ENFORCE_EQ(
       iter != nodes_map.end(),
       true,
-      phi::errors::InvalidArgument("nodes_map[%s] not found in nodes_map",
-                                   pattern_node_name.c_str()));
+      common::errors::InvalidArgument("nodes_map[%s] not found in nodes_map",
+                                      pattern_node_name.c_str()));
   auto node_map = iter->second;
   auto node_iter = node_map.find(node_name);
-  PADDLE_ENFORCE_EQ(
-      node_iter != node_map.end(),
-      true,
-      phi::errors::InvalidArgument("nodes_map[%s][%s] not found in nodes_map",
-                                   pattern_node_name.c_str(),
-                                   node_name.c_str()));
+  PADDLE_ENFORCE_EQ(node_iter != node_map.end(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "nodes_map[%s][%s] not found in nodes_map",
+                        pattern_node_name.c_str(),
+                        node_name.c_str()));
   return node_iter->second;
 }
 
 void FcXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   int found_subgraph_count = 0;
@@ -393,7 +393,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   PADDLE_ENFORCE_EQ(
       mul != nullptr,
       true,
-      phi::errors::InvalidArgument("mul node ptr can not be null"));
+      common::errors::InvalidArgument("mul node ptr can not be null"));
   auto mul_w_name = mul->Op()->Input("Y")[0];
   Node* mul_w = FindNodeWithName(graph, mul_w_name);
   CreateTheReplicatedWeights(graph, scope, block, nodes_map);
@@ -427,7 +427,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
         GetNodeFromNodesMap(nodes_map, "ew_bias_add", "ew_bias_add_bias");
     PADDLE_ENFORCE_EQ(ew_bias_add_bias != nullptr,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ew_bias_add_bias node ptr can not be null"));
     PrepareBias(graph, scope, block, ew_bias_add_bias, &fusion_bias_node);
   }
@@ -437,27 +437,27 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     PADDLE_ENFORCE_EQ(
         bn != nullptr,
         true,
-        phi::errors::InvalidArgument("bn node ptr can not be null"));
+        common::errors::InvalidArgument("bn node ptr can not be null"));
     auto* bn_bias = GetNodeFromNodesMap(nodes_map, "bn", "bn_bias");
     PADDLE_ENFORCE_EQ(
         bn_bias != nullptr,
         true,
-        phi::errors::InvalidArgument("bn_bias node ptr can not be null"));
+        common::errors::InvalidArgument("bn_bias node ptr can not be null"));
     auto* bn_scale = GetNodeFromNodesMap(nodes_map, "bn", "bn_scale");
     PADDLE_ENFORCE_EQ(
         bn_scale != nullptr,
         true,
-        phi::errors::InvalidArgument("bn_scale node ptr can not be null"));
+        common::errors::InvalidArgument("bn_scale node ptr can not be null"));
     auto* bn_var = GetNodeFromNodesMap(nodes_map, "bn", "bn_var");
     PADDLE_ENFORCE_EQ(
         bn_var != nullptr,
         true,
-        phi::errors::InvalidArgument("bn_var node ptr can not be null"));
+        common::errors::InvalidArgument("bn_var node ptr can not be null"));
     auto* bn_mean = GetNodeFromNodesMap(nodes_map, "bn", "bn_mean");
     PADDLE_ENFORCE_EQ(
         bn_mean != nullptr,
         true,
-        phi::errors::InvalidArgument("bn_mean node ptr can not be null"));
+        common::errors::InvalidArgument("bn_mean node ptr can not be null"));
 
     auto bn_bias_t =
         scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
@@ -498,7 +498,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
       PADDLE_ENFORCE_EQ(
           weight_scale.size(),
           mean_len,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Weight max_scale size must equal batch_norm scale/mean size."));
       for (int i = 0; i < mean_len; i++) {
         weight_scale[i] *= fabs(bn_scale_ptr[i]);
@@ -625,7 +625,7 @@ void FcXPUFusePass::CreateFusionOutputs(
   PADDLE_ENFORCE_EQ(
       mul != nullptr,
       true,
-      phi::errors::InvalidArgument("mul node ptr can not be null"));
+      common::errors::InvalidArgument("mul node ptr can not be null"));
   // output && output max
   std::string fc_xpu_out_name;
   Node* fc_out_var_node = nullptr;
@@ -639,7 +639,7 @@ void FcXPUFusePass::CreateFusionOutputs(
     PADDLE_ENFORCE_EQ(
         act_out != nullptr,
         true,
-        phi::errors::InvalidArgument("act_out node ptr can not be null"));
+        common::errors::InvalidArgument("act_out node ptr can not be null"));
     fc_xpu_out_name = act_out->Name();
     fc_out_var_node = act_out;
   } else if (bn) {
@@ -647,7 +647,7 @@ void FcXPUFusePass::CreateFusionOutputs(
     PADDLE_ENFORCE_EQ(
         bn_out != nullptr,
         true,
-        phi::errors::InvalidArgument("bn_out node ptr can not be null"));
+        common::errors::InvalidArgument("bn_out node ptr can not be null"));
     fc_xpu_out_name = bn_out->Name();
     fc_out_var_node = bn_out;
   } else if (ew_bias_add) {
@@ -655,7 +655,7 @@ void FcXPUFusePass::CreateFusionOutputs(
         GetNodeFromNodesMap(nodes_map, "ew_bias_add", "ew_bias_add_out");
     PADDLE_ENFORCE_EQ(ew_bias_add_out != nullptr,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ew_bias_add_out node ptr can not be null"));
     fc_xpu_out_name = ew_bias_add_out->Name();
     fc_out_var_node = ew_bias_add_out;
@@ -664,7 +664,7 @@ void FcXPUFusePass::CreateFusionOutputs(
     PADDLE_ENFORCE_EQ(
         mul_out != nullptr,
         true,
-        phi::errors::InvalidArgument("mul_out node ptr can not be null"));
+        common::errors::InvalidArgument("mul_out node ptr can not be null"));
     fc_xpu_out_name = mul_out->Name();
     fc_out_var_node = mul_out;
   }
@@ -722,19 +722,19 @@ void FcXPUFusePass::CreateFusionInputs(
   PADDLE_ENFORCE_EQ(
       mul != nullptr,
       true,
-      phi::errors::InvalidArgument("mul node ptr can not be null"));
+      common::errors::InvalidArgument("mul node ptr can not be null"));
   auto* mul_x = GetNodeFromNodesMap(nodes_map, "mul", "mul_x");
   PADDLE_ENFORCE_EQ(
       mul_x != nullptr,
       true,
-      phi::errors::InvalidArgument("mul_x node ptr can not be null"));
+      common::errors::InvalidArgument("mul_x node ptr can not be null"));
   // x max
   std::string mul_x_max_name = mul_x->Name() + "_input_max";
   Node* mul_x_max = nullptr;
   if (op_weights_precision == "int8") {
     PADDLE_ENFORCE_EQ(AreScalesPresentForNodes(var_quant_scales, {mul_x}),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "When fc op is running in int8 precision, the scales "
                           "of input var should be present in!"));
     float input_scale = GetScaleValueForNode(var_quant_scales, mul_x);
@@ -847,7 +847,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       auto* var = scope->FindVar(mul_w_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          phi::errors::NotFound(
+          common::errors::NotFound(
               "The input persistable [%s] var of [%s] op is not found.",
               mul_w_name));
       auto* weight_tensor = var->GetMutable<phi::DenseTensor>();

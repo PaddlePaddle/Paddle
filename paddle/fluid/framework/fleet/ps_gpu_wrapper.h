@@ -299,7 +299,8 @@ class PSGPUWrapper {
         VLOG(0) << "init single node gpu server";
       }
 #else
-      PADDLE_THROW(phi::errors::Unavailable("heter ps need compile with GLOO"));
+      PADDLE_THROW(
+          common::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
 #ifdef PADDLE_WITH_CUDA
       if (multi_node_) {
@@ -321,7 +322,7 @@ class PSGPUWrapper {
         PADDLE_ENFORCE_EQ(
             gloo->IsInitialized(),
             true,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "You must initialize the gloo environment first to use it."));
         gloo::BroadcastOptions opts(gloo->GetContext());
         opts.setOutput(&inter_ncclids_[0], dev_size);
@@ -340,7 +341,7 @@ class PSGPUWrapper {
         node_size_ = gloo->Size();
 #else
         PADDLE_THROW(
-            phi::errors::Unavailable("heter ps need compile with GLOO"));
+            common::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
       }
 #endif
