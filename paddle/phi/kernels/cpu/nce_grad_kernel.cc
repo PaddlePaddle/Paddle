@@ -34,14 +34,14 @@ template <typename T, typename Context>
 void NCEGradKernel(const Context &dev_ctx,
                    const DenseTensor &input_in,
                    const DenseTensor &label_in,
-                   const DenseTensor &bias_in,
+                   const paddle::optional<DenseTensor> &bias_in,
                    const DenseTensor &weight_in,
                    const DenseTensor &sample_logits_in,
                    const DenseTensor &sample_labels_in,
-                   const DenseTensor &sample_weight_in,
-                   const DenseTensor &custom_dist_probs,
-                   const DenseTensor &custom_dist_alias,
-                   const DenseTensor &custom_dist_alias_probs,
+                   const paddle::optional<DenseTensor> &sample_weight_in,
+                   const paddle::optional<DenseTensor> &custom_dist_probs,
+                   const paddle::optional<DenseTensor> &custom_dist_alias,
+                   const paddle::optional<DenseTensor> &custom_dist_alias_probs,
                    const DenseTensor &cost_grad,
                    int num_total_classes,
                    const std::vector<int> &custom_neg_classes,
@@ -61,7 +61,7 @@ void NCEGradKernel(const Context &dev_ctx,
   const T *sample_out_data = sample_out->data<T>();
   auto sample_labels = &sample_labels_in;
   const int64_t *sample_labels_data = sample_labels->data<int64_t>();
-  auto sample_weight = &sample_weight_in;
+  auto sample_weight = sample_weight_in.get_ptr();
   const T *sample_weight_data = nullptr;
   if (sample_weight != nullptr) {
     sample_weight_data = sample_weight->data<T>();
@@ -83,9 +83,9 @@ void NCEGradKernel(const Context &dev_ctx,
       break;
     }
     case 2: {
-      auto dist_probs = &custom_dist_probs;
-      auto dist_alias = &custom_dist_alias;
-      auto dist_alias_probs = &custom_dist_alias_probs;
+      auto dist_probs = custom_dist_probs.get_ptr();
+      auto dist_alias = custom_dist_alias.get_ptr();
+      auto dist_alias_probs = custom_dist_alias_probs.get_ptr();
 
       PADDLE_ENFORCE_EQ(
           dist_probs->numel(),
