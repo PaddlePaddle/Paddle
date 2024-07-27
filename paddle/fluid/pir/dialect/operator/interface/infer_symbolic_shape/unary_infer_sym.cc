@@ -497,11 +497,11 @@ bool Flatten_OpInferSymbolicShape(
   return FlattenOpInferSymbolicShape(op, infer_context);
 }
 
-bool IsEmptyOpInferSymbolicShape(pir::Operation *op,
-                                 pir::InferSymbolicShapeContext *infer_context) {
+bool IsEmptyOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  
+
   symbol::TensorShapeOrDataDimExprs out_shape({});
 
   infer_context->SetShapeOrDataForValue(op->result(0), out_shape);
