@@ -210,16 +210,12 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
 }
 
 static void ShareTensorsIntoScopeByValue(
-    const ::pir::Block *block,
-    const std::vector<Tensor> &tensors,
-    const std::vector<::pir::Value> &values,
-    paddle::framework::Scope *scope) {
+    const std::vector<::pir::Value> &values, paddle::framework::Scope *scope) {
   auto names = GetNameFromValue(values);
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
 static void ShareTensorsFromScopeByValue(
-    const ::pir::Block *block,
     const std::vector<Tensor *> &tensors,
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
@@ -454,10 +450,9 @@ inline void PirRunProgramAPI(
                "for program: "
             << program_id;
     // Step 1. share input_vars & parameters into scope
+    details::ShareTensorsIntoScopeByValue(x, input_values, global_inner_scope);
     details::ShareTensorsIntoScopeByValue(
-        forward_program->block(), x, input_values, global_inner_scope);
-    details::ShareTensorsIntoScopeByValue(
-        forward_program->block(), params, param_values, global_inner_scope);
+        params, param_values, global_inner_scope);
     // Step 2. create new interpretercore
     auto passed_kernel_program =
         paddle::framework::ApplyIrPass(forward_program.get(), place);
@@ -518,10 +513,9 @@ inline void PirRunProgramAPI(
                                           /*in_pir_mode=*/true);
     interpreter_core = cached_value.core_;
     // Step 2. update scope for cache interpretercore
+    details::ShareTensorsIntoScopeByValue(x, input_values, global_inner_scope);
     details::ShareTensorsIntoScopeByValue(
-        forward_program->block(), x, input_values, global_inner_scope);
-    details::ShareTensorsIntoScopeByValue(
-        forward_program->block(), params, param_values, global_inner_scope);
+        params, param_values, global_inner_scope);
     // TODO(xiongkun): new ir how to build scope.
     // if (interpreter_core->GetVariableScope()->GetMutableScope() !=
     // global_inner_scope) {
@@ -546,7 +540,7 @@ inline void PirRunProgramAPI(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Get Output, and Middle Outputs
     details::ShareTensorsFromScopeByValue(
-        forward_program->block(), out, output_values, global_inner_scope);
+        out, output_values, global_inner_scope);
 
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
@@ -1006,10 +1000,8 @@ inline void PirRunProgramGradAPI(
   details::Trans2ContiguousTensorsInplace(out_grad);
 
   // share x, param, middles, output_grads, out into scope.
-  details::ShareTensorsIntoScopeByValue(backward_program->block(),
-                                        out_grad,
-                                        output_grad_values,
-                                        global_inner_scope);
+  details::ShareTensorsIntoScopeByValue(
+      out_grad, output_grad_values, global_inner_scope);
 
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
@@ -1118,11 +1110,9 @@ inline void PirRunProgramGradAPI(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Step 4. get outputs
     details::ShareTensorsFromScopeByValue(
-        backward_program->block(), x_grad, x_grad_values, global_inner_scope);
-    details::ShareTensorsFromScopeByValue(backward_program->block(),
-                                          params_grad,
-                                          p_grad_values,
-                                          global_inner_scope);
+        x_grad, x_grad_values, global_inner_scope);
+    details::ShareTensorsFromScopeByValue(
+        params_grad, p_grad_values, global_inner_scope);
     VLOG(4) << "after backward gc all vars";
     global_inner_scope->SetCanReused(true);
     details::GcScope(global_inner_scope);
