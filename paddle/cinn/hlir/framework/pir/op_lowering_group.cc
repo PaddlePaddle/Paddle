@@ -130,32 +130,14 @@ void OpLoweringGroup::SetShapeOrDataExprs(
 }
 
 std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
-    ::pir::Block* target_block, ::pir::IrMapping* ir_mapping) const {
-  std::vector<::pir::Operation*> new_ops;
-  // Mapper from original to new ops.
-  std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
-  auto clone_options = ::pir::CloneOptions(false, true, false);
-  for (auto* op : ops_) {
-    VLOG(4) << "clone op :" << op->name();
-    auto* new_op = op->Clone(*ir_mapping, clone_options);
-    // NOTE(dev): Must call block.insert to deal with ownership, otherwise it
-    // will lead memory-leak.
-    target_block->insert(target_block->end(), new_op);
-    new_ops.push_back(new_op);
-    ops_mapper[op] = new_op;
-  }
-
+    const int& group_idx) const {
   const auto new_fn_name =
-      this->fn_name_ + std::to_string(new_ops[0]->id()) + "_cloned";
+      this->fn_name_ + "_cloned" + std::to_string(group_idx);
   // Construct Base information for new Group
-  auto new_group = std::make_shared<OpLoweringGroup>(new_ops, new_fn_name);
-  for (auto* op : this->output_ops_) {
-    new_group->output_ops_.insert(ops_mapper.at(op));
-  }
-  for (const auto& output_value : this->output_values_) {
-    new_group->output_values_.push_back(ir_mapping->Lookup(output_value));
-  }
+  auto new_group = std::make_shared<OpLoweringGroup>(this->ops_, new_fn_name);
 
+  new_group->output_ops_ = this->output_ops_;
+  new_group->output_values_ = this->output_values_;
   new_group->input_names_ = this->input_names_;
   new_group->output_names_ = this->output_names_;
   new_group->int_args_map_ = this->int_args_map_;
