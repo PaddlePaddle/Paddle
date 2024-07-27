@@ -123,6 +123,14 @@ using pir::StrAttribute;
 using pir::Type;
 using pir::Value;
 using pir::VectorType;
+using pir::utils::name_analysis::GetOutputValueByName;
+using pir::utils::name_analysis::GetParameterValueByName;
+using pir::utils::name_analysis::GetValueAllNames;
+using pir::utils::name_analysis::GetValueFirstName;
+using pir::utils::name_analysis::GetValueOutputNames;
+using pir::utils::name_analysis::RenameValue;
+using pir::utils::name_analysis::SetValueName;
+using pir::utils::name_analysis::TryGetValueFirstName;
 using pybind11::return_value_policy;
 
 COMMON_DECLARE_bool(print_ir);
@@ -309,7 +317,7 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
       auto input = input_vars[idx];
       auto origin_op = input.defining_op();
       std::string name = "input_" + std::to_string(idx);
-      if (auto names = pir::utils::name_analysis::TryGetValueFirstName(input)) {
+      if (auto names = TryGetValueFirstName(input)) {
         name = names.value();
       }
       auto new_input = AppendDataOp(global_block, input, name, *origin_op);
@@ -522,12 +530,11 @@ void BindProgram(py::module *m) {
           return_value_policy::reference)
       .def("get_output_value_by_name",
            [](Program &self, const std::string &name) {
-             return pir::utils::name_analysis::GetOutputValueByName(self, name);
+             return GetOutputValueByName(self, name);
            })
       .def("get_parameter_value_by_name",
            [](Program &self, const std::string &name) {
-             return pir::utils::name_analysis::GetParameterValueByName(self,
-                                                                       name);
+             return GetParameterValueByName(self, name);
            })
       .def("num_ops", [](Program &self) { return self.num_ops(); })
       .def(
@@ -544,16 +551,14 @@ void BindProgram(py::module *m) {
                     var.attribute<BoolAttribute>(kAttrIsPersistable);
                 if (is_persistable && is_persistable.data()) {
                   if (var.defining_op()->isa<::pir::ParameterOp>()) {
-                    std::string var_name =
-                        pir::utils::name_analysis::GetValueFirstName(var);
+                    std::string var_name = GetValueFirstName(var);
                     auto tensor =
                         scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
                     state_dict_param[var_name] = *tensor;
                     state_dict_all[var_name] = *tensor;
                   } else if (var.defining_op()
                                  ->isa<paddle::dialect::DataOp>()) {
-                    std::string var_name =
-                        pir::utils::name_analysis::GetValueFirstName(var);
+                    std::string var_name = GetValueFirstName(var);
                     auto tensor =
                         scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
                     state_dict_opt[var_name] = *tensor;
@@ -1212,28 +1217,20 @@ void BindValue(py::module *m) {
           })
       .def_property(
           "name",
-          [](Value self) -> std::string {
-            return pir::utils::name_analysis::GetValueFirstName(self);
-          },
-          [](Value self, const std::string &name) {
-            pir::utils::name_analysis::SetValueName(self, name);
-          })
+          [](Value self) -> std::string { return GetValueFirstName(self); },
+          [](Value self, const std::string &name) { SetValueName(self, name); })
       .def_property_readonly(
           "has_name",
-          [](Value self) {
-            return pir::utils::name_analysis::TryGetValueFirstName(self)
-                .has_value();
-          })
+          [](Value self) { return TryGetValueFirstName(self).has_value(); })
       // Return all Maybe names of given Value, for example:
       // DataOp("var_1") -> %0 -> shadow_output("output_2")
       // Return ["var_1", "output_2"]
-      .def_property_readonly(
-          "_names",
-          [](Value self) -> py::list {
-            std::vector<std::string> names =
-                pir::utils::name_analysis::GetValueAllNames(self);
-            return py::cast(names);
-          })
+      .def_property_readonly("_names",
+                             [](Value self) -> py::list {
+                               std::vector<std::string> names =
+                                   GetValueAllNames(self);
+                               return py::cast(names);
+                             })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -1336,7 +1333,7 @@ void BindValue(py::module *m) {
       .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
-      .def("_rename", &pir::utils::name_analysis::RenameValue)
+      .def("_rename", &RenameValue)
       .def("detach",
            [](Value self) {
              auto share_data_op =
@@ -1770,8 +1767,7 @@ int AppendShadowOutputs(Program *program,
   for (const auto &value : outputs) {
     if (!added_value.count(value) || IsFakeValue(value)) {
       std::string shadow_output_name = name_prefix + std::to_string(counter);
-      if (auto names = pir::utils::name_analysis::GetValueOutputNames(value);
-          !names.empty()) {
+      if (auto names = GetValueOutputNames(value); !names.empty()) {
         shadow_output_name = names[0];
       }
       AppendShadowOutput(
@@ -1881,7 +1877,7 @@ SplitedResult SplitForwardBackward(
     }
     std::string shadow_output_name =
         std::string("output_") + std::to_string(counter);
-    if (auto names = pir::utils::name_analysis::TryGetValueFirstName(v)) {
+    if (auto names = TryGetValueFirstName(v)) {
       shadow_output_name = names.value();
     }
     auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
@@ -2073,7 +2069,7 @@ static void inline CreateVariableIfNotExist(
 
   for (size_t i = 0; i < len; ++i) {
     pir::Value value = var_list[i];
-    std::string para_name = pir::utils::name_analysis::GetValueFirstName(value);
+    std::string para_name = GetValueFirstName(value);
     auto var = scope->FindVar(para_name);
     if (var == nullptr) {
       PADDLE_ENFORCE_NOT_NULL(exe,

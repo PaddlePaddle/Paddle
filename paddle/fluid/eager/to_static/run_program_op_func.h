@@ -85,7 +85,7 @@ static void pir_clear_unused_out_var_in_backward(
     const pir::Block* forward_block,
     const pir::Block* backward_block,
     paddle::framework::Scope* scope) {
-  auto out_names = details::GetNameFromValue(forward_block, fo, false, true);
+  auto out_names = details::GetNameFromValue(fo);
   std::deque<std::shared_ptr<paddle::memory::Allocation>>* garbages =
       new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
   for (auto out_name : out_names) {

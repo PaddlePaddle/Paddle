@@ -95,16 +95,7 @@ static bool IsVariableRefArray(const Tensor &tensor) {
   return paddle::framework::VariableRefArray::classof(tensor.impl().get());
 }
 
-static auto GetNameFromValue(const ::pir::Block *block,
-                             const std::vector<::pir::Value> &values,
-                             bool allow_input,
-                             bool allow_output) {
-  PADDLE_ENFORCE_EQ(
-      allow_input || allow_output,
-      true,
-      phi::errors::InvalidArgument(
-          "GetNameFromValue should allow input or output at least one."));
-
+static auto GetNameFromValue(const std::vector<::pir::Value> &values) {
   std::vector<std::string> names;
   std::transform(
       values.begin(),
@@ -223,7 +214,7 @@ static void ShareTensorsIntoScopeByValue(
     const std::vector<Tensor> &tensors,
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(block, values, true, false);
+  auto names = GetNameFromValue(values);
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
@@ -232,11 +223,7 @@ static void ShareTensorsFromScopeByValue(
     const std::vector<Tensor *> &tensors,
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
-  // NOTE(SigureMo): If the program has an inplace chain connecting
-  // an input value to an output value, the output value will be
-  // replaced with the input value, so we set the `allow_input` to
-  // `true` in `GetNameFromValue`
-  auto names = GetNameFromValue(block, values, true, true);
+  auto names = GetNameFromValue(values);
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
     auto &value = values[i];
@@ -499,14 +486,13 @@ inline void PirRunProgramAPI(
         std::set<std::string>(skip_names.begin(), skip_names.end());
     auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
                                                   attrs.at("no_need_buffers"));
-    auto no_need_buffer_names = details::GetNameFromValue(
-        forward_program->block(), no_need_buffer_values, false, true);
+    auto no_need_buffer_names =
+        details::GetNameFromValue(no_need_buffer_values);
     for (auto &name : no_need_buffer_names) {
       VLOG(4) << "Find no need buffer vars with name:" << name;
       skip_names_set.erase(name);
     }
-    skip_names = details::GetNameFromValue(
-        forward_program->block(), output_values, false, true);
+    skip_names = details::GetNameFromValue(output_values);
     skip_names_set.insert(skip_names.begin(), skip_names.end());
 
     details::print_collection(skip_names_set);
@@ -1081,11 +1067,9 @@ inline void PirRunProgramGradAPI(
 
     // get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
-    auto skip_names = details::GetNameFromValue(
-        backward_program->block(), x_grad_values, false, true);
+    auto skip_names = details::GetNameFromValue(x_grad_values);
     skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
-    skip_names = details::GetNameFromValue(
-        backward_program->block(), p_grad_values, false, true);
+    skip_names = details::GetNameFromValue(p_grad_values);
     skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
     cache.UpdateSkipEagerDeleteVars(program_id,
