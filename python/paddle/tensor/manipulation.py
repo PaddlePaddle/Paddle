@@ -4228,7 +4228,7 @@ def chunk(
 ) -> list[Tensor]:
     """
     Split the input tensor into multiple sub-Tensors.
-    
+
     Here are some examples to explain it.
 
         - 1. Given a 3-D tensor x with a shape [3, 3, 3], if we split the first dimension into three equal parts, it will output a list containing three 3-D tensors with a shape of [1, 3, 3].
@@ -4243,7 +4243,7 @@ def chunk(
         :width: 800
         :alt: legend of reshape API
         :align: center
-        
+
     Args:
         x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
         chunks(int): The number of tensor to be split along the certain axis.
