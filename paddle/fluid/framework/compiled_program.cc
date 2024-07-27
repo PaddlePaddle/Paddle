@@ -398,7 +398,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
                  "build_strategy.memory_optimize = True or garbage collection "
                  "strategy is disabled, which is not recommended";
   }
-  return graph;
+
   if (!is_gc_enabled) {
     return graph;
   }
