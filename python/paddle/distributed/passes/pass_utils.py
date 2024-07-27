@@ -297,13 +297,14 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
     return type_to_program
 
 
-def shadow_var_between_sub_programs(sub_programs):
+def shadow_var_between_sub_programs(types, sub_programs):
     """
     Add shadow_output and data op pair to share vars between sub_programs.
     """
     suffixed_shadow_arg_names = (
         set()
     )  # arg_names that are required in later sub_programs
+    sub_program_id = len(sub_programs) - 1
     for sub_program in reversed(sub_programs):
         # step 1: parse shadow arguments
         block = sub_program.global_block()
@@ -358,8 +359,17 @@ def shadow_var_between_sub_programs(sub_programs):
         sub_program._sync_with_cpp()
 
         # step4: update suffixed_shadow_arg_names
-        suffixed_shadow_arg_names -= shadow_arg_names_for_suffixed_programs
-        suffixed_shadow_arg_names |= shadow_arg_names
+        # NOTE(lizhiyu): There are some sub_programs that differ in communication operators, such as 'forward0' and 'forward0_broadcast' in the case of enable_sharding.
+        #                Those two sub_programs should keep the same 'data op' and 'shadow_output op'.
+        if sub_program_id > 0 and (
+            types[sub_program_id - 1] in types[sub_program_id]
+            or types[sub_program_id] in types[sub_program_id - 1]
+        ):
+            pass
+        else:
+            suffixed_shadow_arg_names -= shadow_arg_names_for_suffixed_programs
+            suffixed_shadow_arg_names |= shadow_arg_names
+        sub_program_id -= 1
 
 
 def _create_param(dst_block, src_var):

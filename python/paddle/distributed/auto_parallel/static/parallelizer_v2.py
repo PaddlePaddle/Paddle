@@ -408,9 +408,10 @@ class Parallelizer:
         )
         if gradient_sync_after_accumulate:
             global_params_grads = params_grads
-
+        sharding_stage = 0
         if self._strategy.sharding.enable:
             config = copy.deepcopy(self._strategy.sharding.to_dict())
+            sharding_stage = config["stage"]
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["global_rank"] = rank
@@ -561,4 +562,5 @@ class Parallelizer:
                 "dist_context": self._dist_context,
                 "split_backward": self._strategy.pipeline.split_backward,
                 "grad_to_global_grad": grad_to_global_grad,
+                "sharding_stage": sharding_stage,
             }

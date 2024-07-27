@@ -16,6 +16,7 @@ import logging
 
 from paddle.base import core
 from paddle.distributed.auto_parallel.static.operators.common import (
+    is_data_parallel_broadcast_op,
     is_data_parallel_reduce_op,
     is_data_parallel_scale_op,
 )
@@ -23,6 +24,7 @@ from paddle.distributed.auto_parallel.static.operators.common import (
 from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
 from ..pass_utils import (
+    _create_param,
     _program_for_vpp,
     _program_for_vpp_split_bwk,
     split_matmul_grad_to_matmul,
@@ -41,7 +43,9 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
     def __init__(self):
         super().__init__()
         self._real_overlap_sharding_reduce = False
+        self._real_overlap_sharding_broadcast = False
         self.reduce_comm_suffix = "_reduce"
+        self.broadcast_comm_suffix = "_broadcast"
         self._forward_micro_step_counter = {}
         self._backward_micro_step_counter = {}
 
@@ -91,7 +95,27 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
         for micro_step in range(warmup_steps):
             virtual_pp_rank = _get_virtual_pp_rank(micro_step, forward=True)
             micro_batch_id = self._record_fwd_micro_step(virtual_pp_rank)
-            fw_job = core.Job(FORWARD + str(virtual_pp_rank))
+            if self._real_overlap_sharding_broadcast:
+                if stage_id == 0 and micro_batch_id == 0:
+                    fw_job = core.Job(
+                        FORWARD
+                        + str(virtual_pp_rank)
+                        + self.broadcast_comm_suffix
+                    )
+                elif (
+                    stage_id != 0
+                    and micro_batch_id == 0
+                    and virtual_pp_rank == 0
+                ):
+                    fw_job = core.Job(
+                        FORWARD
+                        + str(virtual_pp_rank)
+                        + self.broadcast_comm_suffix
+                    )
+                else:
+                    fw_job = core.Job(FORWARD + str(virtual_pp_rank))
+            else:
+                fw_job = core.Job(FORWARD + str(virtual_pp_rank))
             fw_job.set_micro_batch_id(micro_batch_id)
             job_list.append(fw_job)
 
@@ -103,7 +127,17 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             fwd_micro_batch_id = self._record_fwd_micro_step(
                 fwd_virtual_pp_rank
             )
-            fwd_job = core.Job(FORWARD + str(fwd_virtual_pp_rank))
+            if self._real_overlap_sharding_broadcast:
+                if stage_id == 0 and micro_batch_id == 0:
+                    fw_job = core.Job(
+                        FORWARD
+                        + str(virtual_pp_rank)
+                        + self.broadcast_comm_suffix
+                    )
+                else:
+                    fwd_job = core.Job(FORWARD + str(fwd_virtual_pp_rank))
+            else:
+                fwd_job = core.Job(FORWARD + str(fwd_virtual_pp_rank))
             fwd_job.set_micro_batch_id(fwd_micro_batch_id)
             job_list.append(fwd_job)
 
@@ -275,12 +309,122 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
 
         return True
 
+    def _move_sharding_broadcast_to_backward(
+        self, types, sub_programs, stage_id
+    ):
+        def _get_sharding_broadcast_op(op, idx, cur_block):
+            if is_data_parallel_broadcast_op(op):
+                op_input_names = op.desc.input_arg_names()
+                op_output_names = op.desc.output_arg_names()
+                if op_input_names[0] == op_output_names[0]:
+                    param_to_comm_op[op_input_names[0]] = op
+                    param_name_to_params[
+                        op_input_names[0]
+                    ] = cur_block._var_recursive(op_input_names[0])
+                    remove_op_ids.append(idx)
+
+        # 1 get the all sharding_avg in optimizer
+        type_programs = dict(zip(types, sub_programs))
+        opt_program = type_programs["optimizer"]
+        param_to_comm_op = {}
+        param_name_to_params = {}
+        all_remove_op_ids = []
+        for cur_block in opt_program.blocks:
+            remove_op_ids = []
+            for idx, op in enumerate(cur_block.ops):
+                _get_sharding_broadcast_op(op, idx, cur_block)
+            all_remove_op_ids.append(remove_op_ids)
+        if len(param_to_comm_op) == 0:  # no need to overlap sharding comm
+            return False
+
+        # 2 create the new forward with the sharding_broadcast
+        new_types = []
+        new_programs = []
+        sub_program_ids = []
+        sub_program_count = 0
+        for type, sub_program in type_programs.items():
+            if stage_id == 0:
+                if "forward" in type:
+                    sub_program_ids.append(sub_program_count)
+                    new_program = sub_program.clone()
+                    cur_block = new_program.global_block()
+                    insert_op_ids = []
+                    insert_ops = []
+                    for idx, op in enumerate(cur_block.ops):
+                        input_arg_names = op.input_arg_names
+                        for input_name in input_arg_names:
+                            if input_name in param_to_comm_op:
+                                # NOTE(lizhiyu): The number that we insert 'broadcast' before the operator using the parameter
+                                #               may be different in different case.
+                                insert_op_ids.append(max(0, idx - 3))
+                                insert_ops.append(param_to_comm_op[input_name])
+                                del param_to_comm_op[input_name]
+                    for op_id, origin_op in zip(
+                        reversed(insert_op_ids), reversed(insert_ops)
+                    ):
+                        new_op = cur_block._insert_op_without_sync(
+                            index=op_id, type="nop"
+                        )
+                        new_op.desc.copy_from(origin_op.desc)
+                        new_op.dist_attr.execution_stream = (
+                            "sharding_comm_broadcast_stream"
+                        )
+                        new_op.dist_attr.stream_priority = 0
+                    cur_block._sync_with_cpp()
+                    new_types.append(type + self.broadcast_comm_suffix)
+                    new_programs.append(new_program)
+                sub_program_count += 1
+            else:
+                if "forward0" in type:
+                    sub_program_ids.append(sub_program_count)
+                    new_program = sub_program.clone()
+                    cur_block = new_program.global_block()
+                    insert_op_ids = range(0, len(param_to_comm_op))
+                    insert_ops = list(param_to_comm_op.values())
+                    for op_id, origin_op in zip(insert_op_ids, insert_ops):
+                        new_op = cur_block._insert_op_without_sync(
+                            index=op_id, type="nop"
+                        )
+                        new_op.desc.copy_from(origin_op.desc)
+                        new_op.dist_attr.execution_stream = (
+                            "sharding_comm_broadcast_stream"
+                        )
+
+                        # create var
+                        input_arg_names = new_op.input_arg_names
+                        for input_name in input_arg_names:
+                            if not cur_block.has_var(input_name):
+                                src_var = param_name_to_params[input_name]
+                                _create_param(cur_block, src_var)
+
+                    cur_block._sync_with_cpp()
+                    new_types.append(type + self.broadcast_comm_suffix)
+                    new_programs.append(new_program)
+                sub_program_count += 1
+        if stage_id == 0:
+            assert (
+                len(param_to_comm_op) == 0
+            ), f"param_to_comm_op must be used up, but left: {param_to_comm_op}"
+
+        for i in range(len(sub_program_ids) - 1, -1, -1):
+            program_idx = sub_program_ids[i]
+            types.insert(program_idx, new_types[i])
+            sub_programs.insert(program_idx, new_programs[i])
+
+        for id, cur_block in enumerate(opt_program.blocks):
+            for op_id in reversed(all_remove_op_ids[id]):
+                cur_block._remove_op(op_id)
+            cur_block._sync_with_cpp()
+        return True
+
     def _partial_programs(self, program):
         dist_context = self.get_attr("dist_context")
         num_model_chunks = self.get_attr("vpp_degree")
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
         accumulate_steps = self.get_attr("num_micro_batches")
         num_stages = self.get_attr("pp_degree")
+        stage_id = self.get_attr("pp_stage")
+        sharding_stage = self.get_attr("sharding_stage")
         split_backward = self.get_attr("split_backward", False)
         grad_to_global_grad = self.get_attr("grad_to_global_grad", {})
         global_grads = [
@@ -305,6 +449,14 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                 num_model_chunks,
                 dist_context,
                 enable_send_recv_overlap,
+            )
+        if sharding_stage in [1, 2]:
+            self._real_overlap_sharding_broadcast = (
+                self._move_sharding_broadcast_to_backward(
+                    types=types,
+                    sub_programs=sub_program_list,
+                    stage_id=stage_id,
+                )
             )
 
         return types, sub_program_list

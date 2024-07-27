@@ -63,7 +63,7 @@ class PipelinePassBase(PassBase):
             "FLAGS_enable_pir_in_executor"
         )['FLAGS_enable_pir_in_executor']
         if enable_pir_in_executor:
-            shadow_var_between_sub_programs(sub_programs)
+            shadow_var_between_sub_programs(job_types, sub_programs)
 
         for i in range(len(job_types)):
             logger.debug(
