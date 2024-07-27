@@ -62,7 +62,7 @@ GeneratePluginDataType ProtoTypeToGeneratePluginDataType(
     case VarType_Type::VarType_Type_COMPLEX128:
       return GeneratePluginDataType::PLUGIN_COMPLEX128;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "This data type is currently not supported"));
   }
 }
@@ -81,7 +81,7 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
   PADDLE_ENFORCE_EQ(
       attr_names.size(),
       attr_defs.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The attr_names.size() should be equal to attr_defs.size()."));
 
   framework::AttrReader attr_reader(op_desc.GetAttrMap());
@@ -119,7 +119,7 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                   PADDLE_GET_CONST(paddle::experimental::Scalar, attr)));
               break;
             default:
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when "
                   "ProtoAttr2PhiAttr.",
                   attr_name));
@@ -142,7 +142,7 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                   phi::IntArray({PADDLE_GET_CONST(int, attr)}));
               break;
             default:
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to IntArray when "
                   "ProtoAttr2PhiAttr.",
                   attr_name));
@@ -199,7 +199,7 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
               kernel_context->EmplaceBackAttr(std::move(scalar_list));
             } break;
             default:
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to vector<Scalar> when "
                   "ProtoAttr2PhiAttr.",
                   attr_name));
@@ -252,7 +252,7 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                   kernel_context->EmplaceBackAttr(vector_int64_attr);
                 } break;
                 default:
-                  PADDLE_THROW(phi::errors::Unimplemented(
+                  PADDLE_THROW(common::errors::Unimplemented(
                       "Unsupported cast op attribute `%s` to vector<int64_t> "
                       "when ProtoAttr2PhiAttr.",
                       attr_name));
@@ -275,7 +275,7 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                   PADDLE_GET_CONST(std::vector<double>, attr));
               break;
             default:
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` when construct "
                   "ProtoAttr2PhiAttr.",
                   attr_name));
@@ -491,7 +491,8 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
       phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type),
       true,
-      phi::errors::Fatal("%s has no compatible phi kernel!", op_type.c_str()));
+      common::errors::Fatal("%s has no compatible phi kernel!",
+                            op_type.c_str()));
 
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   phi::GPUPlace place(platform::GetCurrentDeviceId());
@@ -521,8 +522,8 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(phi_kernels_[nvinfer1::DataType::kFLOAT]->IsValid() ||
                         phi_kernels_[nvinfer1::DataType::kHALF]->IsValid(),
                     true,
-                    phi::errors::Fatal("%s phi kernel is invalid!.",
-                                       phi_kernel_signature.name));
+                    common::errors::Fatal("%s phi kernel is invalid!.",
+                                          phi_kernel_signature.name));
 
   if (!dense_tensor_inputs_)
     dense_tensor_inputs_ = new std::vector<phi::DenseTensor>(getNbInputs());
@@ -541,7 +542,7 @@ nvinfer1::DimsExprs GenericPlugin::getOutputDimensions(
   auto& dynamic_infermeta_factory = tensorrt::DynamicMetaFnFactory::Instance();
   PADDLE_ENFORCE_EQ(dynamic_infermeta_factory.Contains(op_desc_.Type()),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The %s op has no dynamic plugin infershape function!",
                         op_desc_.Type().c_str()));
 

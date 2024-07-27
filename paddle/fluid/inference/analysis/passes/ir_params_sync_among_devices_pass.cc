@@ -50,7 +50,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
 
   PADDLE_ENFORCE_EQ(argument->gpu_device_id_valid(),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The gpu_device_id field should be valid"));
   phi::Place place = phi::GPUPlace(argument->gpu_device_id());
   auto *scope = argument->scope_ptr();
@@ -93,7 +93,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
       auto *var = scope->FindLocalVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          phi::errors::PreconditionNotMet("The var should not be nullptr"));
+          common::errors::PreconditionNotMet("The var should not be nullptr"));
       if (var->IsType<phi::DenseTensor>()) {
         auto *t = var->GetMutable<phi::DenseTensor>();
         auto var_data_type = var_node->Var()->GetDataType();
@@ -121,7 +121,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
     PADDLE_ENFORCE_EQ(
         FLAGS_custom_model_save_cpu,
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "'FLAGS_custom_model_save_cpu = false' is only for the developers "
             "who have not completed custom device memory settings. Setting to "
             "true will make "
@@ -148,7 +148,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
   for (auto &var_name : all_vars) {
     auto *var = scope->FindLocalVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var, phi::errors::PreconditionNotMet("The var should not be nullptr"));
+        var,
+        common::errors::PreconditionNotMet("The var should not be nullptr"));
 
     if (var->IsType<phi::DenseTensor>()) {
       auto *t = var->GetMutable<phi::DenseTensor>();
@@ -171,7 +172,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
 
   PADDLE_ENFORCE_EQ(argument->xpu_device_id_valid(),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The xpu_device_id field should be valid"));
 
   LOG(INFO) << "Sync params from CPU to XPU: "
@@ -210,7 +211,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   PADDLE_ENFORCE_EQ(
       argument->scope_valid(),
       true,
-      phi::errors::PreconditionNotMet("The scope field should be valid"));
+      common::errors::PreconditionNotMet("The scope field should be valid"));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (argument->use_gpu_valid()) {
     CopyParamsToGpu(argument);

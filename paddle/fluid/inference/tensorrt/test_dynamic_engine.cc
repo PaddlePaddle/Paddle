@@ -119,7 +119,7 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   layer->setInput(1, *shape);
   PADDLE_ENFORCE_NOT_NULL(
       layer,
-      phi::errors::InvalidArgument("TRT shuffle layer building failed."));
+      common::errors::InvalidArgument("TRT shuffle layer building failed."));
   engine_->DeclareOutput(layer, 0, "y");
   engine_->FreezeNetwork();
 #if IS_TRT_VERSION_GE(8600)
@@ -302,7 +302,7 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
   LOG(INFO) << "create weights";
   PADDLE_ENFORCE_NOT_NULL(
       fc_layer,
-      phi::errors::InvalidArgument("TRT SPMM layer building failed."));
+      common::errors::InvalidArgument("TRT SPMM layer building failed."));
 
   engine_->DeclareOutput(fc_layer, 0, "y");
   engine_->FreezeNetwork();
@@ -441,7 +441,7 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
   std::vector<nvinfer1::ITensor *> itensors = {attn, x, mask, new_mask};
   auto *layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
   PADDLE_ENFORCE_NOT_NULL(layer,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "TRT fused_token_prune layer building failed."));
   std::vector<std::string> output_tensor_names{"out_slimmed_x", "out_cls_inds"};
   for (size_t i = 0; i < 2; i++) {
@@ -643,7 +643,7 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   std::vector<nvinfer1::ITensor *> itensors = {attn, x, mask, new_mask};
   auto *layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
   PADDLE_ENFORCE_NOT_NULL(layer,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "TRT fused_token_prune layer building failed."));
   std::vector<std::string> output_tensor_names{"out_slimmed_x", "out_cls_inds"};
   for (size_t i = 0; i < 2; i++) {
@@ -988,7 +988,7 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
   dq_layer->setAxis(1);
 
   PADDLE_ENFORCE_NOT_NULL(groupnorm_layer,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "TRT GN plugin layer building failed."));
 
   engine_->DeclareOutput(dq_layer, 0, "y");
