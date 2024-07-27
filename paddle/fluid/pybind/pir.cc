@@ -545,7 +545,7 @@ void BindProgram(py::module *m) {
                 if (is_persistable && is_persistable.data()) {
                   if (var.defining_op()->isa<::pir::ParameterOp>()) {
                     std::string var_name =
-                        pir::utils::name_analysis::GetValueAllNames(var)[0];
+                        pir::utils::name_analysis::GetValueFirstName(var);
                     auto tensor =
                         scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
                     state_dict_param[var_name] = *tensor;
@@ -553,7 +553,7 @@ void BindProgram(py::module *m) {
                   } else if (var.defining_op()
                                  ->isa<paddle::dialect::DataOp>()) {
                     std::string var_name =
-                        pir::utils::name_analysis::GetValueAllNames(var)[0];
+                        pir::utils::name_analysis::GetValueFirstName(var);
                     auto tensor =
                         scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
                     state_dict_opt[var_name] = *tensor;
