@@ -210,7 +210,9 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
 }
 
 static void ShareTensorsIntoScopeByValue(
-    const std::vector<::pir::Value> &values, paddle::framework::Scope *scope) {
+    const std::vector<Tensor> &tensors,
+    const std::vector<::pir::Value> &values,
+    paddle::framework::Scope *scope) {
   auto names = GetNameFromValue(values);
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
