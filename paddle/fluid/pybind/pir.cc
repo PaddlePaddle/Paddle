@@ -123,8 +123,9 @@ using pir::StrAttribute;
 using pir::Type;
 using pir::Value;
 using pir::VectorType;
-using pir::utils::name_analysis;
 using pybind11::return_value_policy;
+
+namespace name_analysis = pir::utils::name_analysis;
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
