@@ -80,10 +80,9 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
   Add(var, &gc_event_.at(instr->Id()), &instr->DeviceContext());
 }
 
-void InterpreterCoreEventGarbageCollector::Add(
-    Variable* var,
-    platform::DeviceEvent* event,
-    const platform::DeviceContext* ctx) {
+void InterpreterCoreEventGarbageCollector::Add(Variable* var,
+                                               platform::DeviceEvent* event,
+                                               const phi::DeviceContext* ctx) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {
     return;
   }
@@ -148,10 +147,9 @@ void InterpreterCoreEventGarbageCollector::Add(
   }
 }
 
-void InterpreterCoreEventGarbageCollector::Add(
-    Garbage garbage,
-    platform::DeviceEvent* event,
-    const platform::DeviceContext* ctx) {
+void InterpreterCoreEventGarbageCollector::Add(Garbage garbage,
+                                               platform::DeviceEvent* event,
+                                               const phi::DeviceContext* ctx) {
   if (!garbage) {
     return;
   }
@@ -172,10 +170,9 @@ void InterpreterCoreEventGarbageCollector::Add(
   }
 }
 
-void InterpreterCoreEventGarbageCollector::Free(
-    const Garbage& garbage,
-    platform::DeviceEvent* event,
-    const platform::DeviceContext* ctx) {
+void InterpreterCoreEventGarbageCollector::Free(const Garbage& garbage,
+                                                platform::DeviceEvent* event,
+                                                const phi::DeviceContext* ctx) {
   event->Record(ctx);
   event->SetFinished();  // Only for CPU Event
   queue_->AddTask([container = garbage, event = event]() {

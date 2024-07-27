@@ -55,13 +55,13 @@ class PrintOptions {
 
 TEST_API void TensorToStream(std::ostream& os,
                              const phi::DenseTensor& tensor,
-                             const platform::DeviceContext& dev_ctx);
+                             const phi::DeviceContext& dev_ctx);
 TEST_API void TensorFromStream(std::istream& is,
                                phi::DenseTensor* tensor,
-                               const platform::DeviceContext& dev_ctx);
+                               const phi::DeviceContext& dev_ctx);
 void TensorFromStream(std::istream& is,
                       phi::DenseTensor* tensor,
-                      const platform::DeviceContext& dev_ctx,
+                      const phi::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape);
 
@@ -73,7 +73,7 @@ void TensorFromStream(std::istream& is,
 // src_ctx.Wait() is added before memory::Copy.
 TEST_API void TensorCopy(const phi::DenseTensor& src,
                          const phi::Place& dst_place,
-                         const platform::DeviceContext& ctx,
+                         const phi::DeviceContext& ctx,
                          phi::DenseTensor* dst);
 
 // NOTE(zcd): If the src.place() and dst_place are two different GPU,
@@ -93,14 +93,14 @@ TEST_API void TensorCopySync(const phi::DenseTensor& src,
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
-                      const platform::DeviceContext& ctx,
+                      const phi::DeviceContext& ctx,
                       phi::DenseTensor* dst);
 template <typename T>
 void TensorFromVector(const std::vector<T>& src, phi::DenseTensor* dst);
 
 template <typename T>
 void TensorToVector(const phi::DenseTensor& src,
-                    const platform::DeviceContext& ctx,
+                    const phi::DeviceContext& ctx,
                     std::vector<T>* dst);
 template <typename T>
 void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
@@ -118,7 +118,7 @@ void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
 template <typename T>
 void TensorFromArray(const T* src,
                      const size_t& array_size,
-                     const platform::DeviceContext& ctx,
+                     const phi::DeviceContext& ctx,
                      phi::DenseTensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src);
@@ -164,7 +164,7 @@ void TensorFromArray(const T* src,
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
-                      const platform::DeviceContext& ctx,
+                      const phi::DeviceContext& ctx,
                       phi::DenseTensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src.data());
@@ -212,7 +212,7 @@ void TensorFromVector(const std::vector<T>& src,
 // multi-definition.
 template <>
 inline void TensorFromVector(const std::vector<bool>& src,
-                             const platform::DeviceContext& ctx,
+                             const phi::DeviceContext& ctx,
                              phi::DenseTensor* dst) {
   // vector<bool> has no data() member, use array instead.
   // See details:
@@ -293,7 +293,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
 
 template <typename T>
 void TensorToVector(const phi::DenseTensor& src,
-                    const platform::DeviceContext& ctx,
+                    const phi::DeviceContext& ctx,
                     std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
   auto size = src.numel() * sizeof(T);
@@ -333,7 +333,7 @@ void TensorToVector(const phi::DenseTensor& src,
 
 template <>
 inline void TensorToVector(const phi::DenseTensor& src,
-                           const platform::DeviceContext& ctx,
+                           const phi::DeviceContext& ctx,
                            std::vector<bool>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<bool>());
   auto size = src.numel() * sizeof(bool);

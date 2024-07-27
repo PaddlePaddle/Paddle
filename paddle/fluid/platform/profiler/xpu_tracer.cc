@@ -19,7 +19,7 @@
 #include <unordered_map>
 
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/os_info.h"
+#include "paddle/phi/core/os_info.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/device_manager.h"
 #endif
@@ -57,7 +57,7 @@ void XPUTracer::StartTracing() {
 #ifdef PADDLE_WITH_XPTI
   XPTI_CALL(phi::dynload::xptiStartTracing());
 #endif
-  tracing_start_ns_ = PosixInNsec();
+  tracing_start_ns_ = phi::PosixInNsec();
   state_ = TracerState::STARTED;
 }
 

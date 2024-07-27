@@ -94,6 +94,7 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
   std::shared_ptr<GroupInfo> group_info = std::make_shared<GroupInfo>();
   group_info->data_space = fusion_group_info.loop_ranges;
+  group_info->loop_transform_map = fusion_group_info.loop_transform_map;
   group_info->reduce_axis = fusion_group_info.reduce_axis;
   group_info->reduce_var_names =
       std::set<std::string>(fusion_group_info.reduce_var_name.begin(),
@@ -102,14 +103,6 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
   for (auto& val : group->output_values()) {
     group_info->direct_output_var_names.insert(ValueName(val));
   }
-
-  group->WalkOps([&group_info](::pir::Operation* op) {
-    if (CompatibleInfo::OpKind(*op) == OpPatternKind::kReduction) {
-      group_info->raw_reduce_axis = cinn::fusion::GetReduceAxisIdx(op);
-      group_info->raw_data_rank =
-          cinn::fusion::GetCompitableRank(op->operand_source(0));
-    }
-  });
   return group_info;
 }
 

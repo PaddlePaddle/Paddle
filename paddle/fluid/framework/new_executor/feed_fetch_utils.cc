@@ -114,7 +114,7 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
       auto* dst =
           &(PADDLE_GET(phi::DenseTensor, fetch_list->at(micro_batch_id)[col]));
       if (src.IsInitialized()) {
-        TensorCopy(src, platform::CPUPlace(), dst);
+        TensorCopy(src, phi::CPUPlace(), dst);
         dst->set_lod(src.lod());
       } else {
         VLOG(6) << "Found " << var_name
@@ -129,7 +129,7 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
           &(PADDLE_GET(phi::TensorArray, fetch_list->at(micro_batch_id)[col]));
       dst->resize(src.size());
       for (size_t i = 0; i < src.size(); ++i) {
-        TensorCopy(src[i], platform::CPUPlace(), &dst->at(i));
+        TensorCopy(src[i], phi::CPUPlace(), &dst->at(i));
         dst->at(i).set_lod(src[i].lod());
       }
     }

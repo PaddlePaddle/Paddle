@@ -26,10 +26,10 @@
 #include "paddle/fluid/distributed/fleet_executor/message_service.h"
 #endif
 
+#include "paddle/common/errors.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace distributed {

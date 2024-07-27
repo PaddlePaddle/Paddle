@@ -15,11 +15,11 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 
 #include "glog/logging.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 
 namespace egr {

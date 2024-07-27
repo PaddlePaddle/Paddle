@@ -1479,7 +1479,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("_set_paddle_lib_path", &phi::dynload::SetPaddleLibPath);
 
-  m.def("set_current_thread_name", &paddle::platform::SetCurrentThreadName);
+  m.def("set_current_thread_name", &phi::SetCurrentThreadName);
 
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
@@ -2912,7 +2912,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::RecordEvent>(m, "_RecordEvent")
       .def(py::init([](std::string name, platform::TracerEventType type) {
         return std::make_unique<platform::RecordEvent>(
-            name, type, 1, paddle::platform::EventRole::kOrdinary);
+            name, type, 1, phi::EventRole::kOrdinary);
       }))
       .def("end", [](platform::RecordEvent *event) { event->End(); });
 

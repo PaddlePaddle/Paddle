@@ -30,7 +30,7 @@ namespace paddle::platform {
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.json";
 
 static std::string DefaultFileName() {
-  auto pid = GetProcessId();
+  auto pid = phi::GetProcessId();
   return string_format(
       std::string(kDefaultFilename), pid, GetStringFormatLocalTime().c_str());
 }

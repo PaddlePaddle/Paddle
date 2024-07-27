@@ -49,9 +49,8 @@ class CostData {
 
   // Support Time Event only
   // TODO(zhhsplendid): add memory
-  bool SetCostData(
-      const ProgramDesc& program,
-      const std::vector<std::vector<platform::Event>>& time_events);
+  bool SetCostData(const ProgramDesc& program,
+                   const std::vector<std::vector<phi::Event>>& time_events);
 
   static const double NOT_MEASURED;
 

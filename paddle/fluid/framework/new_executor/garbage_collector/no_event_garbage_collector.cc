@@ -42,7 +42,7 @@ void InterpreterCoreNoEventGarbageCollector::Add(Variable* var,
 }
 
 void InterpreterCoreNoEventGarbageCollector::Add(
-    Variable* var, const platform::DeviceContext* ctx) {
+    Variable* var, const phi::DeviceContext* ctx) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {
     return;
   }
@@ -108,7 +108,7 @@ void InterpreterCoreNoEventGarbageCollector::Add(
 }
 
 void InterpreterCoreNoEventGarbageCollector::Add(
-    Garbage garbage, const platform::DeviceContext* ctx) {
+    Garbage garbage, const phi::DeviceContext* ctx) {
   if (!garbage) {
     return;
   }
