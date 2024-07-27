@@ -102,8 +102,8 @@ static auto GetNameFromValue(const std::vector<::pir::Value> &values) {
       values.end(),
       std::back_inserter(names),
       [](const ::pir::Value &v) {
-        auto name = pir::utils::name_analysis::TryGetValueFirstName(v);
-        return name.value_or(std::string(paddle::framework::kFakeVarName));
+        return pir::utils::name_analysis::TryGetValueFirstName(v).value_or(
+            std::string(paddle::framework::kFakeVarName));
       });
   return names;
 }
