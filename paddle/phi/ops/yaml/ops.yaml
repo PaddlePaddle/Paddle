@@ -202,6 +202,16 @@
     data_type : x
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : alltoall
+  args: (Tensor x, int ring_id = 0, bool use_calc_stream = false)
+  output: Tensor (out)
+  infer_meta:
+    func: AllToAllInferMeta
+    param: [x]
+  kernel :
+    func : alltoall
+    data_type: x
+
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
