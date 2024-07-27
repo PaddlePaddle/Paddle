@@ -47,7 +47,7 @@ class TrtConvertIsnanV2Test(TrtLayerAutoScanTest):
                 data[mask] = np.nan
                 return data
 
-        for dims in [2, 3, 4]:
+        for dims in [1, 2, 3, 4]:
             self.dims = dims
             ops_config = [
                 {
@@ -59,7 +59,16 @@ class TrtConvertIsnanV2Test(TrtLayerAutoScanTest):
                         "Out": ["output_data"],
                     },
                     "op_attrs": {},
-                }
+                },
+                {
+                    "op_type": "cast",
+                    "op_inputs": {"X": ["output_data"]},
+                    "op_outputs": {"Out": ["cast_output_data"]},
+                    "op_attrs": {
+                        "in_dtype": 0,
+                        "out_dtype": 5,
+                    },
+                },
             ]
             ops = self.generate_op_config(ops_config)
 
@@ -107,7 +116,7 @@ class TrtConvertIsnanV2Test(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if not dynamic_shape:
-                return 0, 3
+                return 0, 4
             return 1, 2
 
         def clear_dynamic_shape():
