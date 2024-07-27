@@ -17,21 +17,21 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 TEST(ENFORCE, OK) {
-  PADDLE_ENFORCE(
-      true,
-      phi::errors::Unavailable("PADDLE_ENFORCE is ok %d now %f.", 123, 0.345));
+  PADDLE_ENFORCE(true,
+                 common::errors::Unavailable(
+                     "PADDLE_ENFORCE is ok %d now %f.", 123, 0.345));
   size_t val = 1;
   const size_t limit = 10;
   PADDLE_ENFORCE(val < limit,
-                 phi::errors::Unavailable("PADDLE_ENFORCE tests failed."));
+                 common::errors::Unavailable("PADDLE_ENFORCE tests failed."));
 }
 
 TEST(ENFORCE, FAILED) {
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE(
-        false,
-        phi::errors::Unavailable("PADDLE_ENFORCE won't work %d at all.", 123));
+    PADDLE_ENFORCE(false,
+                   common::errors::Unavailable(
+                       "PADDLE_ENFORCE won't work %d at all.", 123));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -43,7 +43,8 @@ TEST(ENFORCE, FAILED) {
   caught_exception = false;
   try {
     PADDLE_ENFORCE(
-        false, phi::errors::Unavailable("PADDLE_ENFORCE won't work at all."));
+        false,
+        common::errors::Unavailable("PADDLE_ENFORCE won't work at all."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -55,7 +56,8 @@ TEST(ENFORCE, FAILED) {
   caught_exception = false;
   try {
     PADDLE_ENFORCE(
-        false, phi::errors::Unavailable("PADDLE_ENFORCE won't work at all."));
+        false,
+        common::errors::Unavailable("PADDLE_ENFORCE won't work at all."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_NE(std::string(error.what()).find(" at "), 0UL);
@@ -67,12 +69,12 @@ TEST(ENFORCE, NO_ARG_OK) {
   int a = 2;
   int b = 2;
   PADDLE_ENFORCE_EQ(
-      a, b, phi::errors::Unavailable("PADDLE_ENFORCE_EQ tests failed."));
+      a, b, common::errors::Unavailable("PADDLE_ENFORCE_EQ tests failed."));
   // test enforce with extra message.
-  PADDLE_ENFORCE_EQ(
-      a,
-      b,
-      phi::errors::Unavailable("Some %s wrong in PADDLE_ENFORCE_EQ.", "info"));
+  PADDLE_ENFORCE_EQ(a,
+                    b,
+                    common::errors::Unavailable(
+                        "Some %s wrong in PADDLE_ENFORCE_EQ.", "info"));
 }
 
 TEST(ENFORCE_EQ, NO_EXTRA_MSG_FAIL) {
@@ -81,7 +83,7 @@ TEST(ENFORCE_EQ, NO_EXTRA_MSG_FAIL) {
   try {
     PADDLE_ENFORCE_EQ(a,
                       1 + 3,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The result is not equal correct result."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
@@ -98,7 +100,7 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
   try {
     PADDLE_ENFORCE_EQ(a,
                       1 + 3,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The result is not equal correct result."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
@@ -112,9 +114,9 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
 
 TEST(ENFORCE_NE, OK) {
   PADDLE_ENFORCE_NE(
-      1, 2, phi::errors::Unavailable("PADDLE_ENFORCE_NE tests failed."));
+      1, 2, common::errors::Unavailable("PADDLE_ENFORCE_NE tests failed."));
   PADDLE_ENFORCE_NE(
-      1.0, 2UL, phi::errors::Unavailable("PADDLE_ENFORCE_NE tests failed."));
+      1.0, 2UL, common::errors::Unavailable("PADDLE_ENFORCE_NE tests failed."));
 }
 TEST(ENFORCE_NE, FAIL) {
   bool caught_exception = false;
@@ -123,7 +125,7 @@ TEST(ENFORCE_NE, FAIL) {
     // 2UL here to check data type compatible
     PADDLE_ENFORCE_NE(1.0,
                       1UL,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "Expected 1.0 != 1UL, but received 1.0:1 == 1UL:1."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
@@ -136,14 +138,14 @@ TEST(ENFORCE_NE, FAIL) {
 
 TEST(ENFORCE_GT, OK) {
   PADDLE_ENFORCE_GT(
-      2, 1, phi::errors::Unavailable("PADDLE_ENFORCE_GT tests failed."));
+      2, 1, common::errors::Unavailable("PADDLE_ENFORCE_GT tests failed."));
 }
 TEST(ENFORCE_GT, FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_GT(1,
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected 1 > 2, but received 1:1 <= 2:2."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
@@ -156,18 +158,20 @@ TEST(ENFORCE_GT, FAIL) {
 
 TEST(ENFORCE_GE, OK) {
   PADDLE_ENFORCE_GE(
-      2, 2, phi::errors::Unavailable("PADDLE_ENFORCE_GE tests failed."));
+      2, 2, common::errors::Unavailable("PADDLE_ENFORCE_GE tests failed."));
   PADDLE_ENFORCE_GE(
-      3, 2, phi::errors::Unavailable("PADDLE_ENFORCE_GE tests failed."));
+      3, 2, common::errors::Unavailable("PADDLE_ENFORCE_GE tests failed."));
   PADDLE_ENFORCE_GE(
-      3.21, 2.0, phi::errors::Unavailable("PADDLE_ENFORCE_GE tests failed."));
+      3.21,
+      2.0,
+      common::errors::Unavailable("PADDLE_ENFORCE_GE tests failed."));
 }
 TEST(ENFORCE_GE, FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_GE(1,
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected 1 >= 2, but received 1:1 < 2:2."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
@@ -180,22 +184,22 @@ TEST(ENFORCE_GE, FAIL) {
 
 TEST(ENFORCE_LE, OK) {
   PADDLE_ENFORCE_LE(
-      1, 1, phi::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
+      1, 1, common::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
   PADDLE_ENFORCE_LE(
-      1UL, 1UL, phi::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
+      1UL, 1UL, common::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
   PADDLE_ENFORCE_LE(
-      2, 3, phi::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
+      2, 3, common::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
   PADDLE_ENFORCE_LE(
-      2UL, 3UL, phi::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
+      2UL, 3UL, common::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
   PADDLE_ENFORCE_LE(
-      2.0, 3.2, phi::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
+      2.0, 3.2, common::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
 }
 TEST(ENFORCE_LE, FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_GT(1,
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected 1 > 2, but received 1:1 <= 2:2."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
@@ -208,11 +212,11 @@ TEST(ENFORCE_LE, FAIL) {
 
 TEST(ENFORCE_LT, OK) {
   PADDLE_ENFORCE_LT(
-      3, 10, phi::errors::Unavailable("PADDLE_ENFORCE_LT tests failed."));
+      3, 10, common::errors::Unavailable("PADDLE_ENFORCE_LT tests failed."));
   PADDLE_ENFORCE_LT(
-      2UL, 3UL, phi::errors::Unavailable("PADDLE_ENFORCE_LT tests failed."));
+      2UL, 3UL, common::errors::Unavailable("PADDLE_ENFORCE_LT tests failed."));
   PADDLE_ENFORCE_LT(
-      2, 3, phi::errors::Unavailable("PADDLE_ENFORCE_LT tests failed."));
+      2, 3, common::errors::Unavailable("PADDLE_ENFORCE_LT tests failed."));
 }
 TEST(ENFORCE_LT, FAIL) {
   bool caught_exception = false;
@@ -220,7 +224,7 @@ TEST(ENFORCE_LT, FAIL) {
     PADDLE_ENFORCE_LT(
         1UL,
         0.12,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected 1UL < 0.12, but received 1UL:1 >= 0.12:0.12."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
@@ -235,7 +239,7 @@ TEST(ENFORCE_LT, FAIL) {
 TEST(ENFORCE_NOT_NULL, OK) {
   int* a = new int;
   PADDLE_ENFORCE_NOT_NULL(
-      a, phi::errors::Unavailable("PADDLE_ENFORCE_NOT_NULL tests failed."));
+      a, common::errors::Unavailable("PADDLE_ENFORCE_NOT_NULL tests failed."));
   delete a;
 }
 TEST(ENFORCE_NOT_NULL, FAIL) {
@@ -243,7 +247,7 @@ TEST(ENFORCE_NOT_NULL, FAIL) {
   try {
     int* a = nullptr;
     PADDLE_ENFORCE_NOT_NULL(
-        a, phi::errors::Unavailable("The a should not be null."));
+        a, common::errors::Unavailable("The a should not be null."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -281,7 +285,7 @@ std::ostream& operator<<(std::ostream& os, const Dims& d) {
 TEST(ENFORCE_USER_DEFINED_CLASS, EQ) {
   Dims a{{1, 2, 3, 4}}, b{{1, 2, 3, 4}};
   PADDLE_ENFORCE_EQ(
-      a, b, phi::errors::Unavailable("PADDLE_ENFORCE_EQ tests failed."));
+      a, b, common::errors::Unavailable("PADDLE_ENFORCE_EQ tests failed."));
 }
 
 TEST(ENFORCE_USER_DEFINED_CLASS, NE) {
@@ -289,7 +293,7 @@ TEST(ENFORCE_USER_DEFINED_CLASS, NE) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_EQ(
-        a, b, phi::errors::Unavailable("PADDLE_ENFORCE_EQ tests failed."));
+        a, b, common::errors::Unavailable("PADDLE_ENFORCE_EQ tests failed."));
   } catch (paddle::platform::EnforceNotMet&) {
     caught_exception = true;
   }
@@ -501,15 +505,15 @@ TEST(enforce, cannot_to_string_type) {
   PADDLE_ENFORCE_NE(
       obj1,
       obj2,
-      phi::errors::InvalidArgument("Object 1 is not equal to Object 2"));
+      common::errors::InvalidArgument("Object 1 is not equal to Object 2"));
   PADDLE_ENFORCE_EQ(
       obj1,
       obj3,
-      phi::errors::InvalidArgument("Object 1 is equal to Object 3"));
+      common::errors::InvalidArgument("Object 1 is equal to Object 3"));
 
   std::string msg = "Compare obj1 with obj2";
   try {
-    PADDLE_ENFORCE_EQ(obj1, obj2, phi::errors::InvalidArgument(msg));
+    PADDLE_ENFORCE_EQ(obj1, obj2, common::errors::InvalidArgument(msg));
   } catch (paddle::platform::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     LOG(INFO) << ex_msg;
@@ -522,7 +526,7 @@ TEST(enforce, cannot_to_string_type) {
   msg = "Compare x with y";
   try {
     int x = 3, y = 2;
-    PADDLE_ENFORCE_EQ(x, y, phi::errors::InvalidArgument(msg));
+    PADDLE_ENFORCE_EQ(x, y, common::errors::InvalidArgument(msg));
   } catch (paddle::platform::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     LOG(INFO) << ex_msg;
@@ -532,26 +536,26 @@ TEST(enforce, cannot_to_string_type) {
   }
 
   std::set<int> set;
-  PADDLE_ENFORCE_EQ(
-      set.begin(),
-      set.end(),
-      phi::errors::InvalidArgument("The begin and end of set is not equal."));
+  PADDLE_ENFORCE_EQ(set.begin(),
+                    set.end(),
+                    common::errors::InvalidArgument(
+                        "The begin and end of set is not equal."));
   set.insert(3);
   PADDLE_ENFORCE_NE(
       set.begin(),
       set.end(),
-      phi::errors::InvalidArgument("The begin and end of set is equal."));
+      common::errors::InvalidArgument("The begin and end of set is equal."));
 
   std::list<float> list;
-  PADDLE_ENFORCE_EQ(
-      list.begin(),
-      list.end(),
-      phi::errors::InvalidArgument("The begin and end of list is not equal."));
+  PADDLE_ENFORCE_EQ(list.begin(),
+                    list.end(),
+                    common::errors::InvalidArgument(
+                        "The begin and end of list is not equal."));
   list.push_back(4);
   PADDLE_ENFORCE_NE(
       list.begin(),
       list.end(),
-      phi::errors::InvalidArgument("The begin and end of list is equal."));
+      common::errors::InvalidArgument("The begin and end of list is equal."));
 }
 
 TEST(GET_DATA_SAFELY_MACRO, SUCCESS) {
