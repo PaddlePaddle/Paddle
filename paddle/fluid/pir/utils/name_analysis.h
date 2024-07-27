@@ -28,7 +28,11 @@ std::string GetValueFirstName(pir::Value value);
 std::optional<std::string> TryGetValueFirstName(pir::Value value);
 pir::Value GetParameterValueByName(const pir::Program &program,
                                    const std::string &name);
-void SetValueAllNamesWith(pir::Value value, const std::string name);
+void SetValueName(pir::Value value, const std::string name);
+
+std::map<std::string, std::string> RenameValue(Value value,
+                                               const std::string &new_name,
+                                               Block *block);
 std::optional<std::string> GetValueInputName(pir::Value value);
 
 std::vector<std::string> GetValueOutputNames(pir::Value value);

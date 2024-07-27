@@ -561,59 +561,24 @@ bool CrossEntropyWithSoftmax_OpInferSymbolicShape(
 
 bool ConcatOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis_expr =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  if (!axis_expr.data() || !axis_expr.data()->at(0).isa<int64_t>()) {
+    pir::Value res = op->result(0);
+    infer_context->SetSymbolForValueByStaticShape(res);
+    return true;
+  }
+
   pir::Value operand_source = op->operand_source(0);
   const auto &shape_data_list =
       infer_context->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
   size_t rank = shape_data_list.at(0).shape().size();
-
-  int64_t axis = 0;
-
-  auto SetShapeOrDataForAxis = [&](int axis_value) {
-    std::vector<symbol::DimExpr> data{axis_value};
-    symbol::TensorShapeOrDataDimExprs shape_or_data(
-        std::vector<symbol::DimExpr>{}, data);
-    infer_context->SetShapeOrDataForValue(op->operand_source(1), shape_or_data);
-  };
-
-  if (infer_context->HasShapeOrDataForValue(op->operand_source(1)) &&
-      (infer_context->GetShapeOrDataForValue(op->operand_source(1)))
-          .data()
-          .has_value()) {
-    const auto &axis_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    axis = static_cast<int>(
-        axis_shape_or_data.data().value().at(0).Get<int64_t>());
-  } else {
-    if (op->operand_source(1).defining_op() &&
-        op->operand_source(1).defining_op()->isa<paddle::dialect::FullOp>()) {
-      axis = op->operand_source(1)
-                 .defining_op<paddle::dialect::FullOp>()
-                 .attributes()
-                 .at("value")
-                 .dyn_cast<paddle::dialect::ScalarAttribute>()
-                 .data()
-                 .to<int64_t>();
-      SetShapeOrDataForAxis(axis);
-    } else {
-      pir::Value res = op->result(0);
-      infer_context->SetSymbolForValueByStaticShape(res);
-      // update axis value
-      auto res_shape = infer_context->GetShapeOrDataForValue(res);
-      for (size_t i = 0; i < rank; ++i) {
-        auto res_shape_dim = res_shape.shape().at(i);
-        auto shape_data_dim = shape_data_list.at(0).shape().at(i);
-        if (!res_shape_dim.isa<int64_t>()) break;
-        if (!shape_data_dim.isa<int64_t>()) break;
-        if (res_shape_dim.Get<int64_t>() > shape_data_dim.Get<int64_t>()) {
-          SetShapeOrDataForAxis(i);
-        }
-      }
-      return true;
-    }
-  }
-  axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+  const int64_t axis = [&] {
+    int64_t axis = axis_expr.data()->at(0).dyn_cast<int64_t>();
+    return axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+  }();
 
   if (shape_data_list.at(0).data().has_value()) {
     if (rank == 1) {

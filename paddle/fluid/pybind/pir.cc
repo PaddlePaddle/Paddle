@@ -1216,7 +1216,7 @@ void BindValue(py::module *m) {
             return pir::utils::name_analysis::GetValueFirstName(self);
           },
           [](Value self, const std::string &name) {
-            pir::utils::name_analysis::SetValueAllNamesWith(self, name);
+            pir::utils::name_analysis::SetValueName(self, name);
           })
       .def_property_readonly(
           "has_name",
@@ -1336,6 +1336,7 @@ void BindValue(py::module *m) {
       .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
+      .def("_rename", &pir::utils::name_analysis::RenameValue)
       .def("detach",
            [](Value self) {
              auto share_data_op =
@@ -1871,49 +1872,36 @@ SplitedResult SplitForwardBackward(
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = forward_outputs.size();
 
-  auto create_output_fn_forward =
-      [&ctx, &forward_value_map, &counter, &forward_program, &forward_params](
-          const pir::Value &v) {
-        if (v.impl() == nullptr) {
-          return;
-        }
-        // Skip the value that already in forward_params.
-        if (std::find(forward_params.begin(), forward_params.end(), v) !=
-            forward_params.end()) {
-          return;
-        }
-        std::string shadow_output_name =
-            std::string("output_") + std::to_string(counter);
-        if (auto names = pir::utils::name_analysis::TryGetValueFirstName(v)) {
-          shadow_output_name = names.value();
-        }
-        auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
-        pir::AttributeMap attribute_map = {
-            {"output_name", StrAttribute::get(ctx, shadow_output_name)},
-        };
-        pir::Operation *operation = pir::Operation::Create(
-            {forward_value_map[v]}, attribute_map, {}, op_info);
-        forward_program->block()->push_back(operation);
-        counter += 1;
-      };
-
-  auto create_output_fn_backward = [&ctx,
-                                    &backward_value_map,
-                                    &counter,
-                                    &backward_program](const pir::Value &v) {
+  auto create_output_fn = [&ctx, &counter](
+                              std::unordered_map<Value, Value> value_map,
+                              std::shared_ptr<Program> program,
+                              const pir::Value &v) {
     if (v.impl() == nullptr) {
       return;
     }
+    std::string shadow_output_name =
+        std::string("output_") + std::to_string(counter);
+    if (auto names = pir::utils::name_analysis::TryGetValueFirstName(v)) {
+      shadow_output_name = names.value();
+    }
     auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
-        {"output_name",
-         StrAttribute::get(ctx,
-                           std::string("output_") + std::to_string(counter))},
+        {"output_name", StrAttribute::get(ctx, shadow_output_name)},
     };
-    pir::Operation *operation = pir::Operation::Create(
-        {backward_value_map.at(v)}, attribute_map, {}, op_info);
-    backward_program->block()->push_back(operation);
+    pir::Operation *operation =
+        pir::Operation::Create({value_map.at(v)}, attribute_map, {}, op_info);
+    program->block()->push_back(operation);
     counter += 1;
+  };
+  auto create_output_fn_forward = [&forward_value_map,
+                                   &forward_program,
+                                   &create_output_fn](const pir::Value &v) {
+    create_output_fn(forward_value_map, forward_program, v);
+  };
+  auto create_output_fn_backward = [&backward_value_map,
+                                    &backward_program,
+                                    &create_output_fn](const pir::Value &v) {
+    create_output_fn(backward_value_map, backward_program, v);
   };
 
   VLOG(4) << "start create forward outputs, inserting shadow_output ops.";
@@ -2106,18 +2094,10 @@ static void inline CreateVariableIfNotExist(
   return;
 }
 
-void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  if (op->isa<pir::ShadowOutputOp>()) {
-    op->set_attribute("output_name", StrAttribute::get(ctx, name));
-  }
-}
-
 void BindUtils(pybind11::module *m) {
   m->def("create_loaded_parameter", CreateVariableIfNotExist);
   m->def("clone_program", CloneProgram);
   m->def("get_op_inplace_info", GetOpInplaceInfo);
-  m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
   m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("append_shadow_output", AppendShadowOutput);
@@ -2469,19 +2449,31 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
              const auto &compare_func =
                  [&](const std::vector<int64_t> &expect,
                      const std::vector<symbol::DimExpr> &actual) -> bool {
+               const auto print_expect_and_actual = [&]() {
+                 std::ostringstream sout;
+                 sout << "expect: [";
+                 std::copy(expect.begin(),
+                           expect.end(),
+                           std::ostream_iterator<int64_t>(sout, ","));
+                 sout << "]" << std::endl;
+
+                 sout << "actual:" << actual << std::endl;
+                 LOG(ERROR) << sout.str();
+               };
+
                if (actual.size() != expect.size()) {
                  LOG(ERROR) << "expect size " << expect.size()
                             << " is not equal to actual size " << actual.size()
-                            << " .";
+                            << " . The detailed infermation is as follows:";
+                 print_expect_and_actual();
                  return false;
                } else if (actual.empty()) {
                  return true;
                }
+
                for (size_t i = 0; i < actual.size(); i++) {
                  if (!actual.at(i).isa<int64_t>()) {
-                   LOG(ERROR)
-                       << "expect[" << i << "]: " << expect.at(i) << " actual["
-                       << i << "]: " << actual.at(i) << " .";
+                   print_expect_and_actual();
                    PADDLE_THROW(phi::errors::InvalidArgument(
                        "In OpTest, only supports cases where the type of "
                        "DimExpr "
@@ -2491,7 +2483,9 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                  if (actual.at(i) != expect.at(i)) {
                    LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
                               << " is not equal to actual[" << i
-                              << "]: " << actual.at(i) << " .";
+                              << "]: " << actual.at(i)
+                              << " . The detailed infermation is as follows:";
+                   print_expect_and_actual();
                    return false;
                  }
                }

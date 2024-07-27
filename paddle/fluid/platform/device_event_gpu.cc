@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/device_event_base.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace paddle {
@@ -36,7 +36,7 @@ struct CUDADeviceEventWrapper {
             device_id_));
   }
 
-  CudaEvent inner_event_;
+  phi::CudaEvent inner_event_;
   int device_id_;
 };
 

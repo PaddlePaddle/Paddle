@@ -38,7 +38,24 @@ Target::Target(OS o,
                Bit b,
                const std::vector<Feature> &features,
                const std::vector<Lib> &libs)
-    : os(o), arch(a), bits(b), features(features), libs(libs) {}
+    : os(o), arch(a), bits(b), features(features), libs(libs) {
+  // check compile option
+  arch.Match([&](UnknownArch) {},
+             [&](X86Arch) {},
+             [&](ARMArch) {},
+             [&](NVGPUArch) {
+#ifndef CINN_WITH_CUDA
+               PADDLE_THROW(phi::errors::Unimplemented(
+                   "Please recompile with flag WITH_GPU and WITH_CINN."));
+#endif
+             },
+             [&](HygonDCUArchHIP) {
+#ifndef CINN_WITH_HIP
+               PADDLE_THROW(phi::errors::Unimplemented(
+                   "Please recompile with flag WITH_ROCM and WITH_CINN."));
+#endif
+             });
+}
 
 bool Target::operator==(const Target &other) const {
   return os == other.os &&      //
