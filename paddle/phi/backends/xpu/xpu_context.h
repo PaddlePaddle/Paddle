@@ -33,6 +33,7 @@ namespace xpu = baidu::xpu::api;
 
 namespace phi {
 
+class DenseTensor;
 class XPUContext : public DeviceContext,
                    public TypeInfoTraits<DeviceContext, XPUContext> {
  public:
@@ -57,6 +58,7 @@ class XPUContext : public DeviceContext,
   void StreamWaitEvent(XPUEvent event, int s) const;
   void StreamWaitStream(int wait_stream, int record_stream) const;
   int64_t GetStreamNum() const;
+  void AddStashedMemory(int stream, const phi::DenseTensor& tensor);
 
   // For share external stream.
   void SetStream(void* stream, int i = 0);

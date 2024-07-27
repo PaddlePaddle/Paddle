@@ -82,7 +82,7 @@ if(WITH_GPU)
   nv_test(
     cuda_managed_memory_test
     SRCS cuda_managed_memory_test.cu
-    DEPS gpu_info place)
+    DEPS gpu_info phi common)
   nv_test(
     cuda_malloc_async_allocator_test
     SRCS cuda_malloc_async_allocator_test.cu
@@ -108,7 +108,7 @@ if(WITH_ROCM)
   hip_test(
     cuda_managed_memory_test
     SRCS cuda_managed_memory_test.cu
-    DEPS gpu_info place)
+    DEPS gpu_info phi common)
 endif()
 
 if(WITH_TESTING AND TEST cuda_managed_memory_test)
@@ -116,8 +116,9 @@ if(WITH_TESTING AND TEST cuda_managed_memory_test)
     cuda_managed_memory_test
     PROPERTIES
       ENVIRONMENT
-      "FLAGS_use_cuda_managed_memory=true;FLAGS_allocator_strategy=auto_growth"
-      TIMEOUT 50)
+      "FLAGS_use_cuda_managed_memory=true;FLAGS_use_cuda_malloc_async_allocator=false;FLAGS_allocator_strategy=auto_growth"
+      TIMEOUT
+      50)
 endif()
 
 if(WITH_GPU AND WITH_TESTING)

@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
@@ -51,8 +50,7 @@ typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(::pir::Operation*);
 struct GroupInfo {
   std::vector<int64_t> data_space;
   std::vector<int64_t> reduce_axis;
-  int64_t raw_data_rank;
-  std::vector<int64_t> raw_reduce_axis;
+  std::vector<int64_t> loop_transform_map;
   std::set<std::string> reduce_var_names;
   std::set<std::string> shared_var_names;
   std::set<std::string> direct_output_var_names;
@@ -86,8 +84,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
                                         bool apply_op_schedule = false,
                                         bool apply_group_schedule = true,
                                         bool apply_pass = true);
-
-  void InsertNameGeneToScope(std::shared_ptr<Scope> scope);
 
  private:
   /**

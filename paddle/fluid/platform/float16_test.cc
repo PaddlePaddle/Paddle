@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
@@ -19,6 +19,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
+using float16 = phi::dtype::float16;
+using namespace phi::dtype;  // NOLINT
 
 TEST(float16, conversion_cpu) {
   // Conversion from float
@@ -136,7 +138,7 @@ TEST(float16, floating) {
   PADDLE_ENFORCE_EQ(
       std::is_floating_point<float16>::value,
       true,
-      platform::errors::Unavailable("The float16 support in CPU failed."));
+      phi::errors::Unavailable("The float16 support in CPU failed."));
 }
 
 TEST(float16, print) {

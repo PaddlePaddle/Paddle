@@ -32,7 +32,6 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/framework/op.h"
-#include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
 namespace cinn {

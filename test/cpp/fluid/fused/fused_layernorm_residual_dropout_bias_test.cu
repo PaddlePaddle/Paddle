@@ -53,7 +53,7 @@ struct TestFusedLayernormResidualDropoutBias {
   std::vector<phi::funcs::LayerNormParamType<T>> correct_means, correct_vars;
   std::vector<uint8_t> correct_mask;
 
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   phi::GPUContext *ctx;
 
   TestFusedLayernormResidualDropoutBias() {
@@ -67,7 +67,7 @@ struct TestFusedLayernormResidualDropoutBias {
     has_scale = true;
     has_layernorm_bias = true;
     epsilon = 0.00001f;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
@@ -90,7 +90,7 @@ struct TestFusedLayernormResidualDropoutBias {
     has_bias = _has_bias;
     has_scale = true;
     has_layernorm_bias = true;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
@@ -335,7 +335,7 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasDouble) {
 }
 
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasFp16) {
-  BaseTest<platform::float16>(true);
+  BaseTest<phi::dtype::float16>(true);
 }
 
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasIsUpscaleInTrain) {
@@ -378,8 +378,8 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutLargeShape) {
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutFp16MLperf) {
   const int rows = 512;
   const int cols = 1024;
-  TestFusedLayernormResidualDropoutBias<platform::float16> test(
+  TestFusedLayernormResidualDropoutBias<phi::dtype::float16> test(
       rows, cols, 0, 0, 0.00001f, false, false, false);
   test.Run();
-  test.CheckOut(static_cast<platform::float16>(1e-2));
+  test.CheckOut(static_cast<phi::dtype::float16>(1e-2));
 }

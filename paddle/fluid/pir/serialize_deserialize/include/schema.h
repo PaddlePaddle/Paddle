@@ -81,6 +81,9 @@ namespace pir {
 std::pair<std::string, std::string> getContentSplitByDot(
     const std::string& str);
 
+void GetCompressOpName(std::string* op_name);
+
+void GetDecompressOpName(std::string* op_name);
 class DialectIdMap {
  public:
   static DialectIdMap* Instance();

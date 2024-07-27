@@ -51,7 +51,7 @@ PaddleTensor LodTensorToPaddleTensor(phi::DenseTensor* t) {
     pt.data.Reset(t->data(), t->numel() * sizeof(int32_t));
     pt.dtype = PaddleDType::INT32;
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported tensor date type. Now only supports INT64, FP32, INT32."));
   }
   pt.shape = common::vectorize<int>(t->dims());
@@ -108,7 +108,7 @@ void MainWord2Vec(const ::paddle::PaddlePlace& place) {
   std::vector<::paddle::framework::FetchType*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
-  TestInference<platform::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
+  TestInference<phi::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
 
   auto output1_tensor = PADDLE_GET(phi::DenseTensor, output1);
   float* lod_data = output1_tensor.data<float>();
@@ -135,7 +135,7 @@ void MainImageClassification(const ::paddle::PaddlePlace& place) {
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
   feed_target_shapes[0][0] = batch_size;
-  framework::DDim input_dims = common::make_ddim(feed_target_shapes[0]);
+  phi::DDim input_dims = common::make_ddim(feed_target_shapes[0]);
   SetupTensor<float>(
       &input, input_dims, static_cast<float>(0), static_cast<float>(1));
   std::vector<phi::DenseTensor*> cpu_feeds;
@@ -145,7 +145,7 @@ void MainImageClassification(const ::paddle::PaddlePlace& place) {
   std::vector<framework::FetchType*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
-  TestInference<platform::CPUPlace, false, true>(
+  TestInference<phi::CPUPlace, false, true>(
       config.model_dir, cpu_feeds, cpu_fetchs1, repeat, is_combined);
 
   auto predictor = CreatePaddlePredictor(config);
@@ -190,7 +190,7 @@ void MainThreadsWord2Vec(const ::paddle::PaddlePlace& place) {
     for (auto& word : jobs[i]) {
       ref_feeds.push_back(&word);
     }
-    TestInference<platform::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
+    TestInference<phi::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
   }
 
   // create threads and each thread run 1 job
@@ -243,14 +243,14 @@ void MainThreadsImageClassification(const ::paddle::PaddlePlace& place) {
     std::vector<std::vector<int64_t>> feed_target_shapes =
         GetFeedTargetShapes(config.model_dir, /*is_combined*/ false);
     feed_target_shapes[0][0] = batch_size;
-    framework::DDim input_dims = common::make_ddim(feed_target_shapes[0]);
+    phi::DDim input_dims = common::make_ddim(feed_target_shapes[0]);
     SetupTensor<float>(&jobs[i], input_dims, 0.f, 1.f);
     paddle_tensor_feeds[i].push_back(LodTensorToPaddleTensor(&jobs[i]));
 
     // get reference result of each job
     std::vector<phi::DenseTensor*> ref_feeds(1, &jobs[i]);
     std::vector<framework::FetchType*> ref_fetches(1, &refs[i]);
-    TestInference<platform::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
+    TestInference<phi::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
   }
 
   // create threads and each thread run 1 job

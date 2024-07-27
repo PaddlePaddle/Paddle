@@ -49,7 +49,7 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
       break;
 #endif
     default:
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Paddle-TRT loads weights failed, found not supported data type %s.",
           type);
       break;
@@ -80,7 +80,7 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
   if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "You should build engine first and then set the context."));
     // We may see trt warning: Profile 0 has been chosen by another
     // IExecutionContext...
@@ -94,7 +94,7 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
     }
     PADDLE_ENFORCE_NOT_NULL(
         infer_context,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "TensorRT engine can not build execution context."));
     if (with_dynamic_shape()) {
       // need new profile if it's not the first
@@ -204,11 +204,11 @@ void TensorRTEngine::FreezeNetwork() {
   FreshDeviceId();
   VLOG(3) << "TRT to freeze network";
   PADDLE_ENFORCE_NOT_NULL(infer_builder_,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Inference builder of TRT is null. Please make "
                               "sure you call InitNetwork first."));
   PADDLE_ENFORCE_NOT_NULL(network(),
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Call InitNetwork first to initialize network."));
   // build engine.
   if (!with_dynamic_shape()) {
@@ -359,7 +359,7 @@ void TensorRTEngine::FreezeNetwork() {
                               max_shape_tensor().count(input_name) > 0 &&
                               optim_shape_tensor().count(input_name) > 0,
                           true,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Fail to find min/max/optim shape value for TRT "
                               "network's shape tensor input named %s.",
                               input_name));
@@ -424,9 +424,8 @@ void TensorRTEngine::FreezeNetwork() {
 
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_,
-      platform::errors::Fatal(
-          "Build TensorRT cuda engine failed! Please recheck "
-          "you configurations related to paddle-TensorRT."));
+      phi::errors::Fatal("Build TensorRT cuda engine failed! Please recheck "
+                         "you configurations related to paddle-TensorRT."));
 
 #if IS_TRT_VERSION_GE(10000)
   binding_num_ = infer_engine_->getNbIOTensors();
@@ -454,18 +453,18 @@ nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
                                                 const nvinfer1::Dims &dims) {
   PADDLE_ENFORCE_EQ(network() != nullptr,
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The TRT network should be initialized first."));
   auto *input = network()->addInput(name.c_str(), dtype, dims);
   PADDLE_ENFORCE_NOT_NULL(
       input,
-      platform::errors::InvalidArgument("Adding input %s failed in "
-                                        "TensorRT inference network. "
-                                        "Please recheck your input.",
-                                        name));
+      phi::errors::InvalidArgument("Adding input %s failed in "
+                                   "TensorRT inference network. "
+                                   "Please recheck your input.",
+                                   name));
   PADDLE_ENFORCE_EQ(input->isNetworkInput(),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Input %s is not the input of TRT inference network. "
                         "Please recheck your input.",
                         name));
@@ -480,19 +479,19 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer,
   SetITensor(name, output);
   PADDLE_ENFORCE_NOT_NULL(
       output,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The output %s of TRT engine should not be null.", name));
   output->setName(name.c_str());
   PADDLE_ENFORCE_EQ(output->isNetworkInput(),
                     false,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The output %s of TRT engine should not be the input "
                         "of the network at the same time.",
                         name));
   network()->markOutput(*output);
   PADDLE_ENFORCE_EQ(output->isNetworkOutput(),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The output %s of TRT engine should be the output "
                         "of the network.",
                         name));
@@ -502,12 +501,12 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
   auto *output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE_NOT_NULL(
       output,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The output %s of TRT engine should not be null.", name));
   output->setName(name.c_str());
   PADDLE_ENFORCE_EQ(output->isNetworkInput(),
                     false,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The output %s of TRT engine should not be the input "
                         "of the network at the same time.",
                         name));
@@ -525,12 +524,12 @@ void TensorRTEngine::DeleteITensor(const std::string &name,
                                    nvinfer1::ITensor *tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Tensor named %s of TRT engine should not be null.", name));
   PADDLE_ENFORCE_EQ(
       true,
       itensor_map_.count(name),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Tensor named %s of TRT engine should not be null", name));
   itensor_map_.erase(name);
 }
@@ -539,12 +538,12 @@ void TensorRTEngine::SetITensor(const std::string &name,
                                 nvinfer1::ITensor *tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Tensor named %s of TRT engine should not be null.", name));
   PADDLE_ENFORCE_EQ(
       0,
       itensor_map_.count(name),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Tensor named %s of TRT engine should not be duplicated", name));
   itensor_map_[name] = tensor;
 }
@@ -569,10 +568,10 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
   auto *var_v = scope_->FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
       var_v,
-      platform::errors::NotFound("You are converting a persistable weight to a "
-                                 "tensor, but there is no "
-                                 "persistable variable called %s in scope.",
-                                 name));
+      phi::errors::NotFound("You are converting a persistable weight to a "
+                            "tensor, but there is no "
+                            "persistable variable called %s in scope.",
+                            name));
   auto *var_t = var_v->GetMutable<phi::DenseTensor>();
   auto weight = this->GetTrtWeight(name, *var_t);
 
@@ -645,7 +644,7 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
 
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_,
-      platform::errors::Fatal(
+      phi::errors::Fatal(
           "Building TRT cuda engine failed when deserializing engine info. "
           "Please check:\n1. Your TRT serialization is generated and "
           "loaded "
@@ -677,10 +676,10 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
   std::string name_with_suffix = name + splitter + name_suffix;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
                     0,
-                    platform::errors::AlreadyExists(
+                    phi::errors::AlreadyExists(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
@@ -695,11 +694,11 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &bf16_tensor);
+        weight_tensor, phi::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
-    auto *fp16_data = weight_map[name_with_suffix]->mutable_data<float16>(
-        platform::CPUPlace());
-    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
+    auto *fp16_data =
+        weight_map[name_with_suffix]->mutable_data<float16>(phi::CPUPlace());
+    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp16_data[i] = static_cast<float16>(bf16_data[i]);
     }
@@ -709,11 +708,11 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     phi::DenseTensor fp32_tensor;
     fp32_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &fp32_tensor);
+        weight_tensor, phi::CPUPlace(), &fp32_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
-    auto *fp16_data = weight_map[name_with_suffix]->mutable_data<float16>(
-        platform::CPUPlace());
-    auto *fp32_data = fp32_tensor.mutable_data<float>(platform::CPUPlace());
+    auto *fp16_data =
+        weight_map[name_with_suffix]->mutable_data<float16>(phi::CPUPlace());
+    auto *fp32_data = fp32_tensor.mutable_data<float>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp16_data[i] = static_cast<float16>(fp32_data[i]);
     }
@@ -723,11 +722,11 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     phi::DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &int64_tensor);
+        weight_tensor, phi::CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
-    auto *int32_data = weight_map[name_with_suffix]->mutable_data<int32_t>(
-        platform::CPUPlace());
-    auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
+    auto *int32_data =
+        weight_map[name_with_suffix]->mutable_data<int32_t>(phi::CPUPlace());
+    auto *int64_data = int64_tensor.mutable_data<int64_t>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
     }
@@ -750,10 +749,10 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
   std::string name_with_suffix = name + splitter + name_suffix;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
                     0,
-                    platform::errors::AlreadyExists(
+                    phi::errors::AlreadyExists(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
@@ -768,11 +767,11 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &bf16_tensor);
+        weight_tensor, phi::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
     auto *fp32_data =
-        weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
-    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
+        weight_map[name_with_suffix]->mutable_data<float>(phi::CPUPlace());
+    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(bf16_data[i]);
     }
@@ -782,11 +781,11 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     phi::DenseTensor fp16_tensor;
     fp16_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &fp16_tensor);
+        weight_tensor, phi::CPUPlace(), &fp16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
     auto *fp32_data =
-        weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
-    auto *fp16_data = fp16_tensor.mutable_data<float16>(platform::CPUPlace());
+        weight_map[name_with_suffix]->mutable_data<float>(phi::CPUPlace());
+    auto *fp16_data = fp16_tensor.mutable_data<float16>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(fp16_data[i]);
     }
@@ -796,11 +795,11 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     phi::DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &int64_tensor);
+        weight_tensor, phi::CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
-    auto *int32_data = weight_map[name_with_suffix]->mutable_data<int32_t>(
-        platform::CPUPlace());
-    auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
+    auto *int32_data =
+        weight_map[name_with_suffix]->mutable_data<int32_t>(phi::CPUPlace());
+    auto *int64_data = int64_tensor.mutable_data<int64_t>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
     }
@@ -822,10 +821,10 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
   std::string name_with_suffix = name + splitter + name_suffix;
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
                     0,
-                    platform::errors::AlreadyExists(
+                    phi::errors::AlreadyExists(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
@@ -844,11 +843,11 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &bf16_tensor);
+        weight_tensor, phi::CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
     auto *fp32_data =
-        weight_map[name_with_suffix]->mutable_data<float>(platform::CPUPlace());
-    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(platform::CPUPlace());
+        weight_map[name_with_suffix]->mutable_data<float>(phi::CPUPlace());
+    auto *bf16_data = bf16_tensor.mutable_data<bfloat16>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       fp32_data[i] = static_cast<float>(bf16_data[i]);
     }
@@ -858,11 +857,11 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     phi::DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
-        weight_tensor, platform::CPUPlace(), &int64_tensor);
+        weight_tensor, phi::CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
-    auto *int32_data = weight_map[name_with_suffix]->mutable_data<int32_t>(
-        platform::CPUPlace());
-    auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
+    auto *int32_data =
+        weight_map[name_with_suffix]->mutable_data<int32_t>(phi::CPUPlace());
+    auto *int64_data = int64_tensor.mutable_data<int64_t>(phi::CPUPlace());
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
     }
@@ -913,7 +912,7 @@ void TensorRTEngine::FreshDeviceId() {
   cudaGetDeviceCount(&count);
   PADDLE_ENFORCE_LT(device_id(),
                     count,
-                    platform::errors::OutOfRange(
+                    phi::errors::OutOfRange(
                         "Device id %d exceeds the current device count: %d.",
                         device_id(),
                         count));

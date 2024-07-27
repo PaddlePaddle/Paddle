@@ -55,20 +55,29 @@ inline HOSTDEVICE T roundWithTiesToEven(T x) {
 template <typename T>
 class QuantTensorFunctor {
  public:
-  explicit QuantTensorFunctor(const T bin_cnt, const T inv_s)
-      : bin_cnt_(bin_cnt), inv_s_(inv_s) {}
+  explicit QuantTensorFunctor(const T qmax, const T inv_s)
+      : qmax_(qmax), inv_s_(inv_s) {}
   HOSTDEVICE T operator()(const T x) const {
-    T out = bin_cnt_ * inv_s_ * x;
-    out = roundWithTiesToEven(out);
-    T max_bound = bin_cnt_;
-    T min_bound = -bin_cnt_ - static_cast<T>(1);
+    T out = qmax_ * inv_s_ * x;
+    if (qmax_ == static_cast<T>(448)) {
+      out = float8_e4m3fn(out);
+    } else if (qmax_ == static_cast<T>(57344)) {
+      out = float8_e5m2(out);
+    } else {
+      out = roundWithTiesToEven(out);
+    }
+    T max_bound = qmax_;
+    T min_bound = -qmax_ - static_cast<T>(1);
+    if (qmax_ == static_cast<T>(448) || qmax_ == static_cast<T>(57344)) {
+      min_bound = -qmax_;
+    }
     out = out > max_bound ? max_bound : out;
     out = out < min_bound ? min_bound : out;
     return out;
   }
 
  private:
-  T bin_cnt_;
+  T qmax_;
   T inv_s_;
 };
 
@@ -84,7 +93,7 @@ class ClipAndFakeQuantFunctor {
   void operator()(const Context &ctx,
                   const DenseTensor &in,
                   const DenseTensor &scale,
-                  const int bin_cnt,
+                  const int qmax,
                   const int round_type,
                   DenseTensor *out);
 };
@@ -117,7 +126,7 @@ class ChannelClipAndFakeQuantFunctor {
   void operator()(const Context &ctx,
                   const DenseTensor &in,
                   const DenseTensor &scale,
-                  const int bin_cnt,
+                  const int qmax,
                   const int round_type,
                   const int quant_axis,
                   DenseTensor *out);

@@ -12,16 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# We type-check the `Example` codes from docstring.
+# We type-check the `Example` codes from docstring, like:
+# 1. checking from input `apis`
+# > python type_checking.py paddle.abs paddle.abs_ paddle.sin
+# 2. checking from spec, with increment api
+# > python type_checking.py
+# 3. checking from spec, with full apis
+# > python type_checking.py --full-test
+# `--full-test` and `apis` should not be set at the same time.
 
 from __future__ import annotations
 
 import argparse
 import doctest
+import multiprocessing
 import pathlib
 import re
+import signal
 from abc import abstractmethod
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -62,10 +70,16 @@ class TestResult:
 
 class MypyChecker(TypeChecker):
     def __init__(
-        self, config_file: str, cache_dir: str, *args: Any, **kwargs: Any
+        self,
+        config_file: str,
+        cache_dir: str,
+        debug: bool = False,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         self.config_file = config_file
         self.cache_dir = cache_dir
+        self.debug = debug
         super().__init__(*args, **kwargs)
 
     def run(self, api_name: str, codeblock: str) -> TestResult:
@@ -91,7 +105,8 @@ class MypyChecker(TypeChecker):
         )
 
         normal_report, error_report, exit_status = mypy_api.run(
-            [
+            (["--show-traceback"] if self.debug else [])
+            + [
                 f'--config-file={self.config_file}',
                 f'--cache-dir={self.cache_dir}',
                 '-c',
@@ -126,6 +141,7 @@ class MypyChecker(TypeChecker):
         self, test_results: list[TestResult], whl_error: list[str]
     ) -> None:
         is_fail = False
+        failed_apis = set()
 
         logger.warning("----------------Check results--------------------")
 
@@ -143,6 +159,7 @@ class MypyChecker(TypeChecker):
             logger.warning(
                 "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
             )
+
             for test_result in test_results:
                 if test_result.fail:
                     logger.error(
@@ -150,24 +167,34 @@ class MypyChecker(TypeChecker):
                         test_result.api_name,
                     )
                     logger.error(test_result.msg)
-            log_exit(1)
+                    failed_apis.add(test_result.api_name.split(':')[0])
+
+            is_fail = True
 
         else:
             for test_result in test_results:
                 if test_result.fail:
                     is_fail = True
-
                     logger.error(test_result.api_name)
                     logger.error(test_result.msg)
+                    failed_apis.add(test_result.api_name.split(':')[0])
 
                 else:
                     logger.debug(test_result.api_name)
                     logger.debug(test_result.msg)
 
-            if is_fail:
-                logger.error(">>> Mistakes found in type checking!")
-                logger.error(">>> Please recheck the type annotations.")
-                log_exit(1)
+        if is_fail:
+            logger.error(">>> Mistakes found in type checking!")
+            logger.error(
+                ">>> Please recheck the type annotations. Run `tools/type_checking.py` to check the typing issues:"
+            )
+            logger.error(
+                "> python tools/type_checking.py "
+                + " ".join(sorted(failed_apis))
+            )
+            logger.error("----------------End of the Check--------------------")
+
+            log_exit(1)
 
         logger.warning(">>> Type checking is successful!")
         logger.warning("----------------End of the Check--------------------")
@@ -180,6 +207,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description='run Sample Code Type Checking'
     )
+
     parser.add_argument('--debug', dest='debug', action="store_true")
     parser.add_argument(
         '--logf', dest='logf', type=str, default=None, help='file for logging'
@@ -198,10 +226,20 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help='cache dir for mypy',
     )
-    parser.add_argument('--full-test', dest='full_test', action="store_true")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('apis', nargs='*', type=str, default=[])
+    group.add_argument('--full-test', dest='full_test', action="store_true")
 
     args = parser.parse_args()
     return args
+
+
+# https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
+# ctrl+c interrupt handler
+# this should be a global function, a local function makes `pickle` fail on MacOS.
+def init_worker():
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 def get_test_results(
@@ -214,7 +252,6 @@ def get_test_results(
     )
     google_style = _test_style == 'google'
 
-    api_names = []
     codeblocks = []
     for api_name, raw_docstring in docstrings_to_test.items():
         # we may extract more than one codeblocks from docsting.
@@ -224,14 +261,23 @@ def get_test_results(
             codeblock_name = codeblock['name']
             codeblock_id = codeblock['id']
 
-            api_names.append(f'{api_name}:{codeblock_name or codeblock_id}')
-            codeblocks.append(codeblock['codes'])
+            codeblocks.append(
+                (
+                    f'{api_name}:{codeblock_name or codeblock_id}',
+                    codeblock['codes'],
+                )
+            )
 
     test_results = []
-    with ProcessPoolExecutor() as exe:
-        test_results = exe.map(
-            type_checker.run, api_names, codeblocks, timeout=600
-        )
+    with multiprocessing.Pool(initializer=init_worker) as pool:
+        try:
+            test_results = pool.starmap(type_checker.run, codeblocks)
+        except KeyboardInterrupt:
+            pool.terminate()
+        else:
+            pool.close()
+        finally:
+            pool.join()
 
     return list(test_results)
 
@@ -249,7 +295,9 @@ def run_type_checker(
     logger.info(">>> Get docstring from api ...")
     filter_api = lambda api_name: 'libpaddle' in api_name
     docstrings_to_test, whl_error = get_docstring(
-        full_test=args.full_test, filter_api=filter_api
+        full_test=args.full_test,
+        filter_api=filter_api,
+        apis=[(api, api) for api in args.apis],
     )
 
     logger.info(">>> Running type checker ...")
@@ -272,5 +320,6 @@ if __name__ == '__main__':
         cache_dir=(
             args.cache_dir if args.cache_dir else (base_path / '.mypy_cache')
         ),
+        debug=args.debug,
     )
     run_type_checker(args, mypy_checker)

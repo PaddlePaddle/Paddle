@@ -88,13 +88,13 @@ ConstantFoldingPass::ConstantFoldingPass() = default;
 
 void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, phi::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("constant_folding", graph);
   auto *scope = param_scope();
 
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::Fatal(
+      phi::errors::Fatal(
           "scope must not be null when applying constant folding."));
 
   std::vector<std::string> blacklist{"feed",
@@ -174,7 +174,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         // useless out_node can be removed, not need set it persistable !
         if (out_node->outputs.empty()) remove_nodes.emplace(out_node);
       }
-      op->Run(*local_scope, platform::CPUPlace());
+      op->Run(*local_scope, phi::CPUPlace());
       folded_op_num++;
       for (auto out_node : op_node->outputs) {
         // this out_node is useless, do not set it persistable

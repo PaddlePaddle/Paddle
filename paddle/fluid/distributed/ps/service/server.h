@@ -31,7 +31,7 @@
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace google {
 namespace protobuf {
@@ -150,7 +150,7 @@ class PSServer {
 
  protected:
   std::shared_ptr<framework::Scope> scope_;
-  platform::Place place_ = platform::CPUPlace();
+  phi::Place place_ = phi::CPUPlace();
 };
 
 REGISTER_PSCORE_REGISTERER(PSServer);

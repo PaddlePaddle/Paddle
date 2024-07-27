@@ -94,10 +94,6 @@ class TestGeometric(unittest.TestCase):
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
 
-    def test_init_prob_value_error(self):
-        with self.assertRaises(ValueError):
-            paddle.distribution.geometric.Geometric(2)
-
     def test_init_prob_type_error(self):
         with self.assertRaises(TypeError):
             paddle.distribution.geometric.Geometric([2])

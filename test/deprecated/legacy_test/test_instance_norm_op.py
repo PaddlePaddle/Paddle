@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -640,7 +641,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 fwd_actual[i],
                 rtol=rtol,
                 atol=atol,
-                err_msg='%s jit fwd' % self.places[i],
+                err_msg=f'{self.places[i]} jit fwd',
             )
 
             # now use larger threshold when testing cpu grads to bypass cpu grad test
@@ -653,7 +654,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 rev_actual[i],
                 rtol=rtol,
                 atol=atol,
-                err_msg='%s jit rev' % self.places[i],
+                err_msg=f'{self.places[i]} jit rev',
             )
 
     def test_jit_comp_with_cinn(self):
@@ -690,7 +691,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 fwd_actual[i],
                 rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
                 atol=atol,
-                err_msg='%s jit_cinn fwd' % self.places[i],
+                err_msg=f'{self.places[i]} jit_cinn fwd',
             )
             # now use larger threshold when testing cpu grads to bypass cpu grad test
             if self.special_threshold is not None:
@@ -701,7 +702,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 rev_actual[i],
                 rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
                 atol=atol,
-                err_msg='%s jit_cinn rev' % self.places[i],
+                err_msg=f'{self.places[i]} jit_cinn rev',
             )
 
 
@@ -725,7 +726,16 @@ class TestInstanceNormCase1(TestInstanceNormOp):
 class TestElasticNormOp(unittest.TestCase):
     def init_test_case(self):
         self.epsilon = 1e-5
-        self.places = [core.CPUPlace()]
+        self.places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda()
+            and core.op_support_gpu("instance_norm")
+        ):
+            self.places.append(core.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu(
             "instance_norm"
         ):

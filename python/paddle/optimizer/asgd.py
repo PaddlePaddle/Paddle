@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle import _C_ops
@@ -22,6 +24,14 @@ from ..base import framework
 from ..base.dygraph import no_grad
 from ..base.framework import in_dygraph_mode, in_pir_mode
 from .optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .lr import LRScheduler
+    from .optimizer import _ParameterConfig
 
 __all__ = []
 
@@ -44,24 +54,24 @@ class ASGD(Optimizer):
        \end{aligned}
 
     Parameters:
-        learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
-            It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
+        learning_rate (float|Tensor|LRScheduler, optional): The learning rate used to update ``Parameter``.
+            It can be a float value, a ``Tensor`` with a float type or a LRScheduler. The default value is 0.001.
         batch_num (int, optional): The number of batches needed to complete one epoch.
             Assuming the total number of samples is ``all``,
             it is recommended to set ``batch_num`` to ``all`` / ``batch_size``.
             In situations where the graphics memory is tight,
             it is possible to reduce the batch_num appropriately.
             The default value is 1.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
+        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization.
             It can be a float value as coeff of L2 regularization or :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of some derived class of ``GradientClipBase`` .
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of some derived class of ``GradientClipBase`` .
             There are three clipping strategies ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` ).
             Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): In mixed precision training scenarios based on GPU,
@@ -71,7 +81,7 @@ class ASGD(Optimizer):
             Finally, the updated FP32 type value will be converted to FP16 type first,
             and then assigned to the actual FP16 type parameters participating in the calculation.
             The default value is False.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property.
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
@@ -84,25 +94,32 @@ class ASGD(Optimizer):
             >>> inp = paddle.to_tensor(inp)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> asgd = paddle.optimizer.ASGD(learning_rate=0.001, batch_num=10, parameters=linear.parameters(), weight_decay=0.01)
+            >>> asgd = paddle.optimizer.ASGD(
+            ...     learning_rate=0.001,
+            ...     batch_num=10,
+            ...     parameters=linear.parameters(),
+            ...     weight_decay=0.01
+            ... )
             >>> out.backward()
             >>> asgd.step()
             >>> asgd.clear_grad()
     """
+
+    type: str
     _d_acc_str = "d"
     _y_acc_str = "y"
     _m_acc_str = "m"
 
     def __init__(
         self,
-        learning_rate=0.001,
-        batch_num=1,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        multi_precision=False,
-        name=None,
-    ):
+        learning_rate: float | Tensor | LRScheduler = 0.001,
+        batch_num: int = 1,
+        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        multi_precision: bool = False,
+        name: str | None = None,
+    ) -> None:
         if learning_rate is None:
             raise ValueError("learning_rate should not be none")
         if batch_num is None:

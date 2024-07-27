@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 from op import Operator
 from op_test import OpTest
 
+import paddle
 from paddle.base import core
 
 
@@ -78,9 +80,33 @@ def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
     return param_out, sq_accum_out, lin_accum_out
 
 
+def api_wrapper(
+    param,
+    squared_accumulator,
+    linear_accumulator,
+    grad,
+    learning_rate,
+    l1=0.0,
+    l2=0.0,
+    lr_power=-0.5,
+):
+    return paddle._C_ops.ftrl(
+        param,
+        squared_accumulator,
+        linear_accumulator,
+        grad,
+        learning_rate,
+        l1,
+        l2,
+        lr_power,
+    )
+
+
 class TestFTRLOp(OpTest):
     def setUp(self):
         self.op_type = "ftrl"
+        self.python_api = api_wrapper
+        self.python_out_sig = ["ParamOut"]
         rows = 102
         w = np.random.random((rows, 105)).astype("float32")
         g = np.random.random((rows, 105)).astype("float32")
@@ -215,7 +241,13 @@ class TestSparseFTRLOp(unittest.TestCase):
         pass
 
     def test_sparse_ftrl(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:

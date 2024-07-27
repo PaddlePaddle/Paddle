@@ -48,6 +48,7 @@ static const char* backend_C = "C";
 static const char* backend_llvm_host = "llvm_host";
 static const char* backend_llvm_x86 = "llvm_x86";
 static const char* backend_nvgpu = "nvgpu";
+static const char* backend_hygondcu_hip = "hygonDCU_hip";
 
 /**
  * \brief Base class of the emitter of all the extern functions able to trigger

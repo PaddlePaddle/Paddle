@@ -82,10 +82,15 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void LogsumexpKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const std::vector<int64_t>& axis,
+                     const std::vector<int>& axis_in,
                      bool keepdim,
                      bool reduce_all,
                      DenseTensor* out) {
+  std::vector<int64_t> axis;
+  axis.reserve(axis_in.size());
+  std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {
+    axis.push_back(static_cast<int64_t>(t));
+  });
   auto xdim = x.dims();
   for (size_t i = 0; i < xdim.size(); i++)
     PADDLE_ENFORCE_LT(0,

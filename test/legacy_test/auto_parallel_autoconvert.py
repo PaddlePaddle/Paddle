@@ -150,12 +150,8 @@ class TestMLPAutoConvert(unittest.TestCase):
         np.random.seed(2021)
 
     def tearDown(self):
-        os.remove(
-            f"./model_state_rank{str(paddle.distributed.get_rank())}.pdmodel"
-        )
-        os.remove(
-            f"./dist_attr_rank{str(paddle.distributed.get_rank())}.pdattr"
-        )
+        os.remove(f"./model_state_rank{paddle.distributed.get_rank()}.pdmodel")
+        os.remove(f"./dist_attr_rank{paddle.distributed.get_rank()}.pdattr")
 
     def test_mlp_mp2pp(self):
         set_default_distributed_context(None)
@@ -245,12 +241,8 @@ class TestMLPAutoConvert2(unittest.TestCase):
         np.random.seed(2021)
 
     def tearDown(self):
-        os.remove(
-            f"./model_state_rank{str(paddle.distributed.get_rank())}.pdmodel"
-        )
-        os.remove(
-            f"./dist_attr_rank{str(paddle.distributed.get_rank())}.pdattr"
-        )
+        os.remove(f"./model_state_rank{paddle.distributed.get_rank()}.pdmodel")
+        os.remove(f"./dist_attr_rank{paddle.distributed.get_rank()}.pdattr")
 
     def test_mlp_pp2mp(self):
         set_default_distributed_context(None)

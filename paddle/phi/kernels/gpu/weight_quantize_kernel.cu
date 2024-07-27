@@ -45,10 +45,11 @@ void WeightQuantizeKernel(const Context& dev_ctx,
   std::vector<int> weight_shape{static_cast<int>(x.dims()[0]),
                                 static_cast<int>(x.dims()[1])};
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 86) || (arch == 75) || (arch == 70)),
+      ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
+       (arch == 89) || (arch == 90)),
       true,
       phi::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86."));
+          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
 
   if (algo == "llm.int8") {
     dev_ctx.template Alloc<float>(scale);
@@ -58,7 +59,9 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
                                  scale->data<float>(),
-                                 weight_shape);
+                                 weight_shape,
+                                 arch,
+                                 algo);
     trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
     dev_ctx.template Alloc<T>(scale);
@@ -66,16 +69,30 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
                                  scale->data<T>(),
-                                 weight_shape);
+                                 weight_shape,
+                                 arch,
+                                 algo);
     weight_permute_gpu<Context>(dev_ctx,
                                 quanted_x.data<int8_t>(),
                                 out->data<int8_t>(),
                                 weight_shape,
-                                arch);
+                                arch,
+                                algo);
   } else if (algo == "weight_only_int4") {
-    PADDLE_FATAL(
-        "Weight quant gpu kernel currently don't support weight_only_int4 "
-        "algo, please use cpu version.");
+    dev_ctx.template Alloc<T>(scale);
+    weight_quant_gpu<T, Context>(dev_ctx,
+                                 x.data<T>(),
+                                 quanted_x.data<int8_t>(),
+                                 scale->data<T>(),
+                                 weight_shape,
+                                 arch,
+                                 algo);
+    weight_permute_gpu<Context>(dev_ctx,
+                                quanted_x.data<int8_t>(),
+                                out->data<int8_t>(),
+                                weight_shape,
+                                arch,
+                                algo);
   } else {
     PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "

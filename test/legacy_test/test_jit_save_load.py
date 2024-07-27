@@ -15,10 +15,10 @@
 
 import copy
 import os
-import pickle
 import shutil
 import tempfile
 import unittest
+import warnings
 
 import numpy as np
 
@@ -26,7 +26,6 @@ import paddle
 from paddle import base
 from paddle.base import unique_name
 from paddle.jit.api import to_static
-from paddle.jit.translated_layer import INFER_PARAMS_INFO_SUFFIX
 from paddle.nn import Linear
 from paddle.pir_utils import test_with_dygraph_pir
 from paddle.static import InputSpec
@@ -499,6 +498,7 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
 
     @test_with_dygraph_pir
     def test_output_same_order(self):
+        model_path = os.path.join(self.temp_dir.name, "dict_out_model")
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
         model = LinearNetWithNonLexicographicalOrderDict(8, 8)
@@ -508,8 +508,13 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
         st_model = paddle.jit.to_static(model, full_graph=True)
         st_output_dict = st_model(x)
 
-        paddle.jit.save(st_model, "./test_jit_save_load")
-        loaded_model = paddle.jit.load("./test_jit_save_load")
+        with warnings.catch_warnings(record=True) as w:
+            paddle.jit.save(st_model, model_path)
+            self.assertIn(
+                "Found 'dict' in given outputs, the values will be returned in a sequence sorted in lexicographical order by their keys.",
+                str(w[-1].message),
+            )
+        loaded_model = paddle.jit.load(model_path)
         loaded_output_seq = loaded_model(x)
 
         self.assertTrue(len(dy_output_dict) == 4)
@@ -525,21 +530,12 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
                 dy_out.numpy(), st_out.numpy(), rtol=1e-05
             )
 
-        # 2. check whether flattened output has same order of original dict
         dy_output_seq = paddle.utils.flatten(dy_output_dict)
 
         self.assertTrue(len(dy_output_seq) == 4)
-        for dy_out, flattened_dy_out in zip(
-            dy_output_dict.values(), dy_output_seq
-        ):
-            np.testing.assert_allclose(
-                dy_out.numpy(), flattened_dy_out.numpy(), rtol=1e-05
-            )
 
-        # 3. check whether flattened output of loaded static graph has same order of dynamic's
-        for dy_out, loaded_out in zip(
-            dy_output_dict.values(), loaded_output_seq
-        ):
+        # 2. check whether flattened output of loaded static graph has same order of dynamic's
+        for dy_out, loaded_out in zip(dy_output_seq, loaded_output_seq):
             np.testing.assert_allclose(
                 dy_out.numpy(), loaded_out.numpy(), rtol=1e-05
             )
@@ -554,33 +550,33 @@ class TestSaveLoadWithNestedNonLexicographicalOrderDict(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_nested_output_same_order(self):
+        model_path = os.path.join(self.temp_dir.name, "nested_dict_out_model")
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
         model = LinearNetWithNestedNonLexicographicalOrderDict(8, 8)
 
         dy_output_dict = model(x)
+        dy_output_seq = paddle.utils.flatten(dy_output_dict)
 
         st_model = paddle.jit.to_static(model, full_graph=True)
         st_output_dict = st_model(x)
 
-        paddle.jit.save(st_model, "./test_jit_save_load2")
-        loaded_model = paddle.jit.load("./test_jit_save_load2")
+        with warnings.catch_warnings(record=True) as w:
+            paddle.jit.save(st_model, model_path)
+            self.assertIn(
+                "Found 'dict' in given outputs, the values will be returned in a sequence sorted in lexicographical order by their keys.",
+                str(w[-1].message),
+            )
+        loaded_model = paddle.jit.load(model_path)
         loaded_output_seq = loaded_model(x)
 
         self.assertTrue(len(dy_output_dict) == 5)
         self.assertTrue(len(st_output_dict) == 5)
         self.assertTrue(len(loaded_output_seq) == 6)
 
-        # check whether flattened output of loaded static graph has same order of dynamic's
-        dy_output_tensors = []
-        for v in dy_output_dict.values():
-            if isinstance(v, dict):
-                dy_output_tensors.extend(list(v.values()))
-            else:
-                dy_output_tensors.append(v)
-
-        for dy_out, loaded_out in zip(dy_output_tensors, loaded_output_seq):
+        for dy_out, loaded_out in zip(dy_output_seq, loaded_output_seq):
             np.testing.assert_allclose(
                 dy_out.numpy(), loaded_out.numpy(), rtol=1e-05
             )
@@ -1113,22 +1109,6 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
         np.testing.assert_array_equal(
             train_layer(x)[0].numpy(), infer_layer(x).numpy()
         )
-
-    # pir has no need to save extra var info, param always saved with program,
-    # and trainable info saved in program's op attr
-    def test_load_var_not_in_extra_var_info(self):
-        self.train_and_save()
-
-        # chage extra var info
-        var_info_path = self.model_path + INFER_PARAMS_INFO_SUFFIX
-        with open(var_info_path, 'rb') as f:
-            extra_var_info = pickle.load(f)
-            extra_var_info.clear()
-        with open(var_info_path, 'wb') as f:
-            pickle.dump(extra_var_info, f, protocol=2)
-
-        with self.assertRaises(RuntimeError):
-            paddle.jit.load(self.model_path)
 
 
 class TestJitSaveMultiCases(unittest.TestCase):
@@ -2284,6 +2264,36 @@ class TestNotJitForward(unittest.TestCase):
             paddle.jit.load(path=path)
 
         shutil.rmtree(save_dir)
+
+
+class StridedBufferNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        buffer = paddle.to_tensor([1, 2, 3, 4, 5, 6]).astype('float32')
+        strided_buffer = buffer[::2]
+        self.register_buffer("strided_buffer", strided_buffer)
+
+    def forward(self, x):
+        return self.strided_buffer + x
+
+
+class TestStridedBuffer(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    @test_with_dygraph_pir
+    def test_strided_buffer(self):
+        layer = StridedBufferNet()
+        save_dir = os.path.join(self.temp_dir.name, "test_strided_buffer")
+        path = save_dir + "/model"
+        paddle.jit.save(layer=layer, path=path, input_spec=[InputSpec([2, 3])])
+
+        loaded_layer = paddle.jit.load(path)
+        x = paddle.to_tensor([1, 2, 3]).astype('float32')
+        np.testing.assert_allclose(layer(x).numpy(), loaded_layer(x).numpy())
 
 
 if __name__ == '__main__':

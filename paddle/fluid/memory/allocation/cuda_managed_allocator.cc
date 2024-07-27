@@ -38,7 +38,7 @@ void CUDAManagedAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       allocation->place(),
       place_,
-      platform::errors::PermissionDenied(
+      phi::errors::PermissionDenied(
           "GPU memory is freed in incorrect device. This may be a bug"));
   platform::RecordedGpuFree(
       allocation->ptr(), allocation->size(), place_.device);
@@ -55,7 +55,7 @@ phi::Allocation* CUDAManagedAllocator::AllocateImpl(size_t size) {
                                             dev_id,
                                             /* malloc_managed_memory = */ true);
   if (LIKELY(result == gpuSuccess)) {
-    return new Allocation(ptr, size, platform::Place(place_));
+    return new Allocation(ptr, size, phi::Place(place_));
   }
 
   uint64_t limit_size = platform::RecordedGpuLimitSize(dev_id);
@@ -75,7 +75,7 @@ phi::Allocation* CUDAManagedAllocator::AllocateImpl(size_t size) {
         limit_size_mb);
   }
 
-  PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+  PADDLE_THROW_BAD_ALLOC(phi::errors::ResourceExhausted(
       "\n\nOut of memory error on GPU %d. "
       "Cannot allocate %s CUDA managed memory on GPU %d, %s memory has been "
       "allocated.\n\n"

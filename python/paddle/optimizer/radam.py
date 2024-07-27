@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING, Sequence
 
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
@@ -23,6 +26,22 @@ from ..base.framework import (
     in_pir_mode,
 )
 from .optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.optimizer.lr import LRScheduler
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .optimizer import _ParameterConfig
+
+    class _RAdamParameterConfig(_ParameterConfig):
+        beta1: NotRequired[float | Tensor]
+        beta2: NotRequired[float | Tensor]
+        epsilon: NotRequired[float]
+
 
 __all__ = []
 
@@ -56,7 +75,7 @@ class RAdam(Optimizer):
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in parameter groups
@@ -70,13 +89,13 @@ class RAdam(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor.
+        weight_decay (float|Tensor|WeightDecayRegularizer|None, optional): The weight decay coefficient, it can be float or Tensor.
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
-        name (str, optional): Normally there is no need for user to set this property.
+        name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
@@ -93,8 +112,10 @@ class RAdam(Optimizer):
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
 
-            >>> radam = paddle.optimizer.RAdam(learning_rate=0.1,
-            ...                     parameters=linear.parameters())
+            >>> radam = paddle.optimizer.RAdam(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters()
+            ... )
             >>> out.backward()
             >>> radam.step()
             >>> radam.clear_grad()
@@ -108,7 +129,7 @@ class RAdam(Optimizer):
             >>> loss = paddle.mean(out)
             >>> opt = paddle.optimizer.RAdam(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),
@@ -133,15 +154,17 @@ class RAdam(Optimizer):
 
     def __init__(
         self,
-        learning_rate=0.001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1.0e-8,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        name=None,
-    ):
+        learning_rate: float | LRScheduler = 0.001,
+        beta1: float | Tensor = 0.9,
+        beta2: float | Tensor = 0.999,
+        epsilon: float = 1.0e-8,
+        parameters: (
+            Sequence[Tensor] | Sequence[_RAdamParameterConfig] | None
+        ) = None,
+        weight_decay: float | Tensor | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        name: str | None = None,
+    ) -> None:
         if isinstance(learning_rate, (float, int)) and not 0.0 <= learning_rate:
             raise ValueError(
                 f"Invalid learning rate: {learning_rate}, expect learning_rate >= 0."

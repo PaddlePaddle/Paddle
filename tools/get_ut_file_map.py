@@ -84,9 +84,9 @@ def handle_ut_file_map(rootPath):
             filename = f'{ut_map_path}/{ut}/related_{ut}.txt'
             try:
                 f = open(filename)
-                print("oepn %s succesfully" % filename)
+                print(f"oepn {filename} succesfully")
             except FileNotFoundError:
-                print("%s is not found." % filename)
+                print(f"{filename} is not found.")
                 return
             lines = f.readlines()
             for line in lines:
@@ -120,9 +120,9 @@ def handle_ut_file_map(rootPath):
             filename = f'{ut_map_path}/{ut}/notrelated_{ut}.txt'
             try:
                 f = open(filename)
-                print("oepn %s succesfully" % filename)
+                print(f"oepn {filename} succesfully")
             except FileNotFoundError:
-                print("%s is not found." % filename)
+                print(f"{filename} is not found.")
             lines = f.readlines()
             for line in lines:
                 line = line.replace('\n', '').strip()
@@ -169,8 +169,8 @@ def notsuccessfuc(rootPath):
             utNotSuccess = utNotSuccess + f'^{ut}$|'
 
     if utNotSuccess != '':
-        print("utNotSuccess count: %s" % count)
-        f = open('%s/build/utNotSuccess' % rootPath, 'w')
+        print(f"utNotSuccess count: {count}")
+        f = open(f'{rootPath}/build/utNotSuccess', 'w')
         f.write(utNotSuccess[:-1])
         f.close()
 

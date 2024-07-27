@@ -11,11 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import collections
 import itertools
 import re
 import string
+from typing import TYPE_CHECKING, NamedTuple, Sequence
 
 import numpy as np
 import opt_einsum
@@ -32,10 +34,13 @@ from .math import (
     sum as paddle_sum,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 __all__ = []
 
 
-def parse_op_labels(labelstr, operand):
+def parse_op_labels(labelstr: str, operand: Tensor) -> str:
     '''
     Parse labels for an input operand.
 
@@ -72,7 +77,7 @@ def parse_op_labels(labelstr, operand):
     return full_labelstr
 
 
-def parse_labels(labelstr, operands):
+def parse_labels(labelstr: str, operands: Sequence[Tensor]) -> list[str]:
     '''
     Parse label strings for all input operands.
 
@@ -97,7 +102,9 @@ def parse_labels(labelstr, operands):
     return list(map(parse_op_labels, nop_labels, operands))
 
 
-def validate_rhs(rhs, input_labels, n_bcast_dims):
+def validate_rhs(
+    rhs: str, input_labels: Sequence[str], n_bcast_dims: int
+) -> None:
     '''
     Check whether the equation's right hand side is valid
     '''
@@ -125,7 +132,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     ), "Invalid equation: duplicate output labels are found."
 
 
-def build_view(in_labels, out_labels):
+def build_view(in_labels: str, out_labels: str) -> list[int]:
     '''
     Build an inverse map of dimension indices. Three conditions must hold for
     the result to be meaningful.
@@ -158,7 +165,7 @@ def build_view(in_labels, out_labels):
     # First build the broadcast dimension mapping
     # Find the broadcast index range in out_labels
     r = re.search(r'\.+', out_labels)
-    if r:
+    if r is not None:
         start, end = r.start(), r.end()
         s = re.search(r'\.+', in_labels)
         # fill the broadcast dimension indices from right to left.
@@ -167,9 +174,7 @@ def build_view(in_labels, out_labels):
                 range(start, end)[::-1], range(s.start(), s.end())[::-1]
             ):
                 inv_map[ax] = dim
-
-    # Now work on non-broadcast dimensions
-    if r:
+        # Now work on non-broadcast dimensions
         it = itertools.chain(range(start), range(end, len(out_labels)))
     else:
         it = iter(range(len(out_labels)))
@@ -180,7 +185,9 @@ def build_view(in_labels, out_labels):
     return inv_map
 
 
-def build_global_view(nop_labels, rhs, n_bcast_dims):
+def build_global_view(
+    nop_labels: Sequence[str], rhs: str | None, n_bcast_dims: int
+) -> tuple[str, list[list[int]], int, list[Tensor | int]]:
     '''
     Build the global view, which is a layout of all dimension labels
     plus an index table that maps from the layout to the dimensions
@@ -241,7 +248,9 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
     return g_labels, g_view, g_nout, g_count
 
 
-def build_global_shape(g_view, g_labels, op_shapes):
+def build_global_shape(
+    g_view: list[list[int]], g_labels: str, op_shapes: Sequence[list[int]]
+) -> tuple[list[int], list[list[bool]]]:
     '''
     The global shape is the shape of all dimensions rearranged and broadcasting
     to the global view. It's a reference data structure for einsum planning.
@@ -261,22 +270,26 @@ def build_global_shape(g_view, g_labels, op_shapes):
         list of shape masks for each operand. A dimension's shape mask is a boolean
         indicating whether its size > 1, in other words, it's not squeezable
     '''
-    view_shapes = []
-    g_masks = []
+    view_shapes: list[list[int]] = []
+    g_masks: list[list[bool]] = []
 
     for view, op_shape in zip(g_view, op_shapes):
         view_shapes.append([op_shape[dim] if dim > -1 else 1 for dim in view])
 
-    g_shape = [set(sizes_per_ax) - {1} for sizes_per_ax in zip(*view_shapes)]
+    g_set_shape: list[set[int]] = [
+        set(sizes_per_ax) - {1} for sizes_per_ax in zip(*view_shapes)
+    ]
 
-    non_bcastable = [ax for ax, sizes in enumerate(g_shape) if len(sizes) > 1]
+    non_bcastable = [
+        ax for ax, sizes in enumerate(g_set_shape) if len(sizes) > 1
+    ]
 
     assert not non_bcastable, (
         f"Invalid operands: label {g_labels[non_bcastable[0]]} "
         f"corresponds to non-broadcastable dimensions."
     )
 
-    g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_shape]
+    g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_set_shape]
 
     g_masks = [
         [s > 1 or s == -1 for s in view_shape] for view_shape in view_shapes
@@ -285,7 +298,7 @@ def build_global_shape(g_view, g_labels, op_shapes):
     return g_shape, g_masks
 
 
-def has_duplicated_labels(labels):
+def has_duplicated_labels(labels: str) -> bool:
     '''
     Returns True if there is any duplicate label.
     '''
@@ -293,7 +306,7 @@ def has_duplicated_labels(labels):
     return len(labels) > len(set(labels))
 
 
-def diagonalize(labels, operand):
+def diagonalize(labels: str, operand: Tensor) -> tuple[str, Tensor]:
     '''
     Merges dimensions with duplicate labels.
 
@@ -312,7 +325,9 @@ def diagonalize(labels, operand):
     return labels, operand
 
 
-def plan_reduce(plan, op, reduce_dims, keepdim):
+def plan_reduce(
+    plan: Plan, op: int, reduce_dims: list[int], keepdim: bool
+) -> None:
     '''
     Add reduce to the plan
     '''
@@ -323,7 +338,7 @@ def plan_reduce(plan, op, reduce_dims, keepdim):
     plan.add_step(step)
 
 
-def plan_scalar_prod(plan, op1, op2):
+def plan_scalar_prod(plan: Plan, op1: int, op2: int) -> None:
     varnames = [f'op{op1}', f'op{op2}']
     f = lambda var1, var2: paddle_sum(var1) * var2
     # f = lambda var1, var2: var1 * var2
@@ -331,7 +346,18 @@ def plan_scalar_prod(plan, op1, op2):
     plan.add_step(step)
 
 
-def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
+def plan_matmul(
+    plan: Plan,
+    g_view: list[list[int]],
+    op1: int,
+    op2: int,
+    g_supports: list[list[bool]],
+    g_shape: list[int],
+    I: list[int],
+    J1: list[int],
+    J2: list[int],
+    K: list[int],
+) -> None:
     '''
     plan matmul
     '''
@@ -475,8 +501,15 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
 
 
 def plan_summation(
-    plan, g_view, op1, op2, g_supports, g_shape, g_count, n_bcast
-):
+    plan: Plan,
+    g_view: list[list[int]],
+    op1: int,
+    op2: int,
+    g_supports: list[list[bool]],
+    g_shape: list[int],
+    g_count: list[Tensor | int],
+    n_bcast: int,
+) -> None:
     '''
     Plan various kinds of summation
     '''
@@ -516,7 +549,7 @@ def plan_summation(
     plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K)
 
 
-def rearrange(axes):
+def rearrange(axes: list[int]) -> tuple[list[int], list[int]]:
     perm, fill = [], []
     for ax, dim in enumerate(axes):
         if dim < 0:
@@ -530,7 +563,9 @@ def rearrange(axes):
     return perm, fill
 
 
-def plan_broadcast(plan, operands, nop_axes):
+def plan_broadcast(
+    plan: Plan, operands: Sequence[Tensor], nop_axes: list[list[int]]
+) -> None:
     '''
     Plan broadcast across
     '''
@@ -561,16 +596,16 @@ class Plan:
         self.env = {}
         self.steps = []
 
-    def add_step(self, step):
+    def add_step(self, step) -> None:
         self.steps.append(step)
 
     def get_var(self, varname):
         return self.env[varname] if varname in self.env else None
 
-    def set_var(self, varname, var):
+    def set_var(self, varname, var) -> None:
         self.env[varname] = var
 
-    def show(self):
+    def show(self) -> None:
         res = None
         for f, in_varnames, out_varname, *args in self.steps:
             print(repr((out_varname, f, *in_varnames, *args)))
@@ -585,7 +620,14 @@ class Plan:
         return res
 
 
-def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
+def plan_einsum(
+    operands: Sequence[Tensor],
+    g_view: list[list[int]],
+    g_shape: list[int],
+    g_supports: list[list[bool]],
+    g_count: list[Tensor | int],
+    n_bcast: int,
+) -> Plan:
     '''
     Plans the actual execution steps.
     Results
@@ -698,13 +740,15 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     return plan
 
 
-def replace_ellipsis(left_equation, rhs, *operands):
+def replace_ellipsis(
+    left_equation: str, rhs: str, *operands: Tensor
+) -> tuple[str, str, list[Tensor]]:
     """
     we replace ... as unused variables to simplify the EinsumOp implementation.
     """
     ellipsis_strings = None
     max_ndim = 0
-    new_operands = []
+    new_operands: list[Tensor] = []
     unused_variables = {chr(c) for c in range(ord('a'), ord('z'))}
     for equ, operand in zip(left_equation.split(','), operands):
         ndims = len(operand.shape) - len(equ.replace("...", ""))
@@ -724,24 +768,25 @@ def replace_ellipsis(left_equation, rhs, *operands):
             )
         new_operands.append(operand)
 
-    operands = new_operands
     ellipsis_strings = ''.join(unused_variables.pop() for _ in range(max_ndim))
 
     if ellipsis_strings is not None:
         left_equation = left_equation.replace('...', ellipsis_strings)
         rhs = rhs.replace('...', ellipsis_strings)
-    return left_equation, rhs, operands
+    return left_equation, rhs, new_operands
 
 
-def preprocess(equation, *operands):
+def preprocess(
+    equation: str, *operands: Tensor
+) -> tuple[str, str, list[str], list[Tensor]]:
     """
     check equation / raise error, default right labels generation
     """
     equation = equation.replace(" ", "")
     nop = len(operands)
-    assert nop > 0, (
-        "Required at least one operand in Einsum API, but received %s " % nop
-    )
+    assert (
+        nop > 0
+    ), f"Required at least one operand in Einsum API, but received {nop}"
 
     # Part the equation to left hand side and right hand side
     lhs, *rhs = equation.lower().split('->')
@@ -762,11 +807,17 @@ def preprocess(equation, *operands):
         '...' in lhs and '...' not in rhs
     ), 'Invalid equation: missing ellipsis in output labels.'
 
-    lhs, rhs, operands = replace_ellipsis(lhs, rhs, *operands)
-    return lhs, rhs, labels, operands
+    lhs, rhs, new_operands = replace_ellipsis(lhs, rhs, *operands)
+    return lhs, rhs, labels, new_operands
 
 
-def parse_fake_shape(equation, operands, labels):
+class Shaped(NamedTuple):
+    shape: list[int]
+
+
+def parse_fake_shape(
+    equation: str, operands: Sequence[Tensor], labels: Sequence[str]
+) -> list[Shaped]:
     """
 
     this shape is just used for operands planning. may differ with the original shape.
@@ -779,9 +830,8 @@ def parse_fake_shape(equation, operands, labels):
 
     """
     origin_labels = (x.strip() for x in equation.split(','))
-    shaped = collections.namedtuple('shaped', ['shape'])
 
-    def fake_shape(ori_label, label, op):
+    def fake_shape(ori_label: str, label: str, op: Tensor) -> Shaped:
         """
         1. ori_label is the original labels, not aligned by '....'
         2. if the '...' is evaluated to empty list, there is no '.' in label
@@ -794,13 +844,13 @@ def parse_fake_shape(equation, operands, labels):
         fakes = list(map(abs, fakes))  # make -1 -> 1
         if '.' in ori_label:
             fakes.insert(ori_label.index('.'), 1)
-        return shaped(fakes)
+        return Shaped(fakes)
 
     out = list(map(fake_shape, origin_labels, labels, operands))
     return out
 
 
-def rhs_inference(lhs):
+def rhs_inference(lhs: str) -> str:
     def is_free(key):
         return cnt.get(key) == 1 and key not in ['.', ',']
 
@@ -810,13 +860,13 @@ def rhs_inference(lhs):
     return rhs
 
 
-def gen_equation_for_opteinsum(lhs, rhs):
+def gen_equation_for_opteinsum(lhs: str, rhs: str | None) -> tuple[str, str]:
     """
     1. gen rhs if rhs is None
     2. '...' -> 'A'
     """
 
-    def get_used_label(counter):
+    def get_used_label(counter) -> str:
         used = set(counter.elements())
         for c in string.ascii_lowercase:
             if c not in used:
@@ -834,7 +884,7 @@ def gen_equation_for_opteinsum(lhs, rhs):
     return lhs + "->" + rhs, broadcast_label
 
 
-def einsum_v2(equation, *operands):
+def einsum_v2(equation: str, *operands: Tensor) -> Tensor:
     """
     einsum v2 implementation.
     1. Implement C++ EinsumOp.
@@ -842,15 +892,15 @@ def einsum_v2(equation, *operands):
     3. V2 use opt_einsum.contract_path to optimize the multivariable einsum.
     """
     n_op = len(operands)
-    lhs, rhs, labels, operands = preprocess(equation, *operands)
+    lhs, rhs, labels, new_operands = preprocess(equation, *operands)
 
     if n_op <= 2:
-        return gen_einsum_op(lhs + '->' + rhs, *operands)
+        return gen_einsum_op(lhs + '->' + rhs, *new_operands)
 
-    shapes = parse_fake_shape(lhs, operands, labels)
+    shapes = parse_fake_shape(lhs, new_operands, labels)
     opt_equation, broadcast_label = gen_equation_for_opteinsum(lhs, rhs)
     _, cons = opt_einsum.contract_path(opt_equation, *shapes, einsum_call=True)
-    var_list = list(operands)
+    var_list = new_operands
     for path in cons:
         (a, b), _, eq, *__ = path
         assert (
@@ -865,7 +915,7 @@ def einsum_v2(equation, *operands):
     return var_list[0]
 
 
-def gen_einsum_op(equation, *operands):
+def gen_einsum_op(equation: str, *operands: Tensor) -> Tensor:
     """
     EinsumOp Python Interface:
     """
@@ -873,7 +923,7 @@ def gen_einsum_op(equation, *operands):
     if in_dynamic_or_pir_mode():
         return _C_ops.einsum(operands, equation)[0]
     else:
-        assert len(operands) <= 2, "Only support two operands in EinsumOp."
+        assert 1 <= len(operands) <= 2, "Only support two operands in EinsumOp."
         for inp in operands:
             check_variable_and_dtype(
                 inp, 'dtype', ['float32', 'float64'], 'einsum'
@@ -900,7 +950,7 @@ def gen_einsum_op(equation, *operands):
         return out
 
 
-def einsum(equation, *operands):
+def einsum(equation: str, *operands: Tensor) -> Tensor | None:
     r"""
 
     einsum(equation, *operands)
@@ -1110,8 +1160,9 @@ def einsum(equation, *operands):
     )
 
     # Now we're ready to build up an execution plan
-    args = operands, g_view, g_shape, g_supports, g_count, n_bcast_dims
-    plan = plan_einsum(*args)
+    plan = plan_einsum(
+        operands, g_view, g_shape, g_supports, g_count, n_bcast_dims
+    )
     result = plan.execute()
 
     return result

@@ -36,6 +36,7 @@ file(
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
+  "fusion/fp8_gemm/fp8_gemm_with_cublasLt/*.cu"
   "fusion/gpu/*.cu")
 
 file(
@@ -50,12 +51,6 @@ endif()
 
 if(NOT WITH_DGC)
   list(REMOVE_ITEM kernel_gpu "gpu/dgc_kernel.cu")
-endif()
-
-if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
-  list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
-  list(FILTER kernel_gpu EXCLUDE REGEX ".*_grad_kernel\\.cc$")
-  list(FILTER kernel_gpu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
 endif()
 
 if(WITH_CUTLASS)
@@ -231,6 +226,7 @@ if(WITH_ROCM)
     kernel_gpu
     "gpu/affine_grid_grad_kernel.cu"
     "gpu/apply_per_channel_scale_kernel.cu"
+    "gpu/calc_reduced_attn_kernel.cu"
     "gpu/cholesky_solve_kernel.cu"
     "gpu/eigh_kernel.cu"
     "gpu/eigvalsh_kernel.cu"
@@ -274,10 +270,6 @@ file(
   GLOB kernel_cc
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   ${cc_search_pattern})
-
-if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
-  list(FILTER kernel_cc EXCLUDE REGEX ".*_grad_kernel\\.cc$")
-endif()
 
 if(NOT
    (WITH_AVX

@@ -60,12 +60,12 @@ std::shared_ptr<CudaStreamObject> CudaStreamResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
       dev_idx,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
       dev_idx,
       pool_.size(),
-      platform::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
           pool_.size(),
           dev_idx));
@@ -111,12 +111,12 @@ std::shared_ptr<CudaEventObject> CudaEventResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
       dev_idx,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
       dev_idx,
       pool_.size(),
-      platform::errors::OutOfRange(
+      phi::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
           pool_.size(),
           dev_idx));

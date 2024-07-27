@@ -93,15 +93,15 @@ API_INNER_CODE_TEMPLATE = """
     {handle_optional_inputs}
     {in_combine}
     {compute_op}
-    {handle_optional_outputs}
     {set_null_type}
+    {handle_optional_outputs}
     {out_split}
     {return_result}"""
 
 
 AMP_LOGIC_TEMPLATE = """
     if (egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpLevel() != paddle::imperative::AmpLevel::O0){{
-        VLOG(5) << "Check and Prepare For AMP";
+        VLOG(5) << "Check and Prepare For AMP: {op_name}";
         auto op_name = phi::TransToFluidOpName("{op_name}");
         paddle::small_vector<std::vector<pir::Value>, egr::kSlotSmallVectorSize> amp_values_vector = {{ {no_optional_inputs} }};
         {optional_inputs}

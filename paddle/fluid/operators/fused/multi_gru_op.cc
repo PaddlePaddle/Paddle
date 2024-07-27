@@ -12,18 +12,36 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused/multi_gru_op.h"
-// #include "paddle/fluid/operators/fused/fusion_gru_op.h"
 #include <cstring>  // for memcpy
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
 namespace operators {
+
+using framework::ExecutionContext;
+
+class MultiGRUOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const ExecutionContext& ctx) const override;
+};
+
+class MultiGRUOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override;
+};
 
 void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "multi_gru");

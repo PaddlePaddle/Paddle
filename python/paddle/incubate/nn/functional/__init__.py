@@ -13,8 +13,12 @@
 # limitations under the License.
 
 from .blha_get_max_len import blha_get_max_len
-from .block_multihead_attention import block_multihead_attention
+from .block_multihead_attention import (
+    block_multihead_attention,
+    block_multihead_attention_xpu,  # noqa: F401
+)
 from .fused_dot_product_attention import (
+    cudnn_flash_attention,  # noqa: F401
     fused_dot_product_attention,  # noqa: F401
 )
 from .fused_dropout_add import fused_dropout_add

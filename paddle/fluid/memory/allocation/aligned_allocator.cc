@@ -20,9 +20,7 @@
 #include "paddle/fluid/platform/enforce.h"
 
 REGISTER_FILE_SYMBOLS(aligned_allocator);
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 // For memory address alignment
 class AlignedAllocation : public Allocation {
@@ -46,10 +44,10 @@ AlignedAllocator::AlignedAllocator(
   PADDLE_ENFORCE_GT(
       alignment_,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Alignment should be larger than 0, but got %d", alignment_));
   if (alignment_ & (alignment_ - 1)) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Alignment should be power of 2 (2^N), but got %d", alignment_));
   }
 }
@@ -70,6 +68,4 @@ void AlignedAllocator::FreeImpl(phi::Allocation* allocation) {
   delete allocation;
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

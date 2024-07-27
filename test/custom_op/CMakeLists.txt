@@ -20,6 +20,9 @@ if(WITH_TESTING)
     # We will fix it when abandoning translation in final state.
     if(WITH_GPU)
       py_test(test_inference_inplace SRCS test_inference_inplace.py)
+      py_test(test_inference_inplace_pir SRCS test_inference_inplace_pir.py
+                                              ENVS FLAGS_enable_pir_api=1)
+      set_tests_properties(test_inference_inplace_pir PROPERTIES TIMEOUT 180)
       set_tests_properties(test_inference_inplace PROPERTIES TIMEOUT 180)
     endif()
   endif()

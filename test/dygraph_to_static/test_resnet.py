@@ -407,9 +407,13 @@ class ResNetHelper:
         return ret
 
     def predict_analysis_inference(self, data):
+        if use_pir_api():
+            model_filename = self.pir_model_filename
+        else:
+            model_filename = self.model_filename
         output = PredictorTools(
             self.model_save_dir,
-            self.model_filename,
+            model_filename,
             self.params_filename,
             [data],
         )
@@ -430,6 +434,7 @@ class TestResnet(Dy2StTestBase):
         dy_pre = self.resnet_helper.predict_dygraph(image)
         st_pre = self.resnet_helper.predict_static(image)
         dy_jit_pre = self.resnet_helper.predict_dygraph_jit(image)
+        predictor_pre = self.resnet_helper.predict_analysis_inference(image)
         np.testing.assert_allclose(
             dy_pre,
             st_pre,
@@ -442,14 +447,12 @@ class TestResnet(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
-        if not use_pir_api():
-            predictor_pre = self.resnet_helper.predict_analysis_inference(image)
-            np.testing.assert_allclose(
-                predictor_pre,
-                st_pre,
-                rtol=1e-05,
-                err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
-            )
+        np.testing.assert_allclose(
+            predictor_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
+        )
 
     @test_default_and_pir
     def test_resnet(self):

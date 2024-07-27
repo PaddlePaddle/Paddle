@@ -81,9 +81,7 @@ add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
 add_subdirectory(new_executor)
-if(WITH_CINN)
-  add_subdirectory(paddle2cinn)
-endif()
+
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
@@ -125,12 +123,12 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS place fluid_memory data_type device_context phi common)
+  DEPS fluid_memory data_type device_context phi common)
 
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS phi common place tensor framework_proto version)
+  DEPS phi common tensor framework_proto version)
 
 cc_library(
   garbage_collector
@@ -146,12 +144,6 @@ cc_library(
   var_type_traits
   SRCS var_type_traits.cc
   DEPS framework_proto scope phi common)
-if(WITH_GPU)
-  target_link_libraries(var_type_traits dynload_cuda)
-endif()
-if(WITH_XPU)
-  target_link_libraries(var_type_traits dynload_xpti)
-endif()
 
 # every source file that includes "dnnl.h" must depends on onednn
 # or, the first one should depends on onednn
@@ -292,7 +284,7 @@ cc_library(
 cc_library(
   op_kernel_type
   SRCS op_kernel_type.cc
-  DEPS device_context place)
+  DEPS device_context phi common)
 
 if(WITH_XPU)
   cc_library(
@@ -300,7 +292,6 @@ if(WITH_XPU)
     SRCS phi_utils.cc
     DEPS lod_tensor
          selected_rows_utils
-         place
          phi
          common
          var_type_traits
@@ -310,13 +301,7 @@ else()
   cc_library(
     phi_utils
     SRCS phi_utils.cc
-    DEPS lod_tensor
-         selected_rows_utils
-         place
-         phi
-         common
-         var_type_traits
-         op_info)
+    DEPS lod_tensor selected_rows_utils phi common var_type_traits op_info)
 endif()
 
 if(WITH_XPU)
@@ -891,8 +876,7 @@ cc_library(
        eager_deletion_pass
        buffer_shared_inplace_op_pass
        buffer_shared_cross_op_memory_reuse_pass
-       inplace_addto_op_pass
-       set_reader_device_info_utils)
+       inplace_addto_op_pass)
 
 cc_library(
   executor_cache
@@ -923,7 +907,6 @@ cc_library(
   DEPS lod_tensor
        selected_rows_utils
        attribute
-       place
        var_type_traits
        phi
        common
@@ -958,7 +941,6 @@ cc_library(
        framework_proto
        op_registry
        operator
-       dynamic_loader
        string_helper
        phi
        common
@@ -982,7 +964,8 @@ set(FLUID_FRAMEWORK_MODULES
     executor
     data_feed_proto
     layer
-    dynamic_loader
+    phi
+    common
     custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})

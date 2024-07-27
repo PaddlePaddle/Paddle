@@ -20,9 +20,9 @@ import subprocess
 import sys
 import time
 from contextlib import closing
-from distutils.util import strtobool
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
+from paddle.utils import strtobool
 
 from ..utils.log_utils import get_logger
 
@@ -292,7 +292,7 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
         for i in range(len(selected_gpus)):
             trainer = Trainer()
             trainer.gpus.append(selected_gpus[i])
-            trainer.endpoint = "%s" % (cur_node_endpoints[i])
+            trainer.endpoint = f"{cur_node_endpoints[i]}"
             trainer.rank = trainer_rank
             trainer_rank += 1
 
@@ -392,19 +392,21 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
         backend = get_backend_by_compile_flag()  # for compatibility
     if backend == 'bkcl':
         proc_env = {
-            "FLAGS_selected_xpus": "%s"
-            % ",".join([str(g) for g in trainer.gpus]),
+            "FLAGS_selected_xpus": "{}".format(
+                ",".join([str(g) for g in trainer.gpus])
+            ),
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
     elif backend == 'nccl':
         proc_env = {
-            "FLAGS_selected_gpus": "%s"
-            % ",".join([str(g) for g in trainer.gpus]),
+            "FLAGS_selected_gpus": "{}".format(
+                ",".join([str(g) for g in trainer.gpus])
+            ),
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
@@ -412,7 +414,7 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
         # NOTE (xiongkun) default fall back into cpu only
         proc_env = {
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_DISTRI_BACKEND": backend,  # only add here, other will be auto
@@ -422,10 +424,11 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
 
         custom_device_name = core.get_all_custom_device_type()[0]
         proc_env = {
-            f"FLAGS_selected_{custom_device_name}s": "%s"
-            % ",".join([str(g) for g in trainer.gpus]),
+            f"FLAGS_selected_{custom_device_name}s": "{}".format(
+                ",".join([str(g) for g in trainer.gpus])
+            ),
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
@@ -498,8 +501,7 @@ def pull_worker_log(tp):
                 except UnicodeEncodeError:
                     sys.stdout.write(
                         'UnicodeEncodeError occurs at this line. '
-                        'Please refer to the original log file "%s"\n'
-                        % tp.log_fn.name
+                        f'Please refer to the original log file "{tp.log_fn.name}"\n'
                     )
             tp.log_offset = fin.tell()
 

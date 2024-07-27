@@ -404,8 +404,7 @@ class UtilBase:
                 train_prog_var = train_prog.global_block().var(var_name)
             except ValueError as e:
                 print(
-                    "Not find variable '%s' in train program. please check pruning."
-                    % var_name
+                    f"Not find variable '{var_name}' in train program. please check pruning."
                 )
                 is_match = False
                 continue
@@ -669,7 +668,7 @@ class UtilBase:
                     return_numpy=return_numpy,
                 )
             for i, v in enumerate(fetch_list):
-                print("fetch_targets name: %s" % v.name)
+                print(f"fetch_targets name: {v.name}")
                 print(f"fetch_targets: {results[i]}")
             return results
 

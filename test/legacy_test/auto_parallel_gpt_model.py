@@ -841,12 +841,7 @@ class GPTPretrainingCriterion(nn.Layer):
         loss_mask.stop_gradient = True
 
         mesh = None
-        if _global_parallel_strategy == "dp":
-            mesh = _global_process_mesh
-            dims_mapping = ["x"] + [
-                None for i in range(len(loss_mask.shape) - 1)
-            ]
-        elif _global_parallel_strategy == "dp_mp":
+        if _global_parallel_strategy in ["dp", "dp_mp"]:
             mesh = _global_process_mesh
             dims_mapping = ["x"] + [
                 None for i in range(len(loss_mask.shape) - 1)

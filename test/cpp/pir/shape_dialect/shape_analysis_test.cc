@@ -54,6 +54,26 @@ TEST(shape_optimization, shape_optimization_pass) {
       phi::DataType::FLOAT32,
       phi::Place());
 
+  auto data_op_u = builder.Build<paddle::dialect::DataOp>(
+      "u", std::vector<int64_t>({-1, 5}), phi::DataType::FLOAT32, phi::Place());
+
+  auto relu_op = builder.Build<paddle::dialect::ReluOp>(data_op_u.result(0));
+
+  auto data_op_v = builder.Build<paddle::dialect::DataOp>(
+      "v", std::vector<int64_t>({5, 2}), phi::DataType::FLOAT32, phi::Place());
+
+  auto data_op_p = builder.Build<paddle::dialect::DataOp>(
+      "p", std::vector<int64_t>({5, 2}), phi::DataType::FLOAT32, phi::Place());
+
+  auto data_op_q = builder.Build<paddle::dialect::DataOp>(
+      "q", std::vector<int64_t>({-1, 2}), phi::DataType::FLOAT32, phi::Place());
+
+  auto addmm_op1 = builder.Build<paddle::dialect::AddmmOp>(
+      data_op_q.result(0), data_op_u.result(0), data_op_v.result(0));
+
+  auto addmm_op2 = builder.Build<paddle::dialect::AddmmOp>(
+      data_op_q.result(0), relu_op.result(0), data_op_p.result(0));
+
   // Run shape optimization pass
   pir::PassManager pm(ctx);
   pm.EnableIRPrinting();
@@ -69,6 +89,8 @@ TEST(shape_optimization, shape_optimization_pass) {
   pir::Value data_op_y_res = data_op_y.result(0);
   pir::Value data_op_z_res = data_op_z.result(0);
   pir::Value data_op_w_res = data_op_w.result(0);
+  pir::Value addmm_op1_res = addmm_op1.result(0);
+  pir::Value addmm_op2_res = addmm_op2.result(0);
 
   // data_op_x_res    [  1,  64,  S0, 64, 2]
   // abs_op_res       [  1,  64,  S0, 64, 2]
@@ -95,4 +117,7 @@ TEST(shape_optimization, shape_optimization_pass) {
       data_op_x_res, {1, 3}, data_op_y_res, {1, 2}));
   EXPECT_TRUE(
       shape_analysis.IsProductEqual(data_op_x_res, 3, 5, data_op_y_res, 1, 2));
+
+  // op share cache
+  EXPECT_TRUE(shape_analysis.IsShapeEqual(addmm_op1_res, addmm_op2_res));
 }

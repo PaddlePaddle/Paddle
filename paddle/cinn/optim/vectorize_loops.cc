@@ -731,12 +731,12 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
   void Visit(const For *forloop, Expr *expr) {
     auto *node = expr->As<For>();
     auto loop_var_name = forloop->loop_var->name;
-    if (forloop->extent.As<IntImm>()) {
-      var_intervals.emplace(
-          loop_var_name,
-          cinn::common::CasInterval{static_cast<int64_t>(0),
-                                    forloop->extent.as_int64() - 1});
-    } else {
+    auto *extern_i = forloop->extent.As<IntImm>();
+    if (extern_i && extern_i->value > 0) {
+      var_intervals.emplace(loop_var_name,
+                            cinn::common::CasInterval{static_cast<int64_t>(0),
+                                                      extern_i->value - 1});
+    } else if (!extern_i) {
       var_intervals.emplace(
           loop_var_name,
           cinn::common::CasInterval{Expr(0), forloop->extent - 1});
@@ -770,6 +770,15 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
                     0) {
               vectorizable_ = false;
               VLOG(5) << "GPU vectorize only support extent is a multiple of "
+                         "factor";
+            }
+          },
+          [&](common::HygonDCUArchHIP) {
+            if (!forloop->extent.As<IntImm>() ||
+                forloop->extent.as_int32() % forloop->vectorize_info().factor !=
+                    0) {
+              vectorizable_ = false;
+              VLOG(5) << "DCU vectorize only support extent is a multiple of "
                          "factor";
             }
           },
@@ -820,37 +829,38 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       VLOG(2) << "Vectorizing " << new_forloop->loop_var << " extent "
               << extent;
       VLOG(2) << "before vectorize body:\n" << node->body;
-
-      target.arch.Match(
-          [&](common::NVGPUArch) {
-            CudaVectorizer cuda_vectorizer(
-                new_forloop->loop_var, factor, &var_intervals);
-            cuda_vectorizer.Visit(&new_forloop->body);
-            // unroll the new forloop to compute each element of the vector
-            // iteratively
-            auto copied_loop = ir::ir_utils::IRCopy(
-                _new_forloop, /* copy_buffer_node = */ false);
-            copied_loop.As<ir::For>()->set_unrolled();
-            optim::UnrollLoop(&copied_loop);
-            // add cast exprs of vector type in the front of vectorized forloop,
-            // and replace original compute statements with the correspond
-            // unrolled ones
-            auto unroll_body = copied_loop.As<ir::Block>()->stmts;
-            auto cast_exprs = cuda_vectorizer.VectorizedTypeCastExprs();
-            auto store_exprs = cuda_vectorizer.VectorizedTypeStoreExprs();
-            auto &body_stmts = new_forloop->body.As<ir::Block>()->stmts;
-            body_stmts.assign(cast_exprs.begin(), cast_exprs.end());
-            body_stmts.insert(
-                body_stmts.end(), unroll_body.begin(), unroll_body.end());
-            body_stmts.insert(
-                body_stmts.end(), store_exprs.begin(), store_exprs.end());
-          },
-          [&](std::variant<common::UnknownArch,
-                           common::X86Arch,
-                           common::ARMArch>) {
-            Vectorizer(new_forloop->loop_var, extent, var_intervals)
-                .Visit(&new_forloop->body);
-          });
+      auto setNvHygon = [&] {
+        CudaVectorizer cuda_vectorizer(
+            new_forloop->loop_var, factor, &var_intervals);
+        cuda_vectorizer.Visit(&new_forloop->body);
+        // unroll the new forloop to compute each element of the vector
+        // iteratively
+        auto copied_loop =
+            ir::ir_utils::IRCopy(_new_forloop, /* copy_buffer_node = */ false);
+        copied_loop.As<ir::For>()->set_unrolled();
+        optim::UnrollLoop(&copied_loop);
+        // add cast exprs of vector type in the front of vectorized forloop,
+        // and replace original compute statements with the correspond
+        // unrolled ones
+        auto unroll_body = copied_loop.As<ir::Block>()->stmts;
+        auto cast_exprs = cuda_vectorizer.VectorizedTypeCastExprs();
+        auto store_exprs = cuda_vectorizer.VectorizedTypeStoreExprs();
+        auto &body_stmts = new_forloop->body.As<ir::Block>()->stmts;
+        body_stmts.assign(cast_exprs.begin(), cast_exprs.end());
+        body_stmts.insert(
+            body_stmts.end(), unroll_body.begin(), unroll_body.end());
+        body_stmts.insert(
+            body_stmts.end(), store_exprs.begin(), store_exprs.end());
+      };
+      target.arch.Match([&](common::NVGPUArch) { setNvHygon(); },
+                        [&](std::variant<common::UnknownArch,
+                                         common::X86Arch,
+                                         common::ARMArch>) {
+                          Vectorizer(
+                              new_forloop->loop_var, extent, var_intervals)
+                              .Visit(&new_forloop->body);
+                        },
+                        [&](common::HygonDCUArchHIP) { setNvHygon(); });
 
       VLOG(2) << "after vectorize body:\n" << node->body;
 
@@ -962,6 +972,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     auto *extent_ptr = forloop->extent.As<IntImm>();
     Expr times;
     if (extent_ptr) {
+      if (extent_ptr->value == 0) return Expr();
       int extent_int = forloop->extent.as_int32();
       int extent_trunc = extent_int / factor;
       int extent_times =
@@ -978,10 +989,10 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     forloop->set_vectorized(false);
 
     forloop->extent = times;
-    if (times_int && forloop->extent.as_int32() >= 1) {
-      var_intervals.emplace(
-          forloop->loop_var->name,
-          cinn::common::CasInterval{0, forloop->extent.as_int32() - 1});
+    if (times_int) {
+      var_intervals.emplace(forloop->loop_var->name,
+                            cinn::common::CasInterval{static_cast<int64_t>(0),
+                                                      times_int->value - 1});
     } else {
       var_intervals.erase(forloop->loop_var->name);
       var_intervals.emplace(

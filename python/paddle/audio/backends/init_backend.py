@@ -49,7 +49,7 @@ def list_available_backends() -> List[str]:
             >>> wav_duration = 0.5
             >>> num_channels = 1
             >>> num_frames = sample_rate * wav_duration
-            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> wav_data = paddle.linspace(-1.0, 1.0, int(num_frames)) * 0.1
             >>> waveform = wav_data.tile([num_channels, 1])
             >>> wav_path = "./test.wav"
 
@@ -108,7 +108,7 @@ def get_current_backend() -> str:
             >>> wav_duration = 0.5
             >>> num_channels = 1
             >>> num_frames = sample_rate * wav_duration
-            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> wav_data = paddle.linspace(-1.0, 1.0, int(num_frames)) * 0.1
             >>> waveform = wav_data.tile([num_channels, 1])
             >>> wav_path = "./test.wav"
 
@@ -154,7 +154,7 @@ def set_backend(backend_name: str):
             >>> wav_duration = 0.5
             >>> num_channels = 1
             >>> num_frames = sample_rate * wav_duration
-            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> wav_data = paddle.linspace(-1.0, 1.0, int(num_frames)) * 0.1
             >>> waveform = wav_data.tile([num_channels, 1])
             >>> wav_path = "./test.wav"
 

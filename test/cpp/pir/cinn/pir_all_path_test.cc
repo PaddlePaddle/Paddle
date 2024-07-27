@@ -80,7 +80,7 @@ static void RunAndCheckResult(::pir::Program* program,
 
   CHECK_EQ(stage_2_pm.Run(program), true);
 
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  phi::Place place = phi::GPUPlace(0);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(program, place);
 
@@ -95,7 +95,6 @@ static void RunAndCheckResult(::pir::Program* program,
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
   if (check_result) {
-    std::cerr << "res  " << out_tensor.data<float>()[0] << std::endl;
     bool res0 = simple_cmp(out_tensor.data<float>()[0], gt_val);
     EXPECT_EQ(res0, true);
   }

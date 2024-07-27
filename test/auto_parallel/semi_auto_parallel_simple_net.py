@@ -40,6 +40,7 @@ class DemoNet(nn.Layer):
         self,
         param_prefix="",
         is_recompute=False,
+        recompute_use_reentrant=True,
         is_pp=False,
         pp_reshard_dist_attr=None,
     ):
@@ -50,6 +51,7 @@ class DemoNet(nn.Layer):
 
         self.is_pp = is_pp
         self.is_recompute = is_recompute
+        self.recompute_use_reentrant = recompute_use_reentrant
         self.pp_reshard_dist_attr = pp_reshard_dist_attr
         self.linear_0 = nn.Linear(
             IMAGE_SIZE, IMAGE_SIZE, weight_attr_0, bias_attr=False
@@ -70,7 +72,10 @@ class DemoNet(nn.Layer):
 
     def forward(self, x):
         if self.is_recompute:
-            return recompute(self._inner_forward_fn, x)
+            if self.recompute_use_reentrant:
+                return recompute(self._inner_forward_fn, x)
+            else:
+                return recompute(self._inner_forward_fn, x, use_reentrant=False)
         else:
             return self._inner_forward_fn(x)
 

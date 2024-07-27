@@ -56,7 +56,7 @@ void ConvertConv2d(TensorRTEngine* engine,
     PADDLE_ENFORCE_EQ(
         Y_t->dims().size(),
         4UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The conv2d filter's dims size should be 4, but got %d",
             Y_t->dims().size()));
     n_output = Y_t->dims()[0];
@@ -68,7 +68,7 @@ void ConvertConv2d(TensorRTEngine* engine,
     PADDLE_ENFORCE_EQ(
         filter->getDimensions().nbDims,
         4UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The conv2d filter's dims size should be 4, but got %d",
             filter->getDimensions().nbDims));
     n_output = filter->getDimensions().d[0];
@@ -156,8 +156,8 @@ void ConvertConv2d(TensorRTEngine* engine,
 
   PADDLE_ENFORCE_NOT_NULL(
       layer,
-      platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
-                              " layer failed."));
+      phi::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
+                         " layer failed."));
   layer->setStrideNd(nv_strides);
 
   layer->setPrePadding(nv_pre_paddings);
@@ -169,7 +169,7 @@ void ConvertConv2d(TensorRTEngine* engine,
     nv_post_paddings.d[1] -= output_padding[1];
   }
   if (nv_post_paddings.d[0] < 0 || nv_post_paddings.d[1] < 0) {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "The value in conv2d_transpose's PostPadding should be >= 0."));
   }
   layer->setPostPadding(nv_post_paddings);

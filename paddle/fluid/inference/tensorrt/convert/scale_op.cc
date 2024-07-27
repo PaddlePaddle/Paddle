@@ -119,7 +119,7 @@ class ScaleOpConverter : public OpConverter {
       auto create_weights = [&](float data, std::string type) -> float* {
         std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
         tmp_tensor->Resize({1});
-        auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
+        auto* tmp_data = tmp_tensor->mutable_data<float>(phi::CPUPlace());
         tmp_data[0] = data;
         engine_->SetWeights(out_name + "_scale_op_" + type,
                             std::move(tmp_tensor));
@@ -200,7 +200,7 @@ class ScaleOpConverter : public OpConverter {
 
       PADDLE_ENFORCE_EQ(layer != nullptr,
                         true,
-                        platform::errors::Fatal("Create scale layer failed."));
+                        phi::errors::Fatal("Create scale layer failed."));
 
       if (input_dim.nbDims < 3) {
         nvinfer1::Dims squeeze_shape;

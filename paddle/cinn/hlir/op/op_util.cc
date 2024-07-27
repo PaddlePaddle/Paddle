@@ -102,6 +102,11 @@ std::string GetExternFuncNameArchPrefixImpl(common::NVGPUArch,
   return "nvgpu_";
 }
 
+std::string GetExternFuncNameArchPrefixImpl(common::HygonDCUArchHIP,
+                                            const std::string& func_name) {
+  return "hygonDcuHip_";
+}
+
 std::string GetExternFuncNameArchPrefix(common::Arch arch,
                                         const std::string& func_name) {
   return std::visit(

@@ -135,16 +135,16 @@ class ProgressBar:
             sys.stdout.write(bar_chars)
 
             for k, val in values:
-                info += ' - %s:' % k
+                info += f' - {k}:'
                 val = val if isinstance(val, list) else [val]
                 for i, v in enumerate(val):
                     if isinstance(v, (float, np.float32, np.float64)):
                         if abs(v) > 1e-3:
-                            info += ' %.4f' % v
+                            info += f' {v:.4f}'
                         else:
-                            info += ' %.4e' % v
+                            info += f' {v:.4e}'
                     else:
-                        info += ' %s' % v
+                        info += f' {v}'
 
             if self._num is not None and current_num < self._num:
                 eta = time_per_unit * (self._num - current_num)
@@ -159,7 +159,7 @@ class ProgressBar:
                 else:
                     eta_format = '%ds' % eta
 
-                info += ' - ETA: %s' % eta_format
+                info += f' - ETA: {eta_format}'
 
             info += fps
             self._total_width += len(info)
@@ -187,25 +187,25 @@ class ProgressBar:
             info = count + info
 
             for k, val in values:
-                info += ' - %s:' % k
+                info += f' - {k}:'
                 val = val if isinstance(val, list) else [val]
                 for v in val:
                     if isinstance(v, (float, np.float32, np.float64)):
                         if abs(v) > 1e-3:
-                            info += ' %.4f' % v
+                            info += f' {v:.4f}'
                         else:
-                            info += ' %.4e' % v
+                            info += f' {v:.4e}'
                     elif (
                         isinstance(v, np.ndarray)
                         and v.size == 1
                         and v.dtype in [np.float32, np.float64]
                     ):
                         if abs(v.item()) > 1e-3:
-                            info += ' %.4f' % v.item()
+                            info += f' {v.item():.4f}'
                         else:
-                            info += ' %.4e' % v.item()
+                            info += f' {v.item():.4e}'
                     else:
-                        info += ' %s' % v
+                        info += f' {v}'
 
             info += fps
             info += '\n'

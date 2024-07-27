@@ -66,10 +66,6 @@ if(WITH_RPC)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
                   common)
 endif()
-if(WITH_GPU OR WITH_ROCM)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
-  set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
-endif()
 
 if(WITH_GPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_profiler)
@@ -81,10 +77,6 @@ endif()
 if(WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-endif()
-
-if(WITH_XPU)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_xpti)
 endif()
 
 if(WITH_XPU_BKCL)
@@ -123,6 +115,7 @@ set(PYBIND_SRCS
     inference_api.cc
     control_flow_api.cc
     pir.cc
+    pir_utils.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc
@@ -177,7 +170,7 @@ endif()
 if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl async_load)
   endif()
   if(WITH_XPU_BKCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl)
@@ -363,6 +356,16 @@ if(WITH_PYTHON)
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
         DEPENDS phi)
+      add_custom_command(
+        OUTPUT ${op_impl_path}/phi_core.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${op_impl_path}
+        DEPENDS phi)
+      if(WITH_GPU OR WITH_ROCM)
+        add_custom_command(
+          OUTPUT ${op_impl_path}/phi_gpu.dll
+          COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB} ${op_impl_path}
+          DEPENDS phi)
+      endif()
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
     endif()
 

@@ -22,11 +22,9 @@
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
-#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/placeholder.h"
@@ -509,19 +507,15 @@ void DebugPrintReduceVar(const FusibleOp& op) {
 std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
   VLOG(4) << "DebugPrint Op Origin: ";
   VLOG(4) << "DebugPrint Op Origin: " << _GetRootExpr(reduce_op);
-  VLOG(4) << "XK";
   ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
   // substitude compute_body with a new init value.
-  VLOG(4) << "XK";
   ir::Expr trivial_compute_body =
       ExprTransformerUtils::ChangeTensorLoadTransformer(
           GetOutputTensor(reduce_op),
           GetInitExpr(reduce_op))(GetComputeBody(reduce_op));
-  VLOG(4) << "XK";
 
   const std::vector<ir::Var>& all_iters = ComposeUtils::ConcatVector(
       GetOutputIters(reduce_op), GetReduceIters(reduce_op));
-  VLOG(4) << "XK";
   VLOG(4) << "Trivial Compute Body is " << trivial_compute_body;
   ir::Tensor new_trivial_tensor =
       ir::Tensor(reduce_out_tensor->name + "_split_transform",
@@ -624,6 +618,55 @@ std::vector<ir::Expr> OperationFusion(
   return output;
 }
 
+void InitLoopTransformMap(FusionGroupInfo* group_info, const ir::Expr& body) {
+  using trivial_fusion_detail::ExprSetFinderUtils::ChildScheduleBlockRealizes;
+  using trivial_fusion_detail::ExprSetFinderUtils::ChildTensorLoads;
+  using trivial_fusion_detail::ExprSetFinderUtils::
+      ScheduleBlockRealizeIsSplitTransform;
+
+  std::vector<ir::Expr> split_transform_block =
+      (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsSplitTransform)(body);
+  if (split_transform_block.empty()) {
+    return;
+  }
+  CHECK_EQ(split_transform_block.size(), 1);
+  VLOG(4) << "found split_transform block: " << body;
+
+  auto* block = split_transform_block[0].As<ir::ScheduleBlockRealize>();
+  auto& iter_values = block->iter_values;
+  auto& iter_vars = block->schedule_block.As<ir::ScheduleBlock>()->iter_vars;
+  CHECK_EQ(iter_values.size(), iter_vars.size());
+
+  // Map iter_vars (e.g. inner_block_0) to loops.
+  std::unordered_map<ir::Var, size_t> iter_var_map;
+  std::vector<ir::Var> for_iters = trivial_fusion_detail::GetAllForIters(body);
+  for (size_t i = 0; i < iter_vars.size(); i++) {
+    auto iter = std::find(
+        for_iters.begin(), for_iters.end(), iter_values[i].as_var_ref());
+    CHECK(iter != for_iters.end());
+    iter_var_map[iter_vars[i]] = std::distance(for_iters.begin(), iter);
+  }
+
+  // Map loops to the load indices of the first input.
+  // TODO(liangshuhao): Choose the most appropriate input when there are
+  // multiple inputs.
+  const auto& all_loads = ChildTensorLoads(split_transform_block[0]);
+  group_info->loop_transform_map.assign(for_iters.size(), -1);
+  for (const auto& load : all_loads) {
+    const auto& indices = load.As<ir::Load>()->indices;
+    VLOG(4) << "load indices: " << utils::Join(indices, ", ");
+    for (size_t i = 0; i < indices.size(); i++) {
+      if (indices[i].as_var()) {
+        size_t loop_idx = iter_var_map[indices[i].as_var_ref()];
+        group_info->loop_transform_map[loop_idx] = i;
+      }
+    }
+    VLOG(4) << "loop_transform_map: "
+            << utils::Join(group_info->loop_transform_map, ", ");
+    break;
+  }
+}
+
 FusionGroupInfo GetFusionGroupInfo(
     const std::vector<ir::Expr>& op_compute_bodies) {
   using trivial_fusion_detail::AppendBound;
@@ -641,6 +684,8 @@ FusionGroupInfo GetFusionGroupInfo(
   };
 
   for (const auto& body : op_compute_bodies) {
+    InitLoopTransformMap(&group_info, body);
+
     if (IsReduceBody(body)) {
       ReduceOp op = ReduceOp(body);
       if (group_info.reduce_var_name.empty()) {

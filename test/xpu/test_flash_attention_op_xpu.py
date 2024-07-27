@@ -204,6 +204,15 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
         self.return_softmax = False
 
 
+# class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
+#     def setUp(self):
+#         self.place = paddle.XPUPlace(0)
+#         self.shape = (1, 8192, 5, 128)
+#         self.dropout = 0.0
+#         self.causal = True
+#         self.return_softmax = False
+
+
 # The following three REAL unit tests are disabled because they take a VERY LONG time to run, although they all pass under XHPC v20240105.
 
 # class TestFlashAttentionAPITestEB(TestFlashAttentionAPI):

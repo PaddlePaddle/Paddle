@@ -37,21 +37,21 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
 
  protected:
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -119,7 +119,7 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   layer->setInput(1, *shape);
   PADDLE_ENFORCE_NOT_NULL(
       layer,
-      platform::errors::InvalidArgument("TRT shuffle layer building failed."));
+      phi::errors::InvalidArgument("TRT shuffle layer building failed."));
   engine_->DeclareOutput(layer, 0, "y");
   engine_->FreezeNetwork();
 #if IS_TRT_VERSION_GE(8600)
@@ -187,21 +187,21 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
  protected:
   TensorRTDynamicEngineTest() : engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -302,7 +302,7 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
   LOG(INFO) << "create weights";
   PADDLE_ENFORCE_NOT_NULL(
       fc_layer,
-      platform::errors::InvalidArgument("TRT SPMM layer building failed."));
+      phi::errors::InvalidArgument("TRT SPMM layer building failed."));
 
   engine_->DeclareOutput(fc_layer, 0, "y");
   engine_->FreezeNetwork();
@@ -347,21 +347,21 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
   TensorRTDynamicTestFusedTokenPrune()
       : inputs_(), outputs_(), engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -441,7 +441,7 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
   std::vector<nvinfer1::ITensor *> itensors = {attn, x, mask, new_mask};
   auto *layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
   PADDLE_ENFORCE_NOT_NULL(layer,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "TRT fused_token_prune layer building failed."));
   std::vector<std::string> output_tensor_names{"out_slimmed_x", "out_cls_inds"};
   for (size_t i = 0; i < 2; i++) {
@@ -550,21 +550,21 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
   TensorRTDynamicTestFusedTokenPruneHalf()
       : inputs_(), outputs_(), engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -643,7 +643,7 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   std::vector<nvinfer1::ITensor *> itensors = {attn, x, mask, new_mask};
   auto *layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
   PADDLE_ENFORCE_NOT_NULL(layer,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "TRT fused_token_prune layer building failed."));
   std::vector<std::string> output_tensor_names{"out_slimmed_x", "out_cls_inds"};
   for (size_t i = 0; i < 2; i++) {
@@ -750,21 +750,21 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
 class TensorRTDynamicShapeGNTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
+    ctx_ = std::make_unique<phi::GPUContext>(phi::GPUPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .GetAllocator(phi::GPUPlace(0), ctx_->stream())
                            .get());
     ctx_->SetHostAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
+            .GetAllocator(phi::CPUPlace())
             .get());
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
+            .GetZeroAllocator(phi::GPUPlace(0))
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .GetAllocator(phi::GPUPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -988,7 +988,7 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
   dq_layer->setAxis(1);
 
   PADDLE_ENFORCE_NOT_NULL(groupnorm_layer,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "TRT GN plugin layer building failed."));
 
   engine_->DeclareOutput(dq_layer, 0, "y");

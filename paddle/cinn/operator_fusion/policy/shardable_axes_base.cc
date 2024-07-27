@@ -21,8 +21,15 @@ namespace cinn::fusion {
 ShardableAxes ShardableAxesInfoManager::ReplaceShardableAxesWithRootName(
     const ShardableAxes& axes) {
   std::vector<std::string> names;
+  const auto FindRoot = [&](std::string non_root) {
+    std::string result = non_root;
+    while (name_union_[result] != result) {
+      result = name_union_[result];
+    }
+    return result;
+  };
   for (auto name : axes.axis_names) {
-    names.push_back(name_union_[name]);
+    names.push_back(FindRoot(name));
   }
   return ShardableAxes(names);
 }
@@ -87,9 +94,6 @@ std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
     return CreateDefaultSignature(op);
   }
   if (op->name() == "cinn_op.generate_shape") {
-    return CreateDefaultSignature(op);
-  }
-  if (op->name() == "cinn_op.yield_store") {
     return CreateDefaultSignature(op);
   }
   if (op->name() == "cinn_op.reshape") {
@@ -258,6 +262,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     op_signature_map_[op] = CreateShardableSignature(op);
   }
 
+  // short cut
   const auto FindRoot = [&](std::string non_root) {
     std::string result = non_root;
     while (name_union_[result] != result) {
@@ -276,9 +281,23 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
         ::common::errors::PreconditionNotMet(
             "Required root and non_root shall have same size of axis_names."));
     for (int i = 0; i < non_root.axis_names.size(); i++) {
-      name_union_[non_root.axis_names[i]] = FindRoot(root.axis_names[i]);
+      VLOG(4) << "Link " << non_root.axis_names[i] << " -> "
+              << FindRoot(root.axis_names[i]);
+      name_union_[FindRoot(non_root.axis_names[i])] =
+          FindRoot(root.axis_names[i]);
     }
   };
+
+  // init the name_union_
+  for (const auto& [op, axes_signature] : op_signature_map_) {
+    for (int i = 0; i < op->num_operands(); ++i) {
+      auto value = op->operand_source(i);
+      auto axes = axes_signature.inputs[i];
+      for (auto& axis_name : axes.axis_names) {
+        name_union_[axis_name] = axis_name;
+      }
+    }
+  }
 
   for (const auto& [op, axes_signature] : op_signature_map_) {
     for (int i = 0; i < op->num_operands(); ++i) {
@@ -288,9 +307,6 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
               << " axes: " << axes.DebugStr();
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
-        for (auto& axis_name : axes.axis_names) {
-          name_union_[axis_name] = axis_name;
-        }
       } else {
         CombineAxes(value_axes_map_[value], axes);
       }
@@ -302,15 +318,15 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
               << " axes: " << axes.DebugStr();
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
-        for (auto& axis_name : axes.axis_names) {
-          name_union_[axis_name] = axis_name;
-        }
       } else {
         CombineAxes(value_axes_map_[value], axes);
       }
     }
   }
-
+  // update the name union.
+  for (const auto& [child, father] : name_union_) {
+    name_union_[child] = FindRoot(child);
+  }
   VLOG(4) << NameUnionDebugStr();
 }
 
@@ -337,7 +353,6 @@ std::string ShardableAxesSignature::DebugStr() const {
 std::string ShardableAxesInfoManager::NameUnionDebugStr() const {
   std::stringstream ss;
   ss << "[ShardableAxesInfoManager] NameUnion :\n";
-
   std::unordered_map<std::string, std::vector<std::string>> root_to_sons;
   for (const auto& [non_root, root] : name_union_) {
     if (root_to_sons.find(root) == root_to_sons.end()) {

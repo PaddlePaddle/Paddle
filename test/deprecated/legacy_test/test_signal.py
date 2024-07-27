@@ -111,7 +111,7 @@ def normalize(S, norm=np.inf, axis=0, threshold=None, fill=None):
         return S
 
     else:
-        raise Exception(f"Unsupported norm: {repr(norm)}")
+        raise Exception(f"Unsupported norm: {norm!r}")
 
     # indices where norm is below the threshold
     small_idx = length < threshold

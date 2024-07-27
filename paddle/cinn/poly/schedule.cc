@@ -25,12 +25,17 @@
 #include "paddle/cinn/poly/naive_scheduler.h"
 #include "paddle/cinn/poly/poly_scheduler.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace poly {
 
 std::string TimeSchedule::__str__() const {
-  CHECK_LE(time_dims_.size(), kMaxDims);
+  PADDLE_ENFORCE_LE(time_dims_.size(),
+                    kMaxDims,
+                    phi::errors::InvalidArgument(
+                        "time_dims_.size() should be less than %d, but got %d",
+                        kMaxDims,
+                        time_dims_.size()));
 
   // generate range: [dup, t0, t1...]
   std::vector<std::string> range_dims, cond_dims;
@@ -75,7 +80,12 @@ std::vector<std::string> TimeSchedule::final_axis_names() const {
 
 TimeSchedule::TimeSchedule(const std::string &id,
                            const std::vector<std::string> &dims) {
-  CHECK_LE(dims.size(), kMaxDims);
+  PADDLE_ENFORCE_LE(dims.size(),
+                    kMaxDims,
+                    phi::errors::InvalidArgument(
+                        "dims.size() should be less than %d, but got %d",
+                        kMaxDims,
+                        dims.size()));
   id_ = id;
   domain_dims = dims;
   for (auto &dim : domain_dims) {
@@ -85,9 +95,20 @@ TimeSchedule::TimeSchedule(const std::string &id,
 }
 
 void TimeSchedule::OrderAfter(const TimeSchedule &other, int level) {
-  CHECK_EQ(space_size(), other.space_size()) << "space not match";
-  CHECK_LT(level, other.space_size()) << other.__str__();
-  CHECK_GE(level, 0);
+  PADDLE_ENFORCE_EQ(space_size(),
+                    other.space_size(),
+                    phi::errors::InvalidArgument("space not match"));
+  PADDLE_ENFORCE_LT(
+      level,
+      other.space_size(),
+      phi::errors::InvalidArgument("level should be less than %d, but got %d",
+                                   other.space_size(),
+                                   level));
+  PADDLE_ENFORCE_GE(
+      level,
+      0,
+      phi::errors::InvalidArgument(
+          "level should be greater than or equal to 0, but got %d", level));
   CHECK(!time_dims_.empty());
 
   root_time_ = std::max(root_time_, other.root_time_);
@@ -116,7 +137,11 @@ const std::string &TimeSchedule::id() const {
 }
 
 void TimeSchedule::ResizeTimeSpace(int size) {
-  CHECK_LE(size, kMaxDims);
+  PADDLE_ENFORCE_LE(
+      size,
+      kMaxDims,
+      phi::errors::InvalidArgument(
+          "size should be less than %d, but got %d", kMaxDims, size));
   for (int i = time_dims_.size(); i < size; i++) {
     time_dims_.emplace_back("0", 0);
   }
@@ -194,7 +219,9 @@ void SchedulerBase::AddStage(const Stage &x) {
   if (!ctx_.get()) {
     ctx_ = x.domain().ctx();
   } else {
-    CHECK_EQ(ctx_.get(), x.domain().ctx().get()) << "isl ctx not match";
+    PADDLE_ENFORCE_EQ(ctx_.get(),
+                      x.domain().ctx().get(),
+                      phi::errors::InvalidArgument("ctx not match"));
   }
 }
 
@@ -243,7 +270,11 @@ std::vector<std::string> SchedulerBase::WrapIteratorNames(
 }
 
 SchedulerBase &SchedulerBase::After(const Stage &a, const Stage &b, int level) {
-  CHECK_LT(level, space_size_);
+  PADDLE_ENFORCE_LT(
+      level,
+      space_size_,
+      phi::errors::InvalidArgument(
+          "level should be less than %d, but got %d", space_size_, level));
   auto *a_node =
       schedule_graph_.RetrieveNode(a.id())->safe_as<ScheduleGraphNode>();
   auto *b_node =

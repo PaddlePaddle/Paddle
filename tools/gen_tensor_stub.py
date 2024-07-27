@@ -20,12 +20,15 @@ import inspect
 import logging
 import re
 import sys
-import types
+import traceback
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol
 
 from typing_extensions import TypeAlias
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 logging.basicConfig(style="{", format="{message}", level=logging.INFO)
 logger = logging.getLogger("Generating stub file for paddle.Tensor")
@@ -33,12 +36,34 @@ logger.setLevel(logging.INFO)
 
 INDENT_SIZE = 4
 INDENT = " " * INDENT_SIZE
+MEANLESS_INDEX = -1
+
 
 MemberType: TypeAlias = Literal[
     "doc",
     "attribute",
     "method",
 ]
+
+
+class AnnoConverter(Protocol):
+    """
+    convert bad annotation, e.g.:
+
+    "Literal[('raise', 'wrap', 'clip')]" -> "Literal['raise', 'wrap', 'clip']"
+    """
+
+    def convert(self, input: str) -> str:
+        ...
+
+
+class LiteralConverter(AnnoConverter):
+    pattern = re.compile(
+        r"(?P<lit_start>Literal\[)\((?P<content>.*?)\)(?P<lit_end>\])"
+    )
+
+    def convert(self, input: str) -> str:
+        return self.pattern.sub(r'\g<lit_start>\g<content>\g<lit_end>', input)
 
 
 @dataclass
@@ -63,8 +88,12 @@ def _slot_pattern(slot_name: str) -> re.Pattern:
 
 
 class TensorGen:
-    def __init__(self, template: str = ''):
+    _converters: list[AnnoConverter] = [LiteralConverter()]
+
+    def __init__(self, template: str = '', prefix: str = 'tensor'):
         self._template = template
+        self._template_codes: list[tuple[int, int, str]] = []
+        self._prefix = prefix
 
     def find_annotation_slot(self, slot_name: str) -> tuple[str, int, int]:
         pattern = _slot_pattern(slot_name)
@@ -79,21 +108,36 @@ class TensorGen:
 
     @property
     def tensor_docstring(self):
-        return self.find_annotation_slot('tensor_docstring')
+        return self.find_annotation_slot(f'{self._prefix}_docstring')
 
     @property
     def tensor_attributes(self):
-        return self.find_annotation_slot('tensor_attributes')
+        return self.find_annotation_slot(f'{self._prefix}_attributes')
 
     @property
     def tensor_methods(self):
-        return self.find_annotation_slot('tensor_methods')
+        return self.find_annotation_slot(f'{self._prefix}_methods')
 
     @property
     def tensor_alias(self):
-        return self.find_annotation_slot('tensor_alias')
+        return self.find_annotation_slot(f'{self._prefix}_alias')
+
+    @property
+    def template_codes(self) -> list[tuple[int, int, str]]:
+        return self._template_codes
+
+    @property
+    def template_begin(self) -> int:
+        return self._template.find(f'{self._prefix}_begin')
+
+    @property
+    def template_end(self) -> int:
+        return self._template.find(f'{self._prefix}_end')
 
     def find_apis(self, api_name: str) -> list[dict[str, tuple[str, int, int]]]:
+        if self.template_begin < 0 or self.template_end < 0:
+            return []
+
         pattern = re.compile(
             r"(?P<indent> *)(?P<def_api>def "
             + api_name
@@ -102,6 +146,13 @@ class TensorGen:
         )
         api = []
         for mo in pattern.finditer(self._template):
+            _start_index, _end_index = mo.span()
+            if not (
+                self.template_begin < _start_index < self.template_end
+                and self.template_begin < _end_index < self.template_end
+            ):
+                continue
+
             _indent = mo.group('indent')
             _signature = mo.group('signature')
             _docstring = mo.group('docstring')
@@ -109,11 +160,9 @@ class TensorGen:
             _comment = mo.group('comment')
             _comment = '' if _comment is None else _comment
 
-            _start_index, _end_index = mo.span()
-            _start_indent, _end_indent = mo.span('indent')
-            _start_signature, _end_signature = mo.span('signature')
-            _start_docstring, _end_docstring = mo.span('docstring')
-            _start_ellipsis, _end_ellipsis = mo.span('ellipsis')
+            _start_indent, _ = mo.span('indent')
+            _start_docstring, _ = mo.span('docstring')
+            _, _end_ellipsis = mo.span('ellipsis')
             _start_comment = _end_ellipsis
             _end_comment = _start_comment + len(_comment)
 
@@ -121,18 +170,19 @@ class TensorGen:
             assert _end_comment == _end_index
 
             _api = {
-                'indent': (_indent, _start_indent, _end_indent),
-                'signature': (_signature, _start_signature, _end_signature),
-                'docstring': (_docstring, _start_docstring, _end_docstring),
-                'ellipsis': (_ellipsis, _start_ellipsis, _end_ellipsis),
-                'comment': (_comment, _start_comment, _end_comment),
+                'indent': (_indent, MEANLESS_INDEX, MEANLESS_INDEX),
+                'signature': (_signature, MEANLESS_INDEX, MEANLESS_INDEX),
+                'docstring': (_docstring, _start_docstring, _end_comment),
+                'ellipsis': (_ellipsis, MEANLESS_INDEX, MEANLESS_INDEX),
+                'comment': (_comment, MEANLESS_INDEX, MEANLESS_INDEX),
             }
             api.append(_api)
 
         return api
 
     def insert_template(self, code: str, start: int, end: int) -> None:
-        self._template = self._template[:start] + code + self._template[end:]
+        if start != MEANLESS_INDEX and end != MEANLESS_INDEX:
+            self._template_codes.append((start, end, code))
 
     def add_method(self, func: Member):
         """
@@ -162,7 +212,8 @@ class TensorGen:
                     _doc += with_indent(doc, len(_indent) // INDENT_SIZE)
                     _doc += "\n"
                     _doc += f'{_indent}"""\n'
-                    _doc += f'{_indent}'
+                    _doc += f'{_indent}...\n'
+                    _doc += f'{_indent}\n'
 
                     self.insert_template(comment + _doc, doc_start, doc_end)
         else:
@@ -204,15 +255,42 @@ class TensorGen:
         docstring = with_indent(docstring, len(_indent) // INDENT_SIZE)
         self.insert_template(docstring, _end_index, _end_index)
 
-    def codegen(self) -> str:
+    @classmethod
+    def codegen(
+        cls, template: str, template_codes: list[tuple[int, int, str]]
+    ) -> str:
         header = (
             '# This file is auto generated by `tools/gen_tensor_stub.py`.\n\n'
         )
-        return header + self._template
+
+        _template = []
+        start = 0
+        end = 0
+        for _start, _end, code in sorted(template_codes):
+            end = _start
+            _template.extend(
+                [
+                    template[start:end],
+                    code,
+                ]
+            )
+            start = _end
+        _template.append(template[start:])
+
+        _content = header + ''.join(_template)
+
+        for converter in cls._converters:
+            _content = converter.convert(_content)
+
+        return _content
 
 
 def is_inherited_member(name: str, cls: type) -> bool:
     """Check if the member is inherited from parent class"""
+
+    # keep magic methods
+    if name.startswith("__") and name.endswith("__"):
+        return False
 
     if name in cls.__dict__:
         return False
@@ -328,19 +406,27 @@ def func_doc_to_method_doc(func_doc: str) -> str:
     return method_doc
 
 
-def try_import_paddle() -> types.ModuleType | None:
+def try_import_paddle() -> ModuleType | None:
     try:
         return importlib.import_module('paddle')
     except ModuleNotFoundError:
+        traceback.print_exc(file=sys.stderr)
         sys.stderr.write(
-            '''ERROR: Can NOT import paddle.
-            We could import paddle without installation, with all libs (.dll or .so) copied into dir `paddle/libs`,
-            or path already been set for the system.
+            '''
+ERROR: Can NOT import paddle from `tools/gen_tensor_stub.py` before installation.
+    So the stub file `python/paddle/tensor/tensor.pyi` of `paddle.Tensor` may be lost.
+    We COULD import paddle without installation with all libs (.dll or .so) copied into dir `paddle/libs`,
+    or path already been set for the system. Try the following steps to locate the problem.
+
+    1. Build with `SKIP_STUB_GEN=ON make -j$(nproc)`.
+    2. Install the wheel from `build/python/dist`.
+    3. Try to `import paddle` and check the problems.
             '''
         )
+    return None
 
 
-def get_tensor_members():
+def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
     paddle = try_import_paddle()
     if not paddle:
         raise (
@@ -349,7 +435,7 @@ def get_tensor_members():
             )
         )
 
-    tensor_class = paddle.Tensor
+    tensor_class = eval(module)
 
     members: dict[int, Member] = {}
     for name, member in inspect.getmembers(tensor_class):
@@ -467,29 +553,41 @@ def parse_args():
 
 
 def generate_stub_file(input_file=None, output_file=None):
-    # Get members of Tensor
-    tensor_members = get_tensor_members()
-    logging.debug(f'total members in Tensor: {len(tensor_members)}')
-
     # Get tensor template
     tensor_template = get_tensor_template(input_file)
 
-    # Generate the Tensor stub
-    tensor_gen = TensorGen(tensor_template)
+    all_members: set[int] = set()
+    template_codes: list[tuple[int, int, str]] = []
+    # Get members of Tensor
+    for module, prefix in [
+        ['paddle.Tensor', 'tensor'],
+        ['paddle.base.framework.EagerParamBase', 'eager_param_base'],
+    ]:
+        tensor_members = get_tensor_members(module)
+        logging.debug(f'total members in {module}: {len(tensor_members)}')
 
-    for member in tensor_members.values():
-        if member.type == "method":
-            tensor_gen.add_method(member)
-            for alias in member.aliases:
-                tensor_gen.add_alias(alias, member.name)
-        elif member.type == "attribute":
-            tensor_gen.add_attribute(member.name, "Any")
-        elif member.type == "doc":
-            tensor_gen.add_doc(member.doc)
+        # Generate the Tensor stub
+        tensor_gen = TensorGen(tensor_template, prefix)
+
+        for member_id, member in tensor_members.items():
+            if member_id in all_members:
+                continue
+
+            if member.type == "method":
+                tensor_gen.add_method(member)
+                for alias in member.aliases:
+                    tensor_gen.add_alias(alias, member.name)
+            elif member.type == "attribute":
+                tensor_gen.add_attribute(member.name, "Any")
+            elif member.type == "doc":
+                tensor_gen.add_doc(member.doc)
+
+        all_members |= tensor_members.keys()
+        template_codes += tensor_gen.template_codes
 
     # Write to target file
     with open(output_file, "w", encoding="utf-8") as f:
-        f.write(tensor_gen.codegen())
+        f.write(TensorGen.codegen(tensor_template, template_codes))
 
 
 def main():

@@ -382,7 +382,7 @@ class ParameterServerRuntime(RuntimeBase):
             return
 
         if not os.path.isdir(model_dirname):
-            raise ValueError("There is no directory named '%s'", model_dirname)
+            raise ValueError(f"There is no directory named '{model_dirname}'")
 
         # load dense
         paddle.static.load_vars(

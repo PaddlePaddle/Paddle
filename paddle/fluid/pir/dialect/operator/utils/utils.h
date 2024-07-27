@@ -57,6 +57,10 @@ static inline phi::DataType TransToPhiDataType(pir::Type dtype) {
     return phi::DataType::COMPLEX64;
   } else if (dtype.isa<pir::Complex128Type>()) {
     return phi::DataType::COMPLEX128;
+  } else if (dtype.isa<pir::Float8E4M3FNType>()) {
+    return phi::DataType::FLOAT8_E4M3FN;
+  } else if (dtype.isa<pir::Float8E5M2Type>()) {
+    return phi::DataType::FLOAT8_E5M2;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported ir data type when casting it into "
@@ -96,6 +100,10 @@ static inline pir::Type TransToIrDataType(phi::DataType dtype,
       return pir::Complex64Type::get(ctx);
     case phi::DataType::COMPLEX128:
       return pir::Complex128Type::get(ctx);
+    case phi::DataType::FLOAT8_E4M3FN:
+      return pir::Float8E4M3FNType::get(ctx);
+    case phi::DataType::FLOAT8_E5M2:
+      return pir::Float8E5M2Type::get(ctx);
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "

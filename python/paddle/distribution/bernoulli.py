@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
@@ -25,6 +27,10 @@ from paddle.nn.functional import (
     sigmoid,
     softplus,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 # Smallest representable number
 EPS = {
@@ -91,13 +97,18 @@ class Bernoulli(exponential_family.ExponentialFamily):
             0.61086434)
     """
 
-    def __init__(self, probs, name=None):
+    name: str
+    probs: Tensor
+    logits: Tensor
+    dtype: _DTypeLiteral
+
+    def __init__(self, probs: float | Tensor, name: str | None = None) -> None:
         self.name = name or 'Bernoulli'
         if not in_dynamic_mode():
             check_type(
                 probs,
                 'probs',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 self.name,
             )
 
@@ -109,16 +120,6 @@ class Bernoulli(exponential_family.ExponentialFamily):
             [self.probs] = self._to_tensor(probs)
             self.dtype = paddle.get_default_dtype()
 
-        # Check probs range [0, 1].
-        if in_dynamic_mode():
-            """Not use `paddle.any` in static mode, which always be `True`."""
-            if (
-                paddle.any(self.probs < 0)
-                or paddle.any(self.probs > 1)
-                or paddle.any(paddle.isnan(self.probs))
-            ):
-                raise ValueError("The arg of `probs` must be in range [0, 1].")
-
         # Clip probs from [0, 1] to (0, 1) with smallest representable number `eps`.
         self.probs = _clip_probs(self.probs, self.dtype)
         self.logits = self._probs_to_logits(self.probs, is_binary=True)
@@ -126,7 +127,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         super().__init__(batch_shape=self.probs.shape, event_shape=())
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of Bernoulli distribution.
 
         Returns:
@@ -135,7 +136,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         return self.probs
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of Bernoulli distribution.
 
         Returns:
@@ -143,7 +144,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         return paddle.multiply(self.probs, (1 - self.probs))
 
-    def sample(self, shape):
+    def sample(self, shape: Sequence[int]) -> Tensor:
         """Sample from Bernoulli distribution.
 
         Args:
@@ -159,7 +160,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 >>> import paddle
                 >>> from paddle.distribution import Bernoulli
 
-                >>> rv = Bernoulli(paddle.full((1), 0.3))
+                >>> rv = Bernoulli(paddle.full([1], 0.3))
                 >>> print(rv.sample([100]).shape)
                 [100, 1]
 
@@ -180,7 +181,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             check_type(
                 shape,
                 'shape',
-                (np.ndarray, Variable, list, tuple),
+                (np.ndarray, Variable, list, tuple, paddle.pir.Value),
                 name,
             )
 
@@ -190,7 +191,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         with paddle.no_grad():
             return paddle.bernoulli(self.probs.expand(shape), name=name)
 
-    def rsample(self, shape, temperature=1.0):
+    def rsample(self, shape: Sequence[int], temperature: float = 1.0) -> Tensor:
         """Sample from Bernoulli distribution (reparameterized).
 
         The `rsample` is a continuously approximate of Bernoulli distribution reparameterized sample method.
@@ -215,7 +216,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 >>> paddle.seed(1)
                 >>> from paddle.distribution import Bernoulli
 
-                >>> rv = Bernoulli(paddle.full((1), 0.3))
+                >>> rv = Bernoulli(paddle.full([1], 0.3))
                 >>> print(rv.sample([100]).shape)
                 [100, 1]
 
@@ -258,7 +259,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             check_type(
                 shape,
                 'shape',
-                (np.ndarray, Variable, list, tuple),
+                (np.ndarray, Variable, paddle.pir.Value, list, tuple),
                 name,
             )
             check_type(
@@ -285,7 +286,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             temperature,
         )
 
-    def cdf(self, value):
+    def cdf(self, value: Tensor) -> Tensor:
         r"""Cumulative distribution function(CDF) evaluated at value.
 
         .. math::
@@ -317,7 +318,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         name = self.name + '_cdf'
         if not in_dynamic_mode():
-            check_type(value, 'value', Variable, name)
+            check_type(value, 'value', (Variable, paddle.pir.Value), name)
 
         value = self._check_values_dtype_in_probs(self.probs, value)
         probs, value = paddle.broadcast_tensors([self.probs, value])
@@ -332,7 +333,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             name=name,
         )
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log of probability density function.
 
         Args:
@@ -355,7 +356,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         name = self.name + '_log_prob'
         if not in_dynamic_mode():
-            check_type(value, 'value', Variable, name)
+            check_type(value, 'value', (Variable, paddle.pir.Value), name)
 
         value = self._check_values_dtype_in_probs(self.probs, value)
         logits, value = paddle.broadcast_tensors([self.logits, value])
@@ -363,7 +364,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             logits, value, reduction='none', name=name
         )
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         r"""Probability density function(PDF) evaluated at value.
 
         .. math::
@@ -394,11 +395,11 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         name = self.name + '_prob'
         if not in_dynamic_mode():
-            check_type(value, 'value', Variable, name)
+            check_type(value, 'value', (Variable, paddle.pir.Value), name)
 
         return self.log_prob(value).exp(name=name)
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Entropy of Bernoulli distribution.
 
         .. math::
@@ -428,7 +429,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             self.logits, self.probs, reduction='none', name=name
         )
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Bernoulli) -> Tensor:
         r"""The KL-divergence between two Bernoulli distributions.
 
         .. math::

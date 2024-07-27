@@ -45,6 +45,7 @@ class Module : public ir::IrNodeRef {
     void AddFunctionWithoutOptim(const ir::LoweredFunc& func);
     void AddBuffer(ir::Buffer buffer);
     void AddPredicate(ir::Expr predicate);
+    void AddPriority(int priority);
     void SetInferShapeFunc(ir::Expr infer_shape_func);
     void Clear();
     common::Arch GetTargetArch();

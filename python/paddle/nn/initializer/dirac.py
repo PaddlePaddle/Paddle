@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import paddle
 from paddle import _C_ops, in_dynamic_mode, pir
 from paddle.utils import unique_name
@@ -42,9 +44,9 @@ class Dirac(Initializer):
     where, ``N`` is the minimum value of ``in_channels`` and ``out_channels``
 
     Args:
-        groups(int, optional): 0-dimension of the Tensor will be divided by groups,
+        groups(int|None, optional): 0-dimension of the Tensor will be divided by groups,
             each group has the same value. Default: 1.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
+        name(str|None, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -88,19 +90,21 @@ class Dirac(Initializer):
               [0., 0., 0., 0.]]])
     """
 
-    def __init__(self, groups=1, name=None):
+    def __init__(self, groups: int = 1, name: str | None = None) -> None:
         assert groups > 0 and isinstance(
             groups, int
         ), " 'groups' must be a positive integer. "
         super().__init__()
         self._groups = groups
 
-    def __call__(self, var, block=None):
+    def __call__(
+        self, var: paddle.Tensor, block: pir.Block | None = None
+    ) -> paddle.Tensor:
         """Initialize the input tensor with dirac initializer.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
-            block(Block, optional): The block in which initialization ops
+            block(Block|None, optional): The block in which initialization ops
                    should be added. Used in static graph only, default None.
 
         Returns:

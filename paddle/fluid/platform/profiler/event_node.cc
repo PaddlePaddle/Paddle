@@ -20,8 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/utils.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 HostTraceEventNode::~HostTraceEventNode() {
   // delete all runtime nodes and recursive delete children
@@ -213,7 +212,7 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
         PADDLE_ENFORCE_LE(
             host_event_node->EndNs(),
             stack_top_node->EndNs(),
-            platform::errors::Fatal(
+            phi::errors::Fatal(
                 "should not have time range intersection within one thread"));
         stack_top_node->AddChild(host_event_node);
         node_stack.push_back(host_event_node);
@@ -446,5 +445,4 @@ void NodeTrees::HandleTrees(
     }
   }
 }
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

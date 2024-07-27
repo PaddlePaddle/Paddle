@@ -66,7 +66,7 @@ def group_case_for_parallel(rootPath):
         f = open(case_file, 'r')
         all_need_run_cases = f.read().strip().split('\n')
 
-    print("case_file: %s" % case_file)
+    print(f"case_file: {case_file}")
 
     all_group_case = []
     for filename in parallel_case_file_list:

@@ -1051,6 +1051,7 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const std::vector<int>& paddings,
                                    bool global_pooling,
                                    bool adaptive,
+                                   bool ceil_mode,
                                    MetaTensor* dx) {
   dx->share_meta(x);
 }

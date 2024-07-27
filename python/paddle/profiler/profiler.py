@@ -255,7 +255,7 @@ def export_chrome_tracing(
     def handle_fn(prof):
         nonlocal worker_name
         if not worker_name:
-            worker_name = f"host_{socket.gethostname()}pid_{str(os.getpid())}"
+            worker_name = f"host_{socket.gethostname()}pid_{os.getpid()}"
         now = datetime.datetime.now()
         filename = '{}_time_{}.paddle_trace.json'.format(
             worker_name, now.strftime('%Y_%m_%d_%H_%M_%S_%f')
@@ -309,7 +309,7 @@ def export_protobuf(
     def handle_fn(prof):
         nonlocal worker_name
         if not worker_name:
-            worker_name = f"host_{socket.gethostname()}pid_{str(os.getpid())}"
+            worker_name = f"host_{socket.gethostname()}pid_{os.getpid()}"
         now = datetime.datetime.now()
         filename = '{}_time_{}.paddle_trace.pb'.format(
             worker_name, now.strftime('%Y_%m_%d_%H_%M_%S_%f')

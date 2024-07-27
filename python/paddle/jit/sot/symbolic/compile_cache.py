@@ -21,7 +21,6 @@ import paddle
 from paddle.amp.auto_cast import amp_state
 from paddle.base.data_feeder import convert_dtype
 from paddle.framework import _dygraph_tracer, use_pir_api
-from paddle.static import InputSpec
 
 from ..infer_meta import convert_meta_to_input_spec
 from ..profiler import EventGuard
@@ -39,6 +38,8 @@ from .export import export
 from .interpreter import compile_sir
 
 if TYPE_CHECKING:
+    from paddle.static import InputSpec
+
     from .symbolic_context import SymbolicTraceContext
 
 

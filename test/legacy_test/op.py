@@ -163,7 +163,7 @@ class OpDescCreationMethod:
                         new_attr.scalars.MergeFrom(item)
                 else:
                     raise NotImplementedError(
-                        f"A not supported attribute type: {str(attr.type)}."
+                        f"A not supported attribute type: {attr.type}."
                     )
         for attr_name, defalut_val in self.__extra_attrs__.items():
             user_defined_attr = kwargs.get(attr_name, None)
@@ -212,7 +212,7 @@ class OpDescCreationMethod:
                         new_attr.scalars.MergeFrom(item)
                 else:
                     raise NotImplementedError(
-                        f"A not supported attribute type: {str(attr_type)}."
+                        f"A not supported attribute type: {attr_type}."
                     )
 
         return op_desc

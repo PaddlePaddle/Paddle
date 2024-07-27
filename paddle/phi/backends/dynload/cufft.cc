@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace dynload {
+namespace phi::dynload {
 std::once_flag cufft_dso_flag;
 void* cufft_dso_handle = nullptr;
 
@@ -39,5 +38,4 @@ void EnforceCUFFTLoaded(const char* fn_name) {
           fn_name));
 }
 
-}  // namespace dynload
-}  // namespace phi
+}  // namespace phi::dynload

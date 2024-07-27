@@ -23,10 +23,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 
-namespace phi {
-namespace distributed {
-
-namespace detail {
+namespace phi::distributed::detail {
 
 constexpr int INFTIME = 10000;  // 10 seconds
 
@@ -358,7 +355,8 @@ std::vector<T> TCPClient::receive_vector() {
   return tcputils::receive_vector<T>(_socket);
 }
 
-}  // namespace detail
+}  // namespace phi::distributed::detail
+namespace phi::distributed {
 
 TCPStore::TCPStore(std::string host,
                    uint16_t port,
@@ -464,5 +462,4 @@ void TCPStore::wait(const std::string& key) {
 
 TCPStore::~TCPStore() { VLOG(7) << "TCPStore destructure"; }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

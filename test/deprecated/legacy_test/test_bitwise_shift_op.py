@@ -237,14 +237,14 @@ class TestBitwiseLeftShiftAPI_INT64_broadcast2(TestBitwiseLeftShiftAPI):
 
 class TestBitwiseLeftShiftAPI_special_case1(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.array([0b11111111], dtype='int8')
-        self.y = np.array([1], dtype='int8')
+        self.x = np.array([0b11111111], dtype='int16')
+        self.y = np.array([1], dtype='int16')
 
 
 class TestBitwiseLeftShiftAPI_special_case2(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.array([0b11111111], dtype='int8')
-        self.y = np.array([10], dtype='int8')
+        self.x = np.array([0b11111111], dtype='int16')
+        self.y = np.array([10], dtype='int16')
 
 
 class TestBitwiseLeftShiftAPI_special_case3(TestBitwiseLeftShiftAPI):

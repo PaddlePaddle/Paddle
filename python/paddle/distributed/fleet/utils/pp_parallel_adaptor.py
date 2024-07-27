@@ -109,7 +109,7 @@ class PipeLineModelAdaptor:
                 # first rank extract shared layer
                 with_shared = True
                 for dir in src_dirs:
-                    print("extract layer params in dir %s" % dir)
+                    print(f"extract layer params in dir {dir}")
                     layers.extend(self.extract_layers(dir, with_shared))
                     with_shared = False
                 # 2、sort and unique layers
@@ -240,7 +240,7 @@ class PipeLineModelAdaptor:
             return float(match.group(1).lstrip("."))
 
         # strictly sort layers
-        print("before sort %s" % ("|".join([e[0] for e in layers])))
+        print("before sort {}".format("|".join([e[0] for e in layers])))
         layers.sort(key=priority)
         # unique
         unique_layers = []
@@ -248,7 +248,7 @@ class PipeLineModelAdaptor:
             if unique_layers and e[0] == unique_layers[-1][0]:
                 continue
             unique_layers.append(e)
-        print("after sort %s " % ("|".join([e[0] for e in unique_layers])))
+        print("after sort {} ".format("|".join([e[0] for e in unique_layers])))
         return unique_layers
 
     def segment_layers(
@@ -358,7 +358,7 @@ class PipeLineModelAdaptor:
 
         lr_scheduler = None
         for layer_names, file_path in layers_segment:
-            print("load %s" % file_path)
+            print(f"load {file_path}")
             layer = paddle.load(file_path)
 
             def get_param_name_mapper(layer_name):

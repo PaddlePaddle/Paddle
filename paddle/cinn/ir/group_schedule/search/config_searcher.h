@@ -29,7 +29,7 @@ namespace ir {
 namespace search {
 
 using ScoreType = float;
-using CandidateType = std::vector<int>;
+using CandidateType = std::vector<int64_t>;
 using ConstraintFunc = std::function<bool(const CandidateType&)>;
 
 class BaseObjectiveFunc {
@@ -39,11 +39,13 @@ class BaseObjectiveFunc {
 
 class WeightedSamplingTrailObjectiveFunc : public BaseObjectiveFunc {
  public:
-  WeightedSamplingTrailObjectiveFunc(::pir::Program* program,
-                                     const BucketInfo& bucket_info,
-                                     double sampling_prob = 1.0,
-                                     int max_sampling_times = 65536,
-                                     int repeats = 10);
+  WeightedSamplingTrailObjectiveFunc(
+      ::pir::Program* program,
+      const BucketInfo& bucket_info,
+      double sampling_prob = 1.0,
+      int max_sampling_times = 65536,
+      int repeats = 80,
+      std::vector<std::vector<double>> weights = {});
 
   ScoreType operator()(const CandidateType& candidate) override;
 
@@ -55,6 +57,7 @@ class WeightedSamplingTrailObjectiveFunc : public BaseObjectiveFunc {
   int max_sampling_times_;
   int repeats_;
   int sampling_times_;
+  std::vector<std::vector<double>> weights_;
   std::vector<std::unordered_map<std::string, std::vector<int64_t>>>
       inputs_sampling_;
 

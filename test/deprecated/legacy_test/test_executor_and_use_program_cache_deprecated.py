@@ -67,22 +67,22 @@ class TestExecutor(unittest.TestCase):
         run_time_with_cache = _train(
             use_program_cache=True, max_iters=max_iters
         )
-        print("run time with program cache: %f" % run_time_with_cache)
+        print(f"run time with program cache: {run_time_with_cache:f}")
 
         run_time_without_cache = _train(
             use_program_cache=False, max_iters=max_iters
         )
-        print("run time without program cache: %f" % run_time_without_cache)
+        print(f"run time without program cache: {run_time_without_cache:f}")
 
         run_time_with_cache = _train(
             use_program_cache=True, max_iters=max_iters
         )
-        print("run time with program cache: %f" % run_time_with_cache)
+        print(f"run time with program cache: {run_time_with_cache:f}")
 
         run_time_with_cache = _train(
             use_program_cache=True, max_iters=max_iters
         )
-        print("run time with program cache: %f" % run_time_with_cache)
+        print(f"run time with program cache: {run_time_with_cache:f}")
 
 
 if __name__ == '__main__':

@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 template <typename T, typename DeviceContext>
 class SendAndRecvKernel : public framework::OpKernel<T> {
@@ -92,8 +91,7 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

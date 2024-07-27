@@ -42,7 +42,7 @@ void InterpreterCoreNoEventGarbageCollector::Add(Variable* var,
 }
 
 void InterpreterCoreNoEventGarbageCollector::Add(
-    Variable* var, const platform::DeviceContext* ctx) {
+    Variable* var, const phi::DeviceContext* ctx) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {
     return;
   }
@@ -101,14 +101,14 @@ void InterpreterCoreNoEventGarbageCollector::Add(
     // refer to executor.cc to see what old garbage collector does.
     // do nothing, because the sub scope will be deleted by sub-executor.
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "The variable(%s) is not supported in eager deletion.",
         framework::ToTypeName(var->Type())));
   }
 }
 
 void InterpreterCoreNoEventGarbageCollector::Add(
-    Garbage garbage, const platform::DeviceContext* ctx) {
+    Garbage garbage, const phi::DeviceContext* ctx) {
   if (!garbage) {
     return;
   }

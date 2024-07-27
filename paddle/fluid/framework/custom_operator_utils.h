@@ -40,7 +40,7 @@ static T* DynLoad(void* handle, std::string name) {
 #endif  // !_WIN32
   PADDLE_ENFORCE_NOT_NULL(
       func,
-      platform::errors::NotFound(
+      phi::errors::NotFound(
           "Failed to load dynamic operator library, error message(%s).",
           errorno));
   return func;
@@ -291,7 +291,7 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
           PADDLE_ENFORCE_EQ(
               bwd_inputs_name.size() == 1UL && bwd_outputs_name.size() == 1UL,
               true,
-              paddle::platform::errors::Unavailable(
+              phi::errors::Unavailable(
                   "Custom grad operator infershape error. "
                   "If a custom grad operator contains only one input and "
                   "only one output, the input shape will be directly set "

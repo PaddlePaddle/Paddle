@@ -988,8 +988,11 @@ struct Block : public ExprNode<Block> {
 struct NoneReduceMethod {};
 struct WarpReduceMethod {};
 struct BlockReduceMethod {};
-using ReduceMethod =
-    std::variant<NoneReduceMethod, WarpReduceMethod, BlockReduceMethod>;
+struct DiscreteReduceMethod {};
+using ReduceMethod = std::variant<NoneReduceMethod,
+                                  WarpReduceMethod,
+                                  BlockReduceMethod,
+                                  DiscreteReduceMethod>;
 
 // ScheduleBlock is the unit of schedule IR which represents tensor's
 // computation
@@ -1050,6 +1053,7 @@ struct _Module_ : public ExprNode<_Module_> {
   std::vector<Expr> functions;
   std::vector<Expr> submodules;
   std::vector<Expr> predicates;
+  std::vector<int> priorities;
   Expr infer_shape_func;
 
   static ir::Module Make(const std::string& name, Target target);

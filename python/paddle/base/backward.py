@@ -160,8 +160,7 @@ class ProgramStats:
         for name in checkpoints_name:
             if name not in self.var_op_deps:
                 _logger.info(
-                    "Recompute Optimizer: deleted %s from checkpoints, because it is not used in paddle program."
-                    % name
+                    f"Recompute Optimizer: deleted {name} from checkpoints, because it is not used in paddle program."
                 )
             elif self.var_op_deps[name]["var_as_output_ops"] == []:
                 # input nodes
@@ -1079,8 +1078,9 @@ def _append_backward_ops_with_checkpoints_(
             if op.has_attr("sub_block"):
                 raise Exception(
                     "Recompute don't support ops with sub_block"
-                    "invoke op: %s"
-                    % _pretty_op_desc_(op.desc, "with_sub_block")
+                    "invoke op: {}".format(
+                        _pretty_op_desc_(op.desc, "with_sub_block")
+                    )
                 )
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, no_grad_dict[block.idx], []
@@ -1109,8 +1109,9 @@ def _append_backward_ops_with_checkpoints_(
             if op.has_attr("sub_block"):
                 raise Exception(
                     "Recompute don't support ops with sub_block"
-                    "invoke op: %s"
-                    % _pretty_op_desc_(op.desc, "with_sub_block")
+                    "invoke op: {}".format(
+                        _pretty_op_desc_(op.desc, "with_sub_block")
+                    )
                 )
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, no_grad_dict[block.idx], []
@@ -1139,8 +1140,9 @@ def _append_backward_ops_with_checkpoints_(
             if op.has_attr("sub_block"):
                 raise Exception(
                     "Recompute don't support ops with sub_block"
-                    "invoke op: %s"
-                    % _pretty_op_desc_(op.desc, "with_sub_block")
+                    "invoke op: {}".format(
+                        _pretty_op_desc_(op.desc, "with_sub_block")
+                    )
                 )
             input_and_output_names = []
             input_and_output_names.extend(op.desc.input_arg_names())
@@ -1922,8 +1924,7 @@ def _get_no_grad_set_name(no_grad_set):
                     no_grad_set_name.add(no_grad_var)
                 else:
                     raise TypeError(
-                        "The type of no_grad_set's member must be paddle.base.Variable or str, but received %s."
-                        % (type(no_grad_var))
+                        f"The type of no_grad_set's member must be paddle.base.Variable or str, but received {type(no_grad_var)}."
                     )
         else:
             raise TypeError(
@@ -1941,8 +1942,7 @@ def _get_no_grad_set_value(no_grad_set):
                     no_grad_set_value.add(no_grad_value)
                 else:
                     raise TypeError(
-                        "The type of no_grad_set's member must be paddle.pir.Value, but received %s."
-                        % (type(no_grad_value))
+                        f"The type of no_grad_set's member must be paddle.pir.Value, but received {type(no_grad_value)}."
                     )
         else:
             raise TypeError(
@@ -2250,7 +2250,7 @@ def append_backward(
         for i, param in enumerate(parameter_list):
             check_type(
                 param,
-                'parameter_list[%s]' % i,
+                f'parameter_list[{i}]',
                 (framework.Variable, str),
                 'base.backward.append_backward',
             )
@@ -2669,6 +2669,10 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         If an input does not affect targets, the corresponding gradient Tensor
         will be None
     """
+    if framework.in_pir_mode():
+        return paddle.autograd.ir_backward.calc_gradient(
+            targets, inputs, target_gradients, no_grad_set
+        )
 
     # NOTE: If you want to modify the logic of calc_gradient, please modify
     # it inside the calc_gradient_helper and _get_grad_vars functions

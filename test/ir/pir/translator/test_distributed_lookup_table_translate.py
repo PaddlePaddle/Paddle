@@ -19,7 +19,7 @@ import test_op_translator
 
 import paddle
 from paddle.base.framework import (
-    convert_np_dtype_to_dtype_,
+    convert_np_dtype_to_proto_type,
 )
 from paddle.base.layer_helper import LayerHelper
 
@@ -39,7 +39,7 @@ class TestDistributedLookupTableOpTranslator(
             'is_distributed': False,
             'lookup_table_version': 'lookup_table',
             'padding_idx': -1,
-            'dtype': convert_np_dtype_to_dtype_(np.float32),
+            'dtype': convert_np_dtype_to_proto_type(np.float32),
             'is_test': False,
         }
         helper = LayerHelper(self.op_type)

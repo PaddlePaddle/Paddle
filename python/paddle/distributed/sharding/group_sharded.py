@@ -77,6 +77,7 @@ def group_sharded_parallel(
     Examples:
         .. code-block:: python
 
+            >>> # type: ignore
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.nn import Linear
@@ -200,6 +201,7 @@ def save_group_sharded_model(model, output, optimizer=None):
     Examples:
         .. code-block:: python
 
+            >>> # type: ignore
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.nn import Linear

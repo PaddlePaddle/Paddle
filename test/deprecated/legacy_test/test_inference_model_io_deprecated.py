@@ -138,7 +138,7 @@ class TestBook(unittest.TestCase):
 
             self.assertEqual(model.feed_var_names, ["x", "y"])
             self.assertEqual(len(model.fetch_vars), 1)
-            print("fetch %s" % str(model.fetch_vars[0]))
+            print(f"fetch {model.fetch_vars[0]}")
             self.assertEqual(expected, actual)
 
         root_path.cleanup()

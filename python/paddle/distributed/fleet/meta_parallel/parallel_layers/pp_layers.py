@@ -631,7 +631,7 @@ class PipelineLayer(nn.Layer):
             )
 
             for index, layer in enumerate(self._layers_desc[start:end]):
-                logger.info(f"{index + start}: {str(layer)}")
+                logger.info(f"{index + start}: {layer}")
 
         if self._num_virtual_pipeline_stages > 1:
             for stage in range(self._num_stages):

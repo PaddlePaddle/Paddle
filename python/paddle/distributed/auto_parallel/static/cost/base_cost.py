@@ -28,7 +28,7 @@ COMM_OP_TYPE = [
     "send_v2",
     "recv_v2",
     "c_broadcast",
-    "c_allgather",
+    "all_gather",
     "c_allreduce_sum",
     "c_identity",
 ]

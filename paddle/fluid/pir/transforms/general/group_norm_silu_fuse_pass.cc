@@ -75,7 +75,7 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
     silu({&pat.Tensor("Y")}, {&pat.Tensor("Out")});
 
 #ifdef PADDLE_WITH_CUDA
-    pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) {
       auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("X"));
       if (!x_dtype.isa<pir::Float16Type>() &&
           !x_dtype.isa<pir::BFloat16Type>()) {

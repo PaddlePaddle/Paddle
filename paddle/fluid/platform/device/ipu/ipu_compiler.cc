@@ -60,12 +60,12 @@ struct CustomOpAttrVisitor {
     attrs_->emplace(attr_name_, v);
   }
   void operator()(BlockDesc* desc) const {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported calling method for `BlockDesc` type when extracting "
         "custom operator attributes."));
   }
   void operator()(const std::vector<BlockDesc*>& v) const {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported calling method for `BlockDesc` type when extracting  "
         "custom operator attributes."));
   }
@@ -77,17 +77,17 @@ struct CustomOpAttrVisitor {
     attrs_->emplace(attr_name_, v);
   }
   void operator()(paddle::blank) const {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported calling method for `paddle::blank` type when extracting "
         "custom operator attributes."));
   }
   void operator()(framework::VarDesc*) const {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported calling method for `VarDesc*` type when extracting "
         "custom operator attributes."));
   }
   void operator()(const std::vector<framework::VarDesc*>&) const {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported calling method for `std::vector<framework::VarDesc*>` "
         "type when extracting custom operator attributes."));
   }
@@ -130,9 +130,10 @@ struct ConstantOpAttrVisitor {
                    [](double f) -> float { return static_cast<float>(f); });
     framework::TensorFromVector<float>(vec_fp32, tensor_);
   }
-#define RAISE_ERROR \
-  PADDLE_THROW(     \
-      platform::errors::InvalidArgument("Constant value must be a vector"))
+#define RAISE_ERROR                                            \
+  PADDLE_THROW(                                                \
+      phi::errors::InvalidArgument("Constant value must be a " \
+                                   "vector"))
   void operator()(int v) const { RAISE_ERROR; }
   void operator()(float v) const { RAISE_ERROR; }
   void operator()(double v) const { RAISE_ERROR; }
@@ -165,7 +166,7 @@ popart::AdamMode AdamModeFromStr(const std::string& str,
     else
       return popart::AdamMode::LambNoBias;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Unknown AdamMode: %s, AdamMode must be one of these values: adam, "
         "adamax or lamb",
         str));
@@ -182,7 +183,7 @@ popart::AdaptiveMode AdaptiveModeFromStr(const std::string& str) {
   } else if (str == "centered_rmsprop") {
     return popart::AdaptiveMode::CenteredRMSProp;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Unknown AdaptiveMode: %s, AdaptiveMode must be one of these values: "
         "adadelta, adagrad, rmsprop or centered_rmsprop",
         str));
@@ -195,7 +196,7 @@ popart::WeightDecayMode WeightDecayModeFromStr(const std::string& str) {
   } else if (str == "l2_regularization") {
     return popart::WeightDecayMode::L2Regularization;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Unknown WeightDecayMode: %s, WeightDecayMode must be decay or "
         "l2_regularization",
         str));
@@ -208,8 +209,7 @@ popart::DataType DataTypeFromStr(const std::string& str) {
   } else if (str == "FLOAT16") {
     return popart::DataType::FLOAT16;
   } else {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Unsupported DataType: %s", str));
+    PADDLE_THROW(phi::errors::Unimplemented("Unsupported DataType: %s", str));
   }
 }
 
@@ -386,7 +386,7 @@ void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
     PADDLE_ENFORCE_NE(
         tensor,
         resources_->tensors.end(),
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Output tensor %s is not found, please check the model.",
             fetch_name));
     VLOG(10) << "fetch_name= " << fetch_name;
@@ -453,8 +453,8 @@ void Compiler::LowerWeights(const Scope* scope) {
       auto var = scope->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          platform::errors::NotFound("Tensor %s is not found in the scope",
-                                     var_name));
+          phi::errors::NotFound("Tensor %s is not found in the scope",
+                                var_name));
       auto tensor = var->Get<phi::DenseTensor>();
       auto dtype = PhiDType2PopartDType(tensor.dtype());
       auto shape = std::vector<int64_t>();
@@ -529,7 +529,7 @@ void Compiler::LowerBody() {
       if (itr != name_function_.end()) {
         itr->second(node->Op());
       } else {
-        PADDLE_THROW(platform::errors::NotFound(
+        PADDLE_THROW(phi::errors::NotFound(
             "%s is not registered, please check for unsupported operators for "
             "running on IPU",
             op_type));
@@ -785,7 +785,7 @@ void Compiler::LowerOptimizer(const Scope* scope) {
             popart::DataType::FLOAT,
             popart::DataType::UNDEFINED);
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "optimizer %s is not implemented", type));
       }
     } else if (op_type == "popart_identity_loss") {
@@ -793,12 +793,12 @@ void Compiler::LowerOptimizer(const Scope* scope) {
       PADDLE_ENFORCE_EQ(
           outputs.size(),
           1,
-          platform::errors::InvalidArgument("Can only support one loss key"));
+          phi::errors::InvalidArgument("Can only support one loss key"));
       auto losses = outputs.begin()->second;
       PADDLE_ENFORCE_EQ(
           losses.size(),
           1,
-          platform::errors::InvalidArgument("Can only support one loss name"));
+          phi::errors::InvalidArgument("Can only support one loss name"));
       auto loss_var = losses.front();
       resources_->loss_var = resources_->tensors[loss_var];
     }
@@ -829,7 +829,7 @@ void Compiler::PostLower(const std::vector<std::string>& tensor_ids,
   PADDLE_ENFORCE_EQ(
       pd_outs.size(),
       tensor_ids.size(),
-      platform::errors::Fatal("paddle and popart op have different outputs"));
+      phi::errors::Fatal("paddle and popart op have different outputs"));
   for (int i = 0; i < tensor_ids.size(); ++i) {
     resources_->tensors.emplace(pd_outs[i], tensor_ids[i]);
   }
@@ -844,7 +844,7 @@ void Compiler::PostLower(const std::string& tensor_id, const OpDesc* op_desc) {
   PADDLE_ENFORCE_EQ(
       pd_outs.size(),
       1,
-      platform::errors::Fatal("paddle and popart op have different outputs"));
+      phi::errors::Fatal("paddle and popart op have different outputs"));
   resources_->tensors.emplace(pd_outs[0], tensor_id);
   PostLower(tensor_id, op_desc, false);
 }
@@ -870,7 +870,7 @@ void Compiler::PostLower(const std::string& tensor_id,
     if (set_amp_for_all_) {
       auto amp = ipu_strategy_->available_memory_proportion;
       if (amp < 0.0f || amp > 1.0) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "AvailableMemoryProportion %f is invalid, which should be in "
             "range [0.0, 1.0]",
             amp));
@@ -883,7 +883,7 @@ void Compiler::PostLower(const std::string& tensor_id,
         auto amp =
             PADDLE_GET_CONST(float, op_desc->GetAttr(sAvailMemAttribute));
         if (amp < 0.0f || amp > 1.0) {
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "AvailableMemoryProportion %f is invalid, which should be in "
               "range [0.0, 1.0]",
               amp));

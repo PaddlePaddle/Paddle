@@ -97,6 +97,15 @@ Expr BitwiseOrCallImpl(common::NVGPUArch,
   return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
 }
 
+Expr BitwiseOrCallImpl(common::HygonDCUArchHIP,
+                       const Target& target,
+                       Expr a,
+                       Expr b) {
+  Type t_a = a.type();
+  auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_or");
+  return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
+}
+
 Expr BitwiseOrCall(const Target& target, Expr a, Expr b) {
   return std::visit(
       [&](const auto& arch) { return BitwiseOrCallImpl(arch, target, a, b); },
@@ -139,6 +148,15 @@ Expr BitwiseAndCallImpl(common::ARMArch, const Target& target, Expr a, Expr b) {
 }
 
 Expr BitwiseAndCallImpl(common::NVGPUArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
+  Type t_a = a.type();
+  auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_and");
+  return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
+}
+
+Expr BitwiseAndCallImpl(common::HygonDCUArchHIP,
                         const Target& target,
                         Expr a,
                         Expr b) {
@@ -197,6 +215,15 @@ Expr BitwiseXorCallImpl(common::NVGPUArch,
   return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
 }
 
+Expr BitwiseXorCallImpl(common::HygonDCUArchHIP,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
+  Type t_a = a.type();
+  auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_xor");
+  return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
+}
+
 Expr BitwiseXorCall(const Target& target, Expr a, Expr b) {
   return std::visit(
       [&](const auto& arch) { return BitwiseXorCallImpl(arch, target, a, b); },
@@ -236,6 +263,11 @@ Expr BitwiseNotCallImpl(common::ARMArch, const Target& target, Expr a) {
 }
 
 Expr BitwiseNotCallImpl(common::NVGPUArch, const Target& target, Expr a) {
+  auto func_name = hlir::GetExternFuncName(target, a->type(), "bitwise_not");
+  return lang::CallExtern(func_name, {a}, {{"vectorizable", false}});
+}
+
+Expr BitwiseNotCallImpl(common::HygonDCUArchHIP, const Target& target, Expr a) {
   auto func_name = hlir::GetExternFuncName(target, a->type(), "bitwise_not");
   return lang::CallExtern(func_name, {a}, {{"vectorizable", false}});
 }

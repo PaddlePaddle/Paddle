@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <functional>
 
 namespace pir {
 
@@ -23,6 +24,12 @@ class Program;
 namespace paddle::framework {
 
 class Scope;
+
+using FeedHookType =
+    std::function<void(const pir::Program& program, const Scope& scope)>;
+
+// only called before main
+void AddFeedHook(FeedHookType hook);
 
 void RunFeedHooks(const pir::Program& program, const Scope& scope);
 

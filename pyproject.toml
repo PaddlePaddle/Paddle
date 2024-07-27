@@ -77,15 +77,21 @@ select = [
     "PLC3002",
     "PLR0206",
     "PLR0402",
-    "PLR1701",
     "PLR1711",
     "PLR1722",
     "PLW3301",
 
+    # Flake8-simplify
+    "SIM101",
+
     # Pygrep-hooks
     "PGH004",
 
+    # Flake8-type-checking
+    "TCH",
+
     # Ruff-specific rules
+    "RUF010",
     "RUF100",
 ]
 unfixable = [
@@ -154,6 +160,8 @@ check_untyped_defs = true
 follow_imports = "normal"
 # Miscellaneous
 warn_unused_configs = true
+# Disallow generic without type arguments
+disallow_any_generics = true
 # Configuring warnings
 warn_redundant_casts = true
 warn_unused_ignores = true

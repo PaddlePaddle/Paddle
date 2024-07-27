@@ -18,6 +18,7 @@ from .beta import Beta
 from .binomial import Binomial
 from .categorical import Categorical
 from .cauchy import Cauchy
+from .chi2 import Chi2
 from .continuous_bernoulli import ContinuousBernoulli
 from .dirichlet import Dirichlet
 from .distribution import Distribution
@@ -29,6 +30,7 @@ from .gumbel import Gumbel
 from .independent import Independent
 from .kl import kl_divergence, register_kl
 from .laplace import Laplace
+from .lkj_cholesky import LKJCholesky
 from .lognormal import LogNormal
 from .multinomial import Multinomial
 from .multivariate_normal import MultivariateNormal
@@ -58,6 +60,7 @@ __all__ = [
     'Beta',
     'Categorical',
     'Cauchy',
+    'Chi2',
     'ContinuousBernoulli',
     'Dirichlet',
     'Distribution',
@@ -73,6 +76,7 @@ __all__ = [
     'TransformedDistribution',
     'Laplace',
     'LogNormal',
+    'LKJCholesky',
     'Gamma',
     'Gumbel',
     'Geometric',

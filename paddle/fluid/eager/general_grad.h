@@ -17,6 +17,7 @@
 #include <deque>
 
 #include "glog/logging.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -24,7 +25,6 @@
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
@@ -52,7 +52,7 @@ class GeneralGrad {
             EagerUtils::unsafe_autograd_meta(inputs[i]);
         PADDLE_ENFORCE_NOT_NULL(
             auto_grad_meta,
-            paddle::platform::errors::Fatal(
+            phi::errors::Fatal(
                 "We got %s:[%d] 's autograd meta is NULL.", msg, i));
         auto* target_node = auto_grad_meta->GetMutableGradNode().get();
 
@@ -64,12 +64,12 @@ class GeneralGrad {
                      "unused input";
         }
 
-        PADDLE_ENFORCE_NOT_NULL(target_node,
-                                paddle::platform::errors::Fatal(
-                                    "There is no grad op for %s:[%d] or it's"
-                                    "stop_gradient=True.",
-                                    msg,
-                                    i));
+        PADDLE_ENFORCE_NOT_NULL(
+            target_node,
+            phi::errors::Fatal("There is no grad op for %s:[%d] or it's"
+                               "stop_gradient=True.",
+                               msg,
+                               i));
 
         if (is_no_grad_vars) {
           (no_grad_var_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
@@ -304,10 +304,9 @@ class GeneralGrad {
 
         PADDLE_ENFORCE_NOT_NULL(
             target_node,
-            paddle::platform::errors::Fatal(
-                "There is no grad op for inputs:[%d] or it's"
-                "stop_gradient=True.",
-                i));
+            phi::errors::Fatal("There is no grad op for inputs:[%d] or it's"
+                               "stop_gradient=True.",
+                               i));
 
         if (!IsEndingNodes(target_node)) {
           // Fetch grad for tensor in target_node on path.
@@ -466,7 +465,7 @@ class GeneralGrad {
       } else {
         PADDLE_ENFORCE_EQ(allow_unused,
                           true,
-                          paddle::platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The %d-th input does not appear in the backward "
                               "graph. Please check the input tensor or set "
                               "allow_unused=True to get None result.",
@@ -533,7 +532,7 @@ class GeneralGrad {
 
       PADDLE_ENFORCE(
           orig_to_copied_node_map_.count(orig_node),
-          paddle::platform::errors::Fatal(
+          phi::errors::Fatal(
               "Cannot copy backward graph,"
               "unable to find copied target for certain grad node."));
       GradNodeBase* copied_node = orig_to_copied_node_map_[orig_node].get();

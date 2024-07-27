@@ -42,7 +42,7 @@
 
 namespace paddle {
 namespace framework {
-
+using ExecutionConfig = interpreter::ExecutionConfig;
 class IfInstruction;
 class WhileInstruction;
 class PyLayerInstruction;
@@ -133,6 +133,7 @@ Variable* CreateVar(pir::Value value,
 
 void BuildScope(const pir::Block& block,
                 const std::string& var_name_prefix,
+                const ExecutionConfig& execution_config,
                 ValueExecutionInfo* value_exe_info = nullptr);
 
 void DeepCopyVariable(const Variable* src_var,
@@ -151,6 +152,10 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
     pir::Operation* op,
     const ValueExecutionInfo& value_exec_info,
     const paddle::dialect::OpYamlInfoParser& op_yaml_info);
+
+bool IsNeedVarInplace(pir::Operation* op,
+                      pir::Value value,
+                      std::string op_name);
 
 template <typename Context,
           typename InType,

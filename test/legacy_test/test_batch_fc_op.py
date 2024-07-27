@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 from paddle.base import core
 
 
@@ -30,6 +31,10 @@ def np_cal_batchfc(input, w, bias):
         for bindx in range(out_dim):
             res[slot, :, bindx] += bias[slot, bindx]
     return res
+
+
+def api_wrapper(input, w, bias):
+    return paddle._C_ops.batch_fc(input, w, bias)
 
 
 class TestBatchFCOp(OpTest):
@@ -52,6 +57,7 @@ class TestBatchFCOp(OpTest):
             (self.slot_pairs_num, self.out_dim)
         ).astype(self.dtype)
         self.op_type = "batch_fc"
+        self.python_api = api_wrapper
         np_out = np_cal_batchfc(self.input, self.w, self.bias)
         np_out = np_out.astype(self.dtype)
         self.inputs = {"Input": self.input, "W": self.w, "Bias": self.bias}
@@ -88,6 +94,7 @@ class TestBatchFCOp1(OpTest):
             (self.slot_pairs_num, self.out_dim)
         ).astype(self.dtype)
         self.op_type = "batch_fc"
+        self.python_api = api_wrapper
         np_out = np_cal_batchfc(self.input, self.w, self.bias)
         np_out = np_out.astype(self.dtype)
         self.inputs = {"Input": self.input, "W": self.w, "Bias": self.bias}

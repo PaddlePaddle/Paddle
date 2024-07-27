@@ -61,7 +61,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             os.system("mkdir -p " + self.int8_model_path)
             os.system("mkdir -p " + self.cache_folder)
         except Exception as e:
-            print(f"Failed to create {self.int8_model_path} due to {str(e)}")
+            print(f"Failed to create {self.int8_model_path} due to {e}")
             sys.exit(-1)
 
     def tearDown(self):

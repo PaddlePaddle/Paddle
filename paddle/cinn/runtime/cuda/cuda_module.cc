@@ -49,6 +49,8 @@ CUDAModule::CUDAModule(const std::string& data, Kind kind)
   cuDeviceGet(&device_, current_device_id);
   cuCtxGetCurrent(&context_);
   cuDevicePrimaryCtxRetain(&context_, device_);
+  VLOG(5) << "Construct CUDAModule " << this
+          << " in device: " << current_device_id;
 }
 
 void CUDAModule::LaunchKernel(int device_id,
@@ -81,6 +83,12 @@ void CUDAModule::LaunchKernel(int device_id,
                                   stream,
                                   args,
                                   nullptr));
+}
+
+CUfunction CUDAModule::GetFunction(const std::string& func_name) {
+  int device_id;
+  cudaGetDevice(&device_id);
+  return this->GetFunction(device_id, func_name);
 }
 
 CUfunction CUDAModule::GetFunction(int device_id,

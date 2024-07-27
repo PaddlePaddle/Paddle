@@ -20,6 +20,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -538,6 +539,61 @@ bool GenerateShapeOp::InferSymbolicShape(
   return true;
 }
 
+void GenerateXShapeOp::Build(pir::Builder& builder,             // NOLINT
+                             pir::OperationArgument& argument,  // NOLINT
+                             pir::Value input) {
+  VLOG(4) << "Start build GenerateXShapeOp";
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> inputs = {input};
+  argument.AddInputs(inputs);
+
+  std::vector<pir::Type> outputs = GenerateXShapeOp::InferMeta(inputs);
+  argument.AddOutputs(outputs);
+}
+
+bool GenerateXShapeOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext* infer_context) {
+  const symbol::ShapeOrDataDimExprs& x_dim_expr =
+      infer_context->GetShapeOrDataForValue(this->operand_source(0));
+  infer_context->SetShapeOrDataForValue(
+      this->result(0),
+      paddle::dialect::details::CreateShapeOrDataForXShape(x_dim_expr));
+  return true;
+}
+
+std::vector<pir::Type> GenerateXShapeOp::InferMeta(
+    const std::vector<pir::Value>& input_values) {
+  VLOG(4) << "Start infermeta GenerateXShapeOp";
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    ::common::errors::InvalidArgument(
+                        "Number of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
+  pir::Value input = input_values[0];
+  VLOG(4) << "Builder construction outputs";
+  PADDLE_ENFORCE_EQ(input.type().isa<paddle::dialect::DenseTensorType>(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "input type must be DenseTensorType, but received: %s.",
+                        input.type()));
+  auto input_type = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  const auto out_dims = [&]() -> decltype(auto) {
+    auto x_dims_data = phi::vectorize<int64_t>(input_type.dims());
+    x_dims_data.insert(x_dims_data.begin(), 0);
+    return phi::make_ddim(x_dims_data);
+  }();
+
+  std::vector<pir::Type> out_types;
+  out_types.push_back(
+      paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
+                                            input_type.dtype(),
+                                            out_dims,
+                                            input_type.data_layout(),
+                                            input_type.lod(),
+                                            input_type.offset()));
+  return out_types;
+}
+
 }  // namespace dialect
 }  // namespace cinn
 
@@ -546,4 +602,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateXShapeOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::YieldStoreOp);

@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
 import warnings
+from typing import Any, Callable, Literal, Sequence, TypedDict
 
 import numpy
+import numpy.typing as npt
+from typing_extensions import NotRequired
 
 import paddle
 from paddle import Tensor
@@ -48,6 +53,17 @@ __all__ = [
     'LinearLR',
     'CosineAnnealingWarmRestarts',
 ]
+
+
+class _LRStateDict(TypedDict):
+    last_epoch: int
+    last_lr: float
+    # For LinearWarmup
+    LinearWarmup_LR: NotRequired[_LRStateDict]
+    # For ReduceOnPlateau
+    cooldown_counter: NotRequired[int]
+    best: NotRequired[int]
+    num_bad_epochs: NotRequired[int]
 
 
 class LRScheduler:
@@ -121,7 +137,17 @@ class LRScheduler:
             ...
     """
 
-    def __init__(self, learning_rate=0.1, last_epoch=-1, verbose=False):
+    base_lr: float
+    last_lr: float
+    last_epoch: int
+    verbose: bool
+
+    def __init__(
+        self,
+        learning_rate: float = 0.1,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         if not isinstance(learning_rate, (float, int)):
             raise TypeError(
                 f"The type of learning rate must be float, but received {type(learning_rate)}"
@@ -136,13 +162,13 @@ class LRScheduler:
 
         self.step()
 
-    def __call__(self):
+    def __call__(self) -> float:
         """
         Return latest computed learning rate on current epoch.
         """
         return self.last_lr
 
-    def step(self, epoch=None):
+    def step(self, epoch: int | None = None) -> None:
         """
 
         ``step`` should be called after ``optimizer.step`` . It will update the learning rate in optimizer according to current ``epoch`` .
@@ -195,7 +221,7 @@ class LRScheduler:
                 f'Epoch {self.last_epoch}: {self.__class__.__name__} set learning rate to {self.last_lr}.'
             )
 
-    def state_dict(self):
+    def state_dict(self) -> _LRStateDict:
         """
 
         Returns the state of the scheduler as a :class:`dict`.
@@ -219,7 +245,7 @@ class LRScheduler:
 
     # For those subclass who overload LRScheduler, "last_epoch, last_lr" will be saved by default.
     # (Note): you can change it for your subclass.
-    def state_keys(self):
+    def state_keys(self) -> None:
         """
 
         For those subclass who overload ``LRScheduler`` (Base Class). Acquiescently, "last_epoch, last_lr" will be saved by ``self.keys = ['last_epoch', 'last_lr']`` .
@@ -231,7 +257,7 @@ class LRScheduler:
         """
         self.keys = ['last_epoch', 'last_lr']
 
-    def set_state_dict(self, state_dict):
+    def set_state_dict(self, state_dict: _LRStateDict) -> None:
         """
 
         Loads the schedulers state.
@@ -252,7 +278,7 @@ class LRScheduler:
     # alias for set_state_dict
     set_dict = set_state_dict
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         """
 
         For those subclass who overload ``LRScheduler`` (Base Class), User should have a custom implementation of ``get_lr()`` .
@@ -278,7 +304,7 @@ class NoamDecay(LRScheduler):
 
 
     Args:
-        d$_{model}$(int): The dimensionality of input and output feature vector of model. It is a python int number.
+        d_model(int): The dimensionality of input and output feature vector of model. It is a python int number.
         warmup_steps(int): The number of warmup steps. A super parameter. It is a python int number
         learning_rate (float): The initial learning rate. It is a python float number. Default: 1.0.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
@@ -297,7 +323,7 @@ class NoamDecay(LRScheduler):
 
             >>> # train on default dynamic graph mode
             >>> linear = paddle.nn.Linear(10, 10)
-            >>> scheduler = paddle.optimizer.lr.NoamDecay(d_model=0.01, warmup_steps=100, verbose=True)
+            >>> scheduler = paddle.optimizer.lr.NoamDecay(d_model=100, warmup_steps=100, verbose=True)
             >>> sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             >>> for epoch in range(20):
             ...     for batch_id in range(5):
@@ -324,7 +350,7 @@ class NoamDecay(LRScheduler):
             ...     y = paddle.static.data(name='y', shape=[None, 4, 5])
             ...     z = paddle.static.nn.fc(x, 100)
             ...     loss = paddle.mean(z)
-            ...     scheduler = paddle.optimizer.lr.NoamDecay(d_model=0.01, warmup_steps=100, verbose=True)
+            ...     scheduler = paddle.optimizer.lr.NoamDecay(d_model=100, warmup_steps=100, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
             ...
@@ -344,14 +370,17 @@ class NoamDecay(LRScheduler):
             ...
     """
 
+    d_model: int
+    warmup_steps: int
+
     def __init__(
         self,
-        d_model,
-        warmup_steps,
-        learning_rate=1.0,
-        last_epoch=-1,
-        verbose=False,
-    ):
+        d_model: int,
+        warmup_steps: int,
+        learning_rate: float = 1.0,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         if d_model <= 0:
             raise ValueError("d_model should be grater than 0")
 
@@ -359,7 +388,7 @@ class NoamDecay(LRScheduler):
         self.warmup_steps = warmup_steps
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         if self.last_epoch == 0:
             a = 1
         else:
@@ -453,7 +482,16 @@ class PiecewiseDecay(LRScheduler):
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
-    def __init__(self, boundaries, values, last_epoch=-1, verbose=False):
+    boundaries: Sequence[int]
+    values: Sequence[float]
+
+    def __init__(
+        self,
+        boundaries: Sequence[int],
+        values: Sequence[float],
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         if len(boundaries) == 0:
             raise ValueError('The boundaries cannot be empty.')
 
@@ -466,7 +504,7 @@ class PiecewiseDecay(LRScheduler):
         self.values = values
         super().__init__(last_epoch=last_epoch, verbose=verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         for i in range(len(self.boundaries)):
             if self.last_epoch < self.boundaries[i]:
                 return self.values[i]
@@ -486,7 +524,7 @@ class NaturalExpDecay(LRScheduler):
 
     Args:
         learning_rate (float): The initial learning rate. It is a python float number.
-        gamma (float, optional): A Ratio to update the learning rate, should greater than 0.0 to make learning rate decay. Default: 0.1.
+        gamma (float): A Ratio to update the learning rate, should greater than 0.0 to make learning rate decay. Default: 0.1.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
@@ -548,14 +586,22 @@ class NaturalExpDecay(LRScheduler):
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
-    def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
+    gamma: float
+
+    def __init__(
+        self,
+        learning_rate: float,
+        gamma: float,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         assert (
             gamma > 0.0
         ), " 'gamma' must be a positive number so that the learning rate will decay."
         self.gamma = gamma
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         return self.base_lr * math.exp(-1 * self.gamma * self.last_epoch)
 
 
@@ -572,7 +618,7 @@ class InverseTimeDecay(LRScheduler):
 
     Args:
         learning_rate (float): The initial learning rate. It is a python float number.
-        gamma (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * gamma`` .
+        gamma (float): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * gamma`` .
             It should be less than 1.0. Default: 0.1.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
@@ -638,11 +684,19 @@ class InverseTimeDecay(LRScheduler):
             ...
     """
 
-    def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
+    gamma: float
+
+    def __init__(
+        self,
+        learning_rate: float,
+        gamma: float,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         self.gamma = gamma
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         return self.base_lr / (1 + self.gamma * self.last_epoch)
 
 
@@ -740,15 +794,20 @@ class PolynomialDecay(LRScheduler):
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
+    decay_steps: int
+    end_lr: float
+    power: float
+    cycle: bool
+
     def __init__(
         self,
-        learning_rate,
-        decay_steps,
-        end_lr=0.0001,
-        power=1.0,
-        cycle=False,
-        last_epoch=-1,
-        verbose=False,
+        learning_rate: float,
+        decay_steps: int,
+        end_lr: float = 0.0001,
+        power: float = 1.0,
+        cycle: bool = False,
+        last_epoch: int = -1,
+        verbose: bool = False,
     ):
         assert decay_steps > 0 and isinstance(
             decay_steps, int
@@ -762,7 +821,7 @@ class PolynomialDecay(LRScheduler):
         self.cycle = cycle
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         tmp_epoch_num = self.last_epoch
         tmp_decay_steps = self.decay_steps
         if self.cycle:
@@ -873,14 +932,19 @@ class LinearWarmup(LRScheduler):
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
+    learning_rate: float | LRScheduler
+    warmup_steps: int
+    start_lr: float
+    end_lr: float
+
     def __init__(
         self,
-        learning_rate,
-        warmup_steps,
-        start_lr,
-        end_lr,
-        last_epoch=-1,
-        verbose=False,
+        learning_rate: float | LRScheduler,
+        warmup_steps: int,
+        start_lr: float,
+        end_lr: float,
+        last_epoch: int = -1,
+        verbose: bool = False,
     ):
         type_check = isinstance(learning_rate, (float, int, LRScheduler))
         if not type_check:
@@ -899,7 +963,7 @@ class LinearWarmup(LRScheduler):
         ), f"end_lr {end_lr} must be greater than start_lr {start_lr}"
         super().__init__(start_lr, last_epoch, verbose)
 
-    def state_dict(self):
+    def state_dict(self) -> _LRStateDict:
         """
         Returns the state of the LinearWarmup scheduler as a :class:`dict`.
 
@@ -910,7 +974,7 @@ class LinearWarmup(LRScheduler):
             state_dict["LinearWarmup_LR"] = self.learning_rate.state_dict()
         return state_dict
 
-    def set_state_dict(self, state_dict):
+    def set_state_dict(self, state_dict: _LRStateDict) -> None:
         """
         Loads state_dict for LinearWarmup scheduler.
         """
@@ -918,7 +982,7 @@ class LinearWarmup(LRScheduler):
         if isinstance(self.learning_rate, LRScheduler):
             self.learning_rate.set_state_dict(state_dict["LinearWarmup_LR"])
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         if self.last_epoch < self.warmup_steps:
             return (self.end_lr - self.start_lr) * float(
                 self.last_epoch
@@ -1009,14 +1073,22 @@ class ExponentialDecay(LRScheduler):
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
-    def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
+    gamma: float
+
+    def __init__(
+        self,
+        learning_rate: float,
+        gamma: float,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         assert (
             gamma > 0.0 and gamma < 1.0
         ), " 'gamma' must be in interval (0.0, 1.0) so that the learning rate will decay."
         self.gamma = gamma
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         return self.base_lr * (self.gamma**self.last_epoch)
 
 
@@ -1107,13 +1179,20 @@ class MultiStepDecay(LRScheduler):
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
+    milestones: Sequence[int]
+    gamma: float
+
     def __init__(
-        self, learning_rate, milestones, gamma=0.1, last_epoch=-1, verbose=False
+        self,
+        learning_rate: float,
+        milestones: Sequence[int],
+        gamma: float = 0.1,
+        last_epoch: int = -1,
+        verbose: bool = False,
     ):
         if not isinstance(milestones, (tuple, list)):
             raise TypeError(
-                "The type of 'milestones' in 'MultiStepDecay' must be 'tuple, list', but received %s."
-                % type(milestones)
+                f"The type of 'milestones' in 'MultiStepDecay' must be 'tuple, list', but received {type(milestones)}."
             )
 
         if not all(
@@ -1128,7 +1207,7 @@ class MultiStepDecay(LRScheduler):
         self.gamma = gamma
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         for i in range(len(self.milestones)):
             if self.last_epoch < self.milestones[i]:
                 return self.base_lr * (self.gamma**i)
@@ -1221,13 +1300,20 @@ class StepDecay(LRScheduler):
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
+    step_size: int
+    gamma: float
+
     def __init__(
-        self, learning_rate, step_size, gamma=0.1, last_epoch=-1, verbose=False
-    ):
+        self,
+        learning_rate: float,
+        step_size: int,
+        gamma: float = 0.1,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         if not isinstance(step_size, int):
             raise TypeError(
-                "The type of 'step_size' must be 'int', but received %s."
-                % type(step_size)
+                f"The type of 'step_size' must be 'int', but received {type(step_size)}."
             )
         if gamma >= 1.0:
             raise ValueError('gamma should be < 1.0.')
@@ -1239,7 +1325,7 @@ class StepDecay(LRScheduler):
         self.gamma = gamma
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         i = self.last_epoch // self.step_size
         return self.base_lr * (self.gamma**i)
 
@@ -1326,11 +1412,18 @@ class LambdaDecay(LRScheduler):
             ...
     """
 
-    def __init__(self, learning_rate, lr_lambda, last_epoch=-1, verbose=False):
+    lr_lambda: Callable[[int], float]
+
+    def __init__(
+        self,
+        learning_rate: float,
+        lr_lambda: Callable[[int], float],
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ):
         if not callable(lr_lambda):
             raise TypeError(
-                "The type of 'lr_lambda' in 'LambdaDecay' must be 'function', but received %s."
-                % type(lr_lambda)
+                f"The type of 'lr_lambda' in 'LambdaDecay' must be 'function', but received {type(lr_lambda)}."
             )
 
         self.lr_lambda = lr_lambda
@@ -1434,19 +1527,28 @@ class ReduceOnPlateau(LRScheduler):
             ...
     """
 
+    mode: Literal["min", "max"]
+    factor: float
+    patience: int
+    threshold: float
+    threshold_mode: Literal["rel", "abs"]
+    cooldown: int
+    min_lr: float
+    epsilon: float
+
     def __init__(
         self,
-        learning_rate,
-        mode='min',
-        factor=0.1,
-        patience=10,
-        threshold=1e-4,
-        threshold_mode='rel',
-        cooldown=0,
-        min_lr=0,
-        epsilon=1e-8,
-        verbose=False,
-    ):
+        learning_rate: float,
+        mode: Literal["min", "max"] = 'min',
+        factor: float = 0.1,
+        patience: int = 10,
+        threshold: float = 1e-4,
+        threshold_mode: Literal["rel", "abs"] = 'rel',
+        cooldown: int = 0,
+        min_lr: float = 0,
+        epsilon: float = 1e-8,
+        verbose: bool = False,
+    ) -> None:
         mode = mode.lower()
         if mode not in ['min', 'max']:
             raise ValueError('mode: ' + mode + ' is unknown!')
@@ -1466,8 +1568,7 @@ class ReduceOnPlateau(LRScheduler):
         self.threshold_mode = threshold_mode
         if not isinstance(learning_rate, (float, int)):
             raise TypeError(
-                "The type of 'learning_rate' in 'ReduceOnPlateau' must be 'float', but received %s."
-                % type(learning_rate)
+                f"The type of 'learning_rate' in 'ReduceOnPlateau' must be 'float', but received {type(learning_rate)}."
             )
 
         self.patience = patience
@@ -1489,7 +1590,7 @@ class ReduceOnPlateau(LRScheduler):
         self._var_name = None
 
     # "cooldown_counter / best / num_bad_epochs / last_epoch / last_lr" will be stored.
-    def state_keys(self):
+    def state_keys(self) -> None:
         self.keys = [
             'cooldown_counter',
             'best',
@@ -1498,7 +1599,11 @@ class ReduceOnPlateau(LRScheduler):
             'last_lr',
         ]
 
-    def step(self, metrics, epoch=None):
+    def step(
+        self,
+        metrics: Tensor | npt.NDArray[Any] | float,
+        epoch: int | None = None,
+    ) -> None:
         """
         step should be called after `optimizer.step()` . It will update the learning rate in optimizer according to ``metrics`` .
         The new learning rate will take effect on next epoch.
@@ -1553,7 +1658,7 @@ class ReduceOnPlateau(LRScheduler):
                             f'Epoch {self.last_epoch}: {self.__class__.__name__} set learning rate to {self.last_lr}.'
                         )
 
-    def _is_better(self, current, best):
+    def _is_better(self, current, best) -> bool:
         if self.mode == 'min' and self.threshold_mode == 'rel':
             return current < best - best * self.threshold
 
@@ -1656,18 +1761,25 @@ class CosineAnnealingDecay(LRScheduler):
             ...     # scheduler.step()        # If you update learning rate each epoch
     """
 
+    T_max: int
+    eta_min: float
+    last_epoch: int
+
     def __init__(
-        self, learning_rate, T_max, eta_min=0, last_epoch=-1, verbose=False
-    ):
+        self,
+        learning_rate: float,
+        T_max: int,
+        eta_min: float = 0,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         if not isinstance(T_max, int):
             raise TypeError(
-                "The type of 'T_max' in 'CosineAnnealingDecay' must be 'int', but received %s."
-                % type(T_max)
+                f"The type of 'T_max' in 'CosineAnnealingDecay' must be 'int', but received {type(T_max)}."
             )
         if not isinstance(eta_min, (float, int)):
             raise TypeError(
-                "The type of 'eta_min' in 'CosineAnnealingDecay' must be 'float, int', but received %s."
-                % type(eta_min)
+                f"The type of 'eta_min' in 'CosineAnnealingDecay' must be 'float, int', but received {type(eta_min)}."
             )
         assert T_max > 0 and isinstance(
             T_max, int
@@ -1676,7 +1788,7 @@ class CosineAnnealingDecay(LRScheduler):
         self.eta_min = float(eta_min)
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         if self.last_epoch == 0:
             return self.base_lr
         elif (self.last_epoch - 1 - self.T_max) % (2 * self.T_max) == 0:
@@ -1747,17 +1859,24 @@ class MultiplicativeDecay(LRScheduler):
             ...
     """
 
-    def __init__(self, learning_rate, lr_lambda, last_epoch=-1, verbose=False):
+    lr_lambda: Callable[[int], float]
+
+    def __init__(
+        self,
+        learning_rate: float,
+        lr_lambda: Callable[[int], float],
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         if not callable(lr_lambda):
             raise TypeError(
-                "The type of 'lr_lambda' in 'MultiplicativeDecay' must be 'function', but received %s."
-                % type(lr_lambda)
+                f"The type of 'lr_lambda' in 'MultiplicativeDecay' must be 'function', but received {type(lr_lambda)}."
             )
 
         self.lr_lambda = lr_lambda
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         cur_lr = self.base_lr
         for epoch in range(1, self.last_epoch + 1):
             cur_lr = cur_lr * self.lr_lambda(epoch)
@@ -1862,16 +1981,16 @@ class OneCycleLR(LRScheduler):
 
     def __init__(
         self,
-        max_learning_rate,
-        total_steps,
-        divide_factor=25.0,
-        end_learning_rate=0.0001,
-        phase_pct=0.3,
-        anneal_strategy='cos',
-        three_phase=False,
-        last_epoch=-1,
-        verbose=False,
-    ):
+        max_learning_rate: float,
+        total_steps: int,
+        divide_factor: float = 25.0,
+        end_learning_rate: float = 0.0001,
+        phase_pct: float = 0.3,
+        anneal_strategy: Literal["cos", "linear"] = 'cos',
+        three_phase: bool = False,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         # Check type and value of max_learning_rate
         if not isinstance(max_learning_rate, (float, int)):
             raise TypeError(
@@ -1969,14 +2088,18 @@ class OneCycleLR(LRScheduler):
             )
         super().__init__(initial_lr, last_epoch, verbose)
 
-    def _cos_annealing(self, start_lr, end_lr, pct):
+    def _cos_annealing(
+        self, start_lr: float, end_lr: float, pct: float
+    ) -> float:
         cos_out = math.cos(math.pi * pct) + 1
         return end_lr + (start_lr - end_lr) / 2.0 * cos_out
 
-    def _linear_annealing(self, start_lr, end_lr, pct):
+    def _linear_annealing(
+        self, start_lr: float, end_lr: float, pct: float
+    ) -> float:
         return (end_lr - start_lr) * pct + start_lr
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         current_step = self.last_epoch
 
         if current_step > self.total_steps:
@@ -2094,19 +2217,28 @@ class CyclicLR(LRScheduler):
             ...         scheduler.step()    # You should update learning rate each step
     """
 
+    cycle_size: float
+    step_up_pct: float
+    max_lr: float
+    amplitude: float
+    mode: Literal["triangular", "triangular2", "exp_range"]
+    gamma: float
+    scale_fn: Callable[[float], float]
+    scale_mode: Literal["cycle", "iterations"]
+
     def __init__(
         self,
-        base_learning_rate,
-        max_learning_rate,
-        step_size_up,
-        step_size_down=None,
-        mode='triangular',
-        exp_gamma=1.0,
-        scale_fn=None,
-        scale_mode='cycle',
-        last_epoch=-1,
-        verbose=False,
-    ):
+        base_learning_rate: float,
+        max_learning_rate: float,
+        step_size_up: int,
+        step_size_down: int | None = None,
+        mode: Literal["triangular", "triangular2", "exp_range"] = 'triangular',
+        exp_gamma: float = 1.0,
+        scale_fn: Callable[[float], float] | None = None,
+        scale_mode: Literal["cycle", "iterations"] = 'cycle',
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         # check type and value of max_learning_rate
         if not isinstance(max_learning_rate, (float, int)):
             raise TypeError(
@@ -2186,16 +2318,16 @@ class CyclicLR(LRScheduler):
             self.scale_mode = scale_mode
         super().__init__(base_learning_rate, last_epoch, verbose)
 
-    def _triangular_scale_fn(self, x):
+    def _triangular_scale_fn(self, x: float) -> float:
         return 1.0
 
-    def _triangular2_scale_fn(self, x):
+    def _triangular2_scale_fn(self, x: float) -> float:
         return 1 / (2.0 ** (x - 1))
 
-    def _exp_range_scale_fn(self, x):
+    def _exp_range_scale_fn(self, x: float) -> float:
         return self.gamma**x
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         iterations = self.last_epoch
 
         cycle = 1 + iterations // self.cycle_size
@@ -2284,15 +2416,19 @@ class LinearLR(LRScheduler):
             ...         scheduler.step()
     """
 
+    start_factor: float
+    end_factor: float
+    total_steps: int
+
     def __init__(
         self,
-        learning_rate,
-        total_steps,
-        start_factor=1.0 / 3,
-        end_factor=1.0,
-        last_epoch=-1,
-        verbose=False,
-    ):
+        learning_rate: float,
+        total_steps: int,
+        start_factor: float = 1.0 / 3,
+        end_factor: float = 1.0,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
         if start_factor > 1.0 or start_factor <= 0:
             raise ValueError(
                 f"`start_factor` must be greater than 0 and less or equal to 1, but got {start_factor}"
@@ -2314,7 +2450,7 @@ class LinearLR(LRScheduler):
 
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         if self.last_epoch == 0:
             return self.base_lr * self.start_factor
         elif self.last_epoch > self.total_steps:
@@ -2406,14 +2542,20 @@ class CosineAnnealingWarmRestarts(LRScheduler):
             ...    scheduler.step(epoch)    # You should update learning rate each step
     """
 
+    T_0: int
+    T_i: int
+    T_mult: int
+    eta_min: float
+    T_cur: int
+
     def __init__(
         self,
-        learning_rate,
-        T_0,
-        T_mult=1,
-        eta_min=0,
-        last_epoch=-1,
-        verbose=False,
+        learning_rate: float,
+        T_0: int,
+        T_mult: int = 1,
+        eta_min: float = 0,
+        last_epoch: int = -1,
+        verbose: bool = False,
     ):
         if T_0 <= 0 or not isinstance(T_0, int):
             raise ValueError(f"Expected positive integer T_0, but got {T_0}")
@@ -2426,7 +2568,7 @@ class CosineAnnealingWarmRestarts(LRScheduler):
         self.T_cur = last_epoch
         super().__init__(learning_rate, last_epoch, verbose)
 
-    def get_lr(self):
+    def get_lr(self) -> float:
         return (
             self.eta_min
             + (self.base_lr - self.eta_min)
@@ -2434,13 +2576,13 @@ class CosineAnnealingWarmRestarts(LRScheduler):
             / 2
         )
 
-    def step(self, epoch=None):
+    def step(self, epoch: int | None = None) -> None:
         """
         step should be called after `optimizer.step()` . It will update the learning rate in optimizer.
         The new learning rate will take effect on next epoch.
 
         Args:
-            epoch (int, None): specify current epoch. Default: None. Auto-increment from last_epoch=-1.
+            epoch (int|None, optional): specify current epoch. Default: None. Auto-increment from last_epoch=-1.
 
         Returns:
             None

@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from ...profiler import event_register
 from ...utils import BreakGraphError, log
 from ..instruction_utils import Instruction
-from .guard import StringifyExpression, union_free_vars
+from .guard import StringifiedExpression, union_free_vars
 from .opcode_executor import OpcodeExecutorBase, Stop
 from .tracker import ConstTracker, DanglingTracker, DummyTracker, Tracker
 from .variables import (
@@ -67,16 +67,16 @@ class FunctionGlobalTracker(Tracker):
         codegen.gen_load_const(self.name)
         codegen.gen_subscribe()
 
-    def trace_value_from_frame(self) -> StringifyExpression:
+    def trace_value_from_frame(self) -> StringifiedExpression:
         """
         Trace the value of the function global variable from the frame.
 
         Returns:
-            StringifyExpression: The traced value of the function global variable.
+            StringifiedExpression: The traced value of the function global variable.
 
         """
         fn_tracer = self.fn.tracker.trace_value_from_frame()
-        return StringifyExpression(
+        return StringifiedExpression(
             f"{{}}.__globals__['{self.name}']",
             [fn_tracer],
             union_free_vars(fn_tracer.free_vars),
@@ -124,7 +124,7 @@ class FunctionClosureTracker(Tracker):
 
         """
         fn_tracer = self.fn.tracker.trace_value_from_frame()
-        return StringifyExpression(
+        return StringifiedExpression(
             f"{{}}.__closure__[{self.idx}].cell_contents",
             [fn_tracer],
             union_free_vars(fn_tracer.free_vars),

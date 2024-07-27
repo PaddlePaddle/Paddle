@@ -315,8 +315,7 @@ class DatasetBase:
                     for i, ele in enumerate(user_parsed_line):
                         if len(ele[1]) == 0:
                             raise ValueError(
-                                "var length error: var %s's length in data_generator is 0"
-                                % ele[0]
+                                f"var length error: var {ele[0]}'s length in data_generator is 0"
                             )
 
                         if var_list[i].dtype == paddle.float32 and not all(

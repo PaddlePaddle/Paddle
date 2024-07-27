@@ -27,7 +27,8 @@ namespace ir {
 
 bool ReplaceOpWithReshapeOp(pir::Operation* op,
                             pir::ShapeConstraintIRAnalysis* shape_analysis,
-                            pir::PatternRewriter& rewriter) {  // NOLINT
+                            pir::PatternRewriter& rewriter,  // NOLINT
+                            bool with_xshape) {
   pir::Value input = op->operand_source(0);
   pir::Value output = op->result(0);
   const auto& input_shape =
@@ -79,6 +80,9 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
       op->operand_source(0), cinn_generate_shape.result(0));
 
   rewriter.ReplaceAllUsesWith(output, pd_reshape.result(0));
+  if (with_xshape && op->num_results() == 2U) {
+    rewriter.ReplaceAllUsesWith(op->result(1), pd_reshape.result(1));
+  }
   rewriter.EraseOp(op);
   return true;
 }
@@ -95,7 +99,7 @@ class DynamicReshapeOpPattern
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
-    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter);
+    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter, true);
   }
 };
 
@@ -113,7 +117,7 @@ class DynamicSqueezeOpPattern
         shape_analysis.GetShapeOrDataForValue(op.axis());
     CHECK(axis_shape_expr.data().has_value());
 
-    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter);
+    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter, true);
   }
 };
 
@@ -131,7 +135,7 @@ class DynamicUnsqueezeOpPattern
         shape_analysis.GetShapeOrDataForValue(op.axis());
     CHECK(axis_shape_expr.data().has_value());
 
-    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter);
+    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter, true);
   }
 };
 

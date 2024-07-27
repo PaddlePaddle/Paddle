@@ -19,9 +19,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
@@ -83,7 +81,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The input graph of "
           "FuseBatchNormActOneDNNPass should not be nullptr."));
   FusePassBase::Init("bn_act", graph);
@@ -113,7 +111,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     if (bn_op->HasAttr("trainable_statistics")) {
       PADDLE_ENFORCE(
           !PADDLE_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "The BatchNorm+Act fusion may happen only when mean and variance "
               "are not calculated by current batch statistics."));
     }
@@ -121,7 +119,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     if (bn_op->HasAttr("is_test")) {
       PADDLE_ENFORCE(
           PADDLE_GET_CONST(bool, bn_op->GetAttr("is_test")),
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "The BatchNorm+Act fusion may happen only during inference."));
     }
 
@@ -149,9 +147,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
                     found_bn_act_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(batch_norm_act_fuse_pass,
               paddle::framework::ir::FuseBatchNormActOneDNNPass);

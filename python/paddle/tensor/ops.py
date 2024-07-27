@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -24,13 +26,15 @@ from .layer_function_generator import (
     generate_layer_fn,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 __inplace_unary_func__ = [
     'exp_',
     'sqrt_',
     'rsqrt_',
     'ceil_',
     'floor_',
-    'round_',
     'reciprocal_',
     'sigmoid_',
     'abs_',
@@ -64,7 +68,7 @@ for _OP in set(__inplace_unary_func__):
     globals()[_OP] = _func
 
 
-def abs(x, name=None):
+def abs(x: Tensor, name: str | None = None) -> Tensor:
     """
     Perform elementwise abs for input `x`.
 
@@ -74,7 +78,7 @@ def abs(x, name=None):
 
     Args:
         x (Tensor): The input Tensor with data type int32, int64, float16, float32 and float64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor.A Tensor with the same data type and shape as :math:`x`.
@@ -93,7 +97,7 @@ def abs(x, name=None):
     return generate_activation_fn('abs')(x, name)
 
 
-def acos(x, name=None):
+def acos(x: Tensor, name: str | None = None) -> Tensor:
     """
     Acos Activation Operator.
 
@@ -102,7 +106,7 @@ def acos(x, name=None):
 
     Args:
         x (Tensor): Input of Acos operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Acos operator, a Tensor with shape same as input.
@@ -140,7 +144,7 @@ def acos(x, name=None):
         return out
 
 
-def acosh(x, name=None):
+def acosh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Acosh Activation Operator.
 
@@ -149,7 +153,7 @@ def acosh(x, name=None):
 
     Args:
         x (Tensor): Input of Acosh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Acosh operator, a Tensor with shape same as input.
@@ -187,7 +191,7 @@ def acosh(x, name=None):
         return out
 
 
-def asin(x, name=None):
+def asin(x: Tensor, name: str | None = None) -> Tensor:
     """
     Arcsine Operator.
 
@@ -196,7 +200,7 @@ def asin(x, name=None):
 
     Args:
         x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Same shape and dtype as input.
@@ -234,7 +238,7 @@ def asin(x, name=None):
         return out
 
 
-def asinh(x, name=None):
+def asinh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Asinh Activation Operator.
 
@@ -243,7 +247,7 @@ def asinh(x, name=None):
 
     Args:
         x (Tensor): Input of Asinh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Asinh operator, a Tensor with shape same as input.
@@ -281,7 +285,7 @@ def asinh(x, name=None):
         return out
 
 
-def atan(x, name=None):
+def atan(x: Tensor, name: str | None = None) -> Tensor:
     """
     Arctangent Operator.
 
@@ -290,7 +294,7 @@ def atan(x, name=None):
 
     Args:
         x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Same shape and dtype as input x.
@@ -328,7 +332,7 @@ def atan(x, name=None):
         return out
 
 
-def atanh(x, name=None):
+def atanh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Atanh Activation Operator.
 
@@ -337,7 +341,7 @@ def atanh(x, name=None):
 
     Args:
         x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Atanh operator, a Tensor with shape same as input.
@@ -375,7 +379,7 @@ def atanh(x, name=None):
         return out
 
 
-def ceil(x, name=None):
+def ceil(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Ceil Operator. Computes ceil of x element-wise.
@@ -385,7 +389,7 @@ def ceil(x, name=None):
 
     Args:
         x (Tensor): Input of Ceil operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Ceil operator, a Tensor with shape same as input.
@@ -413,7 +417,7 @@ def ceil(x, name=None):
         return out
 
 
-def cos(x, name=None):
+def cos(x: Tensor, name: str | None = None) -> Tensor:
     """
     Cosine Operator. Computes cosine of x element-wise.
 
@@ -424,7 +428,7 @@ def cos(x, name=None):
 
     Args:
         x (Tensor): Input of Cos operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Cos operator, a Tensor with shape same as input.
@@ -455,7 +459,7 @@ def cos(x, name=None):
         return out
 
 
-def cosh(x, name=None):
+def cosh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Cosh Activation Operator.
 
@@ -466,7 +470,7 @@ def cosh(x, name=None):
 
     Args:
         x (Tensor): Input of Cosh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Cosh operator, a Tensor with shape same as input.
@@ -504,7 +508,7 @@ def cosh(x, name=None):
         return out
 
 
-def exp(x, name=None):
+def exp(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Computes exp of x element-wise with a natural number `e` as the base.
@@ -514,7 +518,7 @@ def exp(x, name=None):
 
     Args:
         x (Tensor): Input of Exp operator, an N-D Tensor, with data type int32, int64, float16, float32, float64, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Exp operator, a Tensor with shape same as input.
@@ -554,7 +558,7 @@ def exp(x, name=None):
         return out
 
 
-def expm1(x, name=None):
+def expm1(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Expm1 Operator. Computes expm1 of x element-wise with a natural number :math:`e` as the base.
@@ -564,7 +568,7 @@ def expm1(x, name=None):
 
     Args:
         x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type int32, int64, float16, float32, float64, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Expm1 operator, a Tensor with shape same as input.
@@ -604,7 +608,7 @@ def expm1(x, name=None):
         return out
 
 
-def floor(x, name=None):
+def floor(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Floor Activation Operator. Computes floor of x element-wise.
@@ -614,7 +618,7 @@ def floor(x, name=None):
 
     Args:
         x (Tensor): Input of Floor operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Floor operator, a Tensor with shape same as input.
@@ -642,7 +646,7 @@ def floor(x, name=None):
         return out
 
 
-def reciprocal(x, name=None):
+def reciprocal(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Reciprocal Activation Operator.
@@ -652,7 +656,7 @@ def reciprocal(x, name=None):
 
     Args:
         x (Tensor): Input of Reciprocal operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Reciprocal operator, a Tensor with shape same as input.
@@ -682,7 +686,7 @@ def reciprocal(x, name=None):
         return out
 
 
-def round(x, name=None):
+def round(x: Tensor, decimals: int = 0, name: str | None = None) -> Tensor:
     """
 
     Round the values in the input to the nearest integer value.
@@ -699,7 +703,8 @@ def round(x, name=None):
 
     Args:
         x (Tensor): Input of Round operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        decimals(int): Rounded decimal place (default: 0).
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Round operator, a Tensor with shape same as input.
@@ -716,18 +721,32 @@ def round(x, name=None):
             [-1., -0.,  1.,  2.])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.round(x)
+        return _C_ops.round(x, decimals)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'round'
         )
         helper = LayerHelper('round', **locals())
+        attrs = {
+            'decimals': int(decimals),
+        }
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='round', inputs={"X": x}, outputs={"Out": out})
+        helper.append_op(
+            type='round', inputs={"X": x}, outputs={"Out": out}, attrs=attrs
+        )
         return out
 
 
-def rsqrt(x, name=None):
+@inplace_apis_in_dygraph_only
+def round_(x, decimals=0, name=None):
+    r"""
+    Inplace version of ``round`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_round`.
+    """
+    return _C_ops.round_(x, decimals)
+
+
+def rsqrt(x: Tensor, name: str | None = None) -> Tensor:
     """
     Rsqrt Activation Operator.
 
@@ -738,7 +757,7 @@ def rsqrt(x, name=None):
 
     Args:
         x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Rsqrt operator, a Tensor with shape same as input.
@@ -766,7 +785,7 @@ def rsqrt(x, name=None):
         return out
 
 
-def sigmoid(x, name=None):
+def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
     """
     Sigmoid Activation.
 
@@ -775,7 +794,7 @@ def sigmoid(x, name=None):
 
     Args:
         x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type float16, float32, float64, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Sigmoid operator, a Tensor with shape same as input.
@@ -814,7 +833,7 @@ def sigmoid(x, name=None):
         return out
 
 
-def sin(x, name=None):
+def sin(x: Tensor, name: str | None = None) -> Tensor:
     """
     Sine Activation Operator.
 
@@ -823,7 +842,7 @@ def sin(x, name=None):
 
     Args:
         x (Tensor): Input of Sin operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Sin operator, a Tensor with shape same as input.
@@ -861,7 +880,7 @@ def sin(x, name=None):
         return out
 
 
-def sinh(x, name=None):
+def sinh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Sinh Activation Operator.
 
@@ -870,7 +889,7 @@ def sinh(x, name=None):
 
     Args:
         x (Tensor): Input of Sinh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Sinh operator, a Tensor with shape same as input.
@@ -908,7 +927,7 @@ def sinh(x, name=None):
         return out
 
 
-def sqrt(x, name=None):
+def sqrt(x: Tensor, name: str | None = None) -> Tensor:
     """
     Sqrt Activation Operator.
 
@@ -917,7 +936,7 @@ def sqrt(x, name=None):
 
     Args:
         x (Tensor): Input of Sqrt operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Sqrt operator, a Tensor with shape same as input.
@@ -948,7 +967,7 @@ def sqrt(x, name=None):
         return out
 
 
-def square(x, name=None):
+def square(x: Tensor, name: str | None = None) -> Tensor:
     """
     Square each elements of the inputs.
 
@@ -957,7 +976,7 @@ def square(x, name=None):
 
     Args:
         x (Tensor): Input of Square operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Square operator, a Tensor with shape same as input.
@@ -996,7 +1015,7 @@ def square(x, name=None):
         return out
 
 
-def tan(x, name=None):
+def tan(x: Tensor, name: str | None = None) -> Tensor:
     """
     Tangent Operator. Computes tangent of x element-wise.
 
@@ -1007,7 +1026,7 @@ def tan(x, name=None):
 
     Args:
         x (Tensor): Input of Tan operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor. Output of Tan operator, a Tensor with shape same as input.
@@ -1045,7 +1064,7 @@ def tan(x, name=None):
         return out
 
 
-def erf(x, name=None):
+def erf(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     The error function.
     For more details, see `Error function <https://en.wikipedia.org/wiki/Error_function>`_.
@@ -1056,7 +1075,7 @@ def erf(x, name=None):
 
     Args:
         x (Tensor): The input tensor, it's data type should be float32, float64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
