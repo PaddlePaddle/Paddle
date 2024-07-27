@@ -310,10 +310,8 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
     for (uint64_t idx = 0; idx < input_vars.size(); idx++) {
       auto input = input_vars[idx];
       auto origin_op = input.defining_op();
-      std::string name = "input_" + std::to_string(idx);
-      if (auto names = name_analysis::TryGetValueFirstName(input)) {
-        name = names.value();
-      }
+      std::string name = name_analysis::TryGetValueFirstName(input).value_or(
+          "input_" + std::to_string(idx));
       auto new_input = AppendDataOp(global_block, input, name, *origin_op);
       input.ReplaceAllUsesWith(new_input);
       new_input_vars.push_back(new_input);
@@ -1768,11 +1766,9 @@ int AppendShadowOutputs(Program *program,
   std::unordered_set<pir::Value> added_value;
   for (const auto &value : outputs) {
     if (!added_value.count(value) || IsFakeValue(value)) {
-      std::string shadow_output_name = name_prefix + std::to_string(counter);
-      if (auto names = name_analysis::GetValueFirstName(value);
-          !names.empty()) {
-        shadow_output_name = names[0];
-      }
+      std::string shadow_output_name =
+          name_analysis::TryGetValueFirstName(value).value_or(
+              name_prefix + std::to_string(counter));
       AppendShadowOutput(
           program, value, shadow_output_name, start_point + counter);
       counter += 1;
@@ -1879,10 +1875,8 @@ SplitedResult SplitForwardBackward(
       return;
     }
     std::string shadow_output_name =
-        std::string("output_") + std::to_string(counter);
-    if (auto names = name_analysis::TryGetValueFirstName(v)) {
-      shadow_output_name = names.value();
-    }
+        name_analysis::TryGetValueFirstName(v).value_or(
+            std::string("output_") + std::to_string(counter));
     auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
         {"output_name", StrAttribute::get(ctx, shadow_output_name)},
