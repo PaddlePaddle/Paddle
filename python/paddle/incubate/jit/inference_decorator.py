@@ -407,6 +407,8 @@ class InferenceEngine:
 
         for pass_name in self.delete_pass_lists:
             config.delete_pass(pass_name)
+        
+        #config.switch_ir_debug(True, ["remove_shadow_feed_pass"])
 
         self.predictor = create_predictor(config)
 

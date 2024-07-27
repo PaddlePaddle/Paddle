@@ -1145,13 +1145,11 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
         )
 
     if in_dynamic_or_pir_mode():
-        print(f"== we are in dynamic mode, op_name: {op_name}")
         outs = _C_ops._run_custom_op(
             op_name, x, scale, shift, weight, bias, epsilon
         )
         return outs[0]
     else:
-        print(f"== we are in dynamic to static mode, op_name: {op_name}")
         helper = LayerHelper(op_name, **locals())
         inputs = {
             'x': x,

@@ -61,5 +61,5 @@ fi
 
 cd $build_directory
 $cmake_command .. -DPYTHON_EXECUTABLE=$python_exe_path -DCUDA_TOOLKIT_ROOT_DIR=$cuda_root_path -DCOMPUTE_CAPABILITY=$gpu_cc
-make -j8
+make -j80
 cd -
