@@ -184,6 +184,51 @@ __global__ void ClipAndQuantDequantKernel(const T *in,
   }
 }
 
+// for lsqplus
+template <typename T>
+__global__ void LsqplusQuantDequantKernel(const T *in,
+                                          const T *alpha,
+                                          const T *beta,
+                                          const int Qn,
+                                          const int Qp,
+                                          const int round_type,
+                                          const size_t n,
+                                          T *out) {
+  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int tid = threadIdx.x;
+
+  using ComputeDataType = typename QuantizeDataType<T>::type;
+
+  ComputeDataType s = static_cast<ComputeDataType>(alpha[0]);
+  ComputeDataType b = static_cast<ComputeDataType>(beta[0]);
+  ComputeDataType inv_s = phi::funcs::inverse(s);
+  ComputeDataType Qn_t = static_cast<ComputeDataType>(Qn);
+  ComputeDataType Qp_t = static_cast<ComputeDataType>(Qp);
+
+  for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
+    ComputeDataType x = static_cast<ComputeDataType>(in[i]);
+
+    if (round_type == 0) {
+      x = (x - b) * inv_s;
+      x = phi::funcs::roundWithTiesToEven(x);
+      ComputeDataType max_bound = Qp_t;
+      ComputeDataType min_bound = Qn_t;
+      x = x > max_bound ? max_bound : x;
+      x = x < min_bound ? min_bound : x;
+      out[i] = static_cast<T>((x * s) + b);
+    } else {
+      auto sp = Qp_t * s + b;
+      auto sn = Qn_t * s + b;
+      x = x > sp ? sp : x;
+      x = x < sn ? sn : x;
+      x = x - b;
+      x = x * inv_s;
+      x = round(x);
+      out[i] = static_cast<T>((x * s) + b);
+    }
+  }
+}
+
 template <typename Context, typename T>
 void FindAbsMaxFunctor<Context, T>::operator()(const Context &ctx,
                                                const T *in,
@@ -703,6 +748,31 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
       in_data, scale_data, bin_cnt, round_type, num, out_data);
 }
 
+// for lsqplus
+template <typename Context, typename T>
+void LsqplusFakeQuantDequantFunctor<Context, T>::operator()(
+    const Context &ctx,
+    const DenseTensor &in,
+    const DenseTensor &alpha,
+    const DenseTensor &beta,
+    const DenseTensor &g_scale,
+    int Qn,
+    int Qp,
+    int round_type,
+    DenseTensor *out) {
+  int num = in.numel();
+  int block = 1024;
+  int grid = (block - 1 + num) / block;
+
+  const T *in_data = in.data<T>();
+  const T *alpha_data = alpha.data<T>();
+  const T *beta_data = beta.data<T>();
+
+  T *out_data = ctx.template Alloc<T>(out);
+  LsqplusQuantDequantKernel<T><<<grid, block, 0, ctx.stream()>>>(
+      in_data, alpha_data, beta_data, Qn, Qp, round_type, num, out_data);
+}
+
 template class FindAbsMaxFunctor<GPUContext, float16>;
 template class FindAbsMaxFunctor<GPUContext, float>;
 template class ClipAndFakeQuantFunctor<GPUContext, float16>;
@@ -719,5 +789,8 @@ template class FindRangeAbsMaxFunctor<GPUContext, float>;
 template class ClipAndFakeQuantDequantFunctor<GPUContext, float16>;
 template class ClipAndFakeQuantDequantFunctor<GPUContext, float>;
 
+// for lsqplus
+template class LsqplusFakeQuantDequantFunctor<GPUContext, float>;
+template class LsqplusFakeQuantDequantFunctor<GPUContext, float16>;
 }  // namespace funcs
 }  // namespace phi

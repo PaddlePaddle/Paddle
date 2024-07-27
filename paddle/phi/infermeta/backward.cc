@@ -1814,4 +1814,32 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
     value_grad->share_lod(values);
   }
 }
+
+// lsqplus backward Infermeta
+void FakeQuantizeDequantizeLsqplusGradInferMeta(const MetaTensor& x,
+                                                const MetaTensor& alpha,
+                                                const MetaTensor& beta,
+                                                const MetaTensor& g_scale,
+                                                const MetaTensor& out_grad,
+                                                int bit_length,
+                                                bool is_sign,
+                                                int round_type,
+                                                MetaTensor* x_grad,
+                                                MetaTensor* alpha_grad,
+                                                MetaTensor* beta_grad) {
+  // set metadata
+  if (x_grad) {
+    x_grad->set_dims(x.dims());
+    x_grad->set_dtype(x.dtype());
+  }
+  if (alpha_grad) {
+    alpha_grad->set_dims(alpha.dims());
+    alpha_grad->set_dtype(alpha.dtype());
+  }
+  if (beta_grad) {
+    beta_grad->set_dims(beta.dims());
+    beta_grad->set_dtype(beta.dtype());
+  }
+}
+
 }  // namespace phi

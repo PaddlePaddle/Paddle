@@ -62,3 +62,10 @@ PD_REGISTER_KERNEL(fake_quantize_dequantize_abs_max,
                    phi::FakeQuantizeDequantizeAbsMaxKernel,
                    float,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(fake_quantize_dequantize_lsqplus,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FakeQuantizeDequantizeLsqplusKernel,
+                   float,
+                   phi::dtype::float16) {}

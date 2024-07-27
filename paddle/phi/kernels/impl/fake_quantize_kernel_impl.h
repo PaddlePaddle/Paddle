@@ -229,4 +229,29 @@ void FakeQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
       dev_ctx, x, *out_scale, bin_cnt, round_type, out);
 }
 
+// LSQ fakequat impl
+template <typename T, typename Context>
+void FakeQuantizeDequantizeLsqplusKernel(const Context &dev_ctx,
+                                         const DenseTensor &x,
+                                         const DenseTensor &alpha,
+                                         const DenseTensor &beta,
+                                         const DenseTensor &g_scale,
+                                         int bit_length,
+                                         bool is_sign,
+                                         int round_type,
+                                         DenseTensor *out) {
+  dev_ctx.template Alloc<T>(out);
+  int Qn = 0;
+  int Qp = 255;
+  if (is_sign) {
+    Qn = -std::pow(2, bit_length - 1);
+    Qp = std::pow(2, bit_length - 1) - 1;
+  } else {
+    Qn = 0;
+    Qp = std::pow(2, bit_length) - 1;
+  }
+
+  phi::funcs::LsqplusFakeQuantDequantFunctor<Context, T>()(
+      dev_ctx, x, alpha, beta, g_scale, Qn, Qp, round_type, out);
+}
 }  // namespace phi

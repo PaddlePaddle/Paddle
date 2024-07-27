@@ -1255,4 +1255,13 @@ void TopPSamplingInferMeta(const MetaTensor& x,
                            MetaTensor* topk_scores,
                            MetaTensor* topk_ids);
 
+void FakeQuantizeDequantizeLsqplusInferMeta(const MetaTensor& x,
+                                            const MetaTensor& alpha,
+                                            const MetaTensor& beta,
+                                            const MetaTensor& g_scale,
+                                            int bit_length,
+                                            bool is_sign,
+                                            int round_type,
+                                            MetaTensor* out);
+
 }  // namespace phi

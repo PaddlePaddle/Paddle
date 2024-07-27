@@ -1,0 +1,418 @@
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+
+import numpy as np
+from op_test import OpTest
+
+import paddle
+from paddle import _C_ops
+from paddle.nn.quant.lsqplus import fake_quantize_dequantize_lsqplus
+
+
+def round_c_single_element(val):
+    dtype = type(val)
+    if val >= 0:
+        return dtype(np.floor(val + 0.5))
+    return dtype(np.ceil(val - 0.5))
+
+
+# rounding to nearest ties away from zero
+round_c = np.vectorize(round_c_single_element)
+
+
+def get_compute_type(dtype):
+    assert dtype in [np.float16, np.float32, np.float64]
+    if dtype == np.float16:
+        return np.float32
+    return dtype
+
+
+def fake_quantize_dequantize_lsqplus_wrapper(
+    x, alpha, beta, g_scale, bit_length, is_sign, round_type
+):
+    return _C_ops.fake_quantize_dequantize_lsqplus(
+        x, alpha, beta, g_scale, bit_length, is_sign, round_type
+    )
+
+
+class TestFakeQuantizeDequantizeLsqplusOp(OpTest):
+    def setUp(self):
+        self.op_type = 'fake_quantize_dequantize_lsqplus'
+        self.attrs = {
+            'bit_length': 8,
+        }
+        self.python_api = fake_quantize_dequantize_lsqplus_wrapper
+
+    def _cal_backward(
+        self, out_grad, x, alpha, beta, g, Qn, Qp, round_type, dtype
+    ):
+        compute_type = get_compute_type(dtype)
+        x = x.astype(compute_type)
+        alpha = alpha.astype(compute_type)
+        beta = beta.astype(compute_type)
+
+        gradient = out_grad.astype(compute_type) * g.astype(compute_type)
+
+        round_fn = round_c if round_type == 'TiesToEven' else np.round
+        q_x = (x - beta) / alpha
+        lower_flag = (q_x < Qn).astype(compute_type)
+        upper_flag = (q_x > Qp).astype(compute_type)
+        middle_flag = 1.0 - lower_flag - upper_flag
+
+        alpha_mx = (
+            lower_flag * Qn
+            + upper_flag * Qp
+            + middle_flag * round_fn(q_x)
+            - middle_flag * q_x
+        ) * gradient
+        alpha_mx = alpha_mx.astype(dtype)
+        grad_alpha = np.sum(alpha_mx)
+
+        beta_mx = (lower_flag + upper_flag) * gradient
+        beta_mx = beta_mx.astype(dtype)
+        grad_beta = np.sum(beta_mx)
+        grad_x = middle_flag.astype(dtype) * out_grad.astype(dtype)
+
+        return grad_x, grad_alpha.reshape([1]), grad_beta.reshape([1])
+
+    def _fake_quantize_dequantize_lsqplus(
+        self,
+        dtype,
+        input_shape,
+        distributions,
+        round_type='TiesAwayFromZero',
+        is_sign=False,
+        dygraph=True,
+    ):
+        input_data = distributions[0](input_shape).astype(dtype)
+        alpha = distributions[1]([1]).astype(dtype)
+        beta = distributions[2]([1]).astype(dtype)
+        g_scale = distributions[3]([1]).astype(dtype)
+
+        # prepare for forward stage
+        if is_sign:
+            Qn, Qp = (
+                -(2 ** (self.attrs['bit_length'] - 1)),
+                2 ** (self.attrs['bit_length'] - 1) - 1,
+            )
+        else:
+            Qn, Qp = 0, 2 ** (self.attrs['bit_length']) - 1
+
+        if round_type == 'TiesToEven':
+            # round then clip
+            round_out = round_c((input_data - beta) / alpha)
+            output_data = np.clip(round_out, Qn, Qp) * alpha + beta
+            self.attrs['round_type'] = 0
+        else:
+            # clip then round
+            data = np.clip((input_data - beta) / alpha, Qn, Qp)
+            output_data = round_c(data) * alpha + beta
+            self.attrs['round_type'] = 1
+
+        self.attrs['is_sign'] = is_sign
+        self.attrs['round_type'] = 0 if round_type == 'TiesToEven' else 1
+        self.inputs = {
+            'x': input_data,
+            'alpha': alpha,
+            'beta': beta,
+            'g_scale': g_scale,
+        }
+        self.outputs = {'out': output_data}
+        self.dtype = dtype
+
+        # check forward stage
+        self.check_output(check_dygraph=dygraph)
+        # check backward stage
+        out_grad = np.random.random(input_data.shape).astype(
+            get_compute_type(dtype)
+        )
+        # get input gradient
+        test_gradients = self._cal_backward(
+            out_grad,
+            input_data,
+            alpha,
+            beta,
+            g_scale,
+            Qn,
+            Qp,
+            round_type,
+            dtype,
+        )
+        # use 'gradient' to verify gradient from actual operator(its gradient generated by out_grad)
+        self._test_grad(
+            ['x', 'alpha', 'beta'],
+            test_gradients,
+            [out_grad],
+            dygraph,
+            {'g_scale'},
+        )
+
+    def _test_grad(
+        self, name, gradient, out_grads, check_dygraph=False, no_grad_set=set()
+    ):
+        self.check_grad(
+            name,
+            'out',
+            user_defined_grads=gradient,
+            user_defined_grad_outputs=out_grads,
+            check_dygraph=check_dygraph,
+            no_grad_set=no_grad_set,
+        )
+
+    def test_fake_quantize_dequantize(self):
+        distributions = [
+            np.random.random,
+            np.random.random,
+            np.random.random,
+            np.random.random,
+        ]
+        self._fake_quantize_dequantize_lsqplus(
+            np.float32,
+            (128, 128),
+            distributions,
+            'TiesAwayFromZero',
+            is_sign=False,
+            dygraph=False,
+        )
+
+    def test_fake_quantize_dequantize_round1(self):
+        distributions = [
+            np.random.random,
+            np.random.random,
+            np.random.random,
+            np.random.random,
+        ]
+        self._fake_quantize_dequantize_lsqplus(
+            np.float32,
+            (256, 256),
+            distributions,
+            'TiesToEven',
+            is_sign=False,
+            dygraph=False,
+        )
+
+    def test_fake_quantize_dequantize_fp16(self):
+        distributions = [
+            np.random.random,
+            np.random.random,
+            np.random.random,
+            np.random.random,
+        ]
+        self._fake_quantize_dequantize_lsqplus(
+            np.float16,
+            (256, 256),
+            distributions,
+            'TiesToEven',
+            is_sign=False,
+            dygraph=False,
+        )
+
+    def test_fake_quantize_dequantize_large_scale(self):
+        distributions = [
+            np.random.random,
+            np.random.random,
+            np.random.random,
+            np.random.random,
+        ]
+        self._fake_quantize_dequantize_lsqplus(
+            np.float32,
+            (3, 3, 1024, 1024),
+            distributions,
+            'TiesToEven',
+            is_sign=False,
+            dygraph=False,
+        )
+
+
+def ref_lsqplus(x, alpha, beta, g_scale, bit_length, is_sign, round_type):
+    if is_sign:
+        Qp = 2 ** (bit_length - 1) - 1
+        Qn = -(2 ** (bit_length - 1))
+    else:
+        Qn = 0
+        Qp = 2 ** (bit_length) - 1
+
+    if round_type == 1:
+        # clip then round
+        out = np.round(np.clip((x - beta) / alpha, Qn, Qp)) * alpha + beta
+    else:
+        # round then clip
+        out = np.clip(round_c((x - beta) / alpha), Qn, Qp) * alpha + beta
+
+    return out
+
+
+class TestLsqplus(unittest.TestCase):
+    def setUp(self):
+        self.bit_width = 8
+
+    def run_dyamic(
+        self, input_data, alpha, beta, g_scale, bit_width, is_sign, round_type
+    ):
+        return fake_quantize_dequantize_lsqplus(
+            input_data, alpha, beta, g_scale, bit_width, is_sign, round_type
+        )
+
+    def run_static(
+        self, input_data, alpha, beta, g_scale, bit_width, is_sign, round_type
+    ):
+        paddle.enable_static()
+        x = paddle.static.data(
+            name='x', shape=input_data.shape(), dtype='float32'
+        )
+        x.stop_gradient = False
+        alpha = paddle.static.data(name='alpha', shape=[1], dtype='float32')
+        alpha.stop_gradient = False
+        beta = paddle.static.data(name='beta', shape=[1], dtype='float32')
+        beta.stop_gradient = False
+        g_scale = paddle.static.data(name='g_scale', shape=[1], dtype='float32')
+        g_scale.stop_gradient = True
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        out = fake_quantize_dequantize_lsqplus(
+            x, alpha, beta, g_scale, bit_width, is_sign, round_type
+        )
+        exe.run(paddle.static.default_startup_program())
+        out_result = exe.run(
+            paddle.static.default_main_program(),
+            feed={
+                'x': input_data,
+                'alpha': alpha,
+                'beta': beta,
+                'g_scale': g_scale,
+            },
+            fetch_list=[out],
+        )
+        paddle.disable_static()
+        return out_result
+
+    def run_fake_quant(
+        self,
+        dtype,
+        input_shape,
+        distributions,
+        round_type='TiesAwayFromZero',
+        is_sign=False,
+        dygraph=True,
+    ):
+        input_data = distributions[0](input_shape).astype(dtype)
+        alpha = distributions[1]([1]).astype(dtype)
+        beta = distributions[2]([1]).astype(dtype)
+        g_scale = distributions[3]([1]).astype(dtype)
+
+        ref_out = ref_lsqplus(
+            input_data,
+            alpha,
+            beta,
+            g_scale,
+            self.bit_width,
+            is_sign,
+            round_type,
+        )
+
+        if dygraph:
+            out = self.run_dyamic(
+                input_data,
+                alpha,
+                beta,
+                g_scale,
+                self.bit_width,
+                is_sign,
+                round_type,
+            )
+        else:
+            out = self.run_static(
+                input_data,
+                alpha,
+                beta,
+                g_scale,
+                self.bit_width,
+                is_sign,
+                round_type,
+            )
+        self.assertEqual(np.allclose(out, ref_out), True, "output not equal")
+
+    def test_fake_quantize_dequantize_dygraph(self):
+        distributions = [
+            np.random.random,
+            np.random.random,
+            np.random.random,
+            np.random.random,
+        ]
+
+        self.run_fake_quant(
+            np.float32,
+            (128, 128),
+            distributions,
+            round_type='TiesAwayFromZero',
+            is_sign=True,
+            dygraph=True,
+        )
+
+    def test_fake_quantize_dequantize_static(self):
+        distributions = [
+            np.random.random,
+            np.random.random,
+            np.random.random,
+            np.random.random,
+        ]
+
+        self.run_fake_quant(
+            np.float32,
+            (128, 128),
+            distributions,
+            round_type='TiesAwayFromZero',
+            is_sign=True,
+            dygraph=False,
+        )
+
+    def test_fake_quantize_dequantize_round1(self):
+        distributions = [
+            np.random.random,
+            np.random.random,
+            np.random.random,
+            np.random.random,
+        ]
+
+        self.run_fake_quant(
+            np.float16,
+            (128, 128),
+            distributions,
+            round_type='TiesToEven',
+            is_sign=True,
+            dygraph=True,
+        )
+
+    def test_fake_quantize_dequantize_not_sign(self):
+        distributions = [
+            np.random.random,
+            np.random.random,
+            np.random.random,
+            np.random.random,
+        ]
+
+        self.run_fake_quant(
+            np.float16,
+            (128, 128),
+            distributions,
+            round_type='TiesToEven',
+            is_sign=False,
+            dygraph=True,
+        )
+
+
+if __name__ == '__main__':
+    unittest.main()

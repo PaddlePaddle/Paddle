@@ -167,5 +167,51 @@ class ClipAndFakeQuantDequantFunctor {
                   DenseTensor *out);
 };
 
+// For lsqplus fakequant
+template <typename T>
+class LsqQuantDequantTensorFunctor {
+  //  clip(round(x-beta)/alpha) * alpha + beta
+ public:
+  explicit LsqQuantDequantTensorFunctor(const T alpha,
+                                        const T beta,
+                                        int Qn,
+                                        int Qp)
+      : alpha(alpha), beta(beta), Qn(Qn), Qp(Qp) {}
+  HOSTDEVICE T operator()(const T x) const {
+    T out = (x - beta) / alpha;
+
+    out = roundWithTiesToEven(out);
+    T max_bound = Qp;
+    T min_bound = Qn;
+
+    out = out > max_bound ? max_bound : out;
+    out = out < min_bound ? min_bound : out;
+    out = alpha * out + beta;
+    return out;
+  }
+
+ private:
+  T alpha;
+  T beta;
+  int Qn;
+  int Qp;
+  int round_type;
+};
+
+// for lsqplus fakequant
+template <typename Context, typename T>
+class LsqplusFakeQuantDequantFunctor {
+ public:
+  void operator()(const Context &ctx,
+                  const DenseTensor &x,
+                  const DenseTensor &alpha,
+                  const DenseTensor &beta,
+                  const DenseTensor &g_scale,
+                  int Qn,
+                  int Qp,
+                  int round_type,
+                  DenseTensor *out);
+};
+
 }  // namespace funcs
 }  // namespace phi

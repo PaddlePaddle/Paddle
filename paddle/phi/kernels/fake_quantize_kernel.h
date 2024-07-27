@@ -98,4 +98,15 @@ void FakeQuantizeDequantizeAbsMaxKernel(const Context& dev_ctx,
                                         DenseTensor* out,
                                         DenseTensor* out_scale);
 
+template <typename T, typename Context>
+void FakeQuantizeDequantizeLsqplusKernel(const Context& dev_ctx,
+                                         const DenseTensor& x,
+                                         const DenseTensor& alpha,
+                                         const DenseTensor& beta,
+                                         const DenseTensor& g_scale,
+                                         int bit_length,
+                                         bool is_sign,
+                                         int round_type,
+                                         DenseTensor* out);
+
 }  // namespace phi
