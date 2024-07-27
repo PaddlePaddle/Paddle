@@ -41,7 +41,6 @@ FindUselessOpPattern::FindUselessOpPattern(PDPattern* pattern,
   auto* useless_op_in = pattern->NewNode(useless_op_in_repr())
                             ->assert_is_var()
                             ->assert_var_not_persistable()
-                            ->assert_has_n_outputs(1)
                             ->assert_more([](Node* x) {
                               for (auto* op : x->inputs) {
                                 CHECK_EQ(op->IsOp(), true);
@@ -155,14 +154,18 @@ int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {
         CHECK_EQ(useless_op_out->IsVar(), true);
         CHECK_EQ(useless_op->IsOp(), true);
 
-        for (auto* prev_op : useless_op_in->inputs) {
-          CHECK_EQ(prev_op->IsOp(), true);
-          prev_op->Op()->RenameOutput(useless_op_in->Var()->Name(),
-                                      useless_op_out->Var()->Name());
-          IR_NODE_LINK_TO(prev_op, useless_op_out);
+        for (auto* after_op : useless_op_out->outputs) {
+          if (after_op->Name() == "fetch") {
+            VLOG(3) << "The OP is model'output, skip";
+            return;
+          }
+          after_op->Op()->RenameInput(useless_op_out->Var()->Name(),
+                                      useless_op_in->Var()->Name());
+          after_op->Op()->Flush();
+          IR_NODE_LINK_TO(useless_op_in, after_op);
         }
 
-        GraphSafeRemoveNodes(graph, {useless_op_in, useless_op});
+        GraphSafeRemoveNodes(graph, {useless_op, useless_op_out});
         found_count++;
       };
 
@@ -193,6 +196,7 @@ int IdentityOpCleanPass::CleanTwoCastOp(ir::Graph* graph) const {
             CHECK_EQ(prev_op->IsOp(), true);
             prev_op->Op()->RenameOutput(pre_op_out->Var()->Name(),
                                         cast_op_2_out->Var()->Name());
+            prev_op->Op()->Flush();
             IR_NODE_LINK_TO(prev_op, cast_op_2_out);
           }
 

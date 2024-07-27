@@ -22,6 +22,11 @@ namespace ir {
 #define GET_NODES GET_IR_NODE(quant_op);
 
 void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
+  bool enable_int8 = Get<bool>("enable_int8");
+  if (!enable_int8) {
+    VLOG(3) << "add_support_int8_pass need Predictor'Config set int8, skip";
+    return;
+  }
   const std::string pattern_name = "add_support_int8";
   FusePassBase::Init(pattern_name, graph);
 
