@@ -271,6 +271,25 @@ class TestMatmulInt8Op17(TestMatmulInt8):
         self.trans_x = False
         self.trans_y = False
 
+class TestMatmulInt8Op18(TestMatmulInt8):
+    def config(self):
+        self.dtype = 'int8'
+        self.rtol = 1e-5
+        self.atol = 1e-2
+        self.x_shape = (4096, 1024)
+        self.y_shape = (4096, 1024)
+        self.trans_x = False
+        self.trans_y = True
+
+    def setUp(self):
+        paddle.set_flags({'FLAGS_enable_blaslt_global_search': 1})
+        paddle.set_flags({'FLAGS_cublaslt_device_best_config': 'search.csv'})
+        super().setUp()
+    
+    def tearDown(self):
+        paddle.set_flags({'FLAGS_enable_blaslt_global_search': 0})
+        paddle.set_flags({'FLAGS_cublaslt_device_best_config': ''})
+
 
 class TestMatmulInt8OpBroadcast1(TestMatmulInt8):
     def config(self):
