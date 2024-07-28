@@ -36,10 +36,10 @@ def graph_reindex(
     x: Tensor,
     neighbors: Tensor,
     count: Tensor,
-    value_buffer: bool = None,
-    index_buffer: bool = None,
+    value_buffer: Tensor | None = None,
+    index_buffer: Tensor | None = None,
     flag_buffer_hashtable: bool = False,
-    name: str = None,
+    name: str | None = None,
 ) -> tuple[Tensor, Tensor, Tensor]:
     """
 
