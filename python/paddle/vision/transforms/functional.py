@@ -33,7 +33,8 @@ from . import (
 )
 
 if TYPE_CHECKING:
-    from typing import Literal, TypeGuard, TypeVar, Union
+    from typing import Literal, TypeVar, Union, overload
+    from typing_extensions import TypeGuard
 
     import numpy.typing as npt
     from PIL.Image import Image as PILImage
@@ -983,13 +984,33 @@ def to_grayscale(img: _ImageDataT, num_output_channels: int = 1) -> _ImageDataT:
         return F_cv2.to_grayscale(img, num_output_channels)
 
 
+@overload
 def normalize(
-    img: _ImageDataT,
+    img: Tensor,
     mean: list[float] | tuple[float, float, float],
     std: list[float] | tuple[float, float, float],
-    data_format: DataLayoutImage = 'CHW',
-    to_rgb: bool = False,
-) -> _ImageDataT:
+    data_format: DataLayoutImage = ...,
+    to_rgb: bool = ...,
+) -> Tensor: ...
+
+
+@overload
+def normalize(
+    img: PILImage | npt.NDArray[Any],
+    mean: list[float] | tuple[float, float, float],
+    std: list[float] | tuple[float, float, float],
+    data_format: DataLayoutImage = ...,
+    to_rgb: bool = ...,
+) -> npt.NDArray[Any]: ...
+
+
+def normalize(
+    img,
+    mean,
+    std,
+    data_format='CHW',
+    to_rgb=False,
+):
     """Normalizes a tensor or image with mean and standard deviation.
 
     Args:
