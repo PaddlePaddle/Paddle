@@ -41,6 +41,7 @@ class TestCollectiveAllToAllSingleAPI(test_base.TestDistBase):
                 "nccl",
                 static_mode="0",
                 dtype=dtype,
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
 
