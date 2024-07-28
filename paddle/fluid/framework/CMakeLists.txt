@@ -871,7 +871,7 @@ cc_library(
   compiled_program
   SRCS compiled_program.cc
   DEPS graph build_strategy eager_deletion_pass buffer_shared_inplace_op_pass
-       buffer_shared_cross_op_memory_reuse_pass inplace_addto_op_pass)
+       inplace_addto_op_pass)
 
 cc_library(
   executor_cache

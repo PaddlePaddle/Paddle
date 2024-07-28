@@ -42,10 +42,6 @@ cc_library(
   buffer_shared_inplace_op_pass
   SRCS buffer_shared_inplace_op_pass.cc
   DEPS memory_reuse_pass executor_gc_helper)
-cc_library(
-  buffer_shared_cross_op_memory_reuse_pass
-  SRCS buffer_shared_cross_op_memory_reuse_pass.cc
-  DEPS memory_reuse_pass op_graph_view)
 
 cc_library(
   inplace_addto_op_pass
