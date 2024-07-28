@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import numbers
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 from PIL import Image
@@ -33,12 +33,11 @@ from . import (
 )
 
 if TYPE_CHECKING:
-    from typing import Literal, TypeVar, Union, overload
-    from typing_extensions import TypeGuard
+    from typing import Literal, TypeVar, Union
 
     import numpy.typing as npt
     from PIL.Image import Image as PILImage
-    from typing_extensions import TypeAlias
+    from typing_extensions import TypeAlias, TypeGuard
 
     from paddle import Tensor
     from paddle._typing import DataLayoutImage, Size2, Size3, Size4
@@ -991,7 +990,8 @@ def normalize(
     std: list[float] | tuple[float, float, float],
     data_format: DataLayoutImage = ...,
     to_rgb: bool = ...,
-) -> Tensor: ...
+) -> Tensor:
+    ...
 
 
 @overload
@@ -1001,7 +1001,8 @@ def normalize(
     std: list[float] | tuple[float, float, float],
     data_format: DataLayoutImage = ...,
     to_rgb: bool = ...,
-) -> npt.NDArray[Any]: ...
+) -> npt.NDArray[Any]:
+    ...
 
 
 def normalize(
