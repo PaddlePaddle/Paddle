@@ -490,7 +490,7 @@ class Subset(Dataset[_T]):
             [1, 3]
 
             >>> # example 2:
-            >>> b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1])) # type: ignore[var-annotated]
+            >>> b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1]) # type: ignore[var-annotated]
             >>> print(list(b))
             [2, 2]
     """
