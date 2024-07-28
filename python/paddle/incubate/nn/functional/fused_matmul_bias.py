@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base.layer_helper import LayerHelper
@@ -139,7 +139,7 @@ def fused_linear_activation(
     bias: Tensor,
     trans_x: bool = False,
     trans_y: bool = False,
-    activation: str | None = None,
+    activation: Literal['gelu', 'relu'] | None = None,
 ) -> Tensor:
     """
     Fully-connected linear and activation transformation operator. This method requires CUDA version >= 11.6.
