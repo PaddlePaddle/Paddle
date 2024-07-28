@@ -121,7 +121,7 @@ def graph_reindex(
             >>> reindex_src, reindex_dst, out_nodes = paddle.incubate.graph_reindex(  # type: ignore[operator]
             ...     x,
             ...     neighbors,
-            ...     count
+            ...     count,
             ... )
             >>> print(reindex_src)
             Tensor(shape=[12], dtype=int64, place=Place(cpu), stop_gradient=True,
