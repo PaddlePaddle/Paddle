@@ -85,18 +85,18 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
     auto& dev_ctx = ctx.device_context<phi::CPUContext>();
-    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto x = *(ctx.Input<phi::DenseTensor>("X"));
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    out->Resize(in.dims());
+    out->Resize(x.dims());
     dev_ctx.Alloc<T>(out);
 
     auto comm_ctx = static_cast<phi::distributed::GlooCommContext*>(
         dev_ctx.GetCommContext());
-    PADDLE_ENFORCE_NE(
-        comm_ctx,
-        nullptr,
-        errors::Unavailable("NCCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      ::common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
     comm_ctx->AllReduce(out, x, reduce_type);
 #else
     PADDLE_THROW(phi::errors::Unavailable(
