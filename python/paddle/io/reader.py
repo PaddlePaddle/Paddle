@@ -54,9 +54,9 @@ if TYPE_CHECKING:
 
     from paddle import Tensor
     from paddle._typing import PlaceLike
+    from paddle._typing.device_like import _Place
+    from paddle.io.dataloader.dataloader_iter import _DataLoaderIterBase
     from paddle.io.dataloader.dataset import Dataset
-
-    from .dataloader.dataloader_iter import _DataLoaderIterBase
 
     _K = TypeVar('_K')
     _V = TypeVar('_V')
@@ -440,7 +440,7 @@ class DataLoader:
     worker_init_fn: Callable[[int], None] | None
     dataset: Dataset
     feed_list: Sequence[Tensor] | None
-    places: Sequence[PlaceLike] | None
+    places: list[_Place]
     num_workers: int
     dataset_kind: _DatasetKind
     use_shared_memory: bool
