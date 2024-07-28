@@ -54,9 +54,8 @@ if TYPE_CHECKING:
 
     from paddle import Tensor
     from paddle._typing import PlaceLike
+    from paddle._typing.device_like import _Place
     from paddle.io.dataloader.dataset import Dataset
-
-    from .dataloader.dataloader_iter import _DataLoaderIterBase
 
     _K = TypeVar('_K')
     _V = TypeVar('_V')
@@ -440,7 +439,7 @@ class DataLoader:
     worker_init_fn: Callable[[int], None]
     dataset: Dataset
     feed_list: Sequence[Tensor] | None
-    places: Sequence[PlaceLike] | None
+    places: list[_Place]
     num_workers: int
     dataset_kind: _DatasetKind
     use_shared_memory: bool
@@ -449,7 +448,7 @@ class DataLoader:
         self,
         dataset: Dataset,
         feed_list: Sequence[Tensor] | None = None,
-        places: Sequence[PlaceLike] | None = None,
+        places: PlaceLike | Sequence[PlaceLike] | None = None,
         return_list: bool = True,
         batch_sampler: BatchSampler | None = None,
         batch_size: int = 1,
@@ -569,7 +568,9 @@ class DataLoader:
             else:
                 return len(self.dataset)
 
-    def __iter__(self) -> _DataLoaderIterBase:
+    def __iter__(
+        self,
+    ) -> _DataLoaderIterSingleProcess | _DataLoaderIterMultiProcess:
         if self.num_workers == 0:
             return _DataLoaderIterSingleProcess(self)
         elif self._persistent_workers:
@@ -581,5 +582,7 @@ class DataLoader:
         else:
             return _DataLoaderIterMultiProcess(self)
 
-    def __call__(self) -> _DataLoaderIterBase:
+    def __call__(
+        self,
+    ) -> _DataLoaderIterSingleProcess | _DataLoaderIterMultiProcess:
         return self.__iter__()
