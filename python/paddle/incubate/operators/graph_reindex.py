@@ -96,7 +96,7 @@ def graph_reindex(
             >>> neighbors_e1 = paddle.to_tensor(neighbors_e1, dtype="int64")
             >>> count_e1 = paddle.to_tensor(count_e1, dtype="int32")
 
-            >>> reindex_src, reindex_dst, out_nodes = paddle.incubate.graph_reindex(
+            >>> reindex_src, reindex_dst, out_nodes = paddle.incubate.graph_reindex(  # type: ignore[operator]
             ...     x,
             ...     neighbors_e1,
             ...     count_e1,
@@ -118,7 +118,11 @@ def graph_reindex(
 
             >>> neighbors = paddle.concat([neighbors_e1, neighbors_e2])
             >>> count = paddle.concat([count_e1, count_e2])
-            >>> reindex_src, reindex_dst, out_nodes = paddle.incubate.graph_reindex(x, neighbors, count)
+            >>> reindex_src, reindex_dst, out_nodes = paddle.incubate.graph_reindex(  # type: ignore[operator]
+            ...     x,
+            ...     neighbors,
+            ...     count
+            ... )
             >>> print(reindex_src)
             Tensor(shape=[12], dtype=int64, place=Place(cpu), stop_gradient=True,
             [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1])
