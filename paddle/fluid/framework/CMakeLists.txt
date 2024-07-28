@@ -974,6 +974,13 @@ if(WITH_ONEDNN)
   add_dependencies(type_info onednn)
 endif()
 
+if(WITH_GPU)
+  nv_library(
+    async_nan_inf_checker
+    SRCS async_nan_inf_checker.cu
+    DEPS phi tensor)
+endif()
+
 set(FLUID_FRAMEWORK_MODULES
     proto_desc
     lod_tensor
@@ -982,5 +989,9 @@ set(FLUID_FRAMEWORK_MODULES
     layer
     dynamic_loader
     custom_operator)
+
+if(WITH_GPU)
+  list(APPEND FLUID_FRAMEWORK_MODULES async_nan_inf_checker)
+endif()
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})

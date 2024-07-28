@@ -8354,3 +8354,9 @@ def process_type_promotion(program):
                         idx += 1
             idx += 1
     return program
+
+
+def _create_async_nan_inf_checker(place=None):
+    if place is None:
+        place = _current_expected_place_()
+    return core.eager.AsyncNaNInfChecker(place)

@@ -117,6 +117,10 @@ if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} py_func_op)
 endif()
 
+if(WITH_GPU)
+  list(APPEND PYBIND_DEPS async_nan_inf_checker)
+endif()
+
 set(PYBIND_SRCS
     pybind.cc
     imperative.cc

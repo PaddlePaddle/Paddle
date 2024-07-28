@@ -45,6 +45,9 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/string_tensor.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/async_nan_inf_checker.h"
+#endif
 
 using phi::distributed::DistTensor;
 using phi::distributed::Placement;
@@ -1441,6 +1444,7 @@ void BindEager(pybind11::module* module) {
   BindFunctions(m.ptr());
   BindEagerPyLayer(m.ptr());
   BindEagerOpFunctions(&m);
+  BindEagerAsyncNaNInfChecker(&m);
 }
 
 void BindEagerStringTensor(pybind11::module* module) {
@@ -1485,6 +1489,32 @@ void BindEagerStringTensor(pybind11::module* module) {
         "Init Paddle error in BindEagerStringTensor(PyModule_AddObject)."));
     return;
   }
+}
+
+void BindEagerAsyncNaNInfChecker(pybind11::module* module) {
+#ifdef PADDLE_WITH_CUDA
+  pybind11::class_<paddle::framework::AsyncNaNInfChecker> checker(
+      *module, "AsyncNaNInfChecker");
+  checker.def(pybind11::init<phi::GPUPlace>(), pybind11::arg("place"))
+      .def(
+          "check",
+          [](paddle::framework::AsyncNaNInfChecker& self,
+             pybind11::handle handle) -> bool {
+            PyObject* ptr = handle.ptr();
+            PADDLE_ENFORCE_EQ(paddle::pybind::PyCheckTensor(ptr),
+                              true,
+                              phi::errors::InvalidArgument(
+                                  "Only support Tensor to check NaN/Inf."));
+            const auto& tensor =
+                paddle::pybind::UnSafeGetTensorFromPyObject(ptr);
+            pybind11::gil_scoped_release release;
+            return self.Check(tensor);
+          },
+          pybind11::arg("tensor"))
+      .def("wait",
+           &paddle::framework::AsyncNaNInfChecker::Wait,
+           pybind11::call_guard<pybind11::gil_scoped_release>());
+#endif
 }
 
 }  // namespace pybind
