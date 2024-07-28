@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 __all__ = []
 
@@ -45,10 +46,10 @@ class EntryAttr:
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._name = None
 
-    def _to_attr(self):
+    def _to_attr(self) -> str:
         """
         Returns the attributes of this parameter.
 
@@ -87,7 +88,7 @@ class ProbabilityEntry(EntryAttr):
 
     """
 
-    def __init__(self, probability):
+    def __init__(self, probability: float) -> None:
         super().__init__()
 
         if not isinstance(probability, float):
@@ -99,7 +100,7 @@ class ProbabilityEntry(EntryAttr):
         self._name = "probability_entry"
         self._probability = probability
 
-    def _to_attr(self):
+    def _to_attr(self) -> str:
         return ":".join([self._name, str(self._probability)])
 
 
@@ -131,7 +132,7 @@ class CountFilterEntry(EntryAttr):
 
     """
 
-    def __init__(self, count_filter):
+    def __init__(self, count_filter: int) -> None:
         super().__init__()
 
         if not isinstance(count_filter, int):
@@ -147,7 +148,7 @@ class CountFilterEntry(EntryAttr):
         self._name = "count_filter_entry"
         self._count_filter = count_filter
 
-    def _to_attr(self):
+    def _to_attr(self) -> str:
         return ":".join([self._name, str(self._count_filter)])
 
 
@@ -182,7 +183,7 @@ class ShowClickEntry(EntryAttr):
 
     """
 
-    def __init__(self, show_name, click_name):
+    def __init__(self, show_name: str, click_name: str) -> None:
         super().__init__()
 
         if not isinstance(show_name, str) or not isinstance(click_name, str):
@@ -192,5 +193,5 @@ class ShowClickEntry(EntryAttr):
         self._show_name = show_name
         self._click_name = click_name
 
-    def _to_attr(self):
+    def _to_attr(self) -> str:
         return ":".join([self._name, self._show_name, self._click_name])
