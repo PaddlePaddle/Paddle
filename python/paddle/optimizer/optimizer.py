@@ -699,7 +699,6 @@ class Optimizer:
 
                 >>> # train on default dynamic graph mode
                 >>> import paddle
-                >>> import numpy as np
                 >>> emb = paddle.nn.Embedding(10, 3)
 
                 >>> ## example1: LRScheduler is not used, return the same value is all the same
@@ -730,35 +729,6 @@ class Optimizer:
                 ...     out.backward()
                 ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05...
                 ...     adam.step()
-                ...     scheduler.step()
-                Learning rate of step0: 0.5
-                Learning rate of step1: 0.5
-                Learning rate of step2: 0.05
-                Learning rate of step3: 0.05
-                Learning rate of step4: 0.005000000000000001
-                Learning rate of step5: 0.005000000000000001
-                Learning rate of step6: 0.0005000000000000001
-                Learning rate of step7: 0.0005000000000000001
-                Learning rate of step8: 5.000000000000001e-05
-                Learning rate of step9: 5.000000000000001e-05
-
-                >>> # train on static graph mode
-                >>> paddle.enable_static()
-                >>> main_prog = paddle.static.Program()
-                >>> start_prog = paddle.static.Program()
-                >>> with paddle.static.program_guard(main_prog, start_prog):
-                ...     x = paddle.static.data(name='x', shape=[None, 10])
-                ...     z = paddle.static.nn.fc(x, 100)
-                ...     loss = paddle.mean(z)
-                ...     scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
-                ...     adam = paddle.optimizer.Adam(learning_rate=scheduler)
-                ...     adam.minimize(loss)
-
-                >>> exe = paddle.static.Executor()
-                >>> exe.run(start_prog)
-                >>> for batch in range(10):
-                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05->0.005...
-                ...     out = exe.run(main_prog, feed={'x': np.random.randn(3, 10).astype('float32')})
                 ...     scheduler.step()
                 Learning rate of step0: 0.5
                 Learning rate of step1: 0.5
