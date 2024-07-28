@@ -89,18 +89,20 @@ bool AllcloseOpInferSymbolicShape(
 }
 
 bool ApplyPerChannelScaleOpInferSymbolicShape(
-  pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const symbol::ShapeOrDataDimExprs &scales_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-  PADDLE_ENFORCE_EQ(x_shape.shape().size(), 2,
+  PADDLE_ENFORCE_EQ(x_shape.shape().size(),
+                    2,
                     phi::errors::InvalidArgument(
                         "The rank of Input(x) must be 2, but received %u.",
                         x_shape.shape().size()));
 
-  PADDLE_ENFORCE_EQ(scales_shape.shape().size(), 1,
+  PADDLE_ENFORCE_EQ(scales_shape.shape().size(),
+                    1,
                     phi::errors::InvalidArgument(
                         "The rank of Input(scales) must be 1, but received %u.",
                         scales_shape.shape().size()));
