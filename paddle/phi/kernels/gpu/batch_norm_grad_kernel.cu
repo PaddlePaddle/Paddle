@@ -98,7 +98,7 @@ static __global__ void KeBNBackwardData(const T *dy,
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
     const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
-    BatchNormParamType<T> inv_var = 1.0 / sqrt(variance[c] + epsilon);
+    BatchNormParamType<T> inv_var = rsqrt(variance[c] + epsilon);
     dx[i] = static_cast<T>(static_cast<BatchNormParamType<T>>(dy[i]) *
                            scale[c] * inv_var);
   }
