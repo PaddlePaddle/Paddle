@@ -5870,10 +5870,12 @@ void MoeInferMeta(const MetaTensor& x,
 void FusedMoeInferMeta(const MetaTensor& X,
                        const MetaTensor& gate_weight,
                        const MetaTensor& ffn1_weight,
+                       const MetaTensor& ffn1_scale,
                        const MetaTensor& ffn1_bias,
                        const MetaTensor& ffn2_weight,
+                       const MetaTensor& ffn2_scale,
                        const MetaTensor& ffn2_bias,
-                       const std::string& int8_moe_method,
+                       const std::string& quant_method,
                        const int moe_topk,
                        MetaTensor* out) {
   out->set_dims(X.dims());

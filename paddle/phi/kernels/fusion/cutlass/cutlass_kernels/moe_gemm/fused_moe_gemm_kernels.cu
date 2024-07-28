@@ -15,12 +15,12 @@
  */
 
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/moe_gemm/fused_moe_gemm_kernels.h"
-#include <cuda_bf16.h>
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/moe_gemm/fused_moe_gemm_kernels_template.h"
 
 namespace phi {
 
 template class MoeGemmRunner<half, half>;
-template class MoeGemmRunner<float, float>;
+template class MoeGemmRunner<half, uint8_t>;
+template class MoeGemmRunner<half, cutlass::uint4b_t>;
 
 }  // namespace phi

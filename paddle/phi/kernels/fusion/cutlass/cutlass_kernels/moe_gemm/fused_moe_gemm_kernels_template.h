@@ -20,7 +20,6 @@
 #pragma once
 
 #include <cuda.h>
-#include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #include <math.h>
 #include <sstream>
@@ -46,8 +45,6 @@
 #include "paddle/phi/kernels/fusion/cutlass/utils/cuda_utils.h"
 
 namespace phi {
-
-#define ENABLE_BF16
 
 // ============================= Variable batched Gemm things
 // ===========================
@@ -75,16 +72,9 @@ void generic_moe_gemm_kernelLauncher(const T* A,
     throw std::runtime_error("[MoeGemm] Grouped gemm does not support split-k");
   }
 
-#ifdef ENABLE_BF16
-  static_assert(cutlass::platform::is_same<T, __nv_bfloat16>::value ||
-                    cutlass::platform::is_same<T, half>::value ||
-                    cutlass::platform::is_same<T, float>::value,
-                "Specialized for bfloat16, half, float");
-#else
   static_assert(cutlass::platform::is_same<T, half>::value ||
                     cutlass::platform::is_same<T, float>::value,
                 "Specialized for half, float");
-#endif
 
   static_assert(
       cutlass::platform::is_same<T, WeightType>::value ||
@@ -98,27 +88,13 @@ void generic_moe_gemm_kernelLauncher(const T* A,
       cutlass::platform::is_same<T, half>::value,
       cutlass::half_t,
       T>::type;
-#ifdef ENABLE_BF16
-  using ElementType = typename cutlass::platform::conditional<
-      cutlass::platform::is_same<ElementType_, __nv_bfloat16>::value,
-      cutlass::bfloat16_t,
-      ElementType_>::type;
-#else
   using ElementType = ElementType_;
-#endif
 
   using CutlassWeightType_ = typename cutlass::platform::conditional<
       cutlass::platform::is_same<WeightType, half>::value,
       cutlass::half_t,
       WeightType>::type;
-#ifdef ENABLE_BF16
-  using CutlassWeightType = typename cutlass::platform::conditional<
-      cutlass::platform::is_same<CutlassWeightType_, __nv_bfloat16>::value,
-      cutlass::bfloat16_t,
-      CutlassWeightType_>::type;
-#else
   using CutlassWeightType = CutlassWeightType_;
-#endif
 
   // We need separate config for each architecture since we will target
   // different tensorcore instructions. For float, we do not target TCs.

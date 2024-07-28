@@ -4924,8 +4924,8 @@
   optional: seq_length
 
 - op: fused_moe
-  args: (Tensor x, Tensor gate_weight, Tensor ffn1_weight, Tensor ffn1_bias, Tensor ffn2_weight, Tensor ffn2_bias,
-    str int8_moe_method = "None", int moe_topk = 2)
+  args: (Tensor x, Tensor gate_weight, Tensor ffn1_weight, Tensor ffn1_scale, Tensor ffn1_bias, Tensor ffn2_weight, Tensor ffn2_scale, Tensor ffn2_bias,
+    str quant_method = "None", int moe_topk = 2)
   output: Tensor (out)
   infer_meta:
     func: FusedMoeInferMeta

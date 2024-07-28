@@ -49,32 +49,6 @@
 
 namespace phi {
 
-template <typename T>
-void print_to_screen1(const T* result, const int length, const int size) {
-  if (result == nullptr) {
-    return;
-  }
-  T* tmp = reinterpret_cast<T*>(malloc(sizeof(T) * length));
-  cudaMemcpy(tmp, result, sizeof(T) * length, cudaMemcpyDeviceToHost);
-  for (int i = 0; i < size; ++i) {
-    VLOG(1) << i << ",  " << static_cast<float>(tmp[i]);
-  }
-  free(tmp);
-}
-
-template void print_to_screen1(const float* result,
-                               const int length,
-                               const int size);
-template void print_to_screen1(const half* result,
-                               const int length,
-                               const int size);
-template void print_to_screen1(const int* result,
-                               const int length,
-                               const int size);
-template void print_to_screen1(const int64_t* result,
-                               const int length,
-                               const int size);
-
 // ====================== Softmax things ===============================
 // We have our own implementation of softmax here so we can support transposing
 // the output in the softmax kernel when we extend this module to support

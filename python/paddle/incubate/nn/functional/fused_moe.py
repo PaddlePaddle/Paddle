@@ -23,10 +23,12 @@ def fused_moe(
     x,
     gate_weight,
     ffn1_weight,
+    ffn1_scale,
     ffn1_bias,
     ffn2_weight,
+    ffn2_scale,
     ffn2_bias,
-    int8_moe_method="",
+    quant_method="",
     moe_topk=2,
 ):
     """
@@ -36,11 +38,13 @@ def fused_moe(
     Args:
         x (Tensor): the input Tensor. Its shape is [bsz, seq_len, d_model].
         gate_weight (Tensor): the gate Tensor to choose expert. Its shape is [bsz, seq_len, e].
-        ffn1_weight (Tensor): the first batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward].
-        ffn1_bias (Tensor): the first batch matrix matmul bias. Its shape is [e, 1, d_feed_forward].
-        ffn2_weight (Tensor): the second batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward].
-        ffn2_bias (Tensor): the second batch matrix matmul bias. Its shape is [e, 1, d_feed_forward].
-        int8_moe_method (string): Currently not supported.
+        ffn1_weight (Tensor): the first batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward*2].
+        ffn1_scale (Tensor): the input scale Tensor Provided to weight for dequantization. Its shape is [e, d_model].
+        ffn1_bias (Tensor): the first batch matrix matmul bias. Its shape is [e, 1, d_feed_forward*2].
+        ffn2_weight (Tensor): the second batch matrix matmul weight. Its shape is [e, d_feed_forward, d_model].
+        ffn2_scale (Tensor): the input scale Tensor Provided to weight for dequantization. Its shape is [e, d_feed_forward].
+        ffn2_bias (Tensor): the second batch matrix matmul bias. Its shape is [e, 1, d_model].
+        quant_method (string): Currently not supported.
         moe_topk: Select the top k experts for each token.
 
     Returns:
@@ -61,7 +65,7 @@ def fused_moe(
             >>> ffn2_weight = paddle.randn([8, 1024, 4096])
             >>> ffn2_bias = paddle.randn([8, 1024, 4096])
             >>> moe_topk = 2
-            >>> out = fused_moe(x, gate_weight, ffn1_weight, ffn1_bias, ffn2_weight, ffn2_bias, int8_moe_method="", moe_topk)
+            >>> out = fused_moe(x, gate_weight, ffn1_weight, ffn1_bias, ffn2_weight, ffn2_bias, quant_method="", moe_topk)
             >>> print(out.shape)
             [10, 128, 1024]
 
@@ -71,10 +75,12 @@ def fused_moe(
             x,
             gate_weight,
             ffn1_weight,
+            ffn1_scale,
             ffn1_bias,
             ffn2_weight,
+            ffn2_scale,
             ffn2_bias,
-            int8_moe_method,
+            quant_method,
             moe_topk,
         )
         return final_out
@@ -87,13 +93,15 @@ def fused_moe(
                 'x': x,
                 'gate_weight': gate_weight,
                 'ffn1_weight': ffn1_weight,
+                'ffn1_scale': ffn1_scale,
                 'ffn1_bias': ffn1_bias,
                 'ffn2_weight': ffn2_weight,
+                'ffn2_scale': ffn2_scale,
                 'ffn2_bias': ffn2_bias,
             },
             outputs={'out': final_out},
             attrs={
-                'int8_moe_method': int8_moe_method,
+                'quant_method': quant_method,
                 'moe_topk': moe_topk,
             },
         )

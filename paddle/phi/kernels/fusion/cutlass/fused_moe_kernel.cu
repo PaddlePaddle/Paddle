@@ -47,10 +47,12 @@ void FusedMoeKernel(const Context& ctx,
                     const DenseTensor& X,
                     const DenseTensor& gate_weight,
                     const DenseTensor& ffn1_weight,
+                    const DenseTensor& ffn1_scale,
                     const DenseTensor& ffn1_bias,
                     const DenseTensor& ffn2_weight,
+                    const DenseTensor& ffn2_scale,
                     const DenseTensor& ffn2_bias,
-                    const std::string& int8_moe_method,  // None
+                    const std::string& quant_method,
                     const int moe_topk,
                     DenseTensor* out) {
   out->Resize(X.dims());
@@ -59,13 +61,25 @@ void FusedMoeKernel(const Context& ctx,
   auto fp16_moe_gemm_runner =
       MoeGemmRunner<typename PDDataTypeTraits<T>::DataType,
                     typename PDDataTypeTraits<T>::DataType>();
-  auto moe_compute = MoeHelper<T>(ctx, int8_moe_method, &fp16_moe_gemm_runner);
+  auto int8_moe_gemm_runner =
+      MoeGemmRunner<typename PDDataTypeTraits<T>::DataType, uint8_t>();
+  auto int4_moe_gemm_runner =
+      MoeGemmRunner<typename PDDataTypeTraits<T>::DataType,
+                    cutlass::uint4b_t>();
+
+  auto moe_compute = MoeHelper<T>(ctx,
+                                  quant_method,
+                                  &fp16_moe_gemm_runner,
+                                  &int8_moe_gemm_runner,
+                                  &int4_moe_gemm_runner);
 
   moe_compute.ComputeFFN(&X,
                          &gate_weight,
                          &ffn1_weight,
+                         &ffn1_scale,
                          &ffn1_bias,
                          &ffn2_weight,
+                         &ffn2_scale,
                          &ffn2_bias,
                          nullptr,
                          moe_topk,
@@ -80,5 +94,5 @@ PD_REGISTER_KERNEL(fused_moe,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedMoeKernel,
-                   float,
+                   // float,
                    phi::dtype::float16) {}
