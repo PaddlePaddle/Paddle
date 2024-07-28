@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import PlaceLike
     from paddle._typing.device_like import _Place
+    from paddle.io.dataloader.dataloader_iter import _DataLoaderIterBase
     from paddle.io.dataloader.dataset import Dataset
 
     _K = TypeVar('_K')
@@ -568,9 +569,7 @@ class DataLoader:
             else:
                 return len(self.dataset)
 
-    def __iter__(
-        self,
-    ) -> _DataLoaderIterSingleProcess | _DataLoaderIterMultiProcess:
+    def __iter__(self) -> _DataLoaderIterBase:
         if self.num_workers == 0:
             return _DataLoaderIterSingleProcess(self)
         elif self._persistent_workers:
@@ -582,7 +581,5 @@ class DataLoader:
         else:
             return _DataLoaderIterMultiProcess(self)
 
-    def __call__(
-        self,
-    ) -> _DataLoaderIterSingleProcess | _DataLoaderIterMultiProcess:
+    def __call__(self) -> _DataLoaderIterBase:
         return self.__iter__()
