@@ -210,10 +210,11 @@ TEST(EagerVariable, Constructor) {
                     "t3",
                     phi::errors::InvalidArgument("Tensor name should be "
                                                  "'t3'."));
-  PADDLE_ENFORCE_EQ(t3.defined(),
-                    false,
-                    phi::errors::InvalidArgument("Tensor t3 should be "
-                                                 "undefined."));
+  PADDLE_ENFORCE_EQ(
+      t3.defined(),
+      false,
+      phi::errors::InvalidArgument("Tensor t3 should be undefined but got %d.",
+                                   t3.defined()));
   t3.set_impl(dt);
 
   egr::EagerVariable et3 = egr::EagerVariable(t3);
@@ -229,10 +230,12 @@ TEST(EagerVariable, Constructor) {
   VLOG(6) << "SyncToTensor";
   paddle::Tensor t4;
   t4.set_impl(et3.GetTensorBase());
-  PADDLE_ENFORCE_EQ(t4.initialized(),
-                    true,
-                    phi::errors::InvalidArgument("Tensor t4 should be "
-                                                 "initialized."));
+  PADDLE_ENFORCE_EQ(
+      t4.initialized(),
+      true,
+      phi::errors::InvalidArgument(
+          "Tensor t4 should be initialized but got %d.", t4.initialized()));
+
   VLOG(6) << "Check Tensor";
   auto* dt3_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t4.impl())->data<float>();
@@ -245,10 +248,11 @@ TEST(EagerVariable, Constructor) {
                     phi::errors::InvalidArgument("Second element should be "
                                                  "10.0f."));
   t4.reset();
-  PADDLE_ENFORCE_EQ(t4.defined(),
-                    false,
-                    phi::errors::InvalidArgument("Tensor t4 should be "
-                                                 "undefined."));
+  PADDLE_ENFORCE_EQ(
+      t4.defined(),
+      false,
+      phi::errors::InvalidArgument("Tensor t4 should be undefined but got %d.",
+                                   t4.defined()));
 
   VLOG(6) << "Check Tensor Copy_";
   std::vector<int64_t> rows = {1, 2};
