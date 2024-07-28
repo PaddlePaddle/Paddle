@@ -437,7 +437,7 @@ class DataLoader:
     collate_fn: _CollateFn | None
     use_buffer_reader: bool
     prefetch_factor: int
-    worker_init_fn: Callable[[int], None]
+    worker_init_fn: Callable[[int], None] | None
     dataset: Dataset
     feed_list: Sequence[Tensor] | None
     places: Sequence[PlaceLike] | None
@@ -449,7 +449,7 @@ class DataLoader:
         self,
         dataset: Dataset,
         feed_list: Sequence[Tensor] | None = None,
-        places: Sequence[PlaceLike] | None = None,
+        places: PlaceLike | Sequence[PlaceLike] | None = None,
         return_list: bool = True,
         batch_sampler: BatchSampler | None = None,
         batch_size: int = 1,
@@ -461,7 +461,7 @@ class DataLoader:
         prefetch_factor: int = 2,
         use_shared_memory: bool = True,
         timeout: int = 0,
-        worker_init_fn: Callable[[int], None] = None,
+        worker_init_fn: Callable[[int], None] | None = None,
         persistent_workers: bool = False,
     ) -> None:
         self.return_list = return_list
