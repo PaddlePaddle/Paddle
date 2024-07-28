@@ -134,7 +134,7 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
 
   // Check results
   auto grad_hook_res = grad_test_node0->ApplyGradientHooks(grads);
-  PADDLE_ENFORCE_GT(
+  PADDLE_ENFORCE_EQ(
       std::dynamic_pointer_cast<phi::DenseTensor>(grad_hook_res[0][0].impl())
           ->data<float>()[0],
       is_remove_gradient_hook ? 5.0 : 11.0,
