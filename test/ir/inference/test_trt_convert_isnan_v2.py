@@ -56,14 +56,14 @@ class TrtConvertIsnanV2Test(TrtLayerAutoScanTest):
                         "X": ["input_data"],
                     },
                     "op_outputs": {
-                        "Out": ["output_data"],
+                        "Out": ["isnan_v2_output_data"],
                     },
                     "op_attrs": {},
                 },
                 {
                     "op_type": "cast",
-                    "op_inputs": {"X": ["output_data"]},
-                    "op_outputs": {"Out": ["cast_output_data"]},
+                    "op_inputs": {"X": ["isnan_v2_output_data"]},
+                    "op_outputs": {"Out": ["output_data"]},
                     "op_attrs": {
                         "in_dtype": 0,
                         "out_dtype": 5,
