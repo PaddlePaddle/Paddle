@@ -136,7 +136,7 @@ def fused_dot_product_attention(
     scaling_factor: float | None = None,
     training: bool = True,
     name: str | None = None,
-):
+) -> Tensor:
     r"""
     Fused Dot Product Attention. This is a fusion operator to compute scaled dot product attention in transformer
     model architecture. This operator only supports running on Ampere and Hopper GPU and need cudnn version >= 8906.
