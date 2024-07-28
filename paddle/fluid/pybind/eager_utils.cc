@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/op_function_common.h"
@@ -1978,7 +1979,7 @@ paddle::Tensor CreateTensorFromValue(const pir::Value& value) {
 
   auto dims = phi::vectorize(GetValueDims(value));
   auto ddims = phi::make_ddim(dims);
-  if (auto name = name_analysis::TryGetValueFirstName(value)) {
+  if (auto name = pir::utils::name_analysis::TryGetValueFirstName(value)) {
     tensor.set_name(name.value());
   }
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
