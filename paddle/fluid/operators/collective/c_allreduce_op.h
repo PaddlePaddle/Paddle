@@ -97,7 +97,7 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
                       ::common::errors::Unavailable(
                           "NCCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
-    comm_ctx->AllReduce(out, x, reduce_type);
+    comm_ctx->AllReduce(out, x, static_cast<int>(red_type));
 #else
     PADDLE_THROW(phi::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
