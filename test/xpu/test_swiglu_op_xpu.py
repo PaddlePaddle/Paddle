@@ -147,7 +147,7 @@ class TestSwiGLUDygraph(unittest.TestCase):
             feed={'x': x_np, 'y': y_np, 'concated_x': concated_x_np},
             fetch_list=[out1, out2],
         )
-        np.testing.assert_equal(out1, out2)
+        np.testing.assert_equal(t1, t2)
 
     def check_main(self, shape):
         self.check_dygraph(shape)

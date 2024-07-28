@@ -256,8 +256,8 @@ TEST(OperatorRegistrar, CUDA) {
 }
 
 static int op_test_value = 0;
-using paddle::platform::DeviceContext;
 using phi::CPUContext;
+using phi::DeviceContext;
 using phi::GPUContext;
 
 namespace paddle {

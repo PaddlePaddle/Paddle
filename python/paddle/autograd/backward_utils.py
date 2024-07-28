@@ -62,7 +62,10 @@ class ValueWrapper:
         if isinstance(value, ValueWrapper):
             assert isinstance(value._value, (type(None), pir.Value))
         else:
-            assert isinstance(value, (type(None), pir.Value))
+            if not isinstance(value, (type(None), pir.Value)):
+                raise TypeError(
+                    "Value Wrapper is onlys support None and pir.Value"
+                )
         self._value = value._value if isinstance(value, ValueWrapper) else value
 
     def __hash__(self) -> int:

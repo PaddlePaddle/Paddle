@@ -31,8 +31,8 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"
 #include "xpu/bkcl.h"
 #include "xpu/runtime.h"
@@ -102,7 +102,7 @@ struct BKCLContext {
   BKCLContext_t comm_;
 
   explicit BKCLContext(int dev_id)
-      : ctx_(new platform::XPUDeviceContext(XPUPlace(dev_id))),
+      : ctx_(new platform::XPUDeviceContext(phi::XPUPlace(dev_id))),
         comm_{nullptr} {}
 
   XPUStream stream() const { return ctx_->stream(); }

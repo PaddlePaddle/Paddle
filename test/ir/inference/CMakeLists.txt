@@ -307,3 +307,57 @@ if(WITH_GPU AND TENSORRT_FOUND)
     endif()
   endif()
 endif()
+
+if(WITH_GPU AND TENSORRT_FOUND)
+  if(WITH_ONEDNN)
+    py_test_modules(test_matmul_scale_fuse_pass_pir MODULES
+                    test_matmul_scale_fuse_pass ENVS FLAGS_enable_pir_api=1)
+    if(WIN32)
+      set_tests_properties(test_matmul_scale_fuse_pass_pir PROPERTIES TIMEOUT
+                                                                      300)
+    else()
+      py_test_modules(
+        test_matmul_v2_scale_fuse_pass_pir MODULES
+        test_matmul_v2_scale_fuse_pass ENVS FLAGS_enable_pir_api=1)
+      set_tests_properties(test_matmul_scale_fuse_pass_pir PROPERTIES TIMEOUT
+                                                                      60)
+      set_tests_properties(test_matmul_v2_scale_fuse_pass_pir PROPERTIES TIMEOUT
+                                                                         120)
+    endif()
+    if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
+      message(STATUS "Skip tests unrelated to CUDA/TRT")
+    else()
+      set(PIR_COVERAGE_MKLDNN_TESTS
+          test_mkldnn_conv_affine_channel_fuse_pass
+          test_mkldnn_conv_gelu_fuse_pass
+          test_mkldnn_conv_hard_sigmoid_fuse_pass
+          test_mkldnn_conv_hard_swish_fuse_pass
+          test_mkldnn_conv_mish_fuse_pass
+          test_mkldnn_conv_transpose_bias_fuse_pass
+          test_mkldnn_conv3d_op
+          test_mkldnn_depthwise_conv_pass)
+      foreach(target ${PIR_COVERAGE_MKLDNN_TESTS})
+        py_test_modules(${target}_pir MODULES ${target} ENVS
+                        FLAGS_enable_pir_api=1)
+        set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+        message(STATUS "PIR Copied Test: ${target}_pir in inference test")
+      endforeach()
+
+      set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass_pir
+                           PROPERTIES TIMEOUT 120)
+      set_tests_properties(test_mkldnn_conv_gelu_fuse_pass_pir
+                           PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_mkldnn_conv_hard_sigmoid_fuse_pass_pir
+                           PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_mkldnn_conv_hard_swish_fuse_pass_pir
+                           PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_mkldnn_conv_mish_fuse_pass_pir
+                           PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_mkldnn_conv_transpose_bias_fuse_pass_pir
+                           PROPERTIES TIMEOUT 100)
+      set_tests_properties(test_mkldnn_conv3d_op_pir PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_mkldnn_depthwise_conv_pass_pir
+                           PROPERTIES TIMEOUT 120)
+    endif()
+  endif()
+endif()

@@ -59,7 +59,7 @@ paddle::any GetAttrValue(const Attribute& attr) {
     case proto::AttrType::SCALARS:
       return PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>, attr);
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported Attribute value type `%s` for phi.",
           platform::demangle(attr.type().name())));
   }
@@ -142,8 +142,8 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
     }
 
     default:
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Unsupported attribute type %d.", attr_desc.type()));
+      PADDLE_THROW(phi::errors::Unavailable("Unsupported attribute type %d.",
+                                            attr_desc.type()));
   }
   return paddle::blank();
 }
@@ -164,8 +164,8 @@ Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc) {
       return val;
     }
     default:
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Unsupported attribute type %d.", attr_desc.type()));
+      PADDLE_THROW(phi::errors::Unavailable("Unsupported attribute type %d.",
+                                            attr_desc.type()));
   }
   return paddle::blank();
 }
@@ -296,7 +296,7 @@ std::vector<paddle::experimental::Scalar> MakeScalarsFromAttribute(
 void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
                              AttributeMap* attrs) {
   PADDLE_ENFORCE_NOT_NULL(
-      attrs, platform::errors::InvalidArgument("attrs can not be nullptr"));
+      attrs, phi::errors::InvalidArgument("attrs can not be nullptr"));
   for (auto& attr : op_proto.attrs()) {
     proto::AttrType attr_type = attr.type();
     const std::string& attr_name = attr.name();

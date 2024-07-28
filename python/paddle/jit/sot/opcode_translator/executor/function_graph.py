@@ -121,6 +121,15 @@ def convert_to_symbol(inputs: Any):
     return map_variables(func, inputs)
 
 
+def convert_to_py_value(inputs):
+    def func(x):
+        if isinstance(x, VariableBase):
+            return x.get_py_value()
+        return x
+
+    return map_variables(func, inputs)
+
+
 def record_symbols(SIR, *args, **kwargs):
     symbol_meta_map = {}
     params = set()

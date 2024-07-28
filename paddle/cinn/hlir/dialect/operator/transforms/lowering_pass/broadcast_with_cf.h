@@ -27,19 +27,16 @@ struct GroupDimExprInfo {
   std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
 };
 
-std::shared_ptr<BroadcastTree> ConstructBroadcastTree(
+std::optional<std::shared_ptr<BroadcastTree>> ConstructBroadcastTree(
     const common::BroadcastLeaf& leaves);
 
-bool NeedBroadcastWithCF(const OpLoweringGroupPtr& group);
-bool NeedBroadcastWithCF(const common::BroadcastLeaf& leaves);
+std::optional<std::shared_ptr<BroadcastTree>> GetBroadcastTreeForOptimize(
+    const OpLoweringGroupPtr& group);
+bool ContainBroadcastShape(const common::BroadcastLeaf& leaves);
 GroupDimExprInfo GetGroupDimExprInfo(const OpLoweringGroupPtr& group);
 
-pir::Operation* CompileBroadcastTreeToConditionBlock(
+std::unordered_map<std::string, pir::Attribute> CompileBroadcastTree(
     const OpLoweringGroupPtr& group,
     const BroadcastTree& broadcast_tree,
-    const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
-    const std::vector<pir::Value>& group_inputs,
-    const std::vector<pir::Type>& output_types,
-    pir::PatternRewriter& rewriter  // NOLINT
-);
+    const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx);
 }  // namespace cinn::dialect::ir::details

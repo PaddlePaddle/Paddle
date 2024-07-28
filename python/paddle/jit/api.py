@@ -931,6 +931,19 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
         f.write(meta.serialize_to_string())
 
 
+def _get_function_names_from_layer(layer: Layer) -> list[str]:
+    cls = layer.__class__
+    return [
+        member_name
+        for member_name, member in inspect.getmembers(cls)
+        if (
+            inspect.isfunction(member)
+            or inspect.ismethod(member)
+            or inspect.ismethoddescriptor(member)
+        )
+    ]
+
+
 @_run_save_pre_hooks
 @switch_to_static_graph
 def save(
@@ -1124,11 +1137,11 @@ def save(
     inner_input_spec = None
     if input_spec is not None:
         if isinstance(layer, Layer):
-            for attr_func in dir(inner_layer):
-                static_func = getattr(inner_layer, attr_func, None)
+            for member_name in _get_function_names_from_layer(inner_layer):
+                static_func = getattr(inner_layer, member_name, None)
                 if (
                     isinstance(static_func, StaticFunction)
-                    and 'forward' != attr_func
+                    and 'forward' != member_name
                 ):
                     raise ValueError(
                         f"If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is {type(input_spec)}."
@@ -1164,15 +1177,13 @@ def save(
     scope = core.Scope()
     extra_var_info = {}
     if isinstance(layer, Layer):
-        functions = list(set(dir(inner_layer)))
+        functions = list(set(_get_function_names_from_layer(inner_layer)))
         functions = sorted(functions)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
             with_hook = True
     else:
         # layer is function
-        functions = [
-            layer,
-        ]
+        functions = [layer]
 
     combine_vars = {}
     combine_program = []

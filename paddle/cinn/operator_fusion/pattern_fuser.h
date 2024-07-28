@@ -263,7 +263,8 @@ struct LoopFrameworkVisitor {
   }
 
   MaybeLoopFramework operator()(const UnsupportPattern<T>& pattern) {
-    PADDLE_ENFORCE(false, "Not support GetLoopRange.");
+    PADDLE_THROW(
+        ::common::errors::Unimplemented("Unsupport for GetLoopRange."));
   }
 };
 

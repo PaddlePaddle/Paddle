@@ -50,8 +50,7 @@ typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(::pir::Operation*);
 struct GroupInfo {
   std::vector<int64_t> data_space;
   std::vector<int64_t> reduce_axis;
-  int64_t raw_data_rank;
-  std::vector<int64_t> raw_reduce_axis;
+  std::vector<int64_t> loop_transform_map;
   std::set<std::string> reduce_var_names;
   std::set<std::string> shared_var_names;
   std::set<std::string> direct_output_var_names;
