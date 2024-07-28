@@ -58,14 +58,15 @@ def fused_moe(
             >>> from paddle.incubate.nn.functional import fused_moe
 
             >>> paddle.set_device('gpu')
+            >>> paddle.set_default_dtype("float16")
             >>> x = paddle.randn([10, 128, 1024])
-            >>> gate_weight = paddle.randn([10, 128, 8])
+            >>> gate_weight = paddle.randn([10, 128, 8], dtype=paddle.float32)
             >>> ffn1_weight = paddle.randn([8, 1024, 4096])
-            >>> ffn1_bias = paddle.randn([8, 1024, 4096])
-            >>> ffn2_weight = paddle.randn([8, 1024, 4096])
-            >>> ffn2_bias = paddle.randn([8, 1024, 4096])
+            >>> ffn1_bias = paddle.randn([8, 1, 4096])
+            >>> ffn2_weight = paddle.randn([8, 2048, 1024])
+            >>> ffn2_bias = paddle.randn([8, 1, 1024])
             >>> moe_topk = 2
-            >>> out = fused_moe(x, gate_weight, ffn1_weight, ffn1_bias, ffn2_weight, ffn2_bias, quant_method="", moe_topk)
+            >>> out = fused_moe(x, gate_weight, ffn1_weight, ffn1_bias, ffn1_bias, ffn2_weight, ffn2_bias, ffn2_bias, "None", moe_topk)
             >>> print(out.shape)
             [10, 128, 1024]
 
