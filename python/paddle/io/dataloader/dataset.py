@@ -485,17 +485,19 @@ class Subset(Dataset[_T]):
             >>> from paddle.io import Subset
 
             >>> # example 1:
-            >>> a = paddle.io.Subset(dataset=range(1, 4), indices=[0, 2])
+            >>> a = paddle.io.Subset(dataset=range(1, 4), indices=[0, 2]) # type: ignore[var-annotated]
             >>> print(list(a))
             [1, 3]
 
             >>> # example 2:
-            >>> b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1])
+            >>> b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1])) # type: ignore[var-annotated]
             >>> print(list(b))
             [2, 2]
     """
 
-    def __init__(self, dataset: Dataset[_T], indices: Sequence[int]) -> None:
+    def __init__(
+        self, dataset: Sequence[_T] | Dataset[_T], indices: Sequence[int]
+    ) -> None:
         self.dataset = dataset
         self.indices = indices
 
