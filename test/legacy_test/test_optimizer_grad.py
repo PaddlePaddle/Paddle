@@ -446,7 +446,7 @@ class TestSGDOptimizer(TestOptimizer):
                 self._check_grads(use_bf16=True)
 
     def test_optimizer_amp(self):
-        if not paddle.framework.in_pir_mode():
+        if paddle.framework.in_pir_mode():
             self._check_grads(use_bf16=True)
 
 
