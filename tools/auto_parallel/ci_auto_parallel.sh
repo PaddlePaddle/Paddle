@@ -115,6 +115,8 @@ get_diff_TO_case
 
 ####################
 case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))
+echo 1111,$case_list
+
 if [[ ${#case_list[*]} -ne 0 ]];then
     echo -e "\033[31m =======CI Check case========= \033"
     echo -e "\033[31m ---- case_list length: ${#case_list[*]}, cases: ${case_list[*]} \033"
