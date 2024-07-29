@@ -28,6 +28,7 @@
 #include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/funcs/fast_divmod.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -90,17 +91,22 @@ static __global__ void KeBNBackwardData(const T *dy,
                                         const BatchNormParamType<T> *scale,
                                         const BatchNormParamType<T> *variance,
                                         const double epsilon,
-                                        const int C,
-                                        const int HxW,
+                                        const funcs::FastDivMod C,
+                                        const funcs::FastDivMod HxW,
                                         const int num,
                                         T *dx) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
-    const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
-    BatchNormParamType<T> inv_var = rsqrt(variance[c] + epsilon);
-    dx[i] = static_cast<T>(static_cast<BatchNormParamType<T>>(dy[i]) *
-                           scale[c] * inv_var);
+    const int d = layout == phi::DataLayout::kNCHW ? HxW.Div(i) : i;
+    const auto tmp = C.Divmod(d);
+    const int c = tmp.val[1];
+    BatchNormParamType<T> v = variance[c];
+    T y = dy[i];
+    BatchNormParamType<T> s = scale[c];
+    BatchNormParamType<T> inv_var = rsqrt(v + epsilon);
+    dx[i] = static_cast<T>(static_cast<BatchNormParamType<T>>(y) *
+                           s * inv_var);
   }
 }
 
@@ -1168,17 +1174,19 @@ void BatchNormGradFunctor(const Context &ctx,
                       stream);
     }
 
+    funcs::FastDivMod fastDiv_C = funcs::FastDivMod(C);
+    funcs::FastDivMod fastDiv_HxW = funcs::FastDivMod(H * W);
     if (compute_format == DataLayout::kNCHW) {
       if (data_layout == DataLayout::kNHWC) {
         if (d_x) {
           KeBNBackwardData<T, phi::DataLayout::kNHWC>
-              <<<grid1, block, 0, stream>>>(
+              <<<grid1/4, block, 0, stream>>>(
                   d_y->data<T>(),
                   new_scale.data<BatchNormParamType<T>>(),
                   running_var_data,
                   epsilon,
-                  C,
-                  H * W,
+                  fastDiv_C,
+                  fastDiv_HxW,
                   num,
                   d_x->data<T>());
         }
@@ -1199,13 +1207,13 @@ void BatchNormGradFunctor(const Context &ctx,
       } else {
         if (d_x) {
           KeBNBackwardData<T, phi::DataLayout::kNCHW>
-              <<<grid1, block, 0, stream>>>(
+              <<<grid1/4, block, 0, stream>>>(
                   d_y->data<T>(),
                   new_scale.data<BatchNormParamType<T>>(),
                   running_var_data,
                   epsilon,
-                  C,
-                  H * W,
+                  fastDiv_C,
+                  fastDiv_HxW,
                   num,
                   d_x->data<T>());
         }
@@ -1227,13 +1235,13 @@ void BatchNormGradFunctor(const Context &ctx,
     } else {
       if (d_x) {
         KeBNBackwardData<T, phi::DataLayout::kNHWC>
-            <<<grid1, block, 0, stream>>>(
+            <<<grid1/4, block, 0, stream>>>(
                 d_y->data<T>(),
                 new_scale.data<BatchNormParamType<T>>(),
                 running_var_data,
                 epsilon,
-                C,
-                H * W,
+                fastDiv_C,
+                fastDiv_HxW,
                 num,
                 d_x->data<T>());
       }

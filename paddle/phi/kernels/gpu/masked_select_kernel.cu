@@ -19,6 +19,11 @@
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
 
+#include <thrust/copy.h>
+#include <thrust/execution_policy.h>
+#include <thrust/functional.h>
+
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -83,9 +88,25 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         input_dim,
                         mask_dim));
 
-  using Functor = MaskedSelectFunctor<bool, T, T>;
-  phi::funcs::SelectKernel<bool, T, T, 1, Functor>(
-      dev_ctx, mask_expand, x_expand, out, Functor());
+  // using Functor = MaskedSelectFunctor<bool, T, T>;
+  // phi::funcs::SelectKernel<bool, T, T, 1, Functor>(
+  //     dev_ctx, mask_expand, x_expand, out, Functor());
+  
+  const int64_t numel = mask_expand.numel();
+  const bool *mask_data = mask_expand.data<bool>();
+  const T *x_data = x_expand.data<T>();
+  
+  out->Resize(common::make_ddim({numel}));
+  auto out_data = dev_ctx.template Alloc<T>(out);
+  
+  T* end_ptr = thrust::copy_if(thrust::device.on(dev_ctx.stream()),
+                                      x_data,
+                                      x_data + numel,
+                                      mask_data,
+                                      out_data,
+                                      thrust::identity<bool>());
+  int keep_num = (int)(end_ptr - out_data);
+  out->Resize(common::make_ddim({keep_num}));
 }
 
 }  // namespace phi

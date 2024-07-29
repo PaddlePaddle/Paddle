@@ -442,8 +442,34 @@ __global__ void FilterGradAddupGpuKernel(const int nthreads,
                                          T* filter_grad) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
-    filter_grad[i] = filter_grad[i] + dweight_3d[i];
+
+  constexpr int VecSize = sizeof(int4) / sizeof(T);
+  if (sizeof(int4) > sizeof(T)) {
+    int4 in1, in2;
+    T* in1_ptr = reinterpret_cast<T*>(&in1);
+    T* in2_ptr = reinterpret_cast<T*>(&in2);
+    constexpr int VecSize = sizeof(int4) / sizeof(T);
+#pragma unroll
+    for (int i = index; i < nthreads / VecSize; i += offset) {
+      in1 = reinterpret_cast<const int4*>(dweight_3d)[i];
+      in2 = reinterpret_cast<int4*>(filter_grad)[i];
+#pragma unroll
+      for (int j = 0; j < VecSize; j++) {
+        in2_ptr[j] += in1_ptr[j];
+      }
+      reinterpret_cast<int4*>(filter_grad)[i] = in2;
+    }
+
+    // in only one thread, process final elements (if there are any)
+    if (index == nthreads / VecSize) {
+#pragma unroll
+      for (int i = index * VecSize; i < nthreads; ++i)
+        filter_grad[i] = filter_grad[i] + dweight_3d[i];
+    }
+  } else {
+    for (size_t i = index; i < nthreads; i += offset) {
+      filter_grad[i] = filter_grad[i] + dweight_3d[i];
+    }
   }
 }
 
@@ -455,10 +481,12 @@ void FilterGradAddup(const Context& dev_ctx,
                      const int width,
                      const T* dweight_3d,
                      T* filter_grad) {
-  int blocks = NumBlocks(nthreads);
-  int threads = nthreads >= THRESHOLD ? kNumCUDAThreadsL : kNumCUDAThreadsS;
+  const int kVecSize = sizeof(int4) / sizeof(T);
+  const int block = 512;
+  const int num_per_block = kVecSize * block;
+  const int grid = (nthreads + num_per_block - 1) / num_per_block;
   FilterGradAddupGpuKernel<T>
-      <<<blocks, threads, 0, dev_ctx.stream()>>>(
+      <<<grid, block, 0, dev_ctx.stream()>>>(
           nthreads, n, height, width, dweight_3d, filter_grad);
 }
 
