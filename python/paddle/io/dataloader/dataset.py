@@ -218,6 +218,9 @@ class IterableDataset(Dataset[_T]):
             >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
             >>> class RangeIterableDataset(IterableDataset):
+            ...     start: int
+            ...     end: int
+            ...
             ...     def __init__(self, start, end):
             ...         self.start = start
             ...         self.end = end
