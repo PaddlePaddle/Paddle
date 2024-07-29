@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from functools import reduce
-from typing import List, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
@@ -30,8 +32,15 @@ from .static.utils import (
     verify_shard_spec,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 
-def shard_tensor(x, process_mesh=None, shard_spec=None):
+
+def shard_tensor(
+    x: Tensor,
+    process_mesh: ProcessMesh = None,
+    shard_spec: list[str] = None,  # None 或者包含str或None的列表
+) -> Tensor:
     """
     Shard a tensor on a process mesh according to the shard specification.
 
@@ -118,8 +127,12 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
 
 
 def shard_op(
-    op, process_mesh=None, in_shard_specs=None, out_shard_specs=None, **kwargs
-):
+    op: Callable,  # 假设Callable是合适类型注解
+    process_mesh: ProcessMesh = None,
+    in_shard_specs: list[list[str]] = None,  # 嵌套的Optional和List
+    out_shard_specs: list[list[str]] = None,
+    **kwargs,
+) -> Any:
     """
     Shard an operation on a process mesh according to its input and output shard specification.
 
@@ -207,7 +220,7 @@ def shard_op(
 _g_recompute_idx = -1
 
 
-def recompute(op):
+def recompute(op: Callable) -> None:
     global _g_recompute_idx
     _g_recompute_idx += 1
 
@@ -233,7 +246,7 @@ def recompute(op):
     return RecomputeOperator(op)
 
 
-def exclude_ops_in_recompute(run_function):
+def exclude_ops_in_recompute(run_function: Callable) -> None:
     """
     Exclude some operators in recompute segments.
         Args:
@@ -272,7 +285,7 @@ class CollectionNames:
     LOGGING = "logging"
 
 
-def get_collection(name):
+def get_collection(name: str) -> dict:
     collection = _g_collections.get(name, None)
     if collection is None:
         collection = []
@@ -280,7 +293,9 @@ def get_collection(name):
     return _g_collections[name]
 
 
-def add_to_collection(collection_name, value, name=None):
+def add_to_collection(
+    collection_name: str, value: str, name: str = None
+) -> dict:
     if collection_name not in _g_collections:
         _g_collections[collection_name] = []
     if name is not None:
@@ -295,7 +310,7 @@ def add_to_collection(collection_name, value, name=None):
         _g_collections[collection_name].append((None, value))
 
 
-def fetch(tensor, name=None, logging=False):
+def fetch(tensor: Tensor, name: str = None, logging: bool = False) -> None:
     if isinstance(tensor, paddle.static.Variable):
         tensor = tensor.name
     elif isinstance(tensor, str):
@@ -312,17 +327,17 @@ def fetch(tensor, name=None, logging=False):
 _g_mesh = None
 
 
-def get_mesh():
+def get_mesh() -> ProcessMesh:
     global _g_mesh
     return _g_mesh
 
 
-def set_mesh(mesh):
+def set_mesh(mesh) -> ProcessMesh:
     global _g_mesh
     _g_mesh = mesh
 
 
-def create_mesh(mesh_dims: List[Tuple[str, int]]):
+def create_mesh(mesh_dims: list[tuple[str, int]]) -> ProcessMesh:
     """
     Create a global process_mesh for auto parallel.
 
