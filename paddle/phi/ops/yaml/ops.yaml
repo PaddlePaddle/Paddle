@@ -4806,6 +4806,7 @@
     data_type : input
   backward : view_dtype_grad
   no_need_buffer : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : view_shape
   args : (Tensor input, int64_t[] dims = {})
