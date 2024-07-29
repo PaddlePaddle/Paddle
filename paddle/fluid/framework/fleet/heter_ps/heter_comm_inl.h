@@ -1507,8 +1507,8 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
@@ -1687,8 +1687,8 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
@@ -1890,8 +1890,8 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_normal_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
@@ -2065,8 +2065,8 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);

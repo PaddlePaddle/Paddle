@@ -133,13 +133,12 @@ CustomDefaultStreamGarbageCollector::CustomDefaultStreamGarbageCollector(
     : GarbageCollector(place, max_memory_size) {}
 
 void CustomDefaultStreamGarbageCollector::Wait() const {
-  static_cast<platform::CustomDeviceContext *>(this->dev_ctx_)
-      ->WaitStreamCallback();
+  static_cast<phi::CustomContext *>(this->dev_ctx_)->WaitStreamCallback();
 }
 
 void CustomDefaultStreamGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
-  static_cast<platform::CustomDeviceContext *>(this->dev_ctx_)
+  static_cast<phi::CustomContext *>(this->dev_ctx_)
       ->AddStreamCallback(callback);
 }
 
