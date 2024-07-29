@@ -804,6 +804,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   infer_context->SetShapeOrDataForValue(
       res,
       slice_utils::SliceRawInferSymbolicShape(operand_source,
+                                              res,
                                               starts,
                                               ends,
                                               axes_vec,

@@ -144,6 +144,7 @@ inline std::vector<int64_t> FormatSliceAxes(
 
 inline ShapeOrData SliceRawInferSymbolicShape(
     const pir::Value x,
+    const pir::Value out,
     const ExprVec &starts_expr,
     const ExprVec &ends_expr,
     const std::vector<int64_t> &axes_raw,
@@ -210,7 +211,7 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     const int64_t start =
         starts_int[0] < 0 ? starts_int[0] + in_shapeordata.data().value().size()
                           : starts_int[0];
-    const int64_t end = [&] -> int64_t {
+    const int64_t end = [&]() -> int64_t {
       if (ends_int[0] < 0) {
         return ends_int[0] + in_shapeordata.data().value().size();
       }
@@ -231,7 +232,18 @@ inline ShapeOrData SliceRawInferSymbolicShape(
         symbol::TensorShapeOrDataDimExprs(shape, out_data)};
   };
 
-  return in_shapeordata.data().has_value() ? GetDataDimExprs()
-                                           : GetShapeDimExprs();
+  const auto &out_shape = in_shapeordata.data().has_value()
+                              ? GetDataDimExprs()
+                              : GetShapeDimExprs();
+  if (out_shape.data().has_value() && out_shape.shape().empty()) {  // 0D tensor
+    const auto &out_ddim =
+        out.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    if (out_ddim.size() == 1 && out_ddim[0] == 1) {  // value is 1D
+      return symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          std::vector<symbol::DimExpr>{1}, out_shape.data().value())};
+    }
+  }
+
+  return out_shape;
 }
 }  // namespace paddle::dialect::slice_utils
