@@ -3876,6 +3876,7 @@
     data_type : x
   intermediate : noise
   backward : rrelu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rsqrt
   args : (Tensor x)
