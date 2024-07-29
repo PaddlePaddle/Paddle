@@ -897,6 +897,56 @@ bool MeshgridOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(res, sym_shape_dim_exprs);
   return true;
 }
+bool MultiplexOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // 获取输入张量的符号形状
+  std::vector<symbol::ShapeOrDataDimExprs> ins_shapes;
+  for (int i = 0; i < op->operand_sources(); ++i) {
+    ins_shapes.push_back(
+        infer_context->GetShapeOrDataForValue(op->operand_source(i)));
+  }
+
+  // 获取ids张量的符号形状
+  const auto &ids_shape = infer_context->GetShapeOrDataForValue(
+      op->operand_source(op->operand_sources() - 1));
+  const auto &ids_dims = ids_shape.shape();
+
+  // 检查ids张量的维度
+  PADDLE_ENFORCE_EQ(ids_dims.size(),
+                    2,
+                    common::errors::PreconditionNotMet(
+                        "The index tensor must be a vector with 2 dimensions"));
+
+  // 检查输入张量的数量
+  PADDLE_ENFORCE_GT(
+      ins_shapes.size(),
+      1,
+      common::errors::InvalidArgument("multiplex operator should have more "
+                                      "than one candidate input tensors."));
+
+  // 检查第一个输入张量的维度
+  const auto &first_in_dims = ins_shapes[0].shape();
+  PADDLE_ENFORCE_GE(
+      first_in_dims.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The rank of candidate tensors must be not less than 2."));
+
+  // 构建输出张量的维度
+  std::vector<symbol::DimExpr> out_dims(first_in_dims);
+  out_dims[0] = ids_dims[0];  // 将输出的第一个维度设置为ids的第一个维度
+
+  // 设置输出张量的符号形状
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  // 设置输出张量的数据类型（这里假设所有输入张量的数据类型相同）
+  // 注意：在实际实现中，可能需要根据实际情况处理数据类型不一致的情况
+  infer_context->SetDataTypeForValue(op->result(0), ins_shapes[0].dtype());
+
+  return true;
+}
 
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
