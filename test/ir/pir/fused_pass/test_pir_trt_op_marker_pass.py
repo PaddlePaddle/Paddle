@@ -491,12 +491,6 @@ class TestSplitTRTPattern(PassTest):
                 x = paddle.static.data(
                     name='x', shape=[3, 9, 5], dtype='float32'
                 )
-                # num_or_sections=paddle.static.data(
-                #     name='sections',shape=[1],dtype='float32'
-                # )
-                # axis=paddle.static.data(
-                #     name='axis',shape=[1],dtype='float32'
-                # )
                 num_or_sections = [2, 3, 4]
                 axis = 1
                 output0, output1, output2 = paddle.split(
@@ -506,8 +500,6 @@ class TestSplitTRTPattern(PassTest):
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
                     "x": np.random.random([3, 9, 5]).astype("float32"),
-                    # "sections":np.array([3,3]).astype("int32"),
-                    # "axis":np.array([1]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
