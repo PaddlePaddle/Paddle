@@ -1427,7 +1427,6 @@ void Product::Verify() const {
                     ::common::errors::InvalidArgument(
                         "Product node should have more than 1 operands"));
   MultiOperandVerify(operands());
-  x
 }
 
 Type Sum::type() const { return operands().front().type(); }
