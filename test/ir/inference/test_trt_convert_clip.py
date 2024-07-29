@@ -71,7 +71,6 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
                             }
                         ]
                         ops = self.generate_op_config(ops_config)
-                        # print(ops_config)
                         program_config = ProgramConfig(
                             ops=ops,
                             weights={
