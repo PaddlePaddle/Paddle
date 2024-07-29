@@ -525,21 +525,32 @@ bool KthvalueOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(op->result(1), shape_data);
   return true;
 }
-bool InverseInferSymbolicShape(pir::Operation *op,
-                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  auto x_dims = x_shape_or_data.shape();
 
-  std::vector<symbol::DimExpr> output_dims = x_dims;
+bool InverseOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // 获取输入张量的符号形状
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> input_dims = input_shape.shape();
+  int input_rank = static_cast<int>(input_dims.size());
+
+  PADDLE_ENFORCE_GE(
+      input_rank,
+      2,
+      phi::errors::InvalidArgument(
+          "The dimension of Input(Input) is expected to be no less than 2. "
+          "But received: Input(Input)'s dimension = %zu, shape = [%s].",
+          input_rank,
+          input_dims));
+
+  std::vector<symbol::DimExpr> output_dims = input_dims;
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(output_dims)});
-
   return true;
 }
-
 bool LogcumsumexpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // same as CumsumOpInferSymbolicShape
