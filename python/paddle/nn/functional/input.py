@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops
 
 from ...base.data_feeder import check_variable_and_dtype
@@ -127,10 +128,31 @@ def one_hot(
         return one_hot_out
 
 
+def embedding_renorm_(
+    x: Tensor, weight: Tensor, max_norm: float, norm_type: float = 2.0
+) -> Tensor:
+    r"""
+    This operator is used to update the embedding weight by renorm.
+    """
+    with paddle.set_grad_enabled(False):
+        unique_x = paddle.unique(x)
+        selected_rows = paddle.index_select(weight, unique_x)
+        norm = paddle.norm(selected_rows, p=norm_type, axis=1, keepdim=True)
+        mask = norm > max_norm
+        scale = max_norm / (norm + 1e-7)
+        scale = paddle.where(mask, scale, paddle.ones_like(scale))
+        scale = paddle.expand_as(scale, selected_rows)
+        updated_rows = selected_rows * scale
+        paddle.scatter_(weight, unique_x, updated_rows, overwrite=True)
+        return weight
+
+
 def embedding(
     x: Tensor,
     weight: Tensor,
     padding_idx: int | None = None,
+    max_norm: float = None,
+    norm_type: float = 2.0,
     sparse: bool = False,
     name: str | None = None,
 ) -> Tensor:
@@ -178,6 +200,9 @@ def embedding(
             to :math:`weight.shape[0] + padding\_idx` . It will output all-zero padding data whenever lookup
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
             If set None, it makes no effect to output. Default: None.
+        max_norm(float, optional): If provided, will renormalize the embedding vectors to have a norm larger than
+            :attr:`max\_norm` . It will inplace update the input embedding weight. Default: None.
+        norm_type(float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
         name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
@@ -231,14 +256,19 @@ def embedding(
     padding_idx = (
         -1
         if padding_idx is None
-        else padding_idx
-        if padding_idx >= 0
-        else (weight.shape[0] + padding_idx)
+        else (
+            padding_idx if padding_idx >= 0 else (weight.shape[0] + padding_idx)
+        )
     )
 
     if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
         raise ValueError(
             f"padding_idx must be within [-{weight.shape[0]}, {weight.shape[0]})"
+        )
+
+    if max_norm:
+        weight = embedding_renorm_(
+            x, weight, max_norm=max_norm, norm_type=norm_type
         )
 
     if in_dynamic_or_pir_mode():
