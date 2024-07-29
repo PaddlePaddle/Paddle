@@ -347,7 +347,7 @@ struct FlowGraph {
           Node user_op_node(user_op);
           VLOG(10) << "[PreProcess] control flow link:" << op_result_node
                    << " -> " << user_op_node;
-          AddEdge(op_result_node, user_op_node, 1.0f, 1.0f, true);
+          AddEdge(op_result_node, user_op_node, 1.0f, 0.0f, true);
         }
       }
     }
