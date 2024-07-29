@@ -251,11 +251,6 @@ def test_paddle_to_tensorrt_conversion_idg():
 
 if __name__ == "__main__":
     # test_paddle_to_tensorrt_conversion_dummy()
-<<<<<<< HEAD
-    test_paddle_to_tensorrt_conversion_bert()
-    # test_paddle_to_tensorrt_conversion_r50()
-=======
     # test_paddle_to_tensorrt_conversion_bert()
     # test_paddle_to_tensorrt_conversion_r50()
     test_paddle_to_tensorrt_conversion_idg()
->>>>>>> 7392b66b1824fedce71557ebf5547359f232cc66
