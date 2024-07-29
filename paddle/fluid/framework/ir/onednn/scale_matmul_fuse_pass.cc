@@ -69,7 +69,7 @@ ScaleMatmulFusePass::ScaleMatmulFusePass() {
 
 void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
 
   FusePassBase::Init("scale_matmul_fuse_pass", graph);
@@ -100,12 +100,12 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       PADDLE_ENFORCE_GT(
           matmul_alpha,
           0.0f,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Alpha(%f) of matmul op should have positive value.",
               matmul_alpha));
       PADDLE_ENFORCE_GT(scale_scale,
                         0.0f,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Scale(%f) of scale op should have positive value.",
                             scale_scale));
 
@@ -115,9 +115,9 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       PADDLE_ENFORCE_NE(
           matmul_op_input_name.empty(),
           true,
-          phi::errors::NotFound("Operator after scale operator(%s) "
-                                "should have scale output as input.",
-                                scale_out->Name()));
+          common::errors::NotFound("Operator after scale operator(%s) "
+                                   "should have scale output as input.",
+                                   scale_out->Name()));
       matmul_op->Op()->SetAttr("alpha", matmul_alpha * scale_scale);
       matmul_op->Op()->SetInput(matmul_op_input_name,
                                 std::vector<std::string>({scale_in->Name()}));

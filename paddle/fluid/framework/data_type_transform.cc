@@ -69,7 +69,7 @@ static void XPUTransDataType(
       dst_type == proto::VarType::INT32 && dst_type == proto::VarType::INT64) {
     _ForEachDataType_(XPUCastCallback);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Data type (%s) is not supported in XPU when casting data type.",
         DataTypeToString(dst_type)));
   }
@@ -123,7 +123,7 @@ struct CastDataType {
             CastDataTypeFunctor<InType, OutType>());
 #endif
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Place type is not supported when casting data type."));
     }
   }
@@ -135,7 +135,7 @@ void TransDataType(const phi::KernelKey& kernel_type_for_var,
                    phi::DenseTensor* out) {
   PADDLE_ENFORCE_EQ(in.dtype(),
                     kernel_type_for_var.dtype(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The src dtype(%s) of input tensor and kernel_type(%s) "
                         "are not consistent.",
                         DataTypeToString(in.dtype()),
@@ -175,7 +175,7 @@ void TransDataType(const phi::DenseTensor& in,
       XPUTransDataType<int64_t>(in, out, dst_type, ctx);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported in XPU when casting data type.",
           DataTypeToString(src_type)));
   }
@@ -221,7 +221,7 @@ void TransDataType(const phi::DenseTensor& in,
       framework::VisitDataType(dst_type, CastDataType<uint8_t>(in, out, ctx));
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
           DataTypeToString(src_type)));
   }
@@ -246,7 +246,7 @@ void TransComplexToReal(const proto::VarType::Type& dst_type,
           dst_type, CastDataType<phi::dtype::complex<double>>(in, out, ctx));
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when casting complex tensor to real "
           "data type.",
           DataTypeToString(src_type)));
