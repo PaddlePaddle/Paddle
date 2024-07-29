@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import contextlib
+from typing import TYPE_CHECKING, Callable, Sequence
 
 import paddle.distributed as dist
 from paddle import framework
@@ -20,6 +23,13 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
+
+    pass
 
 
 class P2POp:
@@ -61,7 +71,13 @@ class P2POp:
 
     """
 
-    def __init__(self, op, tensor, peer, group=None):
+    def __init__(
+        self,
+        op: Callable[...],
+        tensor: Tensor,
+        peer: int,
+        group: Group | None = None,
+    ) -> None:
         if op not in [dist.isend, dist.irecv]:
             raise RuntimeError(
                 "Invalid ``op`` function. Expected ``op`` "
@@ -76,7 +92,7 @@ class P2POp:
 
 
 @contextlib.contextmanager
-def _coalescing_manager(group, tasks=None):
+def _coalescing_manager(group: Group, tasks: task | None = None) -> None:
     group = _get_global_group() if group is None else group
     pg = group.process_group
     pg._start_coalescing()
@@ -89,7 +105,7 @@ def _coalescing_manager(group, tasks=None):
             pg._end_coalescing(tasks)
 
 
-def _check_p2p_op_list(p2p_op_list):
+def _check_p2p_op_list(p2p_op_list: Sequence[P2POp]) -> None:
     """
     Helper to check that the ``p2p_op_list`` is a list of P2POp instances and
     all ops use the same backend.
@@ -107,7 +123,7 @@ def _check_p2p_op_list(p2p_op_list):
         raise RuntimeError("All groups need to use the same backend.")
 
 
-def batch_isend_irecv(p2p_op_list):
+def batch_isend_irecv(p2p_op_list: Sequence[P2POp]) -> Sequence[task]:
     """
     Send or Receive a batch of tensors asynchronously and return a list of requests.
 
