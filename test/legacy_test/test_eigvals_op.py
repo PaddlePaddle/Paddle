@@ -70,7 +70,8 @@ class TestEigvalsOp(OpTest):
         self.check_output_with_place_customized(
             checker=self.verify_output, place=core.CPUPlace(), check_pir=True
         )
-        self._infer_and_compare_symbol(core.CPUPlace())
+        with paddle.pir_utils.IrGuard():
+            self._infer_and_compare_symbol(core.CPUPlace())
 
     def verify_output(self, outs):
         actual_outs = np.sort(np.array(outs[0]))
