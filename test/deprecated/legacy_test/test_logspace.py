@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.base.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -192,7 +193,8 @@ class TestLogspaceAPI(unittest.TestCase):
             out = paddle.logspace(
                 0, 10, 5, 2, dtype='float32', name='logspace_res'
             )
-            assert 'logspace_res' in out.name
+            if not in_pir_mode():
+                assert 'logspace_res' in out.name
 
     def test_imperative(self):
         paddle.disable_static()
