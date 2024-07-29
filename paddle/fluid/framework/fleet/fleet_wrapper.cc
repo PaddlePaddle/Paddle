@@ -896,8 +896,8 @@ void FleetWrapper::PushDenseVarsAsync(
 
     Variable* pin_var = scope.FindVar(t + "pin");
     phi::DenseTensor* pin_tensor = pin_var->GetMutable<phi::DenseTensor>();
-    float* pin_g = 
-      pin_tensor->mutable_data<float>(tensor->dims(), phi::GPUPinnedPlace());
+    float* pin_g =
+        pin_tensor->mutable_data<float>(tensor->dims(), phi::GPUPinnedPlace());
     memory::Copy(phi::GPUPinnedPlace(),
                  pin_g,
                  place,
