@@ -298,17 +298,17 @@ class BKCLCommImpl : public BKCLComm {
     return dev_ctx_->x_context()->xpu_stream;
   }
 
-  void set_dev_ctx(std::unique_ptr<XPUDeviceContext>&& dev_ctx) {
+  void set_dev_ctx(std::unique_ptr<phi::XPUContext>&& dev_ctx) {
     dev_ctx_ = std::move(dev_ctx);
   }
-  XPUDeviceContext* dev_context() const override { return dev_ctx_.get(); }
+  phi::XPUContext* dev_context() const override { return dev_ctx_.get(); }
 
  private:
   int ring_id_;
   int nranks_;
   int rank_;
   BKCLContext_t comm_;
-  std::unique_ptr<XPUDeviceContext> dev_ctx_;
+  std::unique_ptr<phi::XPUContext> dev_ctx_;
 };
 
 BKCLComm* BKCLCommContext::CreateComm(
@@ -354,8 +354,8 @@ BKCLComm* BKCLCommContext::CreateComm(
 
 BKCLComm* BKCLCommContext::AssignBKCLComm(
     BKCLContext_t comm, int nranks, int rank, int dev_id, int ring_id) {
-  std::unique_ptr<XPUDeviceContext> dev_ctx(
-      new XPUDeviceContext(phi::XPUPlace(dev_id)));
+  std::unique_ptr<phi::XPUContext> dev_ctx(
+      new phi::XPUContext(phi::XPUPlace(dev_id)));
   dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(phi::XPUPlace(dev_id))
                             .get());
@@ -385,7 +385,7 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
   dev2comm.emplace(dev_id, std::unique_ptr<BKCLComm>(c));
   comm_map_mutex_.unlock();
   if (ring_id == 0) {
-    auto* dev_ctx = static_cast<platform::XPUDeviceContext*>(
+    auto* dev_ctx = static_cast<phi::XPUContext*>(
         phi::DeviceContextPool::Instance().Get(phi::XPUPlace(dev_id)));
     dev_ctx->SetBkclContext(comm);
   }

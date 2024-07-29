@@ -173,7 +173,7 @@ class BKCLComm {
   virtual int device_id() const = 0;
   virtual BKCLContext_t comm() const = 0;
   virtual XPUStream stream() const = 0;
-  virtual XPUDeviceContext* dev_context() const = 0;
+  virtual phi::XPUContext* dev_context() const = 0;
   virtual ~BKCLComm() = default;
 };
 
