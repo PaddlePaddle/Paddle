@@ -904,7 +904,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             x_tensor = paddle.to_tensor(self.x_np)
             index_tensor1 = paddle.to_tensor(self.index_np1)
             value_tensor = paddle.to_tensor(self.value)
-            x_tensor.put_along_axis(
+            x_tensor.put_along_axis_(
                 index_tensor1, value_tensor, 0, 'assign', True, False
             )
             out_ref = copy.deepcopy(self.x_np)
@@ -915,7 +915,9 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
             x_tensor = paddle.to_tensor(self.x_np)
             index_tensor2 = paddle.to_tensor(self.index_np2)
-            x_tensor.put_along_axis(index_tensor2, 10, 1, 'assign', True, False)
+            x_tensor.put_along_axis_(
+                index_tensor2, 10, 1, 'assign', True, False
+            )
             out_ref = copy.deepcopy(self.x_np)
             for i in range(self.index2_shape[0]):
                 for j in range(self.index2_shape[1]):
@@ -1005,7 +1007,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             self.assertIsInstance(error, ValueError)
         # len(values.shape) != len(indices.shape)
         try:
-            tensorx.put_along_axis(indices, values, 0, 'assign', True, False)
+            tensorx.put_along_axis_(indices, values, 0, 'assign', True, False)
         except Exception as error:
             self.assertIsInstance(error, ValueError)
         indices = paddle.to_tensor(
@@ -1020,7 +1022,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             self.assertIsInstance(error, RuntimeError)
         # indices too large
         try:
-            tensorx.put_along_axis(indices, 1.0, 0, 'assign', True, False)
+            tensorx.put_along_axis_(indices, 1.0, 0, 'assign', True, False)
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
         indices = paddle.to_tensor([[10]]).astype("int32")
@@ -1033,7 +1035,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             self.assertIsInstance(error, RuntimeError)
         # the element of indices out of range
         try:
-            tensorx.put_along_axis(indices, 1.0, 0, 'assign', True, False)
+            tensorx.put_along_axis_(indices, 1.0, 0, 'assign', True, False)
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
 
