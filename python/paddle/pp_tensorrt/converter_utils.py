@@ -90,6 +90,30 @@ def get_axes_for_reduce_op(
     return axes
 
 
+# def get_trt_tensor(network, input_val, name, dtype):
+#     if isinstance(input_val, bool):
+#         input_val = int(input_val)
+
+#     if isinstance(input_val, torch.Tensor) and (
+#         input_val.dtype == torch.bool or input_val.dtype == torch.int64
+#     ):
+#         input_val = input_val.to(torch.int32)
+#     elif isinstance(input_val, np.ndarray) and (
+#         input_val.dtype == np.bool_ or input_val.dtype == np.int64
+#     ):
+#         input_val = input_val.to(np.int32)
+
+#     if isinstance(input_val, (torch.Tensor, np.ndarray, int, float)):
+#         return create_constant(network, input_val, name, dtype)
+#     elif isinstance(input_val, trt.tensorrt.ITensor):
+#         return input_val
+
+#     raise RuntimeError(
+#         f"Received input {input_val} of name {name} that "
+#         "is not part of the TensorRT region!"
+#     )
+
+
 def get_dynamic_dims(shape):
     """
     This function finds the dynamic dimensions in the given
