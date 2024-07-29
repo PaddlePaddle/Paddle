@@ -20,6 +20,7 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/common/enforce.h"
 
 TEST(array_ref, array_ref) {
   paddle::array_ref<int> a;
