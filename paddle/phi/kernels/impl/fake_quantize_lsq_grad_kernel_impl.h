@@ -15,16 +15,14 @@
 #pragma once
 
 #include <cmath>
-#include "paddle/phi/kernels/fake_quantize_kernel.h"
-#include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
-// for lsqplus
-#include "glog/logging.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/fake_quantize_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
+#include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
