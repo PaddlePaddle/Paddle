@@ -166,7 +166,7 @@ void XCCLParallelContext::AllReduceByStream(const framework::Variable &src,
           "Dynamic graph mode does not support multi-CPU training yet."));
   auto place = place_;
 
-  auto *dev_ctx = static_cast<platform::CustomDeviceContext *>(
+  auto *dev_ctx = static_cast<phi::CustomContext *>(
       phi::DeviceContextPool::Instance().Get(place));
   platform::XCCLComm *comm =
       platform::XCCLCommContext::Instance(place.GetDeviceType())

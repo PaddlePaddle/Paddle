@@ -83,7 +83,7 @@ void XPUTensorAddFunctor(const phi::Place& place,
                          const phi::DenseTensor& src,
                          phi::DenseTensor* dst) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  platform::XPUDeviceContext* ctx = dynamic_cast<platform::XPUDeviceContext*>(
+  phi::XPUContext* ctx = dynamic_cast<phi::XPUContext*>(
       phi::DeviceContextPool::Instance().Get(place));
   const XPUType* x = reinterpret_cast<const XPUType*>(src.data<T>());
   XPUType* y = reinterpret_cast<XPUType*>(dst->mutable_data<T>(place));
@@ -242,9 +242,8 @@ void TensorAdd(const VarType& src, VarType* dst) {
 
 #define PADDLE_TENSOR_ADD_CUSTOM(T)                              \
   if (data_type == framework::DataTypeTrait<T>::DataType()) {    \
-    platform::CustomDeviceContext* ctx =                         \
-        static_cast<platform::CustomDeviceContext*>(             \
-            phi::DeviceContextPool::Instance().Get(place));      \
+    phi::CustomContext* ctx = static_cast<phi::CustomContext*>(  \
+        phi::DeviceContextPool::Instance().Get(place));          \
     phi::stream::Stream stream(place, ctx->stream());            \
     auto device = phi::DeviceManager::GetDeviceWithPlace(place); \
     device->BlasAXPBY<T>(stream,                                 \
