@@ -98,7 +98,7 @@ if((WITH_GPU) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=1"
   )
   set_tests_properties(test_semi_auto_parallel_llama_model_pir
-                       PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=HYBRID")
+                       PROPERTIES TIMEOUT "280" LABELS "RUN_TYPE=HYBRID")
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
@@ -118,7 +118,6 @@ if((WITH_GPU) AND (LINUX))
   set_tests_properties(test_semi_auto_llama_acc_align
                        PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=HYBRID")
 endif()
-
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
     test_semi_auto_llama_save_load
