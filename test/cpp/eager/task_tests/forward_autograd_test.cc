@@ -354,7 +354,8 @@ TEST(Forward, BranchedNodes) {
         phi::errors::InvalidArgument(
             "node2_edge.GetGradNode() is not equal with grad_node0"
             "the value of node2_edge.GetGradNode() is %d and grad_node0 is %d",
-            node2_edge.GetGradNode(), grad_node0)));
+            node2_edge.GetGradNode(),
+            grad_node0));
   }
 }
 
