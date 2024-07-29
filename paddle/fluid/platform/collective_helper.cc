@@ -81,29 +81,29 @@ NCCLCommContext& NCCLCommContext::Instance() {
 
 NCCLComm* NCCLCommContext::CreateComm(
     ncclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id) {
-  PADDLE_ENFORCE_NOT_NULL(
-      nccl_id,
-      phi::errors::InvalidArgument("The nccl unique id should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(nccl_id,
+                          common::errors::InvalidArgument(
+                              "The nccl unique id should not be null."));
   PADDLE_ENFORCE_GT(
       nranks,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected nranks > 1. But received nranks is %d.", nranks));
   PADDLE_ENFORCE_GE(rank,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected rank >= 0. But received rank is %d.", rank));
   PADDLE_ENFORCE_LT(
       rank,
       nranks,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected rank < nranks. But received rank is %d, nranks is %d.",
           rank,
           nranks));
   PADDLE_ENFORCE_GE(
       dev_id,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   ncclComm_t comm = nullptr;
@@ -128,9 +128,9 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
   PADDLE_ENFORCE_GT(
       dev_ids.size(),
       0,
-      phi::errors::InvalidArgument("Expected the size of dev_ids > 0. But "
-                                   "received the size of dev_ids is %d.",
-                                   dev_ids.size()));
+      common::errors::InvalidArgument("Expected the size of dev_ids > 0. But "
+                                      "received the size of dev_ids is %d.",
+                                      dev_ids.size()));
 
   const int kDevices = dev_ids.size();
   ncclComm_t comms[kDevices];  // NOLINT
@@ -139,7 +139,7 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
 
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected comm_map_.count(ring_id) = 0. But received "
                         "comm_map_.count(ring_id) is %d.",
                         comm_map_.count(ring_id)));
@@ -163,8 +163,8 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
   PADDLE_ENFORCE_GT(
       dev_ids.size(),
       0,
-      phi::errors::InvalidArgument("dev ids = [%d], it should greater than 0.",
-                                   dev_ids.size()));
+      common::errors::InvalidArgument(
+          "dev ids = [%d], it should greater than 0.", dev_ids.size()));
   const int kDevices = dev_ids.size();
   VLOG(1) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
@@ -187,7 +187,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "comm_map_ of ring_id: %s should be 0. %s is provided",
                         ring_id,
                         comm_map_.count(ring_id)));
@@ -313,29 +313,29 @@ class BKCLCommImpl : public BKCLComm {
 
 BKCLComm* BKCLCommContext::CreateComm(
     BKCLUniqueId* bkcl_id, int nranks, int rank, int dev_id, int ring_id) {
-  PADDLE_ENFORCE_NOT_NULL(
-      bkcl_id,
-      phi::errors::InvalidArgument("The bkcl unique id should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(bkcl_id,
+                          common::errors::InvalidArgument(
+                              "The bkcl unique id should not be null."));
   PADDLE_ENFORCE_GT(
       nranks,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected nranks > 1. But received nranks is %d.", nranks));
   PADDLE_ENFORCE_GE(rank,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected rank >= 0. But received rank is %d.", rank));
   PADDLE_ENFORCE_LT(
       rank,
       nranks,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected rank < nranks. But received rank is %d, nranks is %d.",
           rank,
           nranks));
   PADDLE_ENFORCE_GE(
       dev_id,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   BKCLContext_t comm = nullptr;
@@ -484,29 +484,29 @@ XCCLComm* XCCLCommContext::CreateComm(phi::ccl::CCLRootId* xccl_id,
                                       int rank,
                                       int dev_id,
                                       int ring_id) {
-  PADDLE_ENFORCE_NOT_NULL(
-      xccl_id,
-      phi::errors::InvalidArgument("The xccl unique id should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(xccl_id,
+                          common::errors::InvalidArgument(
+                              "The xccl unique id should not be null."));
   PADDLE_ENFORCE_GT(
       nranks,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected nranks > 1. But received nranks is %d.", nranks));
   PADDLE_ENFORCE_GE(rank,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected rank >= 0. But received rank is %d.", rank));
   PADDLE_ENFORCE_LT(
       rank,
       nranks,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected rank < nranks. But received rank is %d, nranks is %d.",
           rank,
           nranks));
   PADDLE_ENFORCE_GE(
       dev_id,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
   phi::ccl::CCLComm comm = nullptr;
@@ -531,8 +531,8 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
   PADDLE_ENFORCE_GT(
       dev_ids.size(),
       0,
-      phi::errors::InvalidArgument("dev ids = [%d], it should greater than 0.",
-                                   dev_ids.size()));
+      common::errors::InvalidArgument(
+          "dev ids = [%d], it should greater than 0.", dev_ids.size()));
   const int kDevices = dev_ids.size();
   VLOG(1) << "Begin CreateXCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
@@ -552,7 +552,7 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "comm_map_ of ring_id: %s should be 0. %s is provided",
                         ring_id,
                         comm_map_.count(ring_id)));

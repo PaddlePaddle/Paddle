@@ -367,7 +367,7 @@ phi::Allocation* CUDAMallocAsyncAllocator::AllocateImpl(size_t size) {
         limit_size);
   }
 
-  PADDLE_THROW_BAD_ALLOC(phi::errors::ResourceExhausted(
+  PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
       "\n\nOut of memory error on GPU %d. "
       "Cannot allocate %s memory on GPU %d, %s memory has been allocated and "
       "available memory is only %s.\n\n"

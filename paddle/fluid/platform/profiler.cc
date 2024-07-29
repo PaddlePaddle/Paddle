@@ -480,7 +480,7 @@ void MemEventRecorder::PushMemRecord(const void *ptr,
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Place can't exist in the stage of PushMemRecord"));
   events.emplace(
       ptr, std::make_unique<MemEventRecorder::RecordMemEvent>(place, size));
@@ -516,7 +516,7 @@ void MemEventRecorder::PushMemRecord(const void *ptr,
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Place can't exist in the stage of PushMemRecord"));
   events.emplace(
       ptr, std::make_unique<MemEventRecorder::RecordMemEvent>(place, size));
@@ -669,7 +669,7 @@ void Mark(const std::string &name) {
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE_NE(state,
                     ProfilerState::kDisabled,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Can't enable profiling, since the input state is"
                         "ProfilerState::kDisabled"));
   SynchronizeAllDevice();
