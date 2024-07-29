@@ -305,10 +305,10 @@ def _pir_append_gradient_merge_backward_op(
             new_gradient_merge_var.persistable = True
 
             grad.replace_all_uses_with(new_gradient_merge_var)
-            new_gradient_merge_var = paddle._C_ops.add_(
+            new_gradient_merge_var_add = paddle._C_ops.add_(
                 new_gradient_merge_var, grad
             )
-            new_gradient_merge_var.get_defining_op().op_role = (
+            new_gradient_merge_var_add.get_defining_op().op_role = (
                 gard_defining_op.op_role
             )
 
@@ -366,7 +366,12 @@ def _pir_move_reduce_to_optimizer_stage(main_program):
     main_block = main_program.global_block()
 
     for idx, op in list(enumerate(main_block.ops)):
-        if is_data_parallel_reduce_op(op):
+        if op.name() in [
+            "pd_op.c_allreduce_sum",
+            "pd_op.c_allreduce_avg",
+            "pd_op.c_reduce_sum",
+            "pd_op.c_reduce_avg",
+        ]:
             op_input_names = op.get_input_names()
             # NOTE(sonder): When "@RENAME@" is in the input name, it means that the op has been renamed.
             # Such types input names are caused by shared parameter policy.
@@ -641,7 +646,7 @@ def _pir_parse_program(
                 break
         for _, new_grad in new_params_to_grads:
             new_grad = paddle._C_ops.scale_(new_grad, 1.0 / k_steps, 0.0, False)
-            new_grad.get_defining_op().op_role = int(OpRole.Backward)
+            new_grad.get_defining_op().op_role = int(OpRole.Optimize)
 
 
 @register_pass("auto_parallel_gradient_merge_pass")
