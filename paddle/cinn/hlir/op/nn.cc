@@ -1017,7 +1017,7 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
     auto schedule_nv_hygon = [&] {
       PADDLE_ENFORCE_GT(vec_tensor.size(),
                         0,
-                        paddle::platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The vector 'vec_tensor' must not be empty."));
       Expr Out = vec_tensor[0];
       PADDLE_ENFORCE_NOT_NULL(
@@ -1174,7 +1174,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     PADDLE_ENFORCE_GT(
         args.size(),
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input argument of pool2d compute is empty! Please check.\n"));
     CINNValuePack pack_args = args[0];
     Expr A = pack_args[0];
@@ -1569,7 +1569,7 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
         [&](common::HygonDCUArchHIP) {
           PADDLE_ENFORCE_GT(vec_tensor.size(),
                             0,
-                            paddle::platform::errors::PreconditionNotMet(
+                            phi::errors::PreconditionNotMet(
                                 "The vector 'vec_tensor' must not be empty."));
           Expr Out = vec_tensor[0];
           PADDLE_ENFORCE_NOT_NULL(
