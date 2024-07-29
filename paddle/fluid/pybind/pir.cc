@@ -1049,6 +1049,21 @@ void BindOperation(py::module *m) {
           },
           [](Operation &self, OperationDistAttribute op_dist_attr) {
             self.set_attribute(kAttrOpDistAttr, op_dist_attr);
+          })
+      .def_property(
+          "op_role",
+          [](Operation &self) -> py::object {
+            auto int_attr = self.attribute<Int32Attribute>("op_role");
+            if (int_attr) {
+              return py::cast(int_attr.data());
+            } else {
+              return py::cast<py::none>(Py_None);
+            }
+          },
+          [](Operation &self, const int &op_role) {
+            self.set_attribute(
+                "op_role",
+                Int32Attribute::get(pir::IrContext::Instance(), op_role));
           });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(

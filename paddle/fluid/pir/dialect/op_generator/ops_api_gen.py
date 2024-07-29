@@ -160,6 +160,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'all_reduce',
     'all_reduce_',
+    'anchor_generator',
     'batch_fc',
     'barrier',
     'c_allreduce_min',
