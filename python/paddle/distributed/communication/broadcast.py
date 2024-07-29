@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 import paddle
 import paddle.distributed as dist
@@ -82,11 +81,11 @@ def broadcast(
 
 
 def broadcast_object_list(
-    object_list: Sequence[Any], src: int, group: Group | None = None
+    object_list: list[Any], src: int, group: Group | None = None
 ) -> None:
     """
 
-    Broadcast picklable objects from the source to all others. Similiar to broadcast(), but python object can be passed in.
+    Broadcast picklable objects from the source to all others. Similar to broadcast(), but python object can be passed in.
 
     Args:
         object_list (list): The list of objects to send if current rank is the source, or the list of objects to receive otherwise.

@@ -18,7 +18,7 @@
 #include <unordered_map>
 
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/os_info.h"
+#include "paddle/phi/core/os_info.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
@@ -77,7 +77,7 @@ void CustomTracer::StartTracing() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   phi::DeviceManager::ProfilerStartTracing(dev_type_, &collector_, context_);
 #endif
-  tracing_start_ns_ = PosixInNsec();
+  tracing_start_ns_ = phi::PosixInNsec();
   state_ = TracerState::STARTED;
 }
 
