@@ -563,7 +563,7 @@ def logspace(
             dtype,
             _current_expected_place(),
         )
-    else if in_pir_mode():
+    elif in_pir_mode():
         start_dtype = convert_dtype(tensor_start.dtype)
         stop_dtype = convert_dtype(tensor_stop.dtype)
         base_dtype = convert_dtype(tensor_base.dtype)
