@@ -202,12 +202,7 @@ class CtrDoubleAccessor : public ValueAccessor {
   virtual bool CreateValue(int type, const float* value);
   // 这个接口目前只用来取show
   float GetField(float* value, const std::string& name) override {
-    PADDLE_ENFORCE_EQ(
-        name,
-        "show",
-        phi::errors::InvalidArgument(
-            "The 'name' must be 'show', but received '%s'.", name.c_str()));
-
+    CHECK_EQ(name, "show");
     if (name == "show") {
       return static_cast<float>(CtrDoubleFeatureValue::Show(value));
     }
