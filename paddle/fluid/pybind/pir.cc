@@ -1881,7 +1881,6 @@ SplitedResult SplitForwardBackward(
   std::for_each(
       forward_outputs.begin(), forward_outputs.end(), create_output_fn_forward);
 
-  pir::Block *forward_block = forward_program->block();
   auto create_kwarg_fn = [&backward_block,
                           &backward_inputs,
                           &backward_value_map,
