@@ -116,7 +116,8 @@ class PatternCreator {
 
 class OneDNNBf16Pass : public pir::PatternRewritePass {
  public:
-  OneDNNBf16Pass() : pir::PatternRewritePass("cpu_bfloat16_pass", 3) {}
+  OneDNNBf16Pass()
+      : pir::PatternRewritePass("cpu_bfloat16_type_placement_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
