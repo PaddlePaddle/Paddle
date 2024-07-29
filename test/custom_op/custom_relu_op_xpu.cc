@@ -17,15 +17,20 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_CPU_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
-#define CHECK_XPU_INPUT(x) PD_CHECK(x.is_xpu(), #x " must be a XPU Tensor.")
+#define CHECK_CPU_INPUT(x) \
+  PADDLE_ENFORCE_EQ(       \
+      x.is_cpu(), true, phi::errors::Fatal(#x " must be a CPU Tensor."))
+#define CHECK_XPU_INPUT(x) \
+  PADDLE_ENFORCE_EQ(       \
+      x.is_xpu(), true, phi::errors::Fatal(#x " must be a XPU Tensor."))
 
 template <typename data_t>
 void relu_cpu_forward_kernel(const data_t* x_data,
                              data_t* out_data,
                              int64_t x_numel) {
-  PD_CHECK(x_data != nullptr, "x_data is nullptr.");
-  PD_CHECK(out_data != nullptr, "out_data is nullptr.");
+  PADDLE_ENFORCE_NE(x_data, nullptr, phi::errors::Fatal("x_data is nullptr."))
+  PADDLE_ENFORCE_NE(
+      out_data, nullptr, phi::errors::Fatal("out_data is nullptr."));
   for (int64_t i = 0; i < x_numel; ++i) {
     out_data[i] = std::max(static_cast<data_t>(0.), x_data[i]);
   }

@@ -48,12 +48,41 @@ TEST(sparse_coo_tensor, construct) {
 
   SparseCooTensor sparse(indices, elements, dense_dims);
 
-  CHECK(sparse.initialized() == true);
-  CHECK_EQ(sparse.nnz(), static_cast<int64_t>(non_zero_data.size()));
-  CHECK_EQ(sparse.numel(), 9);
-  CHECK(sparse.dims() == dense_dims);
-  CHECK(sparse.dtype() == DataType::FLOAT32);
-  CHECK(sparse.place() == phi::CPUPlace());
+  PADDLE_ENFORCE_EQ(
+      sparse.initialized(),
+      true,
+      phi::errors::Fatal("`sparse.initialized()` should be true"));
+  PADDLE_ENFORCE_EQ(
+      sparse.initialized(),
+      true,
+      phi::errors::Fatal("`sparse.initialized()` should be true"));
+  PADDLE_ENFORCE_EQ(
+      sparse.nnz(),
+      static_cast<int64_t>(non_zero_data.size()),
+      phi::errors::Fatal("`sparse.nnz()` is %lld and "
+                         "`static_cast<int64_t>(non_zero_data.size())` is "
+                         "%lld, they should equal to each other",
+                         sparse.nnz(),
+                         static_cast<int64_t>(non_zero_data.size())));
+  PADDLE_ENFORCE_EQ(
+      sparse.numel(),
+      9,
+      phi::errors::Fatal("`sparse.numel()` is %d, but should be 9"));
+  PADDLE_ENFORCE_EQ(sparse.dims(),
+                    dense_dims,
+                    phi::errors::Fatal("`sparse.dims()` is %d, but `dense_dim` "
+                                       "is %d, they should equal to each other",
+                                       sparse.dims(),
+                                       dense_dims));
+  PADDLE_ENFORCE_EQ(sparse.dtype(),
+                    DataType::FLOAT32,
+                    phi::errors::Fatal("`sparse.dtype()` is No.%d in DataType, "
+                                       "and should be No.d --DataType::FLOAT32",
+                                       sparse.dtype(),
+                                       DataType::FLOAT32));
+  PADDLE_ENFORCE_EQ(sparse.place(),
+                    phi::CPUPlace(),
+                    phi::errors::Fatal("Variable `sparse` should on CPU!"));
 }
 
 TEST(sparse_coo_tensor, other_function) {
@@ -71,21 +100,39 @@ TEST(sparse_coo_tensor, other_function) {
   DenseTensor elements(alloc, elements_meta);
 
   SparseCooTensor coo(indices, elements, dense_dims);
-  CHECK(coo.initialized());
-  CHECK_EQ(coo.dims(), dense_dims);
+  PADDLE_ENFORCE_EQ(
+      coo.initialized(),
+      true,
+      phi::errors::Fatal("SparseCooTensor variable `coo` is not initialized"));
+  PADDLE_ENFORCE_EQ(
+      coo.dims(),
+      dense_dims,
+      phi::errors::Fatal("`coo.dims()` is not equal to dense_dims"));
 
   // Test Resize
   auto dense_dims_3d = common::make_ddim({2, 4, 4});
   coo.Resize(dense_dims_3d, 1, 3);
-  CHECK_EQ(coo.nnz(), 3);
+  PADDLE_ENFORCE_EQ(
+      coo.nnz(),
+      3,
+      phi::errors::Fatal("`coo.nnz()` is %d, but should be 3", coo.nnz()));
 
   // Test shallow_copy
   SparseCooTensor coo2(coo);
-  CHECK(coo.dims() == coo2.dims());
+  PADDLE_ENFORCE_EQ(
+      coo.dims(),
+      coo2.dims(),
+      phi::errors::Fatal("`coo.dims()` is not equal to `coo2.dims()`, "
+                         "something wrong with shallow copy assignment"));
 
   // Test shallow_copy_assignment
   SparseCooTensor coo3 = coo2;
   CHECK(coo3.dims() == coo2.dims());
+  PADDLE_ENFORCE_EQ(
+      coo3.dims(),
+      coo2.dims(),
+      phi::errors::Fatal("`coo3.dims()` is not equal to `coo2.dims()`, "
+                         "something wrong with shallow copy assignment"));
 }
 
 }  // namespace tests

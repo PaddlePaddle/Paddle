@@ -17,7 +17,9 @@
 #include "paddle/extension.h"
 #include "paddle/phi/backends/context_pool.h"
 
-#define CHECK_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
+#define CHECK_INPUT(x) \
+  PADDLE_ENFORCE_EQ(   \
+      x.is_cpu(), true, phi::errors::Fatal(#x " must be a CPU Tensor."))
 
 std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
   // 1. test cpu context
@@ -25,10 +27,15 @@ std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
   auto* cpu_ctx =
       paddle::experimental::DeviceContextPool::Instance()
           .Get<paddle::experimental::AllocationType::CPU>(cpu_place);
-  PD_CHECK(cpu_ctx->GetPlace() == cpu_place);
+  PADDLE_ENFORCE_EQ(cpu_ctx->GetPlace(),
+                    cpu_place,
+                    phi::errors::Fatal("Variable `cpu_ctx` should be on CPU"));
   // if want to use the eigen_device here, need to include eigen headers
   auto* cpu_eigen_device = cpu_ctx->eigen_device();
-  PD_CHECK(cpu_eigen_device != nullptr);
+  PADDLE_ENFORCE_NE(
+      cpu_eigen_device,
+      nullptr,
+      phi::errors::Fatal("Variable `cpu_eigen_device` should not be nullptr"));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // 2. test gpu context
@@ -36,10 +43,16 @@ std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
   auto* gpu_ctx =
       paddle::experimental::DeviceContextPool::Instance()
           .Get<paddle::experimental::AllocationType::GPU>(gpu_place);
-  PD_CHECK(gpu_ctx->GetPlace() == gpu_place);
+  PADDLE_ENFORCE_EQ(
+      gpu_ctx->GetPlace(),
+      gpu_place,
+      phi::errors::Fatal("Variable `gpu_eigen_device` should be on gpu"));
   // if want to use the eigen_device here, need to include eigen headers
   auto* gpu_eigen_device = gpu_ctx->eigen_device();
-  PD_CHECK(gpu_eigen_device != nullptr);
+  PADDLE_ENFORCE_NE(
+      gpu_eigen_device,
+      nullptr,
+      phi::errors::Fatal("Variable `gpu_eigen_device` should not be nullptr"));
 #endif
 
   return {x};

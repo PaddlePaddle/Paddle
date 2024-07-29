@@ -20,6 +20,7 @@ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/n4820.pdf
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/common/enforce.h"
 #include "paddle/utils/span.h"
 
 using paddle::span;
@@ -38,7 +39,11 @@ TEST(default_ctor, span) {
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end());
 #else
-    CHECK(s.begin() == s.end());
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        s.end(),
+        phi::errors::Fatal("constexpr `span`'s begin() is not equal, but "
+                           "`span` should be empty, please check constructor"));
 #endif
   }
 
@@ -50,7 +55,11 @@ TEST(default_ctor, span) {
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end());
 #else
-    CHECK(s.begin() == s.end());
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        s.end(),
+        phi::errors::Fatal("constexpr `span`'s begin() is not equal, but "
+                           "`span` should be empty, please check constructor"));
 #endif
   }
 }
@@ -70,10 +79,27 @@ TEST(pointer_length_ctor, span) {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int> s(arr, 3);
 
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr,
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        std::begin(arr),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`std::begin(arr)`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        std::end(arr),
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`std::end(arr)`, please check related function"));
   }
 
   // fixed size
@@ -81,10 +107,27 @@ TEST(pointer_length_ctor, span) {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s(arr, 3);
 
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr,
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        std::begin(arr),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`std::begin(arr)`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        std::end(arr),
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`std::end(arr)`, please check related function"));
   }
 }
 
@@ -100,10 +143,27 @@ TEST(pointer_pointer_ctor, span) {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int> s{arr, arr + 3};
 
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr,
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        std::begin(arr),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`std::begin(arr)`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        std::end(arr),
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`std::end(arr)`, please check related function"));
   }
 
   // fixed size
@@ -111,10 +171,27 @@ TEST(pointer_pointer_ctor, span) {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s{arr, arr + 3};
 
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr,
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        std::begin(arr),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`std::begin(arr)`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        std::end(arr),
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`std::end(arr)`, please check related function"));
   }
 }
 
@@ -161,40 +238,108 @@ TEST(c_array_ctor, span) {
   {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr,
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        std::begin(arr),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`std::begin(arr)`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        std::end(arr),
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`std::end(arr)`, please check related function"));
   }
 
   // const, dynamic size
   {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int const> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr,
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        std::begin(arr),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`std::begin(arr)`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        std::end(arr),
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`std::end(arr)`, please check related function"));
   }
 
   // non-const, static size
   {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int, 3> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr,
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        std::begin(arr),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`std::begin(arr)`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        std::end(arr),
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`std::end(arr)`, please check related function"));
   }
 
   // const, dynamic size
   {
     int arr[] = {1, 2, 3};  // NOLINT
     span<int const, 3> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr);
-    CHECK_EQ(s.begin(), std::begin(arr));
-    CHECK_EQ(s.end(), std::end(arr));
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr,
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        std::begin(arr),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`std::begin(arr)`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        std::end(arr),
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`std::end(arr)`, please check related function"));
   }
 }
 
@@ -258,40 +403,108 @@ TEST(std_array_ctor, span) {
   {
     int_array_t arr = {1, 2, 3};
     span<int> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.data());
-    CHECK_EQ(s.end(), arr.data() + 3);
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr.data()`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`arr.data()`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        arr.data() + 3,
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`arr.data() + 3`, please check related function"));
   }
 
   // const, dynamic size
   {
     int_array_t arr = {1, 2, 3};
     span<int const> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.data());
-    CHECK_EQ(s.end(), arr.data() + 3);
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr.data()`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`arr.data()`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        arr.data() + 3,
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`arr.data() + 3`, please check related function"));
   }
 
   // non-const, static size
   {
     int_array_t arr = {1, 2, 3};
     span<int, 3> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.data());
-    CHECK_EQ(s.end(), arr.data() + 3);
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr.data()`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`arr.data()`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        arr.data() + 3,
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`arr.data() + 3`, please check related function"));
   }
 
   // const, dynamic size
   {
     int_array_t arr = {1, 2, 3};
     span<int const, 3> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.data());
-    CHECK_EQ(s.end(), arr.data() + 3);
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr.data()`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`arr.data()`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        arr.data() + 3,
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`arr.data() + 3`, please check related function"));
   }
 }
 
@@ -327,40 +540,108 @@ TEST(ctor_from_containers, span) {
   {
     vec_t arr = {1, 2, 3};
     span<int> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.data());
-    CHECK_EQ(s.end(), arr.data() + 3);
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr.data()`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`arr.data()`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        arr.data() + 3,
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`arr.data() + 3`, please check related function"));
   }
 
   // const, dynamic size
   {
     vec_t arr = {1, 2, 3};
     span<int const> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.data());
-    CHECK_EQ(s.end(), arr.data() + 3);
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr.data()`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`arr.data()`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        arr.data() + 3,
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`arr.data() + 3`, please check related function"));
   }
 
   // non-const, static size
   {
     std::array<int, 3> arr = {1, 2, 3};
     span<int, 3> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.data());
-    CHECK_EQ(s.end(), arr.data() + 3);
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr.data()`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`arr.data()`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        arr.data() + 3,
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`arr.data() + 3`, please check related function"));
   }
 
   // const, dynamic size
   {
     std::array<int, 3> arr = {1, 2, 3};
     span<int const, 3> s{arr};
-    CHECK_EQ(s.size(), 3UL);
-    CHECK_EQ(s.data(), arr.data());
-    CHECK_EQ(s.begin(), arr.data());
-    CHECK_EQ(s.end(), arr.data() + 3);
+    PADDLE_ENFORCE_EQ(
+        s.size(),
+        3UL,
+        phi::errors::Fatal("Variable `s`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           s.size()));
+    PADDLE_ENFORCE_EQ(
+        s.data(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s pointer `data` should pointed to "
+                           "`arr.data()`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        s.begin(),
+        arr.data(),
+        phi::errors::Fatal("Variable `s`'s begin() should be the same to "
+                           "`arr.data()`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        s.end(),
+        arr.data() + 3,
+        phi::errors::Fatal("Variable `s`'s end() should be the same to "
+                           "`arr.data() + 3`, please check related function"));
   }
 }
 
@@ -440,7 +721,11 @@ TEST(ctor_from_spans, span) {
 #ifndef _MSC_VER
   static_assert(d.begin() == d.end());
 #else
-  CHECK(d.begin() == d.end());
+  PADDLE_ENFORCE_EQ(
+      d.begin(),
+      d.end(),
+      phi::errors::Fatal("Variable `d`'s begin() should be the same to end(), "
+                         "please check related function"));
 #endif
 }
 
@@ -452,10 +737,27 @@ TEST(subview, span) {
     auto f = s.first<3>();
 
     static_assert(std::is_same<decltype(f), span<int, 3>>::value);
-    CHECK_EQ(f.size(), 3UL);
-    CHECK_EQ(f.data(), arr);
-    CHECK_EQ(f.begin(), arr);
-    CHECK_EQ(f.end(), arr + 3);
+    PADDLE_ENFORCE_EQ(
+        f.size(),
+        3UL,
+        phi::errors::Fatal("Variable `f`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           f.size()));
+    PADDLE_ENFORCE_EQ(
+        f.data(),
+        arr,
+        phi::errors::Fatal("Variable `f`'s pointer `data` should pointed to "
+                           "`arr`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        f.begin(),
+        arr,
+        phi::errors::Fatal("Variable `f`'s begin() should be the same to "
+                           "`arr`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        f.end(),
+        arr + 3,
+        phi::errors::Fatal("Variable `f`'s end() should be the same to `arr + "
+                           "3`, please check related function"));
   }
 
   // last<N>
@@ -465,10 +767,28 @@ TEST(subview, span) {
     auto l = s.last<3>();
 
     static_assert(std::is_same<decltype(l), span<int, 3>>::value);
-    CHECK_EQ(l.size(), 3UL);
-    CHECK_EQ(l.data(), arr + 2);
-    CHECK_EQ(l.begin(), arr + 2);
-    CHECK_EQ(l.end(), std::end(arr));
+    PADDLE_ENFORCE_EQ(
+        l.size(),
+        3UL,
+        phi::errors::Fatal("Variable `l`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           l.size()));
+    PADDLE_ENFORCE_EQ(
+        l.data(),
+        arr + 2,
+        phi::errors::Fatal("Variable `l`'s pointer `data` should pointed to "
+                           "`arr + 2`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        l.begin(),
+        arr + 2,
+        phi::errors::Fatal("Variable `l`'s begin() should be the same to `arr "
+                           "+ 2`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        l.end(),
+        std::end(arr),
+        phi::errors::Fatal(
+            "Variable `l`'s end() should be the same to `std::end(arr)`(or "
+            "`arr + 5`), please check related function"));
   }
 
   // subspan<N>
@@ -478,10 +798,27 @@ TEST(subview, span) {
     auto ss = s.subspan<1, 2>();
 
     static_assert(std::is_same<decltype(ss), span<int, 2>>::value);
-    CHECK_EQ(ss.size(), 2UL);
-    CHECK_EQ(ss.data(), arr + 1);
-    CHECK_EQ(ss.begin(), arr + 1);
-    CHECK_EQ(ss.end(), arr + 1 + 2);
+    PADDLE_ENFORCE_EQ(
+        ss.size(),
+        2UL,
+        phi::errors::Fatal("Variable `ss`'s size is %u, but should be 2, "
+                           "please check constructor",
+                           ss.size()));
+    PADDLE_ENFORCE_EQ(
+        ss.data(),
+        arr + 1,
+        phi::errors::Fatal("Variable `ss`'s pointer `data` should pointed to "
+                           "`arr + 1`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        ss.begin(),
+        arr + 1,
+        phi::errors::Fatal("Variable `ss`'s begin() should be the same to `arr "
+                           "+ 1`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        ss.end(),
+        arr + 1 + 2,
+        phi::errors::Fatal("Variable `ss`'s end() should be the same to `arr + "
+                           "3`, please check related function"));
   }
 
   // first(n)
@@ -491,10 +828,27 @@ TEST(subview, span) {
     auto f = s.first(3);
 
     static_assert(std::is_same<decltype(f), span<int>>::value);
-    CHECK_EQ(f.size(), 3UL);
-    CHECK_EQ(f.data(), arr);
-    CHECK_EQ(f.begin(), arr);
-    CHECK_EQ(f.end(), arr + 3);
+    PADDLE_ENFORCE_EQ(
+        f.size(),
+        3UL,
+        phi::errors::Fatal("Variable `f`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           f.size()));
+    PADDLE_ENFORCE_EQ(
+        f.data(),
+        arr,
+        phi::errors::Fatal("Variable `f`'s pointer `data` should pointed to "
+                           "`arr`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        f.begin(),
+        arr,
+        phi::errors::Fatal("Variable `f`'s begin() should be the same to "
+                           "`arr`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        f.end(),
+        arr + 3,
+        phi::errors::Fatal("Variable `f`'s end() should be the same to `arr + "
+                           "3`, please check related function"));
   }
 
   // last(n)
@@ -504,10 +858,28 @@ TEST(subview, span) {
     auto l = s.last(3);
 
     static_assert(std::is_same<decltype(l), span<int>>::value);
-    CHECK_EQ(l.size(), 3UL);
-    CHECK_EQ(l.data(), arr + 2);
-    CHECK_EQ(l.begin(), arr + 2);
-    CHECK_EQ(l.end(), std::end(arr));
+    PADDLE_ENFORCE_EQ(
+        l.size(),
+        3UL,
+        phi::errors::Fatal("Variable `l`'s size is %u, but should be 3, please "
+                           "check constructor",
+                           l.size()));
+    PADDLE_ENFORCE_EQ(
+        l.data(),
+        arr + 2,
+        phi::errors::Fatal("Variable `l`'s pointer `data` should pointed to "
+                           "`arr + 2`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        l.begin(),
+        arr + 2,
+        phi::errors::Fatal("Variable `l`'s begin() should be the same to `arr "
+                           "+ 2`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        l.end(),
+        std::end(arr),
+        phi::errors::Fatal(
+            "Variable `l`'s end() should be the same to `std::end(arr)`(or "
+            "`arr + 5`), please check related function"));
   }
 
   // subspan(n)
@@ -517,10 +889,27 @@ TEST(subview, span) {
     auto ss = s.subspan(1, 2);
 
     static_assert(std::is_same<decltype(ss), span<int>>::value);
-    CHECK_EQ(ss.size(), 2UL);
-    CHECK_EQ(ss.data(), arr + 1);
-    CHECK_EQ(ss.begin(), arr + 1);
-    CHECK_EQ(ss.end(), arr + 1 + 2);
+    PADDLE_ENFORCE_EQ(
+        ss.size(),
+        2UL,
+        phi::errors::Fatal("Variable `ss`'s size is %u, but should be 2, "
+                           "please check constructor",
+                           ss.size()));
+    PADDLE_ENFORCE_EQ(
+        ss.data(),
+        arr + 1,
+        phi::errors::Fatal("Variable `ss`'s pointer `data` should pointed to "
+                           "`arr + 1`, please check constructor"));
+    PADDLE_ENFORCE_EQ(
+        ss.begin(),
+        arr + 1,
+        phi::errors::Fatal("Variable `ss`'s begin() should be the same to `arr "
+                           "+ 1`, please check related function"));
+    PADDLE_ENFORCE_EQ(
+        ss.end(),
+        arr + 1 + 2,
+        phi::errors::Fatal("Variable `ss`'s end() should be the same to `arr + "
+                           "3`, please check related function"));
   }
 
   // TODO(tcbrindle): Test all the dynamic subspan possibilities
@@ -541,9 +930,24 @@ TEST(element_access, span) {
   constexpr int arr[] = {1, 2, 3};  // NOLINT
   span<const int> s{arr};
 
-  CHECK_EQ(s[0], arr[0]);
-  CHECK_EQ(s[1], arr[1]);
-  CHECK_EQ(s[2], arr[2]);
+  PADDLE_ENFORCE_EQ(
+      s[0],
+      arr[0],
+      phi::errors::Fatal("`s[0]` is %d, should be the same to `arr[0]` or `1`, "
+                         "please check constructor",
+                         s[0]));
+  PADDLE_ENFORCE_EQ(
+      s[1],
+      arr[1],
+      phi::errors::Fatal("`s[1]` is %d, should be the same to `arr[1]` or `2`, "
+                         "please check constructor",
+                         s[1]));
+  PADDLE_ENFORCE_EQ(
+      s[2],
+      arr[2],
+      phi::errors::Fatal("`s[2]` is %d, should be the same to `arr[2]` or `3`, "
+                         "please check constructor",
+                         s[2]));
 }
 
 TEST(iterator, span) {
@@ -551,12 +955,20 @@ TEST(iterator, span) {
     std::vector<int> vec;
     span<int> s{vec};
     std::sort(s.begin(), s.end());
-    CHECK(std::is_sorted(vec.cbegin(), vec.cend()));
+    PADDLE_ENFORCE_EQ(
+        std::is_sorted(vec.cbegin(), vec.cend()),
+        true,
+        phi::errors::Fatal("Varible `vec` should be sorted, please check"));
   }
 
   {
     const std::vector<int> vec{1, 2, 3};
     span<const int> s{vec};
-    CHECK(std::equal(s.rbegin(), s.rend(), vec.crbegin()));
+    PADDLE_ENFORCE_EQ(
+        std::equal(s.rbegin(), s.rend(), vec.crbegin()),
+        true,
+        phi::errors::Fatal(
+            "Varible `s` is not equal to its self by using rbegin(), rend() "
+            "and crbegin() with std::equal, please check related function"));
   }
 }

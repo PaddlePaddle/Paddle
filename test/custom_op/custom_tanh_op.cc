@@ -18,14 +18,20 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_CPU_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
+#define CHECK_CPU_INPUT(x) \
+  PADDLE_ENFORCE_EQ(       \
+      x.is_cpu(),          \
+      true,                \
+      phi::errors::PreconditionNotMet(#x " must be a CPU Tensor."))
 
 template <typename data_t>
 void tanh_cpu_forward_kernel(const data_t* x_data,
                              data_t* out_data,
                              int64_t x_numel) {
-  PD_CHECK(x_data != nullptr, "x_data is nullptr.");
-  PD_CHECK(out_data != nullptr, "out_data is nullptr.");
+  PADDLE_ENFORCE_NE(
+      x_data, nullptr, phi::errors::InvalidArgument("x_data is nullptr."));
+  PADDLE_ENFORCE_NE(
+      out_data, nullptr, phi::errors::InvalidArgument("out_data is nullptr."));
   for (int64_t i = 0; i < x_numel; ++i) {
     out_data[i] = std::tanh(x_data[i]);
   }
@@ -36,9 +42,14 @@ void tanh_cpu_backward_kernel(const data_t* grad_out_data,
                               const data_t* out_data,
                               data_t* grad_x_data,
                               int64_t out_numel) {
-  PD_CHECK(grad_out_data != nullptr, "grad_out_data is nullptr.");
-  PD_CHECK(out_data != nullptr, "out_data is nullptr.");
-  PD_CHECK(grad_x_data != nullptr, "grad_x_data is nullptr.");
+  PADDLE_ENFORCE_NE(grad_out_data,
+                    nullptr,
+                    phi::errors::InvalidArgument("grad_out_data is nullptr."));
+  PADDLE_ENFORCE_NE(
+      out_data, nullptr, phi::errors::InvalidArgument("out_data is nullptr."));
+  PADDLE_ENFORCE_NE(grad_x_data,
+                    nullptr,
+                    phi::errors::InvalidArgument("grad_x_data is nullptr."));
   for (int64_t i = 0; i < out_numel; ++i) {
     grad_x_data[i] =
         grad_out_data[i] * (static_cast<data_t>(1) - out_data[i] * out_data[i]);
@@ -52,11 +63,19 @@ void tanh_cpu_double_backward_kernel(const data_t* out_data,
                                      data_t* dout_new_data,
                                      data_t* ddout_data,
                                      int64_t ddout_numel) {
-  PD_CHECK(out_data != nullptr, "out_data is nullptr.");
-  PD_CHECK(ddx_data != nullptr, "ddx_data is nullptr.");
-  PD_CHECK(dout_data != nullptr, "dout_data is nullptr.");
-  PD_CHECK(dout_new_data != nullptr, "dout_new_data is nullptr.");
-  PD_CHECK(ddout_data != nullptr, "ddout_data is nullptr.");
+  PADDLE_ENFORCE_NE(
+      out_data, nullptr, phi::errors::InvalidArgument("out_data is nullptr."));
+  PADDLE_ENFORCE_NE(
+      ddx_data, nullptr, phi::errors::InvalidArgument("ddx_data is nullptr."));
+  PADDLE_ENFORCE_NE(dout_data,
+                    nullptr,
+                    phi::errors::InvalidArgument("dout_data is nullptr."));
+  PADDLE_ENFORCE_NE(dout_new_data,
+                    nullptr,
+                    phi::errors::InvalidArgument("dout_new_data is nullptr."));
+  PADDLE_ENFORCE_NE(ddout_data,
+                    nullptr,
+                    phi::errors::InvalidArgument("ddout_data is nullptr."));
   for (int64_t i = 0; i < ddout_numel; ++i) {
     dout_new_data[i] = static_cast<data_t>(-1) * dout_data[i] *
                        static_cast<data_t>(2) * out_data[i] * ddx_data[i];

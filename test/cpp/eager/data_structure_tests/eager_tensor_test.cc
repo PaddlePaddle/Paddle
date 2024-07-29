@@ -89,7 +89,9 @@ TEST(Tensor, MemberFunction) {
   CHECK_EQ(et3.dims(), expected_dim);
   CHECK_EQ(et3.type(), phi::DataType::FLOAT32);
   CHECK_EQ(et3.layout(), phi::DataLayout::NCHW);
-  CHECK(phi::is_cpu_place(et3.place()));
+  PADDLE_ENFORCE_EQ(phi::is_cpu_place(et3.place()),
+                    true,
+                    phi::errors::Fatal("Variable `et3` should be on CPU"));
   VLOG(6) << "Get impl";
   auto* dt3_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();
@@ -97,7 +99,9 @@ TEST(Tensor, MemberFunction) {
   CHECK_EQ(dt3_ptr[1], 10.0f);
   paddle::Tensor et4 = et3;
   VLOG(6) << "copy =";
-  CHECK(et4.initialized() == true);
+  PADDLE_ENFORCE_EQ(et4.initialized(),
+                    true,
+                    phi::errors::Fatal("Variable `et4` should be initialized"));
   auto* dt4_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et4.impl())->data<float>();
   CHECK_EQ(dt4_ptr[0], 5.0f);
@@ -141,14 +145,20 @@ TEST(EagerVariable, Constructor) {
   VLOG(6) << "SyncToTensor";
   paddle::Tensor t4;
   t4.set_impl(et3.GetTensorBase());
-  CHECK(t4.initialized() == true);
+  PADDLE_ENFORCE_EQ(t4.initialized(),
+                    true,
+                    phi::errors::Fatal("Variable `t4` should be initialized"));
   VLOG(6) << "Check Tensor";
   auto* dt3_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t4.impl())->data<float>();
   CHECK_EQ(dt3_tmp_ptr[0], 5.0f);
   CHECK_EQ(dt3_tmp_ptr[1], 10.0f);
   t4.reset();
-  CHECK(t4.defined() == false);
+  PADDLE_ENFORCE_EQ(
+      t4.defined(),
+      false,
+      phi::errors::Fatal(
+          "Variable `t4` should be not defined after `t4.reset()`"));
 
   VLOG(6) << "Check Tensor Copy_";
   std::vector<int64_t> rows = {1, 2};
