@@ -186,11 +186,19 @@ class TestLogspaceAPI(unittest.TestCase):
         paddle.disable_static()
 
     def test_name(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            out = paddle.logspace(
-                0, 10, 5, 2, dtype='float32', name='logspace_res'
-            )
-            assert 'logspace_res' in out.name
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                with paddle.static.program_guard(paddle.static.Program()):
+                    out = paddle.logspace(
+                        0, 10, 5, 2, dtype='float32', name='logspace_res'
+                    )
+                    assert 'logspace_res' in out.name
+        else:
+            with paddle.static.program_guard(paddle.static.Program()):
+                out = paddle.logspace(
+                    0, 10, 5, 2, dtype='float32', name='logspace_res'
+                )
+                assert 'logspace_res' in out.name
 
     def test_imperative(self):
         paddle.disable_static()
