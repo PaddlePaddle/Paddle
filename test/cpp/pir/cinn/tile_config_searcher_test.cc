@@ -47,7 +47,7 @@ constexpr int kMaxSamplingTimes = 400;
 constexpr int kRepeats = 3;
 
 std::shared_ptr<::pir::Program> BuildSpatialReduceProgram(int spatial_size,
-                                                      int reduce_size) {
+                                                          int reduce_size) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
@@ -61,35 +61,29 @@ std::shared_ptr<::pir::Program> BuildSpatialReduceProgram(int spatial_size,
                    "x", shape, phi::DataType::FLOAT32, phi::GPUPlace())
                .result(0);
   // auto out = builder.Build<paddle::dialect::RmsNormOp>(x);
-  auto pow_val = builder
-                 .Build<paddle::dialect::PowOp>(
-                     x, 2.0)
-                 .result(0);
-  auto sum_val = builder
-                 .Build<paddle::dialect::SumOp>(
-                     pow_val, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
-                 .result(0);
-  auto divide_num = builder.Build<paddle::dialect::FullOp>(
-            std::vector<int64_t>({1}), reduce_size, phi::DataType::FLOAT32).out();
-  auto div_val = builder
-                 .Build<paddle::dialect::DivideOp>(
-                     sum_val, divide_num)
-                 .result(0);
-  auto add_num = builder.Build<paddle::dialect::FullOp>(
-            std::vector<int64_t>({1}), 1e-6, phi::DataType::FLOAT32).out();           
-  auto add_val = builder
-                 .Build<paddle::dialect::AddOp>(
-                    div_val, add_num)
-                 .result(0);
-  auto rsqrt_val = builder
-                 .Build<paddle::dialect::RsqrtOp>(
-                     add_val)
-                 .result(0);
-  auto out = builder
-                 .Build<paddle::dialect::MultiplyOp>(
-                     rsqrt_val, x)
-                 .result(0);
-  
+  auto pow_val = builder.Build<paddle::dialect::PowOp>(x, 2.0).result(0);
+  auto sum_val =
+      builder
+          .Build<paddle::dialect::SumOp>(
+              pow_val, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
+          .result(0);
+  auto divide_num =
+      builder
+          .Build<paddle::dialect::FullOp>(
+              std::vector<int64_t>({1}), reduce_size, phi::DataType::FLOAT32)
+          .out();
+  auto div_val =
+      builder.Build<paddle::dialect::DivideOp>(sum_val, divide_num).result(0);
+  auto add_num =
+      builder
+          .Build<paddle::dialect::FullOp>(
+              std::vector<int64_t>({1}), 1e-6, phi::DataType::FLOAT32)
+          .out();
+  auto add_val =
+      builder.Build<paddle::dialect::AddOp>(div_val, add_num).result(0);
+  auto rsqrt_val = builder.Build<paddle::dialect::RsqrtOp>(add_val).result(0);
+  auto out = builder.Build<paddle::dialect::MultiplyOp>(rsqrt_val, x).result(0);
+
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
   return program;
 }
@@ -111,7 +105,7 @@ int get_tile_size_config_in_small_area(int dimension_lower) {
 }
 
 int get_tile_size_config_in_large_area(int dimension_lower) {
-  if (dimension_lower <=2 ) {
+  if (dimension_lower <= 2) {
     return 510;
   } else if (dimension_lower <= 512) {
     return 512;
@@ -121,14 +115,19 @@ int get_tile_size_config_in_large_area(int dimension_lower) {
     return 8192;
   } else if (dimension_lower <= 16384) {
     return 16384;
-  } 
+  }
 }
 
-
-void search_then_save_one_window(bool is_spatial_dynamic, bool is_reduce_dynamic,
-  int s_dimension_lower, int r_dimension_lower, int spatial_tile_width, int reduce_tile_width,
-  int spatial_tile_config, int reduce_tile_config, double s_weight, double r_weight) {
-
+void search_then_save_one_window(bool is_spatial_dynamic,
+                                 bool is_reduce_dynamic,
+                                 int s_dimension_lower,
+                                 int r_dimension_lower,
+                                 int spatial_tile_width,
+                                 int reduce_tile_width,
+                                 int spatial_tile_config,
+                                 int reduce_tile_config,
+                                 double s_weight,
+                                 double r_weight) {
   std::vector<double> s_weights =
       std::vector<double>(spatial_tile_width, s_weight);
   std::vector<double> r_weights =
@@ -147,8 +146,7 @@ void search_then_save_one_window(bool is_spatial_dynamic, bool is_reduce_dynamic
   }
 
   // Step 2: Switch schedule config manager mode.
-  auto& schedule_config_manager =
-      cinn::ir::ScheduleConfigManager::Instance();
+  auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
 
   // Step 3: Construct iter space and objective function.
   cinn::ir::BucketInfo bucket_info;
@@ -157,14 +155,13 @@ void search_then_save_one_window(bool is_spatial_dynamic, bool is_reduce_dynamic
       s_dimension_lower + spatial_tile_width - 1,
       "S",
       /* is_dynamic = */ is_spatial_dynamic});
-  bucket_info.space.push_back(cinn::ir::BucketInfo::Dimension{
-      r_dimension_lower,
-      r_dimension_lower + reduce_tile_width - 1,
-      "R",
-      /* is_dynamic = */ is_reduce_dynamic});
+  bucket_info.space.push_back(
+      cinn::ir::BucketInfo::Dimension{r_dimension_lower,
+                                      r_dimension_lower + reduce_tile_width - 1,
+                                      "R",
+                                      /* is_dynamic = */ is_reduce_dynamic});
   std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
-      std::make_unique<
-          cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
+      std::make_unique<cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
           program.get(),
           bucket_info,
           sampling_prob,
@@ -183,9 +180,9 @@ void search_then_save_one_window(bool is_spatial_dynamic, bool is_reduce_dynamic
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
         return candidate[1] < 256 && candidate[1] % kThreadsPerWarp == 0 ||
-                candidate[1] == 1 ||
-                candidate[1] <= 512 && candidate[1] % 128 == 0 ||
-                candidate[1] % 256 == 0;
+               candidate[1] == 1 ||
+               candidate[1] <= 512 && candidate[1] % 128 == 0 ||
+               candidate[1] % 256 == 0;
       });
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -197,9 +194,8 @@ void search_then_save_one_window(bool is_spatial_dynamic, bool is_reduce_dynamic
       });
   constraints.emplace_back(
       [&](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[0] * kThreadsPerWarp / candidate[1] *
-                    candidate[2] <=
-                s_dimension_lower;
+        return candidate[0] * kThreadsPerWarp / candidate[1] * candidate[2] <=
+               s_dimension_lower;
       });
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -212,8 +208,8 @@ void search_then_save_one_window(bool is_spatial_dynamic, bool is_reduce_dynamic
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
         return candidate[0] <= 4 ||
-                candidate[0] <= 8 && candidate[0] % 2 == 0 ||
-                candidate[0] % 4 == 0;
+               candidate[0] <= 8 && candidate[0] % 2 == 0 ||
+               candidate[0] % 4 == 0;
       });
 
   // Step 5: Construct searcher and search.
@@ -229,23 +225,21 @@ void search_then_save_one_window(bool is_spatial_dynamic, bool is_reduce_dynamic
   tile_bestconfig.spatial_inner_num = search_res.second[2];
   // Extend bucketinfo 's static dim region
   if (bucket_info.space[0].is_dynamic == false &&
-      bucket_info.space[0].lower_bound ==
-          bucket_info.space[0].upper_bound) {
+      bucket_info.space[0].lower_bound == bucket_info.space[0].upper_bound) {
     bucket_info.space[0].upper_bound =
         s_dimension_lower + spatial_tile_config - 1;
   }
   if (bucket_info.space[1].is_dynamic == false &&
-      bucket_info.space[1].lower_bound ==
-          bucket_info.space[1].upper_bound) {
+      bucket_info.space[1].lower_bound == bucket_info.space[1].upper_bound) {
     bucket_info.space[1].upper_bound =
         r_dimension_lower + reduce_tile_config - 1;
   }
   // Extend bucketinfo 's large value to infinite
   if (spatial_tile_config == 1000) {
-    bucket_info.space[0].upper_bound = int(2e10);
+    bucket_info.space[0].upper_bound = static_cast<int>(2e10);
   }
   if (reduce_tile_config == 1000) {
-    bucket_info.space[1].upper_bound = int(2e10);
+    bucket_info.space[1].upper_bound = static_cast<int>(2e10);
   }
 
   file_database.AddConfig(
@@ -259,8 +253,7 @@ void search_then_save_one_window(bool is_spatial_dynamic, bool is_reduce_dynamic
             << cinn::utils::Join<int64_t>(search_res.second, ", ");
   if (r_dimension_lower * s_dimension_lower >= (2048 * 1024)) {
     sleep(15);
-  }
-  else {
+  } else {
     sleep(2);
   }
 }
@@ -301,68 +294,93 @@ void TestSearchForTileConfig(int spatial_l_bound,
   // Define weight for each dimension
   double s_weight = (is_spatial_dynamic ? s_w : 1.0);
   double r_weight = (is_reduce_dynamic ? r_w : 1.0);
-  // (I) Search in the small area, 
+  // (I) Search in the small area,
   // i.e, S:[2-4096]*R:[2-4096]
   for (int s_dimension_lower = spatial_left_bound;
-       s_dimension_lower < spatial_right_bound || s_dimension_lower == spatial_right_bound && spatial_left_bound == spatial_right_bound;
+       s_dimension_lower < spatial_right_bound ||
+       s_dimension_lower == spatial_right_bound &&
+           spatial_left_bound == spatial_right_bound;
        s_dimension_lower += spatial_tile_config) {
     // adjust the tile size for the spatial dimension dymaically
     spatial_tile_config = get_tile_size_config_in_small_area(s_dimension_lower);
     spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
     for (int r_dimension_lower = reduce_left_bound;
-         r_dimension_lower < reduce_right_bound || r_dimension_lower == reduce_right_bound && reduce_left_bound == reduce_right_bound;
+         r_dimension_lower < reduce_right_bound ||
+         r_dimension_lower == reduce_right_bound &&
+             reduce_left_bound == reduce_right_bound;
          r_dimension_lower += reduce_tile_config) {
       // adjust the tile size for the reduce dimension dymaically
-      reduce_tile_config = get_tile_size_config_in_small_area(r_dimension_lower);
+      reduce_tile_config =
+          get_tile_size_config_in_small_area(r_dimension_lower);
       reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-      search_then_save_one_window(is_spatial_dynamic, is_reduce_dynamic,
-        s_dimension_lower, r_dimension_lower, spatial_tile_width, reduce_tile_width,
-        spatial_tile_config, reduce_tile_config, s_weight, r_weight);
+      search_then_save_one_window(is_spatial_dynamic,
+                                  is_reduce_dynamic,
+                                  s_dimension_lower,
+                                  r_dimension_lower,
+                                  spatial_tile_width,
+                                  reduce_tile_width,
+                                  spatial_tile_config,
+                                  reduce_tile_config,
+                                  s_weight,
+                                  r_weight);
     }
   }
   // early stop for test
-  if (reduce_left_bound == reduce_right_bound && spatial_left_bound == spatial_right_bound) {
+  if (reduce_left_bound == reduce_right_bound &&
+      spatial_left_bound == spatial_right_bound) {
     exit(0);
   }
   // (II) Search in the single large areas,
   // i.e., S:[4096-32768]*R:[2-1024], S:[2-1024]*R:[4096-32768]
-  for (int s_dimension_lower = 2;
-       s_dimension_lower < 1024;
+  for (int s_dimension_lower = 2; s_dimension_lower < 1024;
        s_dimension_lower += spatial_tile_config) {
     // adjust the tile size for the spatial dimension dymaically
     spatial_tile_config = get_tile_size_config_in_large_area(s_dimension_lower);
     spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
 
-    for (int r_dimension_lower = 4096;
-         r_dimension_lower < 32768;
+    for (int r_dimension_lower = 4096; r_dimension_lower < 32768;
          r_dimension_lower += reduce_tile_config) {
       // adjust the tile size for the reduce dimension dymaically
-      reduce_tile_config = get_tile_size_config_in_large_area(r_dimension_lower);
+      reduce_tile_config =
+          get_tile_size_config_in_large_area(r_dimension_lower);
       reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
 
-      search_then_save_one_window(is_spatial_dynamic, is_reduce_dynamic,
-        s_dimension_lower, r_dimension_lower, spatial_tile_width, reduce_tile_width,
-        spatial_tile_config, reduce_tile_config, s_weight, r_weight);
+      search_then_save_one_window(is_spatial_dynamic,
+                                  is_reduce_dynamic,
+                                  s_dimension_lower,
+                                  r_dimension_lower,
+                                  spatial_tile_width,
+                                  reduce_tile_width,
+                                  spatial_tile_config,
+                                  reduce_tile_config,
+                                  s_weight,
+                                  r_weight);
     }
   }
 
-  for (int s_dimension_lower = 4096;
-       s_dimension_lower < 32768;
+  for (int s_dimension_lower = 4096; s_dimension_lower < 32768;
        s_dimension_lower += spatial_tile_config) {
     // adjust the tile size for the spatial dimension dymaically
     spatial_tile_config = get_tile_size_config_in_large_area(s_dimension_lower);
     spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
 
-    for (int r_dimension_lower = 2;
-         r_dimension_lower < 1024;
+    for (int r_dimension_lower = 2; r_dimension_lower < 1024;
          r_dimension_lower += reduce_tile_config) {
       // adjust the tile size for the reduce dimension dymaically
-      reduce_tile_config = get_tile_size_config_in_large_area(r_dimension_lower);
+      reduce_tile_config =
+          get_tile_size_config_in_large_area(r_dimension_lower);
       reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
 
-      search_then_save_one_window(is_spatial_dynamic, is_reduce_dynamic,
-        s_dimension_lower, r_dimension_lower, spatial_tile_width, reduce_tile_width,
-        spatial_tile_config, reduce_tile_config, s_weight, r_weight);
+      search_then_save_one_window(is_spatial_dynamic,
+                                  is_reduce_dynamic,
+                                  s_dimension_lower,
+                                  r_dimension_lower,
+                                  spatial_tile_width,
+                                  reduce_tile_width,
+                                  spatial_tile_config,
+                                  reduce_tile_config,
+                                  s_weight,
+                                  r_weight);
     }
   }
   // (III) Search in the infinite area.
@@ -374,10 +392,17 @@ void TestSearchForTileConfig(int spatial_l_bound,
   spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
   reduce_tile_config = 3072;
   reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-  
-  search_then_save_one_window(is_spatial_dynamic, is_reduce_dynamic,
-    s_dimension_lower, r_dimension_lower, spatial_tile_width, reduce_tile_width,
-    spatial_tile_config, reduce_tile_config, s_weight, r_weight);
+
+  search_then_save_one_window(is_spatial_dynamic,
+                              is_reduce_dynamic,
+                              s_dimension_lower,
+                              r_dimension_lower,
+                              spatial_tile_width,
+                              reduce_tile_width,
+                              spatial_tile_config,
+                              reduce_tile_config,
+                              s_weight,
+                              r_weight);
   // 2nd window
   s_dimension_lower = 4096;
   r_dimension_lower = 4096;
@@ -385,10 +410,17 @@ void TestSearchForTileConfig(int spatial_l_bound,
   spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
   reduce_tile_config = 32768 - 4096;
   reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-  
-  search_then_save_one_window(is_spatial_dynamic, is_reduce_dynamic,
-    s_dimension_lower, r_dimension_lower, spatial_tile_width, reduce_tile_width,
-    spatial_tile_config, reduce_tile_config, s_weight, r_weight);
+
+  search_then_save_one_window(is_spatial_dynamic,
+                              is_reduce_dynamic,
+                              s_dimension_lower,
+                              r_dimension_lower,
+                              spatial_tile_width,
+                              reduce_tile_width,
+                              spatial_tile_config,
+                              reduce_tile_config,
+                              s_weight,
+                              r_weight);
   // 3rd window
   s_dimension_lower = 1024;
   r_dimension_lower = 4096;
@@ -396,10 +428,17 @@ void TestSearchForTileConfig(int spatial_l_bound,
   spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
   reduce_tile_config = 32768 - 4096;
   reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-  
-  search_then_save_one_window(is_spatial_dynamic, is_reduce_dynamic,
-    s_dimension_lower, r_dimension_lower, spatial_tile_width, reduce_tile_width,
-    spatial_tile_config, reduce_tile_config, s_weight, r_weight);
+
+  search_then_save_one_window(is_spatial_dynamic,
+                              is_reduce_dynamic,
+                              s_dimension_lower,
+                              r_dimension_lower,
+                              spatial_tile_width,
+                              reduce_tile_width,
+                              spatial_tile_config,
+                              reduce_tile_config,
+                              s_weight,
+                              r_weight);
 
   // 4th window
   s_dimension_lower = 32768;
@@ -408,10 +447,17 @@ void TestSearchForTileConfig(int spatial_l_bound,
   spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
   reduce_tile_config = 32768 - 2;
   reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-  
-  search_then_save_one_window(is_spatial_dynamic, is_reduce_dynamic,
-    s_dimension_lower, r_dimension_lower, spatial_tile_width, reduce_tile_width,
-    spatial_tile_config, reduce_tile_config, s_weight, r_weight);
+
+  search_then_save_one_window(is_spatial_dynamic,
+                              is_reduce_dynamic,
+                              s_dimension_lower,
+                              r_dimension_lower,
+                              spatial_tile_width,
+                              reduce_tile_width,
+                              spatial_tile_config,
+                              reduce_tile_config,
+                              s_weight,
+                              r_weight);
   // 5th window
   s_dimension_lower = 2;
   r_dimension_lower = 32768;
@@ -419,10 +465,17 @@ void TestSearchForTileConfig(int spatial_l_bound,
   spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
   reduce_tile_config = 1000;
   reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-  
-  search_then_save_one_window(is_spatial_dynamic, is_reduce_dynamic,
-    s_dimension_lower, r_dimension_lower, spatial_tile_width, reduce_tile_width,
-    spatial_tile_config, reduce_tile_config, s_weight, r_weight);
+
+  search_then_save_one_window(is_spatial_dynamic,
+                              is_reduce_dynamic,
+                              s_dimension_lower,
+                              r_dimension_lower,
+                              spatial_tile_width,
+                              reduce_tile_width,
+                              spatial_tile_config,
+                              reduce_tile_config,
+                              s_weight,
+                              r_weight);
   // 6th window
   s_dimension_lower = 32768;
   r_dimension_lower = 32768;
@@ -430,47 +483,54 @@ void TestSearchForTileConfig(int spatial_l_bound,
   spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
   reduce_tile_config = 1000;
   reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-  
-  search_then_save_one_window(is_spatial_dynamic, is_reduce_dynamic,
-    s_dimension_lower, r_dimension_lower, spatial_tile_width, reduce_tile_width,
-    spatial_tile_config, reduce_tile_config, s_weight, r_weight);
+
+  search_then_save_one_window(is_spatial_dynamic,
+                              is_reduce_dynamic,
+                              s_dimension_lower,
+                              r_dimension_lower,
+                              spatial_tile_width,
+                              reduce_tile_width,
+                              spatial_tile_config,
+                              reduce_tile_config,
+                              s_weight,
+                              r_weight);
 }
 
-// TEST(ConfigSearcher, TestDynamicReduce) {
-//   int spatial_left_bound = 2;
-//   int spatial_right_bound = 4096; // To reproduce, set it to 4096
-//   int reduce_left_bound = 2;
-//   int reduce_right_bound = 4096; // To reproduce, set it to 4096
-//   bool is_spatial_dynamic = false;
-//   bool is_reduce_dynamic = true;
-//   TestSearchForTileConfig(spatial_left_bound,
-//                           spatial_right_bound,
-//                           reduce_left_bound,
-//                           reduce_right_bound,
-//                           is_spatial_dynamic,
-//                           is_reduce_dynamic);
-// }
-
-// TEST(ConfigSearcher, TestDynamicSpatial) {
-//   int spatial_left_bound = 2;
-//   int spatial_right_bound = 4096; // To reproduce, set it to 4096
-//   int reduce_left_bound = 2;
-//   int reduce_right_bound = 4096; // To reproduce, set it to 4096
-//   bool is_spatial_dynamic = true;
-//   bool is_reduce_dynamic = false;
-//   TestSearchForTileConfig(spatial_left_bound,
-//                           spatial_right_bound,
-//                           reduce_left_bound,
-//                           reduce_right_bound,
-//                           is_spatial_dynamic,
-//                           is_reduce_dynamic);
-// }
-
-TEST(ConfigSearcher, TestDynamicDeboule) {
+TEST(ConfigSearcher, TestDynamicReduce) {
   int spatial_left_bound = 2;
   int spatial_right_bound = 2; // To reproduce, set it to 4096
   int reduce_left_bound = 2;
   int reduce_right_bound = 2; // To reproduce, set it to 4096
+  bool is_spatial_dynamic = false;
+  bool is_reduce_dynamic = true;
+  TestSearchForTileConfig(spatial_left_bound,
+                          spatial_right_bound,
+                          reduce_left_bound,
+                          reduce_right_bound,
+                          is_spatial_dynamic,
+                          is_reduce_dynamic);
+}
+
+TEST(ConfigSearcher, TestDynamicSpatial) {
+  int spatial_left_bound = 2;
+  int spatial_right_bound = 2; // To reproduce, set it to 4096
+  int reduce_left_bound = 2;
+  int reduce_right_bound = 2; // To reproduce, set it to 4096
+  bool is_spatial_dynamic = true;
+  bool is_reduce_dynamic = false;
+  TestSearchForTileConfig(spatial_left_bound,
+                          spatial_right_bound,
+                          reduce_left_bound,
+                          reduce_right_bound,
+                          is_spatial_dynamic,
+                          is_reduce_dynamic);
+}
+
+TEST(ConfigSearcher, TestDynamicDeboule) {
+  int spatial_left_bound = 2;
+  int spatial_right_bound = 2;  // To reproduce, set it to 4096
+  int reduce_left_bound = 2;
+  int reduce_right_bound = 2;  // To reproduce, set it to 4096
   bool is_spatial_dynamic = true;
   bool is_reduce_dynamic = true;
   TestSearchForTileConfig(spatial_left_bound,
