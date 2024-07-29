@@ -15,8 +15,8 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <cmath>
-#include "paddle/common/flags.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 #include "xpu/runtime.h"
 #include "xpu/xdnn.h"
@@ -87,11 +87,7 @@ TEST(resnet50_xpu, basic) {
   experimental::InternalUtils::RunWithRuntimeConfig(predictor##idx_.get(), \
                                                     &config_);             \
   CompareOutput(predictor##idx_);                                          \
-  PADDLE_ENFORCE_EQ(predictor##idx_->GetExecStream(),                       \
-                    runtime_config.stream,                                 \
-                    phi::errors::InvalidArgument(                          \
-                        "predictor->GetExecStream() is not equal with"     \
-                        "runtime_config.stream"));
+  CHECK_EQ(predictor##idx_->GetExecStream(), runtime_config.stream);
 
 TEST(runtime_stream, null_stream) {
   experimental::XpuRuntimeConfig xpu_runtime_config;
