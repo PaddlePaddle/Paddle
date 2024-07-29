@@ -32,10 +32,10 @@ def get_program(mesh, placements, local_mesh_dim):
         y.stop_gradient = False
         dist_x = dist.shard_tensor(x, mesh, placements)
         dist_y = dist.shard_tensor(y, mesh, placements)
-        local_tensors = dist.auto_parallel.api.local_tensor_list_from_dtensor(
+        local_tensors = dist.auto_parallel.api.moe_sub_mesh_tensors(
             dist_x, mesh, local_mesh_dim, placements
         )
-        out = dist.auto_parallel.api.dtensor_from_local_list(
+        out = dist.auto_parallel.api.moe_global_mesh_tensor(
             local_tensors, mesh, placements, local_mesh_dim
         )
         loss = dist_y - out

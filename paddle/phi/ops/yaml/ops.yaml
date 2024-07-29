@@ -4009,6 +4009,7 @@
   output : Tensor(out)
   infer_meta :
     func : ScatterInferMeta
+    spmd_rule : ScatterInferSpmd
   kernel :
     func : scatter
     data_type : x
@@ -4175,6 +4176,7 @@
   output: Tensor (out)
   infer_meta:
     func: ShareDataInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel:
     func: share_data {dense -> dense}
           share_data_sr {selected_rows -> selected_rows}
