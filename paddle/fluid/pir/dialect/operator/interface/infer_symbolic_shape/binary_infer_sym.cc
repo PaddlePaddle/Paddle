@@ -182,16 +182,6 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
 
-bool DequantizeAbsMaxOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &x_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
-
-  return true;
-}
-
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<symbol::DimExpr> &x_dims =
