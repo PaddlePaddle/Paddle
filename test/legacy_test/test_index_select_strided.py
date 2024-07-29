@@ -79,6 +79,10 @@ class TestIndexSelectStrided(unittest.TestCase):
                 loss.backward()
                 self.assertEqual((b.grad.numpy() == 1).all().item(), True)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+        self.check_output(check_symbol_infer=True)
+
 
 if __name__ == '__main__':
     unittest.main()
