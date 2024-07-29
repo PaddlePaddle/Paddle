@@ -204,7 +204,7 @@ class QuantConfig:
 
     def add_type_config(
         self,
-        layer_type: type | list[type],
+        layer_type: type[Layer] | list[type[Layer]],
         activation: QuanterFactory = None,
         weight: QuanterFactory = None,
     ) -> None:
@@ -214,7 +214,7 @@ class QuantConfig:
         and `add_name_config`.
 
         Args:
-            layer_type(type|list[type]): One or a list of layers' type. It should be subclass of
+            layer_type(type[Layer] | list[type[Layer]]): One or a list of layers' type. It should be subclass of
             `paddle.nn.Layer`. Python build-in function `type()` can be used to get the type of a layer.
             activation(QuanterFactory): Quanter used for activations.
             weight(QuanterFactory): Quanter used for weights.
@@ -254,7 +254,9 @@ class QuantConfig:
                     _element, activation=activation, weight=weight
                 )
 
-    def add_qat_layer_mapping(self, source: type, target: type) -> None:
+    def add_qat_layer_mapping(
+        self, source: type[Layer], target: type[Layer]
+    ) -> None:
         r"""
         Add rules converting layers to simulated quantization layers
         before quantization-aware training. It will convert layers
@@ -263,8 +265,8 @@ class QuantConfig:
         mapping is provided by property `default_qat_layer_mapping`.
 
         Args:
-            source(type): The type of layers that will be converted.
-            target(type): The type of layers that will be converted to.
+            source(type[Layer]): The type of layers that will be converted.
+            target(type[Layer]): The type of layers that will be converted to.
 
         Examples:
             .. code-block:: python
@@ -289,14 +291,14 @@ class QuantConfig:
         self._qat_layer_mapping[source] = target
         self._customized_qat_layer_mapping[source] = target
 
-    def add_customized_leaf(self, layer_type: type) -> None:
+    def add_customized_leaf(self, layer_type: type[Layer]) -> None:
         r"""
         Declare the customized layer as leaf of model for quantization.
         The leaf layer is quantized as one layer. The sublayers of
         leaf layer will not be quantized.
 
         Args:
-            layer_type(type): The type of layer to be declared as leaf.
+            layer_type(type[Layer]): The type of layer to be declared as leaf.
 
         Examples:
             .. code-block:: python
@@ -311,7 +313,7 @@ class QuantConfig:
         self._customized_leaves.append(layer_type)
 
     @property
-    def customized_leaves(self) -> list:
+    def customized_leaves(self) -> list[type[Layer]]:
         r"""
         Get all the customized leaves.
         """
