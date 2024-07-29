@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import paddle
 import numpy as np
+
+import paddle
 
 try:
     import tensorrt as trt
 except Exception as e:
     pass
-from paddle import base
-from paddle import pir
-
-import paddle.static as static
-import paddle.nn.functional as F
-import paddle.nn as nn
-from paddle.nn import TransformerEncoderLayer, TransformerEncoder
+from paddle import nn, pir, static
+from paddle.nn import TransformerEncoder, TransformerEncoderLayer
 
 
 def map_dtype(pd_dtype):
@@ -49,6 +44,7 @@ def run_pir_pass(program, partition_mode=False):
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
     pm.enable_ir_printing()
+    paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
     passes = [
         # {'dead_code_elimination_pass': {}},
         {'multihead_matmul_fuse_pass': {}},
@@ -86,11 +82,10 @@ def run_pir_pass(program, partition_mode=False):
     if partition_mode:
         passes = [{'trt_sub_graph_extract_pass': {}}]
 
-    pm = pir.PassManager(opt_level=4)
-    paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
+    # pm = pir.PassManager(opt_level=4)
 
-    pm.enable_print_statistics()
-    pm.enable_ir_printing()
+    # pm.enable_print_statistics()
+    # pm.enable_ir_printing()
     for pass_item in passes:
         for pass_name, pass_attr in pass_item.items():
             pm.add_pass(pass_name, pass_attr)
@@ -151,7 +146,7 @@ def get_r50_program():
         with static.program_guard(infer_program, startup_program):
             scope = paddle.static.global_scope()
             input_data = paddle.static.data(
-                shape=[1, 3, 224, 224], dtype='float32', name='input'
+                shape=[-1, 3, 224, 224], dtype='float32', name='input'
             )
             model = wide_resnet50_2()
             model.eval()
@@ -270,7 +265,6 @@ def get_bert_program():
         else paddle.CPUPlace()
     )
     pir_program = main_program
-
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(pir_program, startup_program):
             x = np.ones([1, seq_length]).astype('int64')
@@ -279,7 +273,7 @@ def get_bert_program():
             fetches = executor.run(
                 pir_program,
                 feed={"input_ids": x},
-                fetch_list=pir_program.list_vars()[-1],
+                fetch_list=pir_program.list_vars()[-3],
             )
     params = main_program.global_block().all_parameters()
     param_dict = {}
