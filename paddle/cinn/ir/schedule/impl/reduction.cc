@@ -26,11 +26,11 @@
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
-  }                                                                         \
-  catch (const utils::ErrorHandler& err_handler) {                          \
-    PADDLE_THROW(                                                           \
-        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)              \
+  }                                                      \
+  catch (const utils::ErrorHandler& err_handler) {       \
+    PADDLE_THROW(::common::errors::Fatal(                \
+        err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 namespace cinn {
@@ -92,7 +92,7 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   if (original_update_body.As<Block>()) {
     PADDLE_ENFORCE_EQ(original_update_body.As<Block>()->stmts.size(),
                       1,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of original_update_body should be 1!"));
     original_update_stmt = original_update_body.As<Block>()->stmts[0];
   } else if (original_update_body.As<Store>()) {

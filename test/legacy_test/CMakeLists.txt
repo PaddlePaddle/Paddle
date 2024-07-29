@@ -450,6 +450,7 @@ list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
+list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
@@ -547,11 +548,13 @@ if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
   list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
   list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo)
-  list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_ctr2)
 endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
+py_test_modules(
+  test_imperative_ocr_attention_model MODULES
+  test_imperative_ocr_attention_model ENVS FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 if(WITH_GPU
    OR WITH_XPU
@@ -776,9 +779,6 @@ if(NOT WIN32 AND NOT APPLE)
 endif()
 
 if(WITH_DISTRIBUTE)
-  if(NOT WITH_COVERAGE)
-    set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 200)
-  endif()
   set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
                                                                        200)
   set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
@@ -856,6 +856,7 @@ set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT

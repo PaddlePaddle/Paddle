@@ -52,8 +52,8 @@ struct SplitDenseTensor {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <typename T>
-struct ConcatDenseTensor<platform::CustomDeviceContext, T> {
-  void operator()(const platform::CustomDeviceContext &context,
+struct ConcatDenseTensor<phi::CustomContext, T> {
+  void operator()(const phi::CustomContext &context,
                   const std::vector<phi::DenseTensor> &in,
                   phi::DenseTensor *out,
                   int axis UNUSED = 0) {
@@ -77,8 +77,8 @@ struct ConcatDenseTensor<platform::CustomDeviceContext, T> {
 };
 
 template <typename T>
-struct SplitDenseTensor<platform::CustomDeviceContext, T> {
-  void operator()(const platform::CustomDeviceContext &context,
+struct SplitDenseTensor<phi::CustomContext, T> {
+  void operator()(const phi::CustomContext &context,
                   const phi::DenseTensor &in,
                   std::vector<phi::DenseTensor *> *out,
                   int axis UNUSED = 0) {
@@ -299,11 +299,10 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
 #endif
   } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    ConcatDenseTensorWithType(
-        static_cast<const platform::CustomDeviceContext &>(dev_ctx),
-        tensor_list,
-        dense_tensor,
-        tensor->dtype());
+    ConcatDenseTensorWithType(static_cast<const phi::CustomContext &>(dev_ctx),
+                              tensor_list,
+                              dense_tensor,
+                              tensor->dtype());
 #else
     PADDLE_THROW(phi::errors::PermissionDenied(
         "Paddle can't concat tensor since it's not compiled with "
@@ -356,11 +355,10 @@ void SplitTensor(const phi::DeviceContext &dev_ctx,
 #endif
   } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    SplitDenseTensorWithType(
-        static_cast<const platform::CustomDeviceContext &>(dev_ctx),
-        tensor,
-        &dense_list,
-        tensor.dtype());
+    SplitDenseTensorWithType(static_cast<const phi::CustomContext &>(dev_ctx),
+                             tensor,
+                             &dense_list,
+                             tensor.dtype());
 #else
     PADDLE_THROW(phi::errors::PermissionDenied(
         "Paddle can't split tensor since it's not compiled with CUSTOM_DEVICE, "

@@ -84,7 +84,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   auto *fc_layer = TRT_ENGINE_ADD_LAYER(
       engine, FullyConnected, *x, size, weight.get(), bias.get());
   PADDLE_ENFORCE_NOT_NULL(fc_layer,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "TRT fully connected layer building failed."));
 
   engine->DeclareOutput(fc_layer, 0, "y");
@@ -212,7 +212,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
   layer->setInput(1, *shape);
   PADDLE_ENFORCE_NOT_NULL(
       layer,
-      phi::errors::InvalidArgument("TRT shuffle layer building failed."));
+      common::errors::InvalidArgument("TRT shuffle layer building failed."));
   engine->DeclareOutput(layer, 0, "y");
   engine->FreezeNetwork();
 

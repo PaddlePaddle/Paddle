@@ -72,7 +72,11 @@ struct DataRecord {
                                 response_mask.begin() + batch_end);
       CHECK(!data.response.empty());
       CHECK(!data.response_mask.empty());
-      CHECK_EQ(data.response.size(), data.response_mask.size());
+      PADDLE_ENFORCE_EQ(data.response.size(),
+                        data.response_mask.size(),
+                        phi::errors::InvalidArgument(
+                            "Required data.response.size() should be equal to "
+                            "data.response_mask.size() . "));
     }
     batch_iter += batch_size;
     return data;
@@ -87,7 +91,11 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, ',', &data);
-      CHECK_EQ(data.size(), (size_t)(2 * FLAGS_max_turn_num + 3));
+      PADDLE_ENFORCE_EQ(data.size(),
+                        (size_t)(2 * FLAGS_max_turn_num + 3),
+                        phi::errors::InvalidArgument(
+                            "Required data.size() should be equal to "
+                            "(size_t)(2 * FLAGS_max_turn_num + 3) . "));
       // load turn data
       std::vector<int64_t> turns_tmp[FLAGS_max_turn_num];
       for (int i = 0; i < FLAGS_max_turn_num; ++i) {
@@ -128,10 +136,14 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   std::string turn_mask_pre = "turn_mask_";
 
   auto one_batch = data->NextBatch();
-  PADDLE_ENFORCE(!one_batch.response.empty(),
-                 ::phi::errors::Fatal("The response of one batch is empty."));
+  PADDLE_ENFORCE(
+      !one_batch.response.empty(),
+      ::common::errors::Fatal("The response of one batch is empty."));
   int size = one_batch.response[0].size();
-  CHECK_EQ(size, kMaxTurnLen);
+  PADDLE_ENFORCE_EQ(size,
+                    kMaxTurnLen,
+                    phi::errors::InvalidArgument(
+                        "Required size should be equal to kMaxTurnLen . "));
   // turn tensor assignment
   for (int i = 0; i < FLAGS_max_turn_num; ++i) {
     turns_tensor[i].name = turn_pre + std::to_string(i);
@@ -225,20 +237,20 @@ void profile(bool use_mkldnn = false) {
                  FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
-    PADDLE_ENFORCE_GT(
-        outputs.size(),
-        0,
-        ::phi::errors::Fatal("The size of outputs should be greater than 0."));
+    PADDLE_ENFORCE_GT(outputs.size(),
+                      0,
+                      ::common::errors::Fatal(
+                          "The size of outputs should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_GT(
-        output.size(),
-        0,
-        ::phi::errors::Fatal("The size of output should be greater than 0."));
+    PADDLE_ENFORCE_GT(output.size(),
+                      0,
+                      ::common::errors::Fatal(
+                          "The size of output should be greater than 0."));
     size_t size = GetSize(output[0]);
-    PADDLE_ENFORCE_GT(
-        size,
-        0,
-        ::phi::errors::Fatal("The size of output should be greater than 0."));
+    PADDLE_ENFORCE_GT(size,
+                      0,
+                      ::common::errors::Fatal(
+                          "The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
     for (size_t i = 0; i < size; i++) {
       EXPECT_NEAR(result[i], result_data[i], 1e-3);

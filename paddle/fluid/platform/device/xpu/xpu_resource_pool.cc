@@ -46,12 +46,12 @@ std::shared_ptr<XpuStreamObject> XpuStreamResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
       dev_idx,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
       dev_idx,
       pool_.size(),
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
           pool_.size(),
           dev_idx));
@@ -87,12 +87,12 @@ std::shared_ptr<XpuEventObject> XpuEventResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
       dev_idx,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
       dev_idx,
       pool_.size(),
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
           pool_.size(),
           dev_idx));

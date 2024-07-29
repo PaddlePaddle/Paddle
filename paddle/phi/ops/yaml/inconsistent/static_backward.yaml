@@ -340,14 +340,15 @@
   optional : fwd_grad_grad_x, fwd_grad_grad_y, grad_x_grad, grad_y_grad, grad_grad_out_grad
 
 - backward_op : nce_grad
-  forward: nec (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false) ->  Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
+  forward: nce (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false) ->  Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
   args: (Tensor input, Tensor label, Tensor bias, Tensor weight, Tensor sample_logits, Tensor sample_labels, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, Tensor cost_grad, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)
   output: Tensor(input_grad), Tensor(bias_grad), Tensor(weight_grad)
   infer_meta:
     func: NceGradInferMeta
     param: [input, bias, weight]
   kernel:
-    func: nce_grad
+    func : nce_grad {dense, dense, dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense}
+           nce_sr_grad {dense, dense, dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, selected_rows}
     data_type: input
   optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
 

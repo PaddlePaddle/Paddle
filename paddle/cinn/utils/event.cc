@@ -43,7 +43,7 @@ inline std::string EventTypeToString(const EventType &type) {
     case EventType::kInstruction:
       return "Instruction";
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Unknown event type"));
+      PADDLE_THROW(::common::errors::InvalidArgument("Unknown event type"));
   }
 }
 

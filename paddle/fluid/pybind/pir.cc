@@ -24,6 +24,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -52,6 +53,7 @@
 #include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -122,6 +124,8 @@ using pir::Type;
 using pir::Value;
 using pir::VectorType;
 using pybind11::return_value_policy;
+
+namespace name_analysis = pir::utils::name_analysis;
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
@@ -196,135 +200,6 @@ std::string GetValueInfo(Value v) {
     ss << ", stop_gradient=True";
   }
   return ss.str();
-}
-
-Value GetOutputValueByName(const Program &program, const std::string &name) {
-  auto &block = *program.block();
-  StrAttribute name_attr = StrAttribute::get(IrContext::Instance(), name);
-  Value value;
-  for (auto &op : block) {
-    if (op.isa<pir::ShadowOutputOp>()) {
-      if (op.attribute("output_name") == name_attr) {
-        if (value) {
-          PADDLE_THROW(common::errors::PreconditionNotMet(
-              "More than one shadow ouput named with %s found.", name));
-        }
-        value = op.operand_source(0);
-      }
-    }
-  }
-  return value;
-}
-
-Value GetParameterValueByName(const Program &program, const std::string &name) {
-  auto &block = *program.block();
-  StrAttribute name_attr = StrAttribute::get(IrContext::Instance(), name);
-  Value value;
-  for (auto &op : block) {
-    if (op.isa<pir::ParameterOp>()) {
-      if (op.attribute("parameter_name") == name_attr) {
-        if (value) {
-          PADDLE_THROW(common::errors::PreconditionNotMet(
-              "More than one parameter named with %s found.", name));
-        }
-        value = op.result(0);
-      }
-    }
-  }
-  return value;
-}
-
-void SetValueName(Value value, const std::string name) {
-  pir::Operation *define_op = value.defining_op();
-  if (define_op->isa<pir::ParameterOp>()) {
-    define_op->set_attribute(
-        "parameter_name", StrAttribute::get(pir::IrContext::Instance(), name));
-  } else if (define_op->isa<paddle::dialect::DataOp>()) {
-    define_op->set_attribute(
-        "name", StrAttribute::get(pir::IrContext::Instance(), name));
-  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("Can Not set name for BlockArgument! "));
-  } else if (value.first_use()) {
-    auto nextOp = value.first_use().owner();
-    if (nextOp->isa<::pir::ShadowOutputOp>()) {
-      nextOp->set_attribute(
-          "output_name", StrAttribute::get(pir::IrContext::Instance(), name));
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Currently, we can only set name of Value which is "
-          "shadowoutput "));
-    }
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only set name of Value that "
-        "is persistable"));
-  }
-}
-
-bool IsUsedByShadowOutput(const pir::Value &value) {
-  for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
-    if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool HasValueName(const Value &value) {
-  if (IsFakeValue(value)) {
-    return false;
-  }
-  if (value.defining_op()->isa<::pir::ParameterOp>() ||
-      value.defining_op()->isa<paddle::dialect::DataOp>() ||
-      value.isa<BlockArgument>() || IsUsedByShadowOutput(value)) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-std::optional<std::string> GetValueInputName(Value value) {
-  std::optional<std::string> name;
-  if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
-    name = param_op.param_name();
-  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
-    name = data_op.attribute<StrAttribute>("name").AsString();
-  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
-    if (block_arg.is_kwarg()) {
-      name = block_arg.keyword();
-    } else {
-      name = "arg_" + std::to_string(block_arg.index());
-    }
-  }
-  return name;
-}
-
-std::optional<std::string> GetValueOutputName(Value value) {
-  std::optional<std::string> name;
-  if (IsUsedByShadowOutput(value)) {
-    for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
-      if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
-        name = iter->owner()->attribute<StrAttribute>("output_name").AsString();
-        break;
-      }
-    }
-  }
-  return name;
-}
-
-std::string GetValueName(Value value) {
-  std::optional<std::string> input_name = GetValueInputName(value);
-  if (input_name.has_value()) return input_name.value();
-
-  VLOG(5) << "GetValueInputName(value) return empty, try to "
-             "GetValueOutputName(value).";
-  std::optional<std::string> output_name = GetValueOutputName(value);
-  if (output_name.has_value()) return output_name.value();
-
-  PADDLE_THROW(phi::errors::InvalidArgument(
-      "Currently, we can only get name of Value from "
-      "DataOp/ParameterOp/BlockArgument and ShadowOutputOp."));
 }
 
 phi::DataType GetTensorDtype(Type type) {
@@ -434,12 +309,10 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
     std::vector<pir::Value> new_input_vars;
     for (uint64_t idx = 0; idx < input_vars.size(); idx++) {
       auto input = input_vars[idx];
-      auto orgin_op = input.defining_op();
-      std::string name = "input_" + idx;
-      if (HasValueName(input)) {
-        name = GetValueName(input);
-      }
-      auto new_input = AppendDataOp(global_block, input, name, *orgin_op);
+      auto origin_op = input.defining_op();
+      std::string name = name_analysis::TryGetValueFirstName(input).value_or(
+          "input_" + std::to_string(idx));
+      auto new_input = AppendDataOp(global_block, input, name, *origin_op);
       input.ReplaceAllUsesWith(new_input);
       new_input_vars.push_back(new_input);
     }
@@ -649,11 +522,11 @@ void BindProgram(py::module *m) {
           return_value_policy::reference)
       .def("get_output_value_by_name",
            [](Program &self, const std::string &name) {
-             return GetOutputValueByName(self, name);
+             return name_analysis::GetOutputValueByName(self, name);
            })
       .def("get_parameter_value_by_name",
            [](Program &self, const std::string &name) {
-             return GetParameterValueByName(self, name);
+             return name_analysis::GetParameterValueByName(self, name);
            })
       .def("num_ops", [](Program &self) { return self.num_ops(); })
       .def(
@@ -670,14 +543,16 @@ void BindProgram(py::module *m) {
                     var.attribute<BoolAttribute>(kAttrIsPersistable);
                 if (is_persistable && is_persistable.data()) {
                   if (var.defining_op()->isa<::pir::ParameterOp>()) {
-                    std::string var_name = GetValueName(var);
+                    std::string var_name =
+                        name_analysis::GetValueFirstName(var);
                     auto tensor =
                         scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
                     state_dict_param[var_name] = *tensor;
                     state_dict_all[var_name] = *tensor;
                   } else if (var.defining_op()
                                  ->isa<paddle::dialect::DataOp>()) {
-                    std::string var_name = GetValueName(var);
+                    std::string var_name =
+                        name_analysis::GetValueFirstName(var);
                     auto tensor =
                         scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
                     state_dict_opt[var_name] = *tensor;
@@ -1174,6 +1049,21 @@ void BindOperation(py::module *m) {
           },
           [](Operation &self, OperationDistAttribute op_dist_attr) {
             self.set_attribute(kAttrOpDistAttr, op_dist_attr);
+          })
+      .def_property(
+          "op_role",
+          [](Operation &self) -> py::object {
+            auto int_attr = self.attribute<Int32Attribute>("op_role");
+            if (int_attr) {
+              return py::cast(int_attr.data());
+            } else {
+              return py::cast<py::none>(Py_None);
+            }
+          },
+          [](Operation &self, const int &op_role) {
+            self.set_attribute(
+                "op_role",
+                Int32Attribute::get(pir::IrContext::Instance(), op_role));
           });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
@@ -1336,24 +1226,26 @@ void BindValue(py::module *m) {
           })
       .def_property(
           "name",
-          [](Value self) { return GetValueName(self); },
-          [](Value self, const std::string &name) { SetValueName(self, name); })
-      .def_property_readonly("has_name",
-                             [](Value self) { return HasValueName(self); })
+          [](Value self) -> std::string {
+            return name_analysis::GetValueFirstName(self);
+          },
+          [](Value self, const std::string &name) {
+            name_analysis::SetValueName(self, name);
+          })
+      .def_property_readonly(
+          "has_name",
+          [](Value self) {
+            return name_analysis::TryGetValueFirstName(self).has_value();
+          })
       // Return all Maybe names of given Value, for example:
       // DataOp("var_1") -> %0 -> shadow_output("output_2")
       // Return ["var_1", "output_2"]
-      .def_property_readonly(
-          "_names",
-          [](Value self) -> py::list {
-            py::list all_names;
-            std::optional<std::string> input_name = GetValueInputName(self);
-            if (input_name.has_value()) all_names.append(input_name.value());
-
-            std::optional<std::string> output_name = GetValueOutputName(self);
-            if (output_name.has_value()) all_names.append(output_name.value());
-            return all_names;
-          })
+      .def_property_readonly("_names",
+                             [](Value self) -> py::list {
+                               std::vector<std::string> names =
+                                   name_analysis::GetValueAllNames(self);
+                               return py::cast(names);
+                             })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -1456,6 +1348,7 @@ void BindValue(py::module *m) {
       .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
+      .def("_rename", &name_analysis::RenameValue)
       .def("detach",
            [](Value self) {
              auto share_data_op =
@@ -1888,10 +1781,9 @@ int AppendShadowOutputs(Program *program,
   std::unordered_set<pir::Value> added_value;
   for (const auto &value : outputs) {
     if (!added_value.count(value) || IsFakeValue(value)) {
-      std::string shadow_output_name = name_prefix + std::to_string(counter);
-      if (HasValueName(value)) {
-        shadow_output_name = GetValueName(value);
-      }
+      std::string shadow_output_name =
+          name_analysis::TryGetValueFirstName(value).value_or(
+              name_prefix + std::to_string(counter));
       AppendShadowOutput(
           program, value, shadow_output_name, start_point + counter);
       counter += 1;
@@ -1990,49 +1882,34 @@ SplitedResult SplitForwardBackward(
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = forward_outputs.size();
 
-  auto create_output_fn_forward =
-      [&ctx, &forward_value_map, &counter, &forward_program, &forward_params](
-          const pir::Value &v) {
-        if (v.impl() == nullptr) {
-          return;
-        }
-        // Skip the value that already in forward_params.
-        if (std::find(forward_params.begin(), forward_params.end(), v) !=
-            forward_params.end()) {
-          return;
-        }
-        std::string shadow_output_name =
-            std::string("output_") + std::to_string(counter);
-        if (HasValueName(v)) {
-          shadow_output_name = GetValueName(v);
-        }
-        auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
-        pir::AttributeMap attribute_map = {
-            {"output_name", StrAttribute::get(ctx, shadow_output_name)},
-        };
-        pir::Operation *operation = pir::Operation::Create(
-            {forward_value_map[v]}, attribute_map, {}, op_info);
-        forward_program->block()->push_back(operation);
-        counter += 1;
-      };
-
-  auto create_output_fn_backward = [&ctx,
-                                    &backward_value_map,
-                                    &counter,
-                                    &backward_program](const pir::Value &v) {
+  auto create_output_fn = [&ctx, &counter](
+                              std::unordered_map<Value, Value> value_map,
+                              std::shared_ptr<Program> program,
+                              const pir::Value &v) {
     if (v.impl() == nullptr) {
       return;
     }
+    std::string shadow_output_name =
+        name_analysis::TryGetValueFirstName(v).value_or(
+            std::string("output_") + std::to_string(counter));
     auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
-        {"output_name",
-         StrAttribute::get(ctx,
-                           std::string("output_") + std::to_string(counter))},
+        {"output_name", StrAttribute::get(ctx, shadow_output_name)},
     };
-    pir::Operation *operation = pir::Operation::Create(
-        {backward_value_map.at(v)}, attribute_map, {}, op_info);
-    backward_program->block()->push_back(operation);
+    pir::Operation *operation =
+        pir::Operation::Create({value_map.at(v)}, attribute_map, {}, op_info);
+    program->block()->push_back(operation);
     counter += 1;
+  };
+  auto create_output_fn_forward = [&forward_value_map,
+                                   &forward_program,
+                                   &create_output_fn](const pir::Value &v) {
+    create_output_fn(forward_value_map, forward_program, v);
+  };
+  auto create_output_fn_backward = [&backward_value_map,
+                                    &backward_program,
+                                    &create_output_fn](const pir::Value &v) {
+    create_output_fn(backward_value_map, backward_program, v);
   };
 
   VLOG(4) << "start create forward outputs, inserting shadow_output ops.";
@@ -2204,7 +2081,7 @@ static void inline CreateVariableIfNotExist(
 
   for (size_t i = 0; i < len; ++i) {
     pir::Value value = var_list[i];
-    std::string para_name = GetValueName(value);
+    std::string para_name = name_analysis::GetValueFirstName(value);
     auto var = scope->FindVar(para_name);
     if (var == nullptr) {
       PADDLE_ENFORCE_NOT_NULL(exe,
@@ -2225,18 +2102,10 @@ static void inline CreateVariableIfNotExist(
   return;
 }
 
-void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  if (op->isa<pir::ShadowOutputOp>()) {
-    op->set_attribute("output_name", StrAttribute::get(ctx, name));
-  }
-}
-
 void BindUtils(pybind11::module *m) {
   m->def("create_loaded_parameter", CreateVariableIfNotExist);
   m->def("clone_program", CloneProgram);
   m->def("get_op_inplace_info", GetOpInplaceInfo);
-  m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
   m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("append_shadow_output", AppendShadowOutput);
@@ -2588,19 +2457,31 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
              const auto &compare_func =
                  [&](const std::vector<int64_t> &expect,
                      const std::vector<symbol::DimExpr> &actual) -> bool {
+               const auto print_expect_and_actual = [&]() {
+                 std::ostringstream sout;
+                 sout << "expect: [";
+                 std::copy(expect.begin(),
+                           expect.end(),
+                           std::ostream_iterator<int64_t>(sout, ","));
+                 sout << "]" << std::endl;
+
+                 sout << "actual:" << actual << std::endl;
+                 LOG(ERROR) << sout.str();
+               };
+
                if (actual.size() != expect.size()) {
                  LOG(ERROR) << "expect size " << expect.size()
                             << " is not equal to actual size " << actual.size()
-                            << " .";
+                            << " . The detailed infermation is as follows:";
+                 print_expect_and_actual();
                  return false;
                } else if (actual.empty()) {
                  return true;
                }
+
                for (size_t i = 0; i < actual.size(); i++) {
                  if (!actual.at(i).isa<int64_t>()) {
-                   LOG(ERROR)
-                       << "expect[" << i << "]: " << expect.at(i) << " actual["
-                       << i << "]: " << actual.at(i) << " .";
+                   print_expect_and_actual();
                    PADDLE_THROW(phi::errors::InvalidArgument(
                        "In OpTest, only supports cases where the type of "
                        "DimExpr "
@@ -2610,7 +2491,9 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                  if (actual.at(i) != expect.at(i)) {
                    LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
                               << " is not equal to actual[" << i
-                              << "]: " << actual.at(i) << " .";
+                              << "]: " << actual.at(i)
+                              << " . The detailed infermation is as follows:";
+                   print_expect_and_actual();
                    return false;
                  }
                }
