@@ -44,13 +44,13 @@ class CutlassTeller {
     auto dilations = op_desc->GetAttrIfExists<std::vector<int>>("dilations");
     PADDLE_ENFORCE_EQ(strides.size(),
                       2UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The 'strides' attribute in conv2d should be a "
                           "vector of size 2, but received size %d.",
                           strides.size()));
     PADDLE_ENFORCE_EQ(dilations.size(),
                       2UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The 'dilations' attribute in conv2d should be a "
                           "vector of size 2, but received size %d.",
                           dilations.size()));
@@ -66,7 +66,7 @@ class CutlassTeller {
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(filter_tensor.dims().size(),
                         4UL,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The 'Filter' tensor in conv2d should have 4 "
                             "dimensions, but received dimensions %d.",
                             filter_tensor.dims().size()));
@@ -112,13 +112,13 @@ class CutlassTeller {
     auto dilations = op_desc->GetAttrIfExists<std::vector<int>>("dilations");
     PADDLE_ENFORCE_EQ(strides.size(),
                       2UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The 'strides' attribute in conv2d should be a "
                           "vector of size 2, but received size %d.",
                           strides.size()));
     PADDLE_ENFORCE_EQ(dilations.size(),
                       2UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The 'dilations' attribute in conv2d should be a "
                           "vector of size 2, but received size %d.",
                           dilations.size()));
@@ -134,7 +134,7 @@ class CutlassTeller {
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(filter_tensor.dims().size(),
                         4UL,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The 'Filter' tensor in conv2d should have 4 "
                             "dimensions, but received dimensions %d.",
                             filter_tensor.dims().size()));
@@ -182,13 +182,13 @@ class CutlassTeller {
     auto dilations = op_desc->GetAttrIfExists<std::vector<int>>("dilations");
     PADDLE_ENFORCE_EQ(strides.size(),
                       2UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The 'strides' attribute in conv2d should be a "
                           "vector of size 2, but received size %d.",
                           strides.size()));
     PADDLE_ENFORCE_EQ(dilations.size(),
                       2UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The 'dilations' attribute in conv2d should be a "
                           "vector of size 2, but received size %d.",
                           dilations.size()));
@@ -210,7 +210,7 @@ class CutlassTeller {
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(filter_tensor.dims().size(),
                         4UL,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The 'Filter' tensor in conv2d should have 4 "
                             "dimensions, but received dimensions %d.",
                             filter_tensor.dims().size()));

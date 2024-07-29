@@ -48,7 +48,7 @@ class ConditionalOpEagerDeletionPass : public Pass {
     if (graph->IsConstructedByPartialProgram()) {
       PADDLE_ENFORCE_LE(target_ops.size(),
                         1,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Unsupported multi devices if graph is constructed "
                             "with partial program."));
       size_t scope_idx = 0;
