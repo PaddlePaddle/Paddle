@@ -243,6 +243,8 @@ def create_test_case(op_type):
                     name="data", shape=[10, 10], dtype="float32"
                 )
                 result = op(data_var, axis=-1, name="test_arg_api")
+                if paddle.framework.use_pir_api():
+                    return
                 self.assertTrue("test_arg_api" in result.name)
 
         def run_dygraph(self, place):

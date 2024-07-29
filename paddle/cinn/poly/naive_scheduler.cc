@@ -28,7 +28,7 @@ std::unique_ptr<Schedule> NaiveScheduler::BuildSchedule() {
     PADDLE_ENFORCE_EQ(
         group.nodes.size(),
         1UL,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "group.nodes.size() should be 1, but got %d", group.nodes.size()));
     NaiveGroupScheduler scheduler(
         const_cast<Stage *>(group.nodes.front()->stage));

@@ -32,7 +32,7 @@ std::shared_ptr<FILE> shell_fopen(const std::string& path,
   }
   FILE* fp = fopen(path.c_str(), mode.c_str());
   if (!fp) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Failed to open file, path[%s], mode[%s].", path, mode));
   }
   return {fp, [path](FILE* fp) {
@@ -40,7 +40,7 @@ std::shared_ptr<FILE> shell_fopen(const std::string& path,
               LOG(INFO) << "Closing file[" << path << "]";
             }
             if (0 != fclose(fp)) {
-              PADDLE_THROW(phi::errors::Unavailable(
+              PADDLE_THROW(common::errors::Unavailable(
                   "Failed to close file, path[%s].", path));
             }
           }};
@@ -64,7 +64,7 @@ static int close_open_fds_internal() {
 
   int dir_fd = open("/proc/self/fd", O_RDONLY);
   if (dir_fd < 0) {
-    PADDLE_THROW(phi::errors::Unavailable("Failed to open proc/self/fd."));
+    PADDLE_THROW(common::errors::Unavailable("Failed to open proc/self/fd."));
     return -1;
   }
   char buffer[sizeof(linux_dirent)];  // NOLINT
@@ -75,8 +75,8 @@ static int close_open_fds_internal() {
                          dir_fd,
                          reinterpret_cast<linux_dirent*>(buffer),
                          sizeof(buffer))) < 0) {
-      PADDLE_THROW(
-          phi::errors::Unavailable("System call failed via syscall function."));
+      PADDLE_THROW(common::errors::Unavailable(
+          "System call failed via syscall function."));
       return -1;
     }
 
@@ -241,7 +241,7 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
               PADDLE_ENFORCE_NE(
                   errno,
                   ECHILD,
-                  phi::errors::Fatal("Must not be ECHILD errno here!"));
+                  common::errors::Fatal("Must not be ECHILD errno here!"));
               *err_no = -1;
             }
 
@@ -370,7 +370,7 @@ static int _shell_execute_cmd(const std::string& cmd,
                               int sleep_inter,
                               bool redirect_stderr = false) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(PADDLE_ARM)
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "This function(shell_get_command_output) is not implemented under _WIN32 "
       "or __APPLE__."));
 #else

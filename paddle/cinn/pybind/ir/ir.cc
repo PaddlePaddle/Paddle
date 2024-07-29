@@ -36,7 +36,7 @@ std::vector<Expr> AxisMap(const std::string& kinds,
   PADDLE_ENFORCE_EQ(
       kinds.size(),
       iter_expression.size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of kinds and iter expression in AxisMap is not equal,"
           "where kinds size:%d but iter expression size:%d.",
           kinds.size(),
@@ -54,7 +54,7 @@ std::vector<Expr> AxisMap(const std::string& kinds,
     } else if (c == 'R') {
       iter_var->is_reduce_axis = true;
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "kind of axis setting error, must be R(Reduce) or S(Spatial)"));
     }
     rets.push_back(SetScheduleBlockIterVar(iter_var, iter_expression[i]));
