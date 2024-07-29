@@ -71,7 +71,10 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
 
   if (buffer_size > 0) {
     char* buffer = new char[buffer_size];
-    CHECK_EQ(0, setvbuf(&*fp, buffer, _IOFBF, buffer_size));
+    PADDLE_ENFORCE_EQ(
+        0,
+        setvbuf(&*fp, buffer, _IOFBF, buffer_size),
+        phi::errors::InvalidArgument("Set Buffer Failed, Please Check!"));
     fp = {&*fp, [fp, buffer](FILE*) mutable {  // NOLINT
             CHECK(fp.unique());                // NOLINT
             fp = nullptr;
@@ -580,7 +583,11 @@ void fs_mkdir(const std::string& path) {
 void fs_mv(const std::string& src, const std::string& dest) {
   int s = fs_select_internal(src);
   int d = fs_select_internal(dest);
-  CHECK_EQ(s, d);
+  PADDLE_ENFORCE_EQ(
+      s,
+      d,
+      phi::errors::InvalidArgument(
+          "The source is not equal to destination, Please Check!"));
   switch (s) {
     case 0:
       return localfs_mv(src, dest);
