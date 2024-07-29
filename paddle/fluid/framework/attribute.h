@@ -23,10 +23,10 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/variant.h"

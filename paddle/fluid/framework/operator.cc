@@ -827,7 +827,7 @@ void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
           op_name,
           platform::TracerEventType::Operator,
           FLAGS_enable_host_event_recorder_hook ? 20 : 1,
-          platform::EventRole::kUniqueOp);
+          phi::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
 
@@ -1288,7 +1288,11 @@ struct OperatorWithKernel::CacheImpl {
     bool ret{false};
     if (last_ddims_.empty() || tensors_.empty()) ret = true;
     if (!ret) {
-      CHECK_EQ(last_ddims_.size(), tensors_.size());
+      PADDLE_ENFORCE_EQ(
+          last_ddims_.size(),
+          tensors_.size(),
+          phi::errors::InvalidArgument(
+              "The size of last_ddims_ should be equal to tensors_. "));
       for (size_t i = 0; i < last_ddims_.size(); ++i) {
         if (tensors_[i]->dims() != last_ddims_[i]) {
           ret = true;
@@ -2006,7 +2010,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("prepare_data",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
     if (need_prepare_data_) {
       if (fallback_to_cpu) {  // NOLINT
         transfer_scope = PrepareData(scope,
@@ -2032,7 +2036,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("infer_shape",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->Info().infer_shape_(&infer_shape_ctx);
     record_event.End();
@@ -2050,7 +2054,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
     if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
                                phi::KernelRegisteredType::FUNCTION) {
       phi::KernelContext phi_kernel_context;

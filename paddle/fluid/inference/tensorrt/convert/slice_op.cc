@@ -75,13 +75,13 @@ class SliceOpConverter : public OpConverter {
               engine_->GetITensor(op_desc.Input("StartsTensorList")[i]);
         }
       } else {
-        PADDLE_ENFORCE_EQ(
-            starts.size(),
-            axes.size(),
-            phi::errors::InvalidArgument("The size of this starts: %d must be "
-                                         "equal to the axes: %d.",
-                                         starts.size(),
-                                         axes.size()));
+        PADDLE_ENFORCE_EQ(starts.size(),
+                          axes.size(),
+                          common::errors::InvalidArgument(
+                              "The size of this starts: %d must be "
+                              "equal to the axes: %d.",
+                              starts.size(),
+                              axes.size()));
         for (size_t i = 0; i < axes.size(); i++) {  // same as starts.size()
           if (starts[i] < 0) {
             starts_tensor[axes[i]] =
@@ -113,10 +113,10 @@ class SliceOpConverter : public OpConverter {
         PADDLE_ENFORCE_EQ(
             ends.size(),
             axes.size(),
-            phi::errors::InvalidArgument("The size of this ends: %d must be "
-                                         "equal to the axes: %d.",
-                                         ends.size(),
-                                         axes.size()));
+            common::errors::InvalidArgument("The size of this ends: %d must be "
+                                            "equal to the axes: %d.",
+                                            ends.size(),
+                                            axes.size()));
         for (size_t i = 0; i < axes.size(); i++) {  // same as ends.size()
           if (ends[i] < 0) {
             ends_tensor[axes[i]] =
@@ -172,7 +172,7 @@ class SliceOpConverter : public OpConverter {
         PADDLE_ENFORCE_GT(
             ends[i],
             starts[i],
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Attr(ends) should be greater than attr(starts) in "
                 "slice op. But received ends = %d, starts = %d.",
                 ends[i],

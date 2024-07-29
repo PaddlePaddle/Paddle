@@ -66,7 +66,7 @@ class ReshapeOpConverter : public OpConverter {
     PADDLE_ENFORCE_GE(
         layer->getOutput(0)->getDimensions().nbDims,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Errors occurs in Paddle-TRT reshape2 op, try to use C++ Api "
             "config.Exp_DisableTensorRtOPs({\"reshape2\"})\n; or Python Api "
             "config.exp_disable_tensorrt_ops([\"reshape2\"]) to forbid "

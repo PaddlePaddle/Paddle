@@ -24,7 +24,7 @@ void ReluCPUForward(const phi::DenseTensor &x, phi::DenseTensor *y) {
 void ReluGPUForward(const phi::DenseTensor &x, phi::DenseTensor *y);
 #else
 void ReluGPUForward(const phi::DenseTensor &x, phi::DenseTensor *y) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "ReluGPUForward is not supported when not compiled with GPU."));
 }
 #endif
@@ -34,9 +34,9 @@ __PD_DEFINE_RAW_OP_KERNEL_FUNC(custom_raw_relu, ctx) {
   const auto *x = ctx.Input<phi::DenseTensor>("X");
   auto *y = ctx.Output<phi::DenseTensor>("Y");
   PADDLE_ENFORCE_NOT_NULL(
-      x, phi::errors::InvalidArgument("Input(X) should not be nullptr."));
+      x, common::errors::InvalidArgument("Input(X) should not be nullptr."));
   PADDLE_ENFORCE_NOT_NULL(
-      y, phi::errors::InvalidArgument("Input(X) should not be nullptr."));
+      y, common::errors::InvalidArgument("Input(X) should not be nullptr."));
   if (phi::is_gpu_place(x->place())) {
     ReluGPUForward(*x, y);
   } else {

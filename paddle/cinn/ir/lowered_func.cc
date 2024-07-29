@@ -87,7 +87,7 @@ void _LoweredFunc_::CheckValid() const {
   PADDLE_ENFORCE_GT(
       out_count,
       0,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "At least one output argument is needed for a function."));
 }
 
@@ -341,7 +341,7 @@ void _LoweredFunc_::PrepareArgumentExprs() {
         pod_value_ptr, {cinn::common::make_const(static_cast<int32_t>(i))});
     PADDLE_ENFORCE_EQ(load_expr.type(),
                       type_of<cinn_pod_value_t>(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The type of load_expr should be cinn_pod_value_t"));
     load_expr = ir::intrinsics::GetAddr::Make(load_expr);
 
@@ -525,7 +525,7 @@ void CudaAxisInfo::set_grid_dim(int offset, int64_t x) {
   PADDLE_ENFORCE_LT(
       offset,
       3,
-      phi::errors::InvalidArgument("The offset should be less than 3."));
+      ::common::errors::InvalidArgument("The offset should be less than 3."));
   grid_dims_[offset] = ir::Expr(x);
 }
 
@@ -534,7 +534,7 @@ void CudaAxisInfo::set_block_dim(int offset, int64_t x) {
   PADDLE_ENFORCE_LT(
       offset,
       3,
-      phi::errors::InvalidArgument("The offset should be less than 3."));
+      ::common::errors::InvalidArgument("The offset should be less than 3."));
   block_dims_[offset] = ir::Expr(x);
 }
 
@@ -543,7 +543,7 @@ void CudaAxisInfo::set_grid_dim(int offset, ir::Expr x) {
   PADDLE_ENFORCE_LT(
       offset,
       3,
-      phi::errors::InvalidArgument("The offset should be less than 3."));
+      ::common::errors::InvalidArgument("The offset should be less than 3."));
   grid_dims_[offset] = x;
 }
 
@@ -552,7 +552,7 @@ void CudaAxisInfo::set_block_dim(int offset, ir::Expr x) {
   PADDLE_ENFORCE_LT(
       offset,
       3,
-      phi::errors::InvalidArgument("The offset should be less than 3."));
+      ::common::errors::InvalidArgument("The offset should be less than 3."));
   block_dims_[offset] = x;
 }
 
@@ -561,7 +561,7 @@ ir::Expr CudaAxisInfo::grid_dim(int offset) const {
   PADDLE_ENFORCE_LT(
       offset,
       3,
-      phi::errors::InvalidArgument("The offset should be less than 3."));
+      ::common::errors::InvalidArgument("The offset should be less than 3."));
   return grid_dims_[offset];
 }
 
@@ -570,7 +570,7 @@ ir::Expr CudaAxisInfo::block_dim(int offset) const {
   PADDLE_ENFORCE_LT(
       offset,
       3,
-      phi::errors::InvalidArgument("The offset should be less than 3."));
+      ::common::errors::InvalidArgument("The offset should be less than 3."));
   return block_dims_[offset];
 }
 
