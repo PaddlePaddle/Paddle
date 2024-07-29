@@ -554,7 +554,16 @@ def logspace(
     if not isinstance(base, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.logspace(
+            tensor_start,
+            tensor_stop,
+            tensor_num,
+            tensor_base,
+            dtype,
+            _current_expected_place(),
+        )
+    else if in_pir_mode():
         start_dtype = convert_dtype(tensor_start.dtype)
         stop_dtype = convert_dtype(tensor_stop.dtype)
         base_dtype = convert_dtype(tensor_base.dtype)
