@@ -429,7 +429,6 @@ def moe_global_mesh_tensor(
     local_mesh_list, local_placements = get_sub_meshes_from_global_mesh(
         mesh, placements, local_mesh_dim
     )
-
     local_tensor_idx = mesh.process_ids.index(dist.get_rank())
     local_tensor = local_tensor_list[local_tensor_idx]
     global_dims = list(local_tensor.shape)
