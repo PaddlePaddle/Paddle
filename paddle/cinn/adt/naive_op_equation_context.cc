@@ -240,7 +240,7 @@ std::optional<std::int64_t> GetArgDimSizeImpl(
     const Undefined&,
     const GetArgStaticDimT& GetInDim,
     const GetArgStaticDimT& GetOutDim) {
-  PADDLE_THROW(phi::errors::Fatal("position not found"));
+  PADDLE_THROW(::common::errors::Fatal("position not found"));
 }
 
 std::optional<std::int64_t> GetArgDimSize(const OpArgDimPos& arg_dim_pos,

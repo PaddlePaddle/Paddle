@@ -170,7 +170,7 @@ class DynamicToStaticConverter {
     PADDLE_ENFORCE_EQ(
         origin_shape.size(),
         target_shape.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of origin shape and target shape is not equal,"
             "where the size of origin shape:%d but the size of target "
             "shape:%d.",
@@ -180,7 +180,7 @@ class DynamicToStaticConverter {
       if (origin_shape.at(i) == -1) {
         PADDLE_ENFORCE_GT(target_shape.at(i),
                           0,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of target shape is incorrect."
                               "Expected size is larger than 0, but receive %d.",
                               target_shape.at(i)));
