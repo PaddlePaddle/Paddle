@@ -2808,10 +2808,18 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       auto indices_var_name = desc.Input("indices")[0];
       auto* indices_var_desc = block->FindVarRecursive(indices_var_name);
-
       auto dtype = indices_var_desc->GetDataType();
       if (dtype != framework::proto::VarType::BOOL) {
         VLOG(3) << op_type << " op only support bool indices in tensorrt.";
+        return false;
+      }
+      auto value_var_name = desc.Input("value")[0];
+      auto* value_var_desc = block->FindVarRecursive(value_var_name);
+      const auto value_shape = value_var_desc->GetShape();
+      int value_num = std::accumulate(
+          value_shape.begin(), value_shape.end(), 1, std::multiplies<int>());
+      if (value_num != 1) {
+        VLOG(3) << op_type << " op only support value_num = 1 in tensorrt.";
         return false;
       }
     }
