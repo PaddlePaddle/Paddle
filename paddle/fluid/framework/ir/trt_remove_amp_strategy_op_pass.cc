@@ -50,7 +50,7 @@ void CastDataTypeInplace(phi::DenseTensor *tensor) {
 void TrtRemoveAMPStrategyOpPass::ApplyImpl(Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "During the trt_remove_strategy_op_pass, the graph "
           "should not be null."));
   FusePassBase::Init("trt_remove_strategy_op_pass", graph);
@@ -143,8 +143,8 @@ void TrtRemoveAMPStrategyOpPass::ApplyImpl(Graph *graph) const {
       auto output_dtype = op_node->outputs[0]->Var()->GetDataType();
       if ((input_dtype == DataType::FP32 && output_dtype == DataType::FP16) ||
           (input_dtype == DataType::FP16 && output_dtype == DataType::FP32)) {
-        PADDLE_THROW(
-            phi::errors::Fatal("There are cast OPs remaining in the graph."));
+        PADDLE_THROW(common::errors::Fatal(
+            "There are cast OPs remaining in the graph."));
       }
     }
   }

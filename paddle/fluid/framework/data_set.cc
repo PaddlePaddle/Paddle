@@ -394,7 +394,7 @@ static int compute_thread_batch_nccl(
     int need_ins_num = thread_max_batch_num * thr_num;
     // data is too less
     if ((int64_t)need_ins_num > total_instance_num) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "error instance num:[%d] less need ins num:[%d]",
           total_instance_num,
           need_ins_num));
@@ -428,7 +428,7 @@ static int compute_thread_batch_nccl(
                  << ", thread avg batch num " << thread_avg_batch_num;
   }
 #else
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "dataset compute nccl batch number need compile with GLOO"));
 #endif
   return thread_avg_batch_num;
@@ -466,8 +466,8 @@ void MultiSlotDataset::PrepareTrain() {
     }
   }
 #else
-  PADDLE_THROW(
-      phi::errors::Unavailable("dataset set heterps need compile with GLOO"));
+  PADDLE_THROW(common::errors::Unavailable(
+      "dataset set heterps need compile with GLOO"));
 #endif
   return;
 }
@@ -1853,7 +1853,7 @@ void MultiSlotDataset::SlotsShuffle(
     const std::set<std::string>& slots_to_replace) {
   PADDLE_ENFORCE_EQ(slots_shuffle_fea_eval_,
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "fea eval mode off, need to set on for slots shuffle"));
   platform::Timer timeline;
   timeline.Start();
@@ -2013,8 +2013,8 @@ void SlotRecordDataset::PrepareTrain() {
     }
   }
 #else
-  PADDLE_THROW(
-      phi::errors::Unavailable("dataset set heterps need compile with GLOO"));
+  PADDLE_THROW(common::errors::Unavailable(
+      "dataset set heterps need compile with GLOO"));
 #endif
   return;
 }

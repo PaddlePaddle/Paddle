@@ -39,7 +39,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
                                                const std::string& conv_type,
                                                std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(conv_type + "_" + act_type + "_onednn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
@@ -89,7 +89,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
 void ConvActivationMkldnnFusePass::FuseConvConcatAct(
     Graph* graph, std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("conv2d_concat_" + act_type + "_onednn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
