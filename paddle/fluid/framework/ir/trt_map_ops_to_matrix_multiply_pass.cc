@@ -30,7 +30,7 @@ TrtMapOpsToMatrixMultiplyPass::TrtMapOpsToMatrixMultiplyPass() = default;
 
 void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "trt_map_ops_to_matrix_multiply_pass";
   FusePassBase::Init(name_scope, graph);
 

@@ -148,7 +148,7 @@ void ProgramDesc::CopyFrom(const proto::ProgramDesc &desc) {
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
   PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Failed to parse program_desc from binary string."));
   InitFromProto();
   scalar::ConvertProgram(this);
