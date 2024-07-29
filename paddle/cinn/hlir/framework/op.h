@@ -211,7 +211,7 @@ const ValueType& OpValueType<ValueType>::operator[](const Operator* op) const {
   const uint32_t idx = op->index;
   PADDLE_ENFORCE_LT(idx,
                     data.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Attribute  has not been registered for Operator"));
   return data[idx];
 }

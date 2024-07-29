@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_XPU_XRE5
+#include "paddle/phi/kernels/xpu/flash_attn_utils.h"
 #include "xfa/flash_api.h"
 #endif
 namespace phi {
@@ -60,6 +61,7 @@ void FlashAttnGradKernel(const Context& ctx,
 
   // raw pointers
   using XPUType = typename XPUTypeTrait<T>::Type;
+  using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
   const XPUType* q_data = reinterpret_cast<const XPUType*>(q.data<T>());
   const XPUType* k_data = reinterpret_cast<const XPUType*>(k.data<T>());
   const XPUType* v_data = reinterpret_cast<const XPUType*>(v.data<T>());
@@ -119,7 +121,17 @@ void FlashAttnGradKernel(const Context& ctx,
 
   // get seed offset
   const int64_t* seed_offset_data = seed_offset.data<int64_t>();
+  int fa_tgemm = get_flash_attn_tgemm<XPUType>();
 
+  auto flash_attention_grad_kernel =
+      baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, tfloat32, int>;
+  if (fa_tgemm == XPU_FA_TGEMM::FA_FLOAT) {
+    flash_attention_grad_kernel =
+        baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, float, int>;
+  } else if (fa_tgemm == XPU_FA_TGEMM::FA_FLOAT16) {
+    flash_attention_grad_kernel =
+        baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, XPUTypeFP16, int>;
+  }
   // template<typename T, typename TACCUM, typename TGEMM, typename TID = int>
   // int mha_varlen_bwd(xdnn::Context* ctx, const T* dout, const T* q, const T*
   // k, const T* v, const T* out, const TACCUM* softmax_lse, T* dq, T* dk, T*
@@ -132,7 +144,7 @@ void FlashAttnGradKernel(const Context& ctx,
   // k_maxptr = nullptr, const float* v_maxptr = nullptr, const float* o_maxptr
   // = nullptr, float* dq_maxptr = nullptr, float* dk_maxptr = nullptr, float*
   // dv_maxptr = nullptr, const float* do_maxptr = nullptr);
-  int r = baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, tfloat32, int>(
+  int r = flash_attention_grad_kernel(
       ctx.x_context(),
       dout_data,                                  // dout
       q_data,                                     // q
@@ -166,7 +178,11 @@ void FlashAttnGradKernel(const Context& ctx,
       nullptr,                                    // do_maxptr
       false,                                      // is_qkv_fusion
       false,                                      // is_dqkv_fusion
-      fa_layout                                   // qkv_layout
+      fa_layout,                                  // qkv_layout
+      nullptr,                                    // alibi_slopes
+      {},                                         // alibi_slopes_shape
+      -1,                                         // window_size_left
+      -1                                          // window_size_right
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_bwd");
 #else

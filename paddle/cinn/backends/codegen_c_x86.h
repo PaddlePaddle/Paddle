@@ -114,10 +114,10 @@ void CodeGenCX86::VisitBinaryOp(const Op *op,
                                 Expr a,
                                 Expr b,
                                 const std::string &op_repr) {
-  PADDLE_ENFORCE_EQ(
-      a.type(),
-      b.type(),
-      phi::errors::InvalidArgument("The type of a and b should be the same."));
+  PADDLE_ENFORCE_EQ(a.type(),
+                    b.type(),
+                    ::common::errors::InvalidArgument(
+                        "The type of a and b should be the same."));
 
   // scalar.
   if (a.type().lanes() == 1) {

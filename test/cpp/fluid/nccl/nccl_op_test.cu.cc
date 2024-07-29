@@ -58,7 +58,7 @@ class NCCLTester : public ::testing::Test {
       gpu_list_.emplace_back(i);
     }
 
-    p::CPUPlace cpu_place;
+    phi::CPUPlace cpu_place;
     f::InitDevices();
     pool_ptr_ = &p::DeviceContextPool::Instance();
 
@@ -93,7 +93,7 @@ class NCCLTester : public ::testing::Test {
     std::unique_lock<std::mutex> lk(mu_);
     const f::OpDesc *op1 = &op_desc;
 
-    p::CUDAPlace place(gpu_id);
+    phi::GPUPlace place(gpu_id);
     const auto &ctx = pool_ptr_->Get(place);
 
     auto *send_tensor = scope->Var("st")->GetMutable<phi::DenseTensor>();
@@ -109,9 +109,10 @@ class NCCLTester : public ::testing::Test {
 
     lk.unlock();
 
-    PADDLE_ENFORCE_EQ(send_tensor->numel(),
-                      common::product(kDims),
-                      phi::errors::InvalidArgument("Tensor numel not match!"));
+    PADDLE_ENFORCE_EQ(
+        send_tensor->numel(),
+        common::product(kDims),
+        common::errors::InvalidArgument("Tensor numel not match!"));
 
     auto op = f::OpRegistry::CreateOp(*op1);
 
@@ -164,8 +165,8 @@ void NCCLTester::testNcclAllReduceOp() {
   }
 
   for (size_t i = 0; i < dev_scopes.size(); ++i) {
-    p::CPUPlace cpu_place;
-    p::CUDAPlace gpu_place(gpu_list_[i]);
+    phi::CPUPlace cpu_place;
+    phi::GPUPlace gpu_place(gpu_list_[i]);
 
     auto &recv_tensor = dev_scopes[i]->FindVar("rt")->Get<phi::DenseTensor>();
     auto *rt = recv_tensor.data<float>();
@@ -177,7 +178,7 @@ void NCCLTester::testNcclAllReduceOp() {
     auto *dev_ctx = static_cast<phi::GPUContext *>(pool_ptr_->Get(gpu_place));
     paddle::memory::Copy(cpu_place,
                          ct,
-                         p::CUDAPlace(gpu_list_[i]),
+                         phi::GPUPlace(gpu_list_[i]),
                          rt,
                          recv_tensor.numel() * sizeof(float),
                          dev_ctx->stream());
@@ -221,8 +222,8 @@ void NCCLTester::testNcclReduceOp() {
     expected_result = expected_result + GetGPUData(gpu_id);
   }
 
-  p::CPUPlace cpu_place;
-  p::CUDAPlace gpu_place(gpu_list_[kRoot]);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(gpu_list_[kRoot]);
 
   auto &recv_tensor = dev_scopes[kRoot]->FindVar("rt")->Get<phi::DenseTensor>();
   auto *rt = recv_tensor.data<float>();
@@ -234,7 +235,7 @@ void NCCLTester::testNcclReduceOp() {
   auto *dev_ctx = static_cast<phi::GPUContext *>(pool_ptr_->Get(gpu_place));
   paddle::memory::Copy(cpu_place,
                        ct,
-                       p::CUDAPlace(gpu_list_[kRoot]),
+                       phi::GPUPlace(gpu_list_[kRoot]),
                        rt,
                        recv_tensor.numel() * sizeof(float),
                        dev_ctx->stream());
@@ -275,8 +276,8 @@ void NCCLTester::testNcclBcastOp() {
   const int idx = gpu_list_.size() - 1;
   float result = GetGPUData(kRoot);
 
-  p::CPUPlace cpu_place;
-  p::CUDAPlace gpu_place(gpu_list_[idx]);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(gpu_list_[idx]);
 
   std::string rt_str = "rt";
   if (idx == kRoot) {
@@ -292,7 +293,7 @@ void NCCLTester::testNcclBcastOp() {
   auto *dev_ctx = static_cast<phi::GPUContext *>(pool_ptr_->Get(gpu_place));
   paddle::memory::Copy(cpu_place,
                        ct,
-                       p::CUDAPlace(gpu_list_[idx]),
+                       phi::GPUPlace(gpu_list_[idx]),
                        rt,
                        recv_tensor.numel() * sizeof(float),
                        dev_ctx->stream());

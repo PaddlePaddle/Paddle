@@ -17,6 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
@@ -86,19 +87,32 @@ SpmdInfo AdamInferSpmdDynamic(const DistMetaTensor& param,
       master_param.initialized()
           ? CopyTensorDistAttrForOutput(master_param.dist_attr())
           : TensorDistAttr();
-  TensorDistAttr skip_update_dist_attr =
-      skip_update.initialized()
-          ? CopyTensorDistAttrForOutput(skip_update.dist_attr())
-          : TensorDistAttr();
-
+  // If skip_update is on global_mesh, it should be reshard into
+  // local mesh. (currently occurs in static mode pipeline parellel)
+  auto skip_update_dist_attr = TensorDistAttr();
+  if (skip_update.initialized()) {
+    skip_update_dist_attr = skip_update.dist_attr();
+    PADDLE_ENFORCE_EQ(
+        skip_update_dist_attr.dims_mapping()[0],
+        -1,
+        errors::InvalidArgument(
+            "skip_update should be replicated, but got shard on mesh %d.",
+            skip_update_dist_attr.dims_mapping()[0]));
+    PADDLE_ENFORCE_EQ(
+        skip_update_dist_attr.partial_status().size(),
+        0,
+        errors::InvalidArgument("skip_update should be replicated, but got "
+                                "patial status not empty"));
+    if (skip_update_dist_attr.process_mesh().ndim() > 1 &&
+        phi::distributed::IsSubMesh(skip_update_dist_attr.process_mesh(),
+                                    param_dist_attr.process_mesh())) {
+      skip_update_dist_attr.set_process_mesh(param_dist_attr.process_mesh());
+    }
+  }
   // set the unchanged dims mapping
   lr_dist_attr.set_dims_mapping(learning_rate.dist_attr().dims_mapping());
   beta1_pow_dist_attr.set_dims_mapping(beta1_pow.dist_attr().dims_mapping());
   beta2_pow_dist_attr.set_dims_mapping(beta2_pow.dist_attr().dims_mapping());
-  if (skip_update.initialized()) {
-    skip_update_dist_attr.set_dims_mapping(
-        skip_update.dist_attr().dims_mapping());
-  }
 
   // set the changeable dims mapping
   auto param_spmd_dims_mapping = param_dist_attr_spmd.dims_mapping();

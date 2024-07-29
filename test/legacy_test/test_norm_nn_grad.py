@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -35,7 +36,7 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
             eps = 0.005
             atol = 1e-4
             x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
-            z = paddle.static.nn.instance_norm(input=x)
+            z = paddle.nn.InstanceNorm2D(3)(x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             gradient_checker.double_grad_check(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
@@ -60,7 +61,13 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -81,8 +88,8 @@ class TestInstanceNormDoubleGradCheckWithoutParamBias(
             eps = 0.005
             atol = 1e-4
             x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
-            z = paddle.static.nn.instance_norm(
-                input=x, param_attr=False, bias_attr=False
+            z = paddle.nn.InstanceNorm2D(3, weight_attr=False, bias_attr=False)(
+                x
             )
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             gradient_checker.double_grad_check(
@@ -140,7 +147,13 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -258,7 +271,13 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:

@@ -23,7 +23,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
@@ -60,19 +60,18 @@ std::vector<int> GetValueIds(pir::Value value,
   return ids;
 }
 
-platform::DeviceContext* ParseDeviceContext(
-    pir::Operation* op,
-    platform::DeviceContext* origin_dev_ctx,
-    const phi::Place& place,
-    const std::string& execution_stream,
-    const int stream_priority) {
+phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
+                                       phi::DeviceContext* origin_dev_ctx,
+                                       const phi::Place& place,
+                                       const std::string& execution_stream,
+                                       const int stream_priority) {
   auto& op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   interpreter::ContextManager& ctx_manager =
       interpreter::ContextManager::Instance();
 
-  platform::DeviceContext* dev_ctx = nullptr;
+  phi::DeviceContext* dev_ctx = nullptr;
 
   // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
@@ -123,7 +122,7 @@ platform::DeviceContext* ParseDeviceContext(
       if (FLAGS_dynamic_static_unified_comm) {
         const auto& comm_context_manager =
             phi::distributed::CommContextManager::GetInstance();
-        dev_ctx = static_cast<platform::DeviceContext*>(
+        dev_ctx = static_cast<phi::DeviceContext*>(
             static_cast<phi::distributed::NCCLCommContext*>(
                 comm_context_manager.Get(std::to_string(ring_id)))
                 ->GetDevContext());
@@ -146,7 +145,8 @@ platform::DeviceContext* ParseDeviceContext(
               static_cast<phi::distributed::NCCLCommContext*>(comm_context)
                   ->GetDevContext());
           dev_ctx->SetCommContext(comm_context);
-          if (op_name.compare(paddle::dialect::CReducescatterOp::name()) == 0) {
+          if (op_name.compare(paddle::dialect::CReducescatterOp::name()) == 0 ||
+              op_name.compare(paddle::dialect::AllGatherOp::name()) == 0) {
             return dev_ctx;
           }
         } else {
@@ -485,11 +485,11 @@ void HandleForInplaceOp(pir::Operation* op,
 
       PADDLE_ENFORCE_NE(input_var_name,
                         "",
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input var name of view op is empty."));
       PADDLE_ENFORCE_NE(output_var_name,
                         "",
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The output var name of view op is empty."));
       VLOG(4) << "view: " << value_name << " -> " << view_name
               << " (var: " << input_var_name << ")";

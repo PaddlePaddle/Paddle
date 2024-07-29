@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
 import os
 import tarfile
 from collections import defaultdict
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 
@@ -23,6 +25,11 @@ import paddle
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
 
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    _Wmt16DataSetMode = Literal["train", "test", "val"]
+    _Wmt16Language = Literal["en", "de"]
 __all__ = []
 
 DATA_URL = "http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz"
@@ -57,7 +64,7 @@ class WMT16(Dataset):
         }
 
     Args:
-        data_file(str): path to data tar file, can be set None if
+        data_file(str|None): path to data tar file, can be set None if
             :attr:`download` is True. Default None.
         mode(str): 'train', 'test' or 'val'. Default 'train'.
         src_dict_size(int): word dictionary size for source language word. Default -1.
@@ -109,15 +116,26 @@ class WMT16(Dataset):
             55 24 25
     """
 
+    mode: _Wmt16DataSetMode
+    data_file: str | None
+    lang: _Wmt16Language
+    src_dict_size: int
+    trg_dict_size: int
+    src_dict: dict[str, int]
+    trg_dict: dict[str, int]
+    src_ids: list[list[int]]
+    trg_ids: list[list[int]]
+    trg_ids_next: list[list[int]]
+
     def __init__(
         self,
-        data_file=None,
-        mode='train',
-        src_dict_size=-1,
-        trg_dict_size=-1,
-        lang='en',
-        download=True,
-    ):
+        data_file: str | None = None,
+        mode: _Wmt16DataSetMode = 'train',
+        src_dict_size: int = -1,
+        trg_dict_size: int = -1,
+        lang: _Wmt16Language = 'en',
+        download: bool = True,
+    ) -> None:
         assert mode.lower() in [
             'train',
             'test',
@@ -153,6 +171,27 @@ class WMT16(Dataset):
         # load data
         self.data = self._load_data()
 
+    @overload
+    def _load_dict(
+        self, lang: _Wmt16Language, dict_size: int, reverse: Literal[True] = ...
+    ) -> dict[int, str]:
+        ...
+
+    @overload
+    def _load_dict(
+        self,
+        lang: _Wmt16Language,
+        dict_size: int,
+        reverse: Literal[False] = ...,
+    ) -> dict[str, int]:
+        ...
+
+    @overload
+    def _load_dict(
+        self, lang: _Wmt16Language, dict_size: int, reverse: bool = ...
+    ) -> dict[int, str] | dict[str, int]:
+        ...
+
     def _load_dict(self, lang, dict_size, reverse=False):
         dict_path = os.path.join(
             paddle.dataset.common.DATA_HOME,
@@ -174,7 +213,9 @@ class WMT16(Dataset):
                     word_dict[line.strip().decode()] = idx
         return word_dict
 
-    def _build_dict(self, dict_path, dict_size, lang):
+    def _build_dict(
+        self, dict_path: str, dict_size: int, lang: _Wmt16Language
+    ) -> None:
         word_dict = defaultdict(int)
         with tarfile.open(self.data_file, mode="r") as f:
             for line in f.extractfile("wmt16/train"):
@@ -196,7 +237,7 @@ class WMT16(Dataset):
                 fout.write(word[0].encode())
                 fout.write(b'\n')
 
-    def _load_data(self):
+    def _load_data(self) -> None:
         # the index for start mark, end mark, and unk are the same in source
         # language and target language. Here uses the source language
         # dictionary to determine their indices.
@@ -233,15 +274,39 @@ class WMT16(Dataset):
                 self.trg_ids.append(trg_ids)
                 self.trg_ids_next.append(trg_ids_next)
 
-    def __getitem__(self, idx):
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[
+        npt.NDArray[np.int_],
+        npt.NDArray[np.int_],
+        npt.NDArray[np.int_],
+    ]:
         return (
             np.array(self.src_ids[idx]),
             np.array(self.trg_ids[idx]),
             np.array(self.trg_ids_next[idx]),
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.src_ids)
+
+    @overload
+    def get_dict(
+        self, lang: _Wmt16Language, reverse: Literal[True] = ...
+    ) -> dict[int, str]:
+        ...
+
+    @overload
+    def get_dict(
+        self, lang: _Wmt16Language, reverse: Literal[False] = ...
+    ) -> dict[str, int]:
+        ...
+
+    @overload
+    def get_dict(
+        self, lang: _Wmt16Language, reverse: bool = ...
+    ) -> dict[int, str] | dict[str, int]:
+        ...
 
     def get_dict(self, lang, reverse=False):
         """

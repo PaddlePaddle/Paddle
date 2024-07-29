@@ -60,7 +60,7 @@ inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
   } else if (type == framework::proto::VarType::BOOL) {
     return BKCL_UINT8;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "BKCL currently only support FP32, INT64, INT32, FP64, FP16, BF16, "
         "UINT8 and BOOL, "
         "other data types are not supported."));
@@ -102,7 +102,7 @@ struct BKCLContext {
   BKCLContext_t comm_;
 
   explicit BKCLContext(int dev_id)
-      : ctx_(new platform::XPUDeviceContext(XPUPlace(dev_id))),
+      : ctx_(new platform::XPUDeviceContext(phi::XPUPlace(dev_id))),
         comm_{nullptr} {}
 
   XPUStream stream() const { return ctx_->stream(); }
@@ -151,7 +151,7 @@ struct BKCLContextMap {
     PADDLE_ENFORCE_EQ(
         !places_.empty(),
         true,
-        phi::errors::InvalidArgument("The BKCL place should not be empty."));
+        common::errors::InvalidArgument("The BKCL place should not be empty."));
     order_.reserve(places_.size());
     for (auto &p : places_) {
       int dev_id = p.device;
@@ -161,8 +161,8 @@ struct BKCLContextMap {
     PADDLE_ENFORCE_EQ(
         order_.size(),
         contexts_.size(),
-        phi::errors::Unavailable("BKCL Context Map does not support "
-                                 "contain two or more same device"));
+        common::errors::Unavailable("BKCL Context Map does not support "
+                                    "contain two or more same device"));
 
     std::unique_ptr<BKCLContext_t[]> comms(new BKCLContext_t[order_.size()]);
     std::unique_ptr<InitBKCLPara[]> paras(new InitBKCLPara[order_.size()]);
@@ -174,13 +174,13 @@ struct BKCLContextMap {
       ret = bkcl_get_unique_id(&id);
       PADDLE_ENFORCE_EQ(BKCL_SUCCESS,
                         ret,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "bkcl get unique id failed [%d]", ret));
       bkcl_id_ = &id;
     }
     PADDLE_ENFORCE_NOT_NULL(
         bkcl_id_,
-        phi::errors::InvalidArgument("The BKCL id should not be null."));
+        common::errors::InvalidArgument("The BKCL id should not be null."));
     {
       int nranks = num_trainers_ * order_.size();
       for (size_t i = 0; i < order_.size(); ++i) {
@@ -202,7 +202,7 @@ struct BKCLContextMap {
                                          init_bkcl_context_func,
                                          reinterpret_cast<void *>(&paras[i])),
                           0,
-                          phi::errors::External("pthread_create failed"));
+                          common::errors::External("pthread_create failed"));
       }
       for (size_t i = 0; i < order_.size(); i++) {
         pthread_join(pids[i], nullptr);
@@ -265,7 +265,7 @@ class BKCLCommunicator {
                                    bool use_hierarchical_allreduce) const {
     PADDLE_ENFORCE_EQ(use_hierarchical_allreduce,
                       false,
-                      phi::errors::Unimplemented(
+                      common::errors::Unimplemented(
                           "Hierarchical all reduce is not support for XPU"));
     return GetFlatCtx(run_order);
   }
@@ -302,7 +302,7 @@ class BKCLCommunicator {
     } else {
       PADDLE_ENFORCE_EQ(bkcl_ids.size(),
                         1,
-                        phi::errors::Unimplemented(
+                        common::errors::Unimplemented(
                             "Multi-all-reduce-ring is not support for XPU"));
       for (size_t i = 0; i < bkcl_ids.size(); i++) {
         auto ptr = new platform::BKCLContextMap(

@@ -132,18 +132,19 @@ class AutoScanTest(unittest.TestCase):
         """
         Test a single case.
         """
-        pred_config.set_model_buffer(model, len(model), params, len(params))
-        predictor = paddle_infer.create_predictor(pred_config)
-        self.available_passes_in_framework = (
-            self.available_passes_in_framework
-            | set(pred_config.pass_builder().all_passes())
-        )
-        for name, _ in prog_config.inputs.items():
-            input_tensor = predictor.get_input_handle(name)
-            input_tensor.copy_from_cpu(feed_data[name]["data"])
-            if feed_data[name]["lod"] is not None:
-                input_tensor.set_lod(feed_data[name]["lod"])
-        predictor.run()
+        with paddle.pir_utils.OldIrGuard():
+            pred_config.set_model_buffer(model, len(model), params, len(params))
+            predictor = paddle_infer.create_predictor(pred_config)
+            self.available_passes_in_framework = (
+                self.available_passes_in_framework
+                | set(pred_config.pass_builder().all_passes())
+            )
+            for name, _ in prog_config.inputs.items():
+                input_tensor = predictor.get_input_handle(name)
+                input_tensor.copy_from_cpu(feed_data[name]["data"])
+                if feed_data[name]["lod"] is not None:
+                    input_tensor.set_lod(feed_data[name]["lod"])
+            predictor.run()
         result = {}
         for out_name, o_name in zip(
             prog_config.outputs, predictor.get_output_names()
