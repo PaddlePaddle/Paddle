@@ -48,7 +48,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
         trt_dims_y.nbDims--;
         PADDLE_ENFORCE_EQ(trt_dims_y.d[0],
                           1,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Elementwise type(%s) op's Y is a weight "
                               "including batch dimension. Please "
                               "check if the 0th dimension equals 1.",
@@ -209,7 +209,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
       PADDLE_ENFORCE_NE(
           op_pair,
           ops.end(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Elementwise op's type(%s) is not supported. Please "
               "check if the op_type is correct.",
               op_type_));

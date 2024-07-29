@@ -59,12 +59,12 @@ void LowerFuncContextNode::ExitWithContext() {
 void IfContextNode::ExitWithContext() {
   IRContextNode::ExitWithContext();
   if (!exprs.empty()) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(::common::errors::InvalidArgument(
         "Expr not be either in ThenBlock or ElseBlock in if"));
   }
   if (!true_case.defined()) {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("Expr not be defined in ThenBlock"));
+        ::common::errors::InvalidArgument("Expr not be defined in ThenBlock"));
   }
   LinkToParentContext(ir::IfThenElse::Make(condition, true_case, false_case));
 }

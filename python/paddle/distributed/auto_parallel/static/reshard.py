@@ -3125,8 +3125,11 @@ class Resharder:
                     partition_tensor_list.pop(i)
                     if rank_id not in local_rank_comp_cost:
                         local_rank_comp_cost[rank_id] = []
+                    concat_desc["dtype"] = dtype
                     local_rank_comp_cost[rank_id].append(
-                        ConcatOpCost(op_desc=concat_desc, cluster=cluster)
+                        ConcatOpCost(
+                            op_desc=concat_desc, cluster=cluster, rank=rank_id
+                        )
                     )
                     self._concat_partitions_for_cost(
                         partition_tensor_list,
@@ -3247,8 +3250,11 @@ class Resharder:
                         "inputs": [(dtype, split_inputs_shape)]
                     }
                     split_desc["attrs"] = {"num": len(group_ranks), "axis": 0}
+                    split_desc["dtype"] = dtype
                     local_rank_comp_cost[key].append(
-                        SplitOpCost(op_desc=split_desc, cluster=cluster)
+                        SplitOpCost(
+                            op_desc=split_desc, cluster=cluster, rank=key
+                        )
                     )
                 elif isinstance(op_desc, ConcatOpDesc):
                     partition_index_list = op_desc._partition_index_list
@@ -3287,8 +3293,11 @@ class Resharder:
                     slice_desc["inputs"] = {
                         "Input": [(dtype, to_slice_tensor_shape)]
                     }
+                    slice_desc["dtype"] = dtype
                     local_rank_comp_cost[key].append(
-                        SliceOpCost(op_desc=slice_desc, cluster=cluster)
+                        SliceOpCost(
+                            op_desc=slice_desc, cluster=cluster, rank=key
+                        )
                     )
 
         res = (comm_costs, local_rank_comp_cost)

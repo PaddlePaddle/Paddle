@@ -41,14 +41,14 @@ using ParamsT =
                         absl::flat_hash_map<std::string, std::vector<int>>>;
 
 ParamsT CreateParamsImpl(common::UnknownArch) {
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(::common::errors::InvalidArgument(
       "Schedule params must be initialized with target x86 or nvgpu."));
 }
 
 ParamsT CreateParamsImpl(common::X86Arch) { return CreateX86Params(); }
 
 ParamsT CreateParamsImpl(common::ARMArch) {
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(::common::errors::InvalidArgument(
       "Schedule params must be initialized with target x86 or nvgpu."));
 }
 
@@ -160,12 +160,12 @@ void ScheduleInjectiveCPU1(poly::Stage *stage,
   if (dims > 1) {
     PADDLE_ENFORCE_EQ(stage->n_out_dims(),
                       stage->n_in_dims(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The dims of stage in and out are not equal"));
     PADDLE_ENFORCE_EQ(
         stage->n_out_dims(),
         output_shape.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The dims of stage out and output_shape's size are not equal"));
     poly::Iterator fused = stage->axis(dims - 1);
     int target_native_vector_bits = target.get_target_bits() * 8;
@@ -484,9 +484,10 @@ inline void InputDirectConvCudaParam(
         &model_data,
     const std::string &key,
     const std::vector<std::vector<int>> &int_data) {
-  PADDLE_ENFORCE_EQ(int_data.size(),
-                    6UL,
-                    phi::errors::InvalidArgument("int_data size should be 6"));
+  PADDLE_ENFORCE_EQ(
+      int_data.size(),
+      6UL,
+      ::common::errors::InvalidArgument("int_data size should be 6"));
   absl::flat_hash_map<std::string, std::vector<int>> schedule_data;
   schedule_data["rc"] = int_data[0];
   schedule_data["ry"] = int_data[1];
@@ -505,9 +506,10 @@ inline void InputWinogradConvCudaParam(
         &model_data,
     const std::string &key,
     const std::vector<std::vector<int>> &int_data) {
-  PADDLE_ENFORCE_EQ(int_data.size(),
-                    4UL,
-                    phi::errors::InvalidArgument("int_data size should be 4"));
+  PADDLE_ENFORCE_EQ(
+      int_data.size(),
+      4UL,
+      ::common::errors::InvalidArgument("int_data size should be 4"));
   absl::flat_hash_map<std::string, std::vector<int>> schedule_data;
   schedule_data["rc"] = int_data[0];
   schedule_data["x"] = int_data[1];
@@ -1307,7 +1309,7 @@ int MaxFactorLessThan(int a, int b) {
   PADDLE_ENFORCE_GT(
       a,
       b,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The first argument should be greater than the second argument"));
   int res = 1;
   for (int i = 2; i <= static_cast<int>(sqrt(static_cast<double>(a))); i++) {
@@ -1397,7 +1399,7 @@ void CudaScheduleInjective(poly::Stage *stage,
   PADDLE_ENFORCE_EQ(
       stage->n_out_dims(),
       stage->n_in_dims(),
-      phi::errors::InvalidArgument("The dims of op are not equal"));
+      ::common::errors::InvalidArgument("The dims of op are not equal"));
   if (FLAGS_cinn_use_cuda_vectorize) {
     CudaScheduleInjectiveWithVectorize(stage, output_shape, target);
     return;
@@ -1421,12 +1423,12 @@ void CudaScheduleInjective(poly::Stage *stage,
   if (new_num_thread == 1) {
     std::stringstream ss;
     ss << "prod_size out of range: " << prod_size;
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 
   PADDLE_ENFORCE_GT(prod_size,
                     new_num_thread,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The prod_size should be greater than new_num_thread"));
   stage->Split(0, new_num_thread);
   stage->Bind(0, "blockIdx.x");

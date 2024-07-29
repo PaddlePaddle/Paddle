@@ -1765,6 +1765,8 @@ class Embedding(Layer):
         num_embeddings: int,
         embedding_dim: int,
         padding_idx: float | None = None,
+        max_norm: float | None = None,
+        norm_type: float = 2.0,
         sparse: bool = False,
         weight_attr: ParamAttrLike | None = None,
         name: str | None = None,
@@ -1774,6 +1776,8 @@ class Embedding(Layer):
         self._embedding_dim = embedding_dim
         self._sparse = sparse
         self._is_distributed = False
+        self._max_norm = max_norm
+        self._norm_type = norm_type
         self._padding_idx = padding_idx
 
         if self._num_embeddings <= 0:
@@ -1819,6 +1823,8 @@ class Embedding(Layer):
             x,
             weight=self.weight,
             padding_idx=self._padding_idx,
+            max_norm=self._max_norm,
+            norm_type=self._norm_type,
             sparse=self._sparse,
             name=self._name,
         )

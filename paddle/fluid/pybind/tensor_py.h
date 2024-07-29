@@ -1133,8 +1133,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
           p,
           dense_tensor->Holder()->ptr(),
           dense_tensor->Holder()->size(),
-          reinterpret_cast<const platform::CustomDeviceContext &>(ctx)
-              .stream());
+          reinterpret_cast<const phi::CustomContext &>(ctx).stream());
       ctx.Wait();
 
       auto data_ptr = cpu_tensor.data();
@@ -1163,7 +1162,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
         p,
         tensor.Holder()->ptr(),
         tensor.Holder()->size(),
-        reinterpret_cast<const platform::CustomDeviceContext &>(ctx).stream());
+        reinterpret_cast<const phi::CustomContext &>(ctx).stream());
     ctx.Wait();
 
     auto data_ptr = cpu_tensor.data();

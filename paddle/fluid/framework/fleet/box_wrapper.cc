@@ -65,13 +65,13 @@ void BoxWrapper::CheckEmbedSizeIsValid(int embedx_dim, int expand_embed_dim) {
   PADDLE_ENFORCE_EQ(
       embedx_dim_,
       embedx_dim,
-      phi::errors::InvalidArgument("SetInstance(): invalid embedx_dim. "
-                                   "When embedx_dim = %d, but got %d.",
-                                   embedx_dim_,
-                                   embedx_dim));
+      common::errors::InvalidArgument("SetInstance(): invalid embedx_dim. "
+                                      "When embedx_dim = %d, but got %d.",
+                                      embedx_dim_,
+                                      embedx_dim));
   PADDLE_ENFORCE_EQ(expand_embed_dim_,
                     expand_embed_dim,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "SetInstance(): invalid expand_embed_dim. When "
                         "expand_embed_dim = %d, but got %d.",
                         expand_embed_dim_,
@@ -90,7 +90,7 @@ void BoxWrapper::PullSparse(const phi::Place& place,
     switch (expand_embed_dim) {                                              \
       __VA_ARGS__                                                            \
       default:                                                               \
-        PADDLE_THROW(phi::errors::InvalidArgument(                           \
+        PADDLE_THROW(common::errors::InvalidArgument(                        \
             "Unsupport this expand embedding size [%d]", expand_embed_dim)); \
     }                                                                        \
   } break
@@ -108,7 +108,7 @@ void BoxWrapper::PullSparse(const phi::Place& place,
                 PULLSPARSE_CASE(64););
     EMBEDX_CASE(16, PULLSPARSE_CASE(0););
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupport this embedding size [%d]", hidden_size - 3));
   }
 #undef PULLSPARSE_CASE
@@ -128,7 +128,7 @@ void BoxWrapper::PushSparseGrad(const phi::Place& place,
     switch (expand_embed_dim) {                                              \
       __VA_ARGS__                                                            \
       default:                                                               \
-        PADDLE_THROW(phi::errors::InvalidArgument(                           \
+        PADDLE_THROW(common::errors::InvalidArgument(                        \
             "Unsupport this expand embedding size [%d]", expand_embed_dim)); \
     }                                                                        \
   } break
@@ -151,7 +151,7 @@ void BoxWrapper::PushSparseGrad(const phi::Place& place,
                 PUSHSPARSE_CASE(64););
     EMBEDX_CASE(16, PUSHSPARSE_CASE(0););
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupport this embedding size [%d]", hidden_size - 3));
   }
 #undef PUSHSPARSE_CASE
@@ -198,7 +198,7 @@ void BoxWrapper::FeedPass(int date,
                           const std::vector<uint64_t>& feasign_to_box) const {
   int ret = boxps_ptr_->FeedPass(date, feasign_to_box);
   PADDLE_ENFORCE_EQ(
-      ret, 0, phi::errors::PreconditionNotMet("FeedPass failed in BoxPS."));
+      ret, 0, common::errors::PreconditionNotMet("FeedPass failed in BoxPS."));
 }
 
 void BoxWrapper::BeginFeedPass(int date, boxps::PSAgentBase** agent) const {
@@ -206,19 +206,21 @@ void BoxWrapper::BeginFeedPass(int date, boxps::PSAgentBase** agent) const {
   PADDLE_ENFORCE_EQ(
       ret,
       0,
-      phi::errors::PreconditionNotMet("BeginFeedPass failed in BoxPS."));
+      common::errors::PreconditionNotMet("BeginFeedPass failed in BoxPS."));
 }
 
 void BoxWrapper::EndFeedPass(boxps::PSAgentBase* agent) const {
   int ret = boxps_ptr_->EndFeedPass(agent);
   PADDLE_ENFORCE_EQ(
-      ret, 0, phi::errors::PreconditionNotMet("EndFeedPass failed in BoxPS."));
+      ret,
+      0,
+      common::errors::PreconditionNotMet("EndFeedPass failed in BoxPS."));
 }
 
 void BoxWrapper::BeginPass() const {
   int ret = boxps_ptr_->BeginPass();
   PADDLE_ENFORCE_EQ(
-      ret, 0, phi::errors::PreconditionNotMet("BeginPass failed in BoxPS."));
+      ret, 0, common::errors::PreconditionNotMet("BeginPass failed in BoxPS."));
 }
 
 void BoxWrapper::SetTestMode(bool is_test) const {
@@ -228,7 +230,7 @@ void BoxWrapper::SetTestMode(bool is_test) const {
 void BoxWrapper::EndPass(bool need_save_delta) const {
   int ret = boxps_ptr_->EndPass(need_save_delta);
   PADDLE_ENFORCE_EQ(
-      ret, 0, phi::errors::PreconditionNotMet("EndPass failed in BoxPS."));
+      ret, 0, common::errors::PreconditionNotMet("EndPass failed in BoxPS."));
 }
 
 void BoxWrapper::GetRandomReplace(const std::vector<Record>& pass_data) {

@@ -368,7 +368,7 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
 
   PADDLE_ENFORCE_EQ(all_visited_op_stmts.size(),
                     op_stmts->size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Some fake_op_placeholders are not visited."));
   return anchor_index2igroup_spec;
 }
