@@ -15,7 +15,6 @@
 import numpy as np
 from converter import PaddleToTensorRTConverter
 from util import (
-    forbid_op_lower_trt,
     enforce_op_lower_trt,
     get_bert_program,
     get_dummy_program,
