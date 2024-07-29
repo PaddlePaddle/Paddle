@@ -493,20 +493,30 @@ bool PadOpInferSymbolicShape(pir::Operation *op,
   // input(1): int[] paddings
   std::vector<int> paddings =
       paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-  PADDLE_ENFORCE_EQ(rank * 2,
-                    paddings.size(),
-                    phi::errors::InvalidArgument(
-                        "The size of paddings should be 2 * input's rank. But "
-                        "got paddings.size() = %d, input's rank = %d.",
-                        paddings.size(),
-                        rank));
 
   // output
+  bool pad_from_first_axis = GetBoolAttr(op, "pad_from_first_axis");
+  const int paddings_len = static_cast<int>(paddings.size());
   const auto &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims;
     out_dims.reserve(rank);
     for (size_t i = 0; i < rank; ++i) {
-      out_dims.push_back(x_dims_sym[i] + paddings[2 * i] + paddings[2 * i + 1]);
+      out_dims.push_back(x_dims_sym[i]);
+    }
+    if ((paddings_len == 2 * static_cast<int>(rank)) && pad_from_first_axis) {
+      for (int i = 0; i < paddings_len; ++i) {
+        int out_dims_index = i / 2;
+        if (out_dims[out_dims_index] != -1) {
+          out_dims[out_dims_index] = out_dims[out_dims_index] + paddings[i];
+        }
+      }
+    } else {
+      for (int i = 0; i < paddings_len; ++i) {
+        int out_dims_index = rank - 1 - i / 2;
+        if (out_dims[out_dims_index] != -1) {
+          out_dims[out_dims_index] = out_dims[out_dims_index] + paddings[i];
+        }
+      }
     }
     return out_dims;
   }();

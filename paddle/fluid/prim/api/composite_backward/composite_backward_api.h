@@ -1891,6 +1891,7 @@ void pad_grad(const Tensor& input,
               const Tensor& out_grad,
               const std::vector<int>& paddings,
               const Scalar& pad_value,
+              bool pad_from_first_axis,
               Tensor* input_grad) {
   if (input_grad) {
     size_t rank = input.dims().size();
@@ -1901,10 +1902,34 @@ void pad_grad(const Tensor& input,
     std::vector<int64_t> axes(rank, 0);
     std::vector<int64_t> infer_flags(rank, 1);
     std::vector<int64_t> decrease_axis({});
-    for (size_t i = 0; i < rank; ++i) {
-      starts[i] = static_cast<int64_t>(paddings[2 * i]);
-      ends[i] = static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]);
-      axes[i] = i;
+
+    // pad the length of paddings to 2*x.ndim
+    auto x_dim = input.dims();
+    std::vector<int> pad(2 * x_dim.size());
+    int paddings_len = paddings.size();
+    for (size_t i = 0; i < pad.size(); ++i) {
+      int pad_i = static_cast<int>(i) < paddings_len ? paddings[i] : 0;
+      pad[i] = pad_i;
+    }
+
+    if ((static_cast<int>(paddings_len) == x_dim.size() * 2) &&
+        pad_from_first_axis) {
+      for (size_t i = 0; i < rank; ++i) {
+        starts[i] = static_cast<int64_t>(pad[2 * i]);
+        ends[i] = static_cast<int64_t>(out_dims[i] - pad[2 * i + 1]);
+        axes[i] = i;
+      }
+    } else {
+      std::vector<int> pad_reversed(2 * x_dim.size());
+      for (int i = 2 * x_dim.size() - 1; i >= 0; --i) {
+        int index = 2 * x_dim.size() - 1 - i;
+        pad_reversed[i] = (index % 2 == 1) ? pad[index - 1] : pad[index + 1];
+      }
+      for (size_t i = 0; i < rank; ++i) {
+        starts[i] = static_cast<int64_t>(pad_reversed[2 * i]);
+        ends[i] = static_cast<int64_t>(out_dims[i] - pad_reversed[2 * i + 1]);
+        axes[i] = i;
+      }
     }
     auto out_tmp =
         slice<T>(out_grad, axes, starts, ends, infer_flags, decrease_axis);

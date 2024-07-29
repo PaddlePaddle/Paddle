@@ -33,27 +33,27 @@ void PadKernel(const Context& dev_ctx,
   // pad the length of paddings to 2*x.ndim
   auto x_dim = x.dims();
   std::vector<int> pad(2 * x_dim.size());
-  int paddings_len = static_cast<int>(paddings.size());
-  for (int i = 0; i < pad.size(); ++i) {
-    int pad_i = i < paddings_len ? paddings[i] : 0;
+  int paddings_len = paddings.size();
+  for (size_t i = 0; i < pad.size(); ++i) {
+    int pad_i = static_cast<int>(i) < paddings_len ? paddings[i] : 0;
     pad[i] = pad_i;
   }
 
-  if (!(paddings.size() == x_dim.size() * 2 && pad_from_first_axis)) {
-    // since PaddingFunctor pad from first axis, if we want to pad from
-    // last axis, we need to reverse the paddings
+  if ((static_cast<int>(paddings_len) == x_dim.size() * 2) &&
+      pad_from_first_axis) {
+    for (size_t i = 0; i < pad.size() / 2; ++i) {
+      pad_left.push_back(pad[i * 2]);
+      pad_right.push_back(pad[i * 2 + 1]);
+    }
+  } else {
     std::vector<int> pad_reversed(2 * x_dim.size());
     for (int i = 2 * x_dim.size() - 1; i >= 0; --i) {
-      pad_reversed[i] = (i % 2 == 1) ? pad[i - 1] : pad[i + 1];
+      int index = 2 * x_dim.size() - 1 - i;
+      pad_reversed[i] = (index % 2 == 1) ? pad[index - 1] : pad[index + 1];
     }
     for (size_t i = 0; i < pad_reversed.size() / 2; ++i) {
       pad_left.push_back(pad_reversed[i * 2]);
       pad_right.push_back(pad_reversed[i * 2 + 1]);
-    }
-  } else {
-    for (size_t i = 0; i < pad.size() / 2; ++i) {
-      pad_left.push_back(pad[i * 2]);
-      pad_right.push_back(pad[i * 2 + 1]);
     }
   }
 

@@ -64,6 +64,10 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
                    "The value to fill the padded areas.")
         .SetDefault(0.0f)
         .SupportTensor();
+    AddAttr<bool>("pad_from_first_axis",
+                  "(bool, default true) "
+                  "Indicate the order of padding.")
+        .SetDefault(true);
     AddComment(R"DOC(
 Pad Operator.
 
@@ -100,9 +104,22 @@ class PadOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(x_grad_name)) {
       auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
       auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-      for (int i = 0; i < dout_dims.size(); ++i) {
-        if (ctx->IsRuntime() || (dout_dims[i] != -1)) {
-          dout_dims[i] -= (paddings[i * 2] + paddings[i * 2 + 1]);
+      auto pad_from_first_axis = ctx->Attrs().Get<bool>("pad_from_first_axis");
+      int paddings_len = static_cast<int>(paddings.size());
+      int out_len = static_cast<int>(dout_dims.size());
+      if ((paddings_len == 2 * out_len) && pad_from_first_axis) {
+        for (int i = 0; i < paddings_len; ++i) {
+          int out_dims_index = i / 2;
+          if ((ctx->IsRuntime()) || (dout_dims[out_dims_index] != -1)) {
+            dout_dims[out_dims_index] -= paddings[i];
+          }
+        }
+      } else {
+        for (int i = 0; i < paddings_len; ++i) {
+          int out_dims_index = out_len - 1 - i / 2;
+          if ((ctx->IsRuntime()) || (dout_dims[out_dims_index] != -1)) {
+            dout_dims[out_dims_index] -= paddings[i];
+          }
         }
       }
       ctx->SetOutputDim(x_grad_name, dout_dims);
@@ -146,9 +163,12 @@ class PadCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     std::vector<int> paddings =
         static_cast<std::vector<int>>(this->Attr<std::vector<int>>("paddings"));
     float pad_value = static_cast<float>(this->Attr<float>("pad_value"));
+    bool pad_from_first_axis =
+        static_cast<bool>(this->Attr<bool>("pad_from_first_axis"));
     VLOG(6) << "Running add_grad composite func";
 
-    prim::pad_grad<prim::DescTensor>(x, out_grad, paddings, pad_value, dx_ptr);
+    prim::pad_grad<prim::DescTensor>(
+        x, out_grad, paddings, pad_value, pad_from_first_axis, dx_ptr);
     this->RecoverOutputName(x_grad, dx_name);
   }
 };

@@ -455,6 +455,14 @@
           comment : Compute as vector when axis is None and input is matrix.
           default : "false"
 
+- op : pad
+  version :
+    - checkpoint : Upgrade pad, add 1 attribute [pad_from_first_axis].
+      action :
+        - add_attr : pad_from_first_axis
+          comment : Specify the padding order when padding length equals 2*x.ndim.
+          default : "true"
+
 - op : pixel_shuffle
   version :
     - checkpoint : Compatible upgrade of pixel_shuffle, add a new attribute [data_format]

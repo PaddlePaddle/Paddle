@@ -2975,15 +2975,6 @@ void PadInferMeta(const MetaTensor& input,
                   MetaTensor* out,
                   MetaConfig config) {
   auto x_dim = input.dims();
-  // PADDLE_ENFORCE_EQ(
-  //     static_cast<int>(paddings.size()),
-  //     x_dim.size() * 2,
-  //     phi::errors::InvalidArgument(
-  //         "Size of 'paddings' dimension should be equal to 2 * size of "
-  //         "Input(X)'s dimension, but received (size of 'paddings' dimension "
-  //         "is) %d vs (2 * size of Input(X)'s dimension is) %d.",
-  //         static_cast<int>(paddings.size()),
-  //         x_dim.size() * 2));
   for (size_t i = 0; i < paddings.size(); ++i) {
     PADDLE_ENFORCE_GE(paddings[i],
                       0,
@@ -3000,13 +2991,21 @@ void PadInferMeta(const MetaTensor& input,
     if ((!config.is_runtime) && (x_dim[i] == -1)) {
       out_dims[i] = -1;
     } else {
-      int64_t x_dim_i_increment = (i * 2 + 1) < paddings_len
-                                      ? (paddings[i * 2] + paddings[i * 2 + 1])
-                                      : 0;
-      if (pad_from_first_axis) {
-        out_dims[i] = x_dim[i] + x_dim_i_increment;
-      } else {
-        out_dims[out_len - 1 - i] = x_dim[i] + x_dim_i_increment;
+      out_dims[i] = x_dim[i];
+    }
+  }
+  if ((paddings_len == 2 * out_len) && pad_from_first_axis) {
+    for (int i = 0; i < paddings_len; ++i) {
+      int out_dims_index = i / 2;
+      if ((config.is_runtime) || (out_dims[out_dims_index] != -1)) {
+        out_dims[out_dims_index] += paddings[i];
+      }
+    }
+  } else {
+    for (int i = 0; i < paddings_len; ++i) {
+      int out_dims_index = out_len - 1 - i / 2;
+      if ((config.is_runtime) || (out_dims[out_dims_index] != -1)) {
+        out_dims[out_dims_index] += paddings[i];
       }
     }
   }

@@ -2214,17 +2214,17 @@
     func : pad
 
 - backward_op : pad_grad
-  forward : pad(Tensor x, int[] paddings, Scalar pad_value) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] paddings, Scalar pad_value)
+  forward : pad(Tensor x, int[] paddings, Scalar pad_value, bool pad_from_first_axis=true) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] paddings, Scalar pad_value, bool pad_from_first_axis)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
   kernel :
     func : pad_grad
-    param: [out_grad, paddings, pad_value]
+    param: [out_grad, paddings, pad_value, pad_from_first_axis]
   no_need_buffer : x
-  composite : pad_grad(x, out_grad, paddings, pad_value, x_grad)
+  composite : pad_grad(x, out_grad, paddings, pad_value, pad_from_first_axis, x_grad)
   backward : pad_double_grad
 
 - backward_op : partial_concat_grad
