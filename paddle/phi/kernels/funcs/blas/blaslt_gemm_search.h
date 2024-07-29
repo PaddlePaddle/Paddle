@@ -276,7 +276,7 @@ class CublasLtAlgoCache {
         } else if (search_config.n == n && search_config.k == k &&
             m > search_config.m) {
             if(pre == nullptr || pre->m < search_config.m)
-              pre = &(search_config);
+              pre = &search_configs_.at(&search_config - &search_configs_[0]);
           }
       }
       if (pre != nullptr) {
