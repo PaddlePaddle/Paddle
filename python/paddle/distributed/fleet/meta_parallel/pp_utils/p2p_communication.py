@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import distutils.util
+
 import os
+from distutils.util import strtobool
 
 import numpy as np
 
@@ -295,9 +296,7 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
     if _warn_cur_rank_not_in_group(group):
         return
 
-    need_check = distutils.util.strtobool(
-        os.getenv('FLAGS_pp_check_naninf', '0')
-    )
+    need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
     naninf_checker = []
     if need_check:
         naninf_checker = [
@@ -454,9 +453,7 @@ def _batched_p2p_ops(
 
     if len(ops) > 0:
         batch_send_recv_on_calc_stream(ops)
-        if distutils.util.strtobool(
-            os.getenv('FLAGS_p2p_device_synchronize', '0')
-        ):
+        if strtobool(os.getenv('FLAGS_p2p_device_synchronize', '0')):
             paddle.device.cuda.synchronize()
 
     tensors_for_all_gather = []
