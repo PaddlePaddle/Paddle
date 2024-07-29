@@ -16,12 +16,17 @@ from __future__ import annotations
 import abc
 import inspect
 from functools import partial
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
+
+from typing_extensions import ParamSpec
 
 if TYPE_CHECKING:
     from paddle.nn import Layer
 
     from .base_quanter import BaseQuanter
+
+_InputT = ParamSpec("_InputT")
+_RetT = TypeVar("_RetT")
 
 
 class ClassWithArguments(metaclass=abc.ABCMeta):
@@ -75,7 +80,7 @@ class QuanterFactory(ClassWithArguments):
 ObserverFactory = QuanterFactory
 
 
-def quanter(class_name):
+def quanter(class_name: str) -> BaseQuanter:
     r"""
     Annotation to declare a factory class for quanter.
 
@@ -104,7 +109,9 @@ def quanter(class_name):
 
     """
 
-    def wrapper(target_class):
+    def wrapper(
+        target_class: Callable[_InputT, _RetT]
+    ) -> Callable[_InputT, _RetT]:
         init_function_str = f"""
 def init_function(self, *args, **kwargs):
     super(type(self), self).__init__(*args, **kwargs)
