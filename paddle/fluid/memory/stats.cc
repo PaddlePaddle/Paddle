@@ -34,7 +34,7 @@ class StatRegistry {
   StatBase* GetStat(const std::string& stat_type, int dev_id) {
     auto it = stat_map_.find(GetStatKey(stat_type, dev_id));
     if (it == stat_map_.end()) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The STAT type \"%s\" for device %d has not been registered.",
           stat_type.c_str(),
           dev_id));

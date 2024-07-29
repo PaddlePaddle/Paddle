@@ -205,7 +205,7 @@ InstructionBase::InstructionBase(size_t id, const phi::Place& place)
     PADDLE_ENFORCE_EQ(
         interpreter::IsSupportedHeterPlace(place),
         true,
-        phi::errors::Fatal("Unsupported current place %s", place));
+        common::errors::Fatal("Unsupported current place %s", place));
     type_ = OpFuncType::kGpuAsync;
   }
 
@@ -308,7 +308,7 @@ void InstructionBase::InitInputsOutputsIds(
       PADDLE_ENFORCE_EQ(
           value_exec_info.HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               op_name));
@@ -325,7 +325,7 @@ void InstructionBase::InitInputsOutputsIds(
       PADDLE_ENFORCE_EQ(
           value_exec_info.HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               op_name));

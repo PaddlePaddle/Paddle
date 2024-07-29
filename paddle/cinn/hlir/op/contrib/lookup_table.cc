@@ -48,8 +48,14 @@ ir::Tensor LookupTable(const ir::Tensor& table,
                        const ir::Tensor& ids,
                        const int64_t padding_idx,
                        const std::string& output_name) {
-  CHECK_EQ(table->shape.size(), 2);
-  CHECK_GT(ids->shape.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      table->shape.size(),
+      2,
+      phi::errors::InvalidArgument("The shape of table should be 2."));
+  PADDLE_ENFORCE_GT(ids->shape.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The shape of ids should be greater than 1."));
   auto output_shape = ids->shape;
   output_shape.back() = table->shape.back();
 
@@ -90,8 +96,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
     CHECK(!args.empty()) << "The input arguments of " << op_name
                          << " compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 2U)
-        << "2 input tensors for " << op_name << " compute\n";
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "The input arguments' size should be greater "
+                          "than 2"));
     Expr A = pack_args[0];
     Expr B = pack_args[1];
     CHECK(A.as_tensor());
@@ -102,7 +111,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", B shape: " << utils::Join(tensor_B->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    CHECK_EQ(pack_args.size(), 3U);
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        3U,
+        phi::errors::InvalidArgument("The input arguments' size should be 3"));
     std::string tensor_name = pack_args[2].operator std::string();
 
     ir::Tensor out = LookupTable(tensor_A, tensor_B, padding_idx, tensor_name);

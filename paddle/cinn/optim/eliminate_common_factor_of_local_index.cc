@@ -147,7 +147,7 @@ int ExtractMulNumberFromExpr(const ir::Expr& expr) {
     VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
     return 1;
   }
-  PADDLE_THROW(phi::errors::Fatal("Dead code"));
+  PADDLE_THROW(::common::errors::Fatal("Dead code"));
 }
 
 int ExtractAddNumberFromExpr(const ir::Expr& expr) {
@@ -162,7 +162,7 @@ int ExtractAddNumberFromExpr(const ir::Expr& expr) {
     VLOG(6) << "Not supported for calculating offset, expr = " << expr;
     return 0;
   }
-  PADDLE_THROW(phi::errors::Fatal("Dead code"));
+  PADDLE_THROW(::common::errors::Fatal("Dead code"));
 }
 
 int gcd(int a, int b) {
@@ -230,9 +230,12 @@ template <typename Op>
 std::vector<ir::Expr> CalculateIndexCommonFactor(
     const std::string& local_var,
     const std::vector<std::vector<ir::Expr>>& indexes) {
-  CHECK_GE(indexes.size(), 2)
-      << "We should guarantee indexes.size() >= 2, because local variable "
-      << local_var << " should at least load and store once.";
+  PADDLE_ENFORCE_GE(
+      indexes.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "We should guarantee indexes.size() >= 2, because local variable "
+          "should at least load and store once. "));
   for (std::size_t i = 1; i < indexes.size(); ++i) {
     // NOTE(Hongyu Jia): Ideally, we can guarantee the size of indexes are equal
     // under flags FLAGS_cinn_new_group_scheduler=1 and

@@ -362,5 +362,5 @@ inline bool is_error(const T& stat) {
 }
 
 namespace pir {
-#define IR_THROW(...) PADDLE_THROW(phi::errors::Fatal(__VA_ARGS__))
+#define IR_THROW(...) PADDLE_THROW(common::errors::Fatal(__VA_ARGS__))
 }  // namespace pir

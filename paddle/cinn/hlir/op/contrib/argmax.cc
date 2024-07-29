@@ -48,14 +48,25 @@ std::vector<ir::Tensor> Argmax(const Tensor &in_tensor,
                                const std::string &name) {
   auto shape = in_tensor->shape;
   auto ndim = shape.size();
-  CHECK_GT(ndim, 0) << "tensor's dim must be more than 0";
+  PADDLE_ENFORCE_GT(
+      ndim,
+      0,
+      phi::errors::InvalidArgument(
+          "The dimension of input tensor must be greater than 0."));
 
   int pos_axis = axis;
   if (axis < 0) {
     pos_axis = static_cast<int>(ndim) + axis;
   }
-  CHECK_LT(pos_axis, ndim) << "Axis must be less than tensor's dim";
-  CHECK_GE(pos_axis, 0) << "Axis must be more than 0";
+  PADDLE_ENFORCE_LT(
+      pos_axis,
+      ndim,
+      phi::errors::InvalidArgument(
+          "The axis must be less than the dimension of input tensor."));
+  PADDLE_ENFORCE_GE(pos_axis,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The axis must be greater than or equal to 0."));
 
   std::vector<Expr> output_shape;
   for (int i = 0; i < shape.size(); ++i) {
@@ -102,7 +113,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
   if (attrs.attr_store.count("axis")) {
     axis = absl::get<int>(attrs.attr_store.at("axis"));
   } else {
-    PADDLE_THROW(phi::errors::Fatal("reduce dimension is not set!"));
+    PADDLE_THROW(::common::errors::Fatal("reduce dimension is not set!"));
   }
   if (attrs.attr_store.count("keep_dim")) {
     keep_dims = absl::get<bool>(attrs.attr_store.at("keep_dim"));
@@ -114,12 +125,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
             << "The input argument of argmax compute is empty! Please check.";
         cinn::common::CINNValuePack pack_args = args[0];
         std::string tensor_name = UniqName("Argmax_out");
-        CHECK_GE(pack_args.size(), 1U)
-            << "There should be 1 input args for argmax compute";
+        PADDLE_ENFORCE_GE(
+            pack_args.size(),
+            1U,
+            phi::errors::InvalidArgument(
+                "There should be 1 input args for argmax compute"));
         Expr in_expr = pack_args[0];
         CHECK(in_expr.as_tensor());
         Tensor in_tensor = in_expr.as_tensor_ref();
-        CHECK_EQ(pack_args.size(), 2U);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2U,
+            phi::errors::InvalidArgument(
+                "The input argument of argmax compute must be 2."));
         CHECK(pack_args[1].is_string());
         tensor_name = pack_args[1].operator std::string();
         std::vector<ir::Tensor> out_tensor =

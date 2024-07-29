@@ -508,7 +508,7 @@ struct Select : public ExprNode<Select> {
     PADDLE_ENFORCE_EQ(
         true_value.type(),
         false_value.type(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The type of true_value and false_value should be the same."));
     CHECK(condition.type().is_bool());
     type_ = true_value.type();
@@ -655,7 +655,7 @@ struct IfThenElse : public ExprNode<IfThenElse> {
     PADDLE_ENFORCE_EQ(
         condition.type(),
         type_of<bool>(),
-        phi::errors::InvalidArgument("condition should be a bool"));
+        ::common::errors::InvalidArgument("condition should be a bool"));
   }
 
   std::vector<Expr*> expr_fields() override;
@@ -934,7 +934,7 @@ struct FracOp : public BinaryOpNode<FracOp> {
     CHECK(is_constant());
     PADDLE_ENFORCE_NE(b().get_constant(),
                       0.f,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The denominator of FracOp should not be 0"));
     return a().get_constant() / b().get_constant();
   }

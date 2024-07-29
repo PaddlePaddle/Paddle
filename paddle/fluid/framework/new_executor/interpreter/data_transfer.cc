@@ -137,7 +137,7 @@ void DataTransferHelper::RunAndConstructOpFuncNode(
   // prepare a ptr to OperatorWithKernel
   OperatorBase* op_ptr = op.get();
   if (dynamic_cast<framework::OperatorWithKernel*>(op_ptr) == nullptr) {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "%s should be OperatorWithKernel type.", op_ptr->Type()));
   }
   auto op_with_kernel = static_cast<framework::OperatorWithKernel*>(op_ptr);
@@ -409,7 +409,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   AttributeMap attr_map;
   PADDLE_ENFORCE_EQ(phi::is_same_place(src_place, dst_place),
                     false,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Required src_place shall be different with dst_place, "
                         "but received same place: %s",
                         src_place));
@@ -428,7 +428,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                                                                 : -1;
     attr_map = {{"dst_place_type", dst_place_type}};
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Not support Memcpy typ : %s -> %s", src_place, dst_place));
   }
 
@@ -460,8 +460,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   auto op_base = op_func_node->operator_base_.get();
   PADDLE_ENFORCE_NOT_NULL(
       op_base,
-      phi::errors::PreconditionNotMet("op_base is null, please pass a valid "
-                                      "op_base in apply_data_transform."));
+      common::errors::PreconditionNotMet("op_base is null, please pass a valid "
+                                         "op_base in apply_data_transform."));
 
   VariableNameMap new_ins(op_base->Inputs());
   VariableNameMap new_outs(op_base->Outputs());
@@ -497,7 +497,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           std::vector<Variable*>* arguments) {
         PADDLE_ENFORCE_EQ(argument_names.size(),
                           arguments->size(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The size of argument_names (%d) should equal to "
                               "the size of arguments (%d).",
                               argument_names.size(),
@@ -660,16 +660,16 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           phi::KernelRegisteredType::FUNCTION) {
     framework::OperatorWithKernel* op_with_kernel =
         dynamic_cast<framework::OperatorWithKernel*>(op_base);
-    PADDLE_ENFORCE_NOT_NULL(
-        op_with_kernel,
-        phi::errors::Unavailable("Failed to cast op_base (%p) from Operator* "
-                                 "to OperatorWithKernel*.",
-                                 op_base));
+    PADDLE_ENFORCE_NOT_NULL(op_with_kernel,
+                            common::errors::Unavailable(
+                                "Failed to cast op_base (%p) from Operator* "
+                                "to OperatorWithKernel*.",
+                                op_base));
     const auto& input_names = op_with_kernel->PhiKernelSignature()->input_names;
     const auto& input_defs = phi_kernel->args_def().input_defs();
     PADDLE_ENFORCE_EQ(input_names.size(),
                       input_defs.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of inputs_args names (%d) must be equal to "
                           "the size of kernel input_defs (%d).",
                           input_names.size(),
@@ -803,7 +803,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
           framework::GetLoDTensorOrSelectedRowsValueFromVar(*var);
       PADDLE_ENFORCE_NOT_NULL(
           tensor,
-          phi::errors::Unavailable(
+          common::errors::Unavailable(
               "Forward tensor is nullptr when handle complex data to real."));
       // only need record type, the allocation may have been released
       auto dst_type = framework::TransToProtoVarType(tensor->dtype());
