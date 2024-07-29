@@ -99,6 +99,70 @@ bool ReduceInferDim(pir::Operation *op,
   return true;
 }
 
+ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
+  ExprVec result;
+
+  if (!HasCompleteData(shapeordata)) {
+    LOG(WARNING)
+        << "Get data from ShapeOrDataDimExprs with incomplete data info.";
+  }
+
+  const auto &GetTensorItemNumFromShape = [](const std::vector<symbol::DimExpr>
+                                                 &shape) {
+    const auto &optional_int64_shape = VecExpr2Int64(shape);
+    PADDLE_ENFORCE_EQ(
+        optional_int64_shape.has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "The shape of tensor should be known when GetExprVecFromData."));
+    return std::accumulate(optional_int64_shape->begin(),
+                           optional_int64_shape->end(),
+                           1,
+                           std::multiplies<int>());
+  };
+
+  const auto &GetNewDataDimExpr = []() -> symbol::DimExpr {
+    static int local_new_data_dimexpr_idx = 0;
+    return symbol::DimExpr{
+        ("DS" + std::to_string(local_new_data_dimexpr_idx++))};
+  };
+
+  const auto &GetTensorData =
+      [&](const symbol::TensorShapeOrDataDimExprs &tensor_shape_or_data) {
+        if (tensor_shape_or_data.data().has_value()) {
+          result = tensor_shape_or_data.data().value();
+        } else {
+          for (int i = 0;
+               i < GetTensorItemNumFromShape(tensor_shape_or_data.shape());
+               ++i) {
+            result.emplace_back(GetNewDataDimExpr());
+          }
+        }
+      };
+
+  shapeordata.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        GetTensorData(impl);
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        for (const auto &tensor_shape_or_data : impl) {
+          GetTensorData(tensor_shape_or_data);
+        }
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, RankedTensorArrayShapeOrDataDimExprs can not get "
+            "data"));
+        return;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, NullShapeOrDataDimExpr can not get data"));
+        return;
+      });
+  return result;
+}
+
 symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
     const symbol::ShapeOrDataDimExprs &x_dim_exprs) {
   const auto InsertZeros =

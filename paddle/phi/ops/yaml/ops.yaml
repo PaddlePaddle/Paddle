@@ -2636,6 +2636,7 @@
   backward : layer_norm_grad
   intermediate : mean, variance
   optional : scale, bias
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : leaky_relu
   args : (Tensor x, float negative_slope = 0.02f)
@@ -2858,6 +2859,7 @@
   kernel :
     func : logsigmoid
   backward : logsigmoid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : logspace
   args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place={})
@@ -2901,6 +2903,7 @@
     func : lp_pool2d
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm, norm_type]
   backward : lp_pool2d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : lstm
   args: (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
@@ -3470,7 +3473,7 @@
     func : pool2d
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool2d_grad
-  interfaces : paddle::dialect::LayoutTransformationInterface
+  interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
 
 - op : pool3d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)

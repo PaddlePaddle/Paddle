@@ -102,28 +102,7 @@ inline bool HasCompleteData(const ShapeOrData &shapeordata) {
       [&](const symbol::NullShapeOrDataDimExpr &impl) { return false; });
 }
 
-inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
-  PADDLE_ENFORCE_EQ(
-      HasCompleteData(shapeordata),
-      true,
-      phi::errors::Fatal("ShapeOrDataDimExprs must have complete data info "
-                         "when calling GetExprVecFromData"));
-  ExprVec result;
-  shapeordata.Match(
-      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
-        result = impl.data().value();
-      },
-      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
-        for (size_t i = 0; i < impl.size(); i++) {
-          for (auto expr : impl[i].data().value()) {
-            result.emplace_back(expr);
-          }
-        }
-      },
-      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) { return; },
-      [&](const symbol::NullShapeOrDataDimExpr &impl) { return; });
-  return result;
-}
+ExprVec GetExprVecFromData(const ShapeOrData &shapeordata);
 
 inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {
   const auto GetShapeExprsFromList = [&]() {
