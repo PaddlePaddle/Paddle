@@ -18,7 +18,7 @@ from . import constants
 
 
 class BaseConfig:
-    def __init__(self, category, config_dict=None):
+    def __init__(self, category: any, config_dict: dict = None) -> None:
         self._category = category
         self._config_dict = None
         if config_dict is not None:
@@ -37,7 +37,7 @@ class BaseConfig:
         if self._config_dict:
             self.from_dict(self._config_dict)
 
-    def from_dict(self, config_dict):
+    def from_dict(self, config_dict) -> None:
         config = constants.get_category_default_config(self._category)
         for field in config.keys():
             value = config_dict.get(field, constants.NOT_FOUND)
@@ -45,7 +45,7 @@ class BaseConfig:
             if value != constants.NOT_FOUND:
                 setattr(self, field, value)
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         result_dict = {}
         config = constants.get_category_default_config(self._category)
         for field in config.keys():
@@ -56,14 +56,14 @@ class BaseConfig:
                 result_dict[field] = value.to_dict()
         return result_dict
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         result_dict = self.to_dict()
         string = "{"
         for k, v in result_dict.items():
             string += f"\"{k}\":\"{v}\","
         return string + "}"
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict) -> dict:
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
@@ -71,7 +71,7 @@ class BaseConfig:
             setattr(result, k, copy.deepcopy(v, memo))
         return result
 
-    def get(self, k, d=None):
+    def get(self, k: int, d: int = None) -> dict:
         result_dict = self.to_dict()
         return result_dict.get(k, d)
 
@@ -186,7 +186,7 @@ class Strategy(BaseConfig):
 
     """
 
-    def __init__(self, config=None):
+    def __init__(self, config: dict = None) -> None:
         if config is not None:
             if isinstance(config, dict):
                 self._config_dict = copy.deepcopy(config)
