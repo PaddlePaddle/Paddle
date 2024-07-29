@@ -76,7 +76,7 @@ class CostModel:
 
     def get_static_op_time(
         self, op_name: str, forward: bool = True, dtype: str = "float32"
-    ):
+    ) -> dict:
         # if forward is True, return op forward time, otherwise return op backward time.
         if op_name is None:
             raise ValueError(
