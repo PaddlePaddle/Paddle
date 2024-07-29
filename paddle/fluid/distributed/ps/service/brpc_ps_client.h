@@ -69,8 +69,10 @@ class DownpourPsClientService : public PsService {
                          ::google::protobuf::Closure *done) {
     brpc::ClosureGuard done_guard(done);
     size_t client_id = request->client_id();
-    CHECK(_client->_client_id == client_id)
-        << "request client id not matched self";
+    PADDLE_ENFORCE_EQ((_client->_client_id),
+                      client_id,
+                      phi::errors::PreconditionNotMet(
+                          "The request client's id does not match itself"));
     _fl_strategy = request->str_params();
     _is_fl_strategy_ready = true;
     response->set_err_code(0);
