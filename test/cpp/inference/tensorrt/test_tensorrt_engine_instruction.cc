@@ -392,15 +392,15 @@ TEST(PluginTest, test_generic_plugin) {
   plugin_collection->fields = fields.data();
   auto generic_plugin =
       creator->createPlugin("pir_generic_plugin", plugin_collection.get());
-  PADDLE_ENFORCE_NOT_NULL(generic_plugin,
-                          paddle::platform::errors::InvalidArgument(
-                              "TRT create generic plugin failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      generic_plugin,
+      common::errors::InvalidArgument("TRT create generic plugin failed."));
   std::vector<nvinfer1::ITensor *> plugin_inputs;
   plugin_inputs.emplace_back(x);
   auto plugin_layer = engine->network()->addPluginV2(
       plugin_inputs.data(), plugin_inputs.size(), *generic_plugin);
   PADDLE_ENFORCE_NOT_NULL(plugin_layer,
-                          paddle::platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "TRT generic plugin layer building failed."));
 
   engine->DeclareOutput(plugin_layer, 0, "y");

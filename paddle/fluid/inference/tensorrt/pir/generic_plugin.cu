@@ -330,8 +330,8 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
       phi::KernelFactory::Instance().HasCompatiblePhiKernel(kernel_func),
       true,
-      platform::errors::Fatal("%s has no compatible phi kernel!",
-                              op_name_.c_str()));
+      common::errors::Fatal("%s has no compatible phi kernel!",
+                            op_name_.c_str()));
 
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   phi::GPUPlace place(phi::backends::gpu::GetCurrentDeviceId());
@@ -358,7 +358,7 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
       phi_kernels_[nvinfer1::DataType::kFLOAT]->IsValid() ||
           phi_kernels_[nvinfer1::DataType::kHALF]->IsValid(),
       true,
-      platform::errors::Fatal("%s phi kernel is invalid!.", kernel_func));
+      common::errors::Fatal("%s phi kernel is invalid!.", kernel_func));
 
   if (!dense_tensor_inputs_)
     dense_tensor_inputs_ = new std::vector<phi::DenseTensor>(getNbInputs());
@@ -382,7 +382,7 @@ nvinfer1::DimsExprs GenericPlugin::getOutputDimensions(
   PADDLE_ENFORCE_EQ(
       dynamic_infermeta_factory.Contains(op_name_without_dialect),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The %s op has no dynamic plugin infershape function!", op_name_));
 
   auto* infershape_func =
