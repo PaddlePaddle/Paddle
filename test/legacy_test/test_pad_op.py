@@ -162,6 +162,9 @@ create_test_fp16(TestPadOp)
 create_test_fp16(TestCase1)
 create_test_fp16(TestCase2)
 create_test_fp16(TestCase3)
+create_test_fp16(TestCase4)
+create_test_fp16(TestCase5)
+create_test_fp16(TestCase6)
 
 
 class TestPadOpError(unittest.TestCase):

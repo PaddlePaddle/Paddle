@@ -32,9 +32,13 @@ import paddle
 from paddle.base import Program, program_guard
 
 
-def pad_wrapper(x, paddings, pad_value):
+def pad_wrapper(x, paddings, pad_value, pad_from_first_axis):
     return paddle.nn.functional.pad(
-        x, pad=list(paddings), mode='constant', value=pad_value
+        x,
+        pad=list(paddings),
+        mode='constant',
+        value=pad_value,
+        pad_from_first_axis=pad_from_first_axis,
     )
 
 
@@ -52,6 +56,7 @@ class XPUTestPadOp(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
             self.python_api = pad_wrapper
             self.public_python_api = pad_wrapper
+            self.pad_from_first_axis = True
             self.init_dtype()
             self.init_test_case()
             self.init_data()
@@ -77,6 +82,7 @@ class XPUTestPadOp(XPUOpTestWrapper):
             self.attrs = {
                 'paddings': list(np.array(self.paddings).flatten()),
                 'pad_value': self.pad_value,
+                'pad_from_first_axis': self.pad_from_first_axis,
             }
 
         def test_check_output(self):
@@ -102,6 +108,25 @@ class XPUTestPadOp(XPUOpTestWrapper):
             self.shape = 100
             self.paddings = [(0, 1)]
             self.pad_value = 0.9
+
+    class TestCase4(TestPadOp):
+        def init_test_case(self):
+            self.shape = (16, 16)
+            self.paddings = [(2, 3)]
+            self.pad_value = 0.3
+
+    class TestCase5(TestPadOp):
+        def init_test_case(self):
+            self.shape = (2, 3, 4, 5)
+            self.paddings = [(0, 1), (2, 1), (1, 1)]
+            self.pad_value = 0.1
+
+    class TestCase6(TestPadOp):
+        def init_test_case(self):
+            self.shape = (16, 16)
+            self.paddings = [(0, 1), (2, 3)]
+            self.pad_value = 0.0
+            self.pad_from_first_axis = False
 
     class TestPadOpError(unittest.TestCase):
         def test_errors(self):
