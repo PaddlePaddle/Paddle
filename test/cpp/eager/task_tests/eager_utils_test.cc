@@ -258,7 +258,7 @@ TEST(EagerUtils, TrySyncToVars) {
     const float* ptr = framework_tensor.data<float>();
     PADDLE_ENFORCE_EQ(
         framework_tensor.numel(),
-        tensor[0].numel(),
+        tensors[0].numel(),
         phi::errors::InvalidArgument("The numel of framework tensor and numel "
                                      "of tensor should be the same."));
 
@@ -279,7 +279,7 @@ TEST(EagerUtils, TrySyncToVars) {
     VLOG(6) << "Check Value for SyncToVarsMultiple";
     PADDLE_ENFORCE_EQ(
         framework_tensor.numel(),
-        tensor[0].numel(),
+        tensors[0].numel(),
         phi::errors::InvalidArgument("The numel of framework tensor and numel "
                                      "of tensor should be the same."));
 
