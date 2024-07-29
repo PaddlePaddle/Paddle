@@ -34,11 +34,11 @@ namespace ir {
 using cinn::common::make_shared;
 
 Expr Cast::Make(Type t, Expr v) {
-  PADDLE_ENFORCE_EQ(
-      !t.is_unk(),
-      true,
-      ::common::errors::InvalidArgument("The type is unknown. "
-                                   "A valid type is required for casting."));
+  PADDLE_ENFORCE_EQ(!t.is_unk(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The type is unknown. "
+                        "A valid type is required for casting."));
   PADDLE_ENFORCE_EQ(
       !(t.is_void() && !t.is_cpp_handle()),
       true,
@@ -75,12 +75,12 @@ void BinaryNodeVerify(const Expr &a, const Expr &b, absl::string_view ir_name) {
       a.defined(),
       true,
       ::common::errors::InvalidArgument("The first operand is not defined. "
-                                   "A valid expression is required."));
+                                        "A valid expression is required."));
   PADDLE_ENFORCE_EQ(
       b.defined(),
       true,
       ::common::errors::InvalidArgument("The second operand is not defined. "
-                                   "A valid expression is required."));
+                                        "A valid expression is required."));
   TryElevateInt32ToInt64({a, b});
   PADDLE_ENFORCE_EQ(a.type(),
                     b.type(),
@@ -336,17 +336,17 @@ Expr For::Make(Var loop_var,
       loop_var.defined(),
       true,
       ::common::errors::InvalidArgument("The loop variable is not defined. "
-                                   "A valid loop variable is required."));
+                                        "A valid loop variable is required."));
   PADDLE_ENFORCE_EQ(
       min.defined(),
       true,
       ::common::errors::InvalidArgument("The minimum value is not defined. "
-                                   "A valid minimum value is required."));
+                                        "A valid minimum value is required."));
   PADDLE_ENFORCE_EQ(
       extent.defined(),
       true,
       ::common::errors::InvalidArgument("The extent is not defined. "
-                                   "A valid extent is required."));
+                                        "A valid extent is required."));
 
   node->loop_var = loop_var;
   node->min = min;
@@ -358,12 +358,12 @@ Expr For::Make(Var loop_var,
   node->set_bind_info(bind_info);
 
   if (node->is_vectorized()) {
-    PADDLE_ENFORCE_EQ(
-        node->vectorize_info().valid(),
-        true,
-        ::common::errors::InvalidArgument("The vectorize info is not valid. "
-                                     "Ensure that the vectorization "
-                                     "information is correctly specified."));
+    PADDLE_ENFORCE_EQ(node->vectorize_info().valid(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The vectorize info is not valid. "
+                          "Ensure that the vectorization "
+                          "information is correctly specified."));
   }
   if (node->is_binded() && bind_info.offset >= 0) {
     PADDLE_ENFORCE_EQ(
@@ -413,11 +413,12 @@ Expr ScheduleBlock::Make(const std::vector<Var> &iter_vars,
 }
 void ScheduleBlock::Verify() const {
   PADDLE_ENFORCE_EQ(
-    !name.empty(),
-    true,
-    ::common::errors::InvalidArgument(
-        "The name is empty. A valid name is required for the ScheduleBlock to "
-        "ensure proper identification and referencing within the code."));
+      !name.empty(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The name is empty. A valid name is required for the ScheduleBlock "
+          "to "
+          "ensure proper identification and referencing within the code."));
   PADDLE_ENFORCE_EQ(body.defined(),
                     true,
                     ::common::errors::InvalidArgument(
@@ -685,8 +686,8 @@ Expr Call::Make(Type type,
         read_args[i].defined(),
         true,
         ::common::errors::InvalidArgument("Read argument %d is not defined. "
-                                     "All read arguments must be defined.",
-                                     i));
+                                          "All read arguments must be defined.",
+                                          i));
   }
 
   auto node = cinn::common::make_shared<Call>(type);
@@ -749,12 +750,12 @@ Expr PolyFor::Make(Var iterator,
   n->set_bind_info(bind_info);
 
   if (n->is_vectorized()) {
-    PADDLE_ENFORCE_EQ(
-        n->vectorize_info().valid(),
-        true,
-        ::common::errors::InvalidArgument("The vectorize info is not valid. "
-                                     "Ensure that the vectorization "
-                                     "information is correctly specified."));
+    PADDLE_ENFORCE_EQ(n->vectorize_info().valid(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The vectorize info is not valid. "
+                          "Ensure that the vectorization "
+                          "information is correctly specified."));
   }
   if (n->is_binded() && bind_info.offset >= 0) {
     PADDLE_ENFORCE_EQ(
@@ -826,14 +827,14 @@ Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
       tensor->type().valid(),
       true,
       ::common::errors::InvalidArgument("The tensor type is not valid. "
-                                   "A valid tensor type is required."));
+                                        "A valid tensor type is required."));
   const auto indices = utils::GetCompitableStoreLoadIndices(
       tensor.as_tensor_ref(), origin_indices);
   PADDLE_ENFORCE_EQ(
       !indices.empty(),
       true,
       ::common::errors::InvalidArgument("The indices should not be empty. "
-                                   "At least one index is required."));
+                                        "At least one index is required."));
   TryElevateInt32ToInt64(indices);
   for (auto &idx : indices) {
     PADDLE_ENFORCE_EQ(
@@ -861,12 +862,12 @@ Type Load::type() const {
       tensor.defined(),
       true,
       ::common::errors::InvalidArgument("The tensor is not defined. "
-                                   "A defined tensor is required."));
+                                        "A defined tensor is required."));
   PADDLE_ENFORCE_EQ(
       tensor.type().valid(),
       true,
       ::common::errors::InvalidArgument("The tensor type is not valid. "
-                                   "A valid tensor type is required."));
+                                        "A valid tensor type is required."));
 
   int lanes = 0;
   for (auto &idx : indices) {
@@ -897,10 +898,10 @@ std::vector<const Expr *> Load::expr_fields() const {
 Expr Load::index() const {
   if (is_addr_tensor()) {
     auto *tensor_n = tensor.As<_Tensor_>();
-    PADDLE_ENFORCE_NOT_NULL(
-        tensor_n,
-        ::common::errors::InvalidArgument("The tensor pointer is null. "
-                                     "A valid tensor pointer is required."));
+    PADDLE_ENFORCE_NOT_NULL(tensor_n,
+                            ::common::errors::InvalidArgument(
+                                "The tensor pointer is null. "
+                                "A valid tensor pointer is required."));
     VLOG(3) << "Begin Load::index IndiceToAbsOffset of tensor: "
             << this->name();
     if (indices.size() == 1) {
@@ -922,23 +923,24 @@ const std::string &Load::name() const {
   PADDLE_ENFORCE_NOT_NULL(
       t,
       ::common::errors::InvalidArgument("The tensor pointer is null. "
-                                   "A valid tensor pointer is required."));
+                                        "A valid tensor pointer is required."));
   return t->name;
 }
 
 void Load::Verify() const {
-  PADDLE_ENFORCE_EQ(tensor.defined(),
-                    true,
-                    ::common::errors::InvalidArgument("The tensor is not defined."));
+  PADDLE_ENFORCE_EQ(
+      tensor.defined(),
+      true,
+      ::common::errors::InvalidArgument("The tensor is not defined."));
   PADDLE_ENFORCE_EQ(
       !indices.empty(),
       true,
       ::common::errors::InvalidArgument("At least one index is needed."));
   for (auto &indice : indices) {
-    PADDLE_ENFORCE_EQ(
-        indice.defined(),
-        true,
-        ::common::errors::InvalidArgument("One of the indices is not defined."));
+    PADDLE_ENFORCE_EQ(indice.defined(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "One of the indices is not defined."));
     PADDLE_ENFORCE_EQ(
         indice.type().ElementOf() == type_of<int32_t>() ||
             indice.type().ElementOf() == type_of<int64_t>(),
@@ -959,10 +961,10 @@ Expr Ramp::Make(Expr base, Expr stride, int lanes) {
       base.defined(),
       true,
       ::common::errors::InvalidArgument("The base expression is not defined."));
-  PADDLE_ENFORCE_EQ(
-      stride.defined(),
-      true,
-      ::common::errors::InvalidArgument("The stride expression is not defined."));
+  PADDLE_ENFORCE_EQ(stride.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The stride expression is not defined."));
   PADDLE_ENFORCE_EQ(
       base.type().valid(),
       true,
@@ -991,10 +993,10 @@ Expr Ramp::Make(Expr base, Expr stride, int lanes) {
 }
 
 Expr Broadcast::Make(Expr value, int lanes) {
-  PADDLE_ENFORCE_EQ(
-      value.defined(),
-      true,
-      ::common::errors::InvalidArgument("The value expression is not defined."));
+  PADDLE_ENFORCE_EQ(value.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The value expression is not defined."));
   PADDLE_ENFORCE_EQ(
       value.type().valid(),
       true,
@@ -1019,7 +1021,7 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
       !vs.empty(),
       true,
       ::common::errors::InvalidArgument("The vector of operands is empty. "
-                                   "At least one operand is required."));
+                                        "At least one operand is required."));
   if (vs.size() == 1) return vs.front();
 
   auto *n = make_shared<Sum>();
@@ -1046,7 +1048,7 @@ Expr Product::Make(const std::vector<Expr> &vs) {
       vs.size(),
       1,
       ::common::errors::InvalidArgument("The operands of the node [Product] "
-                                   "should have at least one element"));
+                                        "should have at least one element"));
 
   auto *n = make_shared<Product>();
   TryElevateInt32ToInt64(vs);
@@ -1056,7 +1058,7 @@ Expr Product::Make(const std::vector<Expr> &vs) {
         v.type(),
         type,
         ::common::errors::InvalidArgument("The operands' types of the node "
-                                     "[Product] don't match"));
+                                          "[Product] don't match"));
 
   n->operands() = vs;
 
@@ -1122,14 +1124,14 @@ Expr Reduce::Make(Reduce::ReduceType reduce_type,
                       ::common::errors::InvalidArgument(
                           "The init type is not valid. "
                           "Ensure that the init expression has a valid type."));
-    PADDLE_ENFORCE_EQ(
-        init.type(),
-        body.type(),
-        ::common::errors::InvalidArgument("The type of the init and the body of the "
-                                     "node [Reduce] should be the same. "
-                                     "Received init type: %s, body type: %s",
-                                     init.type().to_string().c_str(),
-                                     body.type().to_string().c_str()));
+    PADDLE_ENFORCE_EQ(init.type(),
+                      body.type(),
+                      ::common::errors::InvalidArgument(
+                          "The type of the init and the body of the "
+                          "node [Reduce] should be the same. "
+                          "Received init type: %s, body type: %s",
+                          init.type().to_string().c_str(),
+                          body.type().to_string().c_str()));
   }
 
   n->set_type(body.type());
@@ -1181,14 +1183,14 @@ void Reduce::Verify() const {
                     ::common::errors::InvalidArgument(
                         "At least one reduce axis is needed. "
                         "Ensure that the reduce_axis vector is not empty."));
-  PADDLE_ENFORCE_EQ(
-      init.type(),
-      body.type(),
-      ::common::errors::InvalidArgument("The type of the init and the body of the "
-                                   "node [Reduce] should be the same. "
-                                   "Received init type: %s, body type: %s",
-                                   init.type().to_string().c_str(),
-                                   body.type().to_string().c_str()));
+  PADDLE_ENFORCE_EQ(init.type(),
+                    body.type(),
+                    ::common::errors::InvalidArgument(
+                        "The type of the init and the body of the "
+                        "node [Reduce] should be the same. "
+                        "Received init type: %s, body type: %s",
+                        init.type().to_string().c_str(),
+                        body.type().to_string().c_str()));
 }
 
 Type Select::type() const {
@@ -1326,14 +1328,14 @@ void PolyFor::Verify() const {
       iterator->type(),
       type_of<int32_t>(),
       ::common::errors::InvalidArgument("The iterator's type must be int32. "
-                                   "Received type: %s",
-                                   iterator->type().to_string().c_str()));
-  PADDLE_ENFORCE_EQ(
-      init.type(),
-      type_of<int32_t>(),
-      ::common::errors::InvalidArgument("The init expression's type must be int32. "
-                                   "Received type: %s",
-                                   init.type().to_string().c_str()));
+                                        "Received type: %s",
+                                        iterator->type().to_string().c_str()));
+  PADDLE_ENFORCE_EQ(init.type(),
+                    type_of<int32_t>(),
+                    ::common::errors::InvalidArgument(
+                        "The init expression's type must be int32. "
+                        "Received type: %s",
+                        init.type().to_string().c_str()));
   PADDLE_ENFORCE_EQ(condition.type(),
                     type_of<bool>(),
                     ::common::errors::InvalidArgument(
@@ -1400,7 +1402,7 @@ void MultiOperandVerify(llvm::ArrayRef<Expr> operands) {
       operand_type.valid(),
       true,
       ::common::errors::InvalidArgument("The operand type is not valid. "
-                                   "A valid operand type is required."));
+                                        "A valid operand type is required."));
   for (int i = 1; i < operands.size(); i++) {
     PADDLE_ENFORCE_EQ(operands[i].defined(),
                       true,
@@ -1424,7 +1426,8 @@ void Product::Verify() const {
                     1UL,
                     ::common::errors::InvalidArgument(
                         "Product node should have more than 1 operands"));
-  MultiOperandVerify(operands()); x
+  MultiOperandVerify(operands());
+  x
 }
 
 Type Sum::type() const { return operands().front().type(); }
