@@ -74,11 +74,11 @@ std::unique_ptr<ScheduleBase> ScheduleBase::Make(ModuleExpr&& module_expr,
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
-  }                                                                         \
-  catch (const utils::ErrorHandler& err_handler) {                          \
-    PADDLE_THROW(                                                           \
-        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)              \
+  }                                                      \
+  catch (const utils::ErrorHandler& err_handler) {       \
+    PADDLE_THROW(::common::errors::Fatal(                \
+        err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 void BaseInliner::operator()(Expr* expr) {
@@ -127,7 +127,7 @@ bool BaseInliner::UpdateAndCheckIndexVars(const std::vector<Expr>& indices,
 void BaseInliner::SetIndexSubstitution(const std::vector<Expr>& indices) {
   PADDLE_ENFORCE_EQ(indices.size(),
                     idx_vars_.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of indices should be equal to idx_vars_"));
   int n = idx_vars_.size();
   idx_sub_var_.reserve(n);
@@ -242,7 +242,7 @@ Expr ReverseComputeInliner::ReplaceTargetTensor(Expr* store) {
   auto indices = inlined_load_.As<ir::Load>()->indices;
   PADDLE_ENFORCE_EQ(indices.size(),
                     idx_vars_.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of indices should be equal to idx_vars_"));
   size_t n = idx_vars_.size();
   idx_sub_var_.reserve(n);
@@ -392,13 +392,13 @@ std::vector<Expr> IRSchedule::Split(const std::string& block_name,
   Expr loop_expr;
   PADDLE_ENFORCE_LT(loop_index,
                     (int)all_loops.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The loop index in Split should be less than total "
                         "loop's number."));
-  PADDLE_ENFORCE_GE(
-      loop_index,
-      0,
-      phi::errors::InvalidArgument("The loop index in Split should be >= 0."));
+  PADDLE_ENFORCE_GE(loop_index,
+                    0,
+                    ::common::errors::InvalidArgument(
+                        "The loop index in Split should be >= 0."));
   loop_expr = all_loops[loop_index];
 
   return this->Split(loop_expr, factors);
@@ -657,7 +657,7 @@ void IRSchedule::Annotate(const Expr& block,
 
   std::stringstream ss;
   ss << "Value of attribute:" << key << " input unsupported data type";
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 }
 
 void IRSchedule::Unannotate(Expr& block, const std::string& key) {

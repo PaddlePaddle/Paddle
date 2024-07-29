@@ -16,13 +16,13 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 using ::paddle::platform::kCPU;
 using ::paddle::platform::kCUDA;
 
-using paddle::platform::DeviceContextPool;
 using paddle::platform::DeviceEvent;
+using phi::DeviceContextPool;
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>

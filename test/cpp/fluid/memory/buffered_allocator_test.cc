@@ -46,7 +46,7 @@ class StubAllocator : public Allocator {
     auto *alloc = dynamic_cast<StubAllocation *>(allocation);
     PADDLE_ENFORCE_NOT_NULL(
         alloc,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input allocation is not type of StubAllocation."));
     if (alloc->ptr()) delete[] static_cast<uint8_t *>(alloc->ptr());
     ++destruct_count_;

@@ -27,7 +27,7 @@ using CPUKernelFunc = std::function<void(size_t n, std::vector<void*> args)>;
 
 template <typename T>
 phi::DenseTensor* CreateTensor(framework::Scope* scope,
-                               const platform::Place& place,
+                               const phi::Place& place,
                                const std::string& name,
                                const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);

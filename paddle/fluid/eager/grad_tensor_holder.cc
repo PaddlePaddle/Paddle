@@ -37,10 +37,10 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
                                            bool fill_one) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
-  PADDLE_ENFORCE(slot_id < buffer_.size(),
-                 paddle::platform::errors::Fatal(
-                     "Invalid slot_id for GradTensorHolder::add() "
-                     "which exceeds size of buffer"));
+  PADDLE_ENFORCE(
+      slot_id < buffer_.size(),
+      phi::errors::Fatal("Invalid slot_id for GradTensorHolder::add() "
+                         "which exceeds size of buffer"));
   VLOG(6) << "Add Tensor for buffer_ slot: " << slot_id
           << ", size: " << buffer_[slot_id].size();
   if (buffer_[slot_id].empty()) {
@@ -50,7 +50,7 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
   }
   PADDLE_ENFORCE(
       rank < buffer_[slot_id].size(),
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Invalid rank for GradTensorHolder::add() which exceeds size "
           "of buffer slot %d, got slot size is: %d rank is: %d",
           slot_id,
@@ -71,7 +71,7 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
         meta->WeakGrad() = origin_meta->WeakGrad();
       }
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Cannot copy grad_tensors' value to grad tensor holders,"
           "input buffer has already been initialized."));
     }
@@ -98,7 +98,7 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
             global_dense_t, dist_attr));
         buffer_[slot_id][rank] = init_grad;
       } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal(
+        PADDLE_THROW(phi::errors::Fatal(
             "Only Support DENSE_TENSOR, SPARSE_COO_TENSOR, SPARSE_CSR_TENSOR "
             "now."));
       }
@@ -128,10 +128,10 @@ void GradTensorHolder::add(size_t slot_id,
     }
   }  // TODO(jiabin): Remove this when we fix all kernel.
 
-  PADDLE_ENFORCE(slot_id < buffer_.size(),
-                 paddle::platform::errors::Fatal(
-                     "Invalid slot_id for GradTensorHolder::add() "
-                     "which exceeds size of buffer"));
+  PADDLE_ENFORCE(
+      slot_id < buffer_.size(),
+      phi::errors::Fatal("Invalid slot_id for GradTensorHolder::add() "
+                         "which exceeds size of buffer"));
   if (buffer_[slot_id].empty()) {
     VLOG(6) << "Pass add Tensor for buffer_ slot: " << slot_id
             << " since its buffer_ is empty ";
@@ -139,7 +139,7 @@ void GradTensorHolder::add(size_t slot_id,
   }
   PADDLE_ENFORCE(
       rank < buffer_[slot_id].size(),
-      paddle::platform::errors::Fatal(
+      phi::errors::Fatal(
           "Invalid rank for GradTensorHolder::add() which exceeds size "
           "of buffer slot %d, got slot size is: %d rank is: %d",
           slot_id,
@@ -161,13 +161,13 @@ void GradTensorHolder::add(size_t slot_id,
     VLOG(6) << "Add Tensor for buffer_ slot: " << slot_id
             << ", size: " << buffer_[slot_id].size();
     // Accumulation
-    PADDLE_ENFORCE_EQ(t.initialized(),
-                      true,
-                      paddle::platform::errors::Fatal(
-                          "We can only accumulate initialized tensor, but we "
-                          "got tensor: %s is empty please check you network "
-                          "and make sure it creates grads.",
-                          t.name()));
+    PADDLE_ENFORCE_EQ(
+        t.initialized(),
+        true,
+        phi::errors::Fatal("We can only accumulate initialized tensor, but we "
+                           "got tensor: %s is empty please check you network "
+                           "and make sure it creates grads.",
+                           t.name()));
 
     if (t.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {

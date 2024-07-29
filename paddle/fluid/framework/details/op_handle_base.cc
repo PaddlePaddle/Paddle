@@ -69,7 +69,7 @@ void OpHandleBase::InitCUDA() {
     PADDLE_ENFORCE_EQ(
         dev_ctxes_.size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Operator %s should have only one dev_ctx, but got %d.",
             Name(),
             dev_ctxes_.size()));
@@ -79,9 +79,9 @@ void OpHandleBase::InitCUDA() {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
         PADDLE_ENFORCE_EQ(
-            platform::is_same_place(place, out_var_handle->place()),
+            phi::is_same_place(place, out_var_handle->place()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The place of output(%s) is not consistent with the "
                 "place of current op(%s).",
                 out_var_handle->Name(),
@@ -91,7 +91,7 @@ void OpHandleBase::InitCUDA() {
     }
   }
 #else
-  PADDLE_THROW(platform::errors::PermissionDenied(
+  PADDLE_THROW(phi::errors::PermissionDenied(
       "Paddle can't use CUDA device since it's not compiled with CUDA,"
       "Please recompile or reinstall Paddle with GPU support."));
 #endif
@@ -109,7 +109,7 @@ void OpHandleBase::InitXPU() {
   } else {
     PADDLE_ENFORCE_EQ(dev_ctxes_.size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "%s should have only one dev_ctx.", Name()));
     auto &place = dev_ctxes_.begin()->first;
     int dev_id = place.device;
@@ -118,9 +118,9 @@ void OpHandleBase::InitXPU() {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
         PADDLE_ENFORCE_EQ(
-            platform::is_same_place(place, out_var_handle->place()),
+            phi::is_same_place(place, out_var_handle->place()),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The place of output(%s) is not consistent with the "
                 "place of current op(%s).",
                 out_var_handle->Name(),
@@ -129,7 +129,7 @@ void OpHandleBase::InitXPU() {
     }
   }
 #else
-  PADDLE_THROW(platform::errors::PermissionDenied(
+  PADDLE_THROW(phi::errors::PermissionDenied(
       "Paddle can't use XPU device since it's not compiled with XPU,"
       "Please recompile or reinstall Paddle with XPU support."));
 #endif
@@ -144,7 +144,7 @@ void OpHandleBase::Run(DeviceType use_device) {
   PADDLE_ENFORCE_NE(
       use_device,
       p::kCUDA,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Argument use_device should not be kCUDA when Paddle is not "
           "compiled with CUDA."));
 #endif
@@ -156,7 +156,7 @@ void OpHandleBase::Run(DeviceType use_device) {
     PADDLE_ENFORCE_NE(
         use_device,
         p::kXPU,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Argument use_device should not be kXPU when Paddle is not "
             "compiled with XPU."));
 #endif
@@ -171,16 +171,15 @@ void OpHandleBase::Run(DeviceType use_device) {
   RunImpl();
 }
 
-void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
+void OpHandleBase::RecordWaitEventOnCtx(phi::DeviceContext *waited_ctx) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_NOT_NULL(
-      waited_ctx,
-      platform::errors::InvalidArgument("Argument waited_ctx is NULL."));
-  if (platform::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
+      waited_ctx, phi::errors::InvalidArgument("Argument waited_ctx is NULL."));
+  if (phi::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
     for (auto &dev_ctx : dev_ctxes_) {
       PADDLE_ENFORCE_NOT_NULL(
           dev_ctx.second,
-          platform::errors::InvalidArgument("The device context is NULL."));
+          phi::errors::InvalidArgument("The device context is NULL."));
       dev_ctx.second->Wait();
     }
   } else {
@@ -212,59 +211,6 @@ void OpHandleBase::AddOutput(VarHandleBase *out) {
   out->AddInput(this, this->Node());
 }
 
-void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
-  for (auto in_var : inputs_) {
-    if (NeedWait(in_var)) {
-      // Dummy Variable is used to represent dependencies between operators, so
-      // there doesn't add event for it.
-      auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
-      if (in_var_handle) {
-        auto &place = in_var_handle->place();
-        if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-          auto stream =
-              static_cast<phi::GPUContext *>(dev_ctxes_.at(place))->stream();
-#ifdef PADDLE_WITH_HIP
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
-#else
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              cudaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
-#endif
-#else
-          PADDLE_THROW(
-              platform::errors::PreconditionNotMet("Not compiled with CUDA."));
-#endif
-        }
-        // There are nothing to do when the place is CPUPlace.
-      }
-    } else {
-      // NOTE(zhiqiu): Special case when using fetch_async_op_handle may lead to
-      // nodetermination due to parallel execution of cuda memory operation. Eg:
-      // execute stream: CPU->GPU copy (feed)
-      // fetch stream: GPU->CUDAPinned (fetch)
-      if (in_var && wait_for_feed) {
-        auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
-        if (in_var_handle) {
-          auto &place = in_var_handle->place();
-          if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-            platform::DeviceContextPool &pool =
-                platform::DeviceContextPool::Instance();
-            auto stream =
-                static_cast<phi::GPUContext *>(pool.Get(place))->stream();
-            platform::GpuStreamSync(stream);
-#else
-            PADDLE_THROW(platform::errors::PreconditionNotMet(
-                "Not compiled with CUDA."));
-#endif
-          }
-        }
-      }
-    }
-  }
-}
-
 void OpHandleBase::WaitInputVarGenerated(const phi::Place &place) {
   for (auto in_var : inputs_) {
     if (NeedWait(in_var)) {
@@ -272,7 +218,7 @@ void OpHandleBase::WaitInputVarGenerated(const phi::Place &place) {
       // so there doesn't add event for it.
       auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
       if (in_var_handle) {
-        if (platform::is_gpu_place(in_var_handle->place())) {
+        if (phi::is_gpu_place(in_var_handle->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           auto stream = static_cast<phi::GPUContext *>(
                             dev_ctxes_.at(in_var_handle->place()))
@@ -286,7 +232,7 @@ void OpHandleBase::WaitInputVarGenerated(const phi::Place &place) {
 #endif
 #else
           PADDLE_THROW(
-              platform::errors::PreconditionNotMet("Not compiled with CUDA."));
+              phi::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
         }
         // There are nothing to do when the place is CPUPlace.
@@ -332,7 +278,7 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 void OpHandleBase::RunAndRecordEvent(phi::Place p,
                                      const std::function<void()> &callback) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_cpu_place(p) || events_.empty()) {
+  if (phi::is_cpu_place(p) || events_.empty()) {
     callback();
   } else {
     auto *ctx = dev_ctxes_.at(p);
@@ -363,7 +309,7 @@ void OpHandleBase::SetLocalExecScopes(
     PADDLE_ENFORCE_NE(
         iter,
         scope_map.end(),
-        platform::errors::NotFound("Local scope not found in scope map."));
+        phi::errors::NotFound("Local scope not found in scope map."));
     local_exec_scopes_.emplace_back(iter->second);
   }
 }

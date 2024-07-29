@@ -346,7 +346,7 @@ TEST(FusedDropout, GPUFusedDropoutActBiasDouble) {
 
 // test fp16, For inference, check_grad is not required. ref: test_dropout_op.py
 TEST(FusedDropout, GPUFusedDropoutActBiasFp16) {
-  using fp16 = platform::float16;
+  using fp16 = phi::dtype::float16;
   BaseTest<fp16,
            phi::funcs::ReluFunctor<fp16>,
            phi::funcs::ReluGradFunctor<fp16>>(true);

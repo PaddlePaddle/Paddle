@@ -27,6 +27,7 @@ limitations under the License. */
 #include "brpc/controller.h"
 #include "brpc/server.h"
 #include "paddle/common/flags.h"
+#include "paddle/common/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/distributed/ps/service/brpc_utils.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
@@ -37,7 +38,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/profiler.h"
 
 namespace google {
@@ -80,14 +80,14 @@ class ServiceHandlerBase {
   virtual ~ServiceHandlerBase() {}
 
   void SetScope(const framework::Scope* scope) { scope_ = scope; }
-  void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
+  void SetDevCtx(const phi::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
 
   virtual int Handle(const MultiVarMsg* request,
                      MultiVarMsg* response,
                      brpc::Controller* cntl) = 0;
 
  protected:
-  const platform::DeviceContext* dev_ctx_;
+  const phi::DeviceContext* dev_ctx_;
   const framework::Scope* scope_;
 };
 
@@ -219,7 +219,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     std::unique_ptr<::paddle::framework::Scope> local_scope_ptr(
         new ::paddle::framework::Scope());
     auto& local_scope = *(local_scope_ptr.get());
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     phi::CPUPlace cpu_place;
     auto& cpu_dev_ctx = *pool.Get(cpu_place);
 

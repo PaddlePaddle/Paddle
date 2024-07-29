@@ -1744,7 +1744,9 @@ class ParameterServerLauncher:
 
             if args.log_dir is not None:
                 os.makedirs(args.log_dir, exist_ok=True)
-                fn = open("%s/workerlog.%d" % (args.log_dir, idx), "w")
+                fn = open(
+                    "%s/workerlog.%d" % (args.log_dir, cur_worker.rank), "w"
+                )
                 self.log_fns["worker"].append(fn)
                 proc = subprocess.Popen(
                     cmd, env=current_env, stdout=fn, stderr=fn
