@@ -480,7 +480,7 @@ class TestLsqplus(unittest.TestCase):
             round_type='TiesToEven',
             is_sign=False,
             dygraph=True,
-            place='gpu',
+            place='cpu',
         )
 
 
