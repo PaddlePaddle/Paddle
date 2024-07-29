@@ -381,8 +381,8 @@ TEST(TensorContainsNAN, CPU) {
 
   {
     phi::DenseTensor src;
-    paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
+    phi::dtype::float16* buf =
+        src.mutable_data<phi::dtype::float16>({3}, phi::CPUPlace());
     buf[0] = 0.0;
     buf[1].x = 0x7fff;
     buf[2] = 0.0;
@@ -406,8 +406,8 @@ TEST(TensorContainsInf, CPU) {
 
   {
     phi::DenseTensor src;
-    paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
+    phi::dtype::float16* buf =
+        src.mutable_data<phi::dtype::float16>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1].x = 0x7c00;
     buf[2] = 0.0;
@@ -446,8 +446,8 @@ TEST(TensorIsfinite, CPU) {
 
   {
     phi::DenseTensor src, out;
-    paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
+    phi::dtype::float16* buf =
+        src.mutable_data<phi::dtype::float16>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1].x = 0x7c00;
     buf[2] = 0.0;

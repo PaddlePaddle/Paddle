@@ -53,12 +53,6 @@ if(NOT WITH_DGC)
   list(REMOVE_ITEM kernel_gpu "gpu/dgc_kernel.cu")
 endif()
 
-if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
-  list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
-  list(FILTER kernel_gpu EXCLUDE REGEX ".*_grad_kernel\\.cc$")
-  list(FILTER kernel_gpu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
-endif()
-
 if(WITH_CUTLASS)
   add_custom_target(
     gemm_epilogue_compile_script ALL
@@ -223,8 +217,6 @@ if(WITH_ROCM)
     REMOVE_ITEM
     kernel_cu
     "gpudnn/mha_cudnn_frontend.cu"
-    "fusion/gpu/blha_get_max_len.cu"
-    "fusion/gpu/block_multi_head_attention_kernel.cu"
     "fusion/gpu/fused_bn_add_activation_grad_kernel.cu"
     "fusion/gpu/fused_bn_add_activation_kernel.cu"
     "fusion/gpu/fusion_transpose_flatten_concat_kernel.cu")
@@ -277,10 +269,6 @@ file(
   GLOB kernel_cc
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   ${cc_search_pattern})
-
-if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
-  list(FILTER kernel_cc EXCLUDE REGEX ".*_grad_kernel\\.cc$")
-endif()
 
 if(NOT
    (WITH_AVX

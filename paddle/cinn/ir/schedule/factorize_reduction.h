@@ -65,7 +65,7 @@ class ReduceBlockCreater {
     const ScheduleBlockRealize* block_real =
         original_block_.As<ir::ScheduleBlockRealize>();
     PADDLE_ENFORCE_NOT_NULL(block_real,
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "The block is not a ScheduleBlockRealize"));
     num_block_iters_ = block_real->iter_values.size();
   }

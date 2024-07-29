@@ -22,8 +22,7 @@ if(WITH_XPU)
          phi
          common
          var_helper
-         profiler
-         place)
+         profiler)
 else()
   cc_library(
     prepared_operator
@@ -39,8 +38,7 @@ else()
          phi
          common
          var_helper
-         profiler
-         place)
+         profiler)
 endif()
 cc_library(
   layer
@@ -155,7 +153,7 @@ if(NOT WIN32)
   cc_library(
     data_loader
     SRCS data_loader.cc
-    DEPS enforce common)
+    DEPS phi common)
 endif()
 if(WITH_GLOO)
   cc_library(

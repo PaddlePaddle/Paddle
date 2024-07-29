@@ -156,8 +156,8 @@ TEST(test_add_functor, add_functor) {
   // float16
   cpu_res = TensorAddTest(cpu_place,
                           cpu_place,
-                          static_cast<platform::float16>(1.0),
-                          static_cast<platform::float16>(2.0));
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(cpu_res, 0);
   // double
   cpu_res = TensorAddTest(
@@ -178,8 +178,8 @@ TEST(test_add_functor, add_functor) {
   EXPECT_EQ(gpu_res, 0);
   gpu_res = TensorAddTest(gpu_place,
                           gpu_place,
-                          static_cast<platform::float16>(1.0),
-                          static_cast<platform::float16>(2.0));
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
   // different places
   gpu_res = TensorAddTest(
@@ -190,13 +190,13 @@ TEST(test_add_functor, add_functor) {
   EXPECT_EQ(gpu_res, 0);
   gpu_res = TensorAddTest(cpu_place,
                           gpu_place,
-                          static_cast<platform::float16>(1.0),
-                          static_cast<platform::float16>(2.0));
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
   gpu_res = TensorAddTest(gpu_place,
                           cpu_place,
-                          static_cast<platform::float16>(1.0),
-                          static_cast<platform::float16>(2.0));
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
 #endif
 
@@ -209,8 +209,8 @@ TEST(test_add_functor, add_functor) {
   EXPECT_EQ(xpu_res, 0);
   xpu_res = TensorAddTest(xpu_place,
                           xpu_place,
-                          static_cast<platform::float16>(1.0),
-                          static_cast<platform::float16>(2.0));
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
   xpu_res = TensorAddTest(
       xpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
@@ -224,13 +224,13 @@ TEST(test_add_functor, add_functor) {
   EXPECT_EQ(xpu_res, 0);
   xpu_res = TensorAddTest(cpu_place,
                           xpu_place,
-                          static_cast<platform::float16>(1.0),
-                          static_cast<platform::float16>(2.0));
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
   xpu_res = TensorAddTest(xpu_place,
                           cpu_place,
-                          static_cast<platform::float16>(1.0),
-                          static_cast<platform::float16>(2.0));
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
   xpu_res = TensorAddTest(
       cpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
@@ -252,8 +252,8 @@ TEST(test_add_functor, exception) {
       TensorAddTest(cuda_pinned_place, cuda_pinned_place, 1.0, 0.0));
   ASSERT_ANY_THROW(TensorAddTest(cuda_pinned_place,
                                  cuda_pinned_place,
-                                 static_cast<platform::float16>(1.0),
-                                 static_cast<platform::float16>(2.0)));
+                                 static_cast<phi::dtype::float16>(1.0),
+                                 static_cast<phi::dtype::float16>(2.0)));
 #endif
 }
 

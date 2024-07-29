@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 void PrepareCPUTensors(phi::DenseTensor* ids,
                        phi::DenseTensor* scores,
@@ -44,8 +44,16 @@ void PrepareCPUTensors(phi::DenseTensor* ids,
   std::vector<float> scores_vec_data(
       {0.6f, 0.3f, 0.5f, 0.2f, 0.3f, 0.1f, 0.9f, 0.5f, 0.1f, 0.7f, 0.5f, 0.1f});
 
-  CHECK_EQ(static_cast<size_t>(ids->numel()), ids_vec_data.size());
-  CHECK_EQ(static_cast<size_t>(ids->numel()), scores_vec_data.size());
+  PADDLE_ENFORCE_EQ(
+      static_cast<size_t>(ids->numel()),
+      ids_vec_data.size(),
+      phi::errors::InvalidArgument(
+          "Required ids->numel() should be equal to ids_vec_data.size(). "));
+  PADDLE_ENFORCE_EQ(
+      static_cast<size_t>(ids->numel()),
+      scores_vec_data.size(),
+      phi::errors::InvalidArgument(
+          "Required ids->numel() should be equal to scores_vec_data.size(). "));
 
   for (int i = 0; i < ids->numel(); i++) {
     ids_data[i] = ids_vec_data[i];
