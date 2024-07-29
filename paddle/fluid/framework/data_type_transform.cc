@@ -37,7 +37,7 @@ struct CastDataTypeFunctor {
 template <typename InType, typename OutType>
 static void XPUCastData(const phi::DenseTensor& in,
                         phi::DenseTensor* out,
-                        const platform::XPUDeviceContext* dev_ctx) {
+                        const phi::XPUContext* dev_ctx) {
   using XPUInTDType = typename XPUTypeTrait<InType>::Type;
   using XPUOutTDType = typename XPUTypeTrait<OutType>::Type;
   int r = xpu::cast<XPUInTDType, XPUOutTDType>(
@@ -55,7 +55,7 @@ static void XPUTransDataType(
     phi::DenseTensor* out,
     const paddle::framework::proto::VarType::Type& dst_type,
     const phi::DeviceContext* ctx) {
-  auto* context = static_cast<const platform::XPUDeviceContext*>(ctx);
+  auto* context = static_cast<const phi::XPUContext*>(ctx);
 
 #define XPUCastCallback(cpp_type, proto_type)          \
   do {                                                 \
