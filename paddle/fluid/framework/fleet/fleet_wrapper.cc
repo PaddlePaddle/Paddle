@@ -296,8 +296,7 @@ void FleetWrapper::HeterPushSparseVars(
     if (g_var == nullptr) {
       continue;
     }
-    phi::DenseTensor* g_tensor =
-        g_var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor* g_tensor = g_var->GetMutable<phi::DenseTensor>();
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -896,10 +895,9 @@ void FleetWrapper::PushDenseVarsAsync(
     float* g_data = tensor->data<float>();
 
     Variable* pin_var = scope.FindVar(t + "pin");
-    phi::DenseTensor* pin_tensor =
-        pin_var->GetMutable<phi::DenseTensor>();
-    float* pin_g = pin_tensor->mutable_data<float>(tensor->dims(),
-                                                   phi::GPUPinnedPlace());
+    phi::DenseTensor* pin_tensor = pin_var->GetMutable<phi::DenseTensor>();
+    float* pin_g = 
+      pin_tensor->mutable_data<float>(tensor->dims(), phi::GPUPinnedPlace());
     memory::Copy(phi::GPUPinnedPlace(),
                  pin_g,
                  place,
@@ -959,12 +957,10 @@ void FleetWrapper::PushDenseVarsAsync(
     float* g_data = tensor->data<float>();
 
     Variable* pin_var = scope.FindVar(t + "pin");
-    phi::DenseTensor* pin_tensor =
-        pin_var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor* pin_tensor = pin_var->GetMutable<phi::DenseTensor>();
     float* pin_g =
         pin_tensor->mutable_data<float>(tensor->dims(), phi::CPUPlace());
-    memory::Copy(
-        phi::CPUPlace(), pin_g, place, g_data, sizeof(float) * count);
+    memory::Copy(phi::CPUPlace(), pin_g, place, g_data, sizeof(float) * count);
 
     float* g = pin_g;
     if (scale_datanorm >= 0) {
@@ -1118,8 +1114,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     if (g_var == nullptr) {
       continue;
     }
-    phi::DenseTensor* g_tensor =
-        g_var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor* g_tensor = g_var->GetMutable<phi::DenseTensor>();
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -1336,8 +1331,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
         phi::errors::InvalidArgument("The variable (var) is null when "
                                      "click_name is not an empty string."));
 
-    phi::DenseTensor* label_tensor =
-        var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor* label_tensor = var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         label_tensor,
         phi::errors::InvalidArgument("The label tensor is null when attempting "
@@ -1489,8 +1483,7 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope,
   for (auto& t : old_param_list) {
     Variable* old_var = old_scope->Var(t);
     // old model data, here we assume data type is float
-    phi::DenseTensor* old_tensor =
-        old_var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor* old_tensor = old_var->GetMutable<phi::DenseTensor>();
     float* old_data = old_tensor->data<float>();
     // new model data, here we assume data type is float
     Variable* var = scope.FindVar(t);
@@ -1831,8 +1824,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
                                 size_name));
 
       VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
-      float* g_size =
-          var_size->GetMutable<phi::DenseTensor>()->data<float>();
+      float* g_size = var_size->GetMutable<phi::DenseTensor>()->data<float>();
 
       for (int k = 0; k < tensor->numel(); k += emb_dim) {
         g[k] = g[k] + g_size[k] * log(decay);
