@@ -861,7 +861,7 @@ bool LayerNormOpInferSymbolicShape(
 
   // Flatten x_dims to 2D and get dim[1]
   symbol::DimExpr matrix_dim_1 = x_dims[begin_norm_axis];
-  for (int i = begin_norm_axis + 1; i < x_dims.size(); ++i) {
+  for (std::size_t i = begin_norm_axis + 1; i < x_dims.size(); ++i) {
     matrix_dim_1 = matrix_dim_1 * x_dims[i];
   }
 

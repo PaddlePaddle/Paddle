@@ -710,7 +710,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
     std::vector<symbol::DimExpr> res;
     // set padding size == data_dims.size() * 2
     if (origin_paddings.size() == data_dims.size()) {
-      for (int i = 0; i < origin_paddings.size(); ++i) {
+      for (std::size_t i = 0; i < origin_paddings.size(); ++i) {
         res.emplace_back(symbol::DimExpr{origin_paddings.at(i)});
         res.emplace_back(symbol::DimExpr{origin_paddings.at(i)});
       }
@@ -723,7 +723,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
               "pooling size %d.",
               origin_paddings.size(),
               data_dims.size() * 2));
-      for (int i = 0; i < origin_paddings.size(); ++i) {
+      for (std::size_t i = 0; i < origin_paddings.size(); ++i) {
         res.emplace_back(symbol::DimExpr{origin_paddings.at(i)});
       }
     }
@@ -737,7 +737,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
     symbol::DimExpr zero_dimexpr{0};
     // when padding_algorithm is "VALID" or "SAME"
     if (padding_algorithm == "SAME") {
-      for (int i = 0; i < data_dims.size(); ++i) {
+      for (std::size_t i = 0; i < data_dims.size(); ++i) {
         symbol::DimExpr stride_dimexpr = symbol::DimExpr{strides[i]};
 
         symbol::DimExpr out_size =
@@ -898,6 +898,7 @@ bool Pool2dOpInferSymbolicShape(pir::Operation *op,
   }();
 
   infer_context->SetShapeOrDataForValue(op->result(0), output_shape_or_data);
+  return true;
 }
 
 bool ProdOpInferSymbolicShape(pir::Operation *op,
