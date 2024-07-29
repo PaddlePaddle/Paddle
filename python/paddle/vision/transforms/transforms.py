@@ -387,13 +387,14 @@ class ToTensor(BaseTransform[_InputT, "Tensor"]):
         .. code-block:: python
 
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> import paddle.vision.transforms.functional as F
 
             >>> img_arr = ((paddle.rand((4, 5, 3)) * 255.).astype('uint8')).numpy()
             >>> fake_img = Image.fromarray(img_arr)
-            >>> transform = T.ToTensor()
+            >>> transform: T.ToTensor[PILImage] = T.ToTensor()
             >>> tensor = transform(fake_img)
             >>> print(tensor.shape)
             [3, 4, 5]
@@ -460,14 +461,15 @@ class Resize(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import Resize
 
             >>> fake_img = Image.fromarray((np.random.rand(256, 300, 3) * 255.).astype(np.uint8))
-            >>> transform = Resize(size=224)
+            >>> transform: Resize[PILImage, PILImage] = Resize(size=224)
             >>> converted_img = transform(fake_img)
             >>> print(converted_img.size)
             (262, 224)
-            >>> transform = Resize(size=(200,150))
+            >>> transform: Resize[PILImage, PILImage] = Resize(size=(200,150))
             >>> converted_img = transform(fake_img)
             >>> print(converted_img.size)
             (150, 200)
@@ -533,9 +535,10 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import RandomResizedCrop
 
-            >>> transform = RandomResizedCrop(224)
+            >>> transform: RandomResizedCrop[PILImage, PILImage] = RandomResizedCrop(224)
             >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
@@ -739,9 +742,10 @@ class CenterCrop(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import CenterCrop
 
-            >>> transform = CenterCrop(224)
+            >>> transform: CenterCrop[PILImage, PILImage] = CenterCrop(224)
             >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
@@ -783,13 +787,15 @@ class RandomHorizontalFlip(BaseTransform[_InputT, _RetT]):
         .. code-block:: python
 
             >>> import paddle
+            >>> from paddle import Tensor
+            >>> from paddle.vision.transforms import RandomHorizontalFlip
             >>> fake_img = paddle.to_tensor([[[0, 0, 1], [0, 0, 1], [1, 1, 1]]])
             >>> print(fake_img)
             Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[[0, 0, 1],
                      [0, 0, 1],
                      [1, 1, 1]]])
-            >>> transform = paddle.vision.transforms.RandomHorizontalFlip(prob=1)
+            >>> transform: RandomHorizontalFlip[Tensor, Tensor] = RandomHorizontalFlip(prob=1)
             >>> result = transform(fake_img)
             >>> print(result)
             Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
@@ -846,13 +852,15 @@ class RandomVerticalFlip(BaseTransform[_InputT, _RetT]):
         .. code-block:: python
 
             >>> import paddle
+            >>> from paddle import Tensor
+            >>> from paddle.vision.transforms import RandomVerticalFlip
             >>> fake_img = paddle.to_tensor([[[0, 0, 1], [0, 0, 1], [1, 1, 1]]])
             >>> print(fake_img)
             Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[[0, 0, 1],
                      [0, 0, 1],
                      [1, 1, 1]]])
-            >>> transform = paddle.vision.transforms.RandomVerticalFlip(prob=1)
+            >>> transform: RandomVerticalFlip[Tensor, Tensor] = RandomVerticalFlip(prob=1)
             >>> result = transform(fake_img)
             >>> print(result)
             Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
@@ -916,14 +924,17 @@ class Normalize(BaseTransform[_InputT, _RetT]):
         .. code-block:: python
             :name: code-example
 
+            >>> from typing import Any
+            >>> import numpy.typing as npt
             >>> import paddle
             >>> from paddle.vision.transforms import Normalize
             >>> paddle.seed(2023)
 
+            >>> normalize: Normalize[npt.NDArray[Any], npt.NDArray[Any]]
             >>> normalize = Normalize(mean=[127.5, 127.5, 127.5],
-            ...                         std=[127.5, 127.5, 127.5],
-            ...                         data_format='HWC')
-            ...
+            ...                       std=[127.5, 127.5, 127.5],
+            ...                       data_format='HWC')
+
             >>> fake_img = paddle.rand([300,320,3]).numpy() * 255.
             >>> fake_img = normalize(fake_img)
             >>> print(fake_img.shape)
@@ -986,11 +997,14 @@ class Transpose(BaseTransform[_InputT, _RetT]):
 
         .. code-block:: python
 
+            >>> from typing import Any
             >>> import numpy as np
+            >>> import numpy.typing as npt
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import Transpose
 
-            >>> transform = Transpose()
+            >>> transform: Transpose[PILImage, npt.NDArray[Any]] = Transpose()
             >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.shape)
@@ -1041,16 +1055,17 @@ class BrightnessTransform(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import BrightnessTransform
             >>> np.random.seed(2023)
 
-            >>> transform = BrightnessTransform(0.4)
+            >>> transform: BrightnessTransform[PILImage, PILImage] = BrightnessTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> print(fake_img.load()[1,1])
+            >>> print(fake_img.load()[1,1]) # type: ignore[index]
             (60, 169, 34)
             >>> # doctest: +SKIP('random sample in Brightness function')
             >>> fake_img = transform(fake_img)
-            >>> print(fake_img.load()[1,1])
+            >>> print(fake_img.load()[1,1]) # type: ignore[index]
             (68, 192, 38)
 
     """
@@ -1092,9 +1107,10 @@ class ContrastTransform(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import ContrastTransform
 
-            >>> transform = ContrastTransform(0.4)
+            >>> transform: ContrastTransform[PILImage, PILImage] = ContrastTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
@@ -1141,9 +1157,10 @@ class SaturationTransform(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import SaturationTransform
 
-            >>> transform = SaturationTransform(0.4)
+            >>> transform: SaturationTransform[PILImage, PILImage] = SaturationTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
@@ -1187,9 +1204,10 @@ class HueTransform(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import HueTransform
 
-            >>> transform = HueTransform(0.4)
+            >>> transform: HueTransform[PILImage, PILImage] = HueTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
@@ -1242,9 +1260,10 @@ class ColorJitter(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import ColorJitter
 
-            >>> transform = ColorJitter(0.4, 0.4, 0.4, 0.4)
+            >>> transform: ColorJitter[PILImage, PILImage] = ColorJitter(0.4, 0.4, 0.4, 0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
@@ -1358,8 +1377,9 @@ class RandomCrop(BaseTransform[_InputT, _RetT]):
             :name: code-example1
 
             >>> import paddle
+            >>> from paddle import Tensor
             >>> from paddle.vision.transforms import RandomCrop
-            >>> transform = RandomCrop(224)
+            >>> transform: RandomCrop[Tensor, Tensor] = RandomCrop(224)
 
             >>> fake_img = paddle.randint(0, 255, shape=(3, 324,300), dtype = 'int32')
             >>> print(fake_img.shape)
@@ -1483,9 +1503,10 @@ class Pad(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import Pad
 
-            >>> transform = Pad(2)
+            >>> transform: Pad[PILImage, PILImage] = Pad(2)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
@@ -1607,8 +1628,10 @@ class RandomAffine(BaseTransform[_InputT, _RetT]):
         .. code-block:: python
 
             >>> import paddle
+            >>> from paddle import Tensor
             >>> from paddle.vision.transforms import RandomAffine
 
+            >>> transform: RandomAffine[Tensor, Tensor]
             >>> transform = RandomAffine([-90, 90], translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10])
             >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
             >>> fake_img = transform(fake_img)
@@ -1781,9 +1804,10 @@ class RandomRotation(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import RandomRotation
 
-            >>> transform = RandomRotation(90)
+            >>> transform: RandomRotation[PILImage, PILImage] = RandomRotation(90)
             >>> fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
@@ -1885,9 +1909,10 @@ class RandomPerspective(BaseTransform[_InputT, _RetT]):
         .. code-block:: python
 
             >>> import paddle
+            >>> from paddle import Tensor
             >>> from paddle.vision.transforms import RandomPerspective
 
-            >>> transform = RandomPerspective(prob=1.0, distortion_scale=0.9)
+            >>> transform: RandomPerspective[Tensor, Tensor] = RandomPerspective(prob=1.0, distortion_scale=0.9)
             >>> fake_img = paddle.randn((3, 200, 150)).astype(paddle.float32)
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.shape)
@@ -2015,9 +2040,10 @@ class Grayscale(BaseTransform[_InputT, _RetT]):
 
             >>> import numpy as np
             >>> from PIL import Image
+            >>> from PIL.Image import Image as PILImage
             >>> from paddle.vision.transforms import Grayscale
 
-            >>> transform = Grayscale()
+            >>> transform: Grayscale[PILImage, PILImage] = Grayscale()
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
             >>> fake_img = transform(fake_img)
             >>> print(np.array(fake_img).shape)
@@ -2074,9 +2100,11 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
         .. code-block:: python
 
             >>> import paddle
+            >>> from paddle import Tensor
+            >>> from paddle.vision.transforms import RandomErasing
 
             >>> fake_img = paddle.randn((1, 5, 5)).astype(paddle.float32)
-            >>> transform = paddle.vision.transforms.RandomErasing()
+            >>> transform: RandomErasing[Tensor, Tensor] = RandomErasing()
             >>> result = transform(fake_img)
             >>> # doctest: +SKIP('random sample')
             >>> print(result)
