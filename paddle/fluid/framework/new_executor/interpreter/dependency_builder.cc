@@ -17,13 +17,13 @@
 #include <queue>
 #include <sstream>
 #include <stack>
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/platform/flags.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     add_dependency_for_communication_op,
     true,
     "Whether to add dependency for communication Ops. It is just a temporary "
@@ -35,15 +35,15 @@ PADDLE_DEFINE_EXPORTED_bool(
 // Program, while "serial_run" ensures that all Ops are scheduled in a signal
 // thread. In standalone executor, "sequential_run" is also "serial_run", while
 // "serial_run" is not necessarily "sequential_run".
-PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
-                            false,
-                            "Enable sequential execution for standalone "
-                            "executor, only applied to GPU OPs.");
+PHI_DEFINE_EXPORTED_bool(new_executor_sequential_run,
+                         false,
+                         "Enable sequential execution for standalone "
+                         "executor, only applied to GPU OPs.");
 COMMON_DECLARE_int32(enable_adjust_op_order);
 // add debug info
-PADDLE_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
-                            false,
-                            "Enable dependency builder debug info");
+PHI_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
+                         false,
+                         "Enable dependency builder debug info");
 
 namespace paddle::framework::interpreter {
 
@@ -151,7 +151,7 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::OpDownstreamMap()
   PADDLE_ENFORCE_EQ(
       is_build_,
       true,
-      phi::errors::Unavailable(
+      common::errors::Unavailable(
           "DependencyBuilder is not yet built, call Build() firstly."));
   return *op_downstream_map_;
 }
@@ -361,7 +361,7 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
   PADDLE_ENFORCE_EQ(
       OpHappensBefore(posterior_op_idx, prior_op_idx),
       false,
-      phi::errors::Unavailable(
+      common::errors::Unavailable(
           "Can not add dependency %d->%d because %d is run before %d",
           prior_op_idx,
           posterior_op_idx,
@@ -796,7 +796,7 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilderSimplify::Build(
   PADDLE_ENFORCE_EQ(
       is_build_,
       false,
-      phi::errors::AlreadyExists("The op dependency has been built"));
+      common::errors::AlreadyExists("The op dependency has been built"));
   start_index_ = start_index;
   is_sharding_mode_ = is_sharding_mode;
   _ops_ptr = &ops;
@@ -1300,7 +1300,7 @@ std::vector<size_t> DependencyBuilderSimplify::get_new_executor_order() {
   PADDLE_ENFORCE_EQ(
       is_build_,
       true,
-      phi::errors::AlreadyExists("The op dependency has not been built"));
+      common::errors::AlreadyExists("The op dependency has not been built"));
   std::vector<size_t> new_order;
   std::vector<bool> is_visit(op_num_, false);
   std::vector<size_t> adam_vector;
@@ -1393,7 +1393,7 @@ std::vector<size_t> DependencyBuilderSimplify::get_new_executor_order() {
   PADDLE_ENFORCE_EQ(
       new_order.size(),
       op_num_ - not_usefull_op.size(),
-      phi::errors::AlreadyExists("new_order size not equal op num"));
+      common::errors::AlreadyExists("new_order size not equal op num"));
   if (FLAGS_enable_dependency_builder_debug_info) {
     std::stringstream ss;
     ss << " new order [ ";
@@ -1432,7 +1432,7 @@ void DependencyBuilderSimplify::AddDownstreamOp(size_t prior_op_idx,
   PADDLE_ENFORCE_EQ(
       OpHappensBefore(posterior_op_idx, prior_op_idx),
       false,
-      phi::errors::Unavailable(
+      common::errors::Unavailable(
           "Can not add dependency %d->%d because %d is run before %d",
           prior_op_idx,
           posterior_op_idx,

@@ -144,7 +144,7 @@ List<typename TreeMergerT::tree_type> MergeTwoInnerTreeImpl(
                                                List<TreeT>{new_lhs, new_rhs});
     return List<TreeT>{ret};
   } else {
-    PADDLE_THROW(phi::errors::Fatal("Dead code"));
+    PADDLE_THROW(::common::errors::Fatal("Dead code"));
   }
 }
 

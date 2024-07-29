@@ -4447,7 +4447,7 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "some_var.stop_gradient = True, supporting "
                 "some_var as the input 'x'."
             )
-        return _C_ops.expand_as(x, None, y.shape)
+        return _C_ops.expand_as(x, y, y.shape)
     else:
         check_variable_and_dtype(
             x,
@@ -6871,6 +6871,15 @@ def view_as(x: Tensor, other: Tensor, name: str | None = None) -> Tensor:
 
     Note that the output Tensor will share data with origin Tensor and doesn't
     have a Tensor copy in ``dygraph`` mode.
+
+    The following figure shows a view_as operation - a three-dimensional tensor with a shape of [2, 4, 6]
+    is transformed into a two-dimensional tensor with a shape of [8, 6] through the view_as operation.
+    We can clearly see the corresponding relationship between the elements before and after the transformation.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/view_as.png
+        :width: 800
+        :alt: legend of view_as API
+        :align: center
 
     Args:
         x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``

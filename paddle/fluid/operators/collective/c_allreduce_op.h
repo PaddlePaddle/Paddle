@@ -41,8 +41,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
-#include <gloo/allreduce.h>
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#include "paddle/phi/core/distributed/gloo_comm_context.h"
 #endif
 
 namespace paddle {
@@ -85,50 +84,20 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
-    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto& dev_ctx = ctx.device_context<phi::CPUContext>();
+    auto x = *(ctx.Input<phi::DenseTensor>("X"));
     auto out = ctx.Output<phi::DenseTensor>("Out");
+    out->Resize(x.dims());
+    dev_ctx.Alloc<T>(out);
 
-    auto place = ctx.GetPlace();
-    int64_t send_numel = in->numel();
-    const T* send_buff = in->data<T>();
-    T* recv_buff = out->mutable_data<T>(in->dims(), place);
-    auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(),
-        true,
-        phi::errors::PreconditionNotMet(
-            "You must initialize the gloo environment first to use it."));
-    gloo::AllreduceOptions opts(gloo->GetContext());
-    opts.setInput(const_cast<T*>(send_buff), send_numel);
-    opts.setOutput(recv_buff, send_numel);
-    switch (red_type) {
-      case kRedSum:
-        opts.setReduceFunction(
-            static_cast<void (*)(void*, const void*, const void*, size_t)>(
-                &gloo::sum<T>));
-        break;
-      case kRedMax:
-        opts.setReduceFunction(
-            static_cast<void (*)(void*, const void*, const void*, size_t)>(
-                &gloo::max<T>));
-        break;
-      case kRedMin:
-        opts.setReduceFunction(
-            static_cast<void (*)(void*, const void*, const void*, size_t)>(
-                &gloo::min<T>));
-        break;
-      case kRedProd:
-        opts.setReduceFunction(
-            static_cast<void (*)(void*, const void*, const void*, size_t)>(
-                &gloo::product<T>));
-        break;
-      default:
-        PADDLE_ENFORCE_EQ(
-            true,
-            false,
-            phi::errors::InvalidArgument("Invalid reduce type: %d.", red_type));
-    }
-    gloo::allreduce(opts);
+    auto comm_ctx = static_cast<phi::distributed::GlooCommContext*>(
+        dev_ctx.GetCommContext());
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      ::common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+    comm_ctx->AllReduce(out, x, static_cast<int>(red_type));
 #else
     PADDLE_THROW(phi::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));

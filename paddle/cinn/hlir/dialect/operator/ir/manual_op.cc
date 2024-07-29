@@ -245,7 +245,7 @@ void ConcatOp::Build(pir::Builder& builder,             // NOLINT
 
   PADDLE_ENFORCE_GT(inputs.size(),
                     0,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "input size [%d] is less than 0", inputs.size()));
 
   const pir::Type out_type = [&]() {

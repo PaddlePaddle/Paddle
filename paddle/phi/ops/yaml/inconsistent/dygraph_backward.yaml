@@ -382,6 +382,7 @@
   args: (Tensor x, Tensor y, Tensor grad_x_grad, Tensor grad_y_grad)
   output: Tensor(grad_out_grad)
   composite: maximum_double_grad(x, y, grad_x_grad, grad_y_grad, grad_out_grad)
+  optional : grad_x_grad, grad_y_grad
 
 - backward_op: minimum_double_grad
   forward: minimum_grad(Tensor x, Tensor y, Tensor grad_out) -> Tensor(grad_x), Tensor(grad_y)

@@ -33,7 +33,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/common/flags.h"
 
 COMMON_DECLARE_double(eager_delete_tensor_gb);
 
@@ -109,9 +109,9 @@ class CompiledProgramPrivate {
       } else {
         nccl_id = new ncclUniqueId();
         PADDLE_ENFORCE_EQ(
-            platform::dynload::ncclGetUniqueId(nccl_id),
+            phi::dynload::ncclGetUniqueId(nccl_id),
             ncclSuccess,
-            platform::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "PaddlePaddle failed to get NCCL unique ID. It may due to your "
                 "system settings or NCCL library error, please debug on NCCL"));
         VLOG(10) << "can't find nccl_id_var:" << var_name
@@ -138,7 +138,7 @@ class CompiledProgramPrivate {
       auto nccl_id_var = scope->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
           nccl_id_var,
-          platform::errors::NotFound("Can't find nccl_id_var '%s'.", var_name));
+          common::errors::NotFound("Can't find nccl_id_var '%s'.", var_name));
       auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
       flat_nccl_ids.push_back(nccl_id);
     }
@@ -151,9 +151,9 @@ class CompiledProgramPrivate {
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalInterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
-        PADDLE_ENFORCE_NOT_NULL(nccl_id_var,
-                                platform::errors::NotFound(
-                                    "Can't find nccl_id_var '%s'.", var_name));
+        PADDLE_ENFORCE_NOT_NULL(
+            nccl_id_var,
+            common::errors::NotFound("Can't find nccl_id_var '%s'.", var_name));
         auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         inter_nccl_ids.push_back(inter_nccl_id);
       }
@@ -162,9 +162,9 @@ class CompiledProgramPrivate {
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalExterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
-        PADDLE_ENFORCE_NOT_NULL(nccl_id_var,
-                                platform::errors::NotFound(
-                                    "Can't find nccl_id_var '%s'.", var_name));
+        PADDLE_ENFORCE_NOT_NULL(
+            nccl_id_var,
+            common::errors::NotFound("Can't find nccl_id_var '%s'.", var_name));
         auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         exter_nccl_ids.push_back(nccl_id);
       }
@@ -186,7 +186,7 @@ class CompiledProgramPrivate {
     if (var != nullptr) {
       PADDLE_ENFORCE_EQ(var->IsInitialized(),
                         true,
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "if %s exists, it must be initialized", var_name));
       VLOG(1) << "find " << var_name
               << " in scope, so use it and does not recreate!";
@@ -198,19 +198,19 @@ class CompiledProgramPrivate {
       PADDLE_ENFORCE_GT(
           bst->num_trainers_,
           1,
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The num_trainers should be greater than 1, but received %llu.",
               bst->num_trainers_));
       PADDLE_ENFORCE_GT(
           bst->hierarchical_allreduce_inter_nranks_,
           1,
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The inter_nranks should be greater than 1, but received %d.",
               bst->hierarchical_allreduce_inter_nranks_));
       PADDLE_ENFORCE_EQ(
           bst->num_trainers_ % bst->hierarchical_allreduce_inter_nranks_,
           0,
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "num_trainers:%llu mod inter_nranks:%d != 0",
               bst->num_trainers_,
               bst->hierarchical_allreduce_inter_nranks_));
@@ -233,7 +233,7 @@ class CompiledProgramPrivate {
 
     PADDLE_ENFORCE_EQ(bst.use_hierarchical_allreduce_,
                       false,
-                      platform::errors::Unimplemented(
+                      common::errors::Unimplemented(
                           "xpu doesn't support use_hierarchical_allreduce"));
 
     std::vector<BKCLUniqueId *> flat_bkcl_ids;
@@ -258,7 +258,7 @@ class CompiledProgramPrivate {
         PADDLE_ENFORCE_EQ(
             bkcl_get_unique_id(id.get()),
             BKCL_SUCCESS,
-            platform::errors::Unavailable("bkcl get unique id failed"));
+            common::errors::Unavailable("bkcl get unique id failed"));
         bkcl_id = id.get();
       }
 
@@ -282,7 +282,7 @@ class CompiledProgramPrivate {
       auto bkcl_id_var = scope->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
           bkcl_id_var,
-          platform::errors::NotFound("can't find %s bkcl_id_var", var_name));
+          common::errors::NotFound("can't find %s bkcl_id_var", var_name));
       auto bkcl_id = bkcl_id_var->GetMutable<BKCLUniqueId>();
       flat_bkcl_ids.push_back(bkcl_id);
     }
@@ -298,7 +298,7 @@ class CompiledProgramPrivate {
     if (var != nullptr) {
       PADDLE_ENFORCE_EQ(var->IsInitialized(),
                         true,
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "if %s exists, it must be initialized", var_name));
       VLOG(1) << "find " << var_name
               << " in scope, so use it and does not recreate!";
@@ -426,7 +426,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use CUDA device since it's not compiled with CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
@@ -435,7 +435,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       gc = std::make_unique<XPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
@@ -444,7 +444,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       gc = std::make_unique<IPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
 #endif
@@ -459,7 +459,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use custom device since it's not compiled with "
           "CustomDevice,"
           "Please recompile or reinstall Paddle with CustomDevice support."));
@@ -468,7 +468,7 @@ ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
       gc = std::make_unique<CPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created GarbageCollector at " << place;
     } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "Unsupported place for garbage collection"));
     }
     gcs_.emplace(place, std::move(gc));
@@ -548,10 +548,10 @@ CompiledProgram::CompiledProgram(const std::vector<phi::Place> &places,
                                  const BuildStrategy &build_strategy,
                                  ir::Graph *graph)
     : member_(new CompiledProgramPrivate(places, scope)) {
-  PADDLE_ENFORCE_EQ(!places.empty(),
-                    true,
-                    platform::errors::Unavailable(
-                        "NPU is not supported in CompiledProgram."));
+  PADDLE_ENFORCE_EQ(
+      !places.empty(),
+      true,
+      common::errors::Unavailable("NPU is not supported in CompiledProgram."));
   InitP2P(places);
   InitReaderQueueDeviceCount(
       graph, *(member_->global_scope_), member_->places_.size());
@@ -626,7 +626,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
 
       PADDLE_ENFORCE_EQ(member_->places_.size(),
                         buffers.size(),
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "variables' buffer size to bcast is %d, which is "
                             "NOT equal to places size %d",
                             buffers.size(),
@@ -636,12 +636,12 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &nccl_ctx = nccl_ctxs->at(member_->places_[i]);
-          platform::dynload::ncclBcast(buffers[i],
-                                       numel,
-                                       data_type,
-                                       0,
-                                       nccl_ctx.comm_,
-                                       nccl_ctx.stream());
+          phi::dynload::ncclBcast(buffers[i],
+                                  numel,
+                                  data_type,
+                                  0,
+                                  nccl_ctx.comm_,
+                                  nccl_ctx.stream());
         }
         nccl_ctxs->WaitAll();
       } else {
@@ -690,7 +690,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
 
       PADDLE_ENFORCE_EQ(member_->places_.size(),
                         buffers.size(),
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "variables' buffer size to bcast is %d, which is "
                             "NOT equal to places size %d",
                             buffers.size(),
@@ -709,13 +709,13 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
                              0,
                              NULL),
               BKCL_SUCCESS,
-              platform::errors::Unavailable("bkcl_broadcast failed"));
+              common::errors::Unavailable("bkcl_broadcast failed"));
         }
         bkcl_ctxs->WaitAll();
       }
 #else
       PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with BKCL."));
+          common::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
     } else {
       phi::CPUPlace cpu;
@@ -769,7 +769,7 @@ void CompiledProgram::InitProgramPrivateMemberInfo(
     PADDLE_ENFORCE_EQ(
         device_count,
         1,
-        platform::errors::Unavailable("Windows can support Single GPU only."));
+        common::errors::Unavailable("Windows can support Single GPU only."));
   }
 #endif
 
@@ -779,7 +779,7 @@ void CompiledProgram::InitProgramPrivateMemberInfo(
     PADDLE_ENFORCE_EQ(
         device_count,
         1,
-        platform::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "Your machine has multiple cards, "
             "but the WITH_NCCL option is not turned on during compilation, "
             "and you cannot use multi-card training or prediction. "
@@ -796,8 +796,8 @@ void CompiledProgram::InitProgramPrivateMemberInfo(
     device_name = "XPU";
   } else {
     PADDLE_THROW(
-        platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
-                                      "please use CPU/CUDA/XPU backend."));
+        common::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
+                                    "please use CPU/CUDA/XPU backend."));
   }
 }
 
@@ -836,7 +836,7 @@ void CompiledProgram::CreateLocalScopes(
     member_->own_local_scope_ = false;
     PADDLE_ENFORCE_EQ(member_->places_.size(),
                       local_scopes.size(),
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "member_->places_.size() = %d is not equal to "
                           "local_scopes.size() = %d",
                           member_->places_.size(),
@@ -858,7 +858,7 @@ std::vector<ir::Graph *> CompiledProgram::CloneGraphToMultiDevices(
   if (member_->build_strategy_.async_mode_) {
     PADDLE_ENFORCE_EQ(member_->IsUseCUDA(member_->use_device_),
                       false,
-                      platform::errors::Unavailable(
+                      common::errors::Unavailable(
                           "gpu mode does not support async_mode_ now!"));
     graphs.push_back(graph);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
@@ -896,8 +896,7 @@ void CompiledProgram::PrepareNCCLCommunicator(Scope *global_scope) {
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }
 #else
-    PADDLE_THROW(
-        platform::errors::PreconditionNotMet("Not compiled with CUDA."));
+    PADDLE_THROW(common::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
   }
   if (member_->use_device_ == p::kXPU && member_->nranks_ > 1) {
@@ -908,14 +907,13 @@ void CompiledProgram::PrepareNCCLCommunicator(Scope *global_scope) {
         global_scope, member_->places_);
     auto &pool = phi::DeviceContextPool::Instance();
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      auto *dev_ctx = static_cast<platform::XPUDeviceContext *>(
-          pool.Get(member_->places_[dev_id]));
+      auto *dev_ctx =
+          static_cast<phi::XPUContext *>(pool.Get(member_->places_[dev_id]));
       auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[dev_id]);
       dev_ctx->SetBkclContext(bkcl_ctx.comm());
     }
 #else
-    PADDLE_THROW(
-        platform::errors::PreconditionNotMet("Not compiled with XPU."));
+    PADDLE_THROW(common::errors::PreconditionNotMet("Not compiled with XPU."));
 #endif
   }
 }
@@ -932,7 +930,7 @@ std::vector<ir::Graph *> CompiledProgram::CompileGraphWithBuildStrategy(
   if (member_->build_strategy_.async_mode_) {
     PADDLE_ENFORCE_EQ(graphs.size(),
                       device_count,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "graphs.size() should be %d, but received %d",
                           device_count,
                           graphs.size()));
@@ -967,7 +965,7 @@ std::vector<ir::Graph *> CompiledProgram::CompileGraphWithBuildStrategy(
   if (member_->build_strategy_.async_mode_) {
     PADDLE_ENFORCE_EQ(graphs.size(),
                       device_count,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "graphs.size() should be %d, but received %d",
                           device_count,
                           graphs.size()));

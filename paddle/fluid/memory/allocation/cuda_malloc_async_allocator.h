@@ -82,11 +82,6 @@ class CUDAMallocAsyncAllocator : public Allocator {
   void SetDefaultStream(gpuStream_t stream);
   void ClearFreeStream(bool sync = false);
 
-  ~CUDAMallocAsyncAllocator() {
-    VLOG(0) << "Async allocator is freed " << (this)
-            << " tid = " << std::this_thread::get_id();
-  }
-
  protected:
   void FreeImpl(phi::Allocation* allocation) override;
   phi::Allocation* AllocateImpl(size_t size) override;
