@@ -388,18 +388,16 @@ class MoeHelper {
             num_experts,
             ctx.stream());
       } else {
-        fp16_moe_gemm_runner_->moe_gemm_bias_act(
-            reinterpret_cast<NvType *>(permuted_data_),
-            reinterpret_cast<const NvType *>(ffn1_weight->data<T>()),
+        fp16_moe_gemm_runner_->moe_gemm(
+            reinterpret_cast<NvType *>(act_out),
+            reinterpret_cast<const NvType *>(ffn2_weight->data<T>()),
             nullptr,
-            reinterpret_cast<const NvType *>(fc1_expert_biases),
-            reinterpret_cast<NvType *>(fc1_out),
+            reinterpret_cast<NvType *>(fc2_result),
             total_rows_before_expert_,
             expanded_active_expert_rows,
-            inter_size,
             hidden_size,
+            inter_size / 2,
             num_experts,
-            "none",
             ctx.stream());
       }
 
