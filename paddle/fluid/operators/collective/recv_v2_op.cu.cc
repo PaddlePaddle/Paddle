@@ -47,8 +47,7 @@ phi::DDim recv_shape_info(const phi::Place &place,
   }
 
   phi::DataType shape_dtype = phi::DataType::INT32;
-  ncclDataType_t nccl_dtype =
-      platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dtype));
+  ncclDataType_t nccl_dtype = phi::ToNCCLDataType(shape_dtype);
 
   // step1: recv the shape size
   phi::DenseTensor gpu_shape_size_tensor(shape_dtype);

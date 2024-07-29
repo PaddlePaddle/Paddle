@@ -36,8 +36,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int64_t numel = in->numel();
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
+    ncclDataType_t dtype = phi::ToNCCLDataType(in->dtype());
 
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");

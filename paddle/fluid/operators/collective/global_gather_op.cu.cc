@@ -73,8 +73,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
+    ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(

@@ -282,8 +282,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
+    ncclDataType_t dtype = phi::ToNCCLDataType(in->dtype());
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
