@@ -71,6 +71,14 @@ class XPUTestPadOp(XPUOpTestWrapper):
 
         def init_data(self):
             self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
+            if not (
+                len(self.paddings) == len(self.shape)
+                and self.pad_from_first_axis
+            ):
+                self.paddings += [(0, 0)] * (
+                    len(self.shape) - len(self.paddings)
+                )
+                self.paddings.reverse()
             self.outputs = {
                 'Out': np.pad(
                     self.inputs['X'],
