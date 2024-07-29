@@ -76,9 +76,10 @@ struct GetIntermediateParams {
     ComputeT beta = static_cast<ComputeT>(beta_[0]);
     ComputeT g = static_cast<ComputeT>(g_[0]);
     ComputeT out_grad = static_cast<ComputeT>(out_grad_[i]);
+    ComputeT Qn = static_cast<ComputeT>(Qn_);
+    ComputeT Qp = static_cast<ComputeT>(Qp_);
     ComputeT alpha_mx;
     ComputeT beta_mx;
-
     ComputeT inv_alpha = phi::funcs::inverse(alpha);
     trans_out = (x - beta) * inv_alpha;
 
@@ -87,15 +88,15 @@ struct GetIntermediateParams {
     } else {
       round_out = std::round(trans_out);
     }
-    int mask_n = 0;
-    int mask_m = 0;
-    int mask_p = 0;
+    ComputeT mask_n = 0;
+    ComputeT mask_m = 0;
+    ComputeT mask_p = 0;
 
-    if (trans_out < Qn_) {
+    if (trans_out < Qn) {
       mask_n = 1;
       mask_m = 0;
       mask_p = 0;
-    } else if (trans_out > Qp_) {
+    } else if (trans_out > Qp) {
       mask_n = 0;
       mask_m = 0;
       mask_p = 1;
@@ -104,9 +105,9 @@ struct GetIntermediateParams {
       mask_m = 1;
       mask_p = 0;
     }
-    alpha_mx = (mask_n * Qn_ + mask_m * round_out + mask_p * Qp_ -
-                mask_m * trans_out) *
-               g * out_grad;
+    alpha_mx =
+        (mask_n * Qn + mask_m * round_out + mask_p * Qp - mask_m * trans_out) *
+        g * out_grad;
     alpha_matrix_[i] = alpha_mx;
 
     beta_mx = (mask_n + mask_p) * g * out_grad;
@@ -187,27 +188,19 @@ void FakeQuantizeDequantizeLsqplusGradKernel(const Context& dev_ctx,
 
   for_range(get_intermediate_params);
 
-  std::vector<int> v_dims(x.dims().size());
+  std::vector<int64_t> v_dims(x.dims().size());
   std::iota(v_dims.begin(), v_dims.end(), 0);
   IntArray v_axes(v_dims);
   // get alpha_grad
-  DenseTensor compute_alpha_grad =
-      Full<ComputeT, Context>(dev_ctx, common::vectorize(alpha.dims()), 1.0);
-  SumKernel<ComputeT, Context>(dev_ctx,
-                               alpha_matrix,
-                               v_axes,
-                               alpha_matrix.dtype(),
-                               0,
-                               &compute_alpha_grad);
+  DenseTensor compute_alpha_grad = Sum<ComputeT, Context>(
+      dev_ctx, alpha_matrix, v_axes, alpha_matrix.dtype(), false);
   CastKernel<ComputeT, Context>(
       dev_ctx, compute_alpha_grad, alpha.dtype(), alpha_grad);
   alpha_grad->Resize(alpha.dims());
 
   // get beta_grad
-  DenseTensor compute_beta_grad =
-      Full<ComputeT, Context>(dev_ctx, common::vectorize(beta.dims()), 0.0);
-  SumKernel<ComputeT, Context>(
-      dev_ctx, beta_matrix, v_axes, beta_matrix.dtype(), 0, &compute_beta_grad);
+  DenseTensor compute_beta_grad = Sum<ComputeT, Context>(
+      dev_ctx, beta_matrix, v_axes, beta_matrix.dtype(), false);
   CastKernel<ComputeT, Context>(
       dev_ctx, compute_beta_grad, beta.dtype(), beta_grad);
   beta_grad->Resize(beta.dims());
