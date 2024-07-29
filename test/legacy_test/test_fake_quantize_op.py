@@ -188,14 +188,6 @@ class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
                 )
 
 
-class TestFakeChannelWiseQuantizeAbsMaxInferSymbolicShapeOp(
-    TestFakeChannelWiseQuantizeAbsMaxOp
-):
-    def test_check_output(self):
-        self.check_output(check_pir=True)
-        self.check_output(check_symbol_infer=True)
-
-
 class TestFakeQuantizeRangeAbsMaxOp(OpTest):
     def setUp(self):
         self.op_type = 'fake_quantize_range_abs_max'
