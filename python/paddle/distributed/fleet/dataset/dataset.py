@@ -51,7 +51,15 @@ if TYPE_CHECKING:
         fea_eval: NotRequired[bool]
         candidate_size: NotRequired[int]
 
-    class _InMemoryDatasetSettings(_DatasetBaseSettings):
+    class _InMemoryDatasetSettings(TypedDict):
+        batch_size: NotRequired[int]
+        thread_num: NotRequired[int]
+        use_var: NotRequired[list[Tensor]]
+        pipe_command: NotRequired[str]
+        input_type: NotRequired[_InputType]
+        fs_name: NotRequired[str]
+        fs_ugi: NotRequired[str]
+        download_cmd: NotRequired[str]
         data_feed_type: NotRequired[str]
         queue_num: NotRequired[int]
 
@@ -60,7 +68,15 @@ if TYPE_CHECKING:
     ):
         pass
 
-    class _BoxPSDatasetSettings(_DatasetBaseSettings):
+    class _BoxPSDatasetSettings(TypedDict):
+        batch_size: NotRequired[int]
+        thread_num: NotRequired[int]
+        use_var: NotRequired[list[Tensor]]
+        pipe_command: NotRequired[str]
+        input_type: NotRequired[_InputType]
+        fs_name: NotRequired[str]
+        fs_ugi: NotRequired[str]
+        download_cmd: NotRequired[str]
         rank_offset: NotRequired[str]
         pv_batch_size: NotRequired[int]
         parse_logkey: NotRequired[bool]
