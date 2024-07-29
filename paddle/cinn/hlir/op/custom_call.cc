@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 #ifdef CINN_WITH_CUDNN
