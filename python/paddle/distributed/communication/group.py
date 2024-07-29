@@ -16,7 +16,7 @@ import warnings
 
 import paddle
 import paddle.distributed as dist
-from paddle import framework
+from paddle import Tensor, framework
 
 
 class Group:
@@ -92,23 +92,23 @@ class _GroupManager:
     group_map_by_id = {}
 
 
-def _get_global_group():
+def _get_global_group() -> dict[str, any]:
     if _GroupManager.global_group_id not in _GroupManager.group_map_by_id:
         raise RuntimeError("The global group is not initialized.")
     return _GroupManager.group_map_by_id[_GroupManager.global_group_id]
 
 
-def _add_new_group(group):
+def _add_new_group(group: Group) -> None:
     if group.id in _GroupManager.group_map_by_id:
         raise RuntimeError(f"The group with id {group.id} already exist.")
     _GroupManager.group_map_by_id[group.id] = group
 
 
-def _is_global_group(group):
+def _is_global_group(group: Group) -> bool:
     return group.id == _GroupManager.global_group_id
 
 
-def _warn_cur_rank_not_in_group(group):
+def _warn_cur_rank_not_in_group(group: Group) -> bool:
     global_rank = dist.get_rank()
     if group and not group.is_member():
         warnings.warn(
@@ -118,7 +118,7 @@ def _warn_cur_rank_not_in_group(group):
     return False
 
 
-def _get_or_throw_group_rank(global_rank, group):
+def _get_or_throw_group_rank(global_rank: int, group: Group) -> int:
     group_rank = group.get_group_rank(global_rank)
     assert (
         group_rank >= 0
@@ -126,7 +126,7 @@ def _get_or_throw_group_rank(global_rank, group):
     return group_rank
 
 
-def is_initialized():
+def is_initialized() -> bool:
     """
 
     Check whether the distributed environment has been initialized
@@ -154,7 +154,7 @@ def is_initialized():
     return _GroupManager.global_group_id in _GroupManager.group_map_by_id
 
 
-def destroy_process_group(group=None):
+def destroy_process_group(group: Group = None) -> None:
     """
     Destroy a given group for communication
 
@@ -196,7 +196,7 @@ def destroy_process_group(group=None):
         del _GroupManager.group_map_by_id[group.id]
 
 
-def get_group(id=0):
+def get_group(id: int = 0) -> None:
     """
 
     Get group instance by group id.
@@ -226,7 +226,7 @@ def get_group(id=0):
     return None
 
 
-def _sync_calc_stream(tensor):
+def _sync_calc_stream(tensor: Tensor) -> None:
     if framework.in_dynamic_mode():
         return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
     else:
@@ -239,7 +239,7 @@ def _sync_calc_stream(tensor):
         )
 
 
-def _sync_comm_stream(tensor, ring_id=0):
+def _sync_comm_stream(tensor: Tensor, ring_id: int = 0) -> None:
     if framework.in_dynamic_mode():
         return paddle._legacy_C_ops.c_sync_comm_stream(
             [tensor], [tensor], 'ring_id', ring_id
@@ -255,7 +255,9 @@ def _sync_comm_stream(tensor, ring_id=0):
         )
 
 
-def wait(tensor, group=None, use_calc_stream=True):
+def wait(
+    tensor: Tensor, group: bool = None, use_calc_stream: bool = True
+) -> None:
     """
 
     wait to sync stream for group.
@@ -291,7 +293,7 @@ def wait(tensor, group=None, use_calc_stream=True):
         _sync_comm_stream(tensor, ring_id)
 
 
-def barrier(group=None):
+def barrier(group: Group = None) -> None:
     """
 
     Barrier among all participators in the group.
@@ -347,7 +349,7 @@ def barrier(group=None):
         )
 
 
-def get_backend(group=None):
+def get_backend(group: Group = None) -> str:
     """
     Get the backend of given group.
 
