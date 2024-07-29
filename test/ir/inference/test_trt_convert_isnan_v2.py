@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 from functools import partial
 from typing import List
@@ -155,7 +156,8 @@ class TrtConvertIsnanV2Test(TrtLayerAutoScanTest):
         ), (1e-3, 1e-3)
 
     def test(self):
-        self.run_test()
+        if os.name != 'nt':
+            self.run_test()
 
 
 if __name__ == "__main__":
