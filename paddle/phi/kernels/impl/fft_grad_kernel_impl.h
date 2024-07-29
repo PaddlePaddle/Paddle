@@ -69,7 +69,7 @@ void FFTR2CGradKernel(const Context& ctx,
     auto rank = out_grad.dims().size();
     std::vector<int> pads(rank * 2, 0);
     pads[axes.back() * 2 + 1] = zero_length;
-    PadKernel<T>(ctx, out_grad, pads, static_cast<float>(0.0), &full_dy);
+    PadKernel<T>(ctx, out_grad, pads, static_cast<float>(0.0), true, &full_dy);
     fft_c2c_func(ctx, full_dy, &complex_x_grad, axes, norm_type, !forward);
   }
   RealKernel<T>(ctx, complex_x_grad, x_grad);

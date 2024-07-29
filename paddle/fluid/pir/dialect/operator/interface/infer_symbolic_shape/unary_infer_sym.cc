@@ -501,20 +501,22 @@ bool PadOpInferSymbolicShape(pir::Operation *op,
     std::vector<symbol::DimExpr> out_dims;
     out_dims.reserve(rank);
     for (size_t i = 0; i < rank; ++i) {
-      out_dims.push_back(x_dims_sym[i]);
+      out_dims.push_back(x_dims_sym.at(i));
     }
     if ((paddings_len == 2 * static_cast<int>(rank)) && pad_from_first_axis) {
       for (int i = 0; i < paddings_len; ++i) {
         int out_dims_index = i / 2;
-        if (out_dims[out_dims_index] != -1) {
-          out_dims[out_dims_index] = out_dims[out_dims_index] + paddings[i];
+        if (out_dims.at(out_dims_index) != -1) {
+          out_dims.at(out_dims_index) =
+              out_dims.at(out_dims_index) + paddings.at(i);
         }
       }
     } else {
       for (int i = 0; i < paddings_len; ++i) {
         int out_dims_index = rank - 1 - i / 2;
-        if (out_dims[out_dims_index] != -1) {
-          out_dims[out_dims_index] = out_dims[out_dims_index] + paddings[i];
+        if (out_dims.at(out_dims_index) != -1) {
+          out_dims.at(out_dims_index) =
+              out_dims.at(out_dims_index) + paddings.at(i);
         }
       }
     }
