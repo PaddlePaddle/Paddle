@@ -205,7 +205,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kONNXRuntime>(
   PADDLE_ENFORCE_EQ(
       config.is_valid(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Note: Each config can only be used for one predictor."));
 
   VLOG(3) << "create ONNXRuntimePredictor";
@@ -262,7 +262,7 @@ bool ONNXRuntimePredictor::FindONNXDesc(const std::string &name,
 std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
     const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(scope_->FindVar(name),
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "The in variable named %s is not found in the "
                               "ONNXPredictor.",
                               name));
@@ -283,7 +283,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
     const std::string &name) {
   PADDLE_ENFORCE_EQ(FindONNXDesc(name, false),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The out variable named %s is not found in the "
                         "ONNXPredictor.",
                         name));
