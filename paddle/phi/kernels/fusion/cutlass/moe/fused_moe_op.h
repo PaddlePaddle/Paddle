@@ -19,9 +19,9 @@
 #include <cuda.h>
 #include <cuda_fp16.h>
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe/fused_moe_imp_op.h"
 #include "paddle/phi/kernels/impl/llm_int8_matmul_kernel_impl.h"

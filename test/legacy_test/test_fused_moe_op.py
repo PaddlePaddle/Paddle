@@ -23,7 +23,6 @@ import paddle.nn.functional as F
 from paddle import nn
 from paddle.incubate.nn.functional import fused_moe, swiglu
 from paddle.nn.layer.common import Linear
-from paddle.nn.quant import weight_quantize
 
 paddle.seed(42)
 
@@ -123,41 +122,8 @@ class TestFusedMoEOp(OpTest):
         self.top_k = 2
         self.quant_method = "None"
 
-    def GetWintData(self):
-        if self.quant_method == "None":
-            return
-        fc0_expert_weights_for_ref_list = []
-        scale0 = []
-        for i in range(self.num_expert):
-            (
-                fc0_expert_weights_for_ref_i,
-                fc0_expert_weights_scale_for_ref_i,
-            ) = weight_quantize(self.bmm_w0[i], algo=self.quant_method)
-            fc0_expert_weights_for_ref_list.append(
-                fc0_expert_weights_for_ref_i.transpose([1, 0])
-            )
-            scale0.append(fc0_expert_weights_scale_for_ref_i)
-        self.bmm_w0 = paddle.to_tensor(fc0_expert_weights_for_ref_list)
-        self.scale0 = paddle.to_tensor(scale0)
-
-        fc1_expert_weights_for_ref_list = []
-        scale1 = []
-        for i in range(self.num_expert):
-            (
-                fc1_expert_weights_for_ref_i,
-                fc1_expert_weights_scale_for_ref_i,
-            ) = weight_quantize(self.bmm_w1[i], algo=self.quant_method)
-            fc1_expert_weights_for_ref_list.append(
-                fc1_expert_weights_for_ref_i.transpose([1, 0])
-            )
-            scale1.append(fc1_expert_weights_scale_for_ref_i)
-        self.bmm_w1 = paddle.to_tensor(fc1_expert_weights_for_ref_list)
-        self.scale1 = paddle.to_tensor(scale1)
-
     def GetFusedMoeOut(self, tensor_x):
         paddle.disable_static(place=paddle.CUDAPlace(0))
-        if self.quant_method != "None":
-            self.GetWintData()
         fused_out = fused_moe(
             tensor_x,
             self.gate_weight,
@@ -230,30 +196,6 @@ class TestFusedMoEOp(OpTest):
             ref_out, fused_moe_out, rtol=self.rtol, atol=self.atol
         )
 
-
-# @unittest.skipIf(
-#     not paddle.is_compiled_with_cuda()
-#     or get_cuda_version() < 11030
-#     or paddle.device.cuda.get_device_capability()[0] < 8,
-#     "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-# )
-# class TestFusedMoEOpWint8(TestFusedMoEOp):
-#     def config(self):
-#         super().config()
-#         self.quant_method = "weight_only_int8"
-
-
-# not support int4
-# @unittest.skipIf(
-#     not paddle.is_compiled_with_cuda()
-#     or get_cuda_version() < 11030
-#     or paddle.device.cuda.get_device_capability()[0] < 8,
-#     "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-# )
-# class TestFusedMoEOpWint4(TestFusedMoEOp):
-#     def config(self):
-#         super().config()
-#         self.quant_method = "weight_only_int4"
 
 if __name__ == "__main__":
     unittest.main()
