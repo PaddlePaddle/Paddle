@@ -362,8 +362,9 @@ void TestInitialized() {
     PADDLE_ENFORCE_EQ(
         tensor_data[i],
         0.5,
-        phi::errors::InvalidArgument("tensor_data[i] should be equal to 0.5, "
+        phi::errors::InvalidArgument("tensor_data[%d] should be equal to 0.5, "
                                      "but got %f",
+                                     i,
                                      tensor_data[i]));
   }
 }
@@ -403,16 +404,15 @@ void TestDataInterface() {
                         "sr_tensor should be initialized, but got %s",
                         sr_tensor.is_initialized()));
   tensor_ptr = sr_tensor.data();
-  PADDLE_ENFORCE_NE(
-      tensor_ptr,
-      nullptr,
-      phi::errors::InvalidArgument("sr_tensor should not be NULL, but got %p",
-                                   tensor_ptr));
+  PADDLE_ENFORCE_NE(tensor_ptr,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "tensor should not be NULL, but got %p", tensor_ptr));
   const_tensor_ptr = sr_tensor.data();
   PADDLE_ENFORCE_NE(
       const_tensor_ptr,
       nullptr,
-      phi::errors::InvalidArgument("const_sr_tensor should not be NULL, "
+      phi::errors::InvalidArgument("const_tensor should not be NULL, "
                                    "but got %p",
                                    const_tensor_ptr));
 }
