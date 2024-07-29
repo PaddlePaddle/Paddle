@@ -173,10 +173,10 @@ void FleetWrapper::HeterPullSparseVars(
     if (var == nullptr) {
       continue;
     }
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        ::common::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The tensor for variable '%s' is null. "
             "Ensure that the tensor is properly initialized before use.",
             name.c_str()));
@@ -262,7 +262,7 @@ void FleetWrapper::HeterPushSparseVars(
   }
   PADDLE_ENFORCE_GE(grad_dim,
                     0,
-                    ::common::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The gradient dimension (grad_dim) must be greater "
                         "than or equal to 0, but got %d.",
                         grad_dim));
@@ -281,7 +281,7 @@ void FleetWrapper::HeterPushSparseVars(
     if (var == nullptr) {
       continue;
     }
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -296,8 +296,8 @@ void FleetWrapper::HeterPushSparseVars(
     if (g_var == nullptr) {
       continue;
     }
-    ::common::DenseTensor* g_tensor =
-        g_var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* g_tensor =
+        g_var->GetMutable<phi::DenseTensor>();
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -319,7 +319,7 @@ void FleetWrapper::HeterPushSparseVars(
       sparse_push_keys.push_back(ids[id_idx]);
       PADDLE_ENFORCE_LT(fea_idx,
                         push_values.size(),
-                        ::common::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The feature index (fea_idx) must be less than the "
                             "size of push_values. "
                             "Received fea_idx: %d, push_values size: %zu.",
@@ -333,7 +333,7 @@ void FleetWrapper::HeterPushSparseVars(
       } else {
         PADDLE_ENFORCE_LT(fea_idx,
                           fea_labels.size(),
-                          ::common::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The feature index (fea_idx) must be less than "
                               "the size of fea_labels. "
                               "Received fea_idx: %d, fea_labels size: %zu.",
@@ -362,7 +362,7 @@ void FleetWrapper::HeterPushSparseVars(
     if (var == nullptr) {
       continue;
     }
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -379,7 +379,7 @@ void FleetWrapper::HeterPushSparseVars(
   PADDLE_ENFORCE_EQ(
       fea_idx + no_grad_fea_num,
       fea_keys.size(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The sum of fea_idx and no_grad_fea_num must be equal to the size of "
           "fea_keys. "
           "Received fea_idx: %d, no_grad_fea_num: %d, fea_keys size: %zu.",
@@ -390,7 +390,7 @@ void FleetWrapper::HeterPushSparseVars(
   PADDLE_ENFORCE_EQ(
       fea_idx,
       sparse_push_keys.size(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The fea_idx must be equal to the size of sparse_push_keys. "
           "Received fea_idx: %d, sparse_push_keys size: %zu.",
           fea_idx,
@@ -488,10 +488,10 @@ void FleetWrapper::PullSparseVarsFromLocal(
     if (var == nullptr) {
       continue;
     }
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        ::common::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The tensor for variable '%s' is null. Please ensure the tensor is "
             "properly initialized before use.",
             name.c_str()));
@@ -558,7 +558,7 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
     if (var == nullptr) {
       continue;
     }
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -609,7 +609,7 @@ void FleetWrapper::PullSparseVarsSync(
     if (var == nullptr) {
       continue;
     }
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -681,21 +681,21 @@ void FleetWrapper::PullSparseToTensorSync(
     const uint64_t table_id,
     int fea_dim,
     uint64_t padding_id,
-    ::common::Place place,
-    std::vector<const ::common::DenseTensor*>* inputs,
-    std::vector<::common::DenseTensor*>* outputs) {
+    phi::Place place,
+    std::vector<const phi::DenseTensor*>* inputs,
+    std::vector<phi::DenseTensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<uint64_t> fea_keys;
   std::vector<float*> pull_result_ptr;
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
-  ::common::DenseTensor* output = nullptr;
+  phi::DenseTensor* output = nullptr;
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const ::common::DenseTensor* tensor = inputs->at(index);
+    const phi::DenseTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -776,7 +776,7 @@ void FleetWrapper::PullDenseVarsAsync(
       varname = var_names[i] + "pin";
     }
     Variable* var = scope.FindVar(varname);
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     float* w = tensor->data<float>();
     paddle::ps::Region reg(w, tensor->numel());
     regions[i] = std::move(reg);
@@ -797,7 +797,7 @@ void FleetWrapper::PullDenseVarsSync(
   regions.reserve(var_names.size());
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     float* w = tensor->data<float>();
     paddle::ps::Region reg(w, tensor->numel());
     regions.emplace_back(std::move(reg));
@@ -840,7 +840,7 @@ void FleetWrapper::PushDenseParamSync(
     const uint64_t table_id,
     const std::vector<std::string>& var_names) {
 #ifdef PADDLE_WITH_PSLIB
-  auto place = ::common::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
@@ -851,7 +851,7 @@ void FleetWrapper::PushDenseParamSync(
             "variable is correctly initialized.",
             t.c_str()));
 
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     float* g = tensor->mutable_data<float>(place);
     paddle::ps::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
@@ -885,22 +885,22 @@ void FleetWrapper::PushDenseVarsAsync(
     std::vector<::std::future<int32_t>>* push_sparse_status,
     float scale_datanorm,
     int batch_size,
-    const ::common::Place& place,
+    const phi::Place& place,
     gpuStream_t stream,
     gpuEvent_t event) {
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     int count = tensor->numel();
     float* g_data = tensor->data<float>();
 
     Variable* pin_var = scope.FindVar(t + "pin");
-    ::common::DenseTensor* pin_tensor =
-        pin_var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* pin_tensor =
+        pin_var->GetMutable<phi::DenseTensor>();
     float* pin_g = pin_tensor->mutable_data<float>(tensor->dims(),
-                                                   ::common::GPUPinnedPlace());
-    memory::Copy(::common::GPUPinnedPlace(),
+                                                   phi::GPUPinnedPlace());
+    memory::Copy(phi::GPUPinnedPlace(),
                  pin_g,
                  place,
                  g_data,
@@ -949,22 +949,22 @@ void FleetWrapper::PushDenseVarsAsync(
     std::vector<::std::future<int32_t>>* push_sparse_status,
     float scale_datanorm,
     int batch_size,
-    const ::common::Place& place) {
+    const phi::Place& place) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     int count = tensor->numel();
     float* g_data = tensor->data<float>();
 
     Variable* pin_var = scope.FindVar(t + "pin");
-    ::common::DenseTensor* pin_tensor =
-        pin_var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* pin_tensor =
+        pin_var->GetMutable<phi::DenseTensor>();
     float* pin_g =
-        pin_tensor->mutable_data<float>(tensor->dims(), ::common::CPUPlace());
+        pin_tensor->mutable_data<float>(tensor->dims(), phi::CPUPlace());
     memory::Copy(
-        ::common::CPUPlace(), pin_g, place, g_data, sizeof(float) * count);
+        phi::CPUPlace(), pin_g, place, g_data, sizeof(float) * count);
 
     float* g = pin_g;
     if (scale_datanorm >= 0) {
@@ -1004,7 +1004,7 @@ void FleetWrapper::PushDenseVarsAsync(
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     int count = tensor->numel();
     float* g = tensor->data<float>();
     if (scale_datanorm >= 0) {
@@ -1091,7 +1091,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     if (var == nullptr) {
       continue;
     }
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -1103,12 +1103,12 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       try {
         slot = std::stoi(sparse_key_names[i]);
       } catch (std::invalid_argument const& e) {
-        PADDLE_THROW(::common::errors::PreconditionNotMet(
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
             "sparse var's name: %s, doesn't support non-integer type name when "
             "dump_slot=True",
             sparse_key_names[i]));
       } catch (std::out_of_range const& e) {
-        PADDLE_THROW(::common::errors::PreconditionNotMet(
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
             "sparse var's name: %s, integer type name out of range when "
             "dump_slot=True",
             sparse_key_names[i]));
@@ -1118,8 +1118,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     if (g_var == nullptr) {
       continue;
     }
-    ::common::DenseTensor* g_tensor =
-        g_var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* g_tensor =
+        g_var->GetMutable<phi::DenseTensor>();
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -1188,7 +1188,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     if (var == nullptr) {
       continue;
     }
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     if (tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
@@ -1246,10 +1246,10 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     bool scale_sparse,
     const std::string& accessor,
     const std::string& click_name,
-    ::common::Place place,
+    phi::Place place,
     const std::vector<std::string>& input_names,
-    std::vector<const ::common::DenseTensor*>* inputs,
-    std::vector<const ::common::DenseTensor*>* outputs) {
+    std::vector<const phi::DenseTensor*>* inputs,
+    std::vector<const phi::DenseTensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
   int show_index = 0;
   int click_index = 1;
@@ -1312,7 +1312,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   // NOLINT
 
   std::vector<float> g;
-  for (const ::common::DenseTensor* g_tensor : *outputs) {
+  for (const phi::DenseTensor* g_tensor : *outputs) {
     size_t origin = g.size();
     size_t add = g_tensor->numel();
     g.resize(origin + add);
@@ -1336,8 +1336,8 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
         phi::errors::InvalidArgument("The variable (var) is null when "
                                      "click_name is not an empty string."));
 
-    ::common::DenseTensor* label_tensor =
-        var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* label_tensor =
+        var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         label_tensor,
         phi::errors::InvalidArgument("The label tensor is null when attempting "
@@ -1370,7 +1370,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   size_t output_len = 0;
   size_t input_idx = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const ::common::DenseTensor* tensor = inputs->at(index);
+    const phi::DenseTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -1454,7 +1454,7 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope,
   const ProgramDesc old_program = read_proto_func(model_proto_file);
   Scope* old_scope = new Scope();
   auto& old_block = old_program.Block(0);
-  auto place = ::common::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<std::string> old_param_list;
 
   for (auto& t : var_list) {
@@ -1489,8 +1489,8 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope,
   for (auto& t : old_param_list) {
     Variable* old_var = old_scope->Var(t);
     // old model data, here we assume data type is float
-    ::common::DenseTensor* old_tensor =
-        old_var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* old_tensor =
+        old_var->GetMutable<phi::DenseTensor>();
     float* old_data = old_tensor->data<float>();
     // new model data, here we assume data type is float
     Variable* var = scope.FindVar(t);
@@ -1498,7 +1498,7 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope,
         var,
         phi::errors::NotFound("Variable (var) is null. var[%s] not found.", t));
 
-    ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     float* data = tensor->data<float>();
     // copy from old data to new data
     if (old_tensor->numel() > tensor->numel()) {
@@ -1817,7 +1817,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
                                 name));
 
       VLOG(0) << "prepare shrink dense batch_sum";
-      ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       float* g = tensor->data<float>();
 
       // show_batch_sum += N * log(decay)
@@ -1832,7 +1832,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
 
       VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
       float* g_size =
-          var_size->GetMutable<::common::DenseTensor>()->data<float>();
+          var_size->GetMutable<phi::DenseTensor>()->data<float>();
 
       for (int k = 0; k < tensor->numel(); k += emb_dim) {
         g[k] = g[k] + g_size[k] * log(decay);
@@ -1846,7 +1846,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
           phi::errors::NotFound("Variable (var) is null. var[%s] not found.",
                                 name));
 
-      ::common::DenseTensor* tensor = var->GetMutable<::common::DenseTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       float* g = tensor->data<float>();
       paddle::ps::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));
@@ -1857,7 +1857,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
   push_status.wait();
   auto status = push_status.get();
   if (status != 0) {
-    // PADDLE_THORW(::common::errors::Fatal(
+    // PADDLE_THORW(phi::errors::Fatal(
     //    "push shrink dense param failed, status is [%d].", status));
     sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
