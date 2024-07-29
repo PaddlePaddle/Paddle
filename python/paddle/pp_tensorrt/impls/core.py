@@ -143,6 +143,16 @@ def transpose_converter(network, paddle_op, inputs):
     return transposed_tensor
 
 
+@converter_registry.register("pd_op.full", trt_version="8.x")
+def full_converter(network, paddle_op, inputs):
+    shape = paddle_op.attrs()["shape"]
+    value = paddle_op.attrs().get("value", 1.0)  # 默认值为1.0
+    full_tensor = network.add_constant(
+        shape, np.full(shape, value, dtype=np.float32)
+    )
+    return full_tensor
+
+
 @converter_registry.register("pd_op.scale", trt_version="8.x")
 def scale_converter(network, paddle_op, inputs):
     scale = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
@@ -240,6 +250,23 @@ def conv2d_converter(network, paddle_op, inputs):
     conv_layer.num_groups = groups
 
     return conv_layer
+
+@converter_registry.register("pd_op.nonzero", trt_version="8.x")
+def non_zero_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    cast_layer = network.add_cast(input_tensor, trt.float32)
+    non_zero_layer = network.add_non_zero(cast_layer.get_output(0))
+    
+    return non_zero_layer
+
+@converter_registry.register("pd_op.gather_nd", trt_version="8.x")
+def gather_nd_converter(network, paddle_op, inputs):
+    input_tensor, indices_tensor = inputs
+    shuffle_layer = network.add_shuffle(indices_tensor)
+    shuffle_layer.first_transpose = trt.Permutation([1, 0])
+    # import pdb;pdb.set_trace()
+    non_zero_layer = network.add_gather_v2(input_tensor, shuffle_layer.get_output(0), trt.GatherMode.ND)
+    return non_zero_layer
 
 
 @converter_registry.register("pd_op.pool2d", trt_version="8.x")
