@@ -584,6 +584,9 @@ def inference(
         and function.__name__ == "innermost_decorator"
     ):
         return function
+    elif isinstance(function, Layer):
+        if function.forward.__name__ == "innermost_decorator":
+            return function
 
     used_as_at_decorator = function is None
 
