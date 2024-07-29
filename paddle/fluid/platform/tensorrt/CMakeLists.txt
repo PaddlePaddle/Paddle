@@ -6,4 +6,4 @@ nv_library(
 nv_library(
   trt_plugin
   SRCS trt_plugin.cc
-  DEPS enforce)
+  DEPS common)
