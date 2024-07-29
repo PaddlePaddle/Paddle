@@ -1020,6 +1020,7 @@ set(TEST_CINN_OPS
     test_metrics
     test_meshgrid_op
     test_index_select_op
+    test_instance_norm_op
     test_mean_op
     test_clip_op
     test_gather_op
