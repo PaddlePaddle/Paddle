@@ -39,35 +39,41 @@ from converter_utils import (
     has_dynamic_shape,
 )
 
+# def get_trt_tensor(
+#     network, input_val, name, dtype=None
+# ) -> trt.tensorrt.ITensor:
+#     if isinstance(input_val, (torch.Tensor, int, float)):
+#         return create_constant(network, input_val, name, dtype)
+#     elif not isinstance(input_val, trt.tensorrt.ITensor):
+#         raise RuntimeError(
+#             f"Received input {input_val} of name {name} that "
+#             "is not part of the TensorRT region!"
+#         )
+#     else:
+#         return input_val
+
 
 @converter_registry.register("pd_op.add", trt_version="8.x")
-@converter_registry.register("pd_op.add_", trt_version="8.x")
+@converter_registry.register("pd_op.elementwise_add", trt_version="8.x")
 def add_converter(network, paddle_op, inputs):
-    weight_shape = paddle_op.operands()[1].source().shape
-    input_shape = paddle_op.operands()[0].source().shape
+    input_a, input_b = inputs
+    input_b_shape = paddle_op.operands()[1].source().shape
+    if type(input_b) == trt.Weights:
+        input_b = network.add_constant(input_b_shape, input_b).get_output(0)
 
-    weight_tensor = inputs[1]
-    input_tensor = inputs[0]
-    if type(inputs[1]) == trt.Weights:
-        weight_tensor = network.add_constant(
-            weight_shape, inputs[1]
-        ).get_output(0)
-    if type(inputs[0]) == trt.Weights:
-        input_tensor = network.add_constant(input_shape, inputs[0]).get_output(
-            0
+    # check if input_b should reshape
+    if len(input_b_shape) < len(input_a.shape):
+        reshape_dims = [1] * (len(input_a.shape) - len(input_b_shape)) + list(
+            input_b_shape
         )
-    lhs_val, rhs_val = broadcast(
-        network,
-        input_tensor,
-        weight_tensor,
-        input_tensor.name,
-        weight_tensor.name,
-    )
+        reshape_layer = network.add_shuffle(input_b)
+        reshape_layer.reshape_dims = reshape_dims
+        input_b = reshape_layer.get_output(0)
 
-    out = network.add_elementwise(
-        lhs_val, rhs_val, trt.ElementWiseOperation.SUM
+    output = network.add_elementwise(
+        input_a, input_b, trt.ElementWiseOperation.SUM
     )
-    return out
+    return output
 
 
 @converter_registry.register("pd_op.relu", trt_version="8.x")
@@ -117,13 +123,7 @@ def full_int_array_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.reshape", trt_version="8.x")
 def reshape_converter(network, paddle_op, inputs):
     input_tensor, shape_tensor = inputs
-
-    output_shape = paddle_op.results()[1].shape
-    if network.has_implicit_batch_dimension:
-        output_shape = output_shape[1:]
-
     shuffle_layer = network.add_shuffle(input_tensor)
-
     try:
         reshape_dims = (
             paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
@@ -155,21 +155,16 @@ def full_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.scale", trt_version="8.x")
 def scale_converter(network, paddle_op, inputs):
-    scale = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+    scale = paddle_op.attrs()["scale"]
     bias = paddle_op.attrs().get("bias", 0.0)
     power = paddle_op.attrs().get("power", 1.0)
-
-    # Convert scale, bias, and power to TensorRT weights
-    scale_weight = trt.Weights(np.array([scale], dtype=np.float32))
-    bias_weight = trt.Weights(np.array([bias], dtype=np.float32))
-    power_weight = trt.Weights(np.array([power], dtype=np.float32))
 
     scale_layer = network.add_scale(
         inputs[0],
         mode=trt.ScaleMode.UNIFORM,
-        shift=bias_weight,
-        scale=scale_weight,
-        power=power_weight,
+        shift=bias,
+        scale=scale,
+        power=power,
     )
     return scale_layer
 
@@ -188,9 +183,8 @@ def softmax_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.layer_norm", trt_version="8.x")
 def layernorm_converter(network, paddle_op, inputs):
     input_a, scale, bias = inputs
-
     begin_norm_axis = paddle_op.attrs().get("begin_norm_axis", 0)
-    epsilon = paddle_op.attrs().get("epsilon", 1e-5)
+    epsilon = paddle_op.attrs().get("epsilon", 0.0)
     assert len(paddle_op.operands()) == 3
     scale_shape = paddle_op.operands()[1].source().shape
 
@@ -215,9 +209,9 @@ def layernorm_converter(network, paddle_op, inputs):
         f"{bias_tensor.name}_broadcast",
         len(input_a.shape) - len(bias_tensor.shape),
     )
-    # _logger.info(
-    #     f"!!! layernorm, {input_a.shape}, {scale_tensor.shape}, {bias_tensor.shape}"
-    # )
+    _logger.info(
+        f"!!! layernorm, {input_a.shape}, {scale_tensor.shape}, {bias_tensor.shape}"
+    )
 
     layer_norm = network.add_normalization(
         input_a, scale_tensor, bias_tensor, axes
@@ -391,95 +385,90 @@ def batch_norm_converter(network, paddle_op, inputs):
     return batch_norm_layer
 
 
-@converter_registry.register("pd_op.full")
-def full_converter(network, paddle_op, inputs):
-    shape = paddle_op.attrs()["shape"]
-    value = paddle_op.attrs().get("value", 1.0)  # 默认值为1.0
-    full_tensor = network.add_constant(
-        shape, np.full(shape, value, dtype=np.float32)
-    )
-    return full_tensor
+# @converter_registry.register("pd_op.flatten", trt_version="8.x")
+# def flatten_converter(network, paddle_op, inputs):
+#     input_val = inputs[0]
+#     input_val_shape = paddle_op.operands()[0].source().shape
+#     num_dims = len(input_val_shape) + (
+#         1 if network.has_implicit_batch_dimension else 0
+#     )
 
+#     start_axis = paddle_op.attrs().get("start_axis")
+#     end_axis = paddle_op.attrs().get("stop_axis")
+#     if network.has_implicit_batch_dimension:
+#         assert (
+#             start_axis != 0
+#         ), "Can't flatten batch dimension when it's implicit."
+#         start_axis -= 1
+#         end_axis -= 1
 
-@converter_registry.register("pd_op.flatten", trt_version="8.x")
-def flatten_converter(network, paddle_op, inputs):
-    input_val = inputs[0]
-    input_val_shape = input_val.shape
-    dims = len(input_val_shape)
+#     flatten_layer = network.add_shuffle(input_val)
+#     # If there're dynamic shapes then we need to use shape layers
+#     # to figure out the final shape after flatten. We first slice
+#     # the input shape to three parts:
+#     #   1. dimensions before start_axis
+#     #   2. dimensions between start_axis and end_axis
+#     #   3. dimensions after end_axis
+#     # Part 1 and 3 might not exist if start_axis is 0 or end_axis is
+#     # last dim. Then we do a reduced multiplication over part 2 to
+#     # get flattened dim. Finally, we concatenate the three parts to
+#     # get the final shape.
+#     if has_dynamic_shape(input_val_shape):
+#         input_shape_layer = network.add_shape(input_val)
+#         final_shapes = []
 
-    start_axis = paddle_op.attrs().get("start_axis")
-    stop_axis = paddle_op.attrs().get("stop_axis")
+#         # Shapes before start_axis
+#         if start_axis > 0:
+#             predix_shape_layer = network.add_slice(
+#                 input_shape_layer.get_output(0),
+#                 start=(0,),
+#                 shape=(start_axis,),
+#                 stride=(1,),
+#             )
+#             final_shapes.append(prefix_shape_layer.get_output(0))
 
-    flatten_layer = network.add_shuffle(input_val)
+#         flatten_shape_layer = network.add_slice(
+#             input_shape_layer.get_output(0),
+#             start=(start_axis,),
+#             shape=(end_axis - start_axis + 1,),
+#             stride=(1,),
+#         )
+#         flatten_shape_layer = network.add_reduce(
+#             flatten_shape_layer.get_output(0),
+#             trt_ReduceOperation.PROD,
+#             axes=get_axes_for_reduce_op(0, False),
+#             keep_dims=True,
+#         )
+#         final_shapes.append(flatten_shape_layer.get_output(0))
 
-    if not has_dynamic_shape(input_val_shape):
-        if start_axis < 0:
-            start_axis += dims + 1
-        if stop_axis < 0:
-            stop_axis += dims + 1
+#         # Shapes after start_axis
+#         if end_axis < len(input_val_shape) - 1:
+#             suffix_shape_layer = network.add_slice(
+#                 input_shape_layer.get_output(0),
+#                 start=(end_axis + 1,),
+#                 shape=(len(input_val_shape) - end_axis - 1,),
+#                 stride=(1,),
+#             )
+#             final_shapes.append(suffix_shape_layer.get_output(0))
 
-        flatten_dim = 1
-        final_shape = []
+#         final_shape_layer = network.add_concatenation(final_shapes)
+#         final_shape_layer.axis = 0
+#         flatten_layer.set_input(1, final_shape_layer.get_output(0))
+#     else:
+#         final_shape = []
+#         flatten_dim = 1
+#         for i, s in enumerate(input_val_shape):
+#             if i >= start_axis and i <= end_axis:
+#                 flatten_dim *= s
+#             elif i == end_axis + 1:
+#                 final_shape.append(flatten_dim)
+#                 final_shape.append(s)
+#             else:
+#                 final_shape.append(s)
 
-        for i, s in enumerate(input_val_shape):
-            if i >= start_axis and i <= stop_axis:
-                flatten_dim *= s
-            elif i == stop_axis + 1:
-                final_shape.append(flatten_dim)
-                final_shape.append(s)
-            else:
-                final_shape.append(s)
+#         if end_axis == len(input_val_shape) - 1:
+#             final_shape.append(flatten_dim)
 
-        if stop_axis == len(input_val.shape) - 1:
-            final_shape.append(flatten_dim)
+#         flatten_layer.reshape_dims = tuple(final_shape)
 
-        flatten_layer.reshape_dims = tuple(final_shape)
-    else:
-        input_shape_layer = network.add_shape(input_val)
-        input_shape_layer.name = f"{input_val.name}_origin_shape"
-
-        final_shapes = []
-        # Shapes before start_axis
-        if start_axis > 0:
-            prefix_shape_layer = network.add_slice(
-                input_shape_layer.get_output(0),
-                start=(0,),
-                shape=(start_axis,),
-                stride=(1,),
-            )
-            prefix_shape_layer.name = f"{input_val.name}_prefix_shape"
-            final_shapes.append(prefix_shape_layer.get_output(0))
-
-        flatten_shape_layer = network.add_slice(
-            input_shape_layer.get_output(0),
-            start=(start_axis,),
-            shape=(stop_axis - start_axis + 1,),
-            stride=(1,),
-        )
-        flatten_shape_layer.name = f"{input_val.name}_need_flatten"
-        flatten_shape_layer = network.add_reduce(
-            flatten_shape_layer.get_output(0),
-            trt.ReduceOperation.PROD,
-            axes=get_axes_for_reduce_op(0, False),
-            keep_dims=True,
-        )
-        flatten_shape_layer.name = f"{input_val.name}_flatten_dim"
-        final_shapes.append(flatten_shape_layer.get_output(0))
-
-        # Shapes after stop_axis
-        if stop_axis < len(input_val_shape) - 1:
-            suffix_shape_layer = network.add_slice(
-                input_shape_layer.get_output(0),
-                start=(stop_axis + 1,),
-                shape=(len(input_val_shape) - stop_axis - 1,),
-                stride=(1,),
-            )
-            suffix_shape_layer.name = f"{input_val.name}_suffix_shape"
-            final_shapes.append(suffix_shape_layer.get_output(0))
-
-        final_shape_layer = network.add_concatenation(final_shapes)
-        final_shape_layer.axis = 0
-        final_shape_layer.name = f"{input_val.name}_final_shape"
-        flatten_layer.set_input(1, final_shape_layer.get_output(0))
-
-    return flatten_layer
+#     return flatten_layer

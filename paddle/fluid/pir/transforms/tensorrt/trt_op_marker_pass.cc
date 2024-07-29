@@ -55,17 +55,13 @@ DEFINE_GENERAL_PATTERN(Reshape, paddle::dialect::ReshapeOp)
 DEFINE_GENERAL_PATTERN(Dropout, paddle::dialect::DropoutOp)
 DEFINE_GENERAL_PATTERN(Bmm, paddle::dialect::BmmOp)
 DEFINE_GENERAL_PATTERN(Concat, paddle::dialect::ConcatOp)
-
+DEFINE_GENERAL_PATTERN(Flatten, paddle::dialect::FlattenOp)
 DEFINE_GENERAL_PATTERN(Fused_gemm_epilogue,
                        paddle::dialect::FusedGemmEpilogueOp)
 DEFINE_GENERAL_PATTERN(Layer_norm, paddle::dialect::LayerNormOp)
 DEFINE_GENERAL_PATTERN(Add, paddle::dialect::AddOp)
 DEFINE_GENERAL_PATTERN(Full, paddle::dialect::FullOp)
 DEFINE_GENERAL_PATTERN(Silu, paddle::dialect::SiluOp)
-
-DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp)
-DEFINE_GENERAL_PATTERN(FusedConv2dAddAct, paddle::dialect::FusedConv2dAddActOp)
-DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -147,6 +143,43 @@ class Pool2dOpPattern
   }
 };
 
+class Conv2dOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::Conv2dOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::Conv2dOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::Conv2dOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(7000)
+    if (op->HasAttribute("padding_algorithm")) {
+      std::string padding_algorithm =
+          op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
+      if (padding_algorithm == "SAME" && op->HasAttribute("strides")) {
+        auto strides_attr = op->attribute<pir::ArrayAttribute>("strides");
+        std::vector<int32_t> strides;
+        for (const auto &attr : strides_attr.AsVector()) {
+          strides.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+        }
+        if (strides.size() > 1) {
+          for (size_t i = 0; i < strides.size(); ++i) {
+            if (strides[i] > 1) {
+              VLOG(3) << "The stride size should be 1 or less than 1";
+              return false;
+            }
+          }
+        }
+      }
+    }
+#endif
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class Conv2dTransposeOpPattern
     : public pir::OpRewritePattern<paddle::dialect::Conv2dTransposeOp> {
  public:
@@ -174,6 +207,80 @@ class Conv2dTransposeOpPattern
         return false;
       }
     }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class FusedConv2dAddActOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FusedConv2dAddActOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::FusedConv2dAddActOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::FusedConv2dAddActOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(7000)
+    if (op->HasAttribute("padding_algorithm")) {
+      std::string padding_algorithm =
+          op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
+      if (padding_algorithm == "SAME" && op->HasAttribute("strides")) {
+        auto strides_attr = op->attribute<pir::ArrayAttribute>("strides");
+        std::vector<int32_t> strides;
+        for (const auto &attr : strides_attr.AsVector()) {
+          strides.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+        }
+        if (strides.size() > 1) {
+          for (size_t i = 0; i < strides.size(); ++i) {
+            if (strides[i] > 1) {
+              VLOG(3) << "The stride size should be 1 or less than 1";
+              return false;
+            }
+          }
+        }
+      }
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class DepthwiseConv2dOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::DepthwiseConv2dOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::DepthwiseConv2dOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::DepthwiseConv2dOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(7000)
+    if (op->HasAttribute("padding_algorithm")) {
+      std::string padding_algorithm =
+          op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
+      if (padding_algorithm == "SAME" && op->HasAttribute("strides")) {
+        auto strides_attr = op->attribute<pir::ArrayAttribute>("strides");
+        std::vector<int32_t> strides;
+        for (const auto &attr : strides_attr.AsVector()) {
+          strides.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+        }
+        if (strides.size() > 1) {
+          for (size_t i = 0; i < strides.size(); ++i) {
+            if (strides[i] > 1) {
+              VLOG(3) << "The stride size should be 1 or less than 1";
+              return false;
+            }
+          }
+        }
+      }
+    }
+#endif
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -403,6 +510,7 @@ class TransposeOpPattern
     return true;
   }
 };
+
 class GatherOpPattern
     : public pir::OpRewritePattern<paddle::dialect::GatherOp> {
  public:
@@ -418,6 +526,15 @@ class GatherOpPattern
       VLOG(3) << "axis is empty. Skipping rewrite.";
       return false;
     }
+#if IS_TRT_VERSION_LT(7000)
+    pir::Value x = op.operand_source(0);
+    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto x_shape = x_type.dims();
+    if (x_shape.size() == 1) {
+      VLOG(3) << "Gather does not support 1-dimensional input in tensorrt";
+      return false;
+    }
+#endif
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -532,15 +649,18 @@ class SqueezeOpPattern
       return false;
     }
 
-    paddle::dialect::FullIntArrayOp full_int_array_op =
-        pir::GetDefiningOpForInput(op, 1)
-            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-
-    auto axis = full_int_array_op->attribute<pir::ArrayAttribute>("value");
+    pir::Value axis_ = op.operand_source(1);
     std::vector<int64_t> axes;
-    for (const auto &attr : axis.AsVector()) {
-      axes.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+
+    if (axis_) {
+      bool is_from_tensor = false;
+      phi::IntArray axis = phi::IntArray(
+          paddle::dialect::ParseValueShape(axis_, &is_from_tensor));
+      for (auto a : axis.GetData()) {
+        axes.push_back(a);
+      }
     }
+
     if (axes.empty()) {
       auto input_var_name = op.operand_source(0);
       auto input_var_name_type =
@@ -579,7 +699,6 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-
     if (!op->HasAttribute("axes")) {
       VLOG(3)
           << "The necessary attribute of the slice operator axes are missing.";
@@ -606,167 +725,6 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
   }
 };
 
-class IndexSelectOpPattern
-    : public pir::OpRewritePattern<paddle::dialect::IndexSelectOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::IndexSelectOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::IndexSelectOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-#if IS_TRT_VERSION_LT(8200)
-    VLOG(3) << "index_select op is only supported by tensorrt8.2 above ";
-    return false;
-#endif
-    pir::Value x = op.operand_source(1);
-    auto x_dtype = pir::GetDataTypeFromValue(x);
-    if (!(x_dtype.isa<pir::Int32Type>() || x_dtype.isa<pir::Int64Type>())) {
-      VLOG(3) << "Index select op Index input data type must be int32 or int64";
-      return false;
-    }
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
-
-class FlattenOpPattern
-    : public pir::OpRewritePattern<paddle::dialect::FlattenOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::FlattenOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::FlattenOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-    if (!op->HasAttribute("start_axis") && !op->HasAttribute("stop_axis")) {
-      VLOG(3) << "flatten op must has start_axis and stop_axis attributes";
-      return false;
-    }
-    int start_axis = op->attribute<pir::Int32Attribute>("start_axis").data();
-    int stop_axis = op->attribute<pir::Int32Attribute>("stop_axis").data();
-
-    pir::Value x = op.operand_source(0);
-    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    auto x_shape = x_type.dims();
-    int dims = x_shape.size();
-    if (dims == 0) {
-      VLOG(3) << "Flatten op does not support input's dim is 0 in tensorrt "
-                 "static shape mode.";
-    }
-    if (start_axis < 0) {
-      start_axis += dims;
-    }
-
-    if (start_axis == 0) {
-      VLOG(3) << "TRT flatten_contiguous_range not support the "
-                 "batch-dimension being changed";
-      return false;
-    }
-    if (stop_axis < 0) {
-      stop_axis += dims;
-    }
-    for (int i = start_axis; i <= stop_axis; ++i) {
-      if (x_shape[i] < 0) {
-        VLOG(3) << "On TRT static shape,flatten_contiguous_range input dim "
-                   "should be > 0";
-        return false;
-      }
-    }
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
-class CastOpPattern : public pir::OpRewritePattern<paddle::dialect::CastOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::CastOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::CastOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-    if (!op->HasAttribute("dtype")) {
-      VLOG(3) << "the cast op does not have attr dtype ";
-      return false;
-    }
-    auto dtype =
-        op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
-    if (dtype == phi::DataType::BOOL) {
-#if IS_TRT_VERSION_LT(8400)
-      VLOG(3)
-          << "the cast op supports inputs and outputs of BOOL by trt8.4 above ";
-      return false;
-#endif
-    }
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
-
-class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::SplitOp>::OpRewritePattern;
-
-  bool MatchAndRewrite(paddle::dialect::SplitOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-
-    paddle::dialect::FullOp full_op =
-        pir::GetDefiningOpForInput(op, 2)->dyn_cast<paddle::dialect::FullOp>();
-    if (!full_op) {
-      VLOG(3) << "Can not find full op";
-      return false;
-    } else {
-      auto axis = full_op->attribute<paddle::dialect::ScalarAttribute>("value")
-                      .data()
-                      .to<int>();
-      auto x_shape = op.operand_source(0)
-                         .type()
-                         .dyn_cast<paddle::dialect::DenseTensorType>()
-                         .dims();
-      auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
-      if (!out_vector_type) {
-        VLOG(3) << "Output is not a VectorType";
-        return false;
-      }
-
-      paddle::dialect::FullIntArrayOp full_sections_op =
-          pir::GetDefiningOpForInput(op, 1)
-              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-      if (!full_sections_op) {
-        VLOG(3) << "Can not find FullIntArrayOp";
-        return false;
-      }
-
-      auto sections = full_sections_op->attribute<pir::ArrayAttribute>("value");
-
-      std::vector<int64_t> output_lengths;
-      for (const auto &attr : sections.AsVector()) {
-        output_lengths.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
-      }
-      axis += (axis < 0) ? x_shape.size() : 0;
-      if (x_shape[axis] == -1) {
-        VLOG(3) << "The (" << axis << ") dim of input should not be -1";
-        return false;
-      }
-
-      if (output_lengths.size() != out_vector_type.size()) {
-        VLOG(3) << "The output_length should be equal to the output size.";
-        return false;
-      }
-    }
-
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
-
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -786,18 +744,19 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Dropout)
     ADD_PATTERN(Bmm)
     ADD_PATTERN(Concat)
+    ADD_PATTERN(Flatten)
     ADD_PATTERN(Full)
     ADD_PATTERN(Fused_gemm_epilogue)
     ADD_PATTERN(Add)
     ADD_PATTERN(Layer_norm)
     ADD_PATTERN(Silu)
-    ADD_PATTERN(Conv2d)
-    ADD_PATTERN(FusedConv2dAddAct)
-    ADD_PATTERN(DepthwiseConv2d)
 
 #undef ADD_PATTERN
-    ps.Add(std::make_unique<Pool2dOpPattern>(context));
+    // ps.Add(std::make_unique<Pool2dOpPattern>(context));
+    // ps.Add(std::make_unique<Conv2dOpPattern>(context));
     ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
+    ps.Add(std::make_unique<FusedConv2dAddActOpPattern>(context));
+    ps.Add(std::make_unique<DepthwiseConv2dOpPattern>(context));
     ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
     ps.Add(std::make_unique<DeformableConvOpPattern>(context));
     ps.Add(std::make_unique<ArangeOpPattern>(context));
@@ -809,13 +768,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<GatherNdOpPattern>(context));
     ps.Add(std::make_unique<ScaleOpPattern>(context));
     ps.Add(std::make_unique<UnsqueezeOpPattern>(context));
-    ps.Add(std::make_unique<SqueezeOpPattern>(context));
     ps.Add(std::make_unique<Unsqueeze_OpPattern>(context));
     ps.Add(std::make_unique<SliceOpPattern>(context));
-    ps.Add(std::make_unique<IndexSelectOpPattern>(context));
-    ps.Add(std::make_unique<FlattenOpPattern>(context));
-    ps.Add(std::make_unique<CastOpPattern>(context));
-    ps.Add(std::make_unique<SplitOpPattern>(context));
     return ps;
   }
 };
