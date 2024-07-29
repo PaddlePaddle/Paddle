@@ -41,6 +41,7 @@ namespace cub = hipcub;
 #include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace phi {
