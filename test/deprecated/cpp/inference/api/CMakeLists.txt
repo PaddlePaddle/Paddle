@@ -573,9 +573,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   set_tests_properties(test_analyzer_transformer PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT
                                                                          120)
-  if(WITH_GPU)
-    set_tests_properties(test_analyzer_bert PROPERTIES TIMEOUT 120)
-  endif()
 
   if(ON_INFER OR WITH_GPU)
     set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT

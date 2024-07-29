@@ -1201,5 +1201,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
   inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR}
                               analyzer_bert_tester.cc EXTRA_DEPS common)
+  if(WITH_GPU)
+    set_tests_properties(test_analyzer_bert PROPERTIES TIMEOUT 120)
+  endif()
 
 endif()
