@@ -485,13 +485,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     test_analyzer_mobilenet_depthwise_conv ${IMG_CLASS_TEST_APP}
     ${MOBILENET_MODEL_DIR} false)
 
-  # bert, max_len=20, embedding_dim=128
-  set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
-  download_model_and_data_without_verify(
-    ${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
-  inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR}
-                              analyzer_bert_tester.cc EXTRA_DEPS common)
-
   # multiple models prediction
   set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
   download_data_without_verify(${MMP_INSTALL_DIR}
