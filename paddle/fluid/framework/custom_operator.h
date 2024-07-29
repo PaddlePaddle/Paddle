@@ -87,7 +87,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
             attr_name, "custom operator std::vector<std::string> attribute.")
             .SetDefault({});
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
             "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -150,7 +150,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
         } else if (detail::IsMemberOf(fwd_op_outputs, in_name)) {
           grad_op->SetInput(in_name, this->Output(in_name));
         } else {
-          PADDLE_THROW(phi::errors::InvalidArgument(
+          PADDLE_THROW(common::errors::InvalidArgument(
               "The input tensor name `%s` is invalid, expected it is the input "
               "or output of forward operator.",
               in_name));
@@ -162,7 +162,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
           // Maybe visit here! handle inplace optional case
           PADDLE_ENFORCE(
               in_name.find(paddle::kOptionalSuffix) != std::string::npos,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Custom operator couldn't find grad operator input name for "
                   "%s. If you are using inplace optional inputs & outputs, "
                   "please check your InplaceMap and `Outputs` again and make "
@@ -179,7 +179,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
       if (!this->HasInput(detail::NoGrad(out_name, is_double_grad_))) {
         PADDLE_ENFORCE(
             out_name.find(paddle::kOptionalSuffix) != std::string::npos,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator couldn't find grad operator output name for "
                 "%s. If you are using inplace optional inputs & outputs, "
                 "please check your InplaceMap and `Outputs` again and make "
@@ -253,7 +253,7 @@ class CustomGradOpMaker<imperative::OpBase>
         } else if (detail::IsMemberOf(fwd_op_outputs, in_name)) {
           grad_op->SetInput(in_name, this->Output(in_name));
         } else {
-          PADDLE_THROW(phi::errors::InvalidArgument(
+          PADDLE_THROW(common::errors::InvalidArgument(
               "The input tensor name `%s` is invalid, expected it is the input "
               "or output of forward operator.",
               in_name));
@@ -265,7 +265,7 @@ class CustomGradOpMaker<imperative::OpBase>
         } else {
           PADDLE_ENFORCE(
               in_name.find(paddle::kOptionalSuffix) != std::string::npos,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Custom operator couldn't find grad operator input name for "
                   "%s. If you are using inplace optional inputs & outputs, "
                   "please check your InplaceMap and `Outputs` again and make "
@@ -282,7 +282,7 @@ class CustomGradOpMaker<imperative::OpBase>
       if (!this->HasInput(detail::NoGrad(out_name, is_double_grad_))) {
         PADDLE_ENFORCE(
             out_name.find(paddle::kOptionalSuffix) != std::string::npos,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator couldn't find grad operator output name for "
                 "%s. If you are using inplace optional inputs & outputs, "
                 "please check your InplaceMap and `Outputs` again and make "

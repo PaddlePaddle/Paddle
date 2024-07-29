@@ -71,7 +71,10 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
 
   if (buffer_size > 0) {
     char* buffer = new char[buffer_size];
-    CHECK_EQ(0, setvbuf(&*fp, buffer, _IOFBF, buffer_size));
+    PADDLE_ENFORCE_EQ(
+        0,
+        setvbuf(&*fp, buffer, _IOFBF, buffer_size),
+        phi::errors::InvalidArgument("Set Buffer Failed, Please Check!"));
     fp = {&*fp, [fp, buffer](FILE*) mutable {  // NOLINT
             CHECK(fp.unique());                // NOLINT
             fp = nullptr;
@@ -149,8 +152,8 @@ std::shared_ptr<FILE> localfs_open_append_write(std::string path,
 int64_t localfs_file_size(const std::string& path) {
   struct stat buf = {};
   if (0 != stat(path.c_str(), &buf)) {
-    PADDLE_THROW(
-        phi::errors::External("Failed to get file status via stat function."));
+    PADDLE_THROW(common::errors::External(
+        "Failed to get file status via stat function."));
     return -1;
   }
   return (int64_t)buf.st_size;
@@ -419,7 +422,7 @@ std::shared_ptr<FILE> fs_open_read(const std::string& path,
       return hdfs_open_read(path, err_no, converter, read_data);
 
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupport file system. Now only supports local file system and "
           "HDFS."));
   }
@@ -438,7 +441,7 @@ std::shared_ptr<FILE> fs_open_write(const std::string& path,
       return hdfs_open_write(path, err_no, converter);
 
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupport file system. Now only supports local file system and "
           "HDFS."));
   }
@@ -457,7 +460,7 @@ std::shared_ptr<FILE> fs_open_append_write(const std::string& path,
       return hdfs_open_write(path, err_no, converter);
 
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupport file system. Now only supports local file system and "
           "HDFS."));
   }
@@ -477,7 +480,7 @@ std::shared_ptr<FILE> fs_open(const std::string& path,
     return fs_open_write(path, err_no, converter);
   }
 
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "Unsupport file open mode: %s. Only supports 'r', 'rb', 'w' or 'wb'.",
       mode));
   return {};
@@ -489,7 +492,7 @@ int64_t fs_file_size(const std::string& path) {
       return localfs_file_size(path);
 
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupport file system. Now only supports local file system."));
   }
 
@@ -505,7 +508,7 @@ void fs_remove(const std::string& path) {
       return hdfs_remove(path);
 
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupport file system. Now only supports local file system and "
           "HDFS."));
   }
@@ -520,7 +523,7 @@ std::vector<std::string> fs_list(const std::string& path) {
       return hdfs_list(path);
 
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupport file system. Now only supports local file system and "
           "HDFS."));
   }
@@ -537,7 +540,7 @@ std::string fs_tail(const std::string& path) {
       return hdfs_tail(path);
 
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupport file system. Now only supports local file system and "
           "HDFS."));
   }
@@ -554,7 +557,7 @@ bool fs_exists(const std::string& path) {
       return hdfs_exists(path);
 
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupport file system. Now only supports local file system and "
           "HDFS."));
   }
@@ -571,7 +574,7 @@ void fs_mkdir(const std::string& path) {
       return hdfs_mkdir(path);
 
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupport file system. Now only supports local file system and "
           "HDFS."));
   }
@@ -580,7 +583,11 @@ void fs_mkdir(const std::string& path) {
 void fs_mv(const std::string& src, const std::string& dest) {
   int s = fs_select_internal(src);
   int d = fs_select_internal(dest);
-  CHECK_EQ(s, d);
+  PADDLE_ENFORCE_EQ(
+      s,
+      d,
+      phi::errors::InvalidArgument(
+          "The source is not equal to destination, Please Check!"));
   switch (s) {
     case 0:
       return localfs_mv(src, dest);

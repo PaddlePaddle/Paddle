@@ -15,20 +15,20 @@ namespace paddle {
 namespace framework {
 
 void WorkQueueOptions::Validate() const {
-  PADDLE_ENFORCE_GT(
-      name.size(),
-      0,
-      phi::errors::InvalidArgument("WorkQueueOptions.name must be nonempty"));
+  PADDLE_ENFORCE_GT(name.size(),
+                    0,
+                    common::errors::InvalidArgument(
+                        "WorkQueueOptions.name must be nonempty"));
   PADDLE_ENFORCE_EQ(
       name.find('_'),
       std::string::npos,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "WorkQueueOptions.name shouldn't contain an underline"));
   PADDLE_ENFORCE_EQ(
       allow_spinning == false && always_spinning == true,
       false,
-      phi::errors::InvalidArgument("WorkQueueOptions.allow_spinning must "
-                                   "be true when always_spinning is set"));
+      common::errors::InvalidArgument("WorkQueueOptions.allow_spinning must "
+                                      "be true when always_spinning is set"));
 }
 
 namespace {
@@ -170,8 +170,8 @@ void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
   assert(queue_idx < queues_.size());
   PADDLE_ENFORCE_NOT_NULL(
       queues_.at(queue_idx),
-      phi::errors::NotFound("Workqueue of index %d is not initialized.",
-                            queue_idx));
+      common::errors::NotFound("Workqueue of index %d is not initialized.",
+                               queue_idx));
   if (queues_options_.at(queue_idx).track_task) {
     fn = [task = std::move(fn),
           raii = CounterGuard<TaskTracker>(tracker_)]() mutable { task(); };
@@ -216,7 +216,7 @@ std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
   // extra check
   PADDLE_ENFORCE_EQ(options.num_threads,
                     1u,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "For a SingleThreadedWorkQueue, "
                         "WorkQueueOptions.num_threads must equals to 1."));
   std::unique_ptr<WorkQueue> ptr(new WorkQueueImpl(options));
@@ -230,9 +230,9 @@ std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
   PADDLE_ENFORCE_GT(
       options.num_threads,
       1u,
-      phi::errors::InvalidArgument("For a MultiThreadedWorkQueue, "
-                                   "WorkQueueOptions.num_threads must be "
-                                   "greater than 1."));
+      common::errors::InvalidArgument("For a MultiThreadedWorkQueue, "
+                                      "WorkQueueOptions.num_threads must be "
+                                      "greater than 1."));
   std::unique_ptr<WorkQueue> ptr(new WorkQueueImpl(options));
   return ptr;
 }
@@ -241,7 +241,7 @@ std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
     const std::vector<WorkQueueOptions>& queues_options) {
   PADDLE_ENFORCE_GT(queues_options.size(),
                     1u,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "For a WorkQueueGroup, the number of WorkQueueOptions "
                         "must be greater than 1."));
   for (const auto& opts : queues_options) {
