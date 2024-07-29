@@ -23,6 +23,14 @@
 
 COMMON_DECLARE_bool(use_xqa_optim);
 
+#ifdef PADDLE_WITH_HIP
+#define GPU(str) hip##str
+#define GPUMultiProcessorCount hipDeviceAttributeMultiprocessorCount
+#else
+#define GPU(str) cuda##str
+#define GPUMultiProcessorCount cudaDevAttrMultiProcessorCount
+#endif
+
 namespace phi {
 namespace fusion {
 
@@ -101,7 +109,7 @@ template <typename T,
           typename StoreFunc>
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     Block_AttN_params<T> params, LoadFunc load_func, StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) || defined(PADDLE_WITH_HIP)
   const int bi = blockIdx.y;
   int act_time_step = params.sequence_lengths[bi];
   if (act_time_step == 0) {
@@ -319,7 +327,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     if (QK_VECS_PER_WARP <= WARP_SIZE) {
 #pragma unroll
       for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+        qk += __shfl_xor(qk, mask);
+#else
         qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
+#endif
       }
     }
   }
@@ -418,7 +430,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+    qk_max = fmaxf(qk_max, __shfl_xor(qk_max, mask));
+#else
     qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+#endif
   }
 
   const int warp = tid / WARP_SIZE;
@@ -430,13 +446,27 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   __syncthreads();
 
+#ifdef PADDLE_WITH_HIP
+  qk_max = -FLT_MAX;
+  qk_max = red_smem[lane];
+#else
   qk_max = lane < WARPS_PER_BLOCK ? red_smem[lane] : -FLT_MAX;
+#endif
+
 #pragma unroll
   for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+    qk_max = fmaxf(qk_max, __shfl_xor(qk_max, mask));
+#else
     qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+#endif
   }
 
+#ifdef PADDLE_WITH_HIP
+  qk_max = __shfl(qk_max, 0);
+#else
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
+#endif
 
   float sum = 0.f;
   for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
@@ -587,7 +617,7 @@ template <typename T,
           typename StoreFunc>
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
     Block_AttN_params<T> params, LoadFunc load_func, StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) || defined(PADDLE_WITH_HIP)
   const int bi = blockIdx.y;
   const int act_time_step = params.sequence_lengths[bi];
   if (act_time_step == 0) {
@@ -813,7 +843,11 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
     if (QK_VECS_PER_WARP <= WARP_SIZE) {
 #pragma unroll
       for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+        qk += __shfl_xor(qk, mask);
+#else
         qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
+#endif
       }
     }
   }
@@ -933,9 +967,14 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   for (int local_hi = 0; local_hi < GQA_SUB_PARTITION_SIZE; local_hi++) {
 #pragma unroll
     for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
-      qk_maxs[local_hi] =
-          fmaxf(qk_maxs[local_hi],
-                __shfl_xor_sync(uint32_t(-1), qk_maxs[local_hi], mask));
+      qk_maxs[local_hi] = fmaxf(qk_maxs[local_hi],
+#ifdef PADDLE_WITH_HIP
+                                __shfl_xor(qk_maxs[local_hi], mask));
+#else
+                                __shfl_xor_sync(
+                                    uint32_t(-1), qk_maxs[local_hi], mask));
+
+#endif
     }
 
     if (lane_id == 0) {
@@ -944,16 +983,30 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
 
     __syncthreads();
 
+#ifdef PADDLE_WITH_HIP
+    qk_maxs[local_hi] = -FLT_MAX;
+    qk_maxs[local_hi] = red_smem[lane_id];
+#else
     qk_maxs[local_hi] =
         lane_id < WARPS_PER_BLOCK ? red_smem[lane_id] : -FLT_MAX;
+#endif
+
 #pragma unroll
     for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-      qk_maxs[local_hi] =
-          fmaxf(qk_maxs[local_hi],
-                __shfl_xor_sync(uint32_t(-1), qk_maxs[local_hi], mask));
+      qk_maxs[local_hi] = fmaxf(qk_maxs[local_hi],
+#ifdef PADDLE_WITH_HIP
+                                __shfl_xor(qk_maxs[local_hi], mask));
+#else
+                                __shfl_xor_sync(
+                                    uint32_t(-1), qk_maxs[local_hi], mask));
+#endif
     }
 
+#ifdef PADDLE_WITH_HIP
+    qk_maxs[local_hi] = __shfl(qk_maxs[local_hi], 0);
+#else
     qk_maxs[local_hi] = __shfl_sync(uint32_t(-1), qk_maxs[local_hi], 0);
+#endif
 
     float sum = 0.f;
     for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
@@ -1165,6 +1218,80 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
   return max(logits_table_sz, red_sz);
 }
 
+#ifdef PADDLE_WITH_HIP
+#define BLHAG_LAUNCH_KERNEL(T,                                             \
+                            Dh,                                            \
+                            Dh_MAX,                                        \
+                            THDS_PER_KEY,                                  \
+                            THDS_PER_VALUE,                                \
+                            THDS_PER_BLOCK,                                \
+                            BLOCK_SIZE,                                    \
+                            CACHE_TYPE,                                    \
+                            stream,                                        \
+                            load_func,                                     \
+                            store_func)                                    \
+  size_t smem_sz =                                                         \
+      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);   \
+  constexpr auto kernel_fn = block_attention_kernel<T,                     \
+                                                    Dh,                    \
+                                                    Dh_MAX,                \
+                                                    THDS_PER_KEY,          \
+                                                    THDS_PER_VALUE,        \
+                                                    THDS_PER_BLOCK,        \
+                                                    BLOCK_SIZE,            \
+                                                    CACHE_TYPE,            \
+                                                    decltype(load_func),   \
+                                                    decltype(store_func)>; \
+  if (smem_sz > 0xc000) {                                                  \
+    hipFuncSetAttribute((const void *)kernel_fn,                           \
+                        hipFuncAttributeMaxDynamicSharedMemorySize,        \
+                        smem_sz);                                          \
+  }                                                                        \
+  dim3 grid(params.q_num_head, params.batch_size);                         \
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
+      params, load_func, store_func);
+
+// For GQA specific optimization (use xqa)
+#define BLHA_LAUNCH_GQA_KERNEL(T,                                           \
+                               Dh,                                          \
+                               Dh_MAX,                                      \
+                               THDS_PER_KEY,                                \
+                               THDS_PER_VALUE,                              \
+                               THDS_PER_BLOCK,                              \
+                               BLOCK_SIZE,                                  \
+                               CACHE_TYPE,                                  \
+                               GQA_PARTITION_SIZE,                          \
+                               GQA_SUB_PARTITION_SIZE,                      \
+                               stream,                                      \
+                               load_func,                                   \
+                               store_func)                                  \
+  size_t smem_sz = gqa_smem_size_in_bytes<T, GQA_SUB_PARTITION_SIZE>(       \
+      params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);                          \
+  constexpr int GQA_NUM_SUB_PARTITIONS =                                    \
+      GQA_PARTITION_SIZE / GQA_SUB_PARTITION_SIZE;                          \
+  constexpr auto kernel_fn =                                                \
+      gqa_block_attention_kernel<T,                                         \
+                                 Dh,                                        \
+                                 Dh_MAX,                                    \
+                                 THDS_PER_KEY,                              \
+                                 THDS_PER_VALUE,                            \
+                                 THDS_PER_BLOCK,                            \
+                                 BLOCK_SIZE,                                \
+                                 CACHE_TYPE,                                \
+                                 GQA_PARTITION_SIZE,                        \
+                                 GQA_SUB_PARTITION_SIZE,                    \
+                                 GQA_NUM_SUB_PARTITIONS,                    \
+                                 decltype(load_func),                       \
+                                 decltype(store_func)>;                     \
+  if (smem_sz > 0xc000) {                                                   \
+    hipFuncSetAttribute((const void *)kernel_fn,                            \
+                        hipFuncAttributeMaxDynamicSharedMemorySize,         \
+                        smem_sz);                                           \
+  }                                                                         \
+  dim3 grid(params.kv_num_head *GQA_NUM_SUB_PARTITIONS, params.batch_size); \
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
+      params, load_func, store_func);
+#else
 #define BLHAG_LAUNCH_KERNEL(T,                                             \
                             Dh,                                            \
                             Dh_MAX,                                        \
@@ -1235,6 +1362,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
   dim3 grid(params.kv_num_head *GQA_NUM_SUB_PARTITIONS, params.batch_size); \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
       params, load_func, store_func);
+#endif
 
 template <typename T,
           int Dh,
@@ -1247,7 +1375,7 @@ template <typename T,
           typename LoadFunc,
           typename StoreFunc>
 void dispatch_blha_impl_kernel(const Block_AttN_params<T> &params,
-                               const cudaStream_t &stream,
+                               const GPU(Stream_t) & stream,
                                LoadFunc load_func,
                                StoreFunc store_func) {
   VLOG(1) << "group wise";
@@ -1275,7 +1403,7 @@ template <typename T,
           typename LoadFunc,
           typename StoreFunc>
 void dispatch_blha_gqa_kernel(const Block_AttN_params<T> &params,
-                              const cudaStream_t &stream,
+                              const GPU(Stream_t) & stream,
                               LoadFunc load_func,
                               StoreFunc store_func) {
   if (params.gqa_num_per_partitions == 1 || !FLAGS_use_xqa_optim) {
@@ -1349,7 +1477,7 @@ template <typename T,
           typename LoadFunc,
           typename StoreFunc>
 void dispatch_blha_impl(const Block_AttN_params<T> &params,
-                        const cudaStream_t &stream,
+                        const GPU(Stream_t) & stream,
                         LoadFunc load_func,
                         StoreFunc store_func,
                         const int use_cachekv_int8) {
@@ -1387,7 +1515,7 @@ template <typename T,
           typename LoadFunc,
           typename StoreFunc>
 void dispatch_blha_impl_key_and_thread(const Block_AttN_params<T> &params,
-                                       const cudaStream_t &stream,
+                                       const GPU(Stream_t) & stream,
                                        LoadFunc load_func,
                                        StoreFunc store_func,
                                        const int use_cachekv_int8) {
@@ -1397,7 +1525,7 @@ void dispatch_blha_impl_key_and_thread(const Block_AttN_params<T> &params,
 
 template <typename T, int Dh, int Dh_MAX, typename LoadFunc, typename StoreFunc>
 void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
-                                  const cudaStream_t &stream,
+                                  const GPU(Stream_t) & stream,
                                   LoadFunc load_func,
                                   StoreFunc store_func,
                                   const int use_cachekv_int8) {
@@ -1587,7 +1715,7 @@ void blha(const phi::GPUContext &dev_ctx,
                   out_tensor);
 }
 
-inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
+inline GPU(Error_t) GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;
 
@@ -1601,39 +1729,40 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
                     std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
                                       sm_count * max_thread_per_multiprocessor /
                                           kBlockSize * kNumWaves));
-  return cudaSuccess;
+  return GPU(Success);
 }
 
 template <class Func>
-inline cudaError_t GetNumBlocks(Func func,
-                                int64_t block_size,
-                                size_t dynamic_smem_size,
-                                int64_t max_blocks,
-                                int64_t waves,
-                                int *num_blocks) {
+inline GPU(Error_t) GetNumBlocks(Func func,
+                                 int64_t block_size,
+                                 size_t dynamic_smem_size,
+                                 int64_t max_blocks,
+                                 int64_t waves,
+                                 int *num_blocks) {
   int dev;
   {
-    cudaError_t err = cudaGetDevice(&dev);
-    if (err != cudaSuccess) {
+    GPU(Error_t) err = GPU(GetDevice)(&dev);
+    if (err != GPU(Success)) {
       return err;
     }
   }
   int sm_count;
   {
-    cudaError_t err =
-        cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev);
-    if (err != cudaSuccess) {
+    GPU(Error_t)
+    err = GPU(DeviceGetAttribute)(&sm_count, GPUMultiProcessorCount, dev);
+    if (err != GPU(Success)) {
       return err;
     }
   }
   int max_active_blocks;
   {
-    cudaError_t err = cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+    GPU(Error_t)
+    err = GPU(OccupancyMaxActiveBlocksPerMultiprocessor)(
         &max_active_blocks, func, block_size, dynamic_smem_size);
   }
   *num_blocks = std::max<int>(
       1, std::min<int64_t>(max_blocks, sm_count * max_active_blocks * waves));
-  return cudaSuccess;
+  return GPU(Success);
 }
 
 template <typename T, int VecSize = 1>
@@ -1697,11 +1826,31 @@ __global__ void cache_int8_kernel(
     phi::Load<T, VecSize>(&qkv[ori_idx], &src_vec);
 
     const uint32_t cache_idx = hi;
+#ifdef PADDLE_WITH_HIP
+    T scale;
+    if constexpr (kernel_dtype_is_same<T, half>::value) {
+      scale = qkv_id == 0 ? __float2half(cache_k_scales[cache_idx])
+                          : __float2half(cache_v_scales[cache_idx]);
+    } else {
+      scale = qkv_id == 0 ? static_cast<T>(cache_k_scales[cache_idx])
+                          : static_cast<T>(cache_v_scales[cache_idx]);
+    }
+#else
     const T scale =
         qkv_id == 0 ? cache_k_scales[cache_idx] : cache_v_scales[cache_idx];
+#endif
 #pragma unroll
     for (uint32_t i = 0; i < VecSize; i++) {
+#ifdef PADDLE_WITH_HIP
+      float quant_value;
+      if constexpr (kernel_dtype_is_same<T, half>::value) {
+        quant_value = __half2float(scale * src_vec[i]);
+      } else {
+        quant_value = static_cast<float>(scale * src_vec[i]);
+      }
+#else
       float quant_value = static_cast<float>(scale * src_vec[i]);
+#endif
       if (round_type == 0) {
         quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
       } else {
@@ -1846,7 +1995,16 @@ __global__ void write_pre_cache_int8_to_cache(
 
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
+#ifdef PADDLE_WITH_HIP
+      float quant_value;
+      if constexpr (kernel_dtype_is_same<T, half>::value) {
+        quant_value = scale * __half2float(src_vec[i]);
+      } else {
+        quant_value = scale * static_cast<float>(src_vec[i]);
+      }
+#else
       float quant_value = scale * static_cast<float>(src_vec[i]);
+#endif
       if (round_type == 0) {
         quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
       } else {
@@ -2095,7 +2253,15 @@ __global__ void quant_write_cache_int8_kernel(
   InVec abs_max_vec;
 #pragma unroll
   for (int i = 0; i < VecSize; ++i) {
+#ifdef PADDLE_WITH_HIP
+    if constexpr (kernel_dtype_is_same<T, half>::value) {
+      abs_max_vec[i] = __float2half(0.0f);
+    } else {
+      abs_max_vec[i] = static_cast<T>(0.0f);
+    }
+#else
     abs_max_vec[i] = 0.0f;
+#endif
   }
 
   uint8_t *dst_ptr;
@@ -2133,7 +2299,15 @@ __global__ void quant_write_cache_int8_kernel(
 
   __shared__ float quant_scale;
   if (threadIdx.x == 0) {
+#ifdef PADDLE_WITH_HIP
+    if constexpr (kernel_dtype_is_same<T, half>::value) {
+      quant_scale = 127.0f / __half2float(abs_max_val);
+    } else {
+      quant_scale = 127.0f / static_cast<float>(abs_max_val);
+    }
+#else
     quant_scale = 127.0f / static_cast<float>(abs_max_val);
+#endif
   }
 
   __syncthreads();
@@ -4189,7 +4363,7 @@ static void VLOGMatrix(const T *mat_d,
                        int max_num = 10) {
   num = num < max_num ? num : max_num;
   std::vector<T> tmp(num);
-  cudaMemcpy(tmp.data(), mat_d, sizeof(T) * num, cudaMemcpyDeviceToHost);
+  GPU(Memcpy)(tmp.data(), mat_d, sizeof(T) * num, GPU(MemcpyDeviceToHost));
 
   std::stringstream ss;
 

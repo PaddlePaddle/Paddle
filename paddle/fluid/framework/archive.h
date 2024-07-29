@@ -46,7 +46,7 @@ class ArchiveBase {
   // Archive is not copyable. But to allow move capture by function objects,
   // check it at runtime rather than at compile time.
   ArchiveBase(const ArchiveBase&) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "ArchiveBase class does not support copy construction."));
   }
 
@@ -67,7 +67,7 @@ class ArchiveBase {
 
  public:
   ArchiveBase& operator=(const ArchiveBase&) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "ArchiveBase class does not support assignment construction."));
     return *this;
   }

@@ -387,7 +387,7 @@ void MultiTrainer::ResetDataset(Dataset* dataset) {
   // change thread num is not supported
   PADDLE_ENFORCE_EQ(thread_num_,
                     readers.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "change Dataset thread_num is not supported"));
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->SetDataFeed(readers[i]);
