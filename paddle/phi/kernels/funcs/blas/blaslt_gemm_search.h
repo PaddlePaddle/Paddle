@@ -269,14 +269,14 @@ class CublasLtAlgoCache {
         return &algo_caches_[seed];
       };
       const CublasLtAlgoConfig* pre = nullptr;
-      for (const auto& search_config : search_configs_) {
-        if (search_config.n == n && search_config.k == k &&
-            m <= search_config.m) {
-            return configure_algo(search_config);
-        } else if (search_config.n == n && search_config.k == k &&
-            m > search_config.m) {
-            if(pre == nullptr || pre->m < search_config.m)
-              pre = &search_configs_.at(&search_config - &search_configs_[0]);
+      for (size_t i = 0; i < search_configs_.size(); i++) {
+        if (search_configs_[i].n == n && search_configs_[i].k == k &&
+            m <= search_configs_[i].m) {
+            return configure_algo(search_configs_[i]);
+        } else if (search_configs_[i].n == n && search_configs_[i].k == k &&
+            m > search_configs_[i].m) {
+            if(pre == nullptr || pre->m < search_configs_[i].m)
+              pre = &search_configs_[i];
           }
       }
       if (pre != nullptr) {
