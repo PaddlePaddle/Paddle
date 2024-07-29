@@ -60,7 +60,7 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
                                                const Instruction& instr) {
   PADDLE_ENFORCE_LT(instr.Id(),
                     gc_event_.size(),
-                    phi::errors::OutOfRange(
+                    common::errors::OutOfRange(
                         "The index should be less than the size of gc event "
                         ", but got index is %d and size is %d",
                         instr.Id(),
@@ -72,7 +72,7 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
                                                const InstructionBase* instr) {
   PADDLE_ENFORCE_LT(instr->Id(),
                     gc_event_.size(),
-                    phi::errors::OutOfRange(
+                    common::errors::OutOfRange(
                         "The index should be less than the size of gc event "
                         ", but got index is %d and size is %d",
                         instr->Id(),
@@ -141,7 +141,7 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
     // refer to executor.cc to see what old garbage collector does.
     // do nothing, because the sub scope will be deleted by sub-executor.
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The variable(%s) is not supported in eager deletion.",
         framework::ToTypeName(var->Type())));
   }

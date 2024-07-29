@@ -54,7 +54,7 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::SPARSE_COO) {
     var->GetMutable<phi::SparseCooTensor>();
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
         "LOD_RANK_TABLE, PLACE_LIST, READER, RAW].",
@@ -80,7 +80,7 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
     auto *dst_t = tmp_grad_slr->mutable_value();
     framework::TensorCopy(src_t, cpu_place, dst_t);
   } else {
-    PADDLE_THROW(phi::errors::Unavailable("Unknown variable type to copy."));
+    PADDLE_THROW(common::errors::Unavailable("Unknown variable type to copy."));
   }
 }
 

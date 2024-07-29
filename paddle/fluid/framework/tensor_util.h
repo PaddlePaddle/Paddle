@@ -156,7 +156,7 @@ void TensorFromArray(const T* src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorFromArray on %s is not supported.", dst_place));
   }
 }
@@ -201,7 +201,7 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorFromVector on %s is not supported.", dst_place));
   }
 }
@@ -252,7 +252,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorFromVector on %s is not supported.", dst_place));
   }
   delete[] array;
@@ -323,7 +323,7 @@ void TensorToVector(const phi::DenseTensor& src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorToVector on %s is not supported.", src.place()));
   }
 }
@@ -382,7 +382,7 @@ void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst) {
   PADDLE_ENFORCE_EQ(
       phi::is_cpu_place(src.place()),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
 
@@ -404,7 +404,7 @@ inline void TensorToVector(const phi::DenseTensor& src,
   PADDLE_ENFORCE_EQ(
       phi::is_cpu_place(src.place()),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
 

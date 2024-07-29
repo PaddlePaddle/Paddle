@@ -1001,12 +1001,12 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       try {
         slot = std::stoi(sparse_key_names[i]);
       } catch (std::invalid_argument const& e) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "sparse var's name: %s, doesn't support non-integer type name when "
             "dump_slot=True",
             sparse_key_names[i]));
       } catch (std::out_of_range const& e) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "sparse var's name: %s, integer type name out of range when "
             "dump_slot=True",
             sparse_key_names[i]));
@@ -1654,7 +1654,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
   push_status.wait();
   auto status = push_status.get();
   if (status != 0) {
-    // PADDLE_THORW(phi::errors::Fatal(
+    // PADDLE_THORW(common::errors::Fatal(
     //    "push shrink dense param failed, status is [%d].", status));
     sleep(sleep_seconds_before_fail_exit_);
     exit(-1);

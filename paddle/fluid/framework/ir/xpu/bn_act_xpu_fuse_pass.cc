@@ -113,7 +113,7 @@ class BNActXPUFusePass : public FusePassBase {
 
 void BNActXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   int found_subgraph_count = 0;
@@ -146,7 +146,7 @@ int BNActXPUFusePass::ApplyImpl(ir::Graph* graph,
     auto* block = bn->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
     std::string fused_op_out_name;
     fused_op_out_name = act_out->Name();
     // Generate fused op
