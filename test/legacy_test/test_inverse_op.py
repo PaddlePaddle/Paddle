@@ -49,6 +49,7 @@ class TestInverseOp(OpTest):
 
     def test_check_output(self):
         self.check_output(check_pir=True)
+        self.check_output(check_symbol_infer=True)
 
     def test_grad(self):
         self.check_grad(['Input'], 'Output', check_pir=True)

@@ -528,7 +528,6 @@ bool KthvalueOpInferSymbolicShape(
 
 bool InverseOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  // 获取输入张量的符号形状
   const auto &input_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   std::vector<symbol::DimExpr> input_dims = input_shape.shape();
