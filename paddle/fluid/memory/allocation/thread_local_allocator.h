@@ -49,7 +49,7 @@ class ThreadLocalAllocation : public Allocation {
 class ThreadLocalAllocatorImpl
     : public std::enable_shared_from_this<ThreadLocalAllocatorImpl> {
  public:
-  explicit ThreadLocalAllocatorImpl(const platform::Place& p);
+  explicit ThreadLocalAllocatorImpl(const phi::Place& p);
   ThreadLocalAllocation* AllocateImpl(size_t size);
   void FreeImpl(ThreadLocalAllocation* allocation);
   uint64_t ReleaseImpl();
@@ -92,7 +92,7 @@ class ThreadLocalCUDAAllocator : public Allocator {
     auto allocator_impl = tl_allocation->GetAllocator();
     allocator_impl->FreeImpl(tl_allocation);
   }
-  uint64_t ReleaseImpl(const platform::Place& p) override {
+  uint64_t ReleaseImpl(const phi::Place& p) override {
     return ThreadLocalCUDAAllocatorPool::Instance().Get(gpu_id_)->ReleaseImpl();
   }
 

@@ -47,10 +47,8 @@ class Controller {
  public:
   TEST_API static Controller& Instance();
 
-  paddle::platform::Place GetExpectedPlace() const {
-    return tracer_->ExpectedPlace();
-  }
-  TEST_API void SetExpectedPlace(const paddle::platform::Place& place);
+  phi::Place GetExpectedPlace() const { return tracer_->ExpectedPlace(); }
+  TEST_API void SetExpectedPlace(const phi::Place& place);
   void SetAMPLevel(paddle::imperative::AmpLevel level) {
     tracer_->SetAmpLevel(level);
   }

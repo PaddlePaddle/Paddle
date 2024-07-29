@@ -125,7 +125,7 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
   InitInputs(phi_input_values_, phi_program_->block(), &inner_scope_);
   AppendFetchOp(phi_program_->block(), &phi_fetch_names_, kOutputPrefix);
 
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  phi::Place place = phi::GPUPlace(0);
   phi_kernel_program_ =
       paddle::dialect::PdOpLowerToKernelPass(phi_program_.get(), place);
 
@@ -174,7 +174,7 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
   pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pm.Run(prim_program_.get());
 
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  phi::Place place = phi::GPUPlace(0);
 
   auto kernel_program =
       paddle::dialect::PdOpLowerToKernelPass(prim_program_.get(), place);
@@ -220,7 +220,7 @@ std::vector<double> SubGraphChecker::CheckSpeed() {
 
 double SubGraphChecker::RunPhiSpeed() {
   RemoveFetchOp(phi_program_->block());
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  phi::Place place = phi::GPUPlace(0);
   phi_kernel_program_ =
       paddle::dialect::PdOpLowerToKernelPass(phi_program_.get(), place);
 
@@ -271,7 +271,7 @@ double SubGraphChecker::RunCinnSpeed() {
   pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pm.Run(prim_program_.get());
 
-  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  phi::Place place = phi::GPUPlace(0);
 
   RemoveFetchOp(prim_program_->block());
 
@@ -353,7 +353,7 @@ void SubGraphChecker::InitInputs(const std::vector<pir::Value>& input_values,
   }
 
   if (input_values.size() > 0) {
-    paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+    phi::Place place = phi::GPUPlace(0);
 
     auto kernel_program =
         paddle::dialect::PdOpLowerToKernelPass(program.get(), place);

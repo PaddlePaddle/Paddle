@@ -271,8 +271,7 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
     for (auto& tensor : tensor_array) {
       if (!(tensor.place().GetType() == phi::AllocationType::GPUPINNED)) {
         PADDLE_ENFORCE_EQ(
-            platform::is_same_place(tensor.place(),
-                                    ctx.device_context().GetPlace()),
+            phi::is_same_place(tensor.place(), ctx.device_context().GetPlace()),
             true,
             phi::errors::InvalidArgument(
                 "Place of context is %s. Place of input tensor is %s. They "

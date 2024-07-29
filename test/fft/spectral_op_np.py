@@ -27,7 +27,7 @@ class NormMode(enum.Enum):
 
 
 def _get_norm_mode(norm, forward):
-    if int(np.__version__.split('.')[0]) >= 2:
+    if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
         return norm
     if norm == "ortho":
         return NormMode.by_sqrt_n
@@ -37,7 +37,7 @@ def _get_norm_mode(norm, forward):
 
 
 def _get_inv_norm(n, norm_mode):
-    if int(np.__version__.split('.')[0]) >= 2:
+    if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
         return norm_mode
     assert isinstance(norm_mode, NormMode), f"invalid norm_type {norm_mode}"
     if norm_mode == NormMode.none:

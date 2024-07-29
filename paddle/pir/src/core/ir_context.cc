@@ -327,7 +327,7 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
   AbstractType *abstract_type = ctx->impl().GetAbstractType(type_id);
   PADDLE_ENFORCE_NOT_NULL(
       abstract_type,
-      phi::errors::InvalidArgument("Abstract type not found in IrContext."));
+      common::errors::InvalidArgument("Abstract type not found in IrContext."));
   return *abstract_type;
 }
 
@@ -336,7 +336,7 @@ const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
   AbstractAttribute *abstract_attribute =
       ctx->impl().GetAbstractAttribute(type_id);
   PADDLE_ENFORCE_NOT_NULL(abstract_attribute,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Abstract attribute not found in IrContext."));
   return *abstract_attribute;
 }

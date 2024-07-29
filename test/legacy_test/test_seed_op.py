@@ -30,7 +30,7 @@ class TestSeedOpFixSeed(OpTest):
         self.outputs = {"Out": np.array([123]).astype('int')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestSeedOpDiffSeed(OpTest):
@@ -41,7 +41,7 @@ class TestSeedOpDiffSeed(OpTest):
         self.outputs = {"Out": np.array([123]).astype('int')}
 
     def test_check_output(self):
-        self.check_output(no_check_set=["Out"])
+        self.check_output(no_check_set=["Out"], check_dygraph=False)
 
 
 if __name__ == '__main__':

@@ -54,16 +54,16 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
-        conv1 = paddle.static.nn.conv2d(
-            x, num_filters=3, filter_size=3, bias_attr=False
+        conv1 = paddle.nn.Conv2D(self.feed_shape[0][1], 3, 3, bias_attr=False)(
+            x
         )
-        conv2 = paddle.static.nn.conv2d(
-            x, num_filters=3, filter_size=3, bias_attr=False
+
+        conv2 = paddle.nn.Conv2D(self.feed_shape[0][1], 3, 3, bias_attr=False)(
+            x
         )
+
         add1 = conv1 + conv2
-        conv3 = paddle.static.nn.conv2d(
-            add1, num_filters=8, filter_size=8, bias_attr=False
-        )
+        conv3 = paddle.nn.Conv2D(add1.shape[1], 8, 8, bias_attr=False)(add1)
         out = F.relu(conv3, **self.attrs)
         self.fetch_list = [out.name]
 

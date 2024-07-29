@@ -111,8 +111,7 @@ void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
 }
 
 void IncreaseVarbaseReferenceCountUntilCopyComplete(
-    const std::shared_ptr<imperative::VarBase>& var,
-    const platform::Place& place) {
+    const std::shared_ptr<imperative::VarBase>& var, const phi::Place& place) {
   // Note(zhiqiu): Follow the logic of TensorCopy to determine the place that we
   // need to add callback, see tensor_utils.cc:245
   auto place_ = phi::is_gpu_place(place) ? place : var->Place();
@@ -131,7 +130,7 @@ void IncreaseVarbaseReferenceCountUntilCopyComplete(
 }
 
 paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
-    const platform::Place& place) {
+    const phi::Place& place) {
   // if not exists, create a new GarbageCollector at given place
   if (gcs_.count(place) == 0) {
     std::unique_ptr<framework::GarbageCollector> gc;
@@ -141,7 +140,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(phi::errors::PermissionDenied(
           "Paddle can't use CUDA device since it's not compiled with CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
@@ -151,7 +150,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(phi::errors::PermissionDenied(
           "Paddle can't use CUDAPinned device since it's not compiled with "
           "CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
@@ -161,7 +160,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
       gc = std::make_unique<framework::XPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(phi::errors::PermissionDenied(
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
@@ -173,7 +172,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
       gc = std::make_unique<framework::IPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(phi::errors::PermissionDenied(
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
 #endif
@@ -190,14 +189,14 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
         VLOG(10) << "Created GarbageCollector at " << place;
       }
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(phi::errors::PermissionDenied(
           "Paddle can't use CustomDevice since it's not compiled with "
           "CustomDevice,"
           "Please recompile or reinstall Paddle with CustomDevice "
           "support."));
 #endif
     } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "Unsupported place for garbage collection"));
     }
     gcs_.emplace(place, std::move(gc));
@@ -211,7 +210,7 @@ void Tracer::TraceOp(const std::string& type,
                      const NameVarMap<VarType>& ins,
                      const NameVarMap<VarType>& outs,
                      framework::AttributeMap attrs,
-                     const platform::Place& place,
+                     const phi::Place& place,
                      bool trace_backward,
                      const std::map<std::string, std::string>& inplace_map,
                      paddle::framework::AttributeMap* passed_default_attrs_,
@@ -232,7 +231,7 @@ void Tracer::TraceOpImpl(const std::string& type,
                          const NameVarMap<VarType>& ins,
                          const NameVarMap<VarType>& outs,
                          framework::AttributeMap& attrs,
-                         const platform::Place& place,
+                         const phi::Place& place,
                          bool trace_backward,
                          const std::map<std::string, std::string>& inplace_map,
                          paddle::framework::AttributeMap* passed_default_attrs_,
@@ -313,30 +312,30 @@ void Tracer::TraceOpImpl(const std::string& type,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::SetDeviceId(place.device);
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
     } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
       platform::SetXPUDeviceId(place.device);
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       phi::DeviceManager::SetDevice(place);
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "PaddlePaddle should compile with CustomDevice if use "
           "CustomPlace."));
 #endif
     }
 
     if (!use_default_attr_map) {
-      PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
-                              paddle::platform::errors::PermissionDenied(
-                                  "Detected default_attrs = nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(
+          passed_default_attrs_,
+          phi::errors::PermissionDenied("Detected default_attrs = nullptr."));
       VLOG(6) << "Use passed in default attrs";
       OpBase::Run(*op, new_ins, outs, attrs, (*passed_default_attrs_), place);
     } else {
@@ -352,17 +351,17 @@ void Tracer::TraceOpImpl(const std::string& type,
     throw exception;
   } catch (std::exception& ex) {
     PADDLE_THROW(
-        platform::errors::Fatal("Operator %s raises an %s exception.\n"
-                                "The exception content is\n:%s.",
-                                type,
-                                platform::demangle(typeid(ex).name()),
-                                ex.what()));
+        phi::errors::Fatal("Operator %s raises an %s exception.\n"
+                           "The exception content is\n:%s.",
+                           type,
+                           platform::demangle(typeid(ex).name()),
+                           ex.what()));
   } catch (...) {
     // NOTE: this branch represents a very serious bug with
     // low probability of occurrence, and we can't get its
     // exception content here.
-    PADDLE_THROW(platform::errors::Fatal(
-        "Operator %s raises an unknown exception.", type));
+    PADDLE_THROW(
+        phi::errors::Fatal("Operator %s raises an unknown exception.", type));
   }
 
   {
@@ -373,7 +372,7 @@ void Tracer::TraceOpImpl(const std::string& type,
       PADDLE_ENFORCE_EQ(
           passed_default_attrs_,
           nullptr,
-          paddle::platform::errors::PermissionDenied(
+          phi::errors::PermissionDenied(
               "We expect passed_default_attrs_ is nullptr while "
               "use_default_attr_map is true, however we got not null "
               "passed_default_attrs_. Please check your usage of trace_op. "));
@@ -391,7 +390,7 @@ template TEST_API void Tracer::TraceOp<VarBase>(
     const NameVarMap<VarBase>& ins,
     const NameVarMap<VarBase>& outs,
     framework::AttributeMap attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     bool trace_backward,
     const std::map<std::string, std::string>& inplace_map,
     paddle::framework::AttributeMap* default_attrs,
@@ -402,7 +401,7 @@ template void Tracer::TraceOp<egr::EagerVariable>(
     const NameVarMap<egr::EagerVariable>& ins,
     const NameVarMap<egr::EagerVariable>& outs,
     framework::AttributeMap attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     bool trace_backward,
     const std::map<std::string, std::string>& inplace_map_,
     paddle::framework::AttributeMap* default_attrs,
@@ -470,7 +469,7 @@ void Tracer::TraceOp(const std::string& type,
                                     default_attrs,
                                     use_default_attr_map);
 
-    auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+    auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     for (auto& iter : need_backup_inputs2outputs) {
       iter.first->ResetHolder(need_backup_inputs2holder[iter.first]);
       iter.first->set_strides(need_backup_inputs2strides[iter.first]);
@@ -613,7 +612,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
     framework::AttributeMap attrs) const {
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   framework::RuntimeContext ctx({}, {});
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(phi::CPUPlace());
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
@@ -638,7 +637,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
       dynamic_cast<framework::OperatorWithKernel*>(op.get());
   PADDLE_ENFORCE_NE(opbase_with_kernel,
                     nullptr,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "This op type:`%s` is not a OperatorWithKernel, only "
                         "OperatorWithKernel can get KernelSignature",
                         type));

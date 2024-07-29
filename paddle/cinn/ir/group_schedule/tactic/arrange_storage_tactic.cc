@@ -87,12 +87,12 @@ std::tuple<CudaAxisSpace, CudaAxisSpace> GetCudaAxisSpace(
                                   CudaAxisType::kCudaThread};
   PADDLE_ENFORCE_GT(var2for_map.count(block_name),
                     0,
-                    phi::errors::InvalidArgument("block_name not found"));
+                    ::common::errors::InvalidArgument("block_name not found"));
   for (const auto& var2for : var2for_map.at(block_name)) {
     const Expr& for_expr = var2for.second;
     const ir::For* for_node = for_expr.As<ir::For>();
     PADDLE_ENFORCE_NOT_NULL(
-        for_node, phi::errors::InvalidArgument("for_node is nullptr"));
+        for_node, ::common::errors::InvalidArgument("for_node is nullptr"));
     IntSet interval{
         for_node->min,
         common::AutoSimplify(for_node->min + for_node->extent - Expr(1))};
@@ -325,7 +325,7 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
       analyzer::GetIterValuesOfAccess(load, load_block);
   PADDLE_ENFORCE_EQ(iter_values_of_load.size(),
                     iter_values_of_store.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of iter values of store and load should be "
                         "the same"));
 
@@ -404,12 +404,12 @@ void ArrangeStorageTactic::Apply(ir::IRSchedule* sch,
     } else if (cross_type.value() == CudaAxisType::kCudaThread) {
       memory_type = ir::MemoryType::GPUShared;
     } else if (cross_type.value() == CudaAxisType::kCudaBlock) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "Fusion requires synchronization across blocks, but "
           "currently we do not support it."));
       break;
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Dead code"));
+      PADDLE_THROW(::common::errors::Fatal("Dead code"));
     }
   }
 

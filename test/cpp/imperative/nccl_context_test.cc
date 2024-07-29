@@ -42,7 +42,7 @@ void BcastNCCLId(int local_rank, std::vector<ncclUniqueId>* nccl_ids) {
   auto strategy = GetStrategy(local_rank);
   int server_fd = platform::CreateListenSocket(strategy.current_endpoint_);
 
-  platform::CUDAPlace gpu(local_rank);
+  phi::GPUPlace gpu(local_rank);
   imperative::NCCLParallelContext ctx(strategy, gpu);
   ctx.BcastNCCLId(*nccl_ids, 0, server_fd);
 
@@ -53,7 +53,7 @@ TEST(BcastNCCLId, Run) {
   std::vector<ncclUniqueId> nccl_ids;
   nccl_ids.resize(nrings);
   for (int i = 0; i < nrings; ++i) {
-    platform::dynload::ncclGetUniqueId(&nccl_ids[i]);
+    phi::dynload::ncclGetUniqueId(&nccl_ids[i]);
   }
 
   std::thread t(BcastNCCLId, 0, &nccl_ids);
@@ -61,7 +61,7 @@ TEST(BcastNCCLId, Run) {
   std::vector<ncclUniqueId> recv_nccl_ids;
   recv_nccl_ids.resize(nrings);
   for (int i = 0; i < nrings; ++i) {
-    platform::dynload::ncclGetUniqueId(&recv_nccl_ids[i]);
+    phi::dynload::ncclGetUniqueId(&recv_nccl_ids[i]);
   }
   BcastNCCLId(1, &recv_nccl_ids);
 
@@ -77,7 +77,7 @@ TEST(BcastNCCLId, Run) {
 void Broadcast(int local_rank, int device_id) {
   int data_size = 4;
   float test_data = 7;
-  const auto& place = platform::CUDAPlace(device_id);
+  const auto& place = phi::GPUPlace(device_id);
   phi::GPUContext ctx(place);
 
   imperative::NCCLParallelContext npc(GetStrategy(local_rank), place);

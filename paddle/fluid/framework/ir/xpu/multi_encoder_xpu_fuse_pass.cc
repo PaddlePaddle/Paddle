@@ -620,7 +620,7 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
 
 void MultiEncoderXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   int single_encoder_fused_counts = 0;
@@ -703,7 +703,7 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
       PADDLE_ENFORCE_GT(
           gelu_out_threshold,
           0.f,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "QUANT_GELU_OUT_THRESHOLD should be an positive float value: %f",
               gelu_out_threshold));
     }
@@ -779,7 +779,7 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
 
     phi::DenseTensor fc_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     fc_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
     fc_max_in_cpu_tensor.Resize({max_ptr_size});
     std::vector<float> output_scales(max_ptr_size, input_max[i]);
@@ -821,7 +821,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
       {q_w_t.dims()[0] + k_w_t.dims()[0] + v_w_t.dims()[0], q_w_t.dims()[1]}));
   qkv_w_intx_t.set_type(q_w_t.type());
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   paddle::experimental::CheckAndTrans2Contiguous(&q_w_t);
   paddle::experimental::CheckAndTrans2Contiguous(&k_w_t);
   paddle::experimental::CheckAndTrans2Contiguous(&v_w_t);
@@ -920,7 +920,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
           scope->FindVar(qkv_w_max_name),
-          platform::errors::Fatal(
+          common::errors::Fatal(
               "qkv_w_max(%s) variable should not be nullptr if qkv_w_intx(%s) "
               "variable is exist.",
               qkv_w_max_name,
@@ -928,18 +928,18 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
       if (is_per_channel) {
         PADDLE_ENFORCE_NOT_NULL(
             scope->FindVar(qkv_scale_max_name),
-            platform::errors::Fatal("qkv_scale_max(%s) variable should not be "
-                                    "nullptr if qkv_w_intx(%s) "
-                                    "variable is exist.",
-                                    qkv_scale_max_name,
-                                    qkv_w_intx_name));
+            common::errors::Fatal("qkv_scale_max(%s) variable should not be "
+                                  "nullptr if qkv_w_intx(%s) "
+                                  "variable is exist.",
+                                  qkv_scale_max_name,
+                                  qkv_w_intx_name));
       }
     }
   } else {
     *qkv_w_max = FindNodeWithName(graph, qkv_w_max_name);
     PADDLE_ENFORCE_NOT_NULL(
         *qkv_w_max,
-        platform::errors::Fatal(
+        common::errors::Fatal(
             "qkv_w_max(%s) variable should not be nullptr if qkv_w_intx(%s) "
             "variable is exist.",
             qkv_w_max_name,
@@ -972,7 +972,7 @@ void MultiEncoderXPUFusePass::PrepareQKVBias(Graph* graph,
   qkv_bias_tensor.Resize(DDim({q_bias_fp32_size * 3}));
   qkv_bias_tensor.set_type(phi::DataType::FLOAT32);
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   auto* qkv_bias_data = cpu_ctx->Alloc<float>(&qkv_bias_tensor);
   memcpy(qkv_bias_data,
          q_bias_fp32_tensor.data(),
@@ -1359,10 +1359,21 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
                        {q_cos_embedding->Name(), q_sin_embedding->Name()});
       op_desc.SetAttr("relative_type", 1);
       auto q_cos_emb_shape = q_cos_embedding->Var()->GetShape();
-      CHECK_GE(static_cast<int>(q_cos_emb_shape.size()), 2)
-          << q_cos_emb_shape.size();
+      PADDLE_ENFORCE_GE(static_cast<int>(q_cos_emb_shape.size()),
+                        2,
+                        phi::errors::InvalidArgument(
+                            "The rank of q_cos_embedding should be greater "
+                            "than or equal to 2"));
+
       auto size_per_head = q_reshape_out->Var()->GetShape()[3];
-      CHECK_EQ(size_per_head, q_cos_emb_shape[q_cos_emb_shape.size() - 1]);
+      PADDLE_ENFORCE_EQ(
+          size_per_head,
+          q_cos_emb_shape[q_cos_emb_shape.size() - 1],
+          phi::errors::InvalidArgument(
+              "The last dimension of q_cos_embedding should be %d "
+              "equal to size_per_head, but received %d.",
+              size_per_head,
+              q_cos_emb_shape[q_cos_emb_shape.size() - 1]));
       int max_pos_len = q_cos_emb_shape[q_cos_emb_shape.size() - 2];
       VLOG(3) << "relative embedding max sequence len: " << max_pos_len;
       op_desc.SetAttr("max_pos_len", max_pos_len);

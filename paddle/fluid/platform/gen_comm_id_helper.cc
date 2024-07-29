@@ -61,7 +61,7 @@ struct CommHead {
   do {                                                      \
     RETRY_SYS_CALL_VAL(call, name, retval);                 \
     if (retval == -1) {                                     \
-      PADDLE_THROW(phi::errors::Unavailable(                \
+      PADDLE_THROW(common::errors::Unavailable(             \
           "Call to %s failed: %s", name, strerror(errno))); \
     }                                                       \
   } while (false)
@@ -125,10 +125,10 @@ static void BindOrConnectFailed(int timeout,
   PADDLE_ENFORCE_LT(
       *total_time,
       timeout,
-      phi::errors::Unavailable("%s addr=%s timeout, failed reason: %s",
-                               op,
-                               ep.c_str(),
-                               strerror(errno)));
+      common::errors::Unavailable("%s addr=%s timeout, failed reason: %s",
+                                  op,
+                                  ep.c_str(),
+                                  strerror(errno)));
   ++(*try_times);
   int retry_time = std::min(*try_times * 500, 3000);  // max 3 seconds
   *total_time += retry_time;
@@ -144,7 +144,7 @@ int CreateListenSocket(const std::string& ep) {
   PADDLE_ENFORCE_EQ(
       addr.size(),
       2UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
@@ -250,7 +250,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
   PADDLE_ENFORCE_EQ(
       addr.size(),
       2UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
@@ -273,7 +273,8 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
     LOG(WARNING) << "gethostbyname " << host.c_str() << " error!";
   }
   PADDLE_ENFORCE_NOT_NULL(
-      hp, phi::errors::InvalidArgument("Fail to get host by name %s.", host));
+      hp,
+      common::errors::InvalidArgument("Fail to get host by name %s.", host));
 
   int i = 0;
   while (hp->h_addr_list[i] != nullptr) {
@@ -284,7 +285,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
 
   PADDLE_ENFORCE_GT(inet_pton(AF_INET, ip, &server_addr.sin_addr),
                     0,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Open address %s failed: %s", ep, strerror(errno)));
 
   static_assert(sizeof(CommHead) <= 1024,
@@ -476,11 +477,11 @@ SocketServer& SocketServer::GetInstance(const std::string& end_point) {
   });
   PADDLE_ENFORCE_NE(instance.server_fd_,
                     -1,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "listen socket failed with end_point=%s", end_point));
   PADDLE_ENFORCE_EQ(instance.end_point_,
                     end_point,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "old end_point=%s must equal with new end_point=%s",
                         instance.end_point_,
                         end_point));

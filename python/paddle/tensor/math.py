@@ -6346,6 +6346,8 @@ def diff(
             attrs_2 = ()
 
             dim_len = new_input.shape[axis]
+            if dim_len < 0:
+                dim_len = paddle.shape(new_input)[axis]
 
             starts_1 = [0]
             attrs_1 += ('starts', starts_1)
@@ -7521,7 +7523,7 @@ def ldexp_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if not isinstance(y, (paddle.Tensor, Variable)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
     if x.dtype == paddle.float64 or y.dtype == paddle.float64:
-        out_dtype = paddle.float64
+        out_dtype = "float64"
     else:
         out_dtype = paddle.get_default_dtype()
     x = paddle.cast_(x, dtype=out_dtype)
@@ -7614,7 +7616,7 @@ def bitwise_left_shift(
                 [[2  , 8  , 32 , 128],
                     [64 , 136, 128, 130]])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_left_shift(x, y, is_arithmetic)
     return _bitwise_op(
         op_name="bitwise_left_shift",
@@ -7701,7 +7703,7 @@ def bitwise_right_shift(
                 [[123, 59 , 27 , 11 ],
                     [60 , 29 , 56 , 95 ]])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_right_shift(x, y, is_arithmetic)
 
     return _bitwise_op(

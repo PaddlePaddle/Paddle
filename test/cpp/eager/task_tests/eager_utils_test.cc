@@ -101,7 +101,7 @@ TEST(EagerUtils, AutoGradMeta) {
 }
 
 template <typename T>
-paddle::Tensor CreateTestCPUTensor(T val, const paddle::framework::DDim& ddim) {
+paddle::Tensor CreateTestCPUTensor(T val, const phi::DDim& ddim) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, ddim);
   paddle::Tensor tensor;
@@ -166,7 +166,7 @@ TEST(EagerUtils, PassStopGradient) {
 }
 
 TEST(EagerUtils, TrySyncToVar) {
-  paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
+  phi::DDim ddim = common::make_ddim({2, 4, 4, 4});
   auto tensor = CreateTestCPUTensor(5.0f, ddim);
   std::vector<std::shared_ptr<egr::EagerVariable>> var_bases = {
       egr::EagerUtils::TrySyncToVar(tensor)};
@@ -184,7 +184,7 @@ TEST(EagerUtils, TrySyncToVar) {
 }
 
 TEST(EagerUtils, TrySyncToVars) {
-  paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
+  phi::DDim ddim = common::make_ddim({2, 4, 4, 4});
   std::vector<paddle::Tensor> tensors = {CreateTestCPUTensor(1.0f, ddim),
                                          CreateTestCPUTensor(2.0f, ddim)};
 

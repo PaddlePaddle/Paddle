@@ -412,7 +412,7 @@ void FleetWrapper::PullDenseVarsSync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    if (!platform::is_gpu_place(tensor->place())) {
+    if (!phi::is_gpu_place(tensor->place())) {
       float* w = tensor->data<float>();
       ::paddle::distributed::Region reg(w, tensor->numel());
       regions.emplace_back(std::move(reg));
@@ -426,13 +426,13 @@ void FleetWrapper::PushDenseParamSync(
     const Scope& scope,
     const uint64_t table_id,
     const std::vector<std::string>& var_names) {
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<::paddle::distributed::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    if (!platform::is_gpu_place(tensor->place())) {
+    if (!phi::is_gpu_place(tensor->place())) {
       float* g = tensor->mutable_data<float>(place);
       ::paddle::distributed::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));
@@ -457,7 +457,7 @@ void FleetWrapper::PushDenseVarsAsync(
     std::vector<std::future<int32_t>>* push_sparse_status,
     float scale_datanorm,
     int batch_size) {
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   std::vector<::paddle::distributed::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);

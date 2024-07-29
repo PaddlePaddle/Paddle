@@ -23,7 +23,6 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
@@ -106,8 +105,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     CHECK(!args.empty())
         << "The input arguments of Repeat compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 1U)
-        << "at least 1 input tensors for Repeat compute\n";
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "at least 1 input tensors for Repeat compute\n"));
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());

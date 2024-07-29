@@ -140,7 +140,7 @@ TEST(LoD, SplitLoDTensor) {
   }
   lod_tensor.set_lod(lod);
 
-  std::vector<platform::Place> places{phi::CPUPlace(), phi::CPUPlace()};
+  std::vector<phi::Place> places{phi::CPUPlace(), phi::CPUPlace()};
   LoD lod0;
   lod0.push_back(std::vector<size_t>({0, 2, 4}));
   lod0.push_back(std::vector<size_t>({0, 1, 6, 8, 13}));
@@ -163,7 +163,7 @@ TEST(LoD, SplitLoDTensorWithZeroBatchSize) {
   lod_tensor.mutable_data<float>(place);
   lod_tensor.set_lod(lod);
 
-  std::vector<platform::Place> places{phi::CPUPlace(), phi::CPUPlace()};
+  std::vector<phi::Place> places{phi::CPUPlace(), phi::CPUPlace()};
   LoD lod_res;
   lod_res.push_back(std::vector<size_t>({0}));
 

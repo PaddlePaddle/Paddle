@@ -135,18 +135,24 @@ GetThreadPool(int thread_num) {
 }
 // call only after all resources are set in current trainer
 void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                  const platform::Place& place) {
+                                  const phi::Place& place) {
   // multi thread load
   auto pool = GetThreadPool(thread_num_);
   std::vector<std::future<void>> wait_futures;
-  CHECK_EQ(static_cast<int>(pool.size()), thread_num_);
+  PADDLE_ENFORCE_EQ(
+      static_cast<int>(pool.size()),
+      thread_num_,
+      phi::errors::InvalidArgument("static_cast<int>(pool.size()) is invalid, "
+                                   "expected %d but received %d",
+                                   thread_num_,
+                                   static_cast<int>(pool.size())));
   for (int i = 0; i < thread_num_; ++i) {
     wait_futures.emplace_back(pool[i]->Run([this, i, &main_program, &place]() {
 #ifdef PADDLE_WITH_HETERPS
       workers_[i]->SetPlace(places_[i]);
       workers_[i]->SetReaderPlace(places_[i]);
       workers_[i]->SetDeviceContext(
-          platform::DeviceContextPool::Instance().Get(places_[i]));
+          phi::DeviceContextPool::Instance().Get(places_[i]));
 #else
       workers_[i]->SetPlace(place);
       workers_[i]->SetReaderPlace(place);
@@ -232,7 +238,13 @@ void MultiTrainer::Run() {
   VLOG(3) << "Going to run";
   auto pool = GetThreadPool(thread_num_);
   std::vector<std::future<void>> wait_futures;
-  CHECK_EQ(static_cast<int>(pool.size()), thread_num_);
+  PADDLE_ENFORCE_EQ(
+      static_cast<int>(pool.size()),
+      thread_num_,
+      phi::errors::InvalidArgument("static_cast<int>(pool.size()) is invalid, "
+                                   "expected %d but received %d",
+                                   thread_num_,
+                                   static_cast<int>(pool.size())));
   for (int i = 0; i < thread_num_; ++i) {
     if (!debug_) {
       wait_futures.emplace_back(
@@ -375,7 +387,7 @@ void MultiTrainer::ResetDataset(Dataset* dataset) {
   // change thread num is not supported
   PADDLE_ENFORCE_EQ(thread_num_,
                     readers.size(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "change Dataset thread_num is not supported"));
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->SetDataFeed(readers[i]);

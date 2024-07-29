@@ -91,6 +91,20 @@ if TYPE_CHECKING:
     from paddle._typing import NestedStructure
     from paddle.static import InputSpec
 
+    class _SaveOptions(TypedDict):
+        output_spec: NotRequired[Sequence[InputSpec]]
+        with_hook: NotRequired[bool]
+        combine_params: NotRequired[bool]
+        clip_extra: NotRequired[bool]
+        skip_forward: NotRequired[bool]
+        input_names_after_prune: NotRequired[list[str]]
+        skip_prune_program: NotRequired[bool]
+
+    class _LoadOptions(TypedDict):
+        model_filename: NotRequired[str]
+        params_filename: NotRequired[str]
+
+
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 
 
@@ -493,17 +507,7 @@ class _SaveLoadConfig:
         self._keep_name_table = value
 
 
-class _SaveLoadOptions(TypedDict):
-    output_spec: NotRequired[Sequence[InputSpec]]
-    with_hook: NotRequired[bool]
-    combine_params: NotRequired[bool]
-    clip_extra: NotRequired[bool]
-    skip_forward: NotRequired[bool]
-    input_names_after_prune: NotRequired[list[str]]
-    skip_prune_program: NotRequired[bool]
-
-
-def _parse_save_configs(configs: _SaveLoadOptions):
+def _parse_save_configs(configs: _SaveOptions) -> _SaveLoadConfig:
     supported_configs = [
         "output_spec",
         "with_hook",
@@ -536,7 +540,7 @@ def _parse_save_configs(configs: _SaveLoadOptions):
     return inner_config
 
 
-def _parse_load_config(configs):
+def _parse_load_config(configs: _LoadOptions) -> _SaveLoadConfig:
     supported_configs = ['model_filename', 'params_filename']
 
     # input check
@@ -877,7 +881,7 @@ class _SaveFunction(Protocol):
         layer: Layer | Callable[..., Any],
         path: str,
         input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = ...,
-        **configs: Unpack[_SaveLoadOptions],
+        **configs: Unpack[_SaveOptions],
     ) -> None:
         ...
 
@@ -888,7 +892,7 @@ def _run_save_pre_hooks(func: _SaveFunction) -> _SaveFunction:
         layer: Layer | Callable[..., Any],
         path: str,
         input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
-        **configs: Unpack[_SaveLoadOptions],
+        **configs: Unpack[_SaveOptions],
     ) -> None:
         global _save_pre_hooks
         for hook in _save_pre_hooks:
@@ -931,13 +935,26 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
         f.write(meta.serialize_to_string())
 
 
+def _get_function_names_from_layer(layer: Layer) -> list[str]:
+    cls = layer.__class__
+    return [
+        member_name
+        for member_name, member in inspect.getmembers(cls)
+        if (
+            inspect.isfunction(member)
+            or inspect.ismethod(member)
+            or inspect.ismethoddescriptor(member)
+        )
+    ]
+
+
 @_run_save_pre_hooks
 @switch_to_static_graph
 def save(
     layer: Layer | Callable[..., Any],
     path: str,
     input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
-    **configs: Unpack[_SaveLoadOptions],
+    **configs: Unpack[_SaveOptions],
 ) -> None:
     """
     Saves input Layer or function as ``paddle.jit.TranslatedLayer``
@@ -1001,7 +1018,7 @@ def save(
             >>> CLASS_NUM = 10
 
             >>> # define a random dataset
-            >>> class RandomDataset(paddle.io.Dataset):
+            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -1124,11 +1141,11 @@ def save(
     inner_input_spec = None
     if input_spec is not None:
         if isinstance(layer, Layer):
-            for attr_func in dir(inner_layer):
-                static_func = getattr(inner_layer, attr_func, None)
+            for member_name in _get_function_names_from_layer(inner_layer):
+                static_func = getattr(inner_layer, member_name, None)
                 if (
                     isinstance(static_func, StaticFunction)
-                    and 'forward' != attr_func
+                    and 'forward' != member_name
                 ):
                     raise ValueError(
                         f"If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is {type(input_spec)}."
@@ -1164,15 +1181,13 @@ def save(
     scope = core.Scope()
     extra_var_info = {}
     if isinstance(layer, Layer):
-        functions = list(set(dir(inner_layer)))
+        functions = list(set(_get_function_names_from_layer(inner_layer)))
         functions = sorted(functions)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
             with_hook = True
     else:
         # layer is function
-        functions = [
-            layer,
-        ]
+        functions = [layer]
 
     combine_vars = {}
     combine_program = []
@@ -1506,7 +1521,7 @@ def save(
 
 @dygraph_only
 def load(
-    path: str, **configs: Unpack[_SaveLoadOptions]
+    path: str, **configs: Unpack[_LoadOptions]
 ) -> TranslatedLayer | PirTranslatedLayer:
     """
     :api_attr: imperative
@@ -1559,7 +1574,7 @@ def load(
                 >>> CLASS_NUM = 10
 
                 >>> # define a random dataset
-                >>> class RandomDataset(paddle.io.Dataset):
+                >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
                 ...
@@ -1652,7 +1667,7 @@ def load(
                 >>> CLASS_NUM = 10
 
                 >>> # define a random dataset
-                >>> class RandomDataset(paddle.io.Dataset):
+                >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
                 ...

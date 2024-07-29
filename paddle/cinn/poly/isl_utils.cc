@@ -60,7 +60,7 @@ void isl_set_dim_names(isl::map *map,
   PADDLE_ENFORCE_EQ(
       dim,
       names.size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of names should be equal to the dimension of the map."));
 
   for (int i = 0; i < dim; i++) {
@@ -74,7 +74,7 @@ void isl_set_dim_names(isl::set *set, const std::vector<std::string> &names) {
   PADDLE_ENFORCE_EQ(
       dim,
       names.size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of names should be equal to the dimension of the set."));
 
   for (int i = 0; i < dim; i++) {
@@ -133,7 +133,7 @@ isl::set SetGetDims(isl::set set, const std::vector<int> &dims) {
     PADDLE_ENFORCE_LT(
         v,
         dim_names.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The dim index should be less than the size of dim names."));
     selected_dim_names.push_back(dim_names[v]);
   }
@@ -153,7 +153,7 @@ isl_set *isl_get_preceding_axis(isl_set *set, int level, bool with_tuple_name) {
   PADDLE_ENFORCE_LT(
       level,
       n,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The level should be less than the dimension of the set."));
 
   std::vector<std::string> domain_iterators;
@@ -244,12 +244,12 @@ int isl_max_level_compatible(isl_set *a, isl_set *b) {
   PADDLE_ENFORCE_GE(
       an,
       0,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The dimension of the set should be greater than or equal to 0."));
   PADDLE_ENFORCE_GE(
       bn,
       0,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The dimension of the set should be greater than or equal to 0."));
 
   int compatible_level = -1;

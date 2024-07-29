@@ -22,7 +22,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/stream.h"
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -54,26 +54,24 @@ class AllocatorFacade {
   AllocatorFacadePrivate* GetPrivate() const;
 
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
-      const platform::Place& place);
+      const phi::Place& place);
 
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
-  const std::shared_ptr<Allocator>& GetZeroAllocator(
-      const platform::Place& place);
+  const std::shared_ptr<Allocator>& GetZeroAllocator(const phi::Place& place);
 
   // Allocate a shared allocation.
-  std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
-                                          size_t size);
+  std::shared_ptr<Allocation> AllocShared(const phi::Place& place, size_t size);
   // Allocate a unique allocation.
-  AllocationPtr Alloc(const platform::Place& place, size_t size);
+  AllocationPtr Alloc(const phi::Place& place, size_t size);
   // Release unused memory pool.
-  uint64_t Release(const platform::Place& place);
+  uint64_t Release(const phi::Place& place);
 
-  std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
+  std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                           size_t size,
                                           const phi::Stream& stream);
 
-  AllocationPtr Alloc(const platform::Place& place,
+  AllocationPtr Alloc(const phi::Place& place,
                       size_t size,
                       const phi::Stream& stream);
 
@@ -90,12 +88,12 @@ class AllocatorFacade {
   void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
-      const platform::Place& place, gpuStream_t stream);
+      const phi::Place& place, gpuStream_t stream);
   gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
   void SetDefaultStream(const phi::GPUPlace& place, gpuStream_t stream);
 #elif defined(PADDLE_WITH_XPU)
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
-      const platform::Place& place, XPUStream stream);
+      const phi::Place& place, XPUStream stream);
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -108,7 +106,7 @@ class AllocatorFacade {
   void RecordStream(std::shared_ptr<Allocation> allocation,
                     phi::stream::stream_t stream);
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
-      const platform::Place& place, phi::stream::stream_t stream);
+      const phi::Place& place, phi::stream::stream_t stream);
   phi::stream::stream_t GetStream(
       const std::shared_ptr<Allocation>& allocation) const;
   void SetDefaultStream(const phi::CustomPlace& place,

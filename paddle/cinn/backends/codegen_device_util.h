@@ -47,6 +47,12 @@ namespace backends {
  */
 std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module);
 
+ir::Module CreateSwitchWithBroadcastConditionModule(
+    const std::vector<ir::Expr>& broadcast_conditions,
+    const std::vector<std::string>& case_func_names,
+    const std::string& wrapper_func_name,
+    const std::unordered_map<int, ir::Var>& symbolic_shape_var_index);
+
 namespace detail {
 
 struct CollectHostFunctionVisitor : public ir::IRMutator<> {
@@ -124,7 +130,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
 #endif
         },
         [&](common::HygonDCUArchHIP) {
-          PADDLE_THROW(phi::errors::Unimplemented(
+          PADDLE_THROW(::common::errors::Unimplemented(
               "CINN todo: new hardware HygonDCUArchHIP"));
         });
 
@@ -146,7 +152,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },
         [&](common::HygonDCUArchHIP) {
-          PADDLE_THROW(phi::errors::Unimplemented(
+          PADDLE_THROW(::common::errors::Unimplemented(
               "CINN todo: new hardware HygonDCUArchHIP"));
         });
 
@@ -220,12 +226,12 @@ struct CollectBucketStrategyHostFunctionVisitor
     PADDLE_ENFORCE_EQ(
         op->functions.size(),
         op->predicates.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of functions and predicates should be equal"));
     PADDLE_ENFORCE_EQ(
         op->functions.size(),
         op->priorities.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of functions and priorities should be equal"));
     // Sort funcitons and predicates according to the priority
     std::vector<std::pair<Expr, Expr>> func_predicate;

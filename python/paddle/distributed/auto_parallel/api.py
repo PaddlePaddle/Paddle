@@ -1327,6 +1327,14 @@ class ShardingStage3(_ShardingStageBase):
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
             if 'beta' not in key:
                 placements = param.placements
+                if all(
+                    isinstance(placement, dist.Replicate)
+                    for placement in placements
+                ):
+                    placements = get_placement_with_sharding(
+                        param, self._sharding_mesh_axis
+                    )
+
             else:
                 placements = [
                     dist.Replicate()
@@ -2186,9 +2194,7 @@ class DistModel:
         for feed_item in list(args):
             if isinstance(feed_item, (list, tuple)):
                 feed_list += list(feed_item)
-            elif isinstance(feed_item, paddle.Tensor):
-                feed_list += [feed_item]
-            elif isinstance(feed_item, core.LoDTensor):
+            elif isinstance(feed_item, (paddle.Tensor, core.LoDTensor)):
                 feed_list += [feed_item]
             else:
                 raise TypeError(
@@ -2236,10 +2242,19 @@ class DistModel:
                 'all' : The return value contains the variable in the network and optimizer.
                 Default: 'all'
         """
-        local_state_dict = self.dist_main_program(
-            mode=self._engine._mode
-        ).state_dict(mode)
+
+        if use_pir_api():
+            scope = paddle.static.global_scope()
+            local_state_dict = self._engine._pir_dist_main_progs[
+                self._engine._mode
+            ].state_dict(mode, scope)
+        else:
+            local_state_dict = self.dist_main_program(
+                mode=self._engine._mode
+            ).state_dict(mode)
+
         dist_state_dict = self._build_distributed_state_dict(local_state_dict)
+
         mapping_names = [
             (
                 self._parameter_to_structured_name[k]
@@ -2258,10 +2273,18 @@ class DistModel:
         Args:
             local_state_dict(Dict[str, libpaddle.Tensor]): The state dict from program.
         """
-        dist_main_program = self.dist_main_program(mode=self._engine._mode)
-        dist_context = self._engine._dist_contexts[self._mode]
-        # Dict[var.name, Dict["process_shape": process_mesh.shape, "process_group": process_mesh.process_ids, "dims_mapping": dims_mapping]]
-        dist_attrs = get_dist_attr(dist_main_program, dist_context)
+        if use_pir_api():
+            dist_main_program = self._engine._pir_dist_main_progs[
+                self._engine._mode
+            ]
+            dist_attrs = get_dist_attr(dist_main_program)
+
+        else:
+            dist_main_program = self.dist_main_program(mode=self._engine._mode)
+            # Dict[var.name, Dict["process_shape": process_mesh.shape, "process_group": process_mesh.process_ids, "dims_mapping": dims_mapping]]
+            dist_attrs = get_dist_attr(
+                dist_main_program, self._engine._dist_contexts[self._mode]
+            )
 
         def build_distributed_tensor(local_tensor, dist_attr):
             assert isinstance(
@@ -2276,18 +2299,6 @@ class DistModel:
                 dist_attr["dims_mapping"]
             ), f"local tensor shape {local_tensor.shape} not equal to dims_mapping shape {dist_attr['dims_mapping']}."
             global_shape = local_tensor.shape
-            for i, dim in enumerate(dist_attr["dims_mapping"]):
-                assert dim >= -1 and dim < len(
-                    local_tensor.shape
-                ), f"dim {dim} out of range."
-                if dim == -1:
-                    continue
-                elif dim >= 0:
-                    global_shape[i] = (
-                        dist_attr["process_shape"][dim] * local_tensor.shape[i]
-                    )
-                else:
-                    raise ValueError(f"dim {dim} is not supported.")
             mesh = ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
                     dist_attr["process_shape"]
@@ -2378,7 +2389,7 @@ def to_static(
             >>> BATCH_NUM = 4
             >>> IMAGE_SIZE = 16
             >>> CLASS_NUM = 8
-            >>> class RandomDataset(paddle.io.Dataset):
+            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self, images, labels, num_samples):
             ...         self.images = images
             ...         self.labels = labels
@@ -2801,8 +2812,12 @@ class ShardDataloader:
             if self._all_inputs_in_one_mesh is False:
                 assert len(self._input_keys) == len(self._meshes)
             dist_batch_data = {}
-            for i in range(len(self._input_keys)):
-                key = self._input_keys[i]
+            input_keys = (
+                batch_data.keys()
+                if self._input_keys is None
+                else self._input_keys
+            )
+            for i, key in enumerate(input_keys):
                 input_data = batch_data[key]
                 if isinstance(input_data, (list, tuple)):
                     (
@@ -2885,7 +2900,7 @@ def shard_dataloader(
 
             >>> paddle.seed(1024)
             >>> np.random.seed(1024)
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset): # type: ignore[type-arg]
             >>>     def __init__(self, seq_len, hidden, num_samples=8):
             ...         super().__init__()
             ...         self.seq_len = seq_len
@@ -2904,10 +2919,10 @@ def shard_dataloader(
             ...     def __init__(self):
             ...         super(MlpModel, self).__init__()
             ...         self.w0 = dist.shard_tensor(
-            ...             self.create_parameter(shape=[HIDDLE_SIZE, HIDDLE_SIZE]),
+            ...             self.create_parameter(shape=[8, 8]),
             ...             mesh0, [dist.Replicate(), dist.Shard(1)])
             ...         self.w1 = dist.shard_tensor(
-            ...             self.create_parameter(shape=[HIDDLE_SIZE, HIDDLE_SIZE]),
+            ...             self.create_parameter(shape=[8, 8]),
             ...             mesh1, [dist.Replicate(), dist.Shard(0)])
 
             ...     def forward(self, x):
@@ -2978,7 +2993,7 @@ def shard_dataloader(
             >>> import numpy as np
             >>> mesh0 = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['dp', 'mp'])
             >>> mesh1 = dist.ProcessMesh([[4, 5], [6, 7]], dim_names=['dp', 'mp'])
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset): # type: ignore[type-arg]
             ...     def __init__(self, seq_len, hidden, num_samples=8):
             ...         super().__init__()
             ...         self.seq_len = seq_len

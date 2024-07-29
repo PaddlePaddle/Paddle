@@ -63,7 +63,7 @@ std::vector<T> GetVectorFromIntArrayAttribute(
   if (vector_attr.size() > 0) {
     PADDLE_ENFORCE_EQ(vector_attr[0].isa<::pir::Int64Attribute>(),
                       true,
-                      phi::errors::Unimplemented(
+                      ::common::errors::Unimplemented(
                           "the 0th elementwise MUST be ir::Int64Attribute"));
     for (size_t i = 0; i < vector_attr.size(); ++i) {
       result.push_back(vector_attr[i].dyn_cast<::pir::Int64Attribute>().data());
@@ -201,8 +201,10 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
       FullOp full_op = CastDefinedTo<FullOp>(op, 1);
       // scale is generator by full op
       // get attribute value from full op
-      auto scale_value =
-          full_op.attribute("value").dyn_cast<pir::FloatAttribute>().data();
+      auto scale_value = full_op.attribute("value")
+                             .dyn_cast<paddle::dialect::ScalarAttribute>()
+                             .data()
+                             .to<double>();
 
       auto cinn_scale = rewriter.Build<cinn::dialect::ScaleOp>(
           op->operand_source(0),
@@ -259,7 +261,7 @@ class ReshapeOpPattern
     if (out_shape_attr.size() > 0) {
       PADDLE_ENFORCE_EQ(out_shape_attr[0].isa<::pir::Int64Attribute>(),
                         true,
-                        phi::errors::Unimplemented(
+                        ::common::errors::Unimplemented(
                             "the 0th elementwise MUST be ir::Int64Attribute"));
       for (size_t i = 0; i < out_shape_attr.size(); ++i) {
         vec_out_shape.push_back(
@@ -360,11 +362,13 @@ class IsCloseOpPattern
     const FullOp atol_full_op = CastDefinedTo<FullOp>(op, 3);
 
     auto rtol_val = rtol_full_op.attribute("value")
-                        .dyn_cast<::pir::FloatAttribute>()
-                        .data();
+                        .dyn_cast<paddle::dialect::ScalarAttribute>()
+                        .data()
+                        .to<double>();
     auto atol_val = atol_full_op.attribute("value")
-                        .dyn_cast<::pir::FloatAttribute>()
-                        .data();
+                        .dyn_cast<paddle::dialect::ScalarAttribute>()
+                        .data()
+                        .to<double>();
     auto equal_nan =
         op->attribute("equal_nan").dyn_cast<::pir::BoolAttribute>().data();
 
@@ -429,9 +433,11 @@ class ConcatOpPattern
   void Rewrite(paddle::dialect::ConcatOp op,
                pir::PatternRewriter &rewriter) const override {
     const FullOp axis_full_op = CastDefinedTo<FullOp>(op, 1);
-    int axis = static_cast<int>(axis_full_op.attribute("value")
-                                    .dyn_cast<::pir::FloatAttribute>()
-                                    .data());
+    int axis =
+        static_cast<int>(axis_full_op.attribute("value")
+                             .dyn_cast<paddle::dialect::ScalarAttribute>()
+                             .data()
+                             .to<double>());
     auto input_ops = op->operand_source(0)
                          .defining_op()
                          ->dyn_cast<pir::CombineOp>()
@@ -489,8 +495,10 @@ class ElementwisePowOpPattern
     auto y_op = op->operand_source(1)
                     .defining_op()
                     ->dyn_cast<paddle::dialect::FullOp>();
-    auto factor =
-        y_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data();
+    auto factor = y_op.attribute("value")
+                      .dyn_cast<paddle::dialect::ScalarAttribute>()
+                      .data()
+                      .to<double>();
     if (factor == 2.0) {
       auto multiply = rewriter.Build<paddle::dialect::MultiplyOp>(
           op->operand_source(0), op->operand_source(0));
@@ -555,8 +563,11 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
   int GetAxis(paddle::dialect::SplitOp op) const {
     auto axis_gen_op = op->operand_source(2).defining_op();
     auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
-    int axis = static_cast<int>(
-        full_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data());
+    int axis =
+        static_cast<int>(full_op.attribute("value")
+                             .dyn_cast<paddle::dialect::ScalarAttribute>()
+                             .data()
+                             .to<double>());
     if (axis < 0) {
       axis += op.x()
                   .type()
@@ -659,8 +670,11 @@ class SplitWithNumOpPattern
   int GetAxis(paddle::dialect::SplitWithNumOp op) const {
     auto axis_gen_op = op->operand_source(1).defining_op();
     auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
-    int axis = static_cast<int>(
-        full_op.attribute<::pir::FloatAttribute>("value").data());
+    int axis =
+        static_cast<int>(full_op.attribute("value")
+                             .dyn_cast<paddle::dialect::ScalarAttribute>()
+                             .data()
+                             .to<double>());
     if (axis < 0) {
       axis += op.x()
                   .type()
@@ -884,7 +898,7 @@ class SqueezeOpPattern
           PADDLE_ENFORCE_EQ(
               in_shape[i],
               1,
-              phi::errors::PreconditionNotMet(
+              ::common::errors::PreconditionNotMet(
                   "sequeze dim MUST be 1, but recive axis [%d] is [%d]",
                   i,
                   in_shape[i]));
@@ -1097,12 +1111,14 @@ class GatherOpPattern
       auto axis_gen_op = op.operand_source(2).defining_op();
       PADDLE_ENFORCE_EQ(axis_gen_op->isa<paddle::dialect::FullOp>(),
                         true,
-                        ::phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "Not Supported: The gather operator for CINN "
                             "only supports constant value"));
       auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
-      return static_cast<int>(
-          full_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data());
+      return static_cast<int>(full_op.attribute("value")
+                                  .dyn_cast<paddle::dialect::ScalarAttribute>()
+                                  .data()
+                                  .to<double>());
     }();
     auto out =
         rewriter.Build<cinn::dialect::GatherOp>(x, index, axis)->result(0);

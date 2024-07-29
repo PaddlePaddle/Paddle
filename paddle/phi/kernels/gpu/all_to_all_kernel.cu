@@ -73,8 +73,7 @@ void AllToAllKernel(const Context& dev_ctx,
   }
   comm_ctx->GroupEnd();
 #else
-  PADDLE_THROW(
-      platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+  PADDLE_THROW(phi::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
 #else
   PADDLE_THROW(
@@ -84,7 +83,8 @@ void AllToAllKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(all_to_all,
                    GPU,
                    ALL_LAYOUT,

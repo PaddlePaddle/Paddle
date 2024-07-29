@@ -115,6 +115,10 @@ def pow_net(x):
     return paddle.pow(x, 3.2)
 
 
+def softmax_net(x):
+    return paddle.nn.functional.softmax(x, axis=-1)
+
+
 def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
@@ -1326,6 +1330,42 @@ class TestPrimPowWithGrad(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, 30]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = pow_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSoftmaxWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = softmax_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSoftmaxWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = softmax_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSoftmaxWithGrad3(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [30, 200, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = softmax_net
         self.enable_cinn = False
         self.tol = 1e-6
 

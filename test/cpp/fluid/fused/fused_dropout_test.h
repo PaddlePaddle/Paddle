@@ -46,7 +46,7 @@ using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
  */
 template <typename T>
 void Dropout(const std::vector<T> &x,
-             const framework::DDim &x_dim,
+             const phi::DDim &x_dim,
              std::vector<T> *out,
              std::vector<uint8_t> *mask,
              const phi::GPUContext &ctx,
@@ -94,7 +94,7 @@ void Dropout(const std::vector<T> &x,
  */
 template <typename T>
 void DropoutGrad(std::vector<T> *dx,
-                 const framework::DDim &x_dim,
+                 const phi::DDim &x_dim,
                  const std::vector<T> &dout,
                  const std::vector<uint8_t> &mask,
                  const phi::GPUContext &ctx,
