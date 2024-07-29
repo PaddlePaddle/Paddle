@@ -324,7 +324,7 @@ void CrossAttentionXPUFusePass::PrepareQKVWeight(Graph* graph,
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
           scope->FindVar(w_max_name),
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "w_max(%s) variable should not be nullptr if real_w(%s) "
               "variable is exist.",
               w_max_name,
@@ -334,7 +334,7 @@ void CrossAttentionXPUFusePass::PrepareQKVWeight(Graph* graph,
     *w_max = FindNodeWithName(graph, w_max_name);
     PADDLE_ENFORCE_NOT_NULL(
         *w_max,
-        phi::errors::Fatal(
+        common::errors::Fatal(
             "w_max(%s) variable should not be nullptr if real_w(%s) "
             "variable is exist.",
             w_max_name,
@@ -645,7 +645,7 @@ void CrossAttentionXPUFusePass::ApplyCrossAttentionXPUFuse(
 
 void CrossAttentionXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   for (auto with_q_scale : {true, false}) {

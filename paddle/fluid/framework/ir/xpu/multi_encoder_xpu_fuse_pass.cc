@@ -620,7 +620,7 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
 
 void MultiEncoderXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   int single_encoder_fused_counts = 0;
@@ -703,7 +703,7 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
       PADDLE_ENFORCE_GT(
           gelu_out_threshold,
           0.f,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "QUANT_GELU_OUT_THRESHOLD should be an positive float value: %f",
               gelu_out_threshold));
     }
@@ -920,7 +920,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
           scope->FindVar(qkv_w_max_name),
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "qkv_w_max(%s) variable should not be nullptr if qkv_w_intx(%s) "
               "variable is exist.",
               qkv_w_max_name,
@@ -928,18 +928,18 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
       if (is_per_channel) {
         PADDLE_ENFORCE_NOT_NULL(
             scope->FindVar(qkv_scale_max_name),
-            phi::errors::Fatal("qkv_scale_max(%s) variable should not be "
-                               "nullptr if qkv_w_intx(%s) "
-                               "variable is exist.",
-                               qkv_scale_max_name,
-                               qkv_w_intx_name));
+            common::errors::Fatal("qkv_scale_max(%s) variable should not be "
+                                  "nullptr if qkv_w_intx(%s) "
+                                  "variable is exist.",
+                                  qkv_scale_max_name,
+                                  qkv_w_intx_name));
       }
     }
   } else {
     *qkv_w_max = FindNodeWithName(graph, qkv_w_max_name);
     PADDLE_ENFORCE_NOT_NULL(
         *qkv_w_max,
-        phi::errors::Fatal(
+        common::errors::Fatal(
             "qkv_w_max(%s) variable should not be nullptr if qkv_w_intx(%s) "
             "variable is exist.",
             qkv_w_max_name,

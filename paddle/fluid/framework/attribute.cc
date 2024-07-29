@@ -59,7 +59,7 @@ paddle::any GetAttrValue(const Attribute& attr) {
     case proto::AttrType::SCALARS:
       return PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>, attr);
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported Attribute value type `%s` for phi.",
           platform::demangle(attr.type().name())));
   }
@@ -142,8 +142,8 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
     }
 
     default:
-      PADDLE_THROW(phi::errors::Unavailable("Unsupported attribute type %d.",
-                                            attr_desc.type()));
+      PADDLE_THROW(common::errors::Unavailable("Unsupported attribute type %d.",
+                                               attr_desc.type()));
   }
   return paddle::blank();
 }
@@ -164,8 +164,8 @@ Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc) {
       return val;
     }
     default:
-      PADDLE_THROW(phi::errors::Unavailable("Unsupported attribute type %d.",
-                                            attr_desc.type()));
+      PADDLE_THROW(common::errors::Unavailable("Unsupported attribute type %d.",
+                                               attr_desc.type()));
   }
   return paddle::blank();
 }
@@ -184,9 +184,9 @@ paddle::experimental::Scalar MakeScalarFromProto(const proto::Scalar& v) {
       return paddle::experimental::Scalar(value);
     }
     default:
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("Expected scalar of type boolean, "
-                                       "integer, floating point or complex."));
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Expected scalar of type boolean, "
+          "integer, floating point or complex."));
       break;
   }
   return paddle::experimental::Scalar();
@@ -230,14 +230,14 @@ proto::Scalar MakeScalarProto(const paddle::experimental::Scalar& v) {
     case phi::DataType::UNDEFINED:
     case phi::DataType::PSTRING:
     case phi::DataType::NUM_DATA_TYPES:
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("Expected scalar of type boolean, "
-                                       "integer, floating point or complex."));
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Expected scalar of type boolean, "
+          "integer, floating point or complex."));
       break;
     default:
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("Expected scalar of type boolean, "
-                                       "integer, floating point or complex."));
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Expected scalar of type boolean, "
+          "integer, floating point or complex."));
       break;
   }
   return s;
@@ -260,7 +260,7 @@ paddle::experimental::Scalar MakeScalarFromAttribute(const Attribute& v) {
     case proto::AttrType::FLOAT64:
       return paddle::experimental::Scalar(PADDLE_GET_CONST(double, v));
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unable to construct Scalar from given Attribute of type %s",
           attr_type));
   }
@@ -287,7 +287,7 @@ std::vector<paddle::experimental::Scalar> MakeScalarsFromAttribute(
       return experimental::WrapAsScalars(
           PADDLE_GET_CONST(std::vector<double>, v));
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unable to construct Scalars from given Attribute of type %s",
           attr_type));
   }
@@ -296,7 +296,7 @@ std::vector<paddle::experimental::Scalar> MakeScalarsFromAttribute(
 void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
                              AttributeMap* attrs) {
   PADDLE_ENFORCE_NOT_NULL(
-      attrs, phi::errors::InvalidArgument("attrs can not be nullptr"));
+      attrs, common::errors::InvalidArgument("attrs can not be nullptr"));
   for (auto& attr : op_proto.attrs()) {
     proto::AttrType attr_type = attr.type();
     const std::string& attr_name = attr.name();

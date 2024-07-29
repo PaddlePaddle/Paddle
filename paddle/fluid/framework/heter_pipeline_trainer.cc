@@ -43,7 +43,7 @@ void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
     // change thread num is not supported
     PADDLE_ENFORCE_EQ(thread_num_,
                       readers.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "change Dataset thread_num is not supported"));
     int cnt = -1;
     for (auto& worker_pair : workers_) {
@@ -163,7 +163,7 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   place_ = place;
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,
-      phi::errors::InvalidArgument("root_scope_ can not be nullptr"));
+      common::errors::InvalidArgument("root_scope_ can not be nullptr"));
   // initialize mini_scopes & micro_scopes
   mini_scopes_.reset(new MiniScope{});
   micro_scopes_.reset(new MicroScope{});

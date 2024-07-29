@@ -35,7 +35,7 @@ void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
       PADDLE_ENFORCE_GE(
           col,
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Expected the column index (the attribute 'col' of "
               "operator 'Fetch') of current fetching variable to be "
               "no less than 0. But received column index = %d.",
@@ -58,8 +58,8 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
     auto feed_var = scope->GetVar(feed_name);
     PADDLE_ENFORCE_NOT_NULL(
         feed_var,
-        phi::errors::NotFound("Variable %s should not be nullptr.",
-                              feed_names[i]));
+        common::errors::NotFound("Variable %s should not be nullptr.",
+                                 feed_names[i]));
     feed_tensors.push_back(feed_var->Get<phi::DenseTensor>());
   }
 
@@ -74,7 +74,7 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
     int64_t numel_size = feed_tensor.dims()[0];
     PADDLE_ENFORCE_EQ(numel_size % micro_batch_num,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Split expects feed data (%s)'s dim[0] (%d) is "
                           "divisible by micro_batch_num (%d).",
                           feed_names[i],
@@ -96,13 +96,13 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
                   const int64_t micro_batch_id,
                   Scope* scope,
                   FetchUnmergedList* fetch_list) {
-  PADDLE_ENFORCE_GT(
-      fetch_list->size(),
-      micro_batch_id,
-      phi::errors::Unavailable("The fetch list size (%lld) should be greater "
-                               "than micro_batch_id (%lld)",
-                               fetch_list->size(),
-                               micro_batch_id));
+  PADDLE_ENFORCE_GT(fetch_list->size(),
+                    micro_batch_id,
+                    common::errors::Unavailable(
+                        "The fetch list size (%lld) should be greater "
+                        "than micro_batch_id (%lld)",
+                        fetch_list->size(),
+                        micro_batch_id));
 
   fetch_list->at(micro_batch_id).resize(fetch_var_names.size());
   for (auto& var_name : job_fetch_names) {
@@ -141,13 +141,13 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
                        FetchList* out) {
   if (fetch_list.size() == 0) return;
 
-  PADDLE_ENFORCE_EQ(
-      fetch_list.size(),
-      micro_batch_num,
-      phi::errors::Unavailable("The fetch_list size (%lld) should be equal to "
-                               "the micro_batch_num (%lld)",
-                               fetch_list.size(),
-                               micro_batch_num));
+  PADDLE_ENFORCE_EQ(fetch_list.size(),
+                    micro_batch_num,
+                    common::errors::Unavailable(
+                        "The fetch_list size (%lld) should be equal to "
+                        "the micro_batch_num (%lld)",
+                        fetch_list.size(),
+                        micro_batch_num));
 
   if (micro_batch_num < 2) {
     *out = std::move(fetch_list[0]);
@@ -174,7 +174,7 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
   PADDLE_ENFORCE_EQ(
       tensors.empty(),
       false,
-      phi::errors::InvalidArgument("The tensors to be merged are empty."));
+      common::errors::InvalidArgument("The tensors to be merged are empty."));
 
   DDim new_dim = tensors[0]->dims();
   proto::VarType::Type new_type = proto::VarType::FP32;
@@ -200,7 +200,7 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
       PADDLE_ENFORCE_EQ(
           new_type,
           framework::TransToProtoVarType(t->dtype()),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "phi::DenseTensor data type does not match, expected type is %s, "
               "actual "
               "type is %s.",
@@ -209,7 +209,7 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
       PADDLE_ENFORCE_EQ(
           new_layout,
           t->layout(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "phi::DenseTensor layout does not match, expected layout is %s, "
               "actual layout is %s.",
               common::DataLayoutToString(new_layout),
@@ -218,13 +218,13 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
         auto tensor_dims = t->dims();
         PADDLE_ENFORCE_EQ(tensor_dims.size(),
                           new_dim.size(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "dimensions of DenseTensor does not match"));
         for (int j = 1; j < t->dims().size(); j++) {
           PADDLE_ENFORCE_EQ(
               tensor_dims[j],
               new_dim[j],
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "DenseTensor.ddim[%d] should equal to %d, but is %d",
                   j,
                   new_dim[j],
@@ -235,11 +235,11 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
         auto tensor_dims = t->dims();
         PADDLE_ENFORCE_EQ(tensor_dims.size(),
                           0,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "dimensions of DenseTensor does not match"));
         PADDLE_ENFORCE_EQ(new_dim.size(),
                           1,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "dimensions of DenseTensor does not match"));
         new_dim[0] += 1;
       }

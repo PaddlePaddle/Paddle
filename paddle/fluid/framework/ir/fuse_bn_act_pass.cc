@@ -51,7 +51,7 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormAct(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input graph of FuseBatchNormAct should not be nullptr."));
   FusePassBase::Init("bn_act", graph);
 
@@ -191,7 +191,7 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormActGrad(
     const std::unordered_set<std::string> &act_grad_types) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input graph of FuseBatchNormActGrad should not be nullptr."));
   FusePassBase::Init("bn_act_grad", graph);
 
@@ -346,8 +346,8 @@ std::vector<Node *> FuseBatchNormActPass::ReplaceNode(
       });
   PADDLE_ENFORCE_EQ(has_replaced,
                     true,
-                    phi::errors::NotFound("Not found %s in the node list.",
-                                          cur_node->Name()));
+                    common::errors::NotFound("Not found %s in the node list.",
+                                             cur_node->Name()));
   return new_list;
 }
 
