@@ -100,7 +100,8 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
             "The size of 'pack_args' should be 2, but received size %d.",
             pack_args.size()));
     PADDLE_ENFORCE_EQ(pack_args[0].is_string() && pack_args[1].is_string(),
-                      true phi::errors::InvalidArgument(
+                      true,
+                      phi::errors::InvalidArgument(
                           "The pack_arg[0] and pack_arg[1] should be string."));
     std::string func_name = pack_args[0].operator std::string();
     std::string custom_call_api = pack_args[1].operator std::string();
