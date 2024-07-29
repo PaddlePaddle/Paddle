@@ -27,6 +27,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/layout.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -44,29 +45,44 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute relu_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of relu compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        CHECK(!pack_args.empty())
-            << "at least one input tensor for relu compute\n";
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        PADDLE_ENFORCE_EQ(
-            pack_args.size(),
-            2,
-            phi::errors::InvalidArgument(
-                "The pack_args's dimensions should be 2, but got %d.",
-                pack_args.size()));
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
-        auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
-        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
-      });
+  framework::CINNCompute relu_compute([=](lang::Args args,
+                                          lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of relu compute is empty! Please check."));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_GT(
+        pack_args.size(),
+        0,
+        phi::errors::InvalidArgument("Expected at least one input tensor for "
+                                     "relu compute, but got none."));
+    Expr A = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The pack_args's dimensions should be 2, but got %d.",
+                          pack_args.size()));
+    PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Expected the element at index 1 of 'pack_args' to "
+                          "be a string, but it is not."));
+    std::string tensor_name = pack_args[1].operator std::string();
+    auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
+    *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  CHECK(out_type.size()) << "Out_type of relu op is empty! Please check.";
+  PADDLE_ENFORCE_GT(out_type.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Out_type of relu op is empty! Please check."));
   strategy->AddImpl(relu_compute,
                     GetInjectiveScheduleFunc(output_shapes, target),
                     "strategy.relu.x86",
@@ -80,29 +96,44 @@ std::shared_ptr<OpStrategy> StrategyForRelu6Symbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute relu6_compute(
-      [](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of relu6 compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        CHECK(!pack_args.empty())
-            << "at least one input tensor for relu6 compute\n";
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        PADDLE_ENFORCE_EQ(
-            pack_args.size(),
-            2,
-            phi::errors::InvalidArgument(
-                "The pack_args's dimensions should be 2, but got %d.",
-                pack_args.size()));
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
-        auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
-        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
-      });
+  framework::CINNCompute relu6_compute([](lang::Args args,
+                                          lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of relu6 compute is empty! Please check.\n"));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_NE(
+        pack_args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "At least one input tensor is required for relu6 compute."));
+    Expr A = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The pack_args's dimensions should be 2, but got %d.",
+                          pack_args.size()));
+    PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The second element of pack_args is expected to be "
+                          "of type string, but it is not."));
+    std::string tensor_name = pack_args[1].operator std::string();
+    auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
+    *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  CHECK(out_type.size()) << "Out_type of relu6 op is empty! Please check.";
+  PADDLE_ENFORCE_GT(out_type.size(),
+                    0,
+                    phi::errors::PreconditionNotMet(
+                        "Out_type of relu6 op is empty! Please check."));
   strategy->AddImpl(relu6_compute, lang::PackedFunc(), "strategy.relu6.x86", 1);
   return strategy;
 }
@@ -113,29 +144,44 @@ std::shared_ptr<OpStrategy> StrategyForReluSymbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute relu_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of relu compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        CHECK(!pack_args.empty())
-            << "at least one input tensor for relu compute\n";
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        PADDLE_ENFORCE_EQ(
-            pack_args.size(),
-            2,
-            phi::errors::InvalidArgument(
-                "The pack_args's dimensions should be 2, but got %d.",
-                pack_args.size()));
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
-        auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
-        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
-      });
+  framework::CINNCompute relu_compute([=](lang::Args args,
+                                          lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of relu compute is empty! Please check.\n"));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_NE(
+        pack_args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "At least one input tensor is required for relu compute."));
+    Expr A = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The pack_args's dimensions should be 2, but got %d.",
+                          pack_args.size()));
+    PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The second element of pack_args is expected to be "
+                          "of type string, but it is not."));
+    std::string tensor_name = pack_args[1].operator std::string();
+    auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
+    *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  CHECK(!out_type.empty()) << "Out_type of relu op is empty! Please check.";
+  PADDLE_ENFORCE_NE(out_type.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Out_type of relu op is empty! Please check."));
   strategy->AddImpl(relu_compute, lang::PackedFunc(), "strategy.relu.x86", 1);
   return strategy;
 }
@@ -146,29 +192,44 @@ std::shared_ptr<OpStrategy> StrategyForRelu6(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute relu6_compute(
-      [](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of relu6 compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        CHECK(!pack_args.empty())
-            << "at least one input tensor for relu6 compute\n";
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        PADDLE_ENFORCE_EQ(
-            pack_args.size(),
-            2,
-            phi::errors::InvalidArgument(
-                "The pack_args's dimensions should be 2, but got %d.",
-                pack_args.size()));
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
-        auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
-        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
-      });
+  framework::CINNCompute relu6_compute([](lang::Args args,
+                                          lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of relu6 compute is empty! Please check.\n"));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_NE(
+        pack_args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "At least one input tensor is required for relu6 compute."));
+    Expr A = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The pack_args's dimensions should be 2, but got %d.",
+                          pack_args.size()));
+    PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The second element of pack_args is expected to be "
+                          "of type string, but it is not."));
+    std::string tensor_name = pack_args[1].operator std::string();
+    auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
+    *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  CHECK(out_type.size()) << "Out_type of relu6 op is empty! Please check.";
+  PADDLE_ENFORCE_GT(out_type.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Out_type of relu6 op is empty! Please check."));
   strategy->AddImpl(relu6_compute,
                     GetInjectiveScheduleFunc(output_shapes, target),
                     "strategy.relu6.x86",
@@ -228,84 +289,85 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                         conv_type));
 #endif
 
-  framework::CINNCompute conv2d_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        std::vector<CINNValue> res;
-        CHECK(!args.empty())
-            << "The input argument of conv2d compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        PADDLE_ENFORCE_GE(pack_args.size(),
-                          2U,
-                          phi::errors::InvalidArgument(
-                              "The size of pack_args in conv2d is incorrect. "
-                              "Expected size should be greater than or equal "
-                              "to 2, but receive %d. ",
-                              pack_args.size()));
-        Expr A = pack_args[0];
-        Expr B = pack_args[1];
-        CHECK(A.as_tensor());
-        CHECK(B.as_tensor());
-        PADDLE_ENFORCE_EQ(
-            padding.size(),
-            2,
-            phi::errors::InvalidArgument(
-                "The size of padding in conv2d op should be 2, but got %d.",
-                padding.size()));
-        PADDLE_ENFORCE_EQ(
-            stride.size(),
-            2,
-            phi::errors::InvalidArgument(
-                "The size of stride in conv2d op should be 2, but got %d.",
-                stride.size()));
-        PADDLE_ENFORCE_EQ(
-            dilation.size(),
-            2,
-            phi::errors::InvalidArgument(
-                "The size of dilation in conv2d op should be 2, but got %d.",
-                dilation.size()));
-        std::vector<ir::Tensor> out;
-        VLOG(3) << "input shape: "
-                << utils::Join(A.as_tensor_ref()->shape, ", ");
-        VLOG(3) << "weight shape: "
-                << utils::Join(B.as_tensor_ref()->shape, ", ");
-        PADDLE_ENFORCE_GE(pack_args.size(),
-                          3,
-                          phi::errors::InvalidArgument(
-                              "The size of pack_args in conv2d op should be "
-                              "greater than or equal to 3, but got %d.",
-                              pack_args.size()));
-        CHECK(pack_args[2].is_string());
-        std::string tensor_name = pack_args[2].operator std::string();
-        if (data_format == "NCHW") {
-          // A is input: [N, C, H, W], B is filter: [C_out, C_in/group,
-          // filter_h, filter_w]
-          target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                            [&](common::X86Arch) {
-                              if (groups == 1 && !use_onednn) {
-                                out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                                         B.as_tensor_ref(),
-                                                         padding[0],
-                                                         padding[1],
-                                                         stride[0],
-                                                         stride[1],
-                                                         dilation[0],
-                                                         dilation[1],
-                                                         key,
-                                                         tensor_name,
-                                                         target);
-                              } else {
+  framework::CINNCompute conv2d_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    std::vector<CINNValue> res;
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of conv2d compute is empty! Please check.\n"));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "The size of pack_args in conv2d is incorrect. "
+                          "Expected size should be greater than or equal "
+                          "to 2, but receive %d. ",
+                          pack_args.size()));
+    Expr A = pack_args[0];
+    Expr B = pack_args[1];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    PADDLE_ENFORCE_NOT_NULL(
+        B.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    PADDLE_ENFORCE_EQ(
+        padding.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "The size of padding in conv2d op should be 2, but got %d.",
+            padding.size()));
+    PADDLE_ENFORCE_EQ(
+        stride.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "The size of stride in conv2d op should be 2, but got %d.",
+            stride.size()));
+    PADDLE_ENFORCE_EQ(
+        dilation.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "The size of dilation in conv2d op should be 2, but got %d.",
+            dilation.size()));
+    std::vector<ir::Tensor> out;
+    VLOG(3) << "input shape: " << utils::Join(A.as_tensor_ref()->shape, ", ");
+    VLOG(3) << "weight shape: " << utils::Join(B.as_tensor_ref()->shape, ", ");
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      3,
+                      phi::errors::InvalidArgument(
+                          "The size of pack_args in conv2d op should be "
+                          "greater than or equal to 3, but got %d.",
+                          pack_args.size()));
+    PADDLE_ENFORCE_EQ(
+        pack_args[2].is_string(),
+        true,
+        phi::errors::InvalidArgument(
+            "The third element of pack_args is not a string as expected."));
+    std::string tensor_name = pack_args[2].operator std::string();
+    if (data_format == "NCHW") {
+      // A is input: [N, C, H, W], B is filter: [C_out, C_in/group,
+      // filter_h, filter_w]
+      target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                        [&](common::X86Arch) {
+                          if (groups == 1 && !use_onednn) {
+                            out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                                     B.as_tensor_ref(),
+                                                     padding[0],
+                                                     padding[1],
+                                                     stride[0],
+                                                     stride[1],
+                                                     dilation[0],
+                                                     dilation[1],
+                                                     key,
+                                                     tensor_name,
+                                                     target);
+                          } else {
 #ifdef CINN_WITH_DNNL
-                                out = pe::Conv2d_NCHW_ONEDNN(A.as_tensor_ref(),
-                                                             B.as_tensor_ref(),
-                                                             padding[0],
-                                                             padding[1],
-                                                             stride[0],
-                                                             stride[1],
-                                                             dilation[0],
-                                                             dilation[1],
-                                                             tensor_name);
-#else
-                                out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                            out = pe::Conv2d_NCHW_ONEDNN(A.as_tensor_ref(),
                                                          B.as_tensor_ref(),
                                                          padding[0],
                                                          padding[1],
@@ -313,75 +375,91 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                                                          stride[1],
                                                          dilation[0],
                                                          dilation[1],
-                                                         key,
                                                          tensor_name);
+#else
+                            out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                                     B.as_tensor_ref(),
+                                                     padding[0],
+                                                     padding[1],
+                                                     stride[0],
+                                                     stride[1],
+                                                     dilation[0],
+                                                     dilation[1],
+                                                     key,
+                                                     tensor_name);
 #endif
-                              }
-                            },
-                            [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                            [&](common::NVGPUArch) {
-                              if (conv_type == "forward") {
-                                out = pe::Conv2d_NCHW(A.as_tensor_ref(),
-                                                      B.as_tensor_ref(),
-                                                      padding[0],
-                                                      padding[1],
-                                                      stride[0],
-                                                      stride[1],
-                                                      dilation[0],
-                                                      dilation[1],
-                                                      tensor_name);
-                                out.push_back(B.as_tensor_ref());
-                              } else {
+                          }
+                        },
+                        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                        [&](common::NVGPUArch) {
+                          if (conv_type == "forward") {
+                            out = pe::Conv2d_NCHW(A.as_tensor_ref(),
+                                                  B.as_tensor_ref(),
+                                                  padding[0],
+                                                  padding[1],
+                                                  stride[0],
+                                                  stride[1],
+                                                  dilation[0],
+                                                  dilation[1],
+                                                  tensor_name);
+                            out.push_back(B.as_tensor_ref());
+                          } else {
 #ifdef CINN_WITH_CUDNN
-                                // as backward_data and backward_filter is not
-                                // support now, we built a fake op to instead.
-                                // as the runtime use cudnn to compute the
-                                // conv2d, so this fake op is not been called.
-                                // When cinn support
-                                // backward_filter/backward_data code gen, this
-                                // code is to be removed.
-                                out = pe::Identity(A.as_tensor_ref());
-                                out.push_back(A.as_tensor_ref());
-                                out.push_back(B.as_tensor_ref());
+                            // as backward_data and backward_filter is not
+                            // support now, we built a fake op to instead.
+                            // as the runtime use cudnn to compute the
+                            // conv2d, so this fake op is not been called.
+                            // When cinn support
+                            // backward_filter/backward_data code gen, this
+                            // code is to be removed.
+                            out = pe::Identity(A.as_tensor_ref());
+                            out.push_back(A.as_tensor_ref());
+                            out.push_back(B.as_tensor_ref());
 #endif
-                              }
-                            },
-                            [&](common::HygonDCUArchHIP) {
-                              PADDLE_THROW(::common::errors::Unimplemented(
-                                  "CINN old obsolete code!"));
-                            });
-        } else if (data_format == "NHWC") {
-          // A is input: [N, H, W, C], B is filter: [C_out, C_in/group,
-          // filter_h, filter_w]
-          out = pe::Conv2d_NHWC(A.as_tensor_ref(),
-                                B.as_tensor_ref(),
-                                padding[0],
-                                padding[1],
-                                stride[0],
-                                stride[1],
-                                dilation[0],
-                                dilation[1],
-                                tensor_name);
-        } else {
-          PADDLE_THROW(::common::errors::InvalidArgument(
-              "Only support NCHW and NHWC data layout\n"));
-        }
+                          }
+                        },
+                        [&](common::HygonDCUArchHIP) {
+                          PADDLE_THROW(::common::errors::Unimplemented(
+                              "CINN old obsolete code!"));
+                        });
+    } else if (data_format == "NHWC") {
+      // A is input: [N, H, W, C], B is filter: [C_out, C_in/group,
+      // filter_h, filter_w]
+      out = pe::Conv2d_NHWC(A.as_tensor_ref(),
+                            B.as_tensor_ref(),
+                            padding[0],
+                            padding[1],
+                            stride[0],
+                            stride[1],
+                            dilation[0],
+                            dilation[1],
+                            tensor_name);
+    } else {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "Only support NCHW and NHWC data layout\n"));
+    }
 
-        for (auto &t : out) {
-          res.push_back(CINNValue(t));
-        }
-        CHECK(out.size() == 3U || out.size() == 2U || out.size() == 5U ||
-              out.size() == 12U)
-            << "The output tensor sizes of conv2d op in conv2d op should be 2 "
-               "or 3 or 5\n";
+    for (auto &t : out) {
+      res.push_back(CINNValue(t));
+    }
+    PADDLE_ENFORCE_NE(
+        out.size() != 3U && out.size() != 2U && out.size() != 5U &&
+            out.size() != 12U,
+        true,
+        phi::errors::InvalidArgument("The output tensor sizes of conv2d op "
+                                     "should be 2, 3, 5, or 12, but "
+                                     "received size is %zu.",
+                                     out.size()));
 
-        *ret = CINNValuePack{res};
-      });
+    *ret = CINNValuePack{res};
+  });
 
   framework::CINNSchedule conv2d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of conv2d schedule is empty! Please check.\n";
+    PADDLE_ENFORCE_NOT_NULL(
+        !args.empty(),
+        phi::errors::InvalidArgument(
+            "The input argument of conv2d schedule is empty! Please check.\n"));
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -390,7 +468,10 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         vec_ast.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_NE(vec_ast.empty(),
+                      true,
+                      platform::errors::PreconditionNotMet(
+                          "The vector 'vec_ast' must not be empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -447,7 +528,10 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  CHECK(out_type.size()) << "Out_type of conv2d op is empty! Please check.";
+  PADDLE_ENFORCE_GT(out_type.size(),
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "Out_type of conv2d op is empty! Please check."));
   strategy->AddImpl(conv2d_compute, conv2d_schedule, "strategy.conv2d.x86", 1);
   return strategy;
 }
@@ -481,8 +565,11 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
 
   framework::CINNCompute depthwise_conv2d_compute([=](lang::Args args,
                                                       lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of depthwise_conv compute is "
-                            "empty! Please check.\n";
+    PADDLE_ENFORCE_NE(args.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The input argument of depthwise_conv compute is "
+                          "empty! Please check.\n"));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(
         pack_args.size(),
@@ -494,8 +581,14 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
             pack_args.size()));
     Expr A = pack_args[0];
     Expr B = pack_args[1];
-    CHECK(A.as_tensor());
-    CHECK(B.as_tensor());
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    PADDLE_ENFORCE_NOT_NULL(B.as_tensor(),
+                            phi::errors::PreconditionNotMet(
+                                "Expected the tensor from 'B.as_tensor()' to "
+                                "be non-null, but got null."));
     PADDLE_ENFORCE_EQ(
         padding.size(),
         2,
@@ -508,8 +601,12 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
         phi::errors::InvalidArgument(
             "The size of stride in depthwise_conv op should be 2, but got %d.",
             stride.size()));
-    CHECK(data_format == "NCHW" || data_format == "NHWC")
-        << "only support NCHW/NHWC data_format.\n";
+    PADDLE_ENFORCE_EQ(
+        data_format == "NCHW" || data_format == "NHWC",
+        true,
+        platform::errors::InvalidArgument("Only support NCHW/NHWC data_format, "
+                                          "but received data_format is %s.",
+                                          data_format));
     std::vector<ir::Tensor> out;
     PADDLE_ENFORCE_GE(pack_args.size(),
                       3,
@@ -517,7 +614,10 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                           "The size of pack_args in depthwise_conv op should "
                           "be greater than or equal to 3, but got %d.",
                           pack_args.size()));
-    CHECK(pack_args[2].is_string());
+    PADDLE_ENFORCE_EQ(pack_args[2].is_string(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The third element of pack_args must be a string."));
     std::string tensor_name = pack_args[2].operator std::string();
     if (data_format == "NCHW") {
       target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
@@ -565,18 +665,23 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     for (auto &t : out) {
       res.push_back(CINNValue(t));
     }
-    CHECK(out.size() == 2U || out.size() == 1U || out.size() == 5U)
-        << "The output tensor sizes of depthwise_conv op in depthwise_conv "
-           "op "
-           "should be 1 or 2 or 5\n";
+    PADDLE_ENFORCE(out.size() == 2U || out.size() == 1U || out.size() == 5U,
+                   platform::errors::InvalidArgument(
+                       "The output tensor sizes of depthwise_conv op should be "
+                       "1 or 2 or 5, "
+                       "but received %d.",
+                       out.size()));
 
     *ret = CINNValuePack{res};
   });
 
   framework::CINNSchedule depthwise_conv2d_schedule(
       [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
-                                "empty! Please check.\n";
+        PADDLE_ENFORCE_EQ(args.empty(),
+                          false,
+                          platform::errors::InvalidArgument(
+                              "The input argument of InjectiveSchedule is "
+                              "empty! Please check.\n"));
         cinn::common::CINNValuePack arg_pack = args[0];
         std::vector<Expr> vec_ast;
         std::vector<Expr> vec_tensor;
@@ -589,7 +694,10 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
             vec_tensor.emplace_back(temp);
           }
         }
-        CHECK(!vec_ast.empty());
+        PADDLE_ENFORCE_NE(vec_ast.empty(),
+                          true,
+                          platform::errors::PreconditionNotMet(
+                              "The 'vec_ast' must not be empty."));
         ir::ModuleExpr mod_expr(vec_ast);
         ir::IRSchedule ir_sch(mod_expr);
         ir_sch.MergeExprs();
@@ -609,8 +717,11 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  CHECK(out_type.size())
-      << "Out_type of depthwise_conv op is empty! Please check.";
+  PADDLE_ENFORCE_GT(
+      out_type.size(),
+      0,
+      platform::errors::PreconditionNotMet(
+          "Out_type of depthwise_conv op is empty! Please check."));
   if (out_type[0] == Float(32)) {
     strategy->AddImpl(depthwise_conv2d_compute,
                       depthwise_conv2d_schedule,
@@ -640,8 +751,11 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
   }
   framework::CINNCompute batchnorm_compute([=](lang::Args args,
                                                lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of batchnorm compute "
-                            "is empty! Please check.\n";
+    PADDLE_ENFORCE_NE(args.empty(),
+                      true,
+                      platform::errors::PreconditionNotMet(
+                          "The input argument of batchnorm compute is empty! "
+                          "Please check.\n"));
     CINNValuePack arg_pack = args[0];
     PADDLE_ENFORCE_GE(arg_pack.size(),
                       5U,
@@ -660,13 +774,32 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
         phi::errors::InvalidArgument("The size of arg_pack in batchnorm "
                                      "compute should be 6, but got %d.",
                                      arg_pack.size()));
-    CHECK(arg_pack[5].is_string());
+    PADDLE_ENFORCE_EQ(arg_pack[5].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Expected value to be a string, but it is not."));
     std::string out_name = arg_pack[5];
-    CHECK(A.as_tensor());
-    CHECK(Scale.as_tensor());
-    CHECK(Bias.as_tensor());
-    CHECK(Mean.as_tensor());
-    CHECK(Variance.as_tensor());
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    PADDLE_ENFORCE_NOT_NULL(Scale.as_tensor(),
+                            phi::errors::PreconditionNotMet(
+                                "Expected the tensor from 'Scale.as_tensor()' "
+                                "to be non-null, but got null."));
+    PADDLE_ENFORCE_NOT_NULL(Bias.as_tensor(),
+                            phi::errors::PreconditionNotMet(
+                                "Expected the tensor from 'Bias.as_tensor()' "
+                                "to be non-null, but got null."));
+    PADDLE_ENFORCE_NOT_NULL(Mean.as_tensor(),
+                            phi::errors::PreconditionNotMet(
+                                "Expected the tensor from 'Mean.as_tensor()' "
+                                "to be non-null, but got null."));
+    PADDLE_ENFORCE_NOT_NULL(
+        Variance.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "Expected the tensor from 'Variance.as_tensor()' to be non-null, "
+            "but got null."));
     ir::Tensor out;
     auto tensor_input = A.as_tensor_ref();
     if (tensor_input->shape.size() != 4 &&
@@ -716,7 +849,10 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  CHECK(out_type.size()) << "Out_type of batchnorm op is empty! Please check.";
+  PADDLE_ENFORCE_GT(out_type.size(),
+                    0,
+                    platform::errors::InvalidArgument(
+                        "Out_type of batchnorm op is empty! Please check."));
   if (out_type[0] == Float(32)) {
     strategy->AddImpl(batchnorm_compute,
                       GetInjectiveScheduleFunc(output_shapes, target),
@@ -735,84 +871,115 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute pool1d_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of pool1d compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        CHECK(!pack_args.empty())
-            << "The input tensor of pool1d compute is empty! Please check.\n";
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        auto attr_store = attrs.attr_store;
-        std::vector<int> kernel_size;   // [kernel_w]
-        std::vector<int> stride_size;   // [stride_w]
-        std::vector<int> padding_size;  // [padding_left, padding_right]
-        std::string pool_type = "max";
-        bool ceil_mode = false;
-        bool exclusive = true;
-        std::string data_format = "NCW";
-        for (auto &iter : attrs.attr_store) {
-          if (iter.first == "kernel_size") {
-            kernel_size = absl::get<std::vector<int>>(iter.second);
-          } else if (iter.first == "stride_size") {
-            stride_size = absl::get<std::vector<int>>(iter.second);
-          } else if (iter.first == "padding_size") {
-            padding_size = absl::get<std::vector<int>>(iter.second);
-          } else if (iter.first == "pool_type") {
-            pool_type = absl::get<std::string>(iter.second);
-          } else if (iter.first == "ceil_mode") {
-            ceil_mode = absl::get<bool>(iter.second);
-          } else if (iter.first == "exclusive") {
-            exclusive = absl::get<bool>(iter.second);
-          } else if (iter.first == "data_format") {
-            data_format = absl::get<std::string>(iter.second);
-          } else {
-            LOG(ERROR) << "Unsupported attr: " << iter.first << std::endl;
-          }
-        }
-        CHECK(!kernel_size.empty())
-            << "kernel_size for pool1d is empty. Please check.\n";
-        CHECK(!stride_size.empty())
-            << "stride_size for pool1d is empty. Please check.\n";
-        CHECK(!padding_size.empty())
-            << "padding_size for pool1d is empty. Please check.\n";
-        CHECK(pool_type == "max" || pool_type == "avg")
-            << "pool_type for pool1d should be max or avg.\n";
+  framework::CINNCompute pool1d_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(
+        args.size(),
+        0,
+        platform::errors::InvalidArgument(
+            "The input argument of pool1d compute is empty! Please check."));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_NE(
+        pack_args.size(),
+        0,
+        platform::errors::PreconditionNotMet(
+            "The input tensor of pool1d compute is empty! Please check."));
+    Expr A = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    auto attr_store = attrs.attr_store;
+    std::vector<int> kernel_size;   // [kernel_w]
+    std::vector<int> stride_size;   // [stride_w]
+    std::vector<int> padding_size;  // [padding_left, padding_right]
+    std::string pool_type = "max";
+    bool ceil_mode = false;
+    bool exclusive = true;
+    std::string data_format = "NCW";
+    for (auto &iter : attrs.attr_store) {
+      if (iter.first == "kernel_size") {
+        kernel_size = absl::get<std::vector<int>>(iter.second);
+      } else if (iter.first == "stride_size") {
+        stride_size = absl::get<std::vector<int>>(iter.second);
+      } else if (iter.first == "padding_size") {
+        padding_size = absl::get<std::vector<int>>(iter.second);
+      } else if (iter.first == "pool_type") {
+        pool_type = absl::get<std::string>(iter.second);
+      } else if (iter.first == "ceil_mode") {
+        ceil_mode = absl::get<bool>(iter.second);
+      } else if (iter.first == "exclusive") {
+        exclusive = absl::get<bool>(iter.second);
+      } else if (iter.first == "data_format") {
+        data_format = absl::get<std::string>(iter.second);
+      } else {
+        LOG(ERROR) << "Unsupported attr: " << iter.first << std::endl;
+      }
+    }
+    PADDLE_ENFORCE_NE(kernel_size.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "kernel_size for pool1d is empty. Please check."));
 
-        PADDLE_ENFORCE_EQ(pack_args.size(),
-                          2,
-                          phi::errors::InvalidArgument(
-                              "the size of pack_args should be 2, but got %d.",
-                              pack_args.size()));
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
+    PADDLE_ENFORCE_NE(stride_size.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "stride_size for pool1d is empty. Please check."));
 
-        auto out = pe::Pool1d(A.as_tensor_ref(),
-                              kernel_size,
-                              stride_size,
-                              padding_size,
-                              pool_type,
-                              ceil_mode,
-                              exclusive,
-                              data_format,
-                              tensor_name);
+    PADDLE_ENFORCE_NE(padding_size.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "padding_size for pool1d is empty. Please check."));
 
-        CHECK(out.size() == 1U || out.size() == 2U)
-            << "The size of pe::Pool1d's output should be 1 or 2.";
-        CHECK(!out_type.empty())
-            << "Output type of Pool1d is empty! Please check.\n";
-        std::vector<CINNValue> res;
-        for (auto &t : out) {
-          res.push_back(CINNValue(Expr(t.get())));
-        }
-        *ret = CINNValuePack{res};
-      });
+    PADDLE_ENFORCE_EQ(pool_type == "max" || pool_type == "avg",
+                      true,
+                      platform::errors::InvalidArgument(
+                          "pool_type for pool1d should be 'max' or 'avg'."));
+
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "the size of pack_args should be 2, but got %d.",
+                          pack_args.size()));
+    PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The second element of pack_args must be a string."));
+    std::string tensor_name = pack_args[1].operator std::string();
+
+    auto out = pe::Pool1d(A.as_tensor_ref(),
+                          kernel_size,
+                          stride_size,
+                          padding_size,
+                          pool_type,
+                          ceil_mode,
+                          exclusive,
+                          data_format,
+                          tensor_name);
+    PADDLE_ENFORCE_EQ(out.size() == 1U || out.size() == 2U,
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The size of pe::Pool1d's output should be 1 or 2."));
+
+    PADDLE_ENFORCE_NE(out_type.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Output type of Pool1d is empty! Please check."));
+
+    std::vector<CINNValue> res;
+    for (auto &t : out) {
+      res.push_back(CINNValue(Expr(t.get())));
+    }
+    *ret = CINNValuePack{res};
+  });
 
   framework::CINNSchedule pool1d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of pool1d schedule is "
-                            "empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "The input argument of pool1d schedule is empty! Please check."));
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
@@ -825,7 +992,10 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
         vec_tensor.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_NE(vec_ast.empty(),
+                      true,
+                      platform::errors::PreconditionNotMet(
+                          "The vector vec_ast must not be empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -837,14 +1007,23 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
               "the size of vector tensor should be 2, but got %d.",
               vec_tensor.size()));
       Expr input_pad = vec_tensor[1];
-      CHECK(input_pad.as_tensor());
+      PADDLE_ENFORCE_NOT_NULL(
+          input_pad.as_tensor(),
+          phi::errors::PreconditionNotMet("Failed to convert input_pad to "
+                                          "tensor or it is a null pointer."));
       auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
       ir_sch.ComputeInline(block_input_pad);
     }
     auto schedule_nv_hygon = [&] {
-      CHECK(!vec_tensor.empty());
+      PADDLE_ENFORCE_GT(vec_tensor.size(),
+                        0,
+                        paddle::platform::errors::PreconditionNotMet(
+                            "The vector 'vec_tensor' must not be empty."));
       Expr Out = vec_tensor[0];
-      CHECK(Out.as_tensor());
+      PADDLE_ENFORCE_NOT_NULL(
+          Out.as_tensor(),
+          phi::errors::PreconditionNotMet(
+              "The provided object cannot be treated as a tensor."));
       auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
       ir_sch.Split(loops[1], {-1, 2});
       loops = ir_sch.GetLoops(Out.as_tensor()->name);
@@ -924,20 +1103,45 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     adaptive = absl::get<bool>(attr_store.at("origin_adaptive"));
   }
 
-  CHECK(!kernel_size.empty())
-      << "kernel_size for pool2d is empty. Please check.\n";
-  CHECK(!stride_size.empty())
-      << "stride_size for pool2d is empty. Please check.\n";
-  CHECK(!padding_size.empty())
-      << "padding_size for pool2d is empty. Please check.\n";
-  CHECK(pool_type == "max" || pool_type == "avg")
-      << "pool_type for pool2d should be max or avg.\n";
+  // Checking if kernel_size is not empty
+  PADDLE_ENFORCE_NE(kernel_size.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "kernel_size for pool2d is empty. Please check."));
 
-  CHECK(!inputs.empty())
-      << "The input tensor of pool2d compute is empty! Please check.\n";
+  // Checking if stride_size is not empty
+  PADDLE_ENFORCE_NE(stride_size.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "stride_size for pool2d is empty. Please check."));
+
+  // Checking if padding_size is not empty
+  PADDLE_ENFORCE_NE(padding_size.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "padding_size for pool2d is empty. Please check."));
+
+  // Checking if pool_type is either "max" or "avg"
+  PADDLE_ENFORCE_EQ(pool_type == "max" || pool_type == "avg",
+                    true,
+                    phi::errors::InvalidArgument(
+                        "pool_type for pool2d should be 'max' or 'avg'."));
+
+  // Checking if inputs are not empty
+  PADDLE_ENFORCE_NE(
+      inputs.empty(),
+      true,
+      phi::errors::InvalidArgument(
+          "The input tensor of pool2d compute is empty! Please check."));
+
+  // Assuming inputs[0] is a valid tensor and checking its shape size to be 4 or
+  // 5
   const ir::Tensor &A_tensor = inputs[0];
-  CHECK(A_tensor->shape.size() == 4U || A_tensor->shape.size() == 5U)
-      << "pool2d requires tensor's shape_size to be 4 or 5\n";
+  PADDLE_ENFORCE_EQ(
+      A_tensor->shape.size() == 4U || A_tensor->shape.size() == 5U,
+      true,
+      phi::errors::InvalidArgument(
+          "pool2d requires tensor's shape_size to be 4 or 5."));
 
   if (global_pooling) {
     int height_index = -1;
@@ -965,35 +1169,55 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
         padding_size.end(), padding_size.begin(), padding_size.end());
   }
 
-  framework::CINNCompute global_pool2d_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of pool2d compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        ir::Tensor A_tensor = A.as_tensor_ref();
+  framework::CINNCompute global_pool2d_compute([=](lang::Args args,
+                                                   lang::RetValue *ret) {
+    PADDLE_ENFORCE_GT(
+        args.size(),
+        0,
+        paddle::platform::errors::InvalidArgument(
+            "The input argument of pool2d compute is empty! Please check.\n"));
+    CINNValuePack pack_args = args[0];
+    Expr A = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    ir::Tensor A_tensor = A.as_tensor_ref();
 
-        PADDLE_ENFORCE_EQ(pack_args.size(),
-                          2,
-                          phi::errors::InvalidArgument(
-                              "the size of pack_args should be 2, but got %d.",
-                              pack_args.size()));
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "the size of pack_args should be 2, but got %d.",
+                          pack_args.size()));
+    PADDLE_ENFORCE_EQ(
+        pack_args[1].is_string(),
+        true,
+        phi::errors::InvalidArgument(
+            "Expected the second element of pack_args to be a string."));
+    std::string tensor_name = pack_args[1].operator std::string();
 
-        auto out = pe::GlobalPool2d(A_tensor, pool_type, tensor_name);
-        CHECK(out.size() == 2U)
-            << "The size of pe::GlobalPool2d's output should be 2.";
-        *ret = CINNValuePack{{CINNValue(out[0]), CINNValue(out[1])}};
-      });
+    auto out = pe::GlobalPool2d(A_tensor, pool_type, tensor_name);
+
+    PADDLE_ENFORCE_EQ(
+        out.size(),
+        2U,
+        phi::errors::PreconditionNotMet(
+            "The size of pe::GlobalPool2d's output should be 2."));
+    *ret = CINNValuePack{{CINNValue(out[0]), CINNValue(out[1])}};
+  });
 
   framework::CINNSchedule global_pool2d_schedule([=](lang::Args args,
                                                      lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of pool2d schedule is "
-                            "empty! Please check.\n";
-    CHECK(!args.empty()) << "The input argument of pool1d schedule is "
-                            "empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of pool2d schedule is empty! Please check."));
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of pool1d schedule is empty! Please check."));
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
@@ -1006,7 +1230,11 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
         vec_tensor.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_NE(
+        vec_ast.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The vector 'vec_ast' is empty. A non-empty vector is expected."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -1022,49 +1250,66 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNCompute pool2d_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of pool2d compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        ir::Tensor A_tensor = A.as_tensor_ref();
+  framework::CINNCompute pool2d_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of pool2d compute is empty! Please check.\n"));
+    CINNValuePack pack_args = args[0];
+    Expr A = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    ir::Tensor A_tensor = A.as_tensor_ref();
 
-        PADDLE_ENFORCE_EQ(pack_args.size(),
-                          2,
-                          phi::errors::InvalidArgument(
-                              "the size of pack_args should be 2, but got %d.",
-                              pack_args.size()));
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "the size of pack_args should be 2, but got %d.",
+                          pack_args.size()));
+    PADDLE_ENFORCE_EQ(
+        pack_args[1].is_string(),
+        true,
+        phi::errors::InvalidArgument(
+            "The second element of pack_args is expected to be a string."));
+    std::string tensor_name = pack_args[1].operator std::string();
 
-        auto out = pe::Pool2d(A_tensor,
-                              kernel_size,
-                              stride_size,
-                              padding_size,
-                              pool_type,
-                              ceil_mode,
-                              exclusive,
-                              data_format,
-                              adaptive,
-                              tensor_name);
-
-        CHECK(out.size() == 1U || out.size() == 2U)
-            << "The size of pe::Pool2d's output should be 1 or 2.";
-        std::vector<CINNValue> res;
-        for (auto &t : out) {
-          res.push_back(CINNValue(t));
-        }
-        CHECK(!out_type.empty())
-            << "Output type of Pool2d is empty! Please check.\n";
-        *ret = CINNValuePack{res};
-      });
+    auto out = pe::Pool2d(A_tensor,
+                          kernel_size,
+                          stride_size,
+                          padding_size,
+                          pool_type,
+                          ceil_mode,
+                          exclusive,
+                          data_format,
+                          adaptive,
+                          tensor_name);
+    PADDLE_ENFORCE(
+        out.size() == 1U || out.size() == 2U,
+        phi::errors::InvalidArgument(
+            "The size of pe::Pool2d's output should be 1 or 2, but got %u.",
+            out.size()));
+    std::vector<CINNValue> res;
+    for (auto &t : out) {
+      res.push_back(CINNValue(t));
+    }
+    PADDLE_ENFORCE_NE(out_type.empty(),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "Output type of Pool2d is empty! Please check.\n"));
+    *ret = CINNValuePack{res};
+  });
 
   framework::CINNSchedule pool2d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of pool2d schedule is "
-                            "empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of pool2d schedule is empty! Please check."));
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
@@ -1077,7 +1322,10 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
         vec_tensor.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_GT(vec_ast.size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The vector 'vec_ast' is unexpectedly empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -1092,7 +1340,10 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
               "the size of vector tensor should be 2, but got %d.",
               vec_tensor.size()));
       Expr input_pad = vec_tensor[1];
-      CHECK(input_pad.as_tensor());
+      PADDLE_ENFORCE_NOT_NULL(
+          input_pad.as_tensor(),
+          phi::errors::PreconditionNotMet(
+              "The provided object cannot be treated as a tensor."));
       const std::string &input_pad_name = input_pad.as_tensor()->name;
       VLOG(6) << "ComputeInline on " << input_pad_name;
       auto block_input_pad = ir_sch.GetBlock(input_pad_name);
@@ -1150,87 +1401,119 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute pool3d_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of pool3d compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        CHECK(!pack_args.empty())
-            << "The input tensor of pool3d compute is empty! Please check.\n";
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        auto attr_store = attrs.attr_store;
-        std::vector<int> kernel_size;  // [kernel_d, kernel_h, kernel_w]
-        std::vector<int> stride_size;  // [stride_d, stride_h, stride_w]
-        std::vector<int>
-            padding_size;  // [padding_front, padding_top, padding_left,
-                           // padding_back, padding_bottom, padding_right]
-        std::string pool_type = "max";
-        bool ceil_mode = false;
-        bool exclusive = true;
-        std::string data_format = "NCDHW";
-        for (auto &iter : attrs.attr_store) {
-          if (iter.first == "kernel_size") {
-            kernel_size = absl::get<std::vector<int>>(iter.second);
-          } else if (iter.first == "stride_size") {
-            stride_size = absl::get<std::vector<int>>(iter.second);
-          } else if (iter.first == "padding_size") {
-            padding_size = absl::get<std::vector<int>>(iter.second);
-          } else if (iter.first == "pool_type") {
-            pool_type = absl::get<std::string>(iter.second);
-          } else if (iter.first == "ceil_mode") {
-            ceil_mode = absl::get<bool>(iter.second);
-          } else if (iter.first == "exclusive") {
-            exclusive = absl::get<bool>(iter.second);
-          } else if (iter.first == "data_format") {
-            data_format = absl::get<std::string>(iter.second);
-          } else {
-            LOG(ERROR) << "Unsupported attr: " << iter.first << std::endl;
-          }
-        }
-        CHECK(!kernel_size.empty())
-            << "kernel_size for pool3d is empty. Please check.\n";
-        CHECK(!stride_size.empty())
-            << "stride_size for pool3d is empty. Please check.\n";
-        CHECK(!padding_size.empty())
-            << "padding_size for pool3d is empty. Please check.\n";
-        CHECK(pool_type == "max" || pool_type == "avg")
-            << "pool_type for pool3d should be max or avg.\n";
+  framework::CINNCompute pool3d_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::PreconditionNotMet(
+            "The input argument of pool3d compute is empty! Please check."));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_NE(
+        pack_args.empty(),
+        true,
+        phi::errors::PreconditionNotMet(
+            "The input tensor of pool3d compute is empty! Please check."));
+    Expr A = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    auto attr_store = attrs.attr_store;
+    std::vector<int> kernel_size;  // [kernel_d, kernel_h, kernel_w]
+    std::vector<int> stride_size;  // [stride_d, stride_h, stride_w]
+    std::vector<int>
+        padding_size;  // [padding_front, padding_top, padding_left,
+                       // padding_back, padding_bottom, padding_right]
+    std::string pool_type = "max";
+    bool ceil_mode = false;
+    bool exclusive = true;
+    std::string data_format = "NCDHW";
+    for (auto &iter : attrs.attr_store) {
+      if (iter.first == "kernel_size") {
+        kernel_size = absl::get<std::vector<int>>(iter.second);
+      } else if (iter.first == "stride_size") {
+        stride_size = absl::get<std::vector<int>>(iter.second);
+      } else if (iter.first == "padding_size") {
+        padding_size = absl::get<std::vector<int>>(iter.second);
+      } else if (iter.first == "pool_type") {
+        pool_type = absl::get<std::string>(iter.second);
+      } else if (iter.first == "ceil_mode") {
+        ceil_mode = absl::get<bool>(iter.second);
+      } else if (iter.first == "exclusive") {
+        exclusive = absl::get<bool>(iter.second);
+      } else if (iter.first == "data_format") {
+        data_format = absl::get<std::string>(iter.second);
+      } else {
+        LOG(ERROR) << "Unsupported attr: " << iter.first << std::endl;
+      }
+    }
+    PADDLE_ENFORCE_NE(kernel_size.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "kernel_size for pool3d is empty. Please check."));
 
-        PADDLE_ENFORCE_EQ(pack_args.size(),
-                          2,
-                          phi::errors::InvalidArgument(
-                              "the size of pack_args should be 2, but got %d.",
-                              pack_args.size()));
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
+    PADDLE_ENFORCE_NE(stride_size.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "stride_size for pool3d is empty. Please check."));
 
-        auto out = pe::Pool3d(A.as_tensor_ref(),
-                              kernel_size,
-                              stride_size,
-                              padding_size,
-                              pool_type,
-                              ceil_mode,
-                              exclusive,
-                              data_format,
-                              tensor_name);
+    PADDLE_ENFORCE_NE(padding_size.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "padding_size for pool3d is empty. Please check."));
 
-        CHECK(out.size() == 1U || out.size() == 2U)
-            << "The size of pe::Pool3d's output should be 1 or 2.";
-        CHECK(!out_type.empty())
-            << "Output type of Pool3d is empty! Please check.\n";
+    PADDLE_ENFORCE_EQ(pool_type == "max" || pool_type == "avg",
+                      true,
+                      phi::errors::InvalidArgument(
+                          "pool_type for pool3d should be 'max' or 'avg'."));
 
-        std::vector<CINNValue> res;
-        for (auto &t : out) {
-          res.push_back(CINNValue(Expr(t.get())));
-        }
-        *ret = CINNValuePack{res};
-      });
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "the size of pack_args should be 2, but got %d.",
+                          pack_args.size()));
+    PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Expected the element at index 1 of pack_args to be "
+                          "of type string, but it was not."));
+    std::string tensor_name = pack_args[1].operator std::string();
+
+    auto out = pe::Pool3d(A.as_tensor_ref(),
+                          kernel_size,
+                          stride_size,
+                          padding_size,
+                          pool_type,
+                          ceil_mode,
+                          exclusive,
+                          data_format,
+                          tensor_name);
+
+    PADDLE_ENFORCE_EQ(out.size() == 1U || out.size() == 2U,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The size of pe::Pool3d's output should be 1 or 2."));
+
+    PADDLE_ENFORCE_NE(out_type.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Output type of Pool3d is empty! Please check."));
+
+    std::vector<CINNValue> res;
+    for (auto &t : out) {
+      res.push_back(CINNValue(Expr(t.get())));
+    }
+    *ret = CINNValuePack{res};
+  });
 
   framework::CINNSchedule pool3d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of pool3d schedule is "
-                            "empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of pool3d schedule is empty! Please check.\n"));
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
@@ -1243,7 +1526,11 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
         vec_tensor.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_NE(
+        vec_ast.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The vector 'vec_ast' is empty, which is not allowed."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -1255,33 +1542,46 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
               "the size of vector tensor should be 2, but got %d.",
               vec_tensor.size()));
       Expr input_pad = vec_tensor[1];
-      CHECK(input_pad.as_tensor());
+      PADDLE_ENFORCE_NOT_NULL(
+          input_pad.as_tensor(),
+          phi::errors::PreconditionNotMet(
+              "The provided object cannot be treated as a tensor."));
       auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::X86Arch) { /*nothing*/ },
-                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::NVGPUArch) {
-                        CHECK(!vec_tensor.empty());
-                        Expr Out = vec_tensor[0];
-                        CHECK(Out.as_tensor());
-                        auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-                        ir_sch.Split(loops[1], {-1, 2});
-                        loops = ir_sch.GetLoops(Out.as_tensor()->name);
-                        ir_sch.Bind(loops[0], "blockIdx.x");
-                        ir_sch.Bind(loops[1], "threadIdx.x");
-                      },
-                      [&](common::HygonDCUArchHIP) {
-                        CHECK(!vec_tensor.empty());
-                        Expr Out = vec_tensor[0];
-                        CHECK(Out.as_tensor());
-                        auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-                        ir_sch.Split(loops[1], {-1, 2});
-                        loops = ir_sch.GetLoops(Out.as_tensor()->name);
-                        ir_sch.Bind(loops[0], "blockIdx.x");
-                        ir_sch.Bind(loops[1], "threadIdx.x");
-                      });
+    target.arch.Match(
+        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) { /*nothing*/ },
+        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::NVGPUArch) {
+          (!vec_tensor.empty());
+          Expr Out = vec_tensor[0];
+          PADDLE_ENFORCE_NOT_NULL(
+              Out.as_tensor(),
+              phi::errors::PreconditionNotMet(
+                  "The provided object cannot be treated as a tensor."));
+          auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
+          ir_sch.Split(loops[1], {-1, 2});
+          loops = ir_sch.GetLoops(Out.as_tensor()->name);
+          ir_sch.Bind(loops[0], "blockIdx.x");
+          ir_sch.Bind(loops[1], "threadIdx.x");
+        },
+        [&](common::HygonDCUArchHIP) {
+          PADDLE_ENFORCE_GT(vec_tensor.size(),
+                            0,
+                            paddle::platform::errors::PreconditionNotMet(
+                                "The vector 'vec_tensor' must not be empty."));
+          Expr Out = vec_tensor[0];
+          PADDLE_ENFORCE_NOT_NULL(
+              Out.as_tensor(),
+              phi::errors::PreconditionNotMet(
+                  "The provided object cannot be treated as a tensor."));
+          auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
+          ir_sch.Split(loops[1], {-1, 2});
+          loops = ir_sch.GetLoops(Out.as_tensor()->name);
+          ir_sch.Bind(loops[0], "blockIdx.x");
+          ir_sch.Bind(loops[1], "threadIdx.x");
+        });
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = CINNValuePack{res};
   });
@@ -1306,61 +1606,79 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
   if (attrs.attr_store.count("use_onednn")) {
     use_onednn = absl::get<bool>(attrs.attr_store.at("use_onednn"));
   }
-  framework::CINNCompute softmax_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input arguments of softmax compute is empty! Please check.";
-        CINNValuePack pack_args = args[0];
-        CHECK(!pack_args.empty())
-            << "The input tensors of softmax compute is empty! Please check.";
-        Expr A_expr = pack_args[0];
-        CHECK(A_expr.as_tensor());
-        ir::Tensor A = A_expr.as_tensor_ref();
-        int new_axis = axis;
-        if (axis == -1) {
-          new_axis = A->shape.size() - 1;
-        }
-        std::vector<ir::Tensor> out;
+  framework::CINNCompute softmax_compute([=](lang::Args args,
+                                             lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input arguments of softmax compute is empty! Please check."));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_NE(
+        pack_args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input tensors of softmax compute is empty! Please check."));
+    Expr A_expr = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A_expr.as_tensor(),
+        phi::errors::PreconditionNotMet(
+            "The provided object cannot be treated as a tensor."));
+    ir::Tensor A = A_expr.as_tensor_ref();
+    int new_axis = axis;
+    if (axis == -1) {
+      new_axis = A->shape.size() - 1;
+    }
+    std::vector<ir::Tensor> out;
 
-        PADDLE_ENFORCE_GE(pack_args.size(),
-                          2,
-                          phi::errors::InvalidArgument(
-                              "the size of pack_args should be greater than or "
-                              "equal to 2, but got %d.",
-                              pack_args.size()));
-        CHECK(pack_args[pack_args.size() - 1].is_string());
-        std::string tensor_name =
-            pack_args[pack_args.size() - 1].operator std::string();
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "the size of pack_args should be greater than or "
+                          "equal to 2, but got %d.",
+                          pack_args.size()));
+    PADDLE_ENFORCE_EQ(pack_args[pack_args.size() - 1].is_string(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The last element of pack_args must be a string."));
+    std::string tensor_name =
+        pack_args[pack_args.size() - 1].operator std::string();
 
 #ifdef CINN_WITH_DNNL
-        if (use_onednn) {
-          out = pe::SoftmaxONEDNN(A, new_axis, tensor_name);
-        } else {
-          out = pe::Softmax(A, new_axis, tensor_name);
-        }
+    if (use_onednn) {
+      out = pe::SoftmaxONEDNN(A, new_axis, tensor_name);
+    } else {
+      out = pe::Softmax(A, new_axis, tensor_name);
+    }
 #else
-        out = pe::Softmax(A, new_axis, tensor_name);
+    out = pe::Softmax(A, new_axis, tensor_name);
 #endif
-        std::vector<CINNValue> res;
-        for (auto &t : out) {
-          res.push_back(CINNValue(t));
-        }
-        PADDLE_ENFORCE_EQ(
-            out.size(),
-            2U,
-            phi::errors::InvalidArgument(
-                "The size of pe::Softmax's output should be 2, but got %d.",
-                out.size()));
-        CHECK(!out_type.empty())
-            << "Output type of Softmax is empty! Please check.\n";
+    std::vector<CINNValue> res;
+    for (auto &t : out) {
+      res.push_back(CINNValue(t));
+    }
+    PADDLE_ENFORCE_EQ(
+        out.size(),
+        2U,
+        phi::errors::InvalidArgument(
+            "The size of pe::Softmax's output should be 2, but got %d.",
+            out.size()));
 
-        *ret = CINNValuePack{res};
-      });
+    PADDLE_ENFORCE_NE(out_type.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Output type of Softmax is empty! Please check."));
+
+    *ret = CINNValuePack{res};
+  });
 
   framework::CINNSchedule softmax_schedule([=](lang::Args args,
                                                lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input arguments of softmax schedule "
-                            "is empty! Please check.";
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "The input arguments of softmax schedule is empty! Please check."));
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -1369,7 +1687,10 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         vec_ast.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_NE(vec_ast.empty(),
+                      true,
+                      platform::errors::PreconditionNotMet(
+                          "The vector 'vec_ast' must not be empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -1447,13 +1768,22 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
 
   framework::CINNCompute dropout_infer_compute([=](lang::Args args,
                                                    lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input arguments of dropout_infer compute is "
-                            "empty! Please check.";
+    PADDLE_ENFORCE_GT(args.size(),
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The input arguments of dropout_infer compute is "
+                          "empty! Please check."));
     CINNValuePack pack_args = args[0];
-    CHECK(!pack_args.empty()) << "The input tensors of dropout_infer "
-                                 "compute is empty! Please check.";
+    PADDLE_ENFORCE_NE(
+        pack_args.empty(),
+        true,
+        platform::errors::InvalidArgument("The input tensors of dropout_infer "
+                                          "compute is empty! Please check."));
     Expr A_expr = pack_args[0];
-    CHECK(A_expr.as_tensor());
+    PADDLE_ENFORCE_NOT_NULL(
+        A_expr.as_tensor(),
+        platform::errors::PreconditionNotMet(
+            "The expression must be convertible to a tensor."));
     ir::Tensor A = A_expr.as_tensor_ref();
 
     PADDLE_ENFORCE_EQ(pack_args.size(),
@@ -1461,7 +1791,11 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
                       phi::errors::InvalidArgument(
                           "the size of pack_args should be 2, but got %d.",
                           pack_args.size()));
-    CHECK(pack_args[1].is_string());
+    PADDLE_ENFORCE_EQ(
+        pack_args[1].is_string(),
+        true,
+        platform::errors::InvalidArgument(
+            "The element at index 1 of pack_args must be a string."));
     std::string tensor_name = pack_args[1].operator std::string();
 
     auto out =
@@ -1486,8 +1820,11 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
     const Target &target) {
   framework::CINNCompute select_compute([=](lang::Args args,
                                             lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of select compute is empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "The input argument of select compute is empty! Please check.\n"));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(
         pack_args.size(),
@@ -1499,17 +1836,29 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
     Expr condition = pack_args[0];
     Expr true_value = pack_args[1];
     Expr false_value = pack_args[2];
-    CHECK(condition.as_tensor());
-    CHECK(true_value.as_tensor());
-    CHECK(false_value.as_tensor());
-
+    PADDLE_ENFORCE_NOT_NULL(
+        condition.as_tensor(),
+        platform::errors::PreconditionNotMet(
+            "The tensor returned by condition.as_tensor() must not be null."));
+    PADDLE_ENFORCE_NOT_NULL(
+        true_value.as_tensor(),
+        platform::errors::PreconditionNotMet(
+            "The tensor returned by true_value.as_tensor() must not be null."));
+    PADDLE_ENFORCE_NOT_NULL(false_value.as_tensor(),
+                            platform::errors::PreconditionNotMet(
+                                "The tensor returned by "
+                                "false_value.as_tensor() must not be null."));
     PADDLE_ENFORCE_EQ(
         pack_args.size(),
         4U,
         phi::errors::InvalidArgument(
             "the size of pack_args for select compute should be 4, but got %d.",
             pack_args.size()));
-    CHECK(pack_args[3].is_string());
+    PADDLE_ENFORCE_EQ(
+        pack_args[3].is_string(),
+        true,
+        platform::errors::InvalidArgument(
+            "The element at index 3 of pack_args must be a string."));
     std::string tensor_name = pack_args[3].operator std::string();
 
     auto out = pe::Select(condition.as_tensor_ref(),
@@ -1521,7 +1870,10 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  CHECK(out_type.size()) << "Out_type of select op is empty! Please check.";
+  PADDLE_ENFORCE_NE(out_type.size(),
+                    0,
+                    platform::errors::InvalidArgument(
+                        "Out_type of select op is empty! Please check."));
   strategy->AddImpl(select_compute,
                     GetInjectiveScheduleFunc(output_shapes, target, false),
                     "strategy.select.x86",
