@@ -81,22 +81,48 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
   return vec_res;
 }
 
-inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
-  if (shapeordata.isa<TensorListExprs>()) {
-    ExprVec result;
-    TensorListExprs list =
-        shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-    for (size_t i = 0; i < list.size(); i++) {
-      if (list[i].data().has_value()) {
-        for (auto expr : list[i].data().value()) {
-          result.emplace_back(expr);
+// Complete means that all the items in tensor or tensor_list have symbolic data
+// representations.
+inline bool HasCompleteData(const ShapeOrData &shapeordata) {
+  return shapeordata.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        return impl.data().has_value();
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        for (size_t i = 0; i < impl.size(); i++) {
+          if (!impl[i].data().has_value()) {
+            return false;
+          }
         }
-      }
-    }
-    return result;
-  } else {
-    return shapeordata.data().value();
-  }
+        return true;
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
+        return false;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) { return false; });
+}
+
+inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
+  PADDLE_ENFORCE_EQ(
+      HasCompleteData(shapeordata),
+      true,
+      phi::errors::Fatal("ShapeOrDataDimExprs must have complete data info "
+                         "when calling GetExprVecFromData"));
+  ExprVec result;
+  shapeordata.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        result = impl.data().value();
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        for (size_t i = 0; i < impl.size(); i++) {
+          for (auto expr : impl[i].data().value()) {
+            result.emplace_back(expr);
+          }
+        }
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) { return; },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) { return; });
+  return result;
 }
 
 inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {

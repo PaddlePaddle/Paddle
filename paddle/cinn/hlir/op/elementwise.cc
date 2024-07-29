@@ -72,27 +72,37 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
     const Target &target,
     const std::string &op_name,
     const PeFunc &pe_func) {
-  framework::CINNCompute unary_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of " << op_name
-                             << " compute is empty! Please check.";
-        CINNValuePack pack_args = args[0];
+  framework::CINNCompute unary_compute([=](lang::Args args,
+                                           lang::RetValue *ret) {
+    CHECK(!args.empty()) << "The input argument of " << op_name
+                         << " compute is empty! Please check.";
+    CINNValuePack pack_args = args[0];
 
-        CHECK_GE(pack_args.size(), 1U)
-            << "1 input tensor for " << op_name << " compute";
-        CHECK_EQ(pack_args.size(), 2U);
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
-        Expr A_expr = pack_args[0];
-        CHECK(A_expr.as_tensor());
-        ir::Tensor A = A_expr.as_tensor_ref();
-        auto out = pe_func(A, tensor_name);
-        std::vector<CINNValue> res;
-        for (auto &t : out) {
-          res.push_back(CINNValue(t));
-        }
-        *ret = CINNValuePack{res};
-      });
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        1U,
+        phi::errors::InvalidArgument("the size of pack_args should be greater "
+                                     "than or equal to 1, but got %d.",
+                                     pack_args.size()));
+
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        2U,
+        phi::errors::InvalidArgument("the size of pack_args should be"
+                                     "equal to 2, but got %d.",
+                                     pack_args.size()));
+    CHECK(pack_args[1].is_string());
+    std::string tensor_name = pack_args[1].operator std::string();
+    Expr A_expr = pack_args[0];
+    CHECK(A_expr.as_tensor());
+    ir::Tensor A = A_expr.as_tensor_ref();
+    auto out = pe_func(A, tensor_name);
+    std::vector<CINNValue> res;
+    for (auto &t : out) {
+      res.push_back(CINNValue(t));
+    }
+    *ret = CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(unary_compute,
@@ -110,26 +120,36 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
     const Target &target,
     const std::string &op_name,
     const PeFunc &pe_func) {
-  framework::CINNCompute unary_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of " << op_name
-                             << " compute is empty! Please check.";
-        CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "1 input tensor for " << op_name << " compute";
-        CHECK_EQ(pack_args.size(), 2U);
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
-        Expr A_expr = pack_args[0];
-        CHECK(A_expr.as_tensor());
-        ir::Tensor A = A_expr.as_tensor_ref();
-        auto out = pe_func(A, tensor_name);
-        std::vector<CINNValue> res;
-        for (auto &t : out) {
-          res.push_back(CINNValue(t));
-        }
-        *ret = CINNValuePack{res};
-      });
+  framework::CINNCompute unary_compute([=](lang::Args args,
+                                           lang::RetValue *ret) {
+    CHECK(!args.empty()) << "The input argument of " << op_name
+                         << " compute is empty! Please check.";
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        1U,
+        phi::errors::InvalidArgument("the size of pack_args should be greater "
+                                     "than or equal to 1, but got %d.",
+                                     pack_args.size()));
+
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        2U,
+        phi::errors::InvalidArgument("the size of pack_args should be "
+                                     "equal to 2, but got %d.",
+                                     pack_args.size()));
+    CHECK(pack_args[1].is_string());
+    std::string tensor_name = pack_args[1].operator std::string();
+    Expr A_expr = pack_args[0];
+    CHECK(A_expr.as_tensor());
+    ir::Tensor A = A_expr.as_tensor_ref();
+    auto out = pe_func(A, tensor_name);
+    std::vector<CINNValue> res;
+    for (auto &t : out) {
+      res.push_back(CINNValue(t));
+    }
+    *ret = CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(
@@ -167,7 +187,12 @@ std::shared_ptr<OpStrategy> StrategyForScale(
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
         ir::Tensor out;
-        CHECK_EQ(pack_args.size(), 2);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2,
+            phi::errors::InvalidArgument("the size of pack_args should be "
+                                         "equal to 2, but got %d.",
+                                         pack_args.size()));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
 
@@ -238,7 +263,12 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
         ir::Tensor out;
-        CHECK_EQ(pack_args.size(), 2);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2,
+            phi::errors::InvalidArgument("the size of pack_args should be "
+                                         "equal to 2, but got %d.",
+                                         pack_args.size()));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
 
@@ -289,34 +319,35 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
     void operator()(bool v) { scalar_ = Expr(v); }
     void operator()(const std::string &v) { scalar_ = Expr(v); }
     void operator()(const std::vector<int> &) {
-      PADDLE_THROW(phi::errors::InvalidArgument("wrong type std::vector<int>"));
+      PADDLE_THROW(
+          ::common::errors::InvalidArgument("wrong type std::vector<int>"));
     }
     void operator()(const std::vector<int64_t> &) {
       PADDLE_THROW(
-          phi::errors::InvalidArgument("wrong type std::vector<int64_t>"));
+          ::common::errors::InvalidArgument("wrong type std::vector<int64_t>"));
     }
     void operator()(const std::vector<float> &) {
       PADDLE_THROW(
-          phi::errors::InvalidArgument("wrong type std::vector<float>"));
+          ::common::errors::InvalidArgument("wrong type std::vector<float>"));
     }
     void operator()(const std::vector<double> &) {
       PADDLE_THROW(
-          phi::errors::InvalidArgument("wrong type std::vector<double>"));
+          ::common::errors::InvalidArgument("wrong type std::vector<double>"));
     }
     void operator()(const std::vector<bool> &) {
       PADDLE_THROW(
-          phi::errors::InvalidArgument("wrong type std::vector<bool>"));
+          ::common::errors::InvalidArgument("wrong type std::vector<bool>"));
     }
     void operator()(const std::vector<std::string> &) {
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("wrong type std::vector<std::string>"));
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "wrong type std::vector<std::string>"));
     }
     void operator()(const std::vector<symbol::DimExpr> &) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "wrong type std::vector<symbol::DimExpr>"));
     }
     void operator()(const std::vector<cinn::dialect::SymbolBinding> &) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "wrong type std::vector<cinn::dialect::SymbolBinding>"));
     }
   };
@@ -337,7 +368,12 @@ std::shared_ptr<OpStrategy> StrategyForConstScalar(
     auto scalar = GetScalarExpr(attrs.attr_store.at("value"));
     auto scalar_type = out_type.at(0);
     CINNValuePack pack_args = args[0];
-    CHECK_EQ(pack_args.size(), 1U);
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        1U,
+        phi::errors::InvalidArgument("the size of pack_args should be "
+                                     "equal to 1, but got %d.",
+                                     pack_args.size()));
     CHECK(pack_args[0].is_string());
     std::string tensor_name = pack_args[0].operator std::string();
 
@@ -370,7 +406,7 @@ std::shared_ptr<OpStrategy> StrategyForSum(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "The operator will be decomposed into several primitive "
       "operators. Please Use Decomposer Program Pass."));
 }
@@ -401,7 +437,12 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
         }
 
         CINNValuePack arg_pack = args[0];
-        CHECK_EQ(arg_pack.size(), 1U);
+        PADDLE_ENFORCE_EQ(
+            arg_pack.size(),
+            1U,
+            phi::errors::InvalidArgument("the size of arg_pack should be "
+                                         "equal to 1, but got %d.",
+                                         arg_pack.size()));
         CHECK(arg_pack[0].is_string());
         std::string tensor_name = arg_pack[0].operator std::string();
         CHECK(!shape.empty()) << "shape attr is empty!";
@@ -451,7 +492,12 @@ std::shared_ptr<OpStrategy> StrategyForFillConstantSymbolic(
         }
 
         CINNValuePack arg_pack = args[0];
-        CHECK_EQ(arg_pack.size(), 1U);
+        PADDLE_ENFORCE_EQ(
+            arg_pack.size(),
+            1U,
+            phi::errors::InvalidArgument("the size of arg_pack should be "
+                                         "equal to 1, but got %d.",
+                                         arg_pack.size()));
         CHECK(arg_pack[0].is_string());
         std::string tensor_name = arg_pack[0].operator std::string();
         CHECK(!shape.empty()) << "shape attr is empty!";
@@ -498,7 +544,12 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
     const auto &value = attrs.attr_store.at("values");
 
     CINNValuePack arg_pack = args[0];
-    CHECK_EQ(arg_pack.size(), 1U);
+    PADDLE_ENFORCE_EQ(
+        arg_pack.size(),
+        1U,
+        phi::errors::InvalidArgument("the size of arg_pack should be "
+                                     "equal to 1, but got %d.",
+                                     arg_pack.size()));
     CHECK(arg_pack[0].is_string());
     std::string tensor_name = arg_pack[0].operator std::string();
 
@@ -519,7 +570,7 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
     else {  // NOLINT
       std::stringstream ss;
       ss << "Assign value not support the type " << out_type[0];
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     }
 #undef EXPAND_VALUE_TO_TENSOR
 
@@ -597,8 +648,12 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
     CHECK(!args.empty())
         << "The input arguments of Squeeze compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 1U)
-        << "at least 1 input tensors for Squeeze compute\n";
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        1U,
+        phi::errors::InvalidArgument("the size of pack_args should be "
+                                     "equal to 1, but got %d.",
+                                     pack_args.size()));
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -606,7 +661,12 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    CHECK_EQ(pack_args.size(), 2U);
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        2U,
+        phi::errors::InvalidArgument("the size of pack_args should be "
+                                     "equal to 2, but got %d.",
+                                     pack_args.size()));
     std::string tensor_name = pack_args[1].operator std::string();
 
     ir::Tensor out = pe::Squeeze(tensor_A, axes, tensor_name);
@@ -641,12 +701,21 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
     CHECK(!args.empty()) << "The input args are empty! Please check again.";
     CINNValuePack input_args = args[0];
     int input_size = input_args.size();
-    CHECK_GE(input_size, 1U)
-        << "Require 1 input tensors for expand_dims compute.";
+    PADDLE_ENFORCE_GE(
+        input_size,
+        1U,
+        phi::errors::InvalidArgument(
+            "the input_size should be greater than or equal to 1, but got %d",
+            input_size));
     Expr x = input_args[0];
     CHECK(x.as_tensor());
 
-    CHECK_EQ(input_args.size(), 2U);
+    PADDLE_ENFORCE_EQ(
+        input_args.size(),
+        2U,
+        phi::errors::InvalidArgument("the size of input_args should be "
+                                     "equal to 2, but got %d.",
+                                     input_args.size()));
     CHECK(input_args[1].is_string());
     std::string tensor_name = input_args[1].operator std::string();
 
@@ -676,8 +745,12 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
     CHECK(!args.empty())
         << "The input arguments of Reshape compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 1U)
-        << "at least 1 input tensors for Reshape compute\n";
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "the size of pack_args should be greater than or "
+                          "equal to 1, but got %d.",
+                          pack_args.size()));
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -689,7 +762,12 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    CHECK_EQ(pack_args.size(), 2);
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "the size of pack_args should be greater than or "
+                          "equal to 2, but got %d.",
+                          pack_args.size()));
     CHECK(pack_args[1].is_string());
     std::string tensor_name = pack_args[1].operator std::string();
 
@@ -721,8 +799,12 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
     CHECK(!args.empty())
         << "The input arguments of Reshape compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 1U)
-        << "at least 1 input tensors for Reshape compute\n";
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "the size of pack_args should be greater than or "
+                          "equal to 1, but got %d.",
+                          pack_args.size()));
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -765,15 +847,24 @@ std::shared_ptr<framework::OpStrategy> StrategyForCast(
         CHECK(!args.empty())
             << "The input arguments of Cast compute is empty! Please check.\n";
         CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "at least 1 input tensors for Cast compute\n";
+        PADDLE_ENFORCE_GE(pack_args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "the size of pack_args should be greater than or "
+                              "equal to 1, but got %d.",
+                              pack_args.size()));
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        CHECK_EQ(pack_args.size(), 2U);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2U,
+            phi::errors::InvalidArgument("the size of pack_args should be "
+                                         "equal to 2, but got %d.",
+                                         pack_args.size()));
         std::string tensor_name = pack_args[1].operator std::string();
         ir::Tensor out = pe::Cast(tensor_A, out_type[0], tensor_name);
         std::vector<CINNValue> res;
@@ -802,15 +893,24 @@ std::shared_ptr<framework::OpStrategy> StrategyForCastSymbolic(
         CHECK(!args.empty())
             << "The input arguments of Cast compute is empty! Please check.\n";
         CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "at least 1 input tensors for Cast compute\n";
+        PADDLE_ENFORCE_GE(pack_args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "the size of pack_args should be greater than or "
+                              "equal to 1, but got %d.",
+                              pack_args.size()));
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        CHECK_EQ(pack_args.size(), 2U);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2U,
+            phi::errors::InvalidArgument("the size of pack_args should be "
+                                         "equal to 2, but got %d.",
+                                         pack_args.size()));
         std::string tensor_name = pack_args[1].operator std::string();
         ir::Tensor out = pe::Cast(tensor_A, out_type[0], tensor_name);
         std::vector<CINNValue> res;
@@ -836,15 +936,25 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStore(
         CHECK(!args.empty())
             << "The input arguments of Cast compute is empty! Please check.\n";
         CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "at least 1 input tensors for Cast compute\n";
+        PADDLE_ENFORCE_GE(pack_args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "the size of pack_args should be greater than or "
+                              "equal to 1, but got %d.",
+                              pack_args.size()));
+
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        CHECK_EQ(pack_args.size(), 2U);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2U,
+            phi::errors::InvalidArgument("the size of pack_args should be "
+                                         "equal to 2, but got %d.",
+                                         pack_args.size()));
         std::string tensor_name = pack_args[1].operator std::string();
         ir::Tensor out = pe::Store(tensor_A, tensor_name);
         std::vector<CINNValue> res;
@@ -873,15 +983,24 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStoreSymbolic(
         CHECK(!args.empty())
             << "The input arguments of Cast compute is empty! Please check.\n";
         CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "at least 1 input tensors for Cast compute\n";
+        PADDLE_ENFORCE_GE(pack_args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "the size of pack_args should be greater than or "
+                              "equal to 1, but got %d.",
+                              pack_args.size()));
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        CHECK_EQ(pack_args.size(), 2U);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2U,
+            phi::errors::InvalidArgument("the size of pack_args should be "
+                                         "equal to 2, but got %d.",
+                                         pack_args.size()));
         std::string tensor_name = pack_args[1].operator std::string();
         ir::Tensor out = pe::Store(tensor_A, tensor_name);
         std::vector<CINNValue> res;
@@ -1025,7 +1144,12 @@ std::shared_ptr<framework::OpStrategy> StrategyForArange(
             << "The input argument of arange compute is empty! Please check.\n";
         CINNValuePack pack_args = args[0];
 
-        CHECK_EQ(pack_args.size(), 1U);
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            1U,
+            phi::errors::InvalidArgument("the size of pack_args should be "
+                                         "equal to 1, but got %d.",
+                                         pack_args.size()));
         std::string tensor_name = pack_args[0].operator std::string();
 
         auto out = pe::Arange(start, stop, step, dtype, tensor_name);
@@ -1106,51 +1230,51 @@ std::shared_ptr<OpStrategy> StrategyForTril(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute tril_compute([=](lang::Args args,
-                                          lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(args.size(),
-                      size_t(1),
-                      phi::errors::InvalidArgument(
-                          "The input arguments of tril compute is empty"));
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_GE(
-        pack_args.size(),
-        size_t(1),
-        phi::errors::InvalidArgument("only 1 input tensor for tril compute"));
-    Expr A = pack_args[0];
-    PADDLE_ENFORCE_NOT_NULL(
-        A.as_tensor(),
-        phi::errors::InvalidArgument(
-            "first input argument in tril should be tensor"));
-    int diagonal = absl::get<int>(attrs.attr_store.at("diagonal"));
-    auto tensor_A = A.as_tensor_ref();
+  framework::CINNCompute tril_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        PADDLE_ENFORCE_EQ(args.size(),
+                          size_t(1),
+                          ::common::errors::InvalidArgument(
+                              "The input arguments of tril compute is empty"));
+        CINNValuePack pack_args = args[0];
+        PADDLE_ENFORCE_GE(pack_args.size(),
+                          size_t(1),
+                          ::common::errors::InvalidArgument(
+                              "only 1 input tensor for tril compute"));
+        Expr A = pack_args[0];
+        PADDLE_ENFORCE_NOT_NULL(
+            A.as_tensor(),
+            ::common::errors::InvalidArgument(
+                "first input argument in tril should be tensor"));
+        int diagonal = absl::get<int>(attrs.attr_store.at("diagonal"));
+        auto tensor_A = A.as_tensor_ref();
 
-    PADDLE_ENFORCE_NE(output_shapes.size(),
-                      size_t(0),
-                      phi::errors::InvalidArgument(
-                          "output shape of tril should not be empty."));
-    VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
-            << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+        PADDLE_ENFORCE_NE(output_shapes.size(),
+                          size_t(0),
+                          ::common::errors::InvalidArgument(
+                              "output shape of tril should not be empty."));
+        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
+                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-    PADDLE_ENFORCE_EQ(pack_args.size(),
-                      size_t(2),
-                      phi::errors::InvalidArgument(
-                          "args of tril compute should be equal to 2"));
-    PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The second argument of tril should be string"));
-    std::string tensor_name = pack_args[1].operator std::string();
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          size_t(2),
+                          ::common::errors::InvalidArgument(
+                              "args of tril compute should be equal to 2"));
+        PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
+                          true,
+                          ::common::errors::InvalidArgument(
+                              "The second argument of tril should be string"));
+        std::string tensor_name = pack_args[1].operator std::string();
 
-    ir::Tensor out =
-        pe::Tril(tensor_A, diagonal, output_shapes[0], tensor_name);
-    std::vector<CINNValue> res;
-    res.push_back(CINNValue(out));
-    CHECK(!out_type.empty())
-        << "Output type of Reshape is empty! Please check.\n";
+        ir::Tensor out =
+            pe::Tril(tensor_A, diagonal, output_shapes[0], tensor_name);
+        std::vector<CINNValue> res;
+        res.push_back(CINNValue(out));
+        CHECK(!out_type.empty())
+            << "Output type of Reshape is empty! Please check.\n";
 
-    *ret = CINNValuePack{res};
-  });
+        *ret = CINNValuePack{res};
+      });
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(tril_compute, lang::PackedFunc(), "strategy.tril.x86", 1);
 
@@ -1168,8 +1292,12 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssignOutSymbolic(
     CHECK(!args.empty())
         << "The input arguments of AssignOut compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_EQ(pack_args.size(), 3U)
-        << "3 input tensors is needed for AssignOut compute\n";
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        3U,
+        phi::errors::InvalidArgument("the size of pack_args should be "
+                                     "equal to 3, but got %d.",
+                                     pack_args.size()));
     Expr x = pack_args[0];
     CHECK(x.as_tensor());
     Expr out = pack_args[1];
@@ -1234,9 +1362,11 @@ std::shared_ptr<OpStrategy> StrategyForIsClose(
         // the last pack argument is the output tensor name
         std::string tensor_name = pack_args.back().operator std::string();
         --input_size;
-        CHECK_EQ(input_size, 2)
-            << "The input number of isclose should be 2, but here "
-            << input_size << "! Please check.";
+        PADDLE_ENFORCE_EQ(
+            input_size,
+            2,
+            phi::errors::InvalidArgument(
+                "the input_size should be 2, but got %d.", input_size));
 
         // the input tensor are in front
         Expr x_expr = pack_args[0];
@@ -1295,9 +1425,11 @@ std::shared_ptr<OpStrategy> StrategyForIsCloseSymbolic(
         // the last pack argument is the output tensor name
         std::string tensor_name = pack_args.back().operator std::string();
         --input_size;
-        CHECK_EQ(input_size, 2)
-            << "The input number of isclose should be 2, but here "
-            << input_size << "! Please check.";
+        PADDLE_ENFORCE_EQ(
+            input_size,
+            2,
+            phi::errors::InvalidArgument(
+                "the input_size should be 2, but got %d.", input_size));
 
         // the input tensor are in front
         Expr x_expr = pack_args[0];

@@ -81,7 +81,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
         for (auto& i : tensor_args_) {
           LOG(INFO) << i->name;
         }
-        PADDLE_THROW(phi::errors::InvalidArgument("Fatal Error!"));
+        PADDLE_THROW(::common::errors::InvalidArgument("Fatal Error!"));
       }
       Reference(&arg)->buffer = tensor_map.at(arg->name)->buffer;
     }

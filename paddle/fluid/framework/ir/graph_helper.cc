@@ -155,7 +155,7 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
       adj_list = BuildOperationAdjList(graph);
   PADDLE_ENFORCE_EQ(HasCircleInternal(adj_list, nullptr),
                     false,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
@@ -208,7 +208,7 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationOutAdjList(
       for (auto &adj_n : var->outputs) {
         PADDLE_ENFORCE_EQ(adj_n->NodeType(),
                           ir::Node::Type::kOperation,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Node(%s)'s type(%d) must be kOperation type.",
                               adj_n->Name(),
                               static_cast<int>(adj_n->NodeType())));
@@ -385,7 +385,7 @@ size_t GraphNum(const Graph &graph) {
           new std::ofstream(FLAGS_print_sub_graph_dir));
       PADDLE_ENFORCE_EQ(fout->good(),
                         true,
-                        platform::errors::Unavailable(
+                        common::errors::Unavailable(
                             "Can not open file %s for printing the graph.",
                             FLAGS_print_sub_graph_dir));
       *fout << out.str();
@@ -438,7 +438,7 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
       adj_list = BuildOperationAdjList<DescOrderComparator>(graph);
   PADDLE_ENFORCE_EQ(HasCircleInternal<DescOrderComparator>(adj_list, nullptr),
                     false,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
@@ -575,8 +575,8 @@ void ReplaceAllReduceOp(const Node &node,
   }
 #else
   PADDLE_THROW(
-      platform::errors::Unimplemented("ReplaceAllReduceOp is only implemented "
-                                      "for paddle compiled with NCCL/RCCL."));
+      common::errors::Unimplemented("ReplaceAllReduceOp is only implemented "
+                                    "for paddle compiled with NCCL/RCCL."));
 #endif
 }
 
@@ -753,12 +753,12 @@ void GraphToProgram(const Graph &graph,
                     const SortKind *sort_kind) {
   PADDLE_ENFORCE_EQ(graph.IsMainGraph(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "This graph is a sub_graph, "
                         "and can't convert to program individually"));
   PADDLE_ENFORCE_NOT_NULL(
       program,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "program must not be nullptr when converting graph to program"));
 
   proto::ProgramDesc program_pb(*(program->Proto()));
@@ -865,7 +865,7 @@ static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(
     PADDLE_ENFORCE_EQ(
         op_id_to_idx.emplace(op_desc->OriginalId(), op_idx).second,
         true,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "There should not be duplicate op id: %d", op_desc->OriginalId()));
   }
 
@@ -879,7 +879,7 @@ static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(
     auto iter = op_id_to_idx.find(op_id);
     PADDLE_ENFORCE_NE(iter,
                       op_id_to_idx.end(),
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Cannot find OpDesc with id %d", op_id));
     return iter->second;
   };

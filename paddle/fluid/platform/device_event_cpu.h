@@ -28,7 +28,7 @@ struct CPUDeviceEventWrapper {
     PADDLE_ENFORCE_EQ(
         phi::is_cpu_place(place),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Required device shall be CPUPlace, but received %d. ", place));
   }
   std::mutex mutex_;

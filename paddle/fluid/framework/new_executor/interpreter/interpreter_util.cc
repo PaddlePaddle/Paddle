@@ -311,9 +311,10 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
     return OpFuncType::kCpuSync;
   }
 
-  PADDLE_ENFORCE_EQ(IsSupportedHeterPlace(place),
-                    true,
-                    phi::errors::Fatal("Unsupported current place %s", place));
+  PADDLE_ENFORCE_EQ(
+      IsSupportedHeterPlace(place),
+      true,
+      common::errors::Fatal("Unsupported current place %s", place));
 
   // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
   // computing. They execute serially in device thread and block CUDA kernel
@@ -469,7 +470,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       PADDLE_ENFORCE_EQ(
           is_custom_device_op,
           true,
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "Unsupported current device %s with Paddle CustomDevice ",
               op_device));
 #else
@@ -492,13 +493,13 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
               << " by device_guard.";
     } else {
       PADDLE_THROW(
-          platform::errors::Fatal("Unsupported current place %s", op_device));
+          common::errors::Fatal("Unsupported current place %s", op_device));
     }
   }
 }
 
-platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
-                                                const phi::Place& place) {
+phi::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
+                                           const phi::Place& place) {
   auto& pool = phi::DeviceContextPool::Instance();
   auto* default_dev_ctx = pool.Get(place);
 
@@ -932,7 +933,7 @@ void BuildOpFuncList(const phi::Place& place,
             // avoid overwriting valid data
             if (static_build && original_tensor->initialized()) {
               const phi::Place& target_place = transformed_tensor->place();
-              platform::DeviceContext* dev_ctx_for_copy = nullptr;
+              phi::DeviceContext* dev_ctx_for_copy = nullptr;
               if (target_place.GetType() != AllocationType::CPU) {
                 dev_ctx_for_copy = pool.Get(target_place);
               } else {
@@ -1211,7 +1212,7 @@ void BuildVariableScope(const framework::BlockDesc& block,
 }
 
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
-                          platform::DeviceContext* dev_ctx) {
+                          phi::DeviceContext* dev_ctx) {
   if (operator_base->HasAttr("ring_id")) {
     int ring_id = operator_base->Attr<int>("ring_id");
     const auto& comm_context_manager =
@@ -1228,8 +1229,7 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
   }
 }
 
-void SetDeviceCommContext(pir::Operation* op,
-                          platform::DeviceContext* dev_ctx) {
+void SetDeviceCommContext(pir::Operation* op, phi::DeviceContext* dev_ctx) {
   auto op_attributes = op->attributes();
   if (op_attributes.count("ring_id") != 0) {
     int ring_id =
@@ -1268,7 +1268,7 @@ void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
                      std::unordered_map<int, std::string>* id_2_var_name) {
   PADDLE_ENFORCE_NOT_NULL(
       id_2_var_name,
-      phi::errors::InvalidArgument("id2_var_name can not be null"));
+      common::errors::InvalidArgument("id2_var_name can not be null"));
   for (auto [var_name, id] : var_name_2_id) {
     id_2_var_name->insert({id, var_name});
   }
@@ -1448,14 +1448,14 @@ const std::vector<std::string> GetInstructionCallStack(
     auto attr = iter->second;
     PADDLE_ENFORCE(
         attr.isa<pir::ArrayAttribute>(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "%s: Callstack attributes of %s is not ArrayAttribute type", type));
     pir::ArrayAttribute array_attribute = attr.dyn_cast<pir::ArrayAttribute>();
     std::vector<pir::Attribute> vec_attr = array_attribute.AsVector();
     for (auto value : vec_attr) {
       PADDLE_ENFORCE(
           value.isa<pir::StrAttribute>(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "%s: Callstack attributes of %s is not StrAttribute type", type));
       vec_str.emplace_back(value.dyn_cast<pir::StrAttribute>().AsString());
     }

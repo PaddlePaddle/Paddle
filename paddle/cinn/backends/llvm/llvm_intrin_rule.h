@@ -34,7 +34,7 @@ template <int id, int arg_nums, bool add_float_suffix = true>
 inline void MakeFloatIntrinOp(lang::Args args, lang::RetValue *rv) {
   PADDLE_ENFORCE_GE(args.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of args should be greater than 1."));
   Expr arg = args[0];
   ir::Call *node = arg->as<ir::Call>();
@@ -42,7 +42,7 @@ inline void MakeFloatIntrinOp(lang::Args args, lang::RetValue *rv) {
   PADDLE_ENFORCE_GE(
       node->read_args.size(),
       arg_nums,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The number of read args should be greater than arg_nums."));
   if (add_float_suffix) {
     CHECK(node->type().is_float());
@@ -94,7 +94,7 @@ void RegisterCpuIntrinRule() {
       .SetBody([](lang::Args args, lang::RetValue *rv) {
         PADDLE_ENFORCE_GE(args.size(),
                           1U,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
@@ -108,7 +108,7 @@ void RegisterCpuIntrinRule() {
       .SetBody([](lang::Args args, lang::RetValue *rv) {
         PADDLE_ENFORCE_GE(args.size(),
                           1U,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
@@ -128,7 +128,7 @@ void RegisterCpuIntrinRule() {
       .SetBody([](lang::Args args, lang::RetValue *rv) {
         PADDLE_ENFORCE_GE(args.size(),
                           1U,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
@@ -142,7 +142,7 @@ void RegisterCpuIntrinRule() {
       .SetBody([](lang::Args args, lang::RetValue *rv) {
         PADDLE_ENFORCE_GE(args.size(),
                           1U,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
@@ -157,7 +157,7 @@ void RegisterCpuIntrinRule() {
       .SetBody([](lang::Args args, lang::RetValue *rv) {
         PADDLE_ENFORCE_GE(args.size(),
                           1U,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
@@ -171,7 +171,7 @@ void RegisterCpuIntrinRule() {
       .SetBody([](lang::Args args, lang::RetValue *rv) {
         PADDLE_ENFORCE_GE(args.size(),
                           1U,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
@@ -195,7 +195,7 @@ void RegisterCpuIntrinRule() {
       .SetBody([](lang::Args args, lang::RetValue *rv) {
         PADDLE_ENFORCE_GE(args.size(),
                           1U,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
@@ -210,7 +210,7 @@ void RegisterCpuIntrinRule() {
       .SetBody([](lang::Args args, lang::RetValue *rv) {
         PADDLE_ENFORCE_GE(args.size(),
                           1U,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();

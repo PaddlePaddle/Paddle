@@ -63,7 +63,7 @@ std::shared_ptr<std::vector<PaddleTensor>> WarmupData(
 
   PADDLE_ENFORCE_LE(static_cast<size_t>(num_images),
                     data_size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The requested quantization warmup data size must be "
                         "lower or equal to the test data size. But received"
                         "warmup size is %d and test data size is %d",
@@ -281,8 +281,12 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
     std::vector<double> acc_analysis(3);
     acc_analysis = Lexical_Test(input_slots_all, &outputs, &analysis_cfg, true);
     for (size_t i = 0; i < acc_analysis.size(); i++) {
-      CHECK_LE(std::abs(acc_ref[i] - acc_analysis[i]),
-               FLAGS_quantized_accuracy);
+      PADDLE_ENFORCE_LE(
+          std::abs(acc_ref[i] - acc_analysis[i]),
+          FLAGS_quantized_accuracy,
+          phi::errors::InvalidArgument(
+              "Required abs(acc_ref[i] - acc_analysis[i]) should be less than "
+              "or euqal to FLAGS_quantized_accuracy. "));
     }
   }
 }
