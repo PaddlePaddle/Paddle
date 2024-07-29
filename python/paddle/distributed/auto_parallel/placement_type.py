@@ -11,13 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import cast
+from typing import List, cast
 
 import paddle
 from paddle.base.core import Partial, Replicate, Shard
+from paddle.distributed import Placement
+
+from .process_mesh import ProcessMesh
 
 
-def to_placements(dim_map, mesh, partial_idx=[]):
+def to_placements(
+    dim_map: list[int], mesh: ProcessMesh, partial_idx: list[int] = None
+) -> list:
     """
     convert dim_map to placements.
 
@@ -55,7 +60,7 @@ def to_placements(dim_map, mesh, partial_idx=[]):
     return placements
 
 
-def check_placements_equal(this, that):
+def check_placements_equal(this: list[any], that: list[any]) -> bool:
     assert isinstance(this, list) and isinstance(that, list)
     small_placements = this if len(this) < len(that) else that
     large_placements = that if len(this) < len(that) else this
@@ -69,7 +74,9 @@ def check_placements_equal(this, that):
     return True
 
 
-def to_dim_map(placements, tensor_dims):
+def to_dim_map(
+    placements: list[Placement], tensor_dims: int
+) -> tuple[list[int], dict[int, str]]:
     """
     convert placements to dim_map.
 
@@ -97,7 +104,9 @@ def to_dim_map(placements, tensor_dims):
     return dim_map, partial_status
 
 
-def get_shard_spec(mesh, placements, tensor_dims):
+def get_shard_spec(
+    mesh: ProcessMesh, placements: list[Placement], tensor_dims: int
+) -> List[str]:
     """to get shard_spec for construct DistAttr for static API."""
     dim_map, _ = to_dim_map(placements, tensor_dims)
     mesh_dim_names = mesh.dim_names
