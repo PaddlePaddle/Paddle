@@ -85,13 +85,13 @@ void TestMain(const std::string& conv_type) {
   PADDLE_ENFORCE_EQ(
       num_bn_nodes_before,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Before conv_bn_fuse_pass, number of batch norm op(%d) must be 1.",
           num_bn_nodes_before));
   PADDLE_ENFORCE_EQ(
       num_bn_nodes_after,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "After conv_bn_fuse_pass, number of batch norm op(%d) must be 0.",
           num_bn_nodes_after));
 }

@@ -87,9 +87,10 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
       LOG(WARNING) << "The Pass in op compat failed.";
       return;
     }
-    PADDLE_ENFORCE_GT(subgraph.count(x),
-                      0,
-                      phi::errors::NotFound("Detector did not find input X."));
+    PADDLE_ENFORCE_GT(
+        subgraph.count(x),
+        0,
+        common::errors::NotFound("Detector did not find input X."));
     auto* input_node = subgraph.at(x);
     auto reshape1_desc = reshape1_op->Op();
     auto reshape2_desc = reshape2_op->Op();

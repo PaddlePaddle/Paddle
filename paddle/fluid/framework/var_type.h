@@ -40,7 +40,7 @@ inline proto::VarType::Type ToVarType(int type) {
     case proto::VarType::READER:
       return static_cast<proto::VarType::Type>(type);
     default:
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "ToVarType method Unsupported type %d.", type));
   }
 }
@@ -70,8 +70,8 @@ inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
       visitor(var.Get<FetchList>());
       return;
     default:
-      PADDLE_THROW(phi::errors::Unavailable("Not supported visit type %s.",
-                                            ToTypeName(var.Type())));
+      PADDLE_THROW(common::errors::Unavailable("Not supported visit type %s.",
+                                               ToTypeName(var.Type())));
   }
 }
 
