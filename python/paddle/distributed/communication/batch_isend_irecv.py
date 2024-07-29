@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING, Callable, Generator, Sequence
 
 import paddle.distributed as dist
 from paddle import framework
@@ -92,7 +92,9 @@ class P2POp:
 
 
 @contextlib.contextmanager
-def _coalescing_manager(group: Group, tasks: task | None = None) -> None:
+def _coalescing_manager(
+    group: Group, tasks: task | None = None
+) -> Generator[None, None, None]:
     group = _get_global_group() if group is None else group
     pg = group.process_group
     pg._start_coalescing()
