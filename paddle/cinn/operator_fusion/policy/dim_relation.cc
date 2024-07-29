@@ -26,7 +26,7 @@ const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
       return i;
     }
   }
-  PADDLE_THROW(phi::errors::NotFound(
+  PADDLE_THROW(::common::errors::NotFound(
       "Can not find the usage of value %s in op %s", v.impl(), op->name()));
 }
 

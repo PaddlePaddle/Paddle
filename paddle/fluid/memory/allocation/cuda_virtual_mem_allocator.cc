@@ -102,13 +102,13 @@ void CUDAVirtualMemAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       allocation->place(),
       place_,
-      phi::errors::PermissionDenied(
+      common::errors::PermissionDenied(
           "GPU memory is freed in incorrect device. This may be a bug"));
 
   auto iter = virtual_2_physical_map_.find(
       reinterpret_cast<CUdeviceptr>(allocation->ptr()));
   if (iter == virtual_2_physical_map_.end()) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Can not find virtual memory address at %s", allocation->ptr()));
   }
 
@@ -143,7 +143,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   CUdeviceptr ptr = virtual_mem_base_ + virtual_mem_alloced_offset_;
 
   if (ptr + size > virtual_mem_base_ + virtual_mem_size_) {
-    PADDLE_THROW_BAD_ALLOC(phi::errors::ResourceExhausted(
+    PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
         "\n\nOut of memory error on GPU Virtual Memory %d. "
         "Cannot allocate %s memory on GPU Virtual Memory %d, %s memory has "
         "been allocated and "
@@ -173,7 +173,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
       size_t actual_allocated = actual_total - actual_avail;
 
-      PADDLE_THROW_BAD_ALLOC(phi::errors::ResourceExhausted(
+      PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
           "\n\nOut of memory error on GPU %d. "
           "Cannot allocate %s memory on GPU %d, %s memory has been allocated "
           "and "

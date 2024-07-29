@@ -87,7 +87,7 @@ class IrMapping {
     PADDLE_ENFORCE_GT(
         GetMap<IrType<T>>().count(from),
         0UL,
-        phi::errors::InvalidArgument("Not found key in IRMapping."));
+        common::errors::InvalidArgument("Not found key in IRMapping."));
     return GetMap<IrType<T>>().at(from);
   }
 

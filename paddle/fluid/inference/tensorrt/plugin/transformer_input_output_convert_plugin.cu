@@ -116,13 +116,13 @@ bool TransformerInputConvertPlugin::supportsFormatCombination(
     int nbOutputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TransformerInputConvertPlugin must have 2 inputs, "
                         "but got %d input(s). ",
                         nbInputs));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TransformerInputConvertPlugin must have 4 outputs, "
                         "but got %d output(s). ",
                         nbOutputs));
@@ -256,13 +256,13 @@ bool TransformerOutputConvertPlugin::supportsFormatCombination(
     int nbOutputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     3,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TransformerOutputConvertPlugin must have 3 inputs, "
                         "but got %d input(s). ",
                         nbInputs));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TransformerOutputConvertPlugin must have 1 output, "
                         "but got %d output(s). ",
                         nbOutputs));
