@@ -162,7 +162,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(
                         apply_group_schedule,
                         &OpLowererImpl::ReduceScheduleDetermineFunction);
     case framework::kOutFusible:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(::common::errors::Unimplemented(
           "Group Pattern Kind kOutFusible Is Not Implemented!"));
     case framework::kNonFusible:
       return LowerGroup(group,
@@ -171,7 +171,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(
                         &OpLowererImpl::NonFusibleScheduleDetermineFunction);
     default:
       PADDLE_THROW(
-          phi::errors::InvalidArgument("Group Pattern Kind Is Unknown!"));
+          ::common::errors::InvalidArgument("Group Pattern Kind Is Unknown!"));
   }
 }
 BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
@@ -313,14 +313,14 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   }
   PADDLE_ENFORCE_EQ(funcs.size(),
                     cond2func_bodies.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of funcs and cond2func_bodies should be "
                         "the same."));
-  PADDLE_ENFORCE_EQ(
-      funcs.size(),
-      priorities.size() + 1,
-      phi::errors::InvalidArgument("The size of funcs should equals to the "
-                                   "size of priorities plus one."));
+  PADDLE_ENFORCE_EQ(funcs.size(),
+                    priorities.size() + 1,
+                    ::common::errors::InvalidArgument(
+                        "The size of funcs should equals to the "
+                        "size of priorities plus one."));
   BucketLoweredFuncsWrapper funcs_wrapper;
   for (int i = 0; i < funcs.size() - 1; ++i) {
     funcs_wrapper.predicate2funcs.emplace_back(
@@ -517,8 +517,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   PADDLE_ENFORCE_EQ(
       ops.size(),
       1,
-      phi::errors::InvalidArgument("Custom call group should have only "
-                                   "one op"));
+      ::common::errors::InvalidArgument("Custom call group should have only "
+                                        "one op"));
   ::pir::Operation* op = ops[0];
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   std::vector<ir::Tensor> op_func_arg_tensors =
@@ -555,7 +555,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   PADDLE_ENFORCE_EQ(
       pack.size(),
       1UL,
-      phi::errors::InvalidArgument("The size of pack should be 1."));
+      ::common::errors::InvalidArgument("The size of pack should be 1."));
   // reset input names as extern api input args can't be remove duplicate.
   // group->input_names.clear();
   // for (auto& inode : node->inlinks_in_order()) {
@@ -783,7 +783,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
       PADDLE_ENFORCE_EQ(out_types.size(),
                         out_shapes.size(),
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The size of out_types and out_shapes should be "
                             "the same."));
       VLOG(4) << "out_types.size(): " << out_types.size();

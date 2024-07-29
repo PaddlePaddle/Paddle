@@ -38,10 +38,10 @@ std::vector<Expr> ScheduleBlockNode::GetLoops() const {
 
 bool EdgeCompare(const cinn::common::Shared<cinn::common::GraphEdge>& a,
                  const cinn::common::Shared<cinn::common::GraphEdge>& b) {
-  PADDLE_ENFORCE_NOT_NULL(a.get(),
-                          phi::errors::InvalidArgument("The a is nullptr."));
-  PADDLE_ENFORCE_NOT_NULL(b.get(),
-                          phi::errors::InvalidArgument("The b is nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      a.get(), ::common::errors::InvalidArgument("The a is nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      b.get(), ::common::errors::InvalidArgument("The b is nullptr."));
   return a->index() < b->index();
 }
 std::vector<cinn::common::Shared<cinn::common::GraphEdge>>
@@ -51,7 +51,7 @@ ScheduleBlockNode::OrderedInLinks() const {
     ordered_links.push_back(in_edge);
     PADDLE_ENFORCE_GE(in_edge->index(),
                       0,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The index of a node's inlinks should be >= 0!"));
   }
   std::sort(ordered_links.begin(), ordered_links.end(), EdgeCompare);
@@ -66,8 +66,8 @@ ScheduleBlockNode::OrderedOutLinks() const {
     PADDLE_ENFORCE_GE(
         out_edge->index(),
         0,
-        phi::errors::InvalidArgument("The index of a node's outlinks "
-                                     "should be >= 0!"));
+        ::common::errors::InvalidArgument("The index of a node's outlinks "
+                                          "should be >= 0!"));
   }
   std::sort(ordered_links.begin(), ordered_links.end(), EdgeCompare);
   return ordered_links;

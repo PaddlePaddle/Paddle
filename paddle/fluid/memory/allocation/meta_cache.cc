@@ -26,12 +26,12 @@ MemoryBlock::Desc* MetadataCache::LoadDesc(MemoryBlock* block) {
     PADDLE_ENFORCE_NE(
         iter,
         cache_.end(),
-        phi::errors::NotFound("The memory block is not found in cache"));
+        common::errors::NotFound("The memory block is not found in cache"));
     auto* desc = &(iter->second);
     PADDLE_ENFORCE_EQ(
         desc->CheckGuards(),
         true,
-        phi::errors::InvalidArgument("Invalid CPU memory access"));
+        common::errors::InvalidArgument("Invalid CPU memory access"));
     return desc;
   } else {
     auto* desc = reinterpret_cast<MemoryBlock::Desc*>(block);
@@ -39,7 +39,7 @@ MemoryBlock::Desc* MetadataCache::LoadDesc(MemoryBlock* block) {
     PADDLE_ENFORCE_EQ(
         desc->CheckGuards(),
         true,
-        phi::errors::InvalidArgument("Invalid CPU memory access"));
+        common::errors::InvalidArgument("Invalid CPU memory access"));
     return reinterpret_cast<MemoryBlock::Desc*>(block);
   }
 }

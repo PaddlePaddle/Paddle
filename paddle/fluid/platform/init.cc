@@ -115,20 +115,20 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                 \
-  {                                                               \
-    PADDLE_ENFORCE_EQ(                                            \
-        !phi::dynload::cuptiActivityGetAttribute(                 \
-            attr, &attrValueSize, &attrValue),                    \
-        true,                                                     \
-        phi::errors::Unavailable("Get cupti attribute failed.")); \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
-    PADDLE_ENFORCE_EQ(                                            \
-        !phi::dynload::cuptiActivitySetAttribute(                 \
-            attr, &attrValueSize, &attrValue),                    \
-        true,                                                     \
-        phi::errors::Unavailable("Set cupti attribute failed.")); \
+#define MULTIPLY_ATTR_VALUE(attr)                                    \
+  {                                                                  \
+    PADDLE_ENFORCE_EQ(                                               \
+        !phi::dynload::cuptiActivityGetAttribute(                    \
+            attr, &attrValueSize, &attrValue),                       \
+        true,                                                        \
+        common::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";        \
+    PADDLE_ENFORCE_EQ(                                               \
+        !phi::dynload::cuptiActivitySetAttribute(                    \
+            attr, &attrValueSize, &attrValue),                       \
+        true,                                                        \
+        common::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
@@ -148,7 +148,7 @@ void LoadCustomDevice(const std::string &library_dir) {
     auto dso_handle = dlopen(lib_path.c_str(), RTLD_LAZY);
     PADDLE_ENFORCE_NOT_NULL(
         dso_handle,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Fail to open library: %s with error: %s", lib_path, dlerror()));
 
     phi::LoadCustomRuntimeLib(lib_path, dso_handle);
@@ -324,8 +324,8 @@ void SignalHandle(const char *data, int size) {
 
       sout << "\n----------------------\nError Message "
               "Summary:\n----------------------\n";
-      sout << phi::errors::Fatal("`%s` is detected by the operating system.",
-                                 ParseSignalErrorString(signal_info))
+      sout << common::errors::Fatal("`%s` is detected by the operating system.",
+                                    ParseSignalErrorString(signal_info))
                   .to_string();
       std::cout << sout.str() << (*signal_msg_dumper_ptr).str() << std::endl;
     }

@@ -905,8 +905,8 @@ void CompiledProgram::PrepareNCCLCommunicator(Scope *global_scope) {
         global_scope, member_->places_);
     auto &pool = phi::DeviceContextPool::Instance();
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      auto *dev_ctx = static_cast<platform::XPUDeviceContext *>(
-          pool.Get(member_->places_[dev_id]));
+      auto *dev_ctx =
+          static_cast<phi::XPUContext *>(pool.Get(member_->places_[dev_id]));
       auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[dev_id]);
       dev_ctx->SetBkclContext(bkcl_ctx.comm());
     }

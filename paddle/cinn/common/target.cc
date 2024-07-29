@@ -71,11 +71,11 @@ int GetRuntimeArchImpl(X86Arch) { return cinn_x86_device; }
 int GetRuntimeArchImpl(ARMArch) { return cinn_arm_device; }
 
 int GetRuntimeArchImpl(NVGPUArch) {
-  PADDLE_THROW(phi::errors::InvalidArgument("Not supported arch"));
+  PADDLE_THROW(::common::errors::InvalidArgument("Not supported arch"));
 }
 
 int GetRuntimeArchImpl(HygonDCUArchHIP) {
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(::common::errors::InvalidArgument(
       "HygonDCUArchHIP not supported GetRuntimeArch!"));
 }
 
@@ -230,7 +230,7 @@ int Target::get_target_bits() const {
     case Bit::Unk:
       return 0;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Not supported Bit"));
+      PADDLE_THROW(::common::errors::InvalidArgument("Not supported Bit"));
   }
   return -1;
 }
