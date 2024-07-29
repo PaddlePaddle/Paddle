@@ -93,7 +93,6 @@ def run_pir_pass(program, partition_mode=False):
     return program
 
 
-
 def forbid_op_lower_trt(program, op_name):
     for op in program.global_block().ops:
         if op.name() == op_name:
@@ -234,7 +233,6 @@ class BertModel(nn.Layer):
         return encoded_output
 
 
-
 def get_bert_program():
     paddle.enable_static()
 
@@ -303,40 +301,42 @@ if __name__ == "__main__":
             )
             print(fetches)
 
+
 class SimpleGatherNet(nn.Layer):
     def __init__(self):
         super(SimpleGatherNet, self).__init__()
         self.linear = paddle.nn.Linear(149600, 1)
         pass
         # self.fake_param = nn.Parameter(torch.tensor([1.]))
- 
+
     def forward(self, map_vector_features, polyline_mask):
         map_vector_features = map_vector_features[polyline_mask]
         # num_element = map_vector_features.shape[0]
- 
+
         # center_inds_sort = paddle.arange(num_element)
- 
+
         # center_ind = int(num_points_per_element // 2)
- 
+
         # center_coords = map_vector_features[:, center_ind, :2]
         # center_radius = paddle.norm(center_coords, axis=-1, p=2)
- 
+
         # center_inds_sort = paddle.argsort(center_radius)
         # center_inds_sort = center_inds_sort[:num_max_element]
- 
+
         # num_element = center_inds_sort.shape[0]
- 
+
         # map_vector_features_out = paddle.zeros(
         #     [num_max_element, 11, 17], dtype=paddle.float32)
- 
+
         # print(center_inds_sort)
         # print(center_inds_sort.shape)
         # map_vector_features_out[:num_element] = map_vector_features[center_inds_sort]
         # map_vector_features_out = paddle.flatten(map_vector_features_out)
         # map_vector_features_out = self.linear(map_vector_features_out)
- 
+
         return map_vector_features
-    
+
+
 def get_idg_program():
     with paddle.pir_utils.IrGuard():
         main_program = static.default_main_program()
@@ -344,7 +344,9 @@ def get_idg_program():
         with static.program_guard(main_program, startup_program):
             scope = paddle.static.global_scope()
             map_vector_features = static.data(
-                name='map_vector_features', shape=[1, 1400, 11, 17], dtype='float32'
+                name='map_vector_features',
+                shape=[1, 1400, 11, 17],
+                dtype='float32',
             )
             polyline_mask = static.data(
                 name='polyline_mask', shape=[1, 1400], dtype='bool'
@@ -361,13 +363,20 @@ def get_idg_program():
 
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(pir_program, startup_program):
-            map_vector_features_data = np.random.rand(1, 1400, 11, 17).astype('float32')
-            polyline_mask_data = np.random.randint(0, 2, size=(1, 1400)).astype('bool')
+            map_vector_features_data = np.random.rand(1, 1400, 11, 17).astype(
+                'float32'
+            )
+            polyline_mask_data = np.random.randint(0, 2, size=(1, 1400)).astype(
+                'bool'
+            )
             executor = paddle.static.Executor(place)
             executor.run(startup_program)
             fetches = executor.run(
                 pir_program,
-                feed={"map_vector_features": map_vector_features_data, "polyline_mask": polyline_mask_data},
+                feed={
+                    "map_vector_features": map_vector_features_data,
+                    "polyline_mask": polyline_mask_data,
+                },
                 fetch_list=pir_program.list_vars()[-1],
             )
     params = main_program.global_block().all_parameters()

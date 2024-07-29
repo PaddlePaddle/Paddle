@@ -751,6 +751,7 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
         output_lengths.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
       }
       axis += (axis < 0) ? x_shape.size() : 0;
+
       if (x_shape[axis] == -1) {
         VLOG(3) << "The (" << axis << ") dim of input should not be -1";
         return false;
