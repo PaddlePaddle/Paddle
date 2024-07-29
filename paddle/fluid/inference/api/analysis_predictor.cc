@@ -919,7 +919,9 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
       if (pass->name() == "matmul_add_act_fuse_pass" ||
           pass->name() == "conv2d_add_act_fuse_pass" ||
-          pass->name() == "conv2d_add_fuse_pass") {
+          pass->name() == "conv2d_add_fuse_pass" ||
+          pass->name() == "matmul_horizontal_fuse_pass") {
+            std::cout << "gaogoagoaogoagogaogoaogaogogao cccccpppppp"<< std::endl;
         pass->Set("use_cutlass", new bool(config_.use_cutlass_));
       }
     }
