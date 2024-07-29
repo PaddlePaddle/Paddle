@@ -270,12 +270,23 @@ class TestLsqplus(unittest.TestCase):
         self.bit_width = 8
 
     def run_dyamic(
-        self, input_data, alpha, beta, g_scale, bit_width, is_sign, round_type
+        self,
+        input_data,
+        alpha,
+        beta,
+        g_scale,
+        bit_width,
+        is_sign,
+        round_type,
+        place='cpu',
     ):
         input_data = paddle.to_tensor(input_data)
+        input_data = input_data.to(place)
         alpha = paddle.to_tensor(alpha)
+        alpha = alpha.to(place)
         beta = paddle.to_tensor(beta)
         g_scale = paddle.to_tensor(g_scale)
+        g_scale = g_scale.to(place)
         out = fake_quantize_dequantize_lsqplus(
             input_data, alpha, beta, g_scale, bit_width, is_sign, round_type
         )
@@ -291,6 +302,7 @@ class TestLsqplus(unittest.TestCase):
         is_sign,
         round_type,
         dtype,
+        place='cpu',
     ):
         paddle.enable_static()
         x = paddle.static.data(name='x', shape=input_data.shape, dtype=dtype)
@@ -301,7 +313,14 @@ class TestLsqplus(unittest.TestCase):
         beta.stop_gradient = False
         g_scale = paddle.static.data(name='g_scale', shape=[1], dtype=dtype)
         g_scale.stop_gradient = True
-        place = paddle.CPUPlace()
+
+        if place == 'cpu':
+            place = paddle.CPUPlace()
+        elif place == 'gpu':
+            place = paddle.CUDAPlace(0)
+        else:
+            raise ValueError("Unsupported place")
+
         exe = paddle.static.Executor(place)
         out = fake_quantize_dequantize_lsqplus(
             x, alpha, beta, g_scale, bit_width, is_sign, round_type
@@ -328,6 +347,7 @@ class TestLsqplus(unittest.TestCase):
         round_type='TiesAwayFromZero',
         is_sign=False,
         dygraph=True,
+        place='cpu',
     ):
         input_data = distributions[0](input_shape).astype(dtype)
         alpha = distributions[1]([1]).astype(dtype)
@@ -360,6 +380,7 @@ class TestLsqplus(unittest.TestCase):
                 self.bit_width,
                 is_sign,
                 round_type,
+                place=place,
             )
         else:
             out = self.run_static(
@@ -371,6 +392,7 @@ class TestLsqplus(unittest.TestCase):
                 is_sign,
                 round_type,
                 dtype=dtype,
+                place=place,
             )
         # print(np.abs(ref_out-out).max())
         self.assertEqual(np.allclose(out, ref_out), True, "output not equal")
@@ -418,7 +440,7 @@ class TestLsqplus(unittest.TestCase):
         ]
 
         self.run_fake_quant(
-            np.float16,
+            np.float32,
             (128, 128),
             distributions,
             round_type='TiesAwayFromZero',
@@ -435,12 +457,30 @@ class TestLsqplus(unittest.TestCase):
         ]
 
         self.run_fake_quant(
+            np.float32,
+            (128, 128),
+            distributions,
+            round_type='TiesToEven',
+            is_sign=False,
+            dygraph=True,
+        )
+
+    def test_fake_quantize_dequantize_fp16(self):
+        distributions = [
+            np.random.random,
+            np.random.random,
+            np.random.random,
+            np.random.random,
+        ]
+
+        self.run_fake_quant(
             np.float16,
             (128, 128),
             distributions,
             round_type='TiesToEven',
             is_sign=False,
             dygraph=True,
+            place='gpu',
         )
 
 
