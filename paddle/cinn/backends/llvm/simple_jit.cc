@@ -52,7 +52,7 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
   PADDLE_ENFORCE_EQ(
       !llvm::verifyModule(*module, &err_stream),
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Transformation resulted in an invalid module\n\nmodule:\n"));
 
   bool debug = false;
@@ -103,7 +103,7 @@ SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
 
   jit_ = llvm::cantFail(llvm::orc::LLJITBuilder().create());
   PADDLE_ENFORCE_NOT_NULL(
-      jit_, platform::errors::InvalidArgumentError("JIT creation failed."));
+      jit_, phi::errors::InvalidArgumentError("JIT creation failed."));
 
   auto proc_symbols_generator = llvm::cantFail(
       llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
@@ -135,7 +135,7 @@ void SimpleJIT::Link(ir::Module module, bool optimize) {
 
   PADDLE_ENFORCE_EQ(!llvm::verifyModule(*m, &llvm::errs()),
                     true,
-                    platform::errors::InvalidArgument("Invalid module found."));
+                    phi::errors::InvalidArgument("Invalid module found."));
 
   AddModule(std::move(m), optimize);
 }
