@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from typing import TYPE_CHECKING
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
@@ -58,6 +59,11 @@ from paddle.base.libpaddle.pir import (
     calc_gradient_helper: for dygraph to static .
 """
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
+
+if TYPE_CHECKING:
+    from typing import Any
+
+    from paddle.base.libpaddle.pir import Value
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
@@ -1038,7 +1044,15 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     return input_grad_map
 
 
-def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
+def calc_gradient(
+    outputs: Value | list(Value) | tuple(Value),
+    inputs: Value | list(Value) | tuple(Value),
+    grad_outputs: Value
+    | list(Value | None)
+    | tuple(Value | None)
+    | None = None,
+    no_grad_set: set(Value) | None = None,
+) -> list[Value]:
     """
     calculate gradient of input
 
@@ -1084,15 +1098,18 @@ def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
 
 
 def grad(
-    outputs,
-    inputs,
-    grad_outputs=None,
-    retain_graph=None,
-    create_graph=False,
-    only_inputs=True,
-    allow_unused=False,
-    no_grad_vars=None,
-):
+    outputs: Value | list(Value) | tuple(Value),
+    inputs: Value | list(Value) | tuple(Value),
+    grad_outputs: Value
+    | list(Value | None)
+    | tuple(Value | None)
+    | None = None,
+    retain_graph: bool | None = None,
+    create_graph: bool = False,
+    only_inputs: bool = True,
+    allow_unused: bool = False,
+    no_grad_vars: Value | list(Value) | tuple(Value) | set(Value) | None = None,
+) -> list[Any]:
     '''
     .. note::
         **This API is ONLY available in imperative mode.**
@@ -1186,7 +1203,11 @@ def grad(
     return input_grad
 
 
-def append_backward(loss, parameter_list=None, no_grad_set=None):
+def append_backward(
+    loss: Value,
+    parameter_list: Value | list(Value) | tuple(Value) | None = None,
+    no_grad_set: Value | list(Value) | tuple(Value) | set(Value) | None = None,
+) -> list[tuple[Any, ...]]:
     '''
     Parameters:
         loss (Value): The loss Tensor of the network
