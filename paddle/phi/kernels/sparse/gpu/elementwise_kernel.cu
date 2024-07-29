@@ -46,8 +46,6 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
   const IntT* y_indices_ptr = y_indices.data<IntT>();
   bool is_same = false;
   if (FLAGS_check_etw_add_coo_indices) {
-    is_same = true;
-  } else {
 #ifdef PADDLE_WITH_HIP
     is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
 #else
@@ -56,6 +54,8 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
                             x_indices_ptr,
                             x_indices_ptr + x_indices.numel(),
                             y_indices_ptr);
+  } else {
+    is_same = true;
   }
   PADDLE_ENFORCE_EQ(
       is_same,
