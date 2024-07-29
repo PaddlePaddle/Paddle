@@ -340,6 +340,17 @@ class DygraphShardingOptimizer:
                         g_var.scale_(1.0 / sharding_nrank)
                         reduce_op = ReduceOp.SUM
                     param_rank = self._param2rank[param.name]
+
+                    need_check = strtobool(
+                        os.getenv('FLAGS_pp_check_naninf', '0')
+                    )
+                    if need_check:
+                        naninf = paddle.isfinite(g_var).all()
+                        if not naninf.item():
+                            raise ValueError(
+                                f"Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
+                            )
+
                     paddle.distributed.reduce(
                         g_var,
                         dst=hcg.get_sharding_parallel_group().ranks[param_rank],
