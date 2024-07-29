@@ -130,7 +130,7 @@ class IterableDataset(Dataset[_T]):
             >>> from paddle.io import IterableDataset
 
             >>> # define a random dataset
-            >>> class RandomDataset(IterableDataset):
+            >>> class RandomDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -162,7 +162,7 @@ class IterableDataset(Dataset[_T]):
             >>> import numpy as np
             >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            >>> class SplitedIterableDataset(IterableDataset):
+            >>> class SplitedIterableDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, start, end):
             ...         self.start = start
             ...         self.end = end
@@ -217,7 +217,7 @@ class IterableDataset(Dataset[_T]):
             >>> import numpy as np
             >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            >>> class RangeIterableDataset(IterableDataset):
+            >>> class RangeIterableDataset(IterableDataset): # type: ignore[type-arg]
             ...     start: int
             ...     end: int
             ...
