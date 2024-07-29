@@ -51,15 +51,7 @@ if TYPE_CHECKING:
         fea_eval: NotRequired[bool]
         candidate_size: NotRequired[int]
 
-    class _InMemoryDatasetSettings(TypedDict):
-        batch_size: NotRequired[int]
-        thread_num: NotRequired[int]
-        use_var: NotRequired[list[Tensor]]
-        pipe_command: NotRequired[str]
-        input_type: NotRequired[_InputType]
-        fs_name: NotRequired[str]
-        fs_ugi: NotRequired[str]
-        download_cmd: NotRequired[str]
+    class _InMemoryDatasetSettings(_DatasetBaseSettings):
         data_feed_type: NotRequired[str]
         queue_num: NotRequired[int]
 
@@ -68,15 +60,7 @@ if TYPE_CHECKING:
     ):
         pass
 
-    class _BoxPSDatasetSettings(TypedDict):
-        batch_size: NotRequired[int]
-        thread_num: NotRequired[int]
-        use_var: NotRequired[list[Tensor]]
-        pipe_command: NotRequired[str]
-        input_type: NotRequired[_InputType]
-        fs_name: NotRequired[str]
-        fs_ugi: NotRequired[str]
-        download_cmd: NotRequired[str]
+    class _BoxPSDatasetSettings(_DatasetBaseSettings):
         rank_offset: NotRequired[str]
         pv_batch_size: NotRequired[int]
         parse_logkey: NotRequired[bool]
@@ -115,7 +99,7 @@ class DatasetBase:
         thread_num: int = 1,
         use_var: list[Tensor] = [],
         pipe_command: str = "cat",
-        input_type: int = 0,
+        input_type: _InputType = 0,
         fs_name: str = "",
         fs_ugi: str = "",
         download_cmd: str = "cat",
@@ -1478,6 +1462,8 @@ class BoxPSDataset(InMemoryDataset):
             >>> import paddle
             >>> dataset = paddle.distributed.fleet.BoxPSDataset()
     """
+
+    boxps: core.BoxPS
 
     def __init__(self) -> None:
         """
