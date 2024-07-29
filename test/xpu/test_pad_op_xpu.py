@@ -113,7 +113,7 @@ class XPUTestPadOp(XPUOpTestWrapper):
 
     class TestCase3(TestPadOp):
         def init_test_case(self):
-            self.shape = 100
+            self.shape = (100,)
             self.paddings = [(0, 1)]
             self.pad_value = 0.9
 
