@@ -73,7 +73,7 @@ proto::VarType::Type ToDataType(std::type_index type) {
     return it->second;
   }
   PADDLE_THROW(phi::errors::Unimplemented("Not support %s as tensor data type.",
-                                          platform::demangle(type.name())));
+                                          common::demangle(type.name())));
 }
 
 std::type_index ToTypeIndex(proto::VarType::Type type) {

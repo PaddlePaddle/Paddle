@@ -1367,7 +1367,7 @@ std::vector<std::string> AttrVarNames(const Attribute &attr) {
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported Attribute value type `%s` for AttrVarNames",
-        platform::demangle(attr.type().name())));
+        common::demangle(attr.type().name())));
   }
   return vars_name;
 }

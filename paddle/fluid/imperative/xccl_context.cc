@@ -186,7 +186,7 @@ void XCCLParallelContext::AllReduceByStream(const framework::Variable &src,
         "custom device unsupported variable type %s for imperative allreduce, "
         "only "
         "LoDTensor are supported.",
-        platform::demangle(framework::ToTypeName(src.Type()))));
+        common::demangle(framework::ToTypeName(src.Type()))));
   }
 }
 

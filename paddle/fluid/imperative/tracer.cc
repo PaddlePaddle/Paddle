@@ -354,7 +354,7 @@ void Tracer::TraceOpImpl(const std::string& type,
         phi::errors::Fatal("Operator %s raises an %s exception.\n"
                            "The exception content is\n:%s.",
                            type,
-                           platform::demangle(typeid(ex).name()),
+                           common::demangle(typeid(ex).name()),
                            ex.what()));
   } catch (...) {
     // NOTE: this branch represents a very serious bug with

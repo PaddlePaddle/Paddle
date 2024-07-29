@@ -839,7 +839,7 @@ void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
     std::rethrow_exception(std::current_exception());
   } catch (std::exception& ex) {
     LOG(WARNING) << Type() << " raises an exception "
-                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+                 << common::demangle(typeid(ex).name()) << ", " << ex.what();
     std::rethrow_exception(std::current_exception());
   } catch (...) {
     LOG(WARNING) << Type() << " raises an unknown exception";
@@ -3140,7 +3140,7 @@ static void SetDnnAttrIntoDeviceContext(
       default:
         PADDLE_THROW(phi::errors::Unimplemented(
             "Unsupported Attribute value type `%s` for phi.",
-            platform::demangle(attr.type().name())));
+            common::demangle(attr.type().name())));
     }
   }
 #endif
@@ -3159,7 +3159,7 @@ static void SetDnnAttrIntoDeviceContext(
       default:
         PADDLE_THROW(phi::errors::Unimplemented(
             "Unsupported Attribute value type `%s` for phi.",
-            platform::demangle(attr.type().name())));
+            common::demangle(attr.type().name())));
     }
   }
 #endif
