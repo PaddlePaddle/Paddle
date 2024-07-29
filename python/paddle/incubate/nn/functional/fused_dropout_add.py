@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 from paddle import _C_ops
 from paddle.base import core
@@ -20,8 +26,15 @@ from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
 def fused_dropout_add(
-    x, y, p=0.5, training=True, mode='upscale_in_train', name=None
-):
+    x: Tensor,
+    y: Tensor,
+    p: float = 0.5,
+    training: bool = True,
+    mode: Literal[
+        'upscale_in_train', 'downscale_in_infer'
+    ] = 'upscale_in_train',
+    name: str | None = None,
+) -> Tensor:
     r"""
     Fused Dropout and Add.
 

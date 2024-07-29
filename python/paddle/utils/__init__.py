@@ -51,7 +51,6 @@ from .layers_utils import (  # noqa: F401
     padding_to_same_structure,
     to_sequence,
     try_get_constant_shape_from_tensor,
-    try_set_static_shape_tensor,
 )
 from .lazy_import import try_import
 from .op_version import OpLastCheckpointChecker  # noqa: F401

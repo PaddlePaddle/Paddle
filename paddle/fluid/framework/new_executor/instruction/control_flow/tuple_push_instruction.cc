@@ -43,7 +43,7 @@ bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
       }
     }
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Only support AllocatedDenseTensorType and "
         "AllocatedDenseTensorArrayType in vectortype now, but get: %s",
         type));

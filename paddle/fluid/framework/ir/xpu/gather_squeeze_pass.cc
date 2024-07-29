@@ -72,7 +72,7 @@ GatherSqueeze::GatherSqueeze(PDPattern* pattern, const std::string& name_scope)
 
 void GatherSqueezePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   AddTranspose(graph);
@@ -80,7 +80,7 @@ void GatherSqueezePass::ApplyImpl(ir::Graph* graph) const {
 
 void GatherSqueezePass::AddTranspose(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   GraphPatternDetector gpd;
   patterns::GatherSqueeze pattern(gpd.mutable_pattern(), name_scope_);
 
