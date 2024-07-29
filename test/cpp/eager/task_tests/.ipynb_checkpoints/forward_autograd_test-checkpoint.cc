@@ -182,11 +182,15 @@ TEST(Forward, LinearNodes) {
         phi::errors::InvalidArgument(
             "static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().second)"
             "is not 0"));
-    PADDLE_ENFORCE_EQ(
-        node1_meta[0].GetEdge().GetGradNode(),
-        grad_node0,
-        phi::errors::InvalidArgument("node1_meta[0].GetEdge().GetGradNode()"
-                                     "is not equal with grad_node0"));
+    PADDLE_ENFORCE_EQ(node1_meta[0].GetEdge().GetGradNode(),
+                      grad_node0,
+                      phi::errors::InvalidArgument(
+                          "node1_meta[0].GetEdge().GetGradNode()"
+                          "is not equal with grad_node0"
+                          "the value of grad_node0 is %d"
+                          "and node1_meta[0].GetEdge().GetGradNode() is %d",
+                          grad_node0,
+                          node1_meta[0].GetEdge().GetGradNode()));
   }
 }
 
@@ -323,7 +327,10 @@ TEST(Forward, BranchedNodes) {
         node1_edge.GetGradNode(),
         grad_node0,
         phi::errors::InvalidArgument(
-            "node1_edge.GetGradNode() is not equal with grad_node0"));
+            "node1_edge.GetGradNode() is not equal with grad_node0"
+            "the value of node1_edge.GetGradNode() is %d and grad_node0 is %d",
+            node1_edge.GetGradNode(),
+            grad_node0));
 
     // Node 2 -> Node 0
     const paddle::small_vector<std::vector<egr::GradSlotMeta>,
@@ -345,7 +352,9 @@ TEST(Forward, BranchedNodes) {
         node2_edge.GetGradNode(),
         grad_node0,
         phi::errors::InvalidArgument(
-            "node2_edge.GetGradNode() is not equal with grad_node0"));
+            "node2_edge.GetGradNode() is not equal with grad_node0"
+            "the value of node2_edge.GetGradNode() is %d and grad_node0 is %d",
+            node2_edge.GetGradNode(), grad_node0)));
   }
 }
 
