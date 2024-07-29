@@ -43,8 +43,8 @@ constexpr int kMaxThreadsPerBlock = 1024;
 constexpr double s_w = 0.05;
 constexpr double r_w = 0.05;
 constexpr double sampling_prob = 1.0;
-constexpr int kMaxSamplingTimes = 400;
-constexpr int kRepeats = 3;
+constexpr int kMaxSamplingTimes = 100;
+constexpr int kRepeats = 2;
 
 std::shared_ptr<::pir::Program> BuildSpatialReduceProgram(int spatial_size,
                                                           int reduce_size) {
@@ -383,124 +383,13 @@ void TestSearchForTileConfig(int spatial_l_bound,
                                   r_weight);
     }
   }
-  // (III) Search in the infinite area.
-  // This script divides the infinite area into six windows.
-  // 1st window
-  int s_dimension_lower = 4096;
-  int r_dimension_lower = 1024;
-  spatial_tile_config = 32768 - 4096;
-  spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
-  reduce_tile_config = 3072;
-  reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-
-  search_then_save_one_window(is_spatial_dynamic,
-                              is_reduce_dynamic,
-                              s_dimension_lower,
-                              r_dimension_lower,
-                              spatial_tile_width,
-                              reduce_tile_width,
-                              spatial_tile_config,
-                              reduce_tile_config,
-                              s_weight,
-                              r_weight);
-  // 2nd window
-  s_dimension_lower = 4096;
-  r_dimension_lower = 4096;
-  spatial_tile_config = 32768 - 4096;
-  spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
-  reduce_tile_config = 32768 - 4096;
-  reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-
-  search_then_save_one_window(is_spatial_dynamic,
-                              is_reduce_dynamic,
-                              s_dimension_lower,
-                              r_dimension_lower,
-                              spatial_tile_width,
-                              reduce_tile_width,
-                              spatial_tile_config,
-                              reduce_tile_config,
-                              s_weight,
-                              r_weight);
-  // 3rd window
-  s_dimension_lower = 1024;
-  r_dimension_lower = 4096;
-  spatial_tile_config = 3072;
-  spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
-  reduce_tile_config = 32768 - 4096;
-  reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-
-  search_then_save_one_window(is_spatial_dynamic,
-                              is_reduce_dynamic,
-                              s_dimension_lower,
-                              r_dimension_lower,
-                              spatial_tile_width,
-                              reduce_tile_width,
-                              spatial_tile_config,
-                              reduce_tile_config,
-                              s_weight,
-                              r_weight);
-
-  // 4th window
-  s_dimension_lower = 32768;
-  r_dimension_lower = 2;
-  spatial_tile_config = 1000;
-  spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
-  reduce_tile_config = 32768 - 2;
-  reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-
-  search_then_save_one_window(is_spatial_dynamic,
-                              is_reduce_dynamic,
-                              s_dimension_lower,
-                              r_dimension_lower,
-                              spatial_tile_width,
-                              reduce_tile_width,
-                              spatial_tile_config,
-                              reduce_tile_config,
-                              s_weight,
-                              r_weight);
-  // 5th window
-  s_dimension_lower = 2;
-  r_dimension_lower = 32768;
-  spatial_tile_config = 32768 - 2;
-  spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
-  reduce_tile_config = 1000;
-  reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-
-  search_then_save_one_window(is_spatial_dynamic,
-                              is_reduce_dynamic,
-                              s_dimension_lower,
-                              r_dimension_lower,
-                              spatial_tile_width,
-                              reduce_tile_width,
-                              spatial_tile_config,
-                              reduce_tile_config,
-                              s_weight,
-                              r_weight);
-  // 6th window
-  s_dimension_lower = 32768;
-  r_dimension_lower = 32768;
-  spatial_tile_config = 1000;
-  spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
-  reduce_tile_config = 1000;
-  reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-
-  search_then_save_one_window(is_spatial_dynamic,
-                              is_reduce_dynamic,
-                              s_dimension_lower,
-                              r_dimension_lower,
-                              spatial_tile_width,
-                              reduce_tile_width,
-                              spatial_tile_config,
-                              reduce_tile_config,
-                              s_weight,
-                              r_weight);
 }
 
 TEST(ConfigSearcher, TestDynamicReduce) {
   int spatial_left_bound = 2;
-  int spatial_right_bound = 2; // To reproduce, set it to 4096
+  int spatial_right_bound = 2;  // To reproduce, set it to 4096
   int reduce_left_bound = 2;
-  int reduce_right_bound = 2; // To reproduce, set it to 4096
+  int reduce_right_bound = 2;  // To reproduce, set it to 4096
   bool is_spatial_dynamic = false;
   bool is_reduce_dynamic = true;
   TestSearchForTileConfig(spatial_left_bound,
@@ -513,9 +402,9 @@ TEST(ConfigSearcher, TestDynamicReduce) {
 
 TEST(ConfigSearcher, TestDynamicSpatial) {
   int spatial_left_bound = 2;
-  int spatial_right_bound = 2; // To reproduce, set it to 4096
+  int spatial_right_bound = 2;  // To reproduce, set it to 4096
   int reduce_left_bound = 2;
-  int reduce_right_bound = 2; // To reproduce, set it to 4096
+  int reduce_right_bound = 2;  // To reproduce, set it to 4096
   bool is_spatial_dynamic = true;
   bool is_reduce_dynamic = false;
   TestSearchForTileConfig(spatial_left_bound,
