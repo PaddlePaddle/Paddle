@@ -961,6 +961,7 @@
     func: nce
     data_type: input
   optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
+  intermediate: sample_logits, sample_labels
   backward: nce_grad
 
 - op: onednn_to_paddle_layout
