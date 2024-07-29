@@ -563,6 +563,40 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool MarginCrossEntropyOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &logits_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  bool return_softmax =
+      op->attribute<pir::BoolAttribute>("return_softmax").data();
+
+  auto logits_dims = logits_shape.shape();
+  PADDLE_ENFORCE_GE(logits_dims.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The Input(logits)'s dimension must be at least 1."));
+
+  if (return_softmax) {
+    std::vector<symbol::DimExpr> softmax_dims = logits_dims;
+    auto axis = logits_dims.size() - 1;
+    softmax_dims[axis] = 1;
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(softmax_dims)});
+  }
+
+  std::vector<symbol::DimExpr> loss_dims = logits_dims;
+  auto loss_axis = loss_dims.size() - 1;
+  loss_dims[loss_axis] = 1;
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(loss_dims)});
+
+  return true;
+}
+
 bool SearchsortedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // The shape of output is the same as input `values` (op->operand_source(1))

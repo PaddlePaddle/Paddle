@@ -153,6 +153,8 @@ class TestMarginCrossEntropyOp(OpTest):
         self.check_output_with_place(
             core.CUDAPlace(0), atol=1e-5, check_pir=True
         )
+        self.check_output(check_pir=True)
+        self.check_output(check_symbol_infer=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -186,6 +188,8 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
         self.dtype = np.float16
 
     def test_check_output(self):
+        self.check_output(check_pir=True)
+        self.check_output(check_symbol_infer=True)
         self.check_output_with_place(
             core.CUDAPlace(0), atol=5e-2, check_pir=True
         )
@@ -274,6 +278,8 @@ class TestMarginCrossEntropyBF16Op(OpTest):
         }
 
     def test_check_output(self):
+        self.check_output(check_pir=True)
+        self.check_output(check_symbol_infer=True)
         self.check_output_with_place(
             core.CUDAPlace(0), atol=5e-2, check_pir=True
         )
@@ -313,6 +319,8 @@ class TestMarginCrossEntropyOpSphereFace(TestMarginCrossEntropyOp):
 
 class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
     def test_check_output(self):
+        self.check_output(check_pir=True)
+        self.check_output(check_symbol_infer=True)
         try:
             self.check_output_with_place(
                 core.CPUPlace(), atol=1e-5, check_pir=True
