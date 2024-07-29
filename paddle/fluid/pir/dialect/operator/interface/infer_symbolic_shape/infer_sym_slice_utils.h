@@ -64,12 +64,15 @@ inline void CheckAndUpdateSliceAttrs(
     int64_t end_i = 0;
     if (ends.at(i).isa<int64_t>()) {
       if (in_dims.at(axis).isa<int64_t>()) {
-        ends.at(i) =
-            (ends.at(i).Get<int64_t>() > in_dims.at(axis).Get<int64_t>())
-                ? in_dims.at(axis)
-                : ends.at(i);
+        ends[i] = std::min(ends.at(i).Get<int64_t>(),
+                           in_dims.at(axis).Get<int64_t>());
       }
-      end_i = ends.at(i).Get<int64_t>();
+      if (ends.at(i).Get<int64_t>() < 0) {
+        ends[i] = ends.at(i) + in_dims.at(axis);
+      }
+      if (ends.at(i).isa<int64_t>()) {
+        end_i = ends.at(i).Get<int64_t>();
+      }
     }
 
     // For both start and end can be negative or positive, we need to handle the
