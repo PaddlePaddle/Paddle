@@ -164,8 +164,8 @@ static void SplitTensorsWithType(const DeviceContext &context,
 
 #ifdef PADDLE_WITH_XPU_BKCL
 template <>
-void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
-    const platform::XPUDeviceContext &context,
+void SplitTensorsForAllReduce<phi::XPUContext, float>(
+    const phi::XPUContext &context,
     framework::Variable *p_dense_contents,
     std::vector<phi::DenseTensor> *p_dense_tensors) {
   auto *in = p_dense_contents->GetMutable<phi::DenseTensor>();
@@ -179,20 +179,20 @@ void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
     outs.emplace_back(&tensor);
     shape_refer.emplace_back(&tensor);
   }
-  phi::funcs::SplitFunctor<platform::XPUDeviceContext, float> split_functor_;
+  phi::funcs::SplitFunctor<phi::XPUContext, float> split_functor_;
   split_functor_(context, *in, shape_refer, 0, &outs);
 }
 
 // context is used to select the stream for concat
 template <>
-void ConcatTensorsWithType<platform::XPUDeviceContext>(
-    const platform::XPUDeviceContext &context,
+void ConcatTensorsWithType<phi::XPUContext>(
+    const phi::XPUContext &context,
     const std::vector<phi::DenseTensor> &dense_tensors_,
     framework::Variable *p_dense_contents,
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP32:
-      ConcatTensorsForAllReduce<platform::XPUDeviceContext, float>(
+      ConcatTensorsForAllReduce<phi::XPUContext, float>(
           context, dense_tensors_, p_dense_contents);
       break;
     default:
@@ -205,14 +205,14 @@ void ConcatTensorsWithType<platform::XPUDeviceContext>(
 
 // context is used to select the stream for split
 template <>
-void SplitTensorsWithType<platform::XPUDeviceContext>(
-    const platform::XPUDeviceContext &context,
+void SplitTensorsWithType<phi::XPUContext>(
+    const phi::XPUContext &context,
     framework::Variable *p_dense_contents,
     std::vector<phi::DenseTensor> *p_dense_tensors,
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP32:
-      SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
+      SplitTensorsForAllReduce<phi::XPUContext, float>(
           context, p_dense_contents, p_dense_tensors);
       break;
     default:
@@ -239,11 +239,10 @@ void Group::ConcatTensors(const phi::DeviceContext &context) {
 #endif
   } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_BKCL
-    ConcatTensorsWithType(
-        static_cast<const platform::XPUDeviceContext &>(context),
-        dense_tensors_,
-        &dense_contents_,
-        dtype_);
+    ConcatTensorsWithType(static_cast<const phi::XPUContext &>(context),
+                          dense_tensors_,
+                          &dense_contents_,
+                          dtype_);
 #else
     PADDLE_THROW(phi::errors::PermissionDenied(
         "Paddle can't concat xpu grads since it's not compiled with BKCL,"
@@ -275,11 +274,10 @@ void Group::SplitTensors(const phi::DeviceContext &context) {
 #endif
   } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_BKCL
-    SplitTensorsWithType(
-        static_cast<const platform::XPUDeviceContext &>(context),
-        &dense_contents_,
-        &dense_tensors_,
-        dtype_);
+    SplitTensorsWithType(static_cast<const phi::XPUContext &>(context),
+                         &dense_contents_,
+                         &dense_tensors_,
+                         dtype_);
 #else
     PADDLE_THROW(phi::errors::PermissionDenied(
         "Paddle can't split xpu grad since it's not compiled with BKCL,"
@@ -755,7 +753,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 
 #ifdef PADDLE_WITH_XPU_BKCL
       if (phi::is_xpu_place(group_tensor.place())) {
-        auto dev_ctx = static_cast<platform::XPUDeviceContext *>(
+        auto dev_ctx = static_cast<phi::XPUContext *>(
             phi::DeviceContextPool::Instance().Get(place_));
         if (HasGrad(var_index)) {
           auto var_base = vars_[var_index]->GradVarBase();

@@ -130,6 +130,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
                           "are not empty."));
 
     CINNValuePack pack_args = args[0];
+
     PADDLE_ENFORCE_GE(
         pack_args.size(),
         1U,
@@ -137,6 +138,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
             "At least 1 input tensor is required for Repeat compute, "
             "but got %d input tensors. Please check your input.",
             pack_args.size()));
+
     Expr A = pack_args[0];
     PADDLE_ENFORCE_EQ(
         A.as_tensor(),
