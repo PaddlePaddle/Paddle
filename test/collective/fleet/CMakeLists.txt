@@ -145,7 +145,7 @@ if(WITH_NCCL)
       MODULES
       test_communicator_half_async
       ENVS
-      "FLAGS_communicator_send_queue_size=1;FLAGS_communicator_max_merge_var_num=1;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+      "FLAGS_enable_pir_api=0;FLAGS_communicator_send_queue_size=1;FLAGS_communicator_max_merge_var_num=1;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
     )
     set_tests_properties(test_communicator_half_async
                          PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")

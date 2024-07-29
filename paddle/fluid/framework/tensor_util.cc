@@ -85,13 +85,11 @@ void TensorCopyImpl(const TENSOR& src,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (phi::is_custom_place(src_place) &&  // NOLINT
            phi::is_cpu_place(dst_place)) {
-    auto stream =
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::CustomContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (phi::is_cpu_place(src_place) &&  // NOLINT
              phi::is_custom_place(dst_place)) {
-    auto stream =
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::CustomContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (phi::is_custom_place(src_place) &&  // NOLINT
              phi::is_custom_place(dst_place)) {
@@ -100,8 +98,7 @@ void TensorCopyImpl(const TENSOR& src,
               << dst_place;
       return;
     }
-    auto stream =
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::CustomContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   }
 #endif
@@ -514,8 +511,7 @@ void TensorToStream(std::ostream& os,
 #ifdef PADDLE_WITH_XPU
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
-      auto& xpu_dev_ctx =
-          static_cast<const platform::XPUDeviceContext&>(dev_ctx);
+      auto& xpu_dev_ctx = static_cast<const phi::XPUContext&>(dev_ctx);
       phi::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
@@ -539,7 +535,7 @@ void TensorToStream(std::ostream& os,
       constexpr size_t kBufSize = 1024 * 1024 * 64;     // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);  // NOLINT
       auto& custom_device_context =
-          static_cast<const platform::CustomDeviceContext&>(dev_ctx);
+          static_cast<const phi::CustomContext&>(dev_ctx);
       phi::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {

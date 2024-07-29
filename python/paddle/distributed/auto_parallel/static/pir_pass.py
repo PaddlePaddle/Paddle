@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.autograd.backward_utils import ValueDict
+from paddle.distributed.passes.pass_base import PassContext, new_pass
 
 from .process_group import get_process_group
 from .reshard_funcs.base_reshard_func import (
@@ -75,6 +76,7 @@ def apply_partition_pass(program):
         ), f"The number of results and the number of op_dist_attr's results are not equal in op: {op}"
         # deal with inplace value
         for out_idx, in_idx in paddle.core.pir.get_op_inplace_info(op).items():
+            ref_op_role = op.op_role
             operand = op.operand(in_idx)
             operand_attr = op.dist_attr.operand(in_idx)
             prev_var = operand.source()
@@ -88,6 +90,9 @@ def apply_partition_pass(program):
             paddle.pir.set_insertion_point(op)
             reshard_var = paddle._C_ops.reshard_v2(prev_var, operand_attr)
             operand.set_source(reshard_var)
+            if ref_op_role is not None:
+                insert_pos = paddle.pir.get_current_insertion_point()
+                insert_pos.prev().op_role = ref_op_role
 
             result = op.result(out_idx)
             result_attr = op.dist_attr.result(out_idx).as_tensor_dist_attr()
@@ -104,13 +109,19 @@ def apply_partition_pass(program):
             reshard_var_1 = paddle._C_ops.reshard_v2(
                 result, prev_var.dist_attr()
             )
+            reshard_var_1.get_defining_op().op_role = ref_op_role
             paddle.assign(reshard_var_1, prev_var)
+            if ref_op_role is not None:
+                insert_pos = paddle.pir.get_current_insertion_point()
+                insert_pos.prev().op_role = ref_op_role
+                paddle.pir.set_insertion_point_after(op)
 
             if old_dist_attr == result.dist_attr():
                 continue
             reshard_var_2 = reshard_var_1
             if old_dist_attr != reshard_var_1.dist_attr():
                 reshard_var_2 = paddle._C_ops.reshard_v2(result, old_dist_attr)
+                reshard_var_2.get_defining_op().op_role = ref_op_role
             result.replace_all_uses_with(reshard_var_1)
             reshard_var_1.get_defining_op().operand(0).set_source(result)
             reshard_var_2.get_defining_op().operand(0).set_source(result)
@@ -134,6 +145,10 @@ def apply_partition_pass(program):
                 reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
                 var.replace_all_uses_with(reshard_var)
                 reshard_var.get_defining_op().operand(0).set_source(var)
+                ref_op_role = op.op_role
+                if ref_op_role is not None:
+                    insert_pos = paddle.pir.get_current_insertion_point()
+                    insert_pos.prev().op_role = ref_op_role
 
 
 def fold_reshard_pass(dist_program):
@@ -185,12 +200,29 @@ def apply_reshard_pass(dist_program):
                 reshard_func is not None
             ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
             paddle.pir.set_insertion_point(op)
+            ref_op_role = op.op_role
             out_value = reshard_func.reshard(
                 src_dist_attr,
                 dst_dist_attr,
                 op.operand_source(0),
                 op.result(0).type(),
             )
+            insert_pos = paddle.pir.get_current_insertion_point()
+            insert_index = dist_program.global_block().ops.index(
+                insert_pos.get_operation()
+            )
+            if ref_op_role is not None:
+                op_offset = 1
+                while (
+                    dist_program.global_block()
+                    .ops[insert_index - op_offset]
+                    .op_role
+                    is None
+                ):
+                    dist_program.global_block().ops[
+                        insert_index - op_offset
+                    ].op_role = ref_op_role
+                    op_offset += 1
             if out_value is not None:
                 op.result(0).replace_all_uses_with(out_value)
             if op.result(0).use_empty():
@@ -310,3 +342,70 @@ def eliminate_transpose_by_reshape(program):
                 transpose_var.replace_all_uses_with(reshape_var)
                 op.erase()
     return program
+
+
+def complete_op_role(main_program, op_role_scope: list):
+    assert (
+        len(op_role_scope) == 3 and len(op_role_scope[0]) == 2
+    ), "op_role_scope should has the shape[3, 2]"
+    forward_op_start = op_role_scope[0][0]
+    forward_op_end = op_role_scope[0][1]
+
+    backward_op_start = op_role_scope[1][0]
+    backward_op_end = op_role_scope[1][1]
+
+    opt_op_start = op_role_scope[2][0]
+    opt_op_end = op_role_scope[2][1]
+
+    global_op_idx = 0
+    for blk in main_program.blocks:
+        for op in blk.ops:
+            if (
+                global_op_idx >= forward_op_start
+                and global_op_idx < forward_op_end
+            ):
+                op.op_role = 0
+            elif (
+                global_op_idx >= backward_op_start
+                and global_op_idx < backward_op_end
+            ):
+                op.op_role = 1
+            elif global_op_idx >= opt_op_start and global_op_idx < opt_op_end:
+                op.op_role = 2
+            else:
+                pass
+            global_op_idx += 1
+
+
+def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
+    """
+    Pipeline schedule pass for auto parallel. Enables the pipeline parallel scheduling
+    strategies like FThenB, 1F1B, VPP, etc.
+    """
+    import os
+
+    pass_name = pipeline_strategy.schedule_mode
+    assert pass_name in [
+        "FThenB",
+    ], f"pipeline scheduler only support FThenB now, but receive {pass_name}"
+
+    pass_attr = {}
+    pass_attr["num_micro_batches"] = pipeline_strategy.accumulate_steps
+
+    if pass_name == "1F1B":
+        # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and
+        # FLAGS_mp_async_allreduce_in_backward to auto parallel Strategy
+        # after these two optimizations are available.
+        pass_attr["enable_backward_forward_overlap"] = int(
+            os.environ.get("FLAGS_1f1b_backward_forward_overlap", 0)
+        )
+
+    pipeline_pass = new_pass("pipeline_scheduler_" + pass_name, pass_attr)
+    pass_context = PassContext()
+    pipeline_pass.apply(
+        dense_main_program,
+        dense_starup_program,
+        pass_context,
+    )
+    plan = pass_context.get_attr("plan")
+    return plan

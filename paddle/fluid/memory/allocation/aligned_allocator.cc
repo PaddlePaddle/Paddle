@@ -44,10 +44,10 @@ AlignedAllocator::AlignedAllocator(
   PADDLE_ENFORCE_GT(
       alignment_,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Alignment should be larger than 0, but got %d", alignment_));
   if (alignment_ & (alignment_ - 1)) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Alignment should be power of 2 (2^N), but got %d", alignment_));
   }
 }
