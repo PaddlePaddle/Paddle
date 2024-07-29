@@ -144,9 +144,6 @@ class RunnableProgram:
         for value in RunnableProgram._get_program_all_values(program):
             for name in value._names:
                 name_to_value_dict[name] = value
-        assert len(name_to_value_dict.values()) == len(
-            set(name_to_value_dict.values())
-        )
         return name_to_value_dict
 
     @cached_property

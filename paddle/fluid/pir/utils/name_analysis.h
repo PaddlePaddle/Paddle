@@ -39,6 +39,10 @@ std::vector<std::string> GetValueOutputNames(pir::Value value);
 pir::Value GetOutputValueByName(const pir::Program &program,
                                 const std::string &name);
 
+inline bool IsOnlyOneValueName(pir::Value value) {
+  return GetValueAllNames(value).size() == 1;
+}
+
 }  // namespace name_analysis
 }  // namespace utils
 }  // namespace pir

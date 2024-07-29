@@ -475,7 +475,6 @@ inline void PirRunProgramAPI(
     // no_need_buffers + outputs)
     std::vector<std::string> skip_names;
     // update interpretercore skip_gc_var
-    std::vector<pir::Value> kwargs_values;
     for (auto &kwarg : backward_program->block()->kwargs()) {
       skip_names.push_back(kwarg.first);
     }
@@ -494,6 +493,29 @@ inline void PirRunProgramAPI(
 
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
+
+    // check only one name
+    for (auto input_value : input_values) {
+      PADDLE_ENFORCE(pir::utils::name_analysis::IsOnlyOneValueName(input_value),
+                     "input value should have only one name");
+    }
+
+    for (auto output_value : output_values) {
+      PADDLE_ENFORCE(
+          pir::utils::name_analysis::IsOnlyOneValueName(output_value),
+          "output value should have only one name");
+    }
+
+    for (auto middle_value : middle_values) {
+      PADDLE_ENFORCE(
+          pir::utils::name_analysis::IsOnlyOneValueName(middle_value),
+          "middle value should have only one name");
+    }
+
+    for (auto param_value : param_values) {
+      PADDLE_ENFORCE(pir::utils::name_analysis::IsOnlyOneValueName(param_value),
+                     "param value should have only one name");
+    }
 
     // std::set<std::string> input_vars;
     // input_vars.insert(input_names.begin(), input_names.end());
