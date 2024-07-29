@@ -980,6 +980,7 @@ class ClusterPartitionUtil:
             device_meshed (list) : The possible device meshes.
         """
         partition_result = ClusterPartitionUtil.factorization(n)
+
         for func in filter:
             partition_result = func(partition_result, n)
         device_meshes = []
@@ -1100,6 +1101,9 @@ class RuleBasedTuner:
         # the best cost of stage in a given process mesh
         self.stage_best_cost_of_pm = {}
 
+        # the best process mesh of differenet device
+        self.best_process_mesh = {}
+
         # the op clustering result
         self.layers = []
 
@@ -1191,7 +1195,6 @@ class RuleBasedTuner:
         vars = self._dist_context._serial_main_program.global_block().vars
         for var_name in vars:
             vars[var_name].dist_attr = TensorDistAttr(vars[var_name].desc)
-
         seq = [op.type for op in ops]
 
         while not OperatorClusteringUtil.stop_replace(seq):
@@ -1395,7 +1398,6 @@ class RuleBasedTuner:
                         dist_context.add_dist_tensor_for_program(dist_tensor)
                         has_set_tensor_count += 1
                         has_set_dist_attr_tensors.add(var_id)
-
             # check whether no dist attr in dist context
             if has_set_tensor_count > 0:
                 dist_context.initialize(no_default=True)
@@ -1623,12 +1625,7 @@ class RuleBasedTuner:
         Most of the logic is the same as the update completion in the completer.
         """
         world_ranks = ProcessMesh(
-            list(
-                range(
-                    self._cluster.get_num_machines()
-                    * self._cluster._num_devices_per_machine
-                )
-            )
+            list(range(self._cluster.get_num_machines() * 8))
         )
         dist_tensors = sub_program_dist_context._dist_tensors_for_program
 
@@ -1923,6 +1920,7 @@ class RuleBasedTuner:
         # When the process mesh is 1-D, the selective parallelism can be dp or mp.
         # Because the first layer often contains more ops than other layer, using beam search can find more accurate strategy.
         count = 0
+        max_memory = self.get_max_memory(0)
         for dist_context_x in dist_contexts_x:
             if end == start and count == 1:
                 break
@@ -1944,15 +1942,13 @@ class RuleBasedTuner:
                         sys.maxsize,
                         sys.maxsize,
                     ]
-
-                # estimate cost and memory
+                    self.stage_best_cost_of_pm[start][end][key]["memory"] = [
+                        sys.maxsize
+                    ]
                 cost, local_stage_memory = self._get_sub_program_cost(
                     dist_context
                 )
-
-                if local_stage_memory > 0.9 * self.cluster.machines[0].devices[
-                    0
-                ].memory * (1024**3):
+                if local_stage_memory > max_memory:
                     cost = sys.maxsize
 
                 index = -1
@@ -2009,6 +2005,12 @@ class RuleBasedTuner:
 
         return self.stage_best_cost_of_pm[start][end][key]["best_cost"]
 
+    def get_max_memory(self, device_id):
+        max_memory = sys.maxsize
+        device = self.cluster.get_device(device_id)
+        max_memory = device.memory * (1024**3)
+        return max_memory
+
     def local_stage_pass(self, start, end, device_mesh):
         """Get the best cost and the corresponding strategy of layers on the given device mesh."""
         dm_key = self.convert_device_mesh_to_key(device_mesh)
@@ -2052,6 +2054,175 @@ class RuleBasedTuner:
 
         return best_cost
 
+    def get_best_process_mesh(self, start, end, device_mesh):
+        dm_key = self.convert_device_mesh_to_key(device_mesh)
+        if dm_key not in self.best_process_mesh:
+            self.best_process_mesh[dm_key] = {}
+
+        best_cost = sys.maxsize
+
+        device_mesh_shape = device_mesh.shape
+        if len(device_mesh_shape) == 1:
+            device_mesh_shape.insert(0, 1)
+        process_mesh_shapes = convert_to_process_meshes(device_mesh_shape)
+
+        if start not in self.stage_best_cost_of_dm:
+            self.stage_best_cost_of_dm[start] = {}
+        if end not in self.stage_best_cost_of_dm[start]:
+            self.stage_best_cost_of_dm[start][end] = {}
+        if dm_key not in self.stage_best_cost_of_dm[start][end]:
+            self.stage_best_cost_of_dm[start][end][dm_key] = {}
+
+        for process_mesh_shape in process_mesh_shapes:
+            process_mesh = ProcessMesh(
+                np.array(device_mesh.device_ids)
+                .reshape(process_mesh_shape)
+                .tolist()
+            )
+            key = self.convert_process_mesh_to_key(process_mesh)
+
+            selective_parallelisms = (
+                ["dp", "mp"]
+                if len(process_mesh.shape) == 1
+                else ["dp_mp", "mp_dp"]
+            )
+            for parallelism in selective_parallelisms:
+                if parallelism != "mp":
+                    continue
+                dist_context_x = DistributedContext()
+                dist_context_y = self.sub_programs_dist_context[end][
+                    parallelism
+                ][key]
+                dist_context = self.combine_dist_contexts(
+                    [dist_context_x, dist_context_y]
+                )
+                cost, local_stage_memory = self._get_sub_program_cost(
+                    dist_context
+                )
+                if cost < best_cost:
+                    best_cost = cost
+                    self.stage_best_cost_of_dm[start][end][dm_key][
+                        "cost"
+                    ] = cost
+                    self.stage_best_cost_of_dm[start][end][dm_key][
+                        "memory"
+                    ] = local_stage_memory
+                    self.stage_best_cost_of_dm[start][end][dm_key][
+                        "dist_context"
+                    ] = dist_context
+                    self.best_process_mesh[dm_key]["process_mesh"] = key
+                    self.best_process_mesh[dm_key]["parallelism"] = parallelism
+
+    def local_stage_pass_new(self, start, end, device_mesh):
+        dm_key = self.convert_device_mesh_to_key(device_mesh)
+        device_mesh_shape = device_mesh.shape
+        if len(device_mesh_shape) == 1:
+            device_mesh_shape.insert(0, 1)
+
+        if start in self.stage_best_cost_of_dm:
+            if end in self.stage_best_cost_of_dm[start]:
+                if dm_key in self.stage_best_cost_of_dm[start][end]:
+                    return self.stage_best_cost_of_dm[start][end][dm_key][
+                        "cost"
+                    ]
+
+        if start not in self.stage_best_cost_of_dm:
+            self.stage_best_cost_of_dm[start] = {}
+        if end not in self.stage_best_cost_of_dm[start]:
+            self.stage_best_cost_of_dm[start][end] = {}
+        if dm_key not in self.stage_best_cost_of_dm[start][end]:
+            self.stage_best_cost_of_dm[start][end][dm_key] = {}
+
+        # get best process_mesh
+        if dm_key not in self.best_process_mesh:
+            self.get_best_process_mesh(0, 0, device_mesh)
+
+        if start == end:
+            dist_context_x = DistributedContext()
+        else:
+            dist_context_x = self.stage_best_cost_of_dm[start][end - 1][dm_key][
+                "dist_context"
+            ]
+        parallelism = self.best_process_mesh[dm_key]["parallelism"]
+        key = self.best_process_mesh[dm_key]["process_mesh"]
+        info = f"-----start:{start}, end:{end}, key:{key} parallelism:{parallelism} local_stage_memory"
+        dist_context_y = self.sub_programs_dist_context[end][parallelism][key]
+        dist_context = self.combine_dist_contexts(
+            [dist_context_x, dist_context_y]
+        )
+        # some case must be calculate
+        if (start <= 1 and end <= 2) or end == len(self.layers) - 1:
+            cost, local_stage_memory = self._get_sub_program_cost(dist_context)
+            self.stage_best_cost_of_dm[start][end][dm_key]["cost"] = cost
+            self.stage_best_cost_of_dm[start][end][dm_key][
+                "memory"
+            ] = local_stage_memory
+            self.stage_best_cost_of_dm[start][end][dm_key][
+                "dist_context"
+            ] = dist_context
+
+        # some cache is used to speed up because the layer 1~end is same, for example:
+        # stage_best_cost_of_dm[0][2] = stage_best_cost_of_dm[0][1] + stage_best_cost_of_dm[0][1] - stage_best_cost_of_pm[0][0]
+        # stage_best_cost_of_dm[2][2] = stage_best_cost_of_dm[1][1]
+        else:
+            if (
+                start > 1
+                and self.stage_best_cost_of_dm[start - 1][end - 1][dm_key][
+                    "cost"
+                ]
+            ):
+                cost = self.stage_best_cost_of_dm[start - 1][end - 1][dm_key][
+                    "cost"
+                ]
+                local_stage_memory = self.stage_best_cost_of_dm[start - 1][
+                    end - 1
+                ][dm_key]["memory"]
+                self.stage_best_cost_of_dm[start][end][dm_key]["cost"] = cost
+                self.stage_best_cost_of_dm[start][end][dm_key][
+                    "memory"
+                ] = local_stage_memory
+                self.stage_best_cost_of_dm[start][end][dm_key][
+                    "dist_context"
+                ] = dist_context
+            else:
+                self.stage_best_cost_of_dm[start][end - 1][dm_key][
+                    "cost"
+                ] and self.stage_best_cost_of_dm[start][end - 2][dm_key]["cost"]
+                cost_former_1 = self.stage_best_cost_of_dm[start][end - 1][
+                    dm_key
+                ]["cost"]
+                cost_former_2 = self.stage_best_cost_of_dm[start][end - 2][
+                    dm_key
+                ]["cost"]
+                cost = cost_former_1 + cost_former_1 - cost_former_2
+                local_stage_memory_former_1 = self.stage_best_cost_of_dm[start][
+                    end - 1
+                ][dm_key]["memory"]
+                local_stage_memory_former_2 = self.stage_best_cost_of_dm[start][
+                    end - 2
+                ][dm_key]["memory"]
+                local_stage_memory = local_stage_memory_former_1 + (
+                    local_stage_memory_former_1 - local_stage_memory_former_2
+                )
+                self.stage_best_cost_of_dm[start][end][dm_key]["cost"] = cost
+                self.stage_best_cost_of_dm[start][end][dm_key][
+                    "memory"
+                ] = local_stage_memory
+                self.stage_best_cost_of_dm[start][end][dm_key][
+                    "dist_context"
+                ] = dist_context
+
+        device_id = device_mesh.device_ids[0]
+        max_memory = self.get_max_memory(device_id)
+        cost = self.stage_best_cost_of_dm[start][end][dm_key]["cost"]
+        local_stage_memory = self.stage_best_cost_of_dm[start][end][dm_key][
+            "memory"
+        ]
+        if local_stage_memory > max_memory:
+            cost = sys.maxsize
+
+        return cost, local_stage_memory
+
     def combine_dist_contexts(self, dist_contexts):
         """Combine the dist attr in dist contexts to one dist context."""
         combined_dist_context = DistributedContext()
@@ -2087,7 +2258,6 @@ class RuleBasedTuner:
         self._logger.info(
             f"Cluster operators to {len(self.layers)} layers in {end - begin:.2f}s."
         )
-
         # step2: generate sub program of each layer
         begin = time.time()
         self.gen_fwd_sub_programs_by_clone()
@@ -2102,6 +2272,7 @@ class RuleBasedTuner:
             self._cluster.get_num_machines(),
             self._cluster._num_devices_per_machine,
         )
+
         device_meshes_list = ClusterPartitionUtil.partition_cluster(n, m)
         end = time.time()
         self._logger.info(f"Partition cluster in {end - begin:.2f}s.")
@@ -2138,7 +2309,6 @@ class RuleBasedTuner:
                     )
                     if process_mesh not in self.process_meshes:
                         self.process_meshes.append(process_mesh)
-
         # step5: generate full program
         begin = time.time()
         self.gen_full_program()
@@ -2233,6 +2403,168 @@ class RuleBasedTuner:
             best_strategies[stages - 1][layers - 1],
         )
 
+    def layer_placement_pass_new(self, stages, layers, device_meshes):
+        """Get the best cost and the corresponding strategy of the given layers on the stages which running on the devices."""
+        stage_layer_cost = [
+            [sys.maxsize for i in range(layers)] for j in range(stages)
+        ]
+        # To get the balance among the stages, we select the minimum maximum cost of stages.
+        min_max_stage_costs = [
+            [None for i in range(layers)] for j in range(stages)
+        ]
+        best_strategies = [[None for i in range(layers)] for j in range(stages)]
+        cost_strategies = [
+            [[None for i in range(layers)] for j in range(layers)]
+            for _ in range(stages)
+        ]
+        memory_strategies = [
+            [[None for i in range(layers)] for j in range(layers)]
+            for _ in range(stages)
+        ]
+
+        max_mem = []
+        device_flops = []
+        for mesh in device_meshes:
+            device_id = mesh.device_ids[0]
+            max_mem.append(self.get_max_memory(device_id))
+            device = self.cluster.get_device(device_id)
+            device_flops.append(device.sp_gflops)
+
+        for s in range(len(device_meshes)):
+            best_split = -1
+            for i in range(0, layers):
+                if s == 0:
+                    (
+                        stage_layer_cost[s][i],
+                        memory_strategies[s][i][0],
+                    ) = self.local_stage_pass_new(0, i, device_meshes[s])
+                    info = (
+                        f"stage_layer_cost[{s}][{i}] = {stage_layer_cost[s][i]}"
+                    )
+                    min_max_stage_costs[s][i] = stage_layer_cost[s][i]
+                    key = self.convert_device_mesh_to_key(device_meshes[s])
+                    best_strategies[s][i] = self.stage_best_cost_of_dm[0][i][
+                        key
+                    ]["dist_context"]
+                else:
+                    min_cost = sys.maxsize
+                    min_max_stage_cost = sys.maxsize
+                    for j in range(0, i):
+                        key = self.convert_device_mesh_to_key(device_meshes[s])
+                        (
+                            local_stage_cost,
+                            local_stage_memory,
+                        ) = self.local_stage_pass_new(
+                            j + 1, i, device_meshes[s]
+                        )
+
+                        dist_context = self.combine_dist_contexts(
+                            [
+                                best_strategies[s - 1][j],
+                                self.stage_best_cost_of_dm[j + 1][i][key][
+                                    "dist_context"
+                                ],
+                            ]
+                        )
+                        if i >= 3 and j >= 2:
+                            cost = (
+                                cost_strategies[s][i][j - 1]
+                                + cost_strategies[s][i][j - 1]
+                                - cost_strategies[s][i][j - 2]
+                            )
+                            memory = (
+                                memory_strategies[s][i][j - 1]
+                                + memory_strategies[s][i][j - 1]
+                                - memory_strategies[s][i][j - 2]
+                            )
+                        else:
+                            cost, memory = self._get_sub_program_cost(
+                                dist_context
+                            )
+                            memory = memory
+
+                        cost_strategies[s][i][j] = cost
+                        memory_strategies[s][i][j] = memory
+
+                        max_stage_cost = (
+                            min_max_stage_costs[s - 1][j]
+                            if local_stage_cost < min_max_stage_costs[s - 1][j]
+                            else local_stage_cost
+                        )
+                        if memory > sum(max_mem):
+                            cost = sys.maxsize
+
+                        if cost <= min_cost:
+                            if (
+                                memory_strategies[s - 1][j][0] < max_mem[s - 1]
+                                and local_stage_memory < max_mem[s]
+                            ):
+                                if device_flops[s - 1] < device_flops[s]:
+                                    if (
+                                        memory_strategies[s - 1][j][0]
+                                        / local_stage_memory
+                                    ) < (
+                                        device_flops[s - 1] / device_flops[s]
+                                    ) and (
+                                        memory_strategies[s - 1][j][0]
+                                        / local_stage_memory
+                                    ) > (
+                                        device_flops[s - 1]
+                                        / device_flops[s]
+                                        / 6.5
+                                    ):
+                                        best_strategies[s][i] = dist_context
+                                        min_cost = cost
+                                        if i == layers - 1:
+                                            best_split = j
+                                else:
+                                    if (
+                                        memory_strategies[s - 1][j][0]
+                                        / local_stage_memory
+                                    ) > (
+                                        device_flops[s - 1] / device_flops[s]
+                                    ) and (
+                                        memory_strategies[s - 1][j][0]
+                                        / local_stage_memory
+                                    ) < (
+                                        device_flops[s - 1]
+                                        * 6.5
+                                        / device_flops[s]
+                                    ):
+                                        best_strategies[s][i] = dist_context
+                                        min_cost = cost
+                                        if i == layers - 1:
+                                            best_split = j
+
+                    stage_layer_cost[s][i] = min_cost
+                    min_max_stage_costs[s][i] = min_max_stage_cost
+
+            self._logger.info(f"the best spilt at {best_split}")
+
+        return (
+            stage_layer_cost[stages - 1][layers - 1],
+            best_strategies[stages - 1][layers - 1],
+        )
+
+    def tune_o3(self):
+        """The o3 level tuning. for hetoro cluster"""
+        best_dist_context = None
+        best_cost = sys.maxsize
+        for device_meshes in self.device_meshes_list:
+            if len(device_meshes) == 1:
+                continue
+            cost, dist_context = self.layer_placement_pass_new(
+                len(device_meshes), len(self.layers), device_meshes
+            )
+
+            if cost <= best_cost:
+                self._logger.info(
+                    "O3 level: a better strategy has be found as follows: "
+                )
+                best_cost = cost
+                best_dist_context = dist_context
+        return best_dist_context
+
     def tune_o2(self):
         """The o2 level tuning."""
         best_dist_context = None
@@ -2246,6 +2578,7 @@ class RuleBasedTuner:
                 self._logger.info(
                     "O2 level: a better strategy has be found as follows: "
                 )
+
                 print_program_with_dist_attr(
                     self.full_main_program, best_dist_context
                 )
@@ -2323,9 +2656,8 @@ class RuleBasedTuner:
                             f"Cost Model: The max memory is {memory / (1024**3):.2f}GB and cost is {cost:.2f} when {parallelism} parallelism under process mesh shape {process_mesh_shape} on {len(device_meshes)} stages."
                         )
                         # 10% buffer is reserved safely for memory cost
-                        if memory > 0.9 * self.cluster.machines[0].devices[
-                            0
-                        ].memory * (1024**3):
+                        max_memory = self.get_max_memory(0)
+                        if memory > max_memory:
                             cost = sys.maxsize
 
                         if cost < best_cost:
@@ -2397,11 +2729,12 @@ class RuleBasedTuner:
 
         # prepare
         self.prepare()
-
         best_dist_context = None
-        if self.level == "o2":
-            best_dist_context = self.tune_o2()
 
+        if self.cluster._hetero:
+            best_dist_context = self.tune_o3()
+        elif self.level == "o2":
+            best_dist_context = self.tune_o2()
         elif self.level == "o1":
             # If level is o1, it means all layers within same parallelism.
             # When in pipeline parallelism, it means that place layers evenly.
