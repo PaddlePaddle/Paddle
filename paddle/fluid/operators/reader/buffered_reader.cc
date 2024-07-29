@@ -237,11 +237,11 @@ void BufferedReader::ReadAsync(size_t i) {
                                     size,
                                     stream_.get());
 
-            platform::GpuStreamSync(stream_.get());
+            phi::backends::gpu::GpuStreamSync(stream_.get());
           }
           cuda[i].set_lod(cpu[i].lod());
         }
-        platform::GpuStreamSync(stream_.get());
+        phi::backends::gpu::GpuStreamSync(stream_.get());
       }
     }
 #endif
