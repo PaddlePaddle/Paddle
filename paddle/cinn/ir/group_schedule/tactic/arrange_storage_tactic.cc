@@ -64,7 +64,13 @@ struct FixedCudaIterVarName {
 
 std::optional<bool> IsSubCudaAxisSpace(const CudaAxisSpace& lhs,
                                        const CudaAxisSpace& rhs) {
-  CHECK(lhs.type == rhs.type);
+  PADDLE_ENFORCE_EQ(lhs.type,
+                    rhs.type,
+                    phi::errors::InvalidArgument(
+                        "The type of 'lhs' must be equal to the type of 'rhs'. "
+                        "But received: lhs.type = %s, rhs.type = %s.",
+                        lhs.type,
+                        rhs.type));
   std::optional<bool> prove_sub_x = lhs.x.ProveSubSet(rhs.x);
   std::optional<bool> prove_sub_y = lhs.y.ProveSubSet(rhs.y);
   std::optional<bool> prove_sub_z = lhs.z.ProveSubSet(rhs.z);
@@ -157,8 +163,16 @@ IntSet Evaluate(Expr expr,
     } else if (var->is_symbolic_constant) {
       continue;
     } else {
-      CHECK(var->lower_bound.defined());
-      CHECK(var->upper_bound.defined());
+      PADDLE_ENFORCE_EQ(
+          var->lower_bound.defined(),
+          true,
+          phi::errors::InvalidArgument(
+              "The 'lower_bound' of the variable must be defined."));
+      PADDLE_ENFORCE_EQ(
+          var->upper_bound.defined(),
+          true,
+          phi::errors::InvalidArgument(
+              "The 'upper_bound' of the variable must be defined."));
       optim::ReplaceVarWithExpr(&copy_for_lower_bound, var, var->lower_bound);
       optim::ReplaceVarWithExpr(&copy_for_upper_bound, var, var->upper_bound);
     }
@@ -261,8 +275,16 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
                                              Expr load,
                                              Expr store_block,
                                              Expr load_block) {
-  CHECK(store_block.As<ir::ScheduleBlockRealize>());
-  CHECK(load_block.As<ir::ScheduleBlockRealize>());
+  PADDLE_ENFORCE_EQ(
+      store_block.As<ir::ScheduleBlockRealize>(),
+      true,
+      phi::errors::InvalidArgument(
+          "The 'store_block' must be of type 'ir::ScheduleBlockRealize'."));
+  PADDLE_ENFORCE_EQ(
+      load_block.As<ir::ScheduleBlockRealize>(),
+      true,
+      phi::errors::InvalidArgument(
+          "The 'load_block' must be of type 'ir::ScheduleBlockRealize'."));
   std::string store_block_name = store_block.As<ir::ScheduleBlockRealize>()
                                      ->schedule_block.As<ir::ScheduleBlock>()
                                      ->name;
