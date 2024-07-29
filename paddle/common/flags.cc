@@ -83,16 +83,16 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Operator related FLAG
- * Name: FLAGS_jump_sparse_add_input_equal
+ * Name: check_etw_add_coo_indices
  * Since Version:
- * Value Range: bool, default=false
+ * Value Range: bool, default=true
  * Example:
- * Note: Used to debug. Checking whether operator produce NAN/INF or not.
+ * Note: Whether skip ElementWiseAddCooGPUKernel indices check or not.
  */
 PHI_DEFINE_EXPORTED_bool(
-    jump_sparse_add_input_equal,
-    false,
-    "Jumping sparse_add input equal case. If true, then skip such cases");
+    check_etw_add_coo_indices,
+    true,
+    "Skip ElementWiseAddCooGPUKernel indices check. If false, then skip check");
 /**
  * Operator related FLAG
  * Name: FLAGS_check_nan_inf_level

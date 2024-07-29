@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 
-COMMON_DECLARE_bool(jump_sparse_add_input_equal);
+COMMON_DECLARE_bool(check_etw_add_coo_indices);
 
 namespace phi {
 namespace sparse {
@@ -45,7 +45,7 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
   const IntT* x_indices_ptr = x_indices.data<IntT>();
   const IntT* y_indices_ptr = y_indices.data<IntT>();
   bool is_same = false;
-  if (FLAGS_jump_sparse_add_input_equal) {
+  if (FLAGS_check_etw_add_coo_indices) {
     is_same = true;
   } else {
 #ifdef PADDLE_WITH_HIP
