@@ -119,6 +119,7 @@ class TestToStaticInputListModel(Dy2StTestBase):
         my_layer = TestLayer2(hidd)
         result0 = my_layer([x, x]).numpy()
         my_static_layer = paddle.incubate.jit.inference(my_layer)
+        my_static_layer = paddle.incubate.jit.inference(my_layer)
 
         result1 = my_layer([x, x]).numpy()
         np.testing.assert_allclose(result0, result1, rtol=0.001, atol=1e-05)
