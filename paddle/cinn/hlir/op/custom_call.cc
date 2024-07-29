@@ -289,7 +289,7 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
                             b_height));
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
+    PADDLE_THROW(::common::errors::InvalidArgument("Unkown Matmul Setting!"));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -481,7 +481,7 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
                             b_height));
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
+    PADDLE_THROW(::common::errors::InvalidArgument("Unkown Matmul Setting!"));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -1104,7 +1104,7 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     std::stringstream ss;                                             \
     ss << "The type of \"value\" of memset custom_call not support: " \
        << #TYPE;                                                      \
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));             \
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));        \
   }
 
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::string)
