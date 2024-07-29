@@ -98,6 +98,7 @@ def run_pir_pass(program, partition_mode=False):
     return program
 
 
+
 def forbid_op_lower_trt(program, op_name):
     for op in program.global_block().ops:
         if op.name() == op_name:
@@ -236,6 +237,7 @@ class BertModel(nn.Layer):
         embeddings = self.embeddings(input_ids)
         encoded_output = self.encoder(embeddings)
         return encoded_output
+
 
 
 def get_bert_program():
