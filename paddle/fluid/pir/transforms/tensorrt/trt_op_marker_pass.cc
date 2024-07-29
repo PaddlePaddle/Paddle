@@ -66,7 +66,6 @@ DEFINE_GENERAL_PATTERN(Silu, paddle::dialect::SiluOp)
 DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp)
 DEFINE_GENERAL_PATTERN(FusedConv2dAddAct, paddle::dialect::FusedConv2dAddActOp)
 DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
-DEFINE_GENERAL_PATTERN(Gather, paddle::dialect::GatherOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -179,7 +178,6 @@ class Conv2dTransposeOpPattern
     return true;
   }
 };
-
 
 class DepthwiseConv2dTransposeOpPattern
     : public pir::OpRewritePattern<
@@ -405,8 +403,25 @@ class TransposeOpPattern
     return true;
   }
 };
-
-
+class GatherOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GatherOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::GatherOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::GatherOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value axis = op.operand_source(2);
+    if (!axis) {
+      VLOG(3) << "axis is empty. Skipping rewrite.";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
 
 class GatherNdOpPattern
     : public pir::OpRewritePattern<paddle::dialect::GatherNdOp> {
@@ -517,18 +532,15 @@ class SqueezeOpPattern
       return false;
     }
 
-    pir::Value axis_ = op.operand_source(1);
+    paddle::dialect::FullIntArrayOp full_int_array_op =
+        pir::GetDefiningOpForInput(op, 1)
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+
+    auto axis = full_int_array_op->attribute<pir::ArrayAttribute>("value");
     std::vector<int64_t> axes;
-
-    if (axis_) {      
-      bool is_from_tensor = false;
-      phi::IntArray axis = phi::IntArray(
-          paddle::dialect::ParseValueShape(axis_, &is_from_tensor));
-      for (auto a : axis.GetData()) {
-        axes.push_back(a);
-      }
+    for (const auto &attr : axis.AsVector()) {
+      axes.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
     }
-
     if (axes.empty()) {
       auto input_var_name = op.operand_source(0);
       auto input_var_name_type =
@@ -667,8 +679,7 @@ class FlattenOpPattern
     return true;
   }
 };
-class CastOpPattern
-    : public pir::OpRewritePattern<paddle::dialect::CastOp> {
+class CastOpPattern : public pir::OpRewritePattern<paddle::dialect::CastOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::CastOp>::OpRewritePattern;
   bool MatchAndRewrite(paddle::dialect::CastOp op,
@@ -677,17 +688,80 @@ class CastOpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-    if (!op->HasAttribute("dtype") ){
-        VLOG(3) << "the cast op does not have attr dtype ";  
-        return false;
+    if (!op->HasAttribute("dtype")) {
+      VLOG(3) << "the cast op does not have attr dtype ";
+      return false;
     }
-    auto dtype = op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
-    if (dtype == phi::DataType::BOOL){
+    auto dtype =
+        op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
+    if (dtype == phi::DataType::BOOL) {
 #if IS_TRT_VERSION_LT(8400)
-          VLOG(3) << "the cast op supports inputs and outputs of BOOL by trt8.4 above ";
-          return false;
+      VLOG(3)
+          << "the cast op supports inputs and outputs of BOOL by trt8.4 above ";
+      return false;
 #endif
     }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SplitOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::SplitOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+
+    paddle::dialect::FullOp full_op =
+        pir::GetDefiningOpForInput(op, 2)->dyn_cast<paddle::dialect::FullOp>();
+    if (!full_op) {
+      VLOG(3) << "Can not find full op";
+      return false;
+    } else {
+      auto axis = full_op->attribute<paddle::dialect::ScalarAttribute>("value")
+                      .data()
+                      .to<int>();
+      auto x_shape = op.operand_source(0)
+                         .type()
+                         .dyn_cast<paddle::dialect::DenseTensorType>()
+                         .dims();
+      auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
+      if (!out_vector_type) {
+        VLOG(3) << "Output is not a VectorType";
+        return false;
+      }
+
+      paddle::dialect::FullIntArrayOp full_sections_op =
+          pir::GetDefiningOpForInput(op, 1)
+              ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+      if (!full_sections_op) {
+        VLOG(3) << "Can not find FullIntArrayOp";
+        return false;
+      }
+
+      auto sections = full_sections_op->attribute<pir::ArrayAttribute>("value");
+
+      std::vector<int64_t> output_lengths;
+      for (const auto &attr : sections.AsVector()) {
+        output_lengths.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+      }
+      axis += (axis < 0) ? x_shape.size() : 0;
+      if (x_shape[axis] == -1) {
+        VLOG(3) << "The (" << axis << ") dim of input should not be -1";
+        return false;
+      }
+
+      if (output_lengths.size() != out_vector_type.size()) {
+        VLOG(3) << "The output_length should be equal to the output size.";
+        return false;
+      }
+    }
+
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -720,8 +794,6 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Conv2d)
     ADD_PATTERN(FusedConv2dAddAct)
     ADD_PATTERN(DepthwiseConv2d)
-    ADD_PATTERN(Gather)
-
 
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
@@ -733,14 +805,17 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<LogicalNotOpPattern>(context));
     ps.Add(std::make_unique<GroupNormOpPattern>(context));
     ps.Add(std::make_unique<TransposeOpPattern>(context));
+    ps.Add(std::make_unique<GatherOpPattern>(context));
     ps.Add(std::make_unique<GatherNdOpPattern>(context));
     ps.Add(std::make_unique<ScaleOpPattern>(context));
     ps.Add(std::make_unique<UnsqueezeOpPattern>(context));
+    ps.Add(std::make_unique<SqueezeOpPattern>(context));
     ps.Add(std::make_unique<Unsqueeze_OpPattern>(context));
     ps.Add(std::make_unique<SliceOpPattern>(context));
     ps.Add(std::make_unique<IndexSelectOpPattern>(context));
     ps.Add(std::make_unique<FlattenOpPattern>(context));
     ps.Add(std::make_unique<CastOpPattern>(context));
+    ps.Add(std::make_unique<SplitOpPattern>(context));
     return ps;
   }
 };

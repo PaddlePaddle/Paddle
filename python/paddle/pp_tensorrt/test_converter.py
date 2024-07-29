@@ -15,7 +15,6 @@
 import numpy as np
 from converter import PaddleToTensorRTConverter
 from util import (
-    forbid_op_lower_trt,
     get_bert_program,
     get_dummy_program,
     get_r50_program,
@@ -56,6 +55,7 @@ def test_paddle_to_tensorrt_conversion_dummy():
     # Convert the program to TensorRT
     converter = PaddleToTensorRTConverter(program_with_pir, scope)
     converter.convert_program_to_trt()
+    output_var = program_with_pir.list_vars()[-1]
 
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program_with_pir):
@@ -83,15 +83,16 @@ def test_paddle_to_tensorrt_conversion_dummy():
 def test_paddle_to_tensorrt_conversion_bert():
     # Step1: get program and init fake inputs
     program, scope, param_dict = get_bert_program()
+
     input_data_min_shape = np.ones([1, 100]).astype('int64')
     input_data_max_shape = np.ones([8, 1000]).astype('int64')
 
     # Step1.1: get original results(for tests only)
     output_var = program.list_vars()[-1]
+
     output_expected = predict_program(
         program, {"input_ids": input_data_min_shape}, [output_var]
     )
-
     # Step2: run warmup for collecting shape
     warmup_shape_infer(
         program,
@@ -101,7 +102,6 @@ def test_paddle_to_tensorrt_conversion_bert():
 
     # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
     program = run_pir_pass(program, partition_mode=False)
-    forbid_op_lower_trt(program, "pd_op.layer_norm")
 
     # Step4: run trt_sub_graph_extract_pass()
     program_with_pir = run_pir_pass(program, partition_mode=True)
@@ -109,6 +109,7 @@ def test_paddle_to_tensorrt_conversion_bert():
     # Step5: run TRTConverter(would lower group_op into tensorrt_engine_op)
     converter = PaddleToTensorRTConverter(program_with_pir, scope)
     converter.convert_program_to_trt()
+    output_var = program_with_pir.list_vars()[-1]
 
     # Step6: run inference(converted_program)
     output_converted = predict_program(
@@ -149,16 +150,6 @@ def test_paddle_to_tensorrt_conversion_r50():
 
     # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
     program = run_pir_pass(program, partition_mode=False)
-    # enforce_op_lower_trt(program, "pd_op.conv2d")
-    # enforce_op_lower_trt(program, "pd_op.relu")
-    # enforce_op_lower_trt(program, "pd_op.pool2d")
-    # enforce_op_lower_trt(program,"pd_op.matmul")
-    # enforce_op_lower_trt(program, "pd_op.add")
-    # enforce_op_lower_trt(program, "pd_op.batch_norm_")
-    # enforce_op_lower_trt(program, "pd_op.flatten")
-    # forbid_op_lower_trt(program,"pd_op.matmul")
-    # forbid_op_lower_trt(program,"pd_op.flatten")
-    # forbid_op_lower_trt(program,"pd_op.add")
 
     # Step4: run trt_sub_graph_extract_pass()
     program_with_pir = run_pir_pass(program, partition_mode=True)
@@ -188,5 +179,5 @@ def test_paddle_to_tensorrt_conversion_r50():
 
 if __name__ == "__main__":
     # test_paddle_to_tensorrt_conversion_dummy()
-    # test_paddle_to_tensorrt_conversion_bert()
-    test_paddle_to_tensorrt_conversion_r50()
+    test_paddle_to_tensorrt_conversion_bert()
+    # test_paddle_to_tensorrt_conversion_r50()

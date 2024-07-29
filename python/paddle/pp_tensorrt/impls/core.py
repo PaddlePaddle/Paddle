@@ -178,8 +178,9 @@ def softmax_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.layer_norm", trt_version="8.x")
 def layernorm_converter(network, paddle_op, inputs):
     input_a, scale, bias = inputs
+
     begin_norm_axis = paddle_op.attrs().get("begin_norm_axis", 0)
-    epsilon = paddle_op.attrs().get("epsilon", 0.0)
+    epsilon = paddle_op.attrs().get("epsilon", 1e-5)
     assert len(paddle_op.operands()) == 3
     scale_shape = paddle_op.operands()[1].source().shape
 
@@ -204,9 +205,9 @@ def layernorm_converter(network, paddle_op, inputs):
         f"{bias_tensor.name}_broadcast",
         len(input_a.shape) - len(bias_tensor.shape),
     )
-    _logger.info(
-        f"!!! layernorm, {input_a.shape}, {scale_tensor.shape}, {bias_tensor.shape}"
-    )
+    # _logger.info(
+    #     f"!!! layernorm, {input_a.shape}, {scale_tensor.shape}, {bias_tensor.shape}"
+    # )
 
     layer_norm = network.add_normalization(
         input_a, scale_tensor, bias_tensor, axes
