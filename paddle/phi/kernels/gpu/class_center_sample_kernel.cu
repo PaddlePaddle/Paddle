@@ -367,10 +367,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
     } else {
       phi::distributed::NCCLCommContext* comm_ctx = nullptr;
       // use global calculate stream
-      auto stream =
-          static_cast<GPUContext*>(
-              phi::DeviceContextPool::Instance().Get(dev_ctx.GetPlace()))
-              ->stream();
+      auto stream = dev_ctx.stream();
       const auto& comm_context_manager =
           phi::distributed::CommContextManager::GetInstance();
 
