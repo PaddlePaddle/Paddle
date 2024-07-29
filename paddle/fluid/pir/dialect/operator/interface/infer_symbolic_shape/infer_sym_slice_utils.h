@@ -210,10 +210,16 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     const int64_t start =
         starts_int[0] < 0 ? starts_int[0] + in_shapeordata.data().value().size()
                           : starts_int[0];
-    const int64_t end =
-        static_cast<int64_t>(std::numeric_limits<int>::max()) == ends_int[0]
-            ? in_shapeordata.data().value().size()
-            : ends_int[0];
+    const int64_t end = [&] -> int64_t {
+      if (ends_int[0] < 0) {
+        return ends_int[0] + in_shapeordata.data().value().size();
+      }
+      if (ends_int[0] ==
+          static_cast<int64_t>(std::numeric_limits<int>::max())) {
+        return in_shapeordata.data().value().size();
+      }
+      return ends_int[0];
+    }();
 
     for (int64_t i = start; i < end; i++) {
       out_data.push_back(in_shapeordata.data().value().at(i));
