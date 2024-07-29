@@ -188,6 +188,18 @@ def log_loss_net(inputs, labels):
     return paddle.nn.functional.log_loss(inputs, labels)
 
 
+def kldiv_loss_net1(x, target):
+    return paddle.nn.functional.kl_div(x, target, "batchmean", False)
+
+
+def kldiv_loss_net2(x, target):
+    return paddle.nn.functional.kl_div(x, target, "none", False)
+
+
+def kldiv_loss_net3(x, target):
+    return paddle.nn.functional.kl_div(x, target, "batchmean", True)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -806,6 +818,57 @@ class TestPrimLogLoss2(TestPrimTwo):
         self.necessary_ops = "pd_op.log_loss"
         self.enable_cinn = False
         self.tol = 1e-5
+
+
+class TestPrimKLDivLoss1(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [40, 20, 50]
+        self.shape_y = [40, 20, 50]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None, 50]
+        self.init_y_shape = [None, None, 50]
+        self.x = np.random.uniform(-10, 10, self.shape_x).astype(self.dtype_x)
+        self.y = np.random.uniform(-10, 10, self.shape_y).astype(self.dtype_y)
+        self.net = kldiv_loss_net1
+        self.necessary_ops = "pd_op.kldiv_loss"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimKLDivLoss2(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [40, 20, 50]
+        self.shape_y = [40, 20, 50]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None, 50]
+        self.init_y_shape = [None, None, 50]
+        self.x = np.random.uniform(-10, 10, self.shape_x).astype(self.dtype_x)
+        self.y = np.random.uniform(-10, 10, self.shape_y).astype(self.dtype_y)
+        self.net = kldiv_loss_net2
+        self.necessary_ops = "pd_op.kldiv_loss"
+        self.enable_cinn = False
+        self.tol = 1e-4
+
+
+class TestPrimKLDivLoss3(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [40, 20, 50]
+        self.shape_y = [40, 20, 50]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None, 50]
+        self.init_y_shape = [None, None, 50]
+        self.x = np.random.uniform(-10, 10, self.shape_x).astype(self.dtype_x)
+        self.y = np.random.uniform(-10, 10, self.shape_y).astype(self.dtype_y)
+        self.net = kldiv_loss_net3
+        self.necessary_ops = "pd_op.kldiv_loss"
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 if __name__ == "__main__":

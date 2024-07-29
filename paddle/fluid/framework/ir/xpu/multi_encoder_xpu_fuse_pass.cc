@@ -1359,10 +1359,21 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
                        {q_cos_embedding->Name(), q_sin_embedding->Name()});
       op_desc.SetAttr("relative_type", 1);
       auto q_cos_emb_shape = q_cos_embedding->Var()->GetShape();
-      CHECK_GE(static_cast<int>(q_cos_emb_shape.size()), 2)
-          << q_cos_emb_shape.size();
+      PADDLE_ENFORCE_GE(static_cast<int>(q_cos_emb_shape.size()),
+                        2,
+                        phi::errors::InvalidArgument(
+                            "The rank of q_cos_embedding should be greater "
+                            "than or equal to 2"));
+
       auto size_per_head = q_reshape_out->Var()->GetShape()[3];
-      CHECK_EQ(size_per_head, q_cos_emb_shape[q_cos_emb_shape.size() - 1]);
+      PADDLE_ENFORCE_EQ(
+          size_per_head,
+          q_cos_emb_shape[q_cos_emb_shape.size() - 1],
+          phi::errors::InvalidArgument(
+              "The last dimension of q_cos_embedding should be %d "
+              "equal to size_per_head, but received %d.",
+              size_per_head,
+              q_cos_emb_shape[q_cos_emb_shape.size() - 1]));
       int max_pos_len = q_cos_emb_shape[q_cos_emb_shape.size() - 2];
       VLOG(3) << "relative embedding max sequence len: " << max_pos_len;
       op_desc.SetAttr("max_pos_len", max_pos_len);

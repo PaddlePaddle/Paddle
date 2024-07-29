@@ -84,9 +84,23 @@ TEST(GradTensorHolder, Interfaces) {
 
   // Buffers()
   const auto& buffers = grad_tensor_holder.Buffers();
-  CHECK_EQ(static_cast<int>(buffers.size()), 2);
-  CHECK_EQ(static_cast<int>(buffers[0].size()), 1);
-  CHECK_EQ(static_cast<int>(buffers[1].size()), 1);
+  PADDLE_ENFORCE_EQ(static_cast<int>(buffers.size()),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The size of buffers should be 2, but received %d.",
+                        static_cast<int>(buffers.size())));
+  PADDLE_ENFORCE_EQ(
+      static_cast<int>(buffers[0].size()),
+      1,
+      phi::errors::InvalidArgument(
+          "The size of the first buffer should be 1, but received %d.",
+          static_cast<int>(buffers[0].size())));
+  PADDLE_ENFORCE_EQ(
+      static_cast<int>(buffers[1].size()),
+      1,
+      phi::errors::InvalidArgument(
+          "The size of the second buffer should be 1, but received %d.",
+          static_cast<int>(buffers[1].size())));
 
   // operator[]
   const auto& holder_et0 = grad_tensor_holder[0][0];
@@ -99,8 +113,18 @@ TEST(GradTensorHolder, Interfaces) {
       std::dynamic_pointer_cast<phi::DenseTensor>(holder_et1.impl())
           ->data<float>();
 
-  CHECK_EQ(holder_et0_ptr[0], 1.0f);
-  CHECK_EQ(holder_et1_ptr[0], 30.0f);
+  PADDLE_ENFORCE_EQ(
+      holder_et0_ptr[0],
+      1.0f,
+      phi::errors::InvalidArgument(
+          "The value of holder_et0_ptr[0] should be 1.0f, but received %f.",
+          holder_et0_ptr[0]));
+  PADDLE_ENFORCE_EQ(
+      holder_et1_ptr[0],
+      30.0f,
+      phi::errors::InvalidArgument(
+          "The value of holder_et1_ptr[0] should be 30.0f, but received %f.",
+          holder_et1_ptr[0]));
 }
 
 TEST(GradTensorHolder, SelectedRowsMergeAdd) {
@@ -147,9 +171,23 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
 
   // Buffers()
   const auto& buffers = grad_tensor_holder.Buffers();
-  CHECK_EQ(static_cast<int>(buffers.size()), 2);
-  CHECK_EQ(static_cast<int>(buffers[0].size()), 1);
-  CHECK_EQ(static_cast<int>(buffers[1].size()), 1);
+  PADDLE_ENFORCE_EQ(static_cast<int>(buffers.size()),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The size of buffers should be 2, but received %d.",
+                        static_cast<int>(buffers.size())));
+  PADDLE_ENFORCE_EQ(
+      static_cast<int>(buffers[0].size()),
+      1,
+      phi::errors::InvalidArgument(
+          "The size of the first buffer should be 1, but received %d.",
+          static_cast<int>(buffers[0].size())));
+  PADDLE_ENFORCE_EQ(
+      static_cast<int>(buffers[1].size()),
+      1,
+      phi::errors::InvalidArgument(
+          "The size of the second buffer should be 1, but received %d.",
+          static_cast<int>(buffers[1].size())));
 
   // operator[]
   const auto& holder_et0 = grad_tensor_holder[0][0];
