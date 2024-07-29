@@ -783,8 +783,19 @@ int GroupNormPluginDynamic::enqueue(
       params_.invDHWC =
           1.F / static_cast<float>(params_.dhw * params_.cPerGroup);
       params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
-      CHECK_EQ(cPerBlock % params_.cPerGroup, 0);
-      CHECK_EQ(params_.cPerGroup % 2, 0);
+      PADDLE_ENFORCE_EQ(cPerBlock % params_.cPerGroup,
+                        0,
+                        phi::errors::InvalidArgument(
+                            "cPerBlock should be multiple of params_.cPerGroup"
+                            "now cPerBlock is %d, params_.cPerGroup is %d",
+                            cPerBlock,
+                            params_.cPerGroup));
+      PADDLE_ENFORCE_EQ(
+          params_.cPerGroup % 2,
+          0,
+          phi::errors::InvalidArgument(
+              "params_.cPerGroup should be a even number, but received %d",
+              params_.cPerGroup));
       params_.eps = eps_;
       params_.dqScaleIn = input_desc[0].scale;
       params_.inv_qScale = 1.f / output_desc[0].scale;
