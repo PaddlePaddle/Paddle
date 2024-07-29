@@ -11,19 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import annotations
 
 import abc
 import inspect
 from functools import partial
+from typing import TYPE_CHECKING, Any
 
-from paddle.nn import Layer
+if TYPE_CHECKING:
+    from paddle.nn import Layer
 
-from .base_quanter import BaseQuanter
+    from .base_quanter import BaseQuanter
 
 
 class ClassWithArguments(metaclass=abc.ABCMeta):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._args = args
         self._kwargs = kwargs
 
@@ -55,7 +57,7 @@ class QuanterFactory(ClassWithArguments):
     the arguments used to create quanter instance.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.partial_class = None
 
