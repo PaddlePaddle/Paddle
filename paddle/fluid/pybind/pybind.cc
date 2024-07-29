@@ -1967,7 +1967,7 @@ All parameter, weight, gradient are variables in Paddle.
                 "Cannot use XPUPlace in CPU/GPU version, "
                 "Please recompile or reinstall Paddle with XPU support."));
 #else
-            auto *context = new paddle::platform::XPUDeviceContext(place);
+            auto *context = new phi::XPUContext(place);
             context->SetAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
                     .GetAllocator(place)
@@ -1995,7 +1995,7 @@ All parameter, weight, gradient are variables in Paddle.
                         "Please recompile or reinstall Paddle with "
                         "CustomDevice support."));
 #else
-            return new paddle::platform::CustomDeviceContext(place);
+            return new phi::CustomContext(place);
 #endif
                   })
       .def_static(
@@ -2038,7 +2038,7 @@ All parameter, weight, gradient are variables in Paddle.
                 "Cannot use CUDAPinnedPlace in CPU only version, "
                 "Please recompile or reinstall Paddle with CUDA support."));
 #else
-            return new paddle::platform::CUDAPinnedDeviceContext(place);
+            return new phi::GPUPinnedContext(place);
 #endif
           });
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

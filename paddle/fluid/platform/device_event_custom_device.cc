@@ -51,8 +51,7 @@ void DeviceEventRecordCustomDevice(DeviceEvent* event,
                                    const DeviceContext* context) {
   auto* wrapper =
       static_cast<CustomDeviceEventWrapper*>(event->GetEvent().get());
-  auto* custom_device_ctx =
-      dynamic_cast<const platform::CustomDeviceContext*>(context);
+  auto* custom_device_ctx = dynamic_cast<const phi::CustomContext*>(context);
   PADDLE_ENFORCE_NOT_NULL(
       custom_device_ctx,
       common::errors::PreconditionNotMet(
@@ -83,8 +82,7 @@ void DeviceEventCustomDeviceWaitCustomDevice(const DeviceEvent* event,
                                              const DeviceContext* context) {
   auto* wrapper =
       static_cast<CustomDeviceEventWrapper*>(event->GetEvent().get());
-  auto* custom_device_ctx =
-      dynamic_cast<const platform::CustomDeviceContext*>(context);
+  auto* custom_device_ctx = dynamic_cast<const phi::CustomContext*>(context);
   PADDLE_ENFORCE_NOT_NULL(
       custom_device_ctx,
       common::errors::PreconditionNotMet(

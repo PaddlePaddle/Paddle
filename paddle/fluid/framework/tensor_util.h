@@ -142,13 +142,12 @@ void TensorFromArray(const T* src,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (phi::is_custom_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::CustomContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -188,13 +187,12 @@ void TensorFromVector(const std::vector<T>& src,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (phi::is_custom_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::CustomContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -244,8 +242,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (phi::is_custom_place(dst_place)) {  // NOLINT
-    auto stream =
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::CustomContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   }
 #endif
