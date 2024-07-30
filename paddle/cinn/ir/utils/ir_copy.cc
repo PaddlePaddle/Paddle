@@ -423,9 +423,9 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     std::vector<Var> iter_vars;
     for (auto iter_var : op->iter_vars) {
       auto* var = iter_var.As<_Var_>();
-      PADDLE_ENFORCE_EQ(
+      PADDLE_ENFORCE_NE(
           var,
-          true,
+          nullptr,
           phi::errors::InvalidArgument(
               "ScheduleBlock iter_var is not a valid _Var_ type."));
       iter_vars.push_back(Visit(var));
