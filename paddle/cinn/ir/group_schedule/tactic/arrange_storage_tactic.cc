@@ -64,13 +64,11 @@ struct FixedCudaIterVarName {
 
 std::optional<bool> IsSubCudaAxisSpace(const CudaAxisSpace& lhs,
                                        const CudaAxisSpace& rhs) {
-  PADDLE_ENFORCE_EQ(lhs.type,
-                    rhs.type,
-                    phi::errors::InvalidArgument(
-                        "The type of 'lhs' must be equal to the type of 'rhs'. "
-                        "But received: lhs.type = %s, rhs.type = %s.",
-                        lhs.type,
-                        rhs.type));
+  PADDLE_ENFORCE_EQ(
+      lhs.type,
+      rhs.type,
+      phi::errors::InvalidArgument(
+          "The type of 'lhs' must be equal to the type of 'rhs'. "));
   std::optional<bool> prove_sub_x = lhs.x.ProveSubSet(rhs.x);
   std::optional<bool> prove_sub_y = lhs.y.ProveSubSet(rhs.y);
   std::optional<bool> prove_sub_z = lhs.z.ProveSubSet(rhs.z);
