@@ -39,21 +39,6 @@ using float16 = phi::dtype::float16;
 #define MMHA_USE_FP32_ACUM_FOR_FMA
 // #define MMHA_USE_HMMA_FOR_REDUCTION
 
-template <typename D>
-class PDDataTypeTraits;
-
-template <>
-class PDDataTypeTraits<float> {
- public:
-  typedef float DataType;
-};
-
-template <>
-class PDDataTypeTraits<float16> {
- public:
-  typedef half DataType;
-};
-
 template <typename T>
 struct Masked_multihead_attention_params {
   // output buffer, [B, 1(seq_len), num_head * dim_head]
