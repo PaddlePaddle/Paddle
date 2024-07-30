@@ -1624,11 +1624,6 @@ bool Unsqueeze_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return UnsqueezeOpInferSymbolicShape(op, infer_context);
 }
-bool ViewShapeOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
 
   return true;
 }
