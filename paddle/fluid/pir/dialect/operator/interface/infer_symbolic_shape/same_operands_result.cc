@@ -140,6 +140,7 @@ OP_SAME_OPERANDS_AND_RESULT(Trunc)
 OP_SAME_OPERANDS_AND_RESULT(Trunc_)
 OP_SAME_OPERANDS_AND_RESULT(Sigmoid)
 OP_SAME_OPERANDS_AND_RESULT(Sigmoid_)
+OP_SAME_OPERANDS_AND_RESULT(ViewShape)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
