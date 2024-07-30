@@ -24,7 +24,7 @@ import re
 import shutil
 import subprocess
 import time
-from typing import TYPE_CHECKING, Literal, TypedDict
+from typing import TYPE_CHECKING, Callable, Literal, TypedDict, TypeVar
 
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.base import core
@@ -32,6 +32,11 @@ from paddle.base import core
 from .log_util import logger
 
 if TYPE_CHECKING:
+    from typing_extensions import ParamSpec
+
+    _InputT = ParamSpec("_InputT")
+    _RetT = TypeVar("_RetT")
+
     _HDFSClientConfig = TypedDict(
         '_HDFSClientConfig', {'fs.default.name': str, 'hadoop.job.ugi': str}
     )
@@ -427,10 +432,12 @@ class LocalFS(FS):
         return dirs
 
 
-def _handle_errors(max_time_out=None):
-    def decorator(f):
+def _handle_errors(
+    max_time_out: float | None = None,
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
+    def decorator(f: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(f)
-        def handler(*args, **kwargs):
+        def handler(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             o = args[0]
             time_out = max_time_out
             if time_out is None:
