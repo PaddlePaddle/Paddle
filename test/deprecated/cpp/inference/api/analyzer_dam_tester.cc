@@ -70,8 +70,15 @@ struct DataRecord {
                            response.begin() + batch_end);
       data.response_mask.assign(response_mask.begin() + batch_iter,
                                 response_mask.begin() + batch_end);
-      CHECK(!data.response.empty());
-      CHECK(!data.response_mask.empty());
+      PADDLE_ENFORCE_EQ(!data.response.empty(),
+                        true,
+                        phi::errors::Fatal(
+                            "Variable `data` response is empty, please check"));
+      PADDLE_ENFORCE_EQ(
+          !data.response_mask.empty(),
+          true,
+          phi::errors::Fatal(
+              "Variable `data` response mask is empty, please check"));
       CHECK_EQ(data.response.size(), data.response_mask.size());
     }
     batch_iter += batch_size;
