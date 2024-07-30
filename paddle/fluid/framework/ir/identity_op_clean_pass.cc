@@ -177,12 +177,12 @@ int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {
                 "useless_op_out->IsVar() is False, which means that "
                 "the output of the option %p is not a valid variable.",
                 useless_op));
-        PADDLE_ENFORCE_EQ(op->IsOp(),
+        PADDLE_ENFORCE_EQ(useless_op->IsOp(),
                           true,
                           phi::errors::InvalidArgument(
                               "op->IsOp() is False, which means that "
                               "%p may be an invalid option.",
-                              op));
+                              useless_op));
 
         for (auto* prev_op : useless_op_in->inputs) {
           PADDLE_ENFORCE_EQ(prev_op->IsOp(),
