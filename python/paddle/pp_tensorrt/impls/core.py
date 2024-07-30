@@ -215,9 +215,6 @@ def layernorm_converter(network, paddle_op, inputs):
         f"{bias_tensor.name}_broadcast",
         len(input_a.shape) - len(bias_tensor.shape),
     )
-    # _logger.info(
-    #     f"!!! layernorm, {input_a.shape}, {scale_tensor.shape}, {bias_tensor.shape}"
-    # )
 
     layer_norm = network.add_normalization(
         input_a, scale_tensor, bias_tensor, axes
@@ -251,13 +248,15 @@ def conv2d_converter(network, paddle_op, inputs):
 
     return conv_layer
 
+
 @converter_registry.register("pd_op.nonzero", trt_version="8.x")
 def non_zero_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     cast_layer = network.add_cast(input_tensor, trt.float32)
     non_zero_layer = network.add_non_zero(cast_layer.get_output(0))
-    
+
     return non_zero_layer
+
 
 @converter_registry.register("pd_op.gather_nd", trt_version="8.x")
 def gather_nd_converter(network, paddle_op, inputs):
@@ -265,7 +264,9 @@ def gather_nd_converter(network, paddle_op, inputs):
     shuffle_layer = network.add_shuffle(indices_tensor)
     shuffle_layer.first_transpose = trt.Permutation([1, 0])
     # import pdb;pdb.set_trace()
-    non_zero_layer = network.add_gather_v2(input_tensor, shuffle_layer.get_output(0), trt.GatherMode.ND)
+    non_zero_layer = network.add_gather_v2(
+        input_tensor, shuffle_layer.get_output(0), trt.GatherMode.ND
+    )
     return non_zero_layer
 
 
@@ -391,16 +392,6 @@ def batch_norm_converter(network, paddle_op, inputs):
     return batch_norm_layer
 
 
-@converter_registry.register("pd_op.full")
-def full_converter(network, paddle_op, inputs):
-    shape = paddle_op.attrs()["shape"]
-    value = paddle_op.attrs().get("value", 1.0)  # 默认值为1.0
-    full_tensor = network.add_constant(
-        shape, np.full(shape, value, dtype=np.float32)
-    )
-    return full_tensor
-
-
 @converter_registry.register("pd_op.flatten", trt_version="8.x")
 def flatten_converter(network, paddle_op, inputs):
     input_val = inputs[0]
@@ -483,3 +474,14 @@ def flatten_converter(network, paddle_op, inputs):
         flatten_layer.set_input(1, final_shape_layer.get_output(0))
 
     return flatten_layer
+
+
+@converter_registry.register("pd_op.concat")
+def concat_converter(network, paddle_op, inputs):
+    input_tensor, axis = inputs
+    concat_layer = network.add_concatenation(inputs=input_tensor)
+    if axis < 0:
+        axis = len(input_tensor.shape) + axis
+
+    concat_layer.axis = axis
+    return concat_layer

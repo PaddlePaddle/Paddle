@@ -15,6 +15,7 @@
 import numpy as np
 
 import paddle
+import paddle.nn.functional as F
 
 try:
     import tensorrt as trt
@@ -91,7 +92,6 @@ def run_pir_pass(program, partition_mode=False):
             pm.add_pass(pass_name, pass_attr)
     pm.run(program)
     return program
-
 
 
 def forbid_op_lower_trt(program, op_name):
@@ -234,7 +234,6 @@ class BertModel(nn.Layer):
         return encoded_output
 
 
-
 def get_bert_program():
     paddle.enable_static()
 
@@ -303,40 +302,42 @@ if __name__ == "__main__":
             )
             print(fetches)
 
+
 class SimpleGatherNet(nn.Layer):
     def __init__(self):
         super(SimpleGatherNet, self).__init__()
         self.linear = paddle.nn.Linear(149600, 1)
         pass
         # self.fake_param = nn.Parameter(torch.tensor([1.]))
- 
+
     def forward(self, map_vector_features, polyline_mask):
         map_vector_features = map_vector_features[polyline_mask]
         # num_element = map_vector_features.shape[0]
- 
+
         # center_inds_sort = paddle.arange(num_element)
- 
+
         # center_ind = int(num_points_per_element // 2)
- 
+
         # center_coords = map_vector_features[:, center_ind, :2]
         # center_radius = paddle.norm(center_coords, axis=-1, p=2)
- 
+
         # center_inds_sort = paddle.argsort(center_radius)
         # center_inds_sort = center_inds_sort[:num_max_element]
- 
+
         # num_element = center_inds_sort.shape[0]
- 
+
         # map_vector_features_out = paddle.zeros(
         #     [num_max_element, 11, 17], dtype=paddle.float32)
- 
+
         # print(center_inds_sort)
         # print(center_inds_sort.shape)
         # map_vector_features_out[:num_element] = map_vector_features[center_inds_sort]
         # map_vector_features_out = paddle.flatten(map_vector_features_out)
         # map_vector_features_out = self.linear(map_vector_features_out)
- 
+
         return map_vector_features
-    
+
+
 def get_idg_program():
     with paddle.pir_utils.IrGuard():
         main_program = static.default_main_program()
@@ -344,7 +345,9 @@ def get_idg_program():
         with static.program_guard(main_program, startup_program):
             scope = paddle.static.global_scope()
             map_vector_features = static.data(
-                name='map_vector_features', shape=[1, 1400, 11, 17], dtype='float32'
+                name='map_vector_features',
+                shape=[1, 1400, 11, 17],
+                dtype='float32',
             )
             polyline_mask = static.data(
                 name='polyline_mask', shape=[1, 1400], dtype='bool'
@@ -361,13 +364,20 @@ def get_idg_program():
 
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(pir_program, startup_program):
-            map_vector_features_data = np.random.rand(1, 1400, 11, 17).astype('float32')
-            polyline_mask_data = np.random.randint(0, 2, size=(1, 1400)).astype('bool')
+            map_vector_features_data = np.random.rand(1, 1400, 11, 17).astype(
+                'float32'
+            )
+            polyline_mask_data = np.random.randint(0, 2, size=(1, 1400)).astype(
+                'bool'
+            )
             executor = paddle.static.Executor(place)
             executor.run(startup_program)
             fetches = executor.run(
                 pir_program,
-                feed={"map_vector_features": map_vector_features_data, "polyline_mask": polyline_mask_data},
+                feed={
+                    "map_vector_features": map_vector_features_data,
+                    "polyline_mask": polyline_mask_data,
+                },
                 fetch_list=pir_program.list_vars()[-1],
             )
     params = main_program.global_block().all_parameters()
@@ -377,3 +387,77 @@ def get_idg_program():
         name = v.get_defining_op().attrs()["parameter_name"]
         param_dict.update({name: np.array(scope.var(name).get_tensor())})
     return pir_program, scope, param_dict
+
+
+class MLPLayer(nn.Layer):
+    def __init__(
+        self,
+        hidden_size=1024,
+        intermediate_size=4 * 1024,
+        dropout_ratio=0.1,
+        initializer_range=0.02,
+    ):
+        super().__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range)
+        )
+        bias_attr = None
+
+        self.linear0 = nn.Linear(
+            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr
+        )
+        self.linear1 = nn.Linear(
+            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr
+        )
+        self.linear2 = nn.Linear(d_model, 1, weight_attr, bias_attr=bias_attr)
+        self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
+
+    def forward(self, input):
+        out = self.norm(input)
+        out1 = self.linear0(out)
+        out2 = F.gelu(out, approximate=True)
+        concat_out = paddle.concat([out1, out2], axis=-1)
+        # out = self.linear1(concat_out)
+        out = self.linear2(out)
+
+        return out
+
+
+def get_mlp_program():
+    paddle.enable_static()
+
+    hidden_size = 1024
+    intermediate_size = 4 * 1024
+    dropout_ratio = (0.1,)
+    initializer_range = 0.02
+
+    with paddle.pir_utils.IrGuard():
+        infer_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with static.program_guard(infer_program, startup_program):
+            scope = paddle.static.global_scope()
+            input_ids = static.data(
+                name='input',
+                shape=[-1, 512, 1024],
+                dtype='float32',
+            )
+            mlp_model = MLPLayer(
+                hidden_size, intermediate_size, dropout_ratio, initializer_range
+            )
+            mlp_model.eval()
+            output = mlp_model(input_ids)
+        place = paddle.CUDAPlace(0)
+        exe = static.Executor(place)
+        exe.run(startup_program)
+
+    # paddle.static.io.save(infer_program, "./resnet")
+
+    params = infer_program.global_block().all_parameters()
+    param_dict = {}
+    for v in params:
+        name = v.get_defining_op().attrs()["parameter_name"]
+        param_dict.update({name: np.array(scope.var(name).get_tensor())})
+
+    return infer_program, scope, param_dict

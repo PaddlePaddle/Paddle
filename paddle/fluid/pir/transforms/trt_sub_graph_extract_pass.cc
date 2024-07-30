@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/common/flags.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builder.h"
@@ -41,7 +41,8 @@ using GroupOpsVec = std::vector<pir::Operation*>;
 
 bool IsSupportedByTRT(const pir::Operation& op) {
   if (op.HasAttribute(paddle::dialect::kCanRunTrtAttr) &&
-        op.attribute<pir::BoolAttribute>(paddle::dialect::kCanRunTrtAttr).data()) {
+      op.attribute<pir::BoolAttribute>(paddle::dialect::kCanRunTrtAttr)
+          .data()) {
     return true;
   }
   return false;
@@ -49,8 +50,7 @@ bool IsSupportedByTRT(const pir::Operation& op) {
 
 class TrtSubGraphExtractPass : public pir::Pass {
  public:
-  TrtSubGraphExtractPass()
-      : pir::Pass("trt_sub_graph_extract_pass", 1) {}
+  TrtSubGraphExtractPass() : pir::Pass("trt_sub_graph_extract_pass", 1) {}
 
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
@@ -64,11 +64,13 @@ class TrtSubGraphExtractPass : public pir::Pass {
         ::pir::SubgraphDetector(&block, IsSupportedByTRT)();
     AddStatistics(groups.size());
     for (auto& group_ops : groups) {
-      if(group_ops.size() < FLAGS_trt_min_group_size) {
-        VLOG(4) << "current group_ops.size(): " << group_ops.size() << ", will fallback to paddle original graph";
+      if (group_ops.size() < FLAGS_trt_min_group_size) {
+        VLOG(4) << "current group_ops.size(): " << group_ops.size()
+                << ", will fallback to paddle original graph";
         continue;
       }
-      VLOG(4) << "current group_ops.size(): " << group_ops.size() << ", will lower to TensorRT graph";
+      VLOG(4) << "current group_ops.size(): " << group_ops.size()
+              << ", will lower to TensorRT graph";
       ::pir::ReplaceWithGroupOp(&block, group_ops);
     }
   }
