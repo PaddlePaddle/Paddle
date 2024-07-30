@@ -200,7 +200,12 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   auto *block_desc = (*iter)->Op()->Block();
 
   for (auto *op_node : op_nodes) {
-    PADDLE_ENFORCE_EQ(op_node->IsOp(), true);
+    PADDLE_ENFORCE_EQ(op_node->IsOp(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "op_node->IsOp() is False, which means that "
+                          "%p may be an invalid option.",
+                          op_node));
     auto *op_desc = op_node->Op();
 
     std::string data_format;
@@ -213,7 +218,11 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
     bool input_shape_4{true};
     auto op_inputs = op_node->inputs;
     for (auto *in_var_node : op_inputs) {
-      PADDLE_ENFORCE_EQ(in_var_node->IsVar(), true);
+      PADDLE_ENFORCE_EQ(in_var_node->IsVar(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "in_var_node->IsVar() is False, which means that "
+                            "inputs may be not a valid variable."));
       if (IsWeight(op_node, in_var_node, op_weight_pair)) continue;
 
       auto input_shape = in_var_node->Var()->GetShape();
@@ -241,7 +250,12 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
       // Update output var of current op
       auto op_outputs = op_node->outputs;
       for (auto *out_var_node : op_outputs) {
-        PADDLE_ENFORCE_EQ(out_var_node->IsVar(), true);
+        PADDLE_ENFORCE_EQ(
+            out_var_node->IsVar(),
+            true,
+            phi::errors::InvalidArgument(
+                "out_var_node->IsVar() is False, which means that "
+                "outputs may be not a valid variable."));
         if (out_var_node->Var()->Persistable()) continue;
 
         auto from_shape = out_var_node->Var()->GetShape();
@@ -280,7 +294,12 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
           }
           auto op_inputs = op_node->inputs;
           for (auto *in_var_node : op_inputs) {
-            PADDLE_ENFORCE_EQ(in_var_node->IsVar(), true);
+            PADDLE_ENFORCE_EQ(
+                in_var_node->IsVar(),
+                true,
+                phi::errors::InvalidArgument(
+                    "in_var_node->IsVar() is False, which means that "
+                    "inputs may be not a valid variable."));
             if (in_var_node->Var()->Persistable()) {
               if (std::find(weight_names.cbegin(),
                             weight_names.cend(),
@@ -309,10 +328,19 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   auto ProcessAnyLayoutOps = [&] {
     // Process any layout ops
     for (auto *op_node : op_nodes) {
-      PADDLE_ENFORCE_EQ(op_node->IsOp(), true);
+      PADDLE_ENFORCE_EQ(op_node->IsOp(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "op_node->IsOp() is False, which means that "
+                            "%p may be an invalid option.",
+                            op_node));
       auto op_inputs = op_node->inputs;
       for (auto *in_var_node : op_inputs) {
-        PADDLE_ENFORCE_EQ(in_var_node->IsVar(), true);
+        PADDLE_ENFORCE_EQ(in_var_node->IsVar(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "in_var_node->IsVar() is False, which means that "
+                              "inputs may be not a valid variable."));
         if (transposed_ops.count(op_node)) continue;
 
         if (vars_to_nchw.count(in_var_node) &&
@@ -321,7 +349,12 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
           // Update output var of current op
           auto op_outputs = op_node->outputs;
           for (auto *out_var_node : op_outputs) {
-            PADDLE_ENFORCE_EQ(out_var_node->IsVar(), true);
+            PADDLE_ENFORCE_EQ(
+                out_var_node->IsVar(),
+                true,
+                phi::errors::InvalidArgument(
+                    "out_var_node->IsVar() is False, which means that "
+                    "outputs may be not a valid variable."));
             if (out_var_node->Var()->Persistable()) continue;
 
             auto from_shape = out_var_node->Var()->GetShape();
@@ -340,12 +373,22 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   auto InsertTransposeOp = [&] {
     // Insert transpose op
     for (auto *op_node : op_nodes) {
-      PADDLE_ENFORCE_EQ(op_node->IsOp(), true);
+      PADDLE_ENFORCE_EQ(op_node->IsOp(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "op_node->IsOp() is False, which means that "
+                            "%p may be an invalid option.",
+                            op_node));
 
       if (transposed_ops.count(op_node)) {
         auto op_inputs = op_node->inputs;
         for (auto *in_var_node : op_inputs) {
-          PADDLE_ENFORCE_EQ(in_var_node->IsVar(), true);
+          PADDLE_ENFORCE_EQ(
+              in_var_node->IsVar(),
+              true,
+              phi::errors::InvalidArgument(
+                  "in_var_node->IsVar() is False, which means that "
+                  "inputs may be not a valid variable."));
 
           if (IsWeight(op_node, in_var_node, op_weight_pair)) continue;
           if (vars_to_nchw.count(in_var_node)) continue;
@@ -361,7 +404,12 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
       } else {
         auto op_inputs = op_node->inputs;
         for (auto *in_var_node : op_inputs) {
-          PADDLE_ENFORCE_EQ(in_var_node->IsVar(), true);
+          PADDLE_ENFORCE_EQ(
+              in_var_node->IsVar(),
+              true,
+              phi::errors::InvalidArgument(
+                  "in_var_node->IsVar() is False, which means that "
+                  "inputs may be not a valid variable."));
 
           if (vars_to_nchw.count(in_var_node)) {
             DoInsertTransposeOp(graph,
