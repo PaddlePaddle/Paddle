@@ -215,7 +215,7 @@ struct ValueDim {
       // as the related op.
       PADDLE_ENFORCE_EQ(v.use_empty(),
                         false,
-                        phi::errors::PreconditionNotMet(
+                        ::common::errors::PreconditionNotMet(
                             "Value is an input value, it should have a use."));
       return v.first_use().owner();
     };

@@ -245,7 +245,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastGrad(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "Gradient operator will be decomposed into several primitive "
       "operators. Please Use Decomposer Program Pass."));
 }

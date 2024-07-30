@@ -4784,7 +4784,7 @@ void GraphDataGenerator::AllocResource(
       PADDLE_ENFORCE_NE(
           iter,
           node_to_id.end(),
-          phi::errors::NotFound("(%s) is not found in node_to_id.", type));
+          common::errors::NotFound("(%s) is not found in node_to_id.", type));
       int node_type = iter->second;
       int type_index = type_to_index[node_type];
       VLOG(2) << "add node[" << type
@@ -4887,12 +4887,12 @@ void GraphDataGenerator::DumpWalkPath(std::string dump_path, size_t dump_rate) {
   PADDLE_ENFORCE_LE(
       dump_rate,
       10000000,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "dump_rate can't be large than 10000000. Please check the dump "
           "rate[1, 10000000]"));
   PADDLE_ENFORCE_GE(dump_rate,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "dump_rate can't be less than 1. Please check the dump "
                         "rate[1, 10000000]"));
   int err_no = 0;

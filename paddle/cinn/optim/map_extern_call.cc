@@ -49,7 +49,7 @@ void DealWithCpuIntrinsics(ir::Call *node, Expr *expr) {
     PADDLE_ENFORCE_GE(
         node->read_args.size(),
         1UL,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of node's read args is incorrect."
             "Expected size is greater than or equal to 1, but receive %d.",
             node->read_args.size()));

@@ -36,7 +36,7 @@ static AllocatorStrategy GetStrategyFromFlag() {
     return AllocatorStrategy::kThreadLocal;
   }
 
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "Unsupported allocator strategy: %s, candidates are naive_best_fit, "
       "auto_growth or thread_local.",
       FLAGS_allocator_strategy));

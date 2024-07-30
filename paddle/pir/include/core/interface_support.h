@@ -46,7 +46,7 @@ class ConstructInterfacesOrTraits {
     PADDLE_ENFORCE_EQ(
         success,
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Interface: id[%u] is already registered. inset failed",
             TypeId::get<T>()));
   }

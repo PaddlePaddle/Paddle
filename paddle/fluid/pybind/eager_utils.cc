@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/op_function_common.h"
@@ -689,6 +690,45 @@ ProcessMesh CastPyArg2ProcessMesh(PyObject* obj, ssize_t arg_pos) {
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
+#else
+  PADDLE_THROW(phi::errors::Unavailable(
+      "The parsing of `ProcessMesh` is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
+#endif
+}
+
+std::vector<phi::distributed::ProcessMesh> CastPyArg2VectorOfProcessMesh(
+    PyObject* obj, ssize_t arg_pos) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  std::vector<phi::distributed::ProcessMesh> result;
+  if (PyList_Check(obj) || PyTuple_Check(obj)) {
+    Py_ssize_t len = PyObject_Size(obj);
+    for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* item =
+          PyList_Check(obj) ? PyList_GetItem(obj, i) : PyTuple_GetItem(obj, i);
+      if (PyObject_IsInstance(
+              item, reinterpret_cast<PyObject*>(g_process_mesh_pytype))) {
+        result.emplace_back(::pybind11::handle(item).cast<ProcessMesh>());
+      } else {
+        PADDLE_THROW(phi::errors::InvalidType(
+            "argument (position %d) must be "
+            "list of ProcessMesh, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (obj == Py_None) {
+    return {};
+  } else {
+    PADDLE_THROW(phi::errors::InvalidType(
+        "argument (position %d) must be list or "
+        "tuple of ProcessMesh, but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
 #else
   PADDLE_THROW(phi::errors::Unavailable(
       "The parsing of `ProcessMesh` is not supported in the current "
@@ -1978,7 +2018,7 @@ paddle::Tensor CreateTensorFromValue(const pir::Value& value) {
 
   auto dims = phi::vectorize(GetValueDims(value));
   auto ddims = phi::make_ddim(dims);
-  if (auto name = name_analysis::TryGetValueFirstName(value)) {
+  if (auto name = pir::utils::name_analysis::TryGetValueFirstName(value)) {
     tensor.set_name(name.value());
   }
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);

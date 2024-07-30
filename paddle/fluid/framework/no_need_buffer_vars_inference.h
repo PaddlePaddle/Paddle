@@ -107,7 +107,7 @@ class InferNoNeedBufferVarsFN {
       const AttributeMap &attrs) const {
     PADDLE_ENFORCE_NOT_NULL(
         inferer_,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The `inferer_` of InferNoNeedBufferVarsFN is not initialized."));
     StaticGraphInferNoNeedBufferVarsContext ctx(inputs, outputs, attrs);
     return (*inferer_)(ctx);
@@ -119,7 +119,7 @@ class InferNoNeedBufferVarsFN {
       const AttributeMap &attrs) const {
     PADDLE_ENFORCE_NOT_NULL(
         inferer_,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The `inferer_` of InferNoNeedBufferVarsFN is not initialized."));
     DyGraphInferNoNeedBufferVarsContext ctx(inputs, outputs, attrs);
     return (*inferer_)(ctx);
@@ -132,13 +132,13 @@ class InferNoNeedBufferVarsFN {
   inline void Reset(const std::shared_ptr<NoNeedBufferVarsInference> &inferer) {
     PADDLE_ENFORCE_NOT_NULL(
         inferer,
-        phi::errors::InvalidArgument("The input inferer of "
-                                     "InferNoNeedBufferVarsFN::"
-                                     "Reset is nullptr."));
+        common::errors::InvalidArgument("The input inferer of "
+                                        "InferNoNeedBufferVarsFN::"
+                                        "Reset is nullptr."));
     PADDLE_ENFORCE_EQ(
         inferer_,
         nullptr,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "The `inferer_` of InferNoNeedBufferVarsFN has been initialized."));
     inferer_ = inferer;
   }
