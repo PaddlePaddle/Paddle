@@ -54,15 +54,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForGaussianRandom(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  framework::CINNCompute gaussian_random_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(attrs.attr_store.count("shape"));
-        ir::Tensor shape_tensor;
-        std::string tensor_name = "gaussian_random_out";
-        auto out = pe::Identity(shape_tensor, tensor_name).front();
-        std::vector<CINNValue> res{CINNValue(out)};
-        *ret = CINNValuePack{res};
-      });
+  framework::CINNCompute gaussian_random_compute([=](lang::Args args,
+                                                     lang::RetValue *ret) {
+    PADDLE_ENFORCE_GT(
+        attrs.attr_store.count("shape"),
+        0,
+        phi::errors::InvalidArgument(
+            "Attribute 'shape' is required in attrs, but it is not found."));
+    ir::Tensor shape_tensor;
+    std::string tensor_name = "gaussian_random_out";
+    auto out = pe::Identity(shape_tensor, tensor_name).front();
+    std::vector<CINNValue> res{CINNValue(out)};
+    *ret = CINNValuePack{res};
+  });
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(gaussian_random_compute,
                     GetElementwiseScheduleFunc(output_shapes, target),
