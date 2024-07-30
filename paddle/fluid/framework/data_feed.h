@@ -233,8 +233,14 @@ class SlotObjAllocator {
       deleter_(tmp);
       --capacity_;
     }
-    CHECK_EQ(capacity_, static_cast<size_t>(0));
+    PADDLE_ENFORCE_EQ(
+        capacity_,
+        static_cast<size_t>(0),
+        phi::errors::InvalidArgument("Expected 'capacity_' to be 0 after "
+                                     "clearing, but found it to be %d.",
+                                     capacity_));
   }
+
   T* acquire(void) {
     T* x = NULL;
     x = reinterpret_cast<T*>(reinterpret_cast<void*>(free_nodes_));
@@ -314,7 +320,13 @@ class SlotObjPool {
     input->clear();
   }
   void put(SlotRecord* input, size_t size) {
-    CHECK(ins_chan_->WriteMove(size, input) == size);
+    PADDLE_ENFORCE_EQ(
+        ins_chan_->WriteMove(size, input),
+        size,
+        phi::errors::InvalidArgument("Expected the number of written elements "
+                                     "to be equal to %d, but got %d.",
+                                     size,
+                                     ins_chan_->WriteMove(size, input)));
   }
   void run(void) {
     std::vector<SlotRecord> input;
@@ -488,7 +500,10 @@ struct HostBuffer {
     CUDA_CHECK(cudaHostAlloc(reinterpret_cast<void**>(&host_buffer),
                              buf_size * sizeof(T),
                              cudaHostAllocDefault));
-    CHECK(host_buffer != NULL);
+    PADDLE_ENFORCE_NOT_NULL(
+        host_buffer,
+        phi::errors::OutOfMemory("Failed to allocate host buffer with size %d.",
+                                 buf_size * sizeof(T)));
   }
   void free() {
     if (host_buffer != NULL) {
