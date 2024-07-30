@@ -27,9 +27,14 @@ std::shared_ptr<IndexExprInferContext> MakeIndexExprInferContext(
   const auto& anchor_iterators = igroup.GetAnchorIterators();
 
   for (std::size_t i = 0; i < anchor_iterators->size(); ++i) {
-    CHECK(anchor_iterator2value
-              .emplace(anchor_iterators->at(i), anchor_iterators->at(i))
-              .second);
+    PADDLE_ENFORCE_EQ(
+        anchor_iterator2value
+            .emplace(anchor_iterators->at(i), anchor_iterators->at(i))
+            .second,
+        true,
+        phi::errors::InvalidArgument(
+            "The element in anchor iterators failed to insert in anchor "
+            "iterator2value! Please check."));
   }
 
   return std::make_shared<IndexExprInferContext>(anchor_iterator2value);
