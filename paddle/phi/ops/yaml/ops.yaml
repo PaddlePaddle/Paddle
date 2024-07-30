@@ -562,6 +562,7 @@
   kernel:
     func: bipartite_match
     data_type: dist_mat
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bitwise_and
   args : (Tensor x, Tensor y)
