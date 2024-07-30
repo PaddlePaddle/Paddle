@@ -23,9 +23,8 @@ import paddle
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle.base import Executor
     from paddle.distributed.fleet.base.role_maker import RoleMakerBase
-    from paddle.framework import Program
+    from paddle.static import Executor, Program
 
 __all__ = []
 
