@@ -41,10 +41,10 @@ class TestCollectiveReduceScatter(TestCollectiveRunnerBase):
                 stop_gradient=False,
             )
             main_prog.global_block().append_op(
-                type="reduce_scatter",
-                inputs={'x': tindata},
+                type="c_reducescatter",
+                inputs={'X': tindata},
                 attrs={'ring_id': ring_id, 'nranks': nranks},
-                outputs={'out': toutdata},
+                outputs={'Out': toutdata},
             )
             main_prog.global_block().append_op(
                 type="c_sync_comm_stream",
