@@ -2027,6 +2027,7 @@
   data_transform :
     skip_transform : x
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : full_with_tensor
   args : (Tensor value, IntArray shape, DataType dtype=DataType::FLOAT32)
