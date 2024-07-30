@@ -26,9 +26,17 @@ paddle.enable_static()
 
 class MatmulHorizontalFusePattern(PassTest):
     r"""
-    x_var   q_var   k_var   v_var
-      \       |       |       /
-        matmul
+    q       k      v
+    |       |       |
+ matmul    matmul   matmul
+    |       |       |
+    q_out   k_out   v_out
+
+    q       k      v
+    \       |       /
+         matmul
+    /      |       \
+    q_out   k_out   v_out
     """
 
     def is_program_valid(self, program=None):
@@ -44,16 +52,16 @@ class MatmulHorizontalFusePattern(PassTest):
                             start_prog = paddle.static.Program()
                             with paddle.pir.core.program_guard(main_prog, start_prog):
                                 x = paddle.static.data(
-                                    name='x', shape=x_shape, dtype='float32'
+                                    name="x", shape=x_shape, dtype="float32"
                                 )
                                 q = paddle.static.data(
-                                    name='q', shape=q_shape, dtype='float32'
+                                    name="q", shape=q_shape, dtype="float32"
                                 )
                                 k = paddle.static.data(
-                                    name='k', shape=k_shape, dtype='float32'
+                                    name="k", shape=k_shape, dtype="float32"
                                 )
                                 v = paddle.static.data(
-                                    name='v', shape=v_shape, dtype='float32'
+                                    name="v", shape=v_shape, dtype="float32"
                                 )
                                 print(x)
                                 out_q = paddle.matmul(x, q)
@@ -65,22 +73,13 @@ class MatmulHorizontalFusePattern(PassTest):
                                 out_3 = paddle.assign(out_v)
                                 print("hahahhahahhahahhahahhahahhahha")
                                 self.pass_attr_list = [
-                                   
-                                    {'matmul_horizontal_fuse_pass': {}}
+                                    {"matmul_horizontal_fuse_pass": {}}
                                 ]
                                 self.feeds = {
-                                    "x": np.random.random(x_shape).astype(
-                                        "float32"
-                                    ),
-                                    "q": np.random.random(q_shape).astype(
-                                        "float32"
-                                    ),
-                                    "k": np.random.random(k_shape).astype(
-                                        "float32"
-                                    ),
-                                    "v": np.random.random(v_shape).astype(
-                                        "float32"
-                                    ),
+                                    "x": np.random.random(x_shape).astype("float32"),
+                                    "q": np.random.random(q_shape).astype("float32"),
+                                    "k": np.random.random(k_shape).astype("float32"),
+                                    "v": np.random.random(v_shape).astype("float32"),
                                 }
                                 self.fetch_list = [out_1, out_2, out_3]
                                 # self.fetch_list = [out_1]
@@ -93,8 +92,8 @@ class MatmulHorizontalFusePattern(PassTest):
 
     def setUp(self):
         if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
+            os.environ.get("FLAGS_CI_both_cpu_and_gpu", "False").lower()
+            in ["1", "true", "on"]
             or not core.is_compiled_with_cuda()
         ):
             self.places.append(paddle.CPUPlace())

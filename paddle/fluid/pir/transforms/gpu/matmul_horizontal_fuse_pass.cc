@@ -33,26 +33,18 @@ class MatmulHorizontalPattern : public paddle::drr::DrrPatternBase {
   uint32_t benefit() const override { return count_; }
   std::string name() const override { return "MatmulHorizontalPattern"; }
 
-  // const auto &matmul_op_q = pat.Op(paddle::dialect::MatmulOp::name());
-  // const auto &matmul_op_k = pat.Op(paddle::dialect::MatmulOp::name());
-  // const auto &matmul_op_v = pat.Op(paddle::dialect::MatmulOp::name());
-
-  // std::vector<const paddle::drr::Tensor *> out;
-  // for (size_t i = 0; i < 3; i++) {
-  //     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
-  //     {{"w", pat.Attr("w_" + std::to_string(i))}});
-
-  //     matmul_op({&pat.Tensor("x"), &pat.Tensor("w")},
-  //     {&pat.Tensor("matmul_out")}); out.push_back(&pat.Tensor("matmul_out_" +
-  //     std::to_string(i)));
-  // }
-
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    // std::vector<const paddle::drr::Tensor *> out;
+    // for (size_t i = 0; i < 3; i++) {
+    //     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
+    //     {{"w", pat.Attr("w_" + std::to_string(i))}});
+
+    //     matmul_op({&pat.Tensor("x"), &pat.Tensor("w")},
+    //     {&pat.Tensor("matmul_out")}); out.push_back(&pat.Tensor("matmul_out_"
+    //     + std::to_string(i)));
+    // }
+
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
-
-    std::cout << "test start" << std::endl;
-
-    // const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name());
 
     const auto &matmul_op_q = pat.Op(paddle::dialect::MatmulOp::name());
     const auto &matmul_op_k = pat.Op(paddle::dialect::MatmulOp::name());
@@ -62,55 +54,43 @@ class MatmulHorizontalPattern : public paddle::drr::DrrPatternBase {
     matmul_op_k({&pat.Tensor("x"), &pat.Tensor("w_k")}, {&pat.Tensor("k_out")});
     matmul_op_v({&pat.Tensor("x"), &pat.Tensor("w_v")}, {&pat.Tensor("v_out")});
 
-    std::cout << "before AddConstraint " << std::endl;
-
     pat.AddConstraint(
         [this](const paddle::drr::MatchContext &match_ctx) -> bool {
-          std::cout << "test addconstraint" << std::endl;
+          std::cout << "AddConstraint done" << std::endl;
           return true;
         });
 
-    std::cout << "after AddConstraint " << std::endl;
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    // const auto &concat_op = res.Op(paddle::dialect::ConcatOp::name(),
-    // {{"axis", res.Int32Attr(1)}}); const auto &fused_matmul_op =
-    // res.Op(paddle::dialect::MatmulOp::name());
-
+    const auto &combine_1 = res.Op("builtin.combine");
+    const auto &concat_1 = res.Op("pd_op.concat", {{"axis", res.Int32Attr(1)}});
     const auto &fused_matmul_op =
         res.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", res.BoolAttr(false)},
                 {"transpose_y", res.BoolAttr(false)}});
 
+    const auto &split_secs_attr = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
+          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("w_q"));
+          int64_t last_dim = x_dims[x_dims.size() - 1];
+          std::cout << "lastdim : " << last_dim << std::endl;
+          return {last_dim, last_dim, last_dim};
+        });
+
     const auto &split_op = res.Op(paddle::dialect::SplitOp::name(),
                                   {
-                                      {"sections", res.Int32Attr(1)},
+                                      {"sections", split_secs_attr},
                                       {"axis", res.Int32Attr(1)},
                                   });
 
     std::vector<const paddle::drr::Tensor *> concat_in = {
         &res.Tensor("w_q"), &res.Tensor("w_k"), &res.Tensor("w_v")};
 
-    for (const auto &tensor : concat_in) {
-      std::cout << "Concat input tensor name: " << tensor->name() << std::endl;
-      // std::cout << "Shape: " << tensor->dims() << std::endl;
-      // std::cout << "Values: " << tensor->values() << std::endl;
-    }
-
-    // concat_op(
-    //     concat_in,
-    //     // {&res.Tensor("w_q"), &res.Tensor("w_k"), &res.Tensor("w_v")},
-    //     {&res.Tensor("concat_out")});
-
-    // W combine.
-    const auto &combine_1 = res.Op("builtin.combine");
     combine_1({&res.Tensor("w_q"), &res.Tensor("w_k"), &res.Tensor("w_v")},
               {&res.Tensor("combine_1_out")});
 
-    const auto &concat_1 = res.Op("pd_op.concat", {{"axis", res.Int32Attr(1)}});
     res.Tensor("concat_out") = concat_1(res.Tensor("combine_1_out"));
 
-    std::cout << "concat  done" << std::endl;
     fused_matmul_op({&res.Tensor("x"), &res.Tensor("concat_out")},
                     {&res.Tensor("fused_matmul_out")});
 
@@ -129,7 +109,6 @@ class MatmulHorizontalFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-
     size_t count = 3;
     ps.Add(paddle::drr::Create<MatmulHorizontalPattern>(context, count));
     return ps;
