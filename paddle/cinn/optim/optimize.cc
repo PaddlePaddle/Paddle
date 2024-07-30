@@ -45,7 +45,12 @@ Expr Optimize(Expr e,
               Target target,
               bool runtime_debug_info,
               bool remove_gpu_for_loops) {
-  CHECK(e.defined());
+  PADDLE_ENFORCE_EQ(
+      e.defined(),
+      true,
+      phi::errors::InvalidArgument(
+          "Expected expression 'e' to be defined, but it is undefined."));
+
   auto copied = ir::ir_utils::IRCopy(e);
 
   FoldCINNCallArguments(&copied);
@@ -62,27 +67,27 @@ Expr Optimize(Expr e,
   cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       },
-      [&](common::NVGPUArch) {
+      [&](common::NVGPUArch) {}) {
 #ifdef CINN_WITH_CUDA
-        if (copied.as_lowered_func()) {
-          ir::SetCudaAxisInfo(&copied);
-        }
-        if (remove_gpu_for_loops) {
-          RemoveGpuForloopsAxis(&copied);
-        }
-        CudaSyncThreadsDropIfThenElse(&copied);
+    if (copied.as_lowered_func()) {
+      ir::SetCudaAxisInfo(&copied);
+    }
+    if (remove_gpu_for_loops) {
+      RemoveGpuForloopsAxis(&copied);
+    }
+    CudaSyncThreadsDropIfThenElse(&copied);
     // CudaTransBufferWithDynamicShape(&copied);
 #endif
-      },
+  },
       [&](common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
-        if (copied.as_lowered_func()) {
-          ir::SetCudaAxisInfo(&copied);
-        }
-        if (remove_gpu_for_loops) {
-          RemoveGpuForloopsAxis(&copied);
-        }
-        CudaSyncThreadsDropIfThenElse(&copied);
+    if (copied.as_lowered_func()) {
+      ir::SetCudaAxisInfo(&copied);
+    }
+    if (remove_gpu_for_loops) {
+      RemoveGpuForloopsAxis(&copied);
+    }
+    CudaSyncThreadsDropIfThenElse(&copied);
     // CudaTransBufferWithDynamicShape(&copied);
 #endif
       });
