@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/funcs/margin_cross_entropy.cu.h"
+#include "paddle/phi/kernels/impl/margin_cross_entropy.cu.h"
 
 namespace phi {
 
