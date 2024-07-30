@@ -125,8 +125,8 @@ bool BinomialOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   const auto &prob_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
-  size_t ndims_count = x_shape.size();
-  size_t ndims_prob = mask_shape.size();
+  size_t ndims_count = count_shape.size();
+  size_t ndims_prob = prob_shape.size();
   if (ndims_count >= ndims_prob) {
     size_t diff = ndims_count - ndims_prob;
     for (size_t i = 0; i < ndims_prob; i++) {
