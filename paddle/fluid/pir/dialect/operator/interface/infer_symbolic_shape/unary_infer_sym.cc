@@ -339,6 +339,26 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   return true;
 }
 
+bool EighOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  std::vector<symbol::DimExpr> out_shape;
+  for (size_t i = 0; i < x_shape.size() - 1; ++i) {
+    out_shape.push_back(x_shape.at(i));
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+  infer_context->SetShapeOrDataForValue(
+      op->result(1), symbol::TensorShapeOrDataDimExprs(x_shape));
+  return true;
+}
+
+bool EigvalshOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return EighOpInferSymbolicShape(op, infer_context);
+}
+
 bool FakeChannelWiseQuantizeAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -607,6 +627,29 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
+bool MaxoutOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &in_x_dims = x_shape_or_data.shape();
+
+  int groups = op->attribute<pir::Int32Attribute>("groups").data();
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+
+  if (axis < 0) {
+    axis += in_x_dims.size();
+  }
+
+  std::vector<symbol::DimExpr> output_shape = in_x_dims;
+  output_shape[axis] = in_x_dims[axis] / groups;
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
+
 bool MinOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   return MaxOpInferSymbolicShape(op, infer_context);
@@ -871,10 +914,6 @@ bool ReshapeOpInferSymbolicShape(
   }();
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
-  infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      CreateShapeOrDataForXShape(
-          infer_context->GetShapeOrDataForValue(op->operand_source(0))));
   return true;
 }
 
@@ -961,17 +1000,9 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
   axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
 
   // sections
-  const std::vector<symbol::DimExpr> &sections_sym = [&] {
-    const auto &sections_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    std::vector<symbol::DimExpr> sections_sym;
-    if (sections_shape_or_data.data().has_value()) {
-      sections_sym = sections_shape_or_data.data().value();
-    } else {
-      sections_sym = sections_shape_or_data.shape();
-    }
-    return sections_sym;
-  }();
+  const std::vector<symbol::DimExpr> &sections_sym =
+      details::GetExprVecFromData(
+          infer_context->GetShapeOrDataForValue(op->operand_source(1)));
 
   // output
   const symbol::TensorListShapeOrDataDimExprs &output_shape_data_list = [&] {
@@ -1159,19 +1190,9 @@ bool TileOpInferSymbolicShape(pir::Operation *op,
   symbol::ShapeOrDataDimExprs repeat_times_shape_or_data =
       infer_context->GetShapeOrDataForValue(operand_repeat_times);
 
-  std::vector<symbol::DimExpr> x_dimexpr;
-  if (x_shape_or_data.data().has_value()) {
-    x_dimexpr = x_shape_or_data.data().value();
-  } else {
-    x_dimexpr = x_shape_or_data.shape();
-  }
-
-  std::vector<symbol::DimExpr> repeat_times_dimexpr;
-  if (repeat_times_shape_or_data.data().has_value()) {
-    repeat_times_dimexpr = repeat_times_shape_or_data.data().value();
-  } else {
-    repeat_times_dimexpr = repeat_times_shape_or_data.shape();
-  }
+  std::vector<symbol::DimExpr> x_dimexpr = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> repeat_times_dimexpr =
+      details::GetExprVecFromData(repeat_times_shape_or_data);
   if (repeat_times_dimexpr.empty()) {
     repeat_times_dimexpr = std::vector<symbol::DimExpr>(x_dimexpr.size(), 1);
   }

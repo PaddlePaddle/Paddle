@@ -64,14 +64,14 @@ bool RecoverPaddingPlugin::supportsFormatCombination(
     int nbOutputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     3,
-                    phi::errors::InvalidArgument("Must have 3 inputs, "
-                                                 "but got %d input(s). ",
-                                                 nbInputs));
+                    common::errors::InvalidArgument("Must have 3 inputs, "
+                                                    "but got %d input(s). ",
+                                                    nbInputs));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     getNbOutputs(),
-                    phi::errors::InvalidArgument("Must have 1 output, "
-                                                 "but got %d output(s). ",
-                                                 nbOutputs));
+                    common::errors::InvalidArgument("Must have 1 output, "
+                                                    "but got %d output(s). ",
+                                                    nbOutputs));
   if (pos == 1) {  // PosId
     return inOut[pos].type == nvinfer1::DataType::kINT32 &&
            inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;

@@ -745,7 +745,7 @@ void MultiHeadMatmulRoformerFusePass::ApplyImpl(Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "During the multiheadMatmul pass, The scope should not be null."));
 
   int fusion_count = BuildFusion(graph, name_scope_, scope);

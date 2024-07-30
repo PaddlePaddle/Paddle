@@ -115,7 +115,7 @@ std::vector<std::string> Compiler::FindCUDAIncludePaths() {
      << "CUDA_PATH is not set or CUDA is not installed in the default "
         "installation path."
      << "In other than linux, it is necessary to set CUDA_PATH.";
-  PADDLE_THROW(phi::errors::Fatal(ss.str()));
+  PADDLE_THROW(::common::errors::Fatal(ss.str()));
   return {cuda_include_path};
 }
 
@@ -189,7 +189,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     NVRTC_CALL(nvrtcGetProgramLog(prog, &log[0]));
     PADDLE_ENFORCE_EQ(compile_res,
                       NVRTC_SUCCESS,
-                      phi::errors::Fatal("NVRTC compilation failed"));
+                      ::common::errors::Fatal("NVRTC compilation failed"));
   }
 
   size_t size;

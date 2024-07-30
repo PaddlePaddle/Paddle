@@ -1556,6 +1556,47 @@ Tensor log_loss_decomp(const Tensor& input,
 }
 
 template <typename T>
+Tensor kldiv_loss_decomp(const Tensor& x,
+                         const Tensor& label,
+                         const std::string& reduction,
+                         bool log_target) {
+  bool dynamic_shape = has_dynamic_shape(x.shape());
+  Tensor loss;
+  if (log_target) {
+    loss = exp<T>(label) * (label - x);
+  } else {
+    Tensor output = label * (log<T>(label) - x);
+    Tensor zero = full_scalar<T>(0.0, label.dtype());
+    Tensor zeros;
+    if (dynamic_shape) {
+      zeros = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
+    } else {
+      zeros = full<T>(x.shape(), 0, x.dtype());
+    }
+    loss = where<T>(label > zero, output, zeros);
+  }
+
+  if (reduction == "batchmean") {
+    if (x.shape().size() > 0) {
+      if (dynamic_shape) {
+        return sum<T>(loss) / get_slice<T>(shape<T>(x), 0);
+      } else {
+        return sum<T>(loss) / x.shape()[0];
+      }
+    } else {
+      return sum<T>(loss);
+    }
+  }
+  if (reduction == "mean") {
+    return mean_decomp<T>(loss, {}, false);
+  }
+  if (reduction == "sum") {
+    return sum<T>(loss);
+  }
+  return loss;
+}
+
+template <typename T>
 Tensor softsign_decomp(const Tensor& x) {
   // softsign = x / (1 + abs(x))
 

@@ -87,7 +87,7 @@ TEST(Benchmark, FluidScaleCUDA) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(common::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -154,7 +154,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(common::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -248,7 +248,7 @@ TEST(Benchmark, FluidMLPCUDA) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(common::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
