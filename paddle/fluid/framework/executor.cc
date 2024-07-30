@@ -137,7 +137,7 @@ std::shared_ptr<TrainerBase> Executor::InitForDataset(
   bool success = trainer_desc.ParseFromString(trainer_desc_str);
   PADDLE_ENFORCE_EQ(success,
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Fail to parse TrainerDesc from string:\n%s",
                         trainer_desc_str.c_str()));
   VLOG(3) << "Going to create trainer, trainer class is "
@@ -160,7 +160,7 @@ std::shared_ptr<TrainerBase> Executor::InitForDataset(
 void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
   PADDLE_ENFORCE_NOT_NULL(
       trainer,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Trainer is nullptr, invoke InitForDataset first"));
   // training and finalize training
   VLOG(3) << "Trainer starts to run";
@@ -212,14 +212,14 @@ static bool has_feed_operators(
       PADDLE_ENFORCE_EQ(
           op->Input("X")[0],
           feed_holder_name,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "Input to feed op should be '%s', but received '%s'.",
               feed_holder_name,
               op->Input("X")[0]));
       std::string feed_target_name = op->Output("Out")[0];
       PADDLE_ENFORCE_NE(feed_targets.find(feed_target_name),
                         feed_targets.end(),
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Feed operator output name '%s' cannot be found in "
                             "'feed_targets'",
                             feed_target_name));
@@ -230,7 +230,7 @@ static bool has_feed_operators(
     PADDLE_ENFORCE_EQ(
         feed_count,
         feed_targets.size(),
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The number of feed operators should match 'feed_targets', but "
             "received feed_count: %zu, required feed_targets.size(): %zu.",
             feed_count,
@@ -241,12 +241,12 @@ static bool has_feed_operators(
       auto var = block.FindVar(feed_holder_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "Block should already have a '%s' variable", feed_holder_name));
       PADDLE_ENFORCE_EQ(
           var->GetType(),
           proto::VarType::FEED_MINIBATCH,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "'%s' variable should be 'FEED_MINIBATCH' type, but received "
               "'%s'.",
               feed_holder_name,
@@ -275,14 +275,14 @@ static bool has_fetch_operators(
       PADDLE_ENFORCE_EQ(
           op->Output("Out")[0],
           fetch_holder_name,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "Output of fetch op should be '%s', but received '%s'.",
               fetch_holder_name,
               op->Output("Out")[0]));
       std::string fetch_target_name = op->Input("X")[0];
       PADDLE_ENFORCE_NE(fetch_targets.find(fetch_target_name),
                         fetch_targets.end(),
-                        phi::errors::NotFound(
+                        common::errors::NotFound(
                             "Fetch operator input name '%s' cannot be found in "
                             "'fetch_targets'.",
                             fetch_target_name));
@@ -293,7 +293,7 @@ static bool has_fetch_operators(
     PADDLE_ENFORCE_EQ(
         fetch_count,
         fetch_targets.size(),
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The number of fetch operators should match 'fetch_targets', but "
             "received fetch_count: %zu, required fetch_targets.size(): %zu.",
             fetch_count,
@@ -304,12 +304,12 @@ static bool has_fetch_operators(
       auto var = block.FindVar(fetch_holder_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "Block should already have a '%s' variable.", fetch_holder_name));
       PADDLE_ENFORCE_EQ(
           var->GetType(),
           proto::VarType::FETCH_LIST,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "'%s' variable should be 'FETCH_LIST' type, but received '%s'.",
               fetch_holder_name,
               DataTypeToString(var->GetType())));
@@ -413,7 +413,7 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
       new ExecutorPrepareContext(program, block_id));
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id),
                     program.Size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input block id = %d, but it should be less than "
                         "program.size() which is %d",
                         static_cast<size_t>(block_id),
@@ -434,15 +434,15 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
   PADDLE_ENFORCE_EQ(
       skip_ref_cnt_vars.empty() || skip_ref_cnt_vars.size() == block_ids.size(),
       true,
-      phi::errors::InvalidArgument("skip_ref_cnt_vars should be either "
-                                   "empty or equals to block number %d",
-                                   block_ids.size()));
+      common::errors::InvalidArgument("skip_ref_cnt_vars should be either "
+                                      "empty or equals to block number %d",
+                                      block_ids.size()));
   std::vector<std::shared_ptr<ExecutorPrepareContext>> result;
   size_t idx = 0;
   for (auto& bid : block_ids) {
     PADDLE_ENFORCE_LT(static_cast<size_t>(bid),
                       program.Size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input block id = %zu, but it should be less than "
                           "program.size() which is %zu",
                           static_cast<size_t>(bid),
@@ -475,7 +475,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
                                    1);
   platform::RecordBlock b(kProgramId);
   PADDLE_ENFORCE_NOT_NULL(
-      scope, phi::errors::InvalidArgument("Scope shouldn't be null"));
+      scope, common::errors::InvalidArgument("Scope shouldn't be null"));
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -562,12 +562,12 @@ void Executor::RunPreparedContext(
   PADDLE_ENFORCE_EQ(
       has_feed_operators(global_block, *feed_targets, feed_holder_name),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Program in ExecutorPrepareContext should has feed_ops."));
   PADDLE_ENFORCE_EQ(
       has_fetch_operators(global_block, *fetch_targets, fetch_holder_name),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Program in the prepared context should has fetch_ops."));
 
   // map the data of feed_targets to feed_holder

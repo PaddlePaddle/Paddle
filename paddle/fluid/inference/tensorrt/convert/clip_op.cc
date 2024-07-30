@@ -42,8 +42,8 @@ class ClipOpConverter : public OpConverter {
     ReplenishLayerAndOutput(layer, "clip", {output_name}, test_mode);
 #else
     PADDLE_THROW(
-        phi::errors::Fatal("clip TRT converter is only supported on TRT "
-                           "5.1.3.0 or higher version."));
+        common::errors::Fatal("clip TRT converter is only supported on TRT "
+                              "5.1.3.0 or higher version."));
 #endif
   }
 };

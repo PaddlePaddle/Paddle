@@ -303,7 +303,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             comm->comm(),
             stream));
       }
-      platform::GpuStreamSync(stream);
+      phi::backends::gpu::GpuStreamSync(stream);
 #else
       PADDLE_THROW(phi::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU, and need_sync_stats connot be "

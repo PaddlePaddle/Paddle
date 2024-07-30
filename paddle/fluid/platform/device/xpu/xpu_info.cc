@@ -133,14 +133,14 @@ class RecordedXPUMallocHelper {
     PADDLE_ENFORCE_GE(
         dev_id,
         0,
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "Device id must be not less than 0, but got %d.", dev_id));
     PADDLE_ENFORCE_LT(
         dev_id,
         instances_.size(),
-        phi::errors::OutOfRange("Device id %d exceeds XPU card number %d.",
-                                dev_id,
-                                instances_.size()));
+        common::errors::OutOfRange("Device id %d exceeds XPU card number %d.",
+                                   dev_id,
+                                   instances_.size()));
     return instances_[dev_id].get();
   }
 

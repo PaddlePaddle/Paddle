@@ -85,8 +85,7 @@ BufferedReader::BufferedReader(
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (place_.GetType() == phi::AllocationType::CUSTOM) {
     auto stream =
-        ((platform::CustomDeviceContext *)(phi::DeviceContextPool::Instance()
-                                               .Get(place_)))
+        ((phi::CustomContext *)(phi::DeviceContextPool::Instance().Get(place_)))
             ->stream();
     custom_device_compute_stream_ =
         std::make_shared<phi::stream::Stream>(place_, stream);
@@ -237,11 +236,11 @@ void BufferedReader::ReadAsync(size_t i) {
                                     size,
                                     stream_.get());
 
-            platform::GpuStreamSync(stream_.get());
+            phi::backends::gpu::GpuStreamSync(stream_.get());
           }
           cuda[i].set_lod(cpu[i].lod());
         }
-        platform::GpuStreamSync(stream_.get());
+        phi::backends::gpu::GpuStreamSync(stream_.get());
       }
     }
 #endif

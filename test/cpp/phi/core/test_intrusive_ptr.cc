@@ -40,11 +40,12 @@ TEST(intrusive_ref_counter, async) {
   for (auto& result : results) {
     result.get();
   }
-  PADDLE_ENFORCE_EQ(
-      obj.use_count(),
-      1u,
-      phi::errors::Fatal("Input object's using count is %u, not 1",
-                         obj.use_count()));
+  PADDLE_ENFORCE_EQ(obj.use_count(),
+                    1U,
+                    phi::errors::InvalidArgument(
+                        "Required obj.use_count() should be equal to 1, "
+                        "But received obj.use_count() = %d.",
+                        obj.use_count()));
 }
 
 TEST(intrusive_ptr, default_ctor) {
@@ -61,8 +62,7 @@ TEST(intrusive_ptr, private_ctor) {
   PADDLE_ENFORCE_EQ(
       ptr0,
       ptr1,
-      phi::errors::Fatal(
-          "p1 is not equal to p2, something wrong with move function"));
+      phi::errors::InvalidArgument("Required ptr0 should be equal to ptr1. "));
 }
 
 TEST(intrusive_ptr, reset_with_obj) {
@@ -73,8 +73,7 @@ TEST(intrusive_ptr, reset_with_obj) {
   PADDLE_ENFORCE_EQ(
       p->i,
       obj.i,
-      phi::errors::Fatal("p->i is not equal to obj.j, something wrong with "
-                         "intrusive_ptr<T>.reset function or operator->"));
+      phi::errors::InvalidArgument("Required p->i should be equal to obj.i. "));
 }
 
 TEST(intrusive_ptr, reset_with_ptr) {
@@ -82,11 +81,10 @@ TEST(intrusive_ptr, reset_with_ptr) {
   ptr->i = 1;
   intrusive_ptr<SharedObject> p;
   p.reset(ptr, false);
-  PADDLE_ENFORCE_EQ(
-      (*p).i,
-      ptr->i,
-      phi::errors::Fatal("(*p).i is not equal to ptr->i, something wrong with "
-                         "intrusive_ptr<T>.reset function or operator*"));
+  PADDLE_ENFORCE_EQ((*p).i,
+                    ptr->i,
+                    phi::errors::InvalidArgument(
+                        "Required (*p).i should be equal to ptr->i. "));
   p.reset();
   PADDLE_ENFORCE_EQ(
       p == nullptr,

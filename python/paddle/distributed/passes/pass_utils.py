@@ -297,6 +297,28 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
     return type_to_program
 
 
+def set_pir_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
+    assert num_micro_batches >= 1, "num_micro_batches needs to be >= 1"
+    type_to_var_names = {}
+    type_to_program = dict(zip(job_types, sub_programs))
+    for type, program in type_to_program.items():
+        type_to_var_names[type] = set()
+        ops = program.global_block().ops
+        for op in ops:
+            if op.name() == "builtin.shadow_output":
+                # if a value is renamed by shadow_output,
+                # it will be used by other sub_programs
+                type_to_var_names[type].add(op.attrs()["output_name"])
+    # NOTE(lizhiyu): After finishing the gradient merge, enbale this checking.
+    # assert "backward" not in type_to_var_names.keys(), f"The backward sub_program can't have skip_gc_vars."
+
+    for job in jobs:
+        job_type = job.type()
+        job.set_skip_gc_vars(type_to_var_names[job_type])
+
+    return type_to_program
+
+
 def shadow_var_between_sub_programs(sub_programs):
     """
     Add shadow_output and data op pair to share vars between sub_programs.
@@ -681,6 +703,173 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
 
     # It MUST return in this order
     return [fwd_prog, bwd_prog, opt_prog]
+
+
+def forward_complete_op_role(main_program):
+    all_ops = main_program.global_block().ops
+    ops_len = len(all_ops)
+    if len(all_ops) == 0:
+        return
+
+    iop = 0
+    first_left_op_role = None
+    first_right_op_role = None
+    while iop < ops_len:
+        if all_ops[iop].op_role is not None:
+            first_left_op_role = all_ops[iop].op_role
+            iop += 1
+            continue
+        else:
+            right_idx = iop + 1
+            while right_idx < ops_len and all_ops[right_idx].op_role is None:
+                right_idx += 1
+            if right_idx >= ops_len:  # [first_left_op_role, xx, xx, xx, xx]
+                assert (
+                    first_left_op_role is not None
+                ), "first_left_op_role can't be None."
+                for idx in range(iop, right_idx):
+                    all_ops[idx].op_role = first_left_op_role
+                break
+            else:  # [first_left_op_role, xx, xx, xx, xx, first_right_op_role]
+                first_right_op_role = all_ops[right_idx].op_role
+                assert (
+                    first_left_op_role is None
+                    or first_left_op_role == first_right_op_role
+                ), f"The left and right operators of (idx[{iop}]) have different op_role."
+                for idx in range(iop, right_idx):
+                    all_ops[idx].op_role = first_right_op_role
+                    iop = right_idx + 1
+    if first_left_op_role is None and first_right_op_role is None:
+        raise ValueError("all the ops don't have the op_role.")
+
+
+def _pir_program_for_fthenb_and_1f1b(
+    main_program, enable_send_recv_overlap=False
+):
+    forward_complete_op_role(main_program)
+    complete_ops = main_program.global_block().ops
+
+    fwd_program = main_program.clone()
+    bwd_program = main_program.clone()
+    opt_program = main_program.clone()
+    fwd_ops = fwd_program.global_block().ops
+    bwd_ops = bwd_program.global_block().ops
+    opt_ops = opt_program.global_block().ops
+    opt_block = opt_program.global_block()
+    bwd_block = bwd_program.global_block()
+
+    region = "opt"
+    for op_idx in range(len(complete_ops) - 1, -1, -1):
+        if complete_ops[op_idx].op_role is not None:
+            if complete_ops[op_idx].op_role == 1:
+                region = "bwd"
+            elif complete_ops[op_idx].op_role == 0:
+                region = "fwd"
+            elif complete_ops[op_idx].op_role == 2:
+                region = "opt"
+
+        if region == "opt":
+            fwd_ops[op_idx].erase()
+            bwd_ops[op_idx].erase()
+        elif region == "bwd":
+            fwd_ops[op_idx].erase()
+            # in optimize program, both forward and backward ops should be removed
+            for idx in range(opt_ops[op_idx].num_results()):
+                # if this op's output is used, create the persistable
+                # var to be used in other programs.
+                result_in_opt = opt_ops[op_idx].result(idx)
+                if result_in_opt.use_empty() is False:
+                    name = (
+                        "var_"
+                        + str(op_idx)
+                        + "_"
+                        + complete_ops[op_idx].name()
+                        + "_"
+                        + str(idx)
+                    )
+                    paddle.pir.set_insertion_point_after(bwd_ops[op_idx])
+                    paddle._C_ops.set_persistable_value(
+                        bwd_ops[op_idx].result(idx), name
+                    )
+                    # bwd_ops[op_idx].result(idx).persistable = True
+                    new_result_var_in_opt = opt_block.add_kwarg(
+                        name, result_in_opt.type()
+                    )
+                    new_result_var_in_opt.persistable = (
+                        result_in_opt.persistable
+                    )
+                    opt_ops[op_idx].result(idx).replace_all_uses_with(
+                        new_result_var_in_opt
+                    )
+            opt_ops[op_idx].erase()
+        else:
+            # in backward program, only the forward ops should be removed
+            for idx in range(opt_ops[op_idx].num_results()):
+                # if this op's output is used, create the persistable
+                # var to be used in other programs.
+                result_in_opt = opt_ops[op_idx].result(idx)
+                result_in_bwd = bwd_ops[op_idx].result(idx)
+
+                if (
+                    result_in_opt.use_empty() is False
+                    or result_in_bwd.use_empty() is False
+                ):
+                    if (
+                        fwd_ops[op_idx].name() == "pd_op.data"
+                        or fwd_ops[op_idx].name() == "builtin.parameter"
+                    ):
+                        name = fwd_ops[op_idx].result(idx).name
+                        # fwd_ops[op_idx].result(idx).persistable = True
+                    else:
+                        result_value = complete_ops[op_idx].result(idx)
+                        used_ops = result_value.all_used_ops()
+                        shadow_output_op_used = None
+                        for used_op in used_ops:
+                            if used_op.name() == "builtin.shadow_output":
+                                shadow_output_op_used = used_op
+                        if shadow_output_op_used is not None:
+                            name = shadow_output_op_used.attrs()["output_name"]
+                            # fwd_ops[op_idx].result(idx).persistable = True
+                        else:
+                            name = (
+                                "var_"
+                                + str(op_idx)
+                                + "_"
+                                + complete_ops[op_idx].name()
+                                + "_"
+                                + str(idx)
+                            )
+                            paddle.pir.set_insertion_point_after(
+                                fwd_ops[op_idx]
+                            )
+                            paddle._C_ops.set_persistable_value(
+                                fwd_ops[op_idx].result(idx), name
+                            )
+                            # fwd_ops[op_idx].result(idx).persistable = True
+                if result_in_opt.use_empty() is False:
+                    new_result_var_in_opt = opt_block.add_kwarg(
+                        name, result_in_opt.type()
+                    )
+                    new_result_var_in_opt.persistable = (
+                        result_in_opt.persistable
+                    )
+                    opt_ops[op_idx].result(idx).replace_all_uses_with(
+                        new_result_var_in_opt
+                    )
+                if result_in_bwd.use_empty() is False:
+                    new_result_var_in_bwd = bwd_block.add_kwarg(
+                        name, result_in_bwd.type()
+                    )
+                    new_result_var_in_bwd.persistable = (
+                        result_in_bwd.persistable
+                    )
+                    bwd_ops[op_idx].result(idx).replace_all_uses_with(
+                        new_result_var_in_bwd
+                    )
+            opt_ops[op_idx].erase()
+            bwd_ops[op_idx].erase()
+
+    return fwd_program, bwd_program, opt_program
 
 
 def _program_for_vpp(

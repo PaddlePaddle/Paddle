@@ -38,16 +38,16 @@ class SkipMergeLayernormOpConverter : public OpConverter {
                           : 1e-5f;
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Bias) of layer_norm should not be null."));
     PADDLE_ENFORCE_NOT_NULL(
         Scale_v,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Scale) of layer_norm should not be null."));
     PADDLE_ENFORCE_EQ(
         begin_norm_axis,
         2,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The begin_norm_axis of SkipLayerLayernorm should be %d",
             begin_norm_axis));
     auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
@@ -73,7 +73,7 @@ class SkipMergeLayernormOpConverter : public OpConverter {
       skip_merge_layernorm_layer =
           engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Currently, MergeLayernorm TRT Plugin only support dynamic shape "
           "mode."));
     }

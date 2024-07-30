@@ -26,16 +26,19 @@ TEST(AutogradMeta, Constructor) {
   auto auto_grad = std::make_shared<egr::AutogradMeta>();
   et1.set_autograd_meta(auto_grad);
   auto* tmp_auto = static_cast<egr::AutogradMeta*>(et1.get_autograd_meta());
-  PADDLE_ENFORCE_EQ(tmp_auto->OutRankInfo().first,
-                    size_t(0),
-                    phi::errors::Fatal("OutRankInfo.first is %u, not 0",
-                                       tmp_auto->OutRankInfo().first));
-  PADDLE_ENFORCE_EQ(tmp_auto->OutRankInfo().second,
-                    size_t(0),
-                    phi::errors::Fatal("OutRankInfo.second is %u, not 0"));
-  PADDLE_ENFORCE_EQ(tmp_auto->IsInitialized(),
-                    false,
-                    phi::errors::Fatal("tensor shoule be not initialized"));
+  PADDLE_ENFORCE_EQ(
+      tmp_auto->OutRankInfo().first,
+      size_t(0),
+      phi::errors::InvalidArgument(
+          "The first element of OutRankInfo should be 0, but received %d.",
+          tmp_auto->OutRankInfo().first));
+  PADDLE_ENFORCE_EQ(
+      tmp_auto->OutRankInfo().second,
+      size_t(0),
+      phi::errors::InvalidArgument(
+          "The second element of OutRankInfo should be 0, but received %d.",
+          tmp_auto->OutRankInfo().second));
+  CHECK(tmp_auto->IsInitialized() == false);
 }
 
 TEST(AutogradMeta, MemberFunction) {
@@ -61,14 +64,18 @@ TEST(AutogradMeta, MemberFunction) {
   VLOG(6) << "Test Mutable Grad";
   auto impl_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(tmp_auto->Grad().impl());
-  PADDLE_ENFORCE_EQ(impl_ptr->data<float>()[0],
-                    5.0f,
-                    phi::errors::Fatal("data[0] is %f. should be 5.0",
-                                       impl_ptr->data<float>()[0]));
-  PADDLE_ENFORCE_EQ(impl_ptr->data<float>()[1],
-                    10.0f,
-                    phi::errors::Fatal("data[0] is %f. should be 5.0",
-                                       impl_ptr->data<float>()[1]));
+  PADDLE_ENFORCE_EQ(
+      impl_ptr->data<float>()[0],
+      5.0f,
+      phi::errors::InvalidArgument(
+          "The first element of grad tensor should be 5.0, but received %f.",
+          impl_ptr->data<float>()[0]));
+  PADDLE_ENFORCE_EQ(
+      impl_ptr->data<float>()[1],
+      10.0f,
+      phi::errors::InvalidArgument(
+          "The second element of grad tensor should be 10.0, but received %f.",
+          impl_ptr->data<float>()[1]));
   VLOG(6) << "Test IsInitialized";
   PADDLE_ENFORCE_EQ(
       tmp_auto->IsInitialized(),
@@ -89,37 +96,42 @@ TEST(AutogradMeta, MemberFunction) {
   PADDLE_ENFORCE_EQ(
       dynamic_cast<eager_test::GradTestNode*>(tmp_auto->GradNode())->val_,
       5.0,
-      "dynamic_cast<eager_test::GradTestNode*>(tmp_auto->GradNode())->val_ is "
-      "%f, should be 5.0",
-      dynamic_cast<eager_test::GradTestNode*>(tmp_auto->GradNode())->val_);
+      phi::errors::InvalidArgument(
+          "The value of GradTestNode should be 5.0, but received %f.",
+          dynamic_cast<eager_test::GradTestNode*>(tmp_auto->GradNode())->val_));
   VLOG(6) << "Test rank Setter Getter";
   PADDLE_ENFORCE_EQ(
       tmp_auto->OutRankInfo().first,
       size_t(0),
-      phi::errors::Fatal("tmp_auto->OutRankInfo().first is %d, should be 0",
-                         tmp_auto->OutRankInfo().first));
+      phi::errors::InvalidArgument(
+          "The first element of OutRankInfo should be 0, but received %d.",
+          tmp_auto->OutRankInfo().first));
   PADDLE_ENFORCE_EQ(
       tmp_auto->OutRankInfo().second,
       size_t(0),
-      phi::errors::Fatal("tmp_auto->OutRankInfo().first is %d, should be 0",
-                         tmp_auto->OutRankInfo().first));
+      phi::errors::InvalidArgument(
+          "The second element of OutRankInfo should be 0, but received %d.",
+          tmp_auto->OutRankInfo().second));
   tmp_auto->SetSingleOutRankWithSlot(2, 3);
   PADDLE_ENFORCE_EQ(
       tmp_auto->OutRankInfo().first,
       size_t(2),
-      phi::errors::Fatal("tmp_auto->OutRankInfo().first is %d, should be 2",
-                         tmp_auto->OutRankInfo().second));
+      phi::errors::InvalidArgument(
+          "The first element of OutRankInfo should be 2, but received %d.",
+          tmp_auto->OutRankInfo().first));
   PADDLE_ENFORCE_EQ(
       tmp_auto->OutRankInfo().second,
       size_t(3),
-      phi::errors::Fatal("tmp_auto->OutRankInfo().first is %d, should be 3",
-                         tmp_auto->OutRankInfo().second));
+      phi::errors::InvalidArgument(
+          "The second element of OutRankInfo should be 3, but received %d.",
+          tmp_auto->OutRankInfo().second));
   VLOG(6) << "Test stop gradient Setter Getter";
   PADDLE_ENFORCE_EQ(
       tmp_auto->NumericStopGradient(),
       -1,
-      phi::errors::Fatal("tmp_auto->NumericStopGradient() is %d, should be -1",
-                         tmp_auto->NumericStopGradient()));
+      phi::errors::InvalidArgument(
+          "The NumericStopGradient value should be -1, but received %d.",
+          tmp_auto->NumericStopGradient()));
   tmp_auto->SetStopGradient(true);
   PADDLE_ENFORCE_EQ(
       tmp_auto->StopGradient(),

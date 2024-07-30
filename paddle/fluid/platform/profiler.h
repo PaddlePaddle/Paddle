@@ -26,10 +26,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/common/place.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/utils/test_macros.h"
 
 namespace phi {
+
 namespace proto {
 class Profile;
 }
@@ -46,6 +47,11 @@ class Profile;
 
 namespace paddle {
 namespace platform {
+
+using phi::Event;
+using phi::EventRole;
+using phi::EventType;
+using phi::MemEvent;
 
 namespace proto {
 class Profile;

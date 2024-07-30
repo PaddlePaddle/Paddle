@@ -59,36 +59,19 @@ TEST(sparse_csr_tensor, construct) {
 
   SparseCsrTensor sparse(crows, cols, elements, dense_dims);
 
-  PADDLE_ENFORCE_EQ(
-      sparse.non_zero_cols().numel(),
-      static_cast<int64_t>(non_zero_data.size()),
-      phi::errors::Fatal("`sparse.non_zero_cols().numel()` is %lld, "
-                         "`static_cast<int64_t>(non_zero_data.size())` is %lld",
-                         sparse.non_zero_cols().numel(),
-                         static_cast<int64_t>(non_zero_data.size())));
-  PADDLE_ENFORCE_EQ(
-      sparse.numel(),
-      9,
-      phi::errors::Fatal("`sparse.numel()` is %d, but should be 9",
-                         sparse.non_zero_cols().numel()));
-  PADDLE_ENFORCE_EQ(
-      sparse.dims(),
-      dense_dims,
-      phi::errors::Fatal("`sparse.dims()` should be equal to `dense_dims`"));
-  PADDLE_ENFORCE_EQ(
-      sparse.dtype(),
-      DataType::FLOAT32,
-      phi::errors::Fatal("`sparse.dtype()` is No.%d in DataType, but should be "
-                         "No.%d in DataType -- DataType::FLOAT32",
-                         sparse.dtype(),
-                         DataType::FLOAT32));
-  PADDLE_ENFORCE_EQ(sparse.place(),
-                    phi::CPUPlace(),
-                    phi::errors::Fatal("Variable `sparse` should be on CPU"));
-  PADDLE_ENFORCE_EQ(
-      sparse.initialized(),
-      true,
-      phi::errors::Fatal("Variable `sparse` should be initilatized now"));
+  PADDLE_ENFORCE_EQ(sparse.non_zero_cols().numel(),
+                    non_zero_data.size(),
+                    phi::errors::InvalidArgument(
+                        "Required sparse.non_zero_cols().numel() should be "
+                        "equal to non_zero_data.size(). "));
+  PADDLE_ENFORCE_EQ(sparse.numel(),
+                    9,
+                    phi::errors::InvalidArgument(
+                        "Required sparse.numel() should be equal to 9. "));
+  CHECK(sparse.dims() == dense_dims);
+  CHECK(sparse.dtype() == DataType::FLOAT32);
+  CHECK(sparse.place() == phi::CPUPlace());
+  CHECK(sparse.initialized() == true);
 }
 TEST(sparse_csr_tensor, other_function) {
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
@@ -106,14 +89,11 @@ TEST(sparse_csr_tensor, other_function) {
   DenseTensor values(alloc, values_meta);
 
   SparseCsrTensor csr(crows, cols, values, dense_dims);
-  PADDLE_ENFORCE_EQ(
-      csr.initialized(),
-      true,
-      phi::errors::Fatal("Variable `csr` should be initialized now"));
-  PADDLE_ENFORCE_EQ(
-      csr.dims(),
-      dense_dims,
-      phi::errors::Fatal("`csr.dims()` should be equal to `dense_dims`"));
+  CHECK(csr.initialized());
+  PADDLE_ENFORCE_EQ(csr.dims(),
+                    dense_dims,
+                    phi::errors::InvalidArgument(
+                        "Required csr.dims() should be equal to dense_dims. "));
 
   // Test Resize
   auto dense_dims_3d = common::make_ddim({2, 4, 4});
@@ -121,8 +101,8 @@ TEST(sparse_csr_tensor, other_function) {
   PADDLE_ENFORCE_EQ(
       csr.non_zero_cols().numel(),
       2,
-      phi::errors::Fatal("`csr.non_zero_cols().numel()` is %d, but should be 2",
-                         csr.non_zero_cols().numel()));
+      phi::errors::InvalidArgument(
+          "Required csr.non_zero_cols().numel() should be equal to 2. "));
 
   // Test shallow_copy
   SparseCsrTensor csr2(csr);

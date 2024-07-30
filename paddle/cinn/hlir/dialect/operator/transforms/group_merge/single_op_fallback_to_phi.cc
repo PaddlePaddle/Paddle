@@ -43,12 +43,12 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     PADDLE_ENFORCE_EQ(
         fusion_op.GetOperators().size(),
         2,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "fusion_op should have two operators inside, but got %d",
             fusion_op.GetOperators().size()));
     PADDLE_ENFORCE(
         fusion_op.GetOperators()[1]->isa<::pir::YieldOp>(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The last operator of fusion_op must be YieldOp, but got %s",
             fusion_op.GetOperators()[1]->name()));
 
@@ -78,7 +78,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       pir::Operation* op,
       pir::PatternRewriter& rewriter) const {  // NOLINT
     PADDLE_ENFORCE(op->isa<cinn::dialect::ReshapeOp>(),
-                   phi::errors::InvalidArgument(
+                   ::common::errors::InvalidArgument(
                        "Input should be cinn::dialect::ReshapeOp, but got %s",
                        op->name()));
     auto reshape_op = op->dyn_cast<cinn::dialect::ReshapeOp>();
@@ -89,7 +89,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
                                 .AsVector();
       PADDLE_ENFORCE_GT(out_shape_attr.size(),
                         0,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The shape attribute should not be empty"));
 
       std::vector<int64_t> ret;

@@ -13,14 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-
-#if defined(PADDLE_WITH_GLOO)
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
 
 namespace paddle {
 namespace operators {
