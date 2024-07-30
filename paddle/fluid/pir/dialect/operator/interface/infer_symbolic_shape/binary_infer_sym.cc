@@ -122,10 +122,24 @@ bool BceLoss_OpInferSymbolicShape(
 bool BinomialOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &count_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-
-  infer_context->SetShapeOrDataForValue(op->result(0), count_shape);
-
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &prob_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  size_t ndims_count = x_shape.size();
+  size_t ndims_prob = mask_shape.size();
+  if (ndims_count >= ndims_prob) {
+    size_t diff = ndims_count - ndims_prob;
+    for (size_t i = 0; i < ndims_prob; i++) {
+      infer_context->AddBroadcastableCstr(count_shape[i + diff], prob_shape[i]);
+    }
+  } else {
+    size_t diff = ndims_prob - ndims_count;
+    for (size_t i = 0; i < ndims_count; i++) {
+      infer_context->AddBroadcastableCstr(count_shape[i], prob_shape[i + diff]);
+    }
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs{count_shape});
   return true;
 }
 
