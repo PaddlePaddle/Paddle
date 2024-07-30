@@ -22,7 +22,7 @@ from .process_mesh import ProcessMesh
 
 def to_placements(
     dim_map: list[int], mesh: ProcessMesh, partial_idx: list[int] = None
-) -> list:
+) -> List[Placement]:
     """
     convert dim_map to placements.
 

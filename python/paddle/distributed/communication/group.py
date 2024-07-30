@@ -92,7 +92,7 @@ class _GroupManager:
     group_map_by_id = {}
 
 
-def _get_global_group() -> dict[str, any]:
+def _get_global_group() -> dict[str]:
     if _GroupManager.global_group_id not in _GroupManager.group_map_by_id:
         raise RuntimeError("The global group is not initialized.")
     return _GroupManager.group_map_by_id[_GroupManager.global_group_id]
