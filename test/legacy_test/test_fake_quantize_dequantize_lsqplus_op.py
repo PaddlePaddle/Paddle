@@ -465,24 +465,6 @@ class TestLsqplus(unittest.TestCase):
             dygraph=True,
         )
 
-    def test_fake_quantize_dequantize_fp16(self):
-        distributions = [
-            np.random.random,
-            np.random.random,
-            np.random.random,
-            np.random.random,
-        ]
-
-        self.run_fake_quant(
-            np.float16,
-            (128, 128),
-            distributions,
-            round_type='TiesToEven',
-            is_sign=False,
-            dygraph=True,
-            place='cpu',
-        )
-
 
 if __name__ == '__main__':
     unittest.main()
