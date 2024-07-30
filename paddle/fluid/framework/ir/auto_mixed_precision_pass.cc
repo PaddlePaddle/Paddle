@@ -989,7 +989,11 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
 
   for (size_t i = 0; i < all_op_nodes_.size(); i++) {
     auto* block_desc = all_op_nodes_[i][0]->Op()->Block();
-    PADDLE_ENFORCE_NOT_NULL(block_desc);
+    PADDLE_ENFORCE_NOT_NULL(
+        block_desc,
+        phi::errors::PreconditionNotMet(
+            "During the auto_mixed_precision_pass, the block description "
+            "should not be null."));
     for (auto* op_node : all_op_nodes_[i]) {
       auto op_type = op_node->Op()->Type();
 
