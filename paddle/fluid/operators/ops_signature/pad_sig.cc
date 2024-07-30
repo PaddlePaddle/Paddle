@@ -19,8 +19,10 @@ namespace phi {
 
 KernelSignature PadGradOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature(
-      "pad_grad", {"Out@GRAD"}, {"paddings", "pad_value"}, {"X@GRAD"});
+  return KernelSignature("pad_grad",
+                         {"Out@GRAD"},
+                         {"paddings", "pad_value", "pad_from_first_axis"},
+                         {"X@GRAD"});
 }
 
 }  // namespace phi
