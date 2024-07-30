@@ -42,9 +42,11 @@ std::vector<std::vector<int64_t>> LinearInferShape(
   auto dims_y = weight_shape;
   auto ndims_x = x_shape.size();
   auto ndims_y = weight_shape.size();
-  PD_CHECK(ndims_x > 0,
-           "The Input(x) dims size must be greater than 0,"
-           " but received dims size is 0. ");
+  PADDLE_ENFORCE_GT(
+      ndims_x,
+      0,
+      phi::errors::InvalidArgument("The Input(x) dims size must be greater "
+                                   "than 0, but received dims size is 0. "));
   PD_CHECK(ndims_y > 0,
            "The Input(y) dims size must be greater than 0,"
            " but received dims size is 0. ");
