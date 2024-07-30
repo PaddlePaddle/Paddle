@@ -71,6 +71,11 @@ class XPUTestPadOp(XPUOpTestWrapper):
 
         def init_data(self):
             self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
+            self.attrs = {
+                'paddings': list(np.array(self.paddings).flatten()),
+                'pad_value': self.pad_value,
+                'pad_from_first_axis': self.pad_from_first_axis,
+            }
             if not (
                 len(self.paddings) == len(self.shape)
                 and self.pad_from_first_axis
@@ -86,11 +91,6 @@ class XPUTestPadOp(XPUOpTestWrapper):
                     mode='constant',
                     constant_values=self.pad_value,
                 )
-            }
-            self.attrs = {
-                'paddings': list(np.array(self.paddings).flatten()),
-                'pad_value': self.pad_value,
-                'pad_from_first_axis': self.pad_from_first_axis,
             }
 
         def test_check_output(self):
