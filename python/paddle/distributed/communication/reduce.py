@@ -14,20 +14,23 @@
 
 from __future__ import annotations
 
-from enum import IntEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 import paddle
 from paddle import framework
 from paddle.distributed.communication import stream
 
 if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
     from paddle import Tensor
     from paddle.base.core import task
     from paddle.distributed.communication.group import Group
 
+    _ReduceOp: TypeAlias = Literal[0, 1, 2, 3, 4]
 
-class ReduceOp(IntEnum):
+
+class ReduceOp:
     """
 
     Specify the type of operation used for element-wise reductions.
@@ -58,11 +61,11 @@ class ReduceOp(IntEnum):
             >>> # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
     """
 
-    SUM = 0
-    MAX = 1
-    MIN = 2
-    PROD = 3
-    AVG = 4
+    SUM: ClassVar[Literal[0]] = 0
+    MAX: ClassVar[Literal[1]] = 1
+    MIN: ClassVar[Literal[2]] = 2
+    PROD: ClassVar[Literal[3]] = 3
+    AVG: ClassVar[Literal[4]] = 4
 
 
 def _get_reduce_op(reduce_op, func_name):
@@ -99,7 +102,7 @@ def _to_inplace_op(op_name):
 def reduce(
     tensor: Tensor,
     dst: int,
-    op: ReduceOp = ReduceOp.SUM,
+    op: _ReduceOp = ReduceOp.SUM,
     group: Group | None = None,
     sync_op: bool = True,
 ) -> task:
