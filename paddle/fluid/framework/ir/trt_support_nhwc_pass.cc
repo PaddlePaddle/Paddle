@@ -53,7 +53,10 @@ void DoInsertTransposeOp(ir::Graph *graph,
       desc.SetAttr("mkldnn_data_type", std::string{"float32"});
       desc.Flush();
     };
-    PADDLE_ENFORCE_NOT_NULL(block_desc);
+    PADDLE_ENFORCE_NOT_NULL(
+        block_desc,
+        phi::errors::InvalidArgument("During the trt_support_nhwc_pass, the "
+                                     "block description should not be null."));
     if (cache->count(prev_node) == 0) {
       framework::OpDesc op_desc(block_desc);
       if (from_layout == phi::DataLayout::kNCHW) {
