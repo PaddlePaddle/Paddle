@@ -22,8 +22,10 @@ namespace ir {
 
 ScheduleBlockNode::ScheduleBlockNode(Expr block, const IRSchedule& ir_sch)
     : ir_sch_(ir_sch) {
-  CHECK(block.As<ScheduleBlockRealize>())
-      << "Expr is not a ScheduleBlockRealize: " << block;
+  PADDLE_ENFORCE_EQ(block.As<ScheduleBlockRealize>(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Expr is not a ScheduleBlockRealize: %s", block));
   id_ = block.As<ScheduleBlockRealize>()
             ->schedule_block.As<ScheduleBlock>()
             ->name;
@@ -98,8 +100,10 @@ void ScheduleBlockGraph::Update(const IRSchedule& ir_sch) {
   std::vector<Expr> all_blocks = ir_sch.GetAllBlocks();
   Expr root_block = ir_sch.GetRootBlock(all_blocks[0]);
   for (Expr block : all_blocks) {
-    CHECK(block.As<ScheduleBlockRealize>())
-        << "Expr is not a ScheduleBlockRealize: " << block;
+    PADDLE_ENFORCE_EQ(block.As<ScheduleBlockRealize>(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Expr is not a ScheduleBlockRealize: %s", block));
     std::string id = block.As<ScheduleBlockRealize>()
                          ->schedule_block.As<ScheduleBlock>()
                          ->name;
@@ -113,14 +117,19 @@ void ScheduleBlockGraph::Update(const IRSchedule& ir_sch) {
 
     std::vector<Expr> producers = GetProducers(block, root_block);
     for (Expr producer : producers) {
-      CHECK(producer.As<ScheduleBlockRealize>())
-          << "Expr is not a ScheduleBlockRealize: " << producer;
+      PADDLE_ENFORCE_EQ(
+          producer.As<ScheduleBlockRealize>(),
+          true,
+          ::common::errors::InvalidArgument(
+              "Expr is not a ScheduleBlockRealize: %s", producer));
       std::string producer_id = producer.As<ScheduleBlockRealize>()
                                     ->schedule_block.As<ScheduleBlock>()
                                     ->name;
       ScheduleBlockNode* producer_node = RetrieveNode(producer_id);
-      CHECK(producer_node) << "producer node: " << producer_id
-                           << " does not exist in the graph";
+      PADDLE_ENFORCE_NOT_NULL(
+          producer_node,
+          ::common::errors::InvalidArgument(
+              "producer node: %s does not exist in the graph", producer_id));
       producer_node->Controls(node);
       for (const std::string& upstream_node_id :
            producer_node->UpstreamNodes()) {
