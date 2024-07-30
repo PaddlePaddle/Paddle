@@ -25,7 +25,7 @@ template class MoeGemmRunner<half, half>;
 template class MoeGemmRunner<half, uint8_t>;
 template class MoeGemmRunner<half, cutlass::uint4b_t>;
 
-#if CUDA_VERSION >= 11000
+#ifdef PADDLE_CUDA_BF16
 template class MoeGemmRunner<__nv_bfloat16, __nv_bfloat16>;
 template class MoeGemmRunner<__nv_bfloat16, uint8_t>;
 template class MoeGemmRunner<__nv_bfloat16, cutlass::uint4b_t>;

@@ -21,15 +21,12 @@
 
 #include <cuda.h>
 #include <cuda_fp16.h>
-#if CUDA_VERSION >= 11000
-#define ENABLE_BF16
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/datatype_traits.h"
-#endif
 #include <math.h>
 #include <sstream>
 #include "cutlass/array.h"
 #include "cutlass/numeric_conversion.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/datatype_traits.h"
 
 #include "cutlass/gemm/device/gemm_grouped.h"
 #include "cutlass/gemm/kernel/default_gemm_grouped.h"
@@ -77,7 +74,7 @@ void generic_moe_gemm_kernelLauncher(const T* A,
     throw std::runtime_error("[MoeGemm] Grouped gemm does not support split-k");
   }
 
-#ifdef ENABLE_BF16
+#ifdef PADDLE_CUDA_BF16
   static_assert(cutlass::platform::is_same<T, __nv_bfloat16>::value ||
                     cutlass::platform::is_same<T, half>::value ||
                     cutlass::platform::is_same<T, float>::value,
@@ -100,7 +97,7 @@ void generic_moe_gemm_kernelLauncher(const T* A,
       cutlass::platform::is_same<T, half>::value,
       cutlass::half_t,
       T>::type;
-#ifdef ENABLE_BF16
+#ifdef PADDLE_CUDA_BF16
   using ElementType = typename cutlass::platform::conditional<
       cutlass::platform::is_same<ElementType_, __nv_bfloat16>::value,
       cutlass::bfloat16_t,
@@ -113,7 +110,7 @@ void generic_moe_gemm_kernelLauncher(const T* A,
       cutlass::platform::is_same<WeightType, half>::value,
       cutlass::half_t,
       WeightType>::type;
-#ifdef ENABLE_BF16
+#ifdef PADDLE_CUDA_BF16
   using CutlassWeightType = typename cutlass::platform::conditional<
       cutlass::platform::is_same<CutlassWeightType_, __nv_bfloat16>::value,
       cutlass::bfloat16_t,
