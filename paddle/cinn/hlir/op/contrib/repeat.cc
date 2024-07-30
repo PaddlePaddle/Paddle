@@ -140,11 +140,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
             pack_args.size()));
 
     Expr A = pack_args[0];
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NOT_NULL(
         A.as_tensor(),
-        true,
         phi::errors::InvalidArgument(
-            "The first argument in pack_args is not a tensor. "
+            "The first argument in pack_args is null "
             "Please ensure the first argument is a valid tensor."));
 
     PADDLE_ENFORCE_EQ(
@@ -180,11 +179,13 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
 
   framework::CINNSchedule repeat_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    PADDLE_ENFORCE(!args.empty(),
-                   phi::errors::InvalidArgument(
-                       "The input argument of repeat schedule is empty. "
-                       "Please check your input arguments and ensure they are "
-                       "not empty."));
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of repeat schedule is empty. "
+            "Please check your input arguments and ensure they are "
+            "not empty."));
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -193,8 +194,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
         vec_ast.emplace_back(temp);
       }
     }
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         !vec_ast.empty(),
+        true,
         phi::errors::InvalidArgument(
             "The vector of AST expressions is empty. "
             "Please ensure there are valid expressions in the argument pack."));
