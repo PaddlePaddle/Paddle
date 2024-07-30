@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include <unordered_set>
+#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 
