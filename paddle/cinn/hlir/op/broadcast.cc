@@ -98,14 +98,14 @@ std::shared_ptr<OpStrategy> StrategyForBroadcast(
     std::string tensor_name = pack_args[2].operator std::string();
     Expr A_expr = pack_args[0];
     Expr B_expr = pack_args[1];
-    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Required A_expr must be a tensor. Please check."));
-    PADDLE_ENFORCE_EQ(B_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Required B_expr must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        A_expr.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required Input must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        B_expr.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required Input must be a tensor. Please check."));
     ir::Tensor A = A_expr.as_tensor_ref();
     ir::Tensor B = B_expr.as_tensor_ref();
     Expr axis;
@@ -167,14 +167,14 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastSymbolic(
     std::string tensor_name = pack_args[2].operator std::string();
     Expr A_expr = pack_args[0];
     Expr B_expr = pack_args[1];
-    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Required A_expr must be a tensor. Please check."));
-    PADDLE_ENFORCE_EQ(B_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Required B_expr must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        A_expr.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required Input must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        B_expr.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required Input must be a tensor. Please check."));
     ir::Tensor A = A_expr.as_tensor_ref();
     ir::Tensor B = B_expr.as_tensor_ref();
     Expr axis;
@@ -245,10 +245,10 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastTo(
     std::string tensor_name = pack_args[1].operator std::string();
 
     Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Required A_expr must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        A_expr.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required Input must be a tensor. Please check."));
     ir::Tensor A = A_expr.as_tensor_ref();
     auto out = pe::BroadcastTo(A, out_shape, broadcast_axes, tensor_name);
     *ret = CINNValuePack{{CINNValue(out)}};
@@ -281,42 +281,42 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
                  [](const ir::Dim &dim) { return dim->dim_expr; });
   VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
 
-  framework::CINNCompute broadcast_to_compute([=](lang::Args args,
-                                                  lang::RetValue *ret) {
-    PADDLE_ENFORCE_NE(
-        args.empty(),
-        true,
-        phi::errors::InvalidArgument("The input argument of broadcast_to "
-                                     "compute is empty! Please check."));
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_NE(
-        pack_args.empty(),
-        true,
-        phi::errors::InvalidArgument("The input tensors of broadcast_to "
-                                     "compute is empty! Please check."));
-    std::string tensor_name = [&] {
-      if (pack_args.size() == 2) {
-        return pack_args[1].operator std::string();
-      } else {
-        PADDLE_ENFORCE_EQ(pack_args.size(),
-                          3,
-                          ::common::errors::InvalidArgument(
-                              "The number of input tensors is wrong. "
-                              "The expected inputs is 3, but now is %d.",
-                              pack_args.size()));
-        return pack_args[2].operator std::string();
-      }
-    }();
+  framework::CINNCompute broadcast_to_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        PADDLE_ENFORCE_NE(
+            args.empty(),
+            true,
+            phi::errors::InvalidArgument("The input argument of broadcast_to "
+                                         "compute is empty! Please check."));
+        CINNValuePack pack_args = args[0];
+        PADDLE_ENFORCE_NE(
+            pack_args.empty(),
+            true,
+            phi::errors::InvalidArgument("The input tensors of broadcast_to "
+                                         "compute is empty! Please check."));
+        std::string tensor_name = [&] {
+          if (pack_args.size() == 2) {
+            return pack_args[1].operator std::string();
+          } else {
+            PADDLE_ENFORCE_EQ(pack_args.size(),
+                              3,
+                              ::common::errors::InvalidArgument(
+                                  "The number of input tensors is wrong. "
+                                  "The expected inputs is 3, but now is %d.",
+                                  pack_args.size()));
+            return pack_args[2].operator std::string();
+          }
+        }();
 
-    Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Required A_expr must be a tensor. Please check."));
-    ir::Tensor A = A_expr.as_tensor_ref();
-    auto out = pe::BroadcastTo(A, out_shape, tensor_name);
-    *ret = CINNValuePack{{CINNValue(out)}};
-  });
+        Expr A_expr = pack_args[0];
+        PADDLE_ENFORCE_NOT_NULL(
+            A_expr.as_tensor(),
+            phi::errors::InvalidArgument(
+                "Required Input must be a tensor. Please check."));
+        ir::Tensor A = A_expr.as_tensor_ref();
+        auto out = pe::BroadcastTo(A, out_shape, tensor_name);
+        *ret = CINNValuePack{{CINNValue(out)}};
+      });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(
