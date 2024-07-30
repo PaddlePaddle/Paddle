@@ -537,7 +537,8 @@ bool InverseOpInferSymbolicShape(
       input_rank,
       2,
       phi::errors::InvalidArgument(
-          "The dimension of Input(Input) is expected to be no less than 2. "
+          "InverseOpInferSymbolicShape : The dimension of Input(Input) is "
+          "expected to be no less than 2. "
           "But received: Input(Input)'s dimension = %zu, shape = [%s].",
           input_rank,
           input_dims));
@@ -550,6 +551,7 @@ bool InverseOpInferSymbolicShape(
           symbol::TensorShapeOrDataDimExprs(output_dims)});
   return true;
 }
+
 bool LogcumsumexpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // same as CumsumOpInferSymbolicShape
