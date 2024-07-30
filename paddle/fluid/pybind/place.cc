@@ -534,7 +534,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   cudapinnedplace
       .def(py::init([]() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-        PADDLE_THROW(phi::errors::PermissionDenied(
+        PADDLE_THROW(common::errors::PermissionDenied(
             "Cannot use CUDAPinnedPlace in CPU only version, "
             "Please recompile or reinstall Paddle with CUDA support."));
 #endif

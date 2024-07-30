@@ -296,7 +296,12 @@ def remove_other_rank_input_output_pass(dist_program):
 
 
 # Note: this is the pass in the dense program
-comm_ops = ["pd_op.c_allreduce_sum", "pd_op.all_gather"]
+comm_ops = [
+    "pd_op.c_allreduce_sum",
+    "pd_op.all_gather",
+    "pd_op.c_allreduce_max",
+    "pd_op.c_reducescatter",
+]
 
 
 def remove_unuseful_comm_op_pass(program):

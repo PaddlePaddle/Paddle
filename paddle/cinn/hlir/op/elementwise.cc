@@ -813,7 +813,7 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
     std::string tensor_name;
-    if (pack_args.size() == 4) {
+    if (pack_args.size() == 4 || pack_args.size() == 3) {
       CHECK(pack_args[2].is_string());
       tensor_name = pack_args[2].operator std::string();
     } else {

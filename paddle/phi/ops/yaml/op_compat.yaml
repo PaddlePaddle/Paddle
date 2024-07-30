@@ -3102,6 +3102,10 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
 
+- op : reshape_grad (reshape2_grad)
+  inputs:
+    x : XShape
+
 - op : resnet_basic_block
   backward: resnet_basic_block_grad
   inputs:
