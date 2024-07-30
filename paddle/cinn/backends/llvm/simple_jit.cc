@@ -102,8 +102,8 @@ SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
   llvm::InitializeAllAsmPrinters();
 
   jit_ = llvm::cantFail(llvm::orc::LLJITBuilder().create());
-  PADDLE_ENFORCE_NOT_NULL(
-      jit_, phi::errors::InvalidArgument("JIT creation failed."));
+  PADDLE_ENFORCE_NOT_NULL(jit_,
+                          phi::errors::InvalidArgument("JIT creation failed."));
 
   auto proc_symbols_generator = llvm::cantFail(
       llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
