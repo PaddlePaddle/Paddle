@@ -55,6 +55,7 @@ DEFINE_GENERAL_PATTERN(Reshape, paddle::dialect::ReshapeOp)
 DEFINE_GENERAL_PATTERN(Dropout, paddle::dialect::DropoutOp)
 DEFINE_GENERAL_PATTERN(Bmm, paddle::dialect::BmmOp)
 DEFINE_GENERAL_PATTERN(Concat, paddle::dialect::ConcatOp)
+DEFINE_GENERAL_PATTERN(Nonzero, paddle::dialect::NonzeroOp)
 
 DEFINE_GENERAL_PATTERN(Fused_gemm_epilogue,
                        paddle::dialect::FusedGemmEpilogueOp)
@@ -751,6 +752,7 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
         output_lengths.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
       }
       axis += (axis < 0) ? x_shape.size() : 0;
+
       if (x_shape[axis] == -1) {
         VLOG(3) << "The (" << axis << ") dim of input should not be -1";
         return false;
@@ -794,6 +796,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Conv2d)
     ADD_PATTERN(FusedConv2dAddAct)
     ADD_PATTERN(DepthwiseConv2d)
+    ADD_PATTERN(Nonzero)
 
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
