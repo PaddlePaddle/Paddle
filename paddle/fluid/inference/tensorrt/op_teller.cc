@@ -2778,6 +2778,35 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "argsort") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the argsort does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      if (!desc.HasAttr("descending") || !desc.HasAttr("axis")) {
+        VLOG(3) << op_type << " needs attributes: descending and axis.";
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
+      std::vector<int64_t> shape = x_var_desc->GetShape();
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
+      if (axis < 0) {
+        axis += shape.size();
+      }
+      if (shape[axis] > 3840) {
+        VLOG(3) << op_type << " op shape[axis] = " << shape[axis] << " > 3840.";
+        return false;
+      }
+    }
+
     if (op_type == "unbind") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the unbind does not support "
@@ -3054,6 +3083,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "grid_sampler",
       "cumsum",
       "unbind",
+      "argsort",
       "assign",
       "flip",
       "quantize_linear",
@@ -3226,6 +3256,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "grid_sampler",
       "cumsum",
       "unbind",
+      "argsort",
       "assign",
       "flip",
       "quantize_linear",
