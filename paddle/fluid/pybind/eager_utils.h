@@ -346,6 +346,9 @@ phi::distributed::TensorDistAttr CastPyArg2DistAttr(PyObject* obj,
 phi::distributed::ProcessMesh CastPyArg2ProcessMesh(PyObject* obj,
                                                     ssize_t arg_pos);
 
+std::vector<phi::distributed::ProcessMesh> CastPyArg2VectorOfProcessMesh(
+    PyObject* obj, ssize_t arg_pos);
+
 phi::distributed::Placements CastPyArg2VectorOfPlacement(PyObject* obj,
                                                          ssize_t arg_pos);
 

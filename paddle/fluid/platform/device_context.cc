@@ -48,7 +48,7 @@ DeviceType Place2DeviceType(const phi::Place& place) {
   } else if (phi::is_custom_place(place)) {
     return platform::DeviceType::CUSTOM_DEVICE;
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Unsupported place %s to convert into platform::DeviceType.", place));
   }
 }
@@ -90,7 +90,7 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
     auto* cuda_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
     PADDLE_ENFORCE_NOT_NULL(
         cuda_ctx,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Failed to dynamic_cast dev_ctx into phi::GPUContext."));
 
     if (!disable_setting_default_stream_for_allocator) {
@@ -113,7 +113,7 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
     auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
     PADDLE_ENFORCE_NOT_NULL(
         custom_ctx,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Failed to dynamic_cast dev_ctx into phi::CustomContext."));
 
     if (!disable_setting_default_stream_for_allocator) {
@@ -162,9 +162,9 @@ void EmplaceDeviceContexts(
   PADDLE_ENFORCE_GT(
       places.size(),
       0,
-      phi::errors::InvalidArgument("The number of platform places should "
-                                   "be larger than 0. But received %d.",
-                                   places.size()));
+      common::errors::InvalidArgument("The number of platform places should "
+                                      "be larger than 0. But received %d.",
+                                      places.size()));
   std::set<Place> set;
   for (auto& p : places) {
     set.insert(p);
@@ -193,8 +193,8 @@ void EmplaceDeviceContexts(
           stream_priority);
 #else
       PADDLE_THROW(
-          phi::errors::Unimplemented("GPUPlace is not supported. Please "
-                                     "re-compile with WITH_GPU option."));
+          common::errors::Unimplemented("GPUPlace is not supported. Please "
+                                        "re-compile with WITH_GPU option."));
 #endif
     } else if (place.GetType() == phi::AllocationType::XPU) {
 #ifdef PADDLE_WITH_XPU
@@ -205,8 +205,8 @@ void EmplaceDeviceContexts(
           /*unused*/ stream_priority);
 #else
       PADDLE_THROW(
-          phi::errors::Unimplemented("XPUPlace is not supported. Please "
-                                     "re-compile with WITH_XPU option."));
+          common::errors::Unimplemented("XPUPlace is not supported. Please "
+                                        "re-compile with WITH_XPU option."));
 #endif
     } else if (place.GetType() == phi::AllocationType::CUSTOM) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -216,20 +216,20 @@ void EmplaceDeviceContexts(
           disable_setting_default_stream_for_allocator,
           /*unused*/ stream_priority);
 #else
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "CustomPlace is not supported. Please re-compile with "
           "WITH_CUSTOM_DEVICE "
           "option."));
 #endif
     } else if (phi::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      EmplaceDeviceContext<CUDAPinnedDeviceContext>(
+      EmplaceDeviceContext<phi::GPUPinnedContext>(
           place_to_device_context,
           place,
           disable_setting_default_stream_for_allocator,
           /*unused*/ stream_priority);
 #else
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "GPUPlace is not supported. Please re-compile with WITH_GPU "
           "option."));
 #endif
@@ -242,8 +242,8 @@ void EmplaceDeviceContexts(
           /*unused*/ stream_priority);
 #else
       PADDLE_THROW(
-          phi::errors::Unimplemented("IPUPlace is not supported. Please "
-                                     "re-compile with WITH_IPU option."));
+          common::errors::Unimplemented("IPUPlace is not supported. Please "
+                                        "re-compile with WITH_IPU option."));
 #endif
     }
   }

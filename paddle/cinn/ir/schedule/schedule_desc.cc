@@ -96,7 +96,7 @@ class PackedStepContext {
   Expr InputAt(size_t idx) const {
     PADDLE_ENFORCE_LT(idx,
                       input_range_.size(),
-                      phi::errors::InvalidArgument("idx overranges"));
+                      ::common::errors::InvalidArgument("idx overranges"));
     const auto& range = input_range_.at(idx);
     CHECK(range.second - range.first == 1) << "not single param";
     return inputs_[range.first];
@@ -106,7 +106,7 @@ class PackedStepContext {
   std::vector<Expr> InputsAt(size_t idx) const {
     PADDLE_ENFORCE_LT(idx,
                       input_range_.size(),
-                      phi::errors::InvalidArgument("idx overranges"));
+                      ::common::errors::InvalidArgument("idx overranges"));
     const auto& range = input_range_.at(idx);
     std::vector<Expr> results;
     for (size_t s = range.first; s < range.second; ++s) {
@@ -125,7 +125,7 @@ class PackedStepContext {
       ss << "Attribute cast error, idx:" << idx
          << ", get type:" << typeid(AttrType).name()
          << ", real index:" << attrs_.at(idx).index();
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
       throw ex;
     }
   }
@@ -609,7 +609,7 @@ void AttrVariantToProto(const utils::Attribute& attr,
     default:
       std::stringstream ss;
       ss << "Invalid index:" << attr.index();
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 
 #undef SET_DESC_SINGLE_ITEM
@@ -645,7 +645,7 @@ utils::Attribute AttrProtoToVariant(const proto::ScheduleDesc_Attr& attr) {
     default:
       std::stringstream ss;
       ss << "Invalid type:" << attr.DebugString();
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 
 #undef PARSE_DESC_SINGLE_ITEM
@@ -758,9 +758,10 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
 
     PackedStepContext context(step, step_kind, sch);
     step.outputs = step_kind->Apply(&context);
-    PADDLE_ENFORCE_EQ(step_proto.outputs().size(),
-                      step.outputs.size(),
-                      phi::errors::InvalidArgument("Output size not matched"));
+    PADDLE_ENFORCE_EQ(
+        step_proto.outputs().size(),
+        step.outputs.size(),
+        ::common::errors::InvalidArgument("Output size not matched"));
     for (size_t i = 0; i < step.outputs.size(); ++i) {
       name2expr[step_proto.outputs(i)] = step.outputs.at(i);
     }

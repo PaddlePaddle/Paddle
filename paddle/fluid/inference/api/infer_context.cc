@@ -155,8 +155,8 @@ void InferXPUContext::SetConvAutotuneInfo(std::string conv_autotune_file,
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        phi::errors::Unavailable("Failed to set XPU conv autotune file %s.",
-                                 conv_autotune_file));
+        common::errors::Unavailable("Failed to set XPU conv autotune file %s.",
+                                    conv_autotune_file));
   }
   if (conv_autotune_level > 0) {
     int ret;
@@ -165,8 +165,8 @@ void InferXPUContext::SetConvAutotuneInfo(std::string conv_autotune_file,
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        phi::errors::Unavailable("Failed to set XPU conv autotune  %d.",
-                                 conv_autotune_level));
+        common::errors::Unavailable("Failed to set XPU conv autotune  %d.",
+                                    conv_autotune_level));
   }
   if (conv_autotune_file_writeback) {
     int ret;
@@ -175,7 +175,7 @@ void InferXPUContext::SetConvAutotuneInfo(std::string conv_autotune_file,
         (std::to_string(conv_autotune_file_writeback)).c_str());
     PADDLE_ENFORCE_EQ(ret,
                       0,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "Failed to set XPU conv autotune writeback %d.",
                           conv_autotune_file_writeback));
   }
@@ -186,7 +186,9 @@ void InferXPUContext::SetContextOption(const char* name, const char* value) {
   int ret;
   ret = x_context()->set_option(name, value);
   PADDLE_ENFORCE_EQ(
-      ret, 0, phi::errors::Unavailable("Failed to set XPU option %s.", name));
+      ret,
+      0,
+      common::errors::Unavailable("Failed to set XPU option %s.", name));
 }
 
 void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
@@ -206,8 +208,8 @@ void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        phi::errors::Unavailable("Failed to set XPU fc autotune file %s.",
-                                 fc_autotune_file));
+        common::errors::Unavailable("Failed to set XPU fc autotune file %s.",
+                                    fc_autotune_file));
   }
   if (fc_autotune_level > 0) {
     int ret;
@@ -216,19 +218,19 @@ void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        phi::errors::Unavailable("Failed to set XPU fc autotune  %d.",
-                                 fc_autotune_level));
+        common::errors::Unavailable("Failed to set XPU fc autotune  %d.",
+                                    fc_autotune_level));
   }
   if (fc_autotune_file_writeback) {
     int ret;
     ret = x_context()->set_option(
         "XPU_FC_AUTOTUNE_WRITEBACK",
         (std::to_string(fc_autotune_file_writeback)).c_str());
-    PADDLE_ENFORCE_EQ(
-        ret,
-        0,
-        phi::errors::Unavailable("Failed to set XPU fc autotune writeback %d.",
-                                 fc_autotune_file_writeback));
+    PADDLE_ENFORCE_EQ(ret,
+                      0,
+                      common::errors::Unavailable(
+                          "Failed to set XPU fc autotune writeback %d.",
+                          fc_autotune_file_writeback));
   }
 }
 

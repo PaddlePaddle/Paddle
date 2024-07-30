@@ -158,7 +158,7 @@ struct MergeReduceTreeOperation {
     PADDLE_ENFORCE_EQ(
         node->downstream().size(),
         1,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The downstream of the ReduceTree node should be 1, but got %d.",
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
@@ -177,7 +177,7 @@ struct MergeReduceTreeAndTrivialOperation {
     PADDLE_ENFORCE_EQ(
         node->downstream().size(),
         1,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The downstream of the ReduceTree node should be 1, but got %d.",
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
@@ -257,14 +257,14 @@ struct HorizontalFusionOperation {
     PADDLE_ENFORCE_EQ(
         GetPatternName(i->stmt_pattern()),
         HorizontalFusionPattern<Phrase>::name(),
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The pattern of the first node should be HorizontalFusionPattern, "
             "but got %s.",
             GetPatternName(i->stmt_pattern())));
     PADDLE_ENFORCE_EQ(
         GetPatternName(j->stmt_pattern()),
         HorizontalFusionPattern<Phrase>::name(),
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The pattern of the second node should be HorizontalFusionPattern, "
             "but got %s.",
             GetPatternName(j->stmt_pattern())));

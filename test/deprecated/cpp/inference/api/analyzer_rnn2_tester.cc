@@ -146,17 +146,17 @@ TEST(Analyzer_rnn2, profile) {
     PADDLE_ENFORCE_GT(
         outputs.size(),
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     auto output = outputs.back();
     PADDLE_ENFORCE_GT(
         output.size(),
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(
         size,
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
     for (size_t i = 0; i < size; i++) {
       EXPECT_NEAR(result[i], result_data[i], 1e-3);

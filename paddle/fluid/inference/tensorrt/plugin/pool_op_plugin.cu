@@ -181,7 +181,7 @@ nvinfer1::DimsExprs PoolPluginDynamic::getOutputDimensions(
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nb_inputs,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Split plugin should be only one input."));
 
   nvinfer1::DimsExprs output(inputs[0]);
@@ -259,16 +259,16 @@ bool PoolPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   return ((in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
@@ -279,16 +279,16 @@ nvinfer1::DataType PoolPluginDynamic::getOutputDataType(
     int index,
     const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(
-      index,
-      0,
-      phi::errors::InvalidArgument("The Pool Plugin only has one input, so the "
-                                   "index value should be 0, but get %d.",
-                                   index));
+  PADDLE_ENFORCE_EQ(index,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The Pool Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   PADDLE_ENFORCE_EQ(
       (input_types[0] == nvinfer1::DataType::kFLOAT),
       true,
-      phi::errors::InvalidArgument("The input type should be float"));
+      common::errors::InvalidArgument("The input type should be float"));
   return input_types[0];
 }
 

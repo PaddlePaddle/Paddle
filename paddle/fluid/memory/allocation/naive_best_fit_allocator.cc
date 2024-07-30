@@ -156,16 +156,17 @@ void *Alloc<phi::XPUPlace>(const phi::XPUPlace &place, size_t size) {
   PADDLE_ENFORCE_EQ(
       ret,
       XPU_SUCCESS,
-      phi::errors::External("XPU API return wrong value[%d], no enough memory",
-                            ret));
+      common::errors::External(
+          "XPU API return wrong value[%d], no enough memory", ret));
   if (FLAGS_init_allocated_mem) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "xpu memory FLAGS_init_allocated_mem is not implemented."));
   }
   VLOG(10) << "  pointer=" << p;
   return p;
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied("'XPUPlace' is not supported."));
+  PADDLE_THROW(
+      common::errors::PermissionDenied("'XPUPlace' is not supported."));
   return nullptr;
 #endif
 }
@@ -179,7 +180,8 @@ void Free<phi::XPUPlace>(const phi::XPUPlace &place, void *p, size_t size) {
   phi::backends::xpu::XPUDeviceGuard guard(place.device);
   xpu_free(p);
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied("'XPUPlace' is not supported."));
+  PADDLE_THROW(
+      common::errors::PermissionDenied("'XPUPlace' is not supported."));
 #endif
 }
 
@@ -188,7 +190,8 @@ uint64_t Release<phi::XPUPlace>(const phi::XPUPlace &place) {
 #ifdef PADDLE_WITH_XPU
   LOG(WARNING) << "Release XPU pool is not supported now, no action here.";
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied("'XPUPlace' is not supported."));
+  PADDLE_THROW(
+      common::errors::PermissionDenied("'XPUPlace' is not supported."));
 #endif
   return -1;
 }
@@ -199,7 +202,8 @@ size_t Used<phi::XPUPlace>(const phi::XPUPlace &place) {
   printf("Used func return 0 for XPUPlace\n");
   return 0;
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied("'XPUPlace' is not supported."));
+  PADDLE_THROW(
+      common::errors::PermissionDenied("'XPUPlace' is not supported."));
 #endif
 }
 
@@ -232,7 +236,7 @@ class GPUBuddyAllocatorList {
         devices_.begin(), std::find(devices_.begin(), devices_.end(), gpu_id));
     PADDLE_ENFORCE_LT(pos,
                       devices_.size(),
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "The index exceeds the size of devices, the size of "
                           "devices is %d, the index is %d",
                           devices_.size(),
@@ -278,7 +282,7 @@ size_t Used<phi::GPUPlace>(const phi::GPUPlace &place) {
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP)
   return GetGPUBuddyAllocator(place.device)->Used();
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CUDAPlace' is not supported in CPU only device."));
 #endif
 }
@@ -292,7 +296,7 @@ void *Alloc<phi::GPUPlace>(const phi::GPUPlace &place, size_t size) {
     platform::CUDADeviceGuard guard(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
-    PADDLE_THROW(phi::errors::ResourceExhausted(
+    PADDLE_THROW(common::errors::ResourceExhausted(
         "Cannot allocate %s in GPU %d, available %s, total %s, GpuMinChunkSize "
         "%s, GpuMaxChunkSize %s, GPU memory used: %s.",
         string::HumanReadableSize(size),
@@ -313,7 +317,7 @@ void *Alloc<phi::GPUPlace>(const phi::GPUPlace &place, size_t size) {
   }
   return ptr;
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CUDAPlace' is not supported in CPU only device."));
 #endif
 }
@@ -323,7 +327,7 @@ void Free<phi::GPUPlace>(const phi::GPUPlace &place, void *p, size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   GetGPUBuddyAllocator(place.device)->Free(p);
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CUDAPlace' is not supported in CPU only device."));
 #endif
 }
@@ -333,7 +337,7 @@ uint64_t Release<phi::GPUPlace>(const phi::GPUPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return GetGPUBuddyAllocator(place.device)->Release();
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CUDAPlace' is not supported in CPU only device."));
 #endif
 }
@@ -359,7 +363,7 @@ size_t Used<phi::GPUPinnedPlace>(const phi::GPUPinnedPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return GetCUDAPinnedBuddyAllocator()->Used();
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CUDAPinnedPlace' is not supported in CPU only device."));
 #endif
 }
@@ -380,7 +384,7 @@ void *Alloc<phi::GPUPinnedPlace>(const phi::GPUPinnedPlace &place,
   }
   return ptr;
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CUDAPinnedPlace' is not supported in CPU only device."));
 #endif
 }
@@ -393,7 +397,7 @@ void Free<phi::GPUPinnedPlace>(const phi::GPUPinnedPlace &place,
   VLOG(10) << "Free " << size << " bytes on " << phi::Place(place);
   GetCUDAPinnedBuddyAllocator()->Free(p);
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CUDAPinnedPlace' is not supported in CPU only device."));
 #endif
 }
@@ -404,7 +408,7 @@ uint64_t Release<phi::GPUPinnedPlace>(const phi::GPUPinnedPlace &place) {
   VLOG(10) << "Release on " << phi::Place(place);
   return GetCUDAPinnedBuddyAllocator()->Release();
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CUDAPinnedPlace' is not supported in CPU only device."));
 #endif
 }
@@ -438,7 +442,7 @@ class BuddyAllocatorList {
   BuddyAllocator *Get(int dev_id) {
     PADDLE_ENFORCE_NE(init_flags_.find(dev_id),
                       init_flags_.end(),
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "Cannot find %s %d, please check visible devices.",
                           device_type_,
                           dev_id));
@@ -474,7 +478,7 @@ BuddyAllocator *GetBuddyAllocator(const phi::Place &place) {
     return BuddyAllocatorList::Instance(phi::PlaceHelper::GetDeviceType(place))
         ->Get(phi::PlaceHelper::GetDeviceId(place));
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("place must be CustomPlace"));
+    PADDLE_THROW(common::errors::InvalidArgument("place must be CustomPlace"));
   }
 }
 #endif
@@ -490,7 +494,7 @@ void *Alloc<phi::CustomPlace>(const phi::CustomPlace &place, size_t size) {
     phi::DeviceGuard guard(place);
     size_t avail, total;
     phi::DeviceManager::MemoryStats(place, &total, &avail);
-    PADDLE_THROW(phi::errors::ResourceExhausted(
+    PADDLE_THROW(common::errors::ResourceExhausted(
         "Cannot allocate %s in %s:%d, available %s, total %s, used "
         "%s. ",
         string::HumanReadableSize(size),
@@ -507,7 +511,7 @@ void *Alloc<phi::CustomPlace>(const phi::CustomPlace &place, size_t size) {
   VLOG(10) << "  pointer=" << ptr;
   return ptr;
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CustomPlace' is not supported in CPU only device."));
 #endif
 }
@@ -522,7 +526,7 @@ void Free<phi::CustomPlace>(const phi::CustomPlace &place,
     GetBuddyAllocator(place)->Free(p);
   }
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CustomPlace' is not supported in CPU only device."));
 #endif
 }
@@ -532,7 +536,7 @@ uint64_t Release<phi::CustomPlace>(const phi::CustomPlace &place) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   return GetBuddyAllocator(place)->Release();
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CustomPlace' is not supported in CPU only device."));
 #endif
 }
@@ -542,7 +546,7 @@ size_t Used<phi::CustomPlace>(const phi::CustomPlace &place) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   return GetBuddyAllocator(place)->Used();
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CustomPlace' is not supported in CPU only device."));
 #endif
 }
@@ -592,7 +596,7 @@ size_t Usage::operator()(const phi::GPUPlace &gpu) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return Used(gpu);
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CUDAPlace' is not supported in CPU only device."));
 #endif
 }
@@ -601,7 +605,7 @@ size_t Usage::operator()(const phi::GPUPinnedPlace &cuda_pinned) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return Used(cuda_pinned);
 #else
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "'CUDAPinnedPlace' is not supported in CPU only device."));
 #endif
 }

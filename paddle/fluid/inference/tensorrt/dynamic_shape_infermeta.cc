@@ -180,12 +180,12 @@ nvinfer1::DimsExprs YoloBoxInferMeta(
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
-  PADDLE_ENFORCE_EQ(
-      nb_inputs,
-      2,
-      phi::errors::InvalidArgument("inputs of yolo_box should be equal to 2, "
-                                   "But received (%s)",
-                                   nb_inputs));
+  PADDLE_ENFORCE_EQ(nb_inputs,
+                    2,
+                    common::errors::InvalidArgument(
+                        "inputs of yolo_box should be equal to 2, "
+                        "But received (%s)",
+                        nb_inputs));
 
   const nvinfer1::DimsExprs dim_x = inputs[0];
 
@@ -271,9 +271,9 @@ nvinfer1::DimsExprs UnfoldInferMeta(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       1,
-      phi::errors::InvalidArgument("inputs of unfold should be equal to 1, "
-                                   "But received (%s)",
-                                   nb_inputs));
+      common::errors::InvalidArgument("inputs of unfold should be equal to 1, "
+                                      "But received (%s)",
+                                      nb_inputs));
 
   const nvinfer1::DimsExprs in_dims = inputs[0];
   std::vector<const nvinfer1::IDimensionExpr*> out_dims;
@@ -331,7 +331,7 @@ nvinfer1::DimsExprs ScatterNdAddInferMeta(
     const framework::OpDesc& op_desc) {
   PADDLE_ENFORCE_EQ(nb_inputs,
                     3,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "inputs of scatter_nd_add should be equal to 3, "
                         "But received (%s)",
                         nb_inputs));
@@ -347,7 +347,7 @@ nvinfer1::DimsExprs UnchangedInferMeta(
     const framework::OpDesc& op_desc) {
   PADDLE_ENFORCE_EQ(nb_inputs,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "inputs of UnchangedInferMeta should be equal to 1, "
                         "But received (%s)",
                         nb_inputs));
@@ -450,7 +450,7 @@ nvinfer1::DimsExprs PNormInferMeta(
 
   PADDLE_ENFORCE_GE(axis,
                     -x_rank,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Attr(axis) value should be in range [-R, R-1], R is "
                         "the rank of Input(X). But received axis: %d, R: %d. "
                         "Current Input(X)'s shape is=[%s].",
@@ -459,7 +459,7 @@ nvinfer1::DimsExprs PNormInferMeta(
                         x_dim.d));
   PADDLE_ENFORCE_LT(axis,
                     x_rank,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Attr(axis) value should be in range [-R, R-1], R is "
                         "the rank of Input(X). But received axis: %d, R: %d. "
                         "Current Input(X)'s shape is=[%s].",
@@ -471,7 +471,7 @@ nvinfer1::DimsExprs PNormInferMeta(
   PADDLE_ENFORCE_EQ(
       asvector,
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "p_norm only support asvector=false, but received asvector: %d.",
           asvector));
 
@@ -709,18 +709,18 @@ nvinfer1::DimsExprs MemoryEfficientAttentionInferMeta(
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
-  PADDLE_ENFORCE_LE(
-      output_index,
-      2,
-      phi::errors::InvalidArgument("memory_efficient_attention only has three "
-                                   "output, but received asvector: %d.",
-                                   output_index));
+  PADDLE_ENFORCE_LE(output_index,
+                    2,
+                    common::errors::InvalidArgument(
+                        "memory_efficient_attention only has three "
+                        "output, but received asvector: %d.",
+                        output_index));
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       8,
-      phi::errors::InvalidArgument("memory_efficient_attention has three "
-                                   "input, but received asvector: %d.",
-                                   nb_inputs));
+      common::errors::InvalidArgument("memory_efficient_attention has three "
+                                      "input, but received asvector: %d.",
+                                      nb_inputs));
   if (output_index == 0) {
     return inputs[0];
   } else if (output_index == 1) {
@@ -905,9 +905,9 @@ nvinfer1::DimsExprs ScatterInferMeta(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       3,
-      phi::errors::InvalidArgument("inputs of scatter should be equal to 3, "
-                                   "But received (%s)",
-                                   nb_inputs));
+      common::errors::InvalidArgument("inputs of scatter should be equal to 3, "
+                                      "But received (%s)",
+                                      nb_inputs));
   const nvinfer1::DimsExprs ref_dims = inputs[0];
   return ref_dims;
 }
@@ -936,9 +936,9 @@ nvinfer1::DimsExprs SolveInferMeta(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       2,
-      phi::errors::InvalidArgument("inputs of solve should be equal to 2, "
-                                   "But received (%s)",
-                                   nb_inputs));
+      common::errors::InvalidArgument("inputs of solve should be equal to 2, "
+                                      "But received (%s)",
+                                      nb_inputs));
   const nvinfer1::DimsExprs ref_dims = inputs[1];
   return ref_dims;
 }

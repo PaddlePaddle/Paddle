@@ -64,6 +64,7 @@ def build_comp_desc_from_op(op):
             var = get_var_with_recursion(var_name, op.block, op.block.program)
             shape = var.shape
             var_desc.append((var.dtype, shape))
+            desc["dtype"] = var.dtype
         output_desc[out_name] = var_desc
     desc["outputs"] = output_desc
 
@@ -166,6 +167,7 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                     shard_sizes,
                 )
                 var_desc.append((var.dtype, shape))
+                desc["dtype"] = var.dtype
 
                 # For special op such as fill_constant_batch_size_like
                 if op.type == "fill_constant_batch_size_like":
@@ -377,7 +379,9 @@ def build_comp_costs_from_descs(op_cost_class, ctx, processes, descs, cluster):
     """Build comp costs by descriptions."""
     costs = {}
     for process in processes:
-        costs[process] = op_cost_class(op_desc=descs[process], cluster=cluster)
+        costs[process] = op_cost_class(
+            op_desc=descs[process], cluster=cluster, rank=process
+        )
     return costs
 
 
@@ -464,8 +468,9 @@ def build_dp_costs(
             desc["inputs"]["X"] = [(var.dtype, shape)]
             attrs = {"scale": 1.0 / dp_degree}
             desc["attrs"] = attrs
+            desc["dtype"] = var.dtype
             scale_op_cost = _g_op_cost_factory["scale"](
-                op_desc=desc, cluster=cluster
+                op_desc=desc, cluster=cluster, rank=rank
             )
             scale_costs[rank] = scale_op_cost
         result.append(scale_costs)
@@ -862,11 +867,12 @@ class CommOpCost(OpCost):
 class CompOpCost(OpCost):
     OP_TYPE = "COMP"
 
-    def __init__(self, op=None, op_desc=None, cluster=None):
+    def __init__(self, op=None, op_desc=None, cluster=None, rank=None):
         super().__init__(op=op, op_desc=op_desc)
         self._check_comp_op_type()
-        self._cost = self.calc_cost()
         self.cluster = cluster
+        self.rank = rank
+        self._cost = self.calc_cost()
 
     @classmethod
     def _check_comp_op_type(cls):
@@ -875,6 +881,17 @@ class CompOpCost(OpCost):
                 raise TypeError(
                     f"Please Check op type not in {NON_COMP_TYPE}, but got {cls.OP_TYPE}."
                 )
+
+    def get_rank_gflops(self, rank, dtype):
+        device = self.cluster.get_device(rank)
+        gflops = 7800
+        if dtype == paddle.float64:
+            gflops = device.dp_gflops
+        elif dtype == paddle.float32:
+            gflops = device.sp_gflops
+        elif dtype == paddle.float16 or dtype == paddle.bfloat16:
+            gflops = device.hp_gflops
+        return gflops
 
     def calc_flops(self):
         if not self.op_desc:
@@ -891,8 +908,15 @@ class CompOpCost(OpCost):
         )
 
     def calc_time(self):
+        if self.rank is None or self.op_desc is None:
+            device_gflops = 7800
+        else:
+            device_gflops = self.get_rank_gflops(
+                self.rank, self.op_desc["dtype"]
+            )
         flops_count = self.calc_flops()
-        return flops_count * 2.9e-7
+        utilization_rate = 0.65
+        return flops_count / (utilization_rate * device_gflops) * 1e-3
 
 
 def register_op_cost(cls):

@@ -63,7 +63,7 @@ void IrPrinter::Visit(const IntImm *x) {
   } else {
     std::stringstream ss;
     ss << "Not support int type: " << x->type();
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 }
 void IrPrinter::Visit(const UIntImm *x) {
@@ -87,7 +87,7 @@ void IrPrinter::Visit(const UIntImm *x) {
   } else {
     std::stringstream ss;
     ss << "Not support uint type: " << x->type();
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -153,7 +153,7 @@ void IrPrinter::Visit(const FloatImm *x) {
   } else {
     std::stringstream ss;
     ss << "Not support float type: " << x->type();
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   str_ += ss.str();
 }
@@ -580,10 +580,10 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
   // print block vars and bindings
   auto iter_vars = schedule_block->iter_vars;
   auto iter_values = x->iter_values;
-  PADDLE_ENFORCE_EQ(
-      iter_vars.size(),
-      iter_values.size(),
-      phi::errors::InvalidArgument("iter_vars.size() != iter_values.size()"));
+  PADDLE_ENFORCE_EQ(iter_vars.size(),
+                    iter_values.size(),
+                    ::common::errors::InvalidArgument(
+                        "iter_vars.size() != iter_values.size()"));
   IncIndent();
   if (!iter_vars.empty()) DoIndent();
   for (std::size_t i = 0; i < iter_vars.size(); i++) {

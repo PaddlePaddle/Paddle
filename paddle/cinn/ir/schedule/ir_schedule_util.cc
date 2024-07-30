@@ -45,7 +45,7 @@ Tensor GetTensor(const Expr& block) {
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
   PADDLE_ENFORCE_EQ(find_tensor.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "One block should only have one Store node!(except for "
                         "root block)"));
   CHECK((*find_tensor.begin()).As<ir::Store>()->tensor.as_tensor());
@@ -60,7 +60,7 @@ Tensor GetReadTensor(const Expr& block, int index) {
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
   PADDLE_ENFORCE_EQ(find_tensor.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "One block should only have one Store node!(except for "
                         "root block)"));
   std::vector<Tensor> res;
@@ -73,14 +73,14 @@ Tensor GetReadTensor(const Expr& block, int index) {
   PADDLE_ENFORCE_EQ(
       find_read_tensor.size(),
       res.size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The number of Load nodes should be equal to the number "
           "of read tensors!"));
   CHECK(!find_read_tensor.empty()) << "Didn't find Load tensor in block!";
   PADDLE_ENFORCE_LT(
       index,
       (int)find_read_tensor.size(),
-      phi::errors::InvalidArgument("Index is not < read tensor's size!"));
+      ::common::errors::InvalidArgument("Index is not < read tensor's size!"));
   return res[index];
 }
 
@@ -126,7 +126,7 @@ void SetCudaAxisInfo(Expr* lowered_func) {
           info.set_grid_dim(bind_info.offset, range);
         }
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(::common::errors::InvalidArgument(
             "The for loop's bind info should be gpu block or thread!"));
       }
     }
@@ -222,7 +222,7 @@ void ReplaceExpr(Expr* source,
   PADDLE_ENFORCE_EQ(
       replaced.size(),
       candidates.size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "In ReplaceExpr, the size of Vars to be replaced must "
           "be equal to the size of candidate Exprs! Please check."));
   if (replaced.empty()) return;
@@ -310,20 +310,20 @@ void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis) {
       true);
   PADDLE_ENFORCE_EQ(block_nodes.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Rfactor Loop should only have one schedule block!"));
   auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
       rf_loop, [&](const Expr* x) { return x->As<Store>(); }, true);
   PADDLE_ENFORCE_EQ(find_store.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Rfactor Loop should only have one Store node!"));
   auto indice = find_store.begin()->As<Store>()->indices;
   // check rf_axis
   PADDLE_ENFORCE_LE(
       rf_axis,
       indice.size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "rf_axis should not be greater than store's domain size"));
   // check rfactor loop is reduce
   auto* sch_block_realize = block_nodes.begin()->As<ScheduleBlockRealize>();
@@ -333,7 +333,7 @@ void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis) {
   auto& iter_vars = sch_block->iter_vars;
   PADDLE_ENFORCE_EQ(iter_values.size(),
                     iter_vars.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "iter_values size should be equal to iter_vars size"));
   auto rf_loop_var = rf_for->loop_var;
   Var rf_block_var;
@@ -361,7 +361,7 @@ std::vector<Expr> GetLoopsOfExpr(const Expr& expr, const Expr& root) {
   if (result.empty()) {
     std::stringstream ss;
     ss << "Didn't find expr's : \n" << expr << "\n loops in root : \n" << root;
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   std::sort(result.begin(), result.end(), [&](Expr i, Expr j) {
     return (utils::GetStreamCnt(i).size() > utils::GetStreamCnt(j).size());
@@ -374,7 +374,7 @@ IterRange GetAccessedRange(const Expr& index,
                            const std::vector<IterRange>& iter_ranges) {
   PADDLE_ENFORCE_EQ(iter_vars.size(),
                     iter_ranges.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of iter_vars should be equal to the size of "
                         "iter_ranges! Please check."));
   std::vector<Expr> var_mins, var_maxs;
@@ -466,14 +466,14 @@ std::vector<IterRange> CalculateTensorRegions(
       if (tensor->buffer.defined()) {
         PADDLE_ENFORCE_GT((int)tensor->buffer->shape.size(),
                           i,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of tensor's shape should be greater "
                               "than or equal to the size of tensor_indices!"));
         result.emplace_back(IterRange(Expr(0), tensor->buffer->shape[i]));
       } else {
         PADDLE_ENFORCE_GT((int)tensor->shape.size(),
                           i,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of tensor's shape should be greater "
                               "than or equal to the size of tensor_indices!"));
         result.emplace_back(IterRange(Expr(0), tensor->shape[i]));
@@ -500,13 +500,13 @@ Expr GetNthAccessExpr(const Expr& block, int index, bool is_write) {
         });
     PADDLE_ENFORCE_EQ(find_store.size(),
                       find_store_vec.size(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The number of Store nodes should be equal to the "
                           "number of find_store_vec!"));
     PADDLE_ENFORCE_LT(
         index,
         (int)find_store.size(),
-        phi::errors::InvalidArgument("Index is not < store's size!"));
+        ::common::errors::InvalidArgument("Index is not < store's size!"));
     Expr store_index = find_store_vec[index];
     return store_index;
   } else {
@@ -518,13 +518,13 @@ Expr GetNthAccessExpr(const Expr& block, int index, bool is_write) {
         });
     PADDLE_ENFORCE_EQ(find_load.size(),
                       find_load_vec.size(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The number of Load nodes should be equal to the "
                           "number of find_load_vec!"));
     PADDLE_ENFORCE_LT(
         index,
         (int)find_load.size(),
-        phi::errors::InvalidArgument("Index is not < load's size!"));
+        ::common::errors::InvalidArgument("Index is not < load's size!"));
     Expr load_index = find_load_vec[index];
     return load_index;
   }
@@ -612,7 +612,7 @@ void FindInsertionPoint(const Expr& root, CacheBlockInfo* info, bool is_write) {
 
   PADDLE_ENFORCE_EQ(find_produce_read.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of Store nodes should be equal to 1!"));
   Expr producer = *(find_produce_read.begin());
 
@@ -639,7 +639,7 @@ const std::set<Expr, CompExpr> CollectLoopsToSet(
     CHECK(i.As<ir::For>()) << "loops should be For node! Please check.";
     auto inserted = for_loops.insert(i);
     if (!inserted.second) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "There should be no duplicate elements in loops! Please check."));
     }
   }
@@ -666,7 +666,7 @@ std::pair<Expr, Expr> GetBoundaryOfReorderRange(
       // Then loop_i should be the new top
       if (visited.count(v_for)) {
         if (v_for != top) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
+          PADDLE_THROW(::common::errors::InvalidArgument(
               "Loops in GetBoundaryOfReorderRange is not a chain! "
               "Please check."));
         }
@@ -697,7 +697,7 @@ std::vector<Expr> GetLoopsInRange(const Expr& top, const Expr& bottom) {
   for (auto loop_iter = top; loop_iter != bottom;) {
     Expr tmp = GetNextForLoop(loop_iter);
     if (!tmp.defined())
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "Loops in GetLoopsInReorderRange is not a chain! Please check."));
     chain.push_back(loop_iter);
     loop_iter = tmp;
@@ -766,7 +766,7 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
     if (loop_set.count(loop_in_chain)) {
       PADDLE_ENFORCE_GE(index,
                         0,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The index should be greater than or equal to 0!"));
       temp = ir::ir_utils::IRCopy(ordered_loops[index]);
       --index;
@@ -837,7 +837,7 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
   PADDLE_ENFORCE_EQ(
       chain.size(),
       reordered_loop_chain.size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "origin loop chain size not equals reordered requirement "
           "when ConstructNewLoopChain in Reorder"));
   std::unordered_set<std::string> origin_loop_var_names;
@@ -864,7 +864,7 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
     PADDLE_ENFORCE_EQ(
         origin_loop_var_names.size(),
         i + 1,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Duplicate loop var name in origin Chain during Reorder"));
 
     const ir::Block* body_block = loop_in_chain->body.As<ir::Block>();
@@ -900,7 +900,7 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
       }
       PADDLE_ENFORCE_EQ(reordered_indices.size(),
                         origin_loop_var_names.size(),
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "Reordered chain loop var names doesn't match "
                             "other stmt chain loop var names"));
       // Add other stmts chain to root Block if other stmts exist
@@ -1012,7 +1012,7 @@ std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
         });
     PADDLE_ENFORCE_EQ(consumer.size(),
                       1,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The number of consumer should be equal to 1!"));
     return {*consumer.begin()};
   }
@@ -1228,7 +1228,7 @@ std::vector<IterRange> CalculateRequiredRegions(
             });
         PADDLE_ENFORCE_EQ(find_for_loops.size(),
                           1U,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The number of For nodes should be equal to 1!"));
         required_buffer_range.emplace_back(
             (*find_for_loops.begin()).As<ir::For>()->min,
@@ -1254,7 +1254,7 @@ Expr CheckComputeInlineValidationAndGetStore(const Expr& schedule_block,
       compute_body, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
   PADDLE_ENFORCE_EQ(find_store.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of Store nodes should be equal to 1!"));
   Expr tensor = (*find_store.begin()).As<ir::Store>()->tensor;
   CHECK(!tensor.as_tensor_ref()->is_reduce_tensor());
@@ -1269,7 +1269,7 @@ Expr CheckComputeInlineValidationAndGetStore(const Expr& schedule_block,
       true);
   PADDLE_ENFORCE_EQ(find_store.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of Store nodes should be equal to 1!"));
   // 3. Check there is no overlap between the buffers the schedule block reads
   // and writes.
@@ -1292,7 +1292,7 @@ std::tuple<Expr, Expr, Expr> CheckReverseComputeInlineValidationAndGetExprs(
       compute_body, [&](const Expr* x) { return x->As<ir::Load>(); }, true);
   PADDLE_ENFORCE_EQ(find_inlined_load.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of Load nodes should be equal to 1!"));
   Expr tensor = (*find_inlined_load.begin()).As<ir::Load>()->tensor;
   CHECK(!tensor.as_tensor_ref()->is_reduce_tensor());
@@ -1308,7 +1308,7 @@ std::tuple<Expr, Expr, Expr> CheckReverseComputeInlineValidationAndGetExprs(
       true);
   PADDLE_ENFORCE_EQ(find_load.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of Load nodes should be equal to 1!"));
   // 3. Check there is no overlap between the buffers the schedule block reads
   // and writes.
@@ -1324,7 +1324,7 @@ std::tuple<Expr, Expr, Expr> CheckReverseComputeInlineValidationAndGetExprs(
       });
   PADDLE_ENFORCE_EQ(find_inlined_store.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of Store nodes should be equal to 1!"));
   auto inlined_store = *find_inlined_store.begin();
   // 5. Get target store.
@@ -1332,7 +1332,7 @@ std::tuple<Expr, Expr, Expr> CheckReverseComputeInlineValidationAndGetExprs(
       compute_body, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
   PADDLE_ENFORCE_EQ(find_target_store.size(),
                     1U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of Store nodes should be equal to 1!"));
   auto target_store = *find_target_store.begin();
   return {inlined_load, inlined_store, target_store};
