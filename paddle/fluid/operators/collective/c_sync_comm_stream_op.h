@@ -67,7 +67,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
       VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
 
-    platform::GpuStreamSync(stream);
+    phi::backends::gpu::GpuStreamSync(stream);
 
 #elif defined(PADDLE_WITH_XPU_BKCL)
     auto place = ctx.GetPlace();
