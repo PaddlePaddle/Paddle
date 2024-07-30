@@ -521,7 +521,7 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
   const auto &depth_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  int depth = depth_shape_or_data.data();
+  int depth = static_cast<int>(depth_shape_or_data.data());
 
   std::vector<symbol::DimExpr> out_dims_vec = x_dims;
   out_dims_vec.push_back(symbol::DimExpr(depth));
