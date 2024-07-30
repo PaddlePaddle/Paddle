@@ -71,8 +71,8 @@ class QuantConfig:
     the strategies of quantization.
 
     Args:
-        activation(QuanterFactory|None): The global quantizer used to quantize the activations.
-        weight(QuanterFactory|None): The global quantizer used to quantize the weights.
+        activation(QuanterFactory | None): The global quantizer used to quantize the activations.
+        weight(QuanterFactory | None): The global quantizer used to quantize the weights.
 
     Examples:
         .. code-block:: python
@@ -117,8 +117,8 @@ class QuantConfig:
 
         Args:
             layer(Layer|list[Layer]]): One or a list of layers.
-            activation(QuanterFactory| None): Quanter used for activations.
-            weight(QuanterFactory| None): Quanter used for weights.
+            activation(QuanterFactory | None): Quanter used for activations. Default is None.
+            weight(QuanterFactory | None): Quanter used for weights. Default is None.
 
         Examples:
             .. code-block:: python
@@ -166,8 +166,8 @@ class QuantConfig:
 
         Args:
             layer_name(str|list[str]): One or a list of layers' full name.
-            activation(QuanterFactory| None): Quanter used for activations.
-            weight(QuanterFactory| None): Quanter used for weights.
+            activation(QuanterFactory | None): Quanter used for activations. Default is None.
+            weight(QuanterFactory | None): Quanter used for weights. Default is None.
 
         Examples:
             .. code-block:: python
@@ -205,8 +205,8 @@ class QuantConfig:
     def add_type_config(
         self,
         layer_type: type[Layer] | list[type[Layer]],
-        activation: QuanterFactory = None,
-        weight: QuanterFactory = None,
+        activation: QuanterFactory | None = None,
+        weight: QuanterFactory | None = None,
     ) -> None:
         r"""
         Set the quantization config by the type of layer. The `layer_type` should be
@@ -216,8 +216,8 @@ class QuantConfig:
         Args:
             layer_type(type[Layer] | list[type[Layer]]): One or a list of layers' type. It should be subclass of
             `paddle.nn.Layer`. Python build-in function `type()` can be used to get the type of a layer.
-            activation(QuanterFactory): Quanter used for activations.
-            weight(QuanterFactory): Quanter used for weights.
+            activation(QuanterFactory | None): Quanter used for activations. Default is None.
+            weight(QuanterFactory | None): Quanter used for weights. Default is None.
 
         Examples:
             .. code-block:: python
