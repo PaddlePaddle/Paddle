@@ -2429,7 +2429,6 @@ TETRAD_PARALLEL_JOB = [
     'test_tensor_methods',
     'test_imperative_partitial_backward',
     'test_inplace_auto_generated_apis',
-    'test_cost_model',
     'test_ops_roi_pool',
     'test_real_imag_op',
     'test_view_op_reuse_allocation',
