@@ -938,14 +938,14 @@ void MoeGemmRunner<T, WeightType>::run_gemm<EpilogueTag>(
                                             is_weight_only,
                                             sm_);
 
-  VLOG(1) << "chosen_config tile_config"
+  VLOG(4) << "chosen_config tile_config"
           << static_cast<int>(chosen_config.tile_config);
-  VLOG(1) << "chosen_config split_k_style"
+  VLOG(4) << "chosen_config split_k_style"
           << static_cast<int>(chosen_config.split_k_style);
-  VLOG(1) << "chosen_config split_k_factor " << chosen_config.split_k_factor;
-  VLOG(1) << "chosen_config stages " << chosen_config.stages;
+  VLOG(4) << "chosen_config split_k_factor " << chosen_config.split_k_factor;
+  VLOG(4) << "chosen_config stages " << chosen_config.stages;
 
-  VLOG(1) << "total_rows  " << total_rows << "gemm_n  " << gemm_n << "gemm_k  "
+  VLOG(4) << "total_rows  " << total_rows << "gemm_n  " << gemm_n << "gemm_k  "
           << gemm_k;
 
   dispatch_to_arch<EpilogueTag>(A,

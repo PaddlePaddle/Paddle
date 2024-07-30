@@ -164,7 +164,7 @@ class MoeHelper {
     const int num_experts = ffn1_dims[0];
     const int k = moe_topk;
 
-    VLOG(1) << "num_rows: " << num_rows << "   " << hidden_size << "   "
+    VLOG(4) << "num_rows: " << num_rows << "   " << hidden_size << "   "
             << inter_size << "    " << num_experts << "k " << k;
 
     DenseTensor gate_tensor = Empty<float>(ctx, {num_rows, num_experts});
@@ -172,7 +172,7 @@ class MoeHelper {
 
     int64_t bytes =
         getWorkspaceSize<T>(num_rows, hidden_size, inter_size, num_experts, k);
-    VLOG(1) << "bytes ---- " << bytes;
+    VLOG(4) << "bytes ---- " << bytes;
 
     // Pointers
     int *expert_for_source_row;
@@ -227,7 +227,7 @@ class MoeHelper {
     DenseTensor fc1_out_tensor = Empty<T>(ctx, {num_rows * k, inter_size});
     T *fc1_out = fc1_out_tensor.data<T>();
 
-    VLOG(1) << " gemm_method_ :" << gemm_method_;
+    VLOG(4) << " gemm_method_ :" << gemm_method_;
 
     DenseTensor mixgemm_workspace;
     auto gate_compute = GEMMHelper<float>(
@@ -245,7 +245,7 @@ class MoeHelper {
     float *gating_output = gate_tensor.data<float>();
 
     if (moe_token_type_ids) {
-      VLOG(1) << "moe_token_type_ids is on";
+      VLOG(4) << "moe_token_type_ids is on";
       auto *moe_token_type_ids_out = moe_token_type_ids->data<int>();
       moe_token_type_ids_kernelLauncher<float>(gating_output,
                                                moe_token_type_ids_out,
@@ -301,7 +301,7 @@ class MoeHelper {
 
     using NvType = typename phi::PDDataTypeTraits<T>::DataType;
 
-    VLOG(1) << " ENTER EXPERT \n";
+    VLOG(4) << " ENTER EXPERT \n";
 
     if (gemm_method_ == "weight_only_int8") {
       int8_moe_gemm_runner_->moe_gemm_bias_act(
@@ -429,7 +429,7 @@ class MoeHelper {
           static_cast<int>(0),
           ctx.stream());
     }
-    VLOG(1) << " Finished EXPERT \n";
+    VLOG(4) << " Finished EXPERT \n";
   }
 
  private:
