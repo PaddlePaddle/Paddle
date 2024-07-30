@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -719,7 +720,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
           "The size of outputs should be equal to inputs, but the size of "
           "outputs is %d, the size of inputs is %d",
           outputs->size(),
-          inputs.size()));
+          inputs->size()));
   std::vector<uint64_t> push_keys;
   push_keys.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<std::vector<float>> push_values;
