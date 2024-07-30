@@ -353,7 +353,7 @@ class HeterComm {
           phi::errors::InvalidArgument("The given length %u is greater than "
                                        "the memory length %u, Please Check!",
                                        len,
-                                       all_keys_mem_size()));
+                                       all_keys_mem->size()));
       PADDLE_ENFORCE_GE(
           all_grads_mem->size(),
           len * value_bytes,
