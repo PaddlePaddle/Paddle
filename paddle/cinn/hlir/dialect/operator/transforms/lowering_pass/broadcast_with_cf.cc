@@ -194,6 +194,7 @@ std::optional<std::vector<OpLoweringGroupPtr>> GetBroadcastGroupListForOptimize(
     const OpLoweringGroupPtr& group) {
   if (!FLAGS_cinn_bc_branch_optimize) return std::nullopt;
 
+  UpdateGroupShapeOrDataExprs(const_cast<OpLoweringGroupPtr&>(group));
   GroupDimExprInfo group_dim_expr_info = GetGroupDimExprInfo(group);
   if (!ContainBroadcastShape(group_dim_expr_info.all_value_dim_exprs))
     return std::nullopt;
