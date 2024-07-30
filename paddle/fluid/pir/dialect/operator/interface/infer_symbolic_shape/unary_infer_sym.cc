@@ -127,7 +127,6 @@ bool AsComplexOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
-  
 bool AsRealOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
@@ -144,6 +143,24 @@ bool AsRealOpInferSymbolicShape(pir::Operation *op,
       symbol::TensorShapeOrDataDimExprs(out_dims)};
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
+}
+
+bool BipartiteMatchOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &dist_mat_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &dims = dist_mat_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      dims.size(),
+      2,
+      phi::errors::InvalidArgument("The rank of Input(DistMat) must be 2."));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), dist_mat_shape_or_data);
+
+  infer_context->SetShapeOrDataForValue(op->result(1), dist_mat_shape_or_data);
+
   return true;
 }
 
@@ -190,24 +207,6 @@ bool ChannelShuffleOpInferSymbolicShape(
 
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
   
-  return true;
-}
-
-bool BipartiteMatchOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &dist_mat_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &dims = dist_mat_shape_or_data.shape();
-
-  PADDLE_ENFORCE_EQ(
-      dims.size(),
-      2,
-      phi::errors::InvalidArgument("The rank of Input(DistMat) must be 2."));
-
-  infer_context->SetShapeOrDataForValue(op->result(0), dist_mat_shape_or_data);
-
-  infer_context->SetShapeOrDataForValue(op->result(1), dist_mat_shape_or_data);
-
   return true;
 }
 
