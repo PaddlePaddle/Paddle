@@ -273,14 +273,12 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
                                              Expr load,
                                              Expr store_block,
                                              Expr load_block) {
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       store_block.As<ir::ScheduleBlockRealize>(),
-      true,
       phi::errors::InvalidArgument(
           "The 'store_block' must be of type 'ir::ScheduleBlockRealize'."));
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       load_block.As<ir::ScheduleBlockRealize>(),
-      true,
       phi::errors::InvalidArgument(
           "The 'load_block' must be of type 'ir::ScheduleBlockRealize'."));
   std::string store_block_name = store_block.As<ir::ScheduleBlockRealize>()
