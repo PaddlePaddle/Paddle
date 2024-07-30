@@ -65,16 +65,7 @@ class ArgsortOpConverter : public OpConverter {
     layer->setInput(1, *k_tensor);
     auto* Out = layer->getOutput(0);
     auto* Indices = layer->getOutput(1);
-    if (need_cast) {
-      auto* tmp_output = layer->getOutput(0);
 
-      auto* cast_layer2 = TRT_ENGINE_ADD_LAYER(engine_, Identity, *tmp_output);
-      cast_layer2->setOutputType(0, in_type);
-      cast_layer2->getOutput(0)->setType(in_type);
-
-      Out = cast_layer2->getOutput(0);
-      Indices = layer->getOutput(1);
-    }
     if (x_rank == 1) {
       nvinfer1::Dims squeeze_shape;
       squeeze_shape.nbDims = 1;
@@ -83,16 +74,16 @@ class ArgsortOpConverter : public OpConverter {
       Indices = Reshape(Indices, squeeze_shape);
     }
 
-    std::string layer_name = "argsort (Output: ";
-    Out->setName(output_name.c_str());
-    engine_->SetITensor(output_name, Out);
-    layer_name += output_name + ", ";
+    auto* out_layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *Out);
+    out_layer->setOutputType(0, in_type);
+    out_layer->getOutput(0)->setType(in_type);
+    ReplenishLayerAndOutput(out_layer, "argsort", {output_name}, test_mode);
 
-    Indices->setName(indices_name.c_str());
-    engine_->SetITensor(indices_name, Indices);
-    layer_name += indices_name;
-
-    layer->setName((layer_name + ")").c_str());
+    auto* indices_layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *Indices);
+    indices_layer->setOutputType(0, Indices->getType());
+    indices_layer->getOutput(0)->setType(Indices->getType());
+    ReplenishLayerAndOutput(
+        indices_layer, "argsort", {indices_name}, test_mode);
   }
 };
 
