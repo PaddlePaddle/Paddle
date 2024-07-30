@@ -1320,6 +1320,38 @@ function check_sequence_op_unittest(){
     /bin/bash ${PADDLE_ROOT}/tools/check_sequence_op.sh
 }
 
+function check_cinn_file_diff() {
+    CINN_FILE_LIST=(
+        CMakeLists.txt
+        cmake
+        paddle/cinn
+        python/cinn
+        python/CMakeLists.txt
+        python/setup_cinn.py.in
+        test/CMakeLists.txt
+        test/cinn
+        test/cpp/cinn
+        tools/cinn
+    )
+
+    run_cinn_ut="OFF"
+    for change_fie in $(git diff --name-only upstream/develop);
+    do
+      for cinn_file in ${CINN_FILE_LIST[@]};
+      do
+        if [[ ${change_fie} =~ ^"${cinn_file}".* ]]; then
+          run_cinn_ut="ON"
+          break
+        fi
+      done
+      if [[ "ON" == ${run_cinn_ut} ]]; then
+        break
+      fi
+    done
+    echo $run_cinn_ut
+
+}
+
 
 
 function assert_api_spec_approvals() {
@@ -2727,7 +2759,51 @@ set +x
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
         test_cases=$(ctest -N -V) # get all test cases
 
+        pushd ${PADDLE_ROOT}/build/paddle/cinn
+        ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_cinn_ut_list_tmp
+        popd
+        pushd ${PADDLE_ROOT}/build/test/cinn
+        ctest -N -E "test_paddle_model_convertor|test_cinn_fake_resnet|test_cinn_sub_graph_map_expr|test_assign_value_op_mapper|test_batch_norm_op"  | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' >> ${PADDLE_ROOT}/build/all_cinn_ut_list_tmp
+        popd
+        ctest -N -L "RUN_TYPE=CINN" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' >> ${PADDLE_ROOT}/build/all_cinn_ut_list_tmp
+        cat ${PADDLE_ROOT}/build/all_cinn_ut_list_tmp | sort | uniq > ${PADDLE_ROOT}/build/all_cinn_ut_list
+        echo "========================================"
+        echo "all_cinn_ut_list: "
+        cat ${PADDLE_ROOT}/build/all_cinn_ut_list
+        echo "========================================"
+
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
+
+        run_cinn_ut=`check_cinn_file_diff`
+        if [[ "OFF" == ${run_cinn_ut} ]]; then
+          echo "No CINN-related changes were found"
+          echo "Skip CINN UT CI"
+        else
+            # run cinn ut
+            cinn_ut_startTime_s=`date +%s`
+            while read line
+            do
+                card_test "$line" 1
+            done < $PADDLE_ROOT/tools/cinn_case_file
+            cinn_ut_endTime_s=`date +%s`
+            echo "ipipe_log_param_cinn_TestCases_Total_Time: $[ $cinn_ut_endTime_s - $cinn_ut_startTime_s ]s"
+            echo "ipipe_log_param_cinn_TestCases_Total_Time: $[ $cinn_ut_endTime_s - $cinn_ut_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
+
+            # pr-ci-cinn-gpu
+            export LD_LIBRARY_PATH=/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+            export LD_LIBRARY_PATH=/usr/local/lib/python3.9/dist-packages/paddle/libs:${LD_LIBRARY_PATH}
+            export LD_LIBRARY_PATH=${PADDLE_ROOT}/build/python/paddle/libs/:${LD_LIBRARY_PATH}
+            pip install nvidia-pyindex
+            pip install nvidia-tensorrt
+            pip install xgboost
+            bash ${PADDLE_ROOT}/tools/cinn/build.sh prepare_model
+            bash ${PADDLE_ROOT}/tools/cinn/build.sh run_demo 2>&1 | tee /dev/null
+            demo_test=${PIPESTATUS[0]}
+            if [[ ${demo_test} -ne 0 ]];then
+                echo -e "\033[31mcinn demo test failed\033[0m"
+                exit -1
+            fi
+        fi
 
         single_ut_mem_0_startTime_s=`date +%s`
         while read line
@@ -3058,8 +3134,6 @@ function parallel_test() {
         else
             echo "skip parallel_test_base_hybrid when compiling PaddlePaddle without NVIDIA GPU or ROCM platform"
         fi
-    elif [ "$WITH_CINN" == "ON" ];then
-        parallel_test_base_cinn
     elif [ "$WITH_GPU" == "ON" ] && [ "$WITH_HETERPS" == "ON" ];then
         parallel_test_base_gpups
     elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
@@ -4529,6 +4603,9 @@ function main() {
         check_coverage
         ;;
       cpu_cicheck_coverage)
+        if [ "$WITH_CINN" == "ON" ];then
+            export PADDLE_CUDA_INSTALL_REQUIREMENTS=${PADDLE_CUDA_INSTALL_REQUIREMENTS:-ON}
+        fi
         check_diff_file_for_coverage
         export ON_INFER=ON PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}

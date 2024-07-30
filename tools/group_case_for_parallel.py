@@ -44,6 +44,11 @@ def group_case_for_parallel(rootPath):
     nightly_tests = nightly_tests_file.read().strip().split('\n')
     nightly_tests_file.close()
 
+    # get cinn tests
+    cinn_tests_file = open(f'{rootPath}/build/all_cinn_ut_list', 'r')
+    cinn_cases = cinn_tests_file.read().strip().split('\n')
+    cinn_tests_file.close()
+
     parallel_case_file_list = [
         f'{rootPath}/tools/single_card_tests_mem0',
         f'{rootPath}/tools/single_card_tests',
@@ -69,6 +74,24 @@ def group_case_for_parallel(rootPath):
     print(f"case_file: {case_file}")
 
     all_group_case = []
+    new_cinn_cases_list = list(
+        set(all_need_run_cases).intersection(set(cinn_cases))
+    )
+    if len(new_cinn_cases_list) != 0:
+        all_group_case += new_cinn_cases_list
+        all_need_run_cases = list(
+            set(all_need_run_cases).difference(set(all_group_case))
+        )
+    cases = '$|^'.join(new_cinn_cases_list)
+    cases = f'^job$|^{cases}$'
+    cinn_f = open(f'{rootPath}/tools/cinn_case_file', 'w')
+    cinn_f.write(cases + '\n')
+    cinn_f.close()
+    print(
+        "new_cinn_cases_list is same as all_cinn_ut_list: ",
+        len(new_cinn_cases_list) == len(cinn_cases),
+    )
+
     for filename in parallel_case_file_list:
         fi = open(filename, 'r')
         new_f = open(f'{filename}_new', 'w')
