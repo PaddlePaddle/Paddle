@@ -47,9 +47,11 @@ std::vector<std::vector<int64_t>> LinearInferShape(
       0,
       phi::errors::InvalidArgument("The Input(x) dims size must be greater "
                                    "than 0, but received dims size is 0. "));
-  PD_CHECK(ndims_y > 0,
-           "The Input(y) dims size must be greater than 0,"
-           " but received dims size is 0. ");
+  PADDLE_ENFORCE_GT(
+      ndims_y,
+      0,
+      phi::errors::InvalidArgument("The Input(y) dims size must be greater "
+                                   "than 0, but received dims size is 0. "));
 
   bool x_broadcasted = false, y_broadcasted = false;
   if (ndims_x == 1) {
