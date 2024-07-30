@@ -173,7 +173,6 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 )
                 conv_layer._use_cudnn = use_cudnn
                 conv = conv_layer(data)
-                print(self.dtype)
                 bn = paddle.nn.BatchNorm(
                     num_channels=conv.shape[1]
                     if layout == "NCHW"
@@ -246,7 +245,14 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         exe.run(startup)
         (out, conv, bn, ops) = outs
         fetch_names = [out, conv, bn]
-        if not paddle.framework.use_pir_api():
+        if paddle.framework.use_pir_api():
+            fetch_names = fetch_names + [
+                ops[1].result(0),
+                ops[0].result(0),
+                ops[3].result(0),
+                ops[2].result(0),
+            ]
+        else:
             fetch_names = fetch_names + [
                 'bn_moving_mean',
                 'bn_moving_variance',
@@ -255,7 +261,6 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
             ]
         if not only_forward:
             if paddle.framework.in_pir_mode():
-                # print(1,ops)
                 others = [
                     ops[7].result(0),
                     ops[7].result(1),
@@ -283,7 +288,12 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         assert core.get_cuda_device_count() > 1
 
         if paddle.framework.in_pir_mode():
-            fetch_names = []
+            fetch_names = [
+                ops[1].result(0),
+                ops[0].result(0),
+                ops[3].result(0),
+                ops[2].result(0),
+            ]
         else:
             fetch_names = [
                 'bn_moving_mean',
