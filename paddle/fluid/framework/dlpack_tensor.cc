@@ -38,7 +38,7 @@ static ::DLDataType GetDLDataTypeCode() {
   } else if (std::is_integral<T>::value) {
     dtype.code = kDLInt;
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Unsupported data type (%s), only supports float16, float, unsigned "
         "int and int.",
         platform::demangle(typeid(T).name())));
@@ -65,8 +65,8 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
   auto it = type_to_dtype_map.find(static_cast<int>(type));
   PADDLE_ENFORCE_NE(it,
                     type_to_dtype_map_end_it,
-                    phi::errors::InvalidArgument("Unsupported data type (%s).",
-                                                 DataTypeToString(type)));
+                    common::errors::InvalidArgument(
+                        "Unsupported data type (%s).", DataTypeToString(type)));
   return it->second;
 #undef REG_DL_DATA_TYPE
 }
@@ -82,16 +82,18 @@ struct DLDeviceVisitor {
   }
 
   inline ::DLDevice operator()(const phi::IPUPlace &place) const {
-    PADDLE_THROW(phi::errors::Unimplemented("phi::IPUPlace is not supported"));
+    PADDLE_THROW(
+        common::errors::Unimplemented("phi::IPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::XPUPlace &place) const {
-    PADDLE_THROW(phi::errors::Unimplemented("phi::XPUPlace is not supported"));
+    PADDLE_THROW(
+        common::errors::Unimplemented("phi::XPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::CustomPlace &place) const {
     PADDLE_THROW(
-        phi::errors::Unimplemented("phi::CustomPlace is not supported"));
+        common::errors::Unimplemented("phi::CustomPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::GPUPlace &place) const {
@@ -101,7 +103,7 @@ struct DLDeviceVisitor {
     device.device_id = place.device;  // NOLINT
     return device;
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "phi::GPUPlace is not supported in CPU only version."));
 #endif
   }
@@ -113,7 +115,7 @@ struct DLDeviceVisitor {
     device.device_id = 0;
     return device;
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "phi::GPUPinnedPlace is not supported in CPU only version."));
 #endif
   }

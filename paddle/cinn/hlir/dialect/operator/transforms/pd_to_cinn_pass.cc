@@ -268,7 +268,15 @@ class ReshapeOpPattern
             out_shape_attr[i].dyn_cast<::pir::Int64Attribute>().data());
       }
     }
-    ReplaceWithCinnReshapeOp(op, rewriter, vec_out_shape);
+    PADDLE_ENFORCE_EQ(
+        op->num_results(),
+        1U,
+        ::common::errors::PreconditionNotMet(
+            "The size of source op outputs must be 1, but received %d.",
+            op->num_results()));
+    auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+        op->operand_source(0), vec_out_shape);
+    rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
     rewriter.EraseOp(op);
   }
 };
@@ -1040,7 +1048,6 @@ class FlattenOpPattern
     reshape_op.result(0).set_type(op.result(0).type());
 
     rewriter.ReplaceAllUsesWith(op.result(0), reshape_op.result(0));
-    rewriter.ReplaceAllUsesWith(op.result(1), reshape_op.result(1));
 
     rewriter.EraseOp(op);
   }

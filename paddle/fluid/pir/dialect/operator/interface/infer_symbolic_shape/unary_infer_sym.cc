@@ -339,6 +339,26 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   return true;
 }
 
+bool EighOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  std::vector<symbol::DimExpr> out_shape;
+  for (size_t i = 0; i < x_shape.size() - 1; ++i) {
+    out_shape.push_back(x_shape.at(i));
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+  infer_context->SetShapeOrDataForValue(
+      op->result(1), symbol::TensorShapeOrDataDimExprs(x_shape));
+  return true;
+}
+
+bool EigvalshOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return EighOpInferSymbolicShape(op, infer_context);
+}
+
 bool FftC2cOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -569,6 +589,29 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
   bool reduce_all = axis.size() == 0 ? true : false;
 
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+}
+
+bool MaxoutOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &in_x_dims = x_shape_or_data.shape();
+
+  int groups = op->attribute<pir::Int32Attribute>("groups").data();
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+
+  if (axis < 0) {
+    axis += in_x_dims.size();
+  }
+
+  std::vector<symbol::DimExpr> output_shape = in_x_dims;
+  output_shape[axis] = in_x_dims[axis] / groups;
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
 }
 
 bool MinOpInferSymbolicShape(pir::Operation *op,
@@ -835,10 +878,6 @@ bool ReshapeOpInferSymbolicShape(
   }();
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
-  infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      CreateShapeOrDataForXShape(
-          infer_context->GetShapeOrDataForValue(op->operand_source(0))));
   return true;
 }
 

@@ -1,7 +1,7 @@
 # This file is migrated from CI script, it's an effort of modenizing our dev infra.
 # Code owners are expected to take responsibility for review patches to respective file.
 
-/CMakeLists.txt @wanghuancoder @Aurelius84 @XiaoguangHu01 @qili93
+/CMakeLists.txt @wanghuancoder @Aurelius84 @XiaoguangHu01
 paddle/fluid/distributed/collective @sneaxiy @ForFishes
 paddle/fluid/eager/autograd_meta.cc @JiabinYang @phlrain
 paddle/fluid/eager/autograd_meta.h @JiabinYang @phlrain
@@ -12,20 +12,20 @@ paddle/fluid/eager/grad_node_info.h @JiabinYang @phlrain
 paddle/fluid/eager/grad_tensor_holder.cc @JiabinYang @phlrain
 paddle/fluid/eager/grad_tensor_holder.h @JiabinYang @phlrain
 paddle/fluid/eager/tensor_wrapper.h @JiabinYang @phlrain
-paddle/fluid/framework/block_desc.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/details/op_registry.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/framework.proto @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/grad_op_desc_maker.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/ir/graph.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/ir/node.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/lod_tensor.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/op_desc.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/operator.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/scope.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/selected_rows.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
-paddle/fluid/framework/tensor.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
+paddle/fluid/framework/block_desc.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/details/op_registry.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/framework.proto @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/grad_op_desc_maker.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/ir/graph.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/ir/node.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/lod_tensor.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/op_desc.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/operator.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/scope.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/selected_rows.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
+paddle/fluid/framework/tensor.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
 paddle/fluid/framework/unused_var_check.cc @zhiqiu @phlrain
-paddle/fluid/framework/var_desc.h @XiaoguangHu01 @zhiqiu @Xreki @qili93 @Aurelius84
+paddle/fluid/framework/var_desc.h @XiaoguangHu01 @zhiqiu @Xreki @Aurelius84
 paddle/fluid/operators/distributed/send_recv.proto.in @gongweibao @seiriosPlus
 paddle/fluid/prim/api/api.yaml @cxxly @xiaoguoguo626807 @Charles-hit @cyber-pioneer @JiabinYang
 paddle/fluid/prim/api/composite_backward/composite_backward_api.h @cxxly @xiaoguoguo626807 @Charles-hit @cyber-pioneer @JiabinYang

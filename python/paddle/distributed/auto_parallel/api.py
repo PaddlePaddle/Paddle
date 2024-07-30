@@ -381,6 +381,36 @@ def dtensor_from_local_list(
             mesh,
             placements,
         )
+    elif paddle.framework.in_pir_mode():
+        if local_mesh_dim == -1:
+            raise ValueError("local_mesh_dim must be set.")
+        mesh_shape = mesh.shape
+        process_ids = np.array(mesh.process_ids).reshape(mesh_shape)
+        splitted_process_ids = np.split(
+            process_ids, mesh_shape[local_mesh_dim], axis=local_mesh_dim
+        )
+        # local_process_ids = splitted_process_ids[dist.get_rank()]
+        # local_mesh = dist.ProcessMesh(local_process_ids)
+        local_mesh_list = []
+        for process_ids in splitted_process_ids:
+            local_mesh_list.append(dist.ProcessMesh(process_ids))
+        local_placements = list(placements)
+        local_placements.pop(local_mesh_dim)
+        if local_placements == []:
+            local_placements.append(dist.Replicate())
+
+        dist_tensor = paddle._C_ops.dtensor_from_local_list(
+            local_tensor_list,
+            local_mesh_list,
+            local_placements,
+            mesh,
+            placements,
+            global_dims,
+        )
+        dist_tensor.stop_gradient = local_tensor_list[0].stop_gradient
+        dist_tensor.persistable = local_tensor_list[0].persistable
+
+        return dist_tensor
     else:
         raise NotImplementedError(
             "dtensor_from_local_list() are only supported in dynamic mode."
@@ -491,6 +521,18 @@ def local_tensor_list_from_dtensor(
             global_mesh,
             global_placements,
         )
+    elif paddle.framework.in_pir_mode():
+        local_tensors = paddle._C_ops.local_tensors_from_dist(
+            dist_tensor,
+            local_mesh_list,
+            local_placements,
+            global_mesh,
+            global_placements,
+        )
+        for local_tensor in local_tensors:
+            local_tensor.stop_gradient = dist_tensor.stop_gradient
+            local_tensor.persistable = dist_tensor.persistable
+        return local_tensors
     else:
         raise NotImplementedError(
             "local_tensor_from_dist is only supported in dynamic mode."

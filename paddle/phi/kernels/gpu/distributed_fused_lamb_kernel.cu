@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/kernels/funcs/multi_tensor_apply_util.h"
 
 #include "paddle/phi/backends/context_pool.h"
@@ -33,7 +32,6 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #ifdef __NVCC__
@@ -903,30 +901,19 @@ static bool CreatePreMulScaleOpIfSupported(
     ncclRedOp_t *op,
     distributed::NCCLCommContext *comm_ctx = nullptr) {
 #if NCCL_VERSION_CODE >= 21100
-  if (FLAGS_dynamic_static_unified_comm) {
-    PADDLE_ENFORCE_NOT_NULL(
-        comm_ctx,
-        phi::errors::InvalidArgument(
-            "You choose to use new communication library by "
-            "setting environment "
-            "variable FLAGS_dynamic_static_unified_comm True. "
-            "But parameter of comm_ctx should not be nullptr."));
-    int ver = comm_ctx->GetNcclVersion();
-    if (ver >= 21100) {
-      VLOG(10) << "ncclRedOpCreatePreMulSum is supported.";
-      comm_ctx->RedOpCreatePreMulSum(
-          op, const_cast<void *>(scale), dtype, ncclScalarDevice);
-      return true;
-    }
-  } else {
-    int ver;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetVersion(&ver));
-    if (ver >= 21100) {
-      VLOG(10) << "ncclRedOpCreatePreMulSum is supported.";
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpCreatePreMulSum(
-          op, const_cast<void *>(scale), dtype, ncclScalarDevice, comm));
-      return true;
-    }
+  PADDLE_ENFORCE_NOT_NULL(
+      comm_ctx,
+      phi::errors::InvalidArgument(
+          "You choose to use new communication library by "
+          "setting environment "
+          "variable FLAGS_dynamic_static_unified_comm True. "
+          "But parameter of comm_ctx should not be nullptr."));
+  int ver = comm_ctx->GetNcclVersion();
+  if (ver >= 21100) {
+    VLOG(10) << "ncclRedOpCreatePreMulSum is supported.";
+    comm_ctx->RedOpCreatePreMulSum(
+        op, const_cast<void *>(scale), dtype, ncclScalarDevice);
+    return true;
   }
 #endif
   VLOG(10) << "ncclRedOpCreatePreMulSum is not supported.";
@@ -940,18 +927,14 @@ static void DestoryOpIfSupported(
 #if NCCL_VERSION_CODE >= 21100
   VLOG(10) << "ncclRedOpDestroy starts";
 
-  if (FLAGS_dynamic_static_unified_comm) {
-    PADDLE_ENFORCE_NOT_NULL(
-        comm_ctx,
-        phi::errors::InvalidArgument(
-            "You choose to use new communication library by "
-            "setting environment "
-            "variable FLAGS_dynamic_static_unified_comm True. "
-            "But parameter of comm_ctx should not be nullptr."));
-    comm_ctx->RedOpDestroy(op);
-  } else {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpDestroy(op, comm));
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      comm_ctx,
+      phi::errors::InvalidArgument(
+          "You choose to use new communication library by "
+          "setting environment "
+          "variable FLAGS_dynamic_static_unified_comm True. "
+          "But parameter of comm_ctx should not be nullptr."));
+  comm_ctx->RedOpDestroy(op);
   VLOG(10) << "ncclRedOpDestroy ends";
 
 #endif
@@ -989,15 +972,13 @@ static void NCCLSumWithScaleBase(const T *sendbuff,
                                  const phi::GPUContext &dev_ctx,
                                  distributed::NCCLCommContext *comm_ctx,
                                  const T *scale = nullptr) {
-  if (FLAGS_dynamic_static_unified_comm) {
-    PADDLE_ENFORCE_NOT_NULL(
-        comm_ctx,
-        phi::errors::InvalidArgument(
-            "You choose to use new communication library by "
-            "setting environment "
-            "variable FLAGS_dynamic_static_unified_comm True. "
-            "But parameter of comm_ctx should not be nullptr."));
-  }
+  PADDLE_ENFORCE_NOT_NULL(
+      comm_ctx,
+      phi::errors::InvalidArgument(
+          "You choose to use new communication library by "
+          "setting environment "
+          "variable FLAGS_dynamic_static_unified_comm True. "
+          "But parameter of comm_ctx should not be nullptr."));
 
   static_assert(
       std::is_same<T, float>::value || std::is_same<T, dtype::float16>::value,
@@ -1758,70 +1739,44 @@ void DistributedFusedLambKernel(
   int64_t global_rank = 0, local_rank = 0;
   ncclComm_t global_comm = nullptr, local_comm = nullptr,
              external_comm = nullptr;
-  paddle::platform::NCCLComm *nccl_comm_handle = nullptr,
-                             *local_nccl_comm_handle = nullptr;
   distributed::NCCLCommContext *comm_ctx = nullptr, *local_comm_ctx = nullptr,
                                *external_comm_ctx = nullptr;
 
   const auto &comm_context_manager =
       phi::distributed::CommContextManager::GetInstance();
 
-  if (FLAGS_dynamic_static_unified_comm) {
-    CheckCommContextHasRingId(comm_context_manager, ring_ids[0]);
+  CheckCommContextHasRingId(comm_context_manager, ring_ids[0]);
 
-    comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-        comm_context_manager.Get(std::to_string(ring_ids[0])));
-    PADDLE_ENFORCE_NE(comm_ctx,
-                      nullptr,
-                      phi::errors::Unavailable(
-                          "NCCLCommContext is nullptr, collective op should "
-                          "has ring_id attr."));
+  comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+      comm_context_manager.Get(std::to_string(ring_ids[0])));
+  PADDLE_ENFORCE_NE(comm_ctx,
+                    nullptr,
+                    phi::errors::Unavailable(
+                        "NCCLCommContext is nullptr, collective op should "
+                        "has ring_id attr."));
 
-    global_comm = comm_ctx->GetNcclComm();
-    global_rank = comm_ctx->GetRank();
-    if (local_shard) {
-      CheckCommContextHasRingId(comm_context_manager, ring_ids[1]);
+  global_comm = comm_ctx->GetNcclComm();
+  global_rank = comm_ctx->GetRank();
+  if (local_shard) {
+    CheckCommContextHasRingId(comm_context_manager, ring_ids[1]);
 
-      local_comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-          comm_context_manager.Get(std::to_string(ring_ids[1])));
-      local_comm = local_comm_ctx->GetNcclComm();
-      local_rank = local_comm_ctx->GetRank();
-      if (use_hierarchical_allreduce) {
-        CheckCommContextHasRingId(comm_context_manager, ring_ids[2]);
+    local_comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+        comm_context_manager.Get(std::to_string(ring_ids[1])));
+    local_comm = local_comm_ctx->GetNcclComm();
+    local_rank = local_comm_ctx->GetRank();
+    if (use_hierarchical_allreduce) {
+      CheckCommContextHasRingId(comm_context_manager, ring_ids[2]);
 
-        external_comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-            comm_context_manager.Get(std::to_string(ring_ids[2])));
-        external_comm = external_comm_ctx->GetNcclComm();
-      }
-    } else {
-      local_comm = global_comm;
-      local_rank = global_rank;
+      external_comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+          comm_context_manager.Get(std::to_string(ring_ids[2])));
+      external_comm = external_comm_ctx->GetNcclComm();
     }
-
-    VLOG(3) << "new comm_context_manager has ring_id " << ring_ids[0];
   } else {
-    if (nranks > 1) {
-      nccl_comm_handle =
-          paddle::platform::NCCLCommContext::Instance().Get(ring_ids[0], place);
-      global_comm = nccl_comm_handle->comm();
-      global_rank = nccl_comm_handle->rank();
-      if (local_shard) {
-        local_nccl_comm_handle =
-            paddle::platform::NCCLCommContext::Instance().Get(ring_ids[1],
-                                                              place);
-        local_comm = local_nccl_comm_handle->comm();
-        local_rank = local_nccl_comm_handle->rank();
-        if (use_hierarchical_allreduce) {
-          external_comm = paddle::platform::NCCLCommContext::Instance()
-                              .Get(ring_ids[2], place)
-                              ->comm();
-        }
-      } else {
-        local_comm = global_comm;
-        local_rank = global_rank;
-      }
-    }
+    local_comm = global_comm;
+    local_rank = global_rank;
   }
+
+  VLOG(3) << "new comm_context_manager has ring_id " << ring_ids[0];
 
   memory_utils::Buffer grad_norm_square_buffer(place);
   auto *fp32_square_grad_norm = grad_norm_square_buffer.Alloc<float>(2);
