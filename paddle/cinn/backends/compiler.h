@@ -103,10 +103,13 @@ class Compiler final {
   /**
    * Compile and link to a CINN module.
    */
-  void Build(const ir::Module& module,
-             const std::string& code = "",
-             const bool end = true);
-  void AppendCX86(const ir::Module& module, const bool end = true);
+  void Build(const ir::Module& module, const std::string& code = "");
+
+  void AppendCX86(const ir::Module& module);
+
+  void AppendBroadcastSwitchModule(const ir::Module& module);
+
+  void EndCompile();
 
   void ExportObject(const std::string& path);
 

@@ -53,7 +53,7 @@ void SerializeToMultiVarMsgAndIOBuf(
     const std::string& message_name,
     const std::vector<std::string>& send_var_name_val,
     const std::vector<std::string>& recv_var_name_val,
-    const platform::DeviceContext& ctx,
+    const phi::DeviceContext& ctx,
     const framework::Scope* scope,
     MultiVarMsg* request,
     butil::IOBuf* iobuf) {
@@ -86,7 +86,7 @@ void SerializeToMultiVarMsgAndIOBuf(
 }
 
 void SerializeLodTensor(framework::Variable* var,
-                        const platform::DeviceContext& ctx,
+                        const phi::DeviceContext& ctx,
                         VarMsg* var_msg,
                         butil::IOBuf* iobuf) {
   auto* tensor = var->GetMutable<phi::DenseTensor>();
@@ -133,7 +133,7 @@ void SerializeLodTensor(framework::Variable* var,
 }
 
 void SerializeSelectedRows(framework::Variable* var,
-                           const platform::DeviceContext& ctx,
+                           const phi::DeviceContext& ctx,
                            VarMsg* var_msg,
                            butil::IOBuf* iobuf) {
   phi::SelectedRows* slr = var->GetMutable<phi::SelectedRows>();
@@ -181,7 +181,7 @@ void SerializeSelectedRows(framework::Variable* var,
 
 void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
                                         const butil::IOBuf* iobuf,
-                                        const platform::DeviceContext& ctx,
+                                        const phi::DeviceContext& ctx,
                                         framework::Scope* scope) {
   butil::IOBufBytesIterator io_buffer_itr(*iobuf);
   // size_t shard_buffer_remain = res_io_buffer.size();
@@ -199,7 +199,7 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
 
 void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
                                         const butil::IOBuf* iobuf,
-                                        const platform::DeviceContext& ctx,
+                                        const phi::DeviceContext& ctx,
                                         const framework::Scope* scope) {
   butil::IOBufBytesIterator io_buffer_itr(*iobuf);
   // size_t shard_buffer_remain = res_io_buffer.size();
@@ -222,7 +222,7 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
 void DeserializeLodTensor(framework::Variable* var,
                           const VarMsg& msg,
                           butil::IOBufBytesIterator& io_buffer_itr,  // NOLINT
-                          const platform::DeviceContext& ctx) {
+                          const phi::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
   phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
   std::vector<int> vec_dim;
@@ -273,7 +273,7 @@ void DeserializeSelectedRows(
     framework::Variable* var,
     const VarMsg& msg,
     butil::IOBufBytesIterator& io_buffer_itr,  // NOLINT
-    const platform::DeviceContext& ctx) {
+    const phi::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
   auto* slr = var->GetMutable<phi::SelectedRows>();
   phi::DenseTensor* tensor = slr->mutable_value();

@@ -155,8 +155,7 @@ static double GetDenseTensorEleSum(const Scope& scope,
     phi::CPUPlace place;
     paddle::framework::TensorCopy(
         var->Get<phi::DenseTensor>(), place, &cpu_tensor);
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(var->Get<phi::DenseTensor>().place());
     dev_ctx.Wait();
     double sum = 0.0;
@@ -200,22 +199,22 @@ InstructionBase::InstructionBase(size_t id, const phi::Place& place)
 
   is_artificial_ = false;
 
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     type_ = OpFuncType::kCpuSync;
   } else {
     PADDLE_ENFORCE_EQ(
         interpreter::IsSupportedHeterPlace(place),
         true,
-        phi::errors::Fatal("Unsupported current place %s", place));
+        common::errors::Fatal("Unsupported current place %s", place));
     type_ = OpFuncType::kGpuAsync;
   }
 
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place);
 }
 
 OpFuncType InstructionBase::KernelType() const { return type_; }
 
-const platform::DeviceContext& InstructionBase::DeviceContext() const {
+const phi::DeviceContext& InstructionBase::DeviceContext() const {
   return *dev_ctx_;
 }
 
@@ -230,7 +229,7 @@ void InstructionBase::RecordEvent(const Place& place) const {
 
 void InstructionBase::WaitEvent(const Place& place) const {
   // If InterpreterCore in on CPUPlace, do nothing.
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     return;
   }
   for (const EventInter& event_iter : events_to_wait_) {
@@ -309,7 +308,7 @@ void InstructionBase::InitInputsOutputsIds(
       PADDLE_ENFORCE_EQ(
           value_exec_info.HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               op_name));
@@ -326,7 +325,7 @@ void InstructionBase::InitInputsOutputsIds(
       PADDLE_ENFORCE_EQ(
           value_exec_info.HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               op_name));

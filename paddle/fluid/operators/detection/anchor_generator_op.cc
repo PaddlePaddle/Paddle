@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/detection/anchor_generator_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle::operators {
 
@@ -172,10 +172,3 @@ REGISTER_OPERATOR(
     ops::AnchorGeneratorOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(anchor_generator,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::AnchorGeneratorOpKernel,
-                          float,
-                          double) {}

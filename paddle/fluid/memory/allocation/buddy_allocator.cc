@@ -25,7 +25,7 @@ COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace memory {
@@ -46,11 +46,11 @@ BuddyAllocator::BuddyAllocator(
   if (!dev_type.empty()) {
     init_allocate_size_func_ = [dev_type]() {
       return phi::DeviceManager::GetInitAllocSize(
-          platform::PlaceHelper::CreatePlace(dev_type));
+          phi::PlaceHelper::CreatePlace(dev_type));
     };
     re_allocate_size_func_ = [dev_type]() {
       return phi::DeviceManager::GetReallocSize(
-          platform::PlaceHelper::CreatePlace(dev_type));
+          phi::PlaceHelper::CreatePlace(dev_type));
     };
     use_custom_device_ = true;
   } else {

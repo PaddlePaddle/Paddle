@@ -21,8 +21,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {

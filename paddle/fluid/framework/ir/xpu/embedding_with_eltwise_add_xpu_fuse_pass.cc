@@ -190,7 +190,7 @@ class EmbeddingWithEltwiseAddXPUFusePass : public FusePassBase {
 
 void EmbeddingWithEltwiseAddXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init(name_scope_, graph);
   std::vector<std::string> pre_op_types{"reshape2", "squeeze2", ""};
   std::vector<std::string> op_types{"lookup_table", "lookup_table_v2"};
@@ -216,12 +216,12 @@ void EmbeddingWithEltwiseAddXPUFusePass::ApplyImpl(
   PADDLE_ENFORCE_NE(                                                         \
       subgraph.count(pat.PatternBase::pattern->RetrieveNode(name)),          \
       0UL,                                                                   \
-      platform::errors::NotFound("Node not found for PDNode %s", name));     \
+      common::errors::NotFound("Node not found for PDNode %s", name));       \
   Node* rt_node = subgraph.at(pat.PatternBase::pattern->RetrieveNode(name)); \
   PADDLE_ENFORCE_NOT_NULL(                                                   \
       rt_node,                                                               \
-      platform::errors::NotFound("node %s not exists in the sub-graph",      \
-                                 #rt_node));
+      common::errors::NotFound("node %s not exists in the sub-graph",        \
+                               #rt_node));
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {

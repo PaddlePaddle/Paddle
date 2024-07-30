@@ -27,8 +27,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "glog/logging.h"
-
 #include "paddle/common/errors.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/context_pool.h"
@@ -38,6 +36,8 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
+
+#ifdef PADDLE_WITH_CUDA
 
 #if CUDA_VERSION < 11000
 // For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
@@ -63,7 +63,6 @@ class CUDAGraphContextManager {
 
   DeviceContext *Get(int64_t pool_id, const Place &place, int stream_priority) {
     std::lock_guard<std::mutex> lk(ctx_mtx_);
-    VLOG(6) << "Get cuda graph device context for " << place;
 
     DeviceContextMap &ctxs = cuda_graph_ctx_pool_[pool_id];
     if (ctxs.find(place) == ctxs.end()) {
@@ -248,9 +247,14 @@ class CUDAGraph {
 
   void Reset();
 
-  void AddPostResetCallback(std::function<void()> callback) {
+  void AddPostResetCallback(
+      std::function<void(paddle::optional<const CUDAGraph &>)> callback) {
     std::lock_guard<std::mutex> guard(mtx_);
     cudagraph_post_reset_callbacks_.push_back(std::move(callback));
+  }
+
+  static void AddPreCaptureCallback(std::function<void()> callback) {
+    cudagraph_pre_capture_callbacks_.push_back(std::move(callback));
   }
 
   void AddPostCaptureCallback(std::function<void()> callback) {
@@ -258,7 +262,13 @@ class CUDAGraph {
     cudagraph_post_capture_callbacks_.push_back(std::move(callback));
   }
 
+  void AddJoiningStream(cudaStream_t stream) {
+    streams_to_join_.insert(stream);
+  }
+
   void PrintToDotFiles(const std::string &dirname, unsigned int flags);
+
+  bool IsReplayed() const { return is_replayed_; }
 
   static void BeginCapture(phi::GPUPlace place,
                            cudaStream_t stream,
@@ -268,8 +278,12 @@ class CUDAGraph {
   static void BeginSegmentCapture();
   static void EndSegmentCapture();
 
+  static void AddJoiningStreamDuringCapturing(cudaStream_t stream) {
+    capturing_graph_->AddJoiningStream(stream);
+  }
+
   static void AddPostResetCallbackDuringCapturing(
-      std::function<void()> callback) {
+      std::function<void(paddle::optional<const CUDAGraph &>)> callback) {
     capturing_graph_->AddPostResetCallback(std::move(callback));
   }
 
@@ -331,14 +345,20 @@ class CUDAGraph {
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};
   bool is_reset_{false};
+  bool is_replayed_{false};
   std::mutex mtx_;
 
   std::vector<SetSeedFunc> set_seed_funcs_;
 
+  std::unordered_set<cudaStream_t> streams_to_join_;
+
   // Holds callbacks that are triggered after the CUDA graph is reset. These
   // callbacks are used for operations that need to be performed following the
   // reset of a CUDA graph.
-  std::vector<std::function<void()>> cudagraph_post_reset_callbacks_;
+  std::vector<std::function<void(paddle::optional<const CUDAGraph &>)>>
+      cudagraph_post_reset_callbacks_;
+
+  static std::vector<std::function<void()>> cudagraph_pre_capture_callbacks_;
 
   // Contains callbacks that are invoked after the CUDA graph has been captured.
   // These callbacks are crucial for managing memory allocations related to the
@@ -400,3 +420,5 @@ class CUDAGraphCaptureModeGuard {
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi
+
+#endif

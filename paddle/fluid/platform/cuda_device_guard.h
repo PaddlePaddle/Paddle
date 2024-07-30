@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
+#include "glog/logging.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace platform {
@@ -23,7 +24,7 @@ class CUDADeviceGuard {
  public:
   explicit CUDADeviceGuard(int dev_id) { SetDeviceIndex(dev_id); }
 
-  explicit CUDADeviceGuard(const CUDAPlace& place)
+  explicit CUDADeviceGuard(const phi::GPUPlace& place)
       : CUDADeviceGuard(place.device) {}
 
   // create uninitialized CUDADeviceGuard
@@ -42,21 +43,21 @@ class CUDADeviceGuard {
       VLOG(10) << __func__ << " prev_id: " << prev_id_ << ", is_first_time_"
                << is_first_time_;
       if (!(is_first_time_ && prev_id_ == 0)) {
-        platform::SetDeviceId(prev_id_);
+        phi::backends::gpu::SetDeviceId(prev_id_);
         is_first_time_ = false;
       }
     }
   }
 
   inline void SetDeviceIndex(const int dev_id) {
-    int prev_id = platform::GetCurrentDeviceId();
+    int prev_id = phi::backends::gpu::GetCurrentDeviceId();
     if (prev_id != dev_id) {
       prev_id_ = prev_id;
-      platform::SetDeviceId(dev_id);
+      phi::backends::gpu::SetDeviceId(dev_id);
     }
   }
 
-  void SetDevice(const CUDAPlace& place) {
+  void SetDevice(const phi::GPUPlace& place) {
     int dev_id = place.device;
     SetDeviceIndex(dev_id);
   }

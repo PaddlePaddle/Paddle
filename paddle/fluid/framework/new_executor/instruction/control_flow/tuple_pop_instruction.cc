@@ -113,7 +113,7 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
       ShareVarData(src_var_array.at(i), copy_var);
     }
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Output only support DenseTensorType "
         "or SelectedRowsType or TensorArrayType"));
   }

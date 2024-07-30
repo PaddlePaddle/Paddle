@@ -423,7 +423,7 @@ void EagerGroup::ConcatTensors(const phi::Place &place) {
   }
 }
 
-void EagerGroup::SplitTensors(const platform::DeviceContext &context) {
+void EagerGroup::SplitTensors(const phi::DeviceContext &context) {
   auto place = context.GetPlace();
   if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

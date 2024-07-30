@@ -55,7 +55,7 @@ def default_collate_fn(batch):
     if isinstance(sample, np.ndarray):
         batch = np.stack(batch, axis=0)
         return batch
-    elif isinstance(sample, (paddle.Tensor, core.eager.Tensor)):
+    elif isinstance(sample, paddle.Tensor):
         return paddle.stack(batch, axis=0)
     elif isinstance(sample, numbers.Number):
         batch = np.array(batch)

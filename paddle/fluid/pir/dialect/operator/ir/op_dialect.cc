@@ -37,6 +37,7 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
 #endif
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 
 namespace paddle::dialect {
 
@@ -388,6 +389,9 @@ void OperatorDialect::initialize() {
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.cc"  // NOLINT
       >();
 #endif
+
+  RegisterOps<TensorRTEngineOp>();
+
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
@@ -550,7 +554,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
       auto attr_type_str = attr_name_and_type[1];
       param_names.push_back(attr_name);
       if (CppTypeToAttrTypeMap().count(attr_type_str) == 0) {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
             "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -1053,6 +1057,7 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func,
                                verify_func);
 }
+
 }  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)

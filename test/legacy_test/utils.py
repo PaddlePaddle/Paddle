@@ -14,6 +14,7 @@
 
 import os
 from functools import wraps
+from typing import Callable, List, Union
 
 import numpy as np
 
@@ -189,22 +190,12 @@ def to_pir_pt_test(fn):
                 return
             with static.scope_guard(static.Scope()):
                 with static.program_guard(static.Program()):
-                    print(
-                        "before:",
-                        os.environ.get(ENV_ENABLE_PIR_WITH_PT.name),
-                        flush=True,
-                    )
                     with EnvironmentVariableGuard(ENV_ENABLE_PIR_WITH_PT, True):
                         try:
                             set_flags({pt_flag: True})
                             ir_outs = fn(*args, **kwargs)
                         finally:
                             set_flags({pt_flag: original_flag_value})
-                    print(
-                        "after:",
-                        os.environ.get(ENV_ENABLE_PIR_WITH_PT.name),
-                        flush=True,
-                    )
         return ir_outs
 
     return impl
@@ -227,3 +218,32 @@ def compare_legacy_with_pt(fn):
         return outs
 
     return impl
+
+
+FuncType = Callable[[], bool]
+PlaceType = Union[paddle.CPUPlace, paddle.CUDAPlace, str]
+
+
+def convert_place(place: PlaceType) -> str:
+    if isinstance(place, paddle.CPUPlace):
+        return 'cpu'
+    if isinstance(place, paddle.CUDAPlace):
+        return 'gpu'
+    return place
+
+
+def get_places(
+    func: FuncType = lambda: True, isStr: bool = False
+) -> List[PlaceType]:
+    places: List[PlaceType] = []
+    if paddle.is_compiled_with_cuda() and func():
+        places.append(paddle.CUDAPlace(0))
+    if (
+        os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+        in ['1', 'true', 'on']
+        or not places
+    ):
+        places.insert(0, paddle.CPUPlace())
+    if isStr:
+        places = [convert_place(place) for place in places]
+    return places

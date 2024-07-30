@@ -282,6 +282,15 @@ ExprSetFinder ScheduleBlockRealizeIsInit = FilterMaker(
     },
     "ScheduleBlockRealizeIsInit");
 
+ExprSetFinder ScheduleBlockRealizeIsSplitTransform = FilterMaker(
+    [](const ir::Expr& e) -> bool {
+      return (e.As<ir::ScheduleBlockRealize>() &&
+              e.As<ir::ScheduleBlockRealize>()
+                      ->schedule_block.As<ir::ScheduleBlock>()
+                      ->name.find("_split_transform") != std::string::npos);
+    },
+    "ScheduleBlockRealizeIsSplitTransform");
+
 ExprSetFinder IsFor = FilterMaker(
     [](const ir::Expr& e) -> bool { return e.As<ir::For>(); }, "IsFor");
 
