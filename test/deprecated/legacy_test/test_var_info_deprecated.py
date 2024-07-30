@@ -26,6 +26,8 @@ import paddle
 class TestVarInfo(unittest.TestCase):
     """TestCases for Dataset."""
 
+    paddle.enable_static()
+
     def test_var_info(self):
         """Testcase for get and set info for variable."""
         value = np.random.randn(1)
