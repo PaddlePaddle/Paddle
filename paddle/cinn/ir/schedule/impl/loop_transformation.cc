@@ -116,8 +116,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   bool is_positive = true;
   int num_minus1 = 0;
   std::vector<Expr> process_factors;
-  int64_t prod_size(-1);
-  int idx_neg1 = 1;
+  int prod_size(-1);
   bool exact_split = true;
   for (auto factor : factors) prod_size = prod_size * factor;
   Expr remaining_size = tot_extent / Expr(prod_size);
