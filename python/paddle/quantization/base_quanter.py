@@ -61,7 +61,7 @@ class BaseQuanter(Layer, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def bit_length(self):
+    def bit_length(self) -> int | Iterable[int]:
         r"""
         Get the bit length of quantization.
         """
