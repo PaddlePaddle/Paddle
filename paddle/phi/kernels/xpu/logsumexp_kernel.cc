@@ -26,13 +26,14 @@ void LogsumexpKernel(const Context& dev_ctx,
                      bool reduce_all,
                      DenseTensor* out) {
   auto* output = out;
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   int input_dim_size = x.dims().size();
   // The dims has full dim, set the reduce_all is True
   reduce_all |= (static_cast<int>(axis.size()) == input_dim_size);
 
-  auto input_data = reinterpret_cast<const XPUT*>(x.data<T>());
-  auto output_data = reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(output));
+  auto input_data = reinterpret_cast<const XPUType*>(x.data<T>());
+  auto output_data =
+      reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(output));
 
   std::vector<int> axis_shape;
   std::vector<int> xdims = common::vectorize<int>(x.dims());
@@ -59,7 +60,7 @@ void LogsumexpKernel(const Context& dev_ctx,
                           "The dims of Input(X) should be greater than 0."));
   }
 
-  int r = xpu::logsumexp<XPUT>(
+  int r = xpu::logsumexp<XPUType>(
       dev_ctx.x_context(), input_data, output_data, xdims, axis_shape);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "logsumexp");
 }
