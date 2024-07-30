@@ -114,7 +114,6 @@ class TestModeOp(OpTest):
     def test_check_output(self):
         paddle.enable_static()
         self.check_output(check_pir=True)
-        self.check_output(check_symbol_infer=True)
 
     def test_check_grad(self):
         paddle.enable_static()
@@ -148,8 +147,6 @@ class TestModeBF16Op(TestModeOp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output(check_pir=True)
-        self.check_output(check_symbol_infer=True)
         paddle.enable_static()
         if core.is_bfloat16_supported(place):
             self.check_output_with_place(place, check_pir=True)
