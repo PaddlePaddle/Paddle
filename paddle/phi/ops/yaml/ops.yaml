@@ -406,6 +406,7 @@
   kernel :
     func : atan2
   backward : atan2_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : atanh
   args : (Tensor x)
@@ -2027,6 +2028,7 @@
   data_transform :
     skip_transform : x
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : full_with_tensor
   args : (Tensor value, IntArray shape, DataType dtype=DataType::FLOAT32)
@@ -3506,6 +3508,7 @@
     func : prelu
     data_type : x
   backward : prelu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : prior_box
   args : (Tensor input, Tensor image, float[] min_sizes, float[] max_sizes = {}, float[] aspect_ratios = {}, float[] variances = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
