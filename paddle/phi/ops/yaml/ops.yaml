@@ -1463,6 +1463,7 @@
   kernel :
     func : eigh
   backward : eigh_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : eigvals
   args : (Tensor x)
@@ -1481,6 +1482,7 @@
     func : eigvalsh
     data_type : x
   backward : eigvalsh_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : elu
   args : (Tensor x, float alpha = 1.0f)
