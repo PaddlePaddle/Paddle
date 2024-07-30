@@ -55,7 +55,7 @@ class CounterGuard {
   // copy constructor deleted, we define this for std::function
   // never use it directly
   CounterGuard(const CounterGuard& other) {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Never use the copy constructor of CounterGuard."));
   }
 

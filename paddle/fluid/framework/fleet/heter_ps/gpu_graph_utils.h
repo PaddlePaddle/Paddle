@@ -92,10 +92,9 @@ inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
   size_t total{0};
   cudaSetDevice(gpu_id);
   auto err = cudaMemGetInfo(&avail, &total);
-  PADDLE_ENFORCE_EQ(
-      err,
-      cudaSuccess,
-      platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
+  PADDLE_ENFORCE_EQ(err,
+                    cudaSuccess,
+                    common::errors::InvalidArgument("cudaMemGetInfo failed!"));
   VLOG(0) << "update gpu memory on device " << gpu_id << ", "
           << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
           << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
@@ -115,7 +114,7 @@ inline void debug_gpu_memory_info(const char* desc) {
   PADDLE_ENFORCE_EQ(
       err,
       cudaSuccess,
-      platform::errors::InvalidArgument("cudaGetDeviceCount failed!"));
+      common::errors::InvalidArgument("cudaGetDeviceCount failed!"));
 
   size_t avail{0};
   size_t total{0};
@@ -125,7 +124,7 @@ inline void debug_gpu_memory_info(const char* desc) {
     PADDLE_ENFORCE_EQ(
         err,
         cudaSuccess,
-        platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
+        common::errors::InvalidArgument("cudaMemGetInfo failed!"));
     VLOG(0) << "update gpu memory on device " << i << ", "
             << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
             << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
@@ -143,7 +142,7 @@ inline void show_gpu_mem(const char* desc) {
   PADDLE_ENFORCE_EQ(
       err,
       cudaSuccess,
-      platform::errors::InvalidArgument("cudaGetDeviceCount failed!"));
+      common::errors::InvalidArgument("cudaGetDeviceCount failed!"));
 
   size_t avail{0};
   size_t total{0};
@@ -153,7 +152,7 @@ inline void show_gpu_mem(const char* desc) {
     PADDLE_ENFORCE_EQ(
         err,
         cudaSuccess,
-        platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
+        common::errors::InvalidArgument("cudaMemGetInfo failed!"));
     VLOG(0) << "[" << desc << "] hbm on device " << i << ", "
             << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
             << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g";

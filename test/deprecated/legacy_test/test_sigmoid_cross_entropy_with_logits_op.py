@@ -173,10 +173,12 @@ class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
 
         # Fw Pass is implemented as elementwise sigmoid followed by
         # elementwise logistic loss
-        term1 = np.maximum(self.inputs['X'], 0)
-        term2 = self.inputs['X'] * self.inputs['Label']
-        term3 = np.log(1 + np.exp(-1 * np.abs(self.inputs['X']))) * pos_weight
-        self.outputs = {'Out': term1 - term2 + term3}
+        max_val = np.clip(-self.inputs['X'], 0, np.finfo(np.float64).max)
+        term1 = (1 - label) * self.inputs['X']
+        term2 = np.log(np.exp(-max_val) + np.exp(-self.inputs['X'] - max_val))
+        out = term1 + pos_weight * (term2 + max_val)
+
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output(check_pir=True, check_prim_pir=True)

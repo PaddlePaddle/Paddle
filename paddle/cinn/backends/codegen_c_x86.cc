@@ -56,7 +56,7 @@ void CodeGenCX86::Visit(const ir::Broadcast *op) {
   PADDLE_ENFORCE_GT(
       op->type().lanes(),
       1,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The lanes of the broadcast op should be greater than 1."));
   int bits = op->type().bits() * op->type().lanes();
 

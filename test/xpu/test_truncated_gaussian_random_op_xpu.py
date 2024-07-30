@@ -94,33 +94,34 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             self.gaussian_random_test(place=base.XPUPlace(0))
 
         def gaussian_random_test(self, place):
-            program = base.Program()
-            block = program.global_block()
-            vout = block.create_var(name="Out")
-            op = block.append_op(
-                type=self.op_type, outputs={"Out": vout}, attrs=self.attrs
-            )
+            with paddle.pir_utils.OldIrGuard():
+                program = base.Program()
+                block = program.global_block()
+                vout = block.create_var(name="Out")
+                op = block.append_op(
+                    type=self.op_type, outputs={"Out": vout}, attrs=self.attrs
+                )
 
-            op.desc.infer_var_type(block.desc)
-            op.desc.infer_shape(block.desc)
+                op.desc.infer_var_type(block.desc)
+                op.desc.infer_shape(block.desc)
 
-            fetch_list = []
-            for var_name in self.outputs:
-                fetch_list.append(block.var(var_name))
+                fetch_list = []
+                for var_name in self.outputs:
+                    fetch_list.append(block.var(var_name))
 
-            exe = Executor(place)
-            outs = exe.run(program, fetch_list=fetch_list)
-            tensor = outs[0]
-            np.testing.assert_allclose(
-                np.mean(tensor),
-                truncated_normal_mean(self.mean, self.std, self.a, self.b),
-                atol=0.05,
-            )
-            np.testing.assert_allclose(
-                np.var(tensor),
-                truncated_normal_var(self.mean, self.std, self.a, self.b),
-                atol=0.05,
-            )
+                exe = Executor(place)
+                outs = exe.run(program, fetch_list=fetch_list)
+                tensor = outs[0]
+                np.testing.assert_allclose(
+                    np.mean(tensor),
+                    truncated_normal_mean(self.mean, self.std, self.a, self.b),
+                    atol=0.05,
+                )
+                np.testing.assert_allclose(
+                    np.var(tensor),
+                    truncated_normal_var(self.mean, self.std, self.a, self.b),
+                    atol=0.05,
+                )
 
     class TestTruncatedGaussianRandomOp_1(TestTruncatedGaussianRandomOp):
         def set_attrs(self):

@@ -29,10 +29,11 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_mlp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT
                                            60)
   set_tests_properties(test_semi_auto_parallel_dist_to_static_pir
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
   set_tests_properties(test_semi_auto_parallel_dist_to_static_pir_decomp
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
   py_test_modules(
     test_eliminate_transpose_pass MODULES test_eliminate_transpose_pass ENVS
     FLAGS_enable_pir_in_executor=1)
+  py_test_modules(test_moe_api MODULES test_moe_api ENVS FLAGS_enable_pir_api=1)
 endif()

@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import paddle
 import paddle.distributed as dist
@@ -22,8 +25,15 @@ from .serialization_utils import (
     convert_tensor_to_object,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
-def broadcast(tensor, src, group=None, sync_op=True):
+
+def broadcast(
+    tensor: Tensor, src: int, group: Group | None = None, sync_op: bool = True
+) -> task:
     """
 
     Broadcast a tensor from the source to all others.
@@ -70,10 +80,12 @@ def broadcast(tensor, src, group=None, sync_op=True):
     )
 
 
-def broadcast_object_list(object_list, src, group=None):
+def broadcast_object_list(
+    object_list: list[Any], src: int, group: Group | None = None
+) -> None:
     """
 
-    Broadcast picklable objects from the source to all others. Similiar to broadcast(), but python object can be passed in.
+    Broadcast picklable objects from the source to all others. Similar to broadcast(), but python object can be passed in.
 
     Args:
         object_list (list): The list of objects to send if current rank is the source, or the list of objects to receive otherwise.
