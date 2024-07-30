@@ -271,6 +271,7 @@ class TestMatmulInt8Op17(TestMatmulInt8):
         self.trans_x = False
         self.trans_y = False
 
+
 class TestMatmulInt8Op18(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -283,9 +284,13 @@ class TestMatmulInt8Op18(TestMatmulInt8):
 
     def setUp(self):
         paddle.set_flags({'FLAGS_enable_blaslt_global_search': 1})
-        paddle.set_flags({'FLAGS_cublaslt_device_best_config': './test_matmul_int8_search_config.csv'})
+        paddle.set_flags(
+            {
+                'FLAGS_cublaslt_device_best_config': './test_matmul_int8_search_config.csv'
+            }
+        )
         super().setUp()
-    
+
     def tearDown(self):
         paddle.set_flags({'FLAGS_enable_blaslt_global_search': 0})
         paddle.set_flags({'FLAGS_cublaslt_device_best_config': ''})

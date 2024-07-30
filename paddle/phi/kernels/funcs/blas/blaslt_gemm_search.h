@@ -216,7 +216,8 @@ class CublasLtAlgoCache {
       }
     }
     if (!search_configs_.empty()) {
-      auto configure_algo = [&](const CublasLtAlgoConfig& search_config) -> cublasLtMatmulAlgo_t* {
+      auto configure_algo = [&](const CublasLtAlgoConfig& search_config)
+          -> cublasLtMatmulAlgo_t* {
         cublasLtMatmulAlgo_t algo;
         PADDLE_ENFORCE_GPU_SUCCESS(
             dynload::cublasLtMatmulAlgoInit(handle,
@@ -272,12 +273,12 @@ class CublasLtAlgoCache {
       for (size_t i = 0; i < search_configs_.size(); i++) {
         if (search_configs_[i].n == n && search_configs_[i].k == k &&
             m <= search_configs_[i].m) {
-            return configure_algo(search_configs_[i]);
+          return configure_algo(search_configs_[i]);
         } else if (search_configs_[i].n == n && search_configs_[i].k == k &&
-            m > search_configs_[i].m) {
-            if(pre == nullptr || pre->m < search_configs_[i].m)
-              pre = &search_configs_[i];
-          }
+                   m > search_configs_[i].m) {
+          if (pre == nullptr || pre->m < search_configs_[i].m)
+            pre = &search_configs_[i];
+        }
       }
       if (pre != nullptr) {
         // use max m in file
