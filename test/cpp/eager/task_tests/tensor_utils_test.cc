@@ -51,12 +51,9 @@ TEST(TensorUtils, Test) {
                                         false /*is_leaf*/);
 
   PADDLE_ENFORCE_EQ(
-    EagerUtils::IsLeafTensor(t),
-    true,
-    phi::errors::InvalidArgument(
-      "The tensor t is not a leaf tensor."
-    )
-  );
+      EagerUtils::IsLeafTensor(t),
+      true,
+      phi::errors::InvalidArgument("The tensor t is not a leaf tensor."));
 
   // Test Utils
   eager_test::CompareTensorWithValue<float>(t, 5.0);

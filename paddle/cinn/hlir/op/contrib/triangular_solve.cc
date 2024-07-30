@@ -46,14 +46,12 @@ std::shared_ptr<framework::OpStrategy> StrategyForTriangularSolve(
             << "The input argument of triangular_solve is empty! Please check.";
         CINNValuePack pack_args = args[0];
         PADDLE_ENFORCE_GE(
-          pack_args.size(),
-          2U,
-          phi::errors::InvalidArgument(
-            "Two input tensors are required for the computation of "
-            "triangular_solve, but received %d.",
             pack_args.size(),
-          )
-        );
+            2U,
+            phi::errors::InvalidArgument(
+                "Two input tensors are required for the computation of "
+                "triangular_solve, but received %d.",
+                pack_args.size(), ));
         Expr a_expr = pack_args[0];
         Expr b_expr = pack_args[1];
         ir::Tensor a = a_expr.as_tensor_ref();
