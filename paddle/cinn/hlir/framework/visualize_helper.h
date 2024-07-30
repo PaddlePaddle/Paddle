@@ -27,6 +27,8 @@
 
 #include "paddle/cinn/utils/dot_lang.h"
 
+#include "paddle/common/enforce.h"
+
 namespace cinn {
 namespace hlir {
 namespace framework {

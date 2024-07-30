@@ -14,6 +14,8 @@
 
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 
+#include "paddle/common/enforce.h"
+
 namespace {
 
 struct PyBindNodeAttrVisitor {

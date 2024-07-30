@@ -41,6 +41,8 @@
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/poly/stage.h"
 
+#include "paddle/common/enforce.h"
+
 namespace cinn {
 namespace hlir {
 namespace op {

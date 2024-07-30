@@ -21,6 +21,8 @@
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/tensor.h"
 
+#include "paddle/common/enforce.h"
+
 namespace cinn {
 namespace hlir {
 namespace framework {
