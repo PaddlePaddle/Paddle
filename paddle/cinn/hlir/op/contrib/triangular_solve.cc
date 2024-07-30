@@ -51,7 +51,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForTriangularSolve(
             phi::errors::InvalidArgument(
                 "Two input tensors are required for the computation of "
                 "triangular_solve, but received %d.",
-                pack_args.size(), ));
+                pack_args.size()));
         Expr a_expr = pack_args[0];
         Expr b_expr = pack_args[1];
         ir::Tensor a = a_expr.as_tensor_ref();
