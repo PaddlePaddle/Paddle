@@ -147,7 +147,7 @@ OP_SAME_OPERANDS_AND_RESULT(Square)
 OP_SAME_OPERANDS_AND_RESULT(Slogdet)
 OP_SAME_OPERANDS_AND_RESULT(Polygamma)
 OP_SAME_OPERANDS_AND_RESULT(Polygamma_)
-OP_SAME_OPERANDS_AND_RESULT(EnableCheckModeNanInf)
+OP_SAME_OPERANDS_AND_RESULT(EnableCheckModelNanInf)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
