@@ -2726,6 +2726,7 @@ set +x
 
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
 	disable_ut_quickly="echo $disable_ut_quickly|^test_op"
+
         test_cases=$(ctest -N -V) # get all test cases
 
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
