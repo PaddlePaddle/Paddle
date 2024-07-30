@@ -339,6 +339,40 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   return true;
 }
 
+bool EigOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  size_t rank = x_dims.size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      2,
+      phi::errors::InvalidArgument("Expects input tensor x to be not less than "
+                                   "2 dimensions, but got dimension %zu",
+                                   rank));
+
+  symbol::DimExpr last_dim = x_dims[rank - 1];
+  PADDLE_ENFORCE_EQ(x_dims[rank - 2],
+                    last_dim,
+                    phi::errors::InvalidArgument(
+                        "The input matrix must be a square matrix, but receive "
+                        "a matrix with %s rows and %s columns",
+                        x_dims[rank - 2],
+                        last_dim));
+
+  std::vector<symbol::DimExpr> batch_dims(x_dims.begin(), x_dims.end() - 2);
+  symbol::ShapeOrDataDimExprs out_w_shape{
+      symbol::TensorShapeOrDataDimExprs(batch_dims)};
+
+  infer_context->SetShapeOrDataForValue(op->result(0), out_w_shape);
+
+  infer_context->SetShapeOrDataForValue(op->result(1), x_shape_or_data);
+
+  return true;
+}
+
 bool EighOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
