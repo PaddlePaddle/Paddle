@@ -28,8 +28,6 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        self.trt_param.workspace_size = 1073741824
-
         def generate_input1():
             return np.random.random([1, 80, 2]).astype(np.float32)
 
@@ -41,8 +39,8 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
                 return np.random.random([2]).astype(np.float32)
             return np.random.random([1]).astype(np.float32)
 
-        for f in [False, True]:
-            self.flag = f
+        for flag in [False, True]:
+            self.flag = flag
             ops_config = [
                 {
                     "op_type": "index_put",
@@ -103,7 +101,7 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
                 self.dynamic_shape.max_input_shape = {
                     "input_data1": [1, 81, 2],
                     "input_data2": [1, 81],
-                    "input_data3": [2],
+                    "input_data3": [3],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data1": [1, 80, 2],
@@ -119,7 +117,7 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
                 self.dynamic_shape.max_input_shape = {
                     "input_data1": [1, 81, 2],
                     "input_data2": [1, 81],
-                    "input_data3": [1],
+                    "input_data3": [2],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data1": [1, 80, 2],
