@@ -41,7 +41,12 @@ class MapExprCtx final {
       ::pir::Operation* node,
       const std::vector<ir::LoweredFunc>& lowered_funcs) {
     Node2LoweredFuncs* map = &node2lowered_funcs_;
-    CHECK(map->emplace(node, ir::ir_utils::IRCopy(lowered_funcs)).second);
+    PADDLE_ENFORCE_EQ(
+        map->emplace(node, ir::ir_utils::IRCopy(lowered_funcs)).second,
+        true,
+        phi::errors::InvalidArgument(
+            "Failed to insert node into node2lowered_funcs_ map. "
+            "This may be due to a duplicate node."));
   }
 
   const Node2LoweredFuncs& node2lowered_funcs() const {
