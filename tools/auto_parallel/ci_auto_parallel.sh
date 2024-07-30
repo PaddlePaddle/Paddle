@@ -70,9 +70,11 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
             if [[ $i != ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=llama_auto
                 case_list[${#case_list[*]}]="llama_auto_unit_test"
+                case_list[${#case_list[*]}]="auto_unit_test"
                 break
             elif [[ $i == ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
                 case_list[${#case_list[*]}]="llama_auto_unit_test"
+                case_list[${#case_list[*]}]="auto_unit_test"
                 break
             else
                 continue
