@@ -204,7 +204,10 @@ TEST(DrrTest, FusedLinearParamGradAdd0) {
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(
+      pm.Run(&program),
+      true,
+      phi::errors::InvalidArgument("Required pm.Run(&program) should be true"));
   EXPECT_EQ(verify_pass(program), true);
 }
 
@@ -223,7 +226,10 @@ TEST(DrrTest, FusedLinearParamGradAdd1) {
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(
+      pm.Run(&program),
+      true,
+      phi::errors::InvalidArgument("Required pm.Run(&program) should be true"));
   EXPECT_EQ(verify_pass(program), true);
 }
 
@@ -242,7 +248,10 @@ TEST(DrrTest, FusedLinearParamGradAdd2) {
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(
+      pm.Run(&program),
+      true,
+      phi::errors::InvalidArgument("Required pm.Run(&program) should be true"));
   EXPECT_EQ(verify_pass(program), true);
 }
 
@@ -261,7 +270,10 @@ TEST(DrrTest, FusedLinearParamGradAdd3) {
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(
+      pm.Run(&program),
+      true,
+      phi::errors::InvalidArgument("Required pm.Run(&program) should be true"));
   EXPECT_EQ(verify_pass(program), true);
 }
 
@@ -280,7 +292,10 @@ TEST(DrrTest, FusedMatmulReshapeMatmulAddPattern) {
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(
+      pm.Run(&program),
+      true,
+      phi::errors::InvalidArgument("Required pm.Run(&program) should be true"));
   EXPECT_EQ(verify_pass(program), true);
   EXPECT_EQ(program.block()->size(), 5u);
 }

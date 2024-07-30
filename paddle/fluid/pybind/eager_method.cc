@@ -195,17 +195,6 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   }
 
   if (!self->tensor.impl()->initialized()) {
-    PyObject* array = api.PyArray_NewFromDescr_(
-        api.PyArray_Type_,
-        api.PyArray_DescrFromType_(numpy_dtype),
-        static_cast<int>(py_rank),
-        py_dims,
-        py_strides,
-        nullptr,
-        pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
-            pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
-        nullptr);
-
     if (tensor_dims.empty()) {
       py_dims[0] = 0;
       py_strides[0] = 0;
@@ -221,6 +210,39 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           nullptr);
       return array;
     }
+
+    // NOTE(zhiqiu): numpy will allocate memory automatically
+    // if product of dims is not 0 and data is nullptr.
+    // However, paddle's tensor with empty allocation means
+    // not initialized. It is not consistent if tensor.numpy()
+    // holds memory when tensor's allocation is empty.
+    // so we emplace back a 0 to the dims to make it 0-size tensor.
+    // For example, tensor with shape [2,3] becomes [2,3,0].
+    auto contains_zero = false;
+    for (size_t i = 0; i < py_rank; ++i) {
+      if (py_dims[i] == 0) {
+        contains_zero = true;
+        break;
+      }
+    }
+    if (!contains_zero) {
+      py_dims[tensor_dims.size()] = 0;
+      py_rank += 1;
+      for (size_t i = 0; i < py_rank; ++i) {
+        py_strides[i] = 0;
+      }
+    }
+
+    PyObject* array = api.PyArray_NewFromDescr_(
+        api.PyArray_Type_,
+        api.PyArray_DescrFromType_(numpy_dtype),
+        static_cast<int>(py_rank),
+        py_dims,
+        py_strides,
+        nullptr,
+        pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+            pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+        nullptr);
     return array;
   }
 
@@ -546,14 +568,20 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
     return ToPyObject(false);
   }
   if (self->tensor.is_dense_tensor()) {
+    auto dense_tensor_ptr =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
     return ToPyObject(
-        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
-            ->IsInitialized());
+        dense_tensor_ptr->IsInitialized() &&
+        ((dense_tensor_ptr->numel() > 0 && dense_tensor_ptr->Holder()->ptr()) ||
+         dense_tensor_ptr->numel() == 0));
   } else if (self->tensor.is_dist_tensor()) {
-    return ToPyObject(
+    auto dense_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
-            ->value()
-            .IsInitialized());
+            ->value();
+    return ToPyObject(
+        dense_tensor.IsInitialized() &&
+        ((dense_tensor.numel() > 0 && dense_tensor.Holder()->ptr()) ||
+         dense_tensor.numel() == 0));
   } else {
     return ToPyObject(false);
   }

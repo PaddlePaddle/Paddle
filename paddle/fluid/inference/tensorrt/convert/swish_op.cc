@@ -29,7 +29,7 @@ class SwishOpConverter : public OpConverter {
     int input_num = op_desc.Input("X").size();
     PADDLE_ENFORCE_EQ(input_num,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The input X's size must equal to 1 in TRT swish op."
                           " But received X's size %d.",
                           input_num));
@@ -39,7 +39,7 @@ class SwishOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         output_num,
         1UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output Out's size must equal to 1 in TRT swish op. "
             "But received Out's size %u.",
             output_num));

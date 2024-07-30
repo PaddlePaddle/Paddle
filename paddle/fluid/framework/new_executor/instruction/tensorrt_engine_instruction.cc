@@ -200,7 +200,7 @@ static void RuntimeDynamicShapeCheck(
   PADDLE_ENFORCE_EQ(is_input_shape_valid(
                         runtime_input_shape, min_input_shape, max_input_shape),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT runtime input shape of %s is invalid. Expect "
                         "runtime input shape to be within min/max input shape "
                         "configured in SetTRTDynamicShapeInfo(),"
@@ -227,7 +227,7 @@ static phi::DataType TRT2PaddleDataType(nvinfer1::DataType type) {
       return phi::DataType::BOOL;
 #endif
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
       return phi::DataType::FLOAT32;
   }
@@ -242,13 +242,13 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
   auto in_var_name = value_exec_info_->GetVarName(source_value);
 
   PADDLE_ENFORCE_NOT_NULL(scope.FindVar(in_var_name),
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "can not find var[%s] in scope", in_var_name));
   auto var = scope.FindVar(in_var_name);
   auto &variable_array = var->Get<VariableRefArray>();
   PADDLE_ENFORCE_EQ(variable_array.size(),
                     input_names_.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input tensor num(%d) is not equal with the input "
                         "names num(%d) in TensorRTEngineInstruction",
                         variable_array.size(),
@@ -256,9 +256,9 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
   for (size_t i = 0; i < variable_array.size(); ++i) {
     if (!variable_array[i]->IsType<phi::DenseTensor>()) {
       PADDLE_THROW(
-          phi::errors::Unimplemented("Only support Vector<DenseTensor> now "
-                                     "not support vector<%d>.",
-                                     variable_array[i]->Type()));
+          common::errors::Unimplemented("Only support Vector<DenseTensor> now "
+                                        "not support vector<%d>.",
+                                        variable_array[i]->Type()));
     }
     auto input_tensor = variable_array[i]->Get<phi::DenseTensor>();
     auto name = input_names_[i];
@@ -352,12 +352,12 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
       PADDLE_ENFORCE_EQ(
           min_input_shape.count(x),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input %s not found in TRT engine min_input_shape.", x));
       PADDLE_ENFORCE_EQ(
           max_input_shape.count(x),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input %s not found in TRT engine max_input_shape.", x));
       RuntimeDynamicShapeCheck(
           x, runtime_input_shape[x], min_input_shape[x], max_input_shape[x]);
@@ -416,7 +416,7 @@ void TensorRTEngineInstruction::BindInputTensor(
   PADDLE_ENFORCE_GT(
       input_tensor.numel(),
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input tensor named %s of trt-subgraph must "
           "have >0 elements, but now have %d elements. "
           "It's likely that this tensor is connected to a Concat op inside "
@@ -438,7 +438,7 @@ void TensorRTEngineInstruction::BindInputTensor(
   if (input_shape.empty()) {
     PADDLE_ENFORCE_EQ(input_tensor.numel(),
                       1UL,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "This tensor must have one element, but got %ld.",
                           input_tensor.numel()));
     input_shape.push_back(1);
@@ -450,7 +450,7 @@ void TensorRTEngineInstruction::BindInputTensor(
       binding_offset;
   PADDLE_ENFORCE_LT(bind_index,
                     num_bindings,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Wrong TRT engine input binding index. Expected The "
                         "binding index of TRT engine input to be less than "
                         "the number of inputs and outputs. Received binding "
@@ -537,7 +537,7 @@ void TensorRTEngineInstruction::BindInputTensor(
   auto intrt_type = trt_engine_->engine()->getBindingDataType(intrt_index);
   PADDLE_ENFORCE_EQ(indata_type,
                     intrt_type,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The TRT Engine OP's input type [%d] should equal "
                         "to the input data type [%d].",
                         static_cast<int>(intrt_type),
@@ -579,9 +579,9 @@ void TensorRTEngineInstruction::BindInputTensor(
         static_cast<void *>(const_cast<bool *>(input_tensor.data<bool>()));
 #endif
   } else {
-    PADDLE_THROW(
-        phi::errors::Fatal("The TRT Engine OP only support "
-                           "float/double/int32_t/int64_t/float16/bool input."));
+    PADDLE_THROW(common::errors::Fatal(
+        "The TRT Engine OP only support "
+        "float/double/int32_t/int64_t/float16/bool input."));
   }
 }
 
@@ -633,7 +633,7 @@ void TensorRTEngineInstruction::BindOutputTensor(
 
   PADDLE_ENFORCE_LT(bind_index,
                     num_bindings,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The binding index in TRT engine should be less "
                         "than the number of bindings, but got binding "
                         "index = %d, number of bindings = %d.",
@@ -661,7 +661,7 @@ void TensorRTEngineInstruction::RunTrt() {
   auto in_var_name = value_exec_info_->GetVarName(source_value);
 
   PADDLE_ENFORCE_NOT_NULL(scope.FindVar(in_var_name),
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "can not find var[%s] in scope", in_var_name));
   auto in_var = scope.FindVar(in_var_name);
   auto &in_variable_array = in_var->Get<VariableRefArray>();
@@ -680,9 +680,9 @@ void TensorRTEngineInstruction::RunTrt() {
                       &runtime_batch);
     } else {
       PADDLE_THROW(
-          phi::errors::Unimplemented("Only support Vector<DenseTensor> now "
-                                     "not support vector<%d>.",
-                                     in_variable_array[i]->Type()));
+          common::errors::Unimplemented("Only support Vector<DenseTensor> now "
+                                        "not support vector<%d>.",
+                                        in_variable_array[i]->Type()));
     }
   }
 
@@ -692,7 +692,7 @@ void TensorRTEngineInstruction::RunTrt() {
   auto out_var_name = value_exec_info_->GetVarName(result_value);
 
   PADDLE_ENFORCE_NOT_NULL(scope.FindVar(out_var_name),
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "can not find var[%s] in scope", out_var_name));
   auto out_var = scope.FindVar(out_var_name);
   auto *out_variable_array = out_var->GetMutable<VariableRefArray>();
@@ -705,9 +705,9 @@ void TensorRTEngineInstruction::RunTrt() {
           output_names_[i], output_tensor, i, buffers, &runtime_batch);
     } else {
       PADDLE_THROW(
-          phi::errors::Unimplemented("Only support Vector<DenseTensor> now "
-                                     "not support vector<%d>.",
-                                     out_variable_array->at(i)->Type()));
+          common::errors::Unimplemented("Only support Vector<DenseTensor> now "
+                                        "not support vector<%d>.",
+                                        out_variable_array->at(i)->Type()));
     }
   }
 

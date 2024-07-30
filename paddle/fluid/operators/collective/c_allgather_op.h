@@ -24,9 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_GLOO)
-#include <gloo/allgather.h>
-
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#include "paddle/phi/core/distributed/gloo_comm_context.h"
 #endif
 
 namespace paddle {
@@ -37,24 +35,19 @@ class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
+    auto& dev_ctx = ctx.device_context<phi::CPUContext>();
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    auto place = ctx.GetPlace();
-    auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    auto nranks = gloo->Size();
-    int64_t send_numel = in->numel();
-    const T* send_buff = in->data<T>();
-    T* recv_buff = out->mutable_data<T>(place);
-
-    PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(),
-        true,
-        phi::errors::PreconditionNotMet(
-            "You must initialize the gloo environment first to use it."));
-    gloo::AllgatherOptions opts(gloo->GetContext());
-    opts.setInput(const_cast<T*>(send_buff), send_numel);
-    opts.setOutput(recv_buff, send_numel * nranks);
-    gloo::allgather(opts);
+    out->Resize(in->dims());
+    dev_ctx.Alloc<T>(out);
+    auto comm_ctx = static_cast<phi::distributed::GlooCommContext*>(
+        dev_ctx.GetCommContext());
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      ::common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+    comm_ctx->AllGather(out, *in);
 #else
     PADDLE_THROW(phi::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
