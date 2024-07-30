@@ -2362,6 +2362,7 @@
     func : i0
   inplace: (x -> out)
   backward : i0_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : i0e
   args : (Tensor x)
@@ -2371,6 +2372,7 @@
   kernel :
     func : i0e
   backward : i0e_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : i1
   args : (Tensor x)
@@ -2380,6 +2382,7 @@
   kernel :
     func : i1
   backward : i1_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : i1e
   args : (Tensor x)
@@ -2389,6 +2392,7 @@
   kernel :
     func : i1e
   backward : i1e_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : identity_loss
   args : (Tensor x, int reduction = 1)
