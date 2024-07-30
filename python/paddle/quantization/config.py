@@ -71,8 +71,8 @@ class QuantConfig:
     the strategies of quantization.
 
     Args:
-        activation(QuanterFactory): The global quantizer used to quantize the activations.
-        weight(QuanterFactory): The global quantizer used to quantize the weights.
+        activation(QuanterFactory|None): The global quantizer used to quantize the activations.
+        weight(QuanterFactory|None): The global quantizer used to quantize the weights.
 
     Examples:
         .. code-block:: python
@@ -90,7 +90,7 @@ class QuantConfig:
     """
 
     def __init__(
-        self, activation: QuanterFactory, weight: QuanterFactory
+        self, activation: QuanterFactory | None, weight: QuanterFactory | None
     ) -> None:
         if activation is None and weight is None:
             self._global_config = None
@@ -108,8 +108,8 @@ class QuantConfig:
     def add_layer_config(
         self,
         layer: Layer | list[Layer],
-        activation: QuanterFactory = None,
-        weight: QuanterFactory = None,
+        activation: QuanterFactory | None = None,
+        weight: QuanterFactory | None = None,
     ) -> None:
         r"""
         Set the quantization config by layer. It has the highest priority among
@@ -117,8 +117,8 @@ class QuantConfig:
 
         Args:
             layer(Layer|list[Layer]]): One or a list of layers.
-            activation(QuanterFactory): Quanter used for activations.
-            weight(QuanterFactory): Quanter used for weights.
+            activation(QuanterFactory| None): Quanter used for activations.
+            weight(QuanterFactory| None): Quanter used for weights.
 
         Examples:
             .. code-block:: python
@@ -157,8 +157,8 @@ class QuantConfig:
     def add_name_config(
         self,
         layer_name: str | list[str],
-        activation: QuanterFactory = None,
-        weight: QuanterFactory = None,
+        activation: QuanterFactory | None = None,
+        weight: QuanterFactory | None = None,
     ) -> None:
         r"""
         Set the quantization config by full name of layer. Its priority is
@@ -166,8 +166,8 @@ class QuantConfig:
 
         Args:
             layer_name(str|list[str]): One or a list of layers' full name.
-            activation(QuanterFactory): Quanter used for activations.
-            weight(QuanterFactory): Quanter used for weights.
+            activation(QuanterFactory| None): Quanter used for activations.
+            weight(QuanterFactory| None): Quanter used for weights.
 
         Examples:
             .. code-block:: python
