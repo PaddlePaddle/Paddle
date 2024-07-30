@@ -17,7 +17,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Sequence
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.base.libpaddle import DataType
 
 from ..base import core, framework
@@ -232,7 +232,7 @@ class RAdam(Optimizer):
         self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
 
     def _create_accumulators(self, block, parameters):
-        if not isinstance(block, framework.Block):
+        if not isinstance(block, (framework.Block, pir.Block)):
             raise TypeError("block is not instance of framework.Block.")
 
         if isinstance(parameters, dict):
