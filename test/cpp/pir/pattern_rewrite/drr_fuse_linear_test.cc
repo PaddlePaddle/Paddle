@@ -139,12 +139,8 @@ TEST(DrrTest, FusedLinear) {
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  PADDLE_ENFORCE_EQ(
-    pm.Run(&program),
-    true,
-    phi::errors::Unavailable(
-      "pm fail to run program"
-    )
-  );
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    phi::errors::Unavailable("pm fail to run program"));
   EXPECT_EQ(program.block()->size(), 22u);
 }
