@@ -237,10 +237,10 @@ template <typename T>
 __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input) {
 #pragma unroll
   for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
-    T tmp_val =
-        phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
-    int tmp_id =
-        phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+    T tmp_val = phi::backends::gpu::CudaShuffleDownSync(
+        FINAL_MASK, input.v, offset, WARP_SIZE);
+    int tmp_id = phi::backends::gpu::CudaShuffleDownSync(
+        FINAL_MASK, input.id, offset, WARP_SIZE);
     if (static_cast<float>(input.v) < static_cast<float>(tmp_val)) {
       input.v = tmp_val;
       input.id = tmp_id;
@@ -297,7 +297,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
       if (*beam >= MaxLength) break;
     } else {
 #ifdef PADDLE_WITH_HIP
-      unsigned mask = 0u;
+      uint64_t mask = 0u;
       mask = __ballot(true);
       if (tid_max / WARP_SIZE == wid) {
         if (__shfl_down(*beam, tid_max % WARP_SIZE, WARP_SIZE) == MaxLength)
