@@ -25,6 +25,8 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/layout.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace hlir {
