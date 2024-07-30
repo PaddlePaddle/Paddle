@@ -398,7 +398,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
       if (comm_ctx) {
         comm_ctx->AllReduce(
             &num_classes_per_device, num_classes_per_device, ncclSum, stream);
-        paddle::platform::GpuStreamSync(stream);
+        phi::backends::gpu::GpuStreamSync(stream);
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
             num_classes_per_device_ptr,

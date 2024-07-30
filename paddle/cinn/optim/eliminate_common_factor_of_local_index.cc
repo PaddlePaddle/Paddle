@@ -172,8 +172,28 @@ int gcd(int a, int b) {
   return gcd(b, a % b);
 }
 
+ir::Expr ExtractSymbolicFromExpr(const ir::Expr& expr) {
+  ir::Expr simplied_expr = cinn::common::AutoSimplify(expr);
+  if (simplied_expr.is_constant()) {
+    return ir::Expr(0);
+  } else if (expr.As<ir::_Var_>()) {
+    auto var = expr.As<ir::_Var_>();
+    if (var->is_symbolic_constant) {
+      VLOG(6) << "Extract symbolic constant, name = " << var->name;
+      return ir::ir_utils::IRCopy(expr);
+    }
+    return ir::Expr(0);
+  } else {
+    VLOG(6) << "Not supported for calculating symbolic, expr = " << expr;
+    return ir::Expr(0);
+  }
+  PADDLE_THROW(phi::errors::Fatal(
+      "Dead code. Fail to extract symbolic from expression."));
+}
+
 class Gcd {};
 class Offset {};
+class Symbolic {};
 
 template <typename Op>
 struct CommonFactorTrait;
@@ -216,6 +236,33 @@ struct CommonFactorTrait<Offset> {
 };
 
 const ir::Expr CommonFactorTrait<Offset>::unit = ir::Expr(0);
+
+template <>
+struct CommonFactorTrait<Symbolic> {
+  static const ir::Expr unit;
+
+  static ir::Expr Calculate(const ir::Expr& expr1, const ir::Expr& expr2) {
+    auto IsSymbolicNotEqual = [&](const ir::Expr& expr1,
+                                  const ir::Expr& expr2) -> bool {
+      return cinn::common::AutoSimplify(
+                 ir::Sub::Make(ExtractSymbolicFromExpr(expr1),
+                               ExtractSymbolicFromExpr(expr2))) != ir::Expr(0);
+    };
+    if (IsSymbolicNotEqual(expr1, expr2)) {
+      return ir::Expr(0);
+    }
+    return ExtractSymbolicFromExpr(expr1);
+  }
+
+  static ir::Expr Simplify(const ir::Expr& expr, const ir::Expr& factor) {
+    if (factor != unit) {
+      return cinn::common::AutoSimplify(ir::Sub::Make(expr, factor));
+    }
+    return expr;
+  }
+};
+
+const ir::Expr CommonFactorTrait<Symbolic>::unit = ir::Expr(0);
 
 template <typename DoEachT>
 void VisitEachRowExpr(const std::vector<std::vector<ir::Expr>>& indexes,
@@ -359,10 +406,114 @@ void EliminateCommonFactorHelper(ir::Expr* expr) {
   eliminate_common_factor_visitor(expr);
 }
 
+class TransformLocalIndicesVisitor : public ir::IRMutator<> {
+ public:
+  void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+ private:
+  template <typename OpType>
+  void ExtractIterHelper(
+      const ir::Expr& expr,
+      std::unordered_map<std::string, ir::Expr>* name_to_iter) {
+    const auto op = expr.As<OpType>();
+    ExtractIterFromIndice(op->a(), name_to_iter);
+    ExtractIterFromIndice(op->b(), name_to_iter);
+  }
+
+  void ExtractIterFromIndice(
+      const ir::Expr& expr,
+      std::unordered_map<std::string, ir::Expr>* name_to_iter) {
+    if (expr.As<ir::_Var_>()) {
+      const auto var = expr.As<ir::_Var_>();
+      if (name_to_iter->count(var->name) == 0) {
+        (*name_to_iter)[var->name] = expr;
+      }
+    } else if (expr.As<ir::Add>()) {
+      ExtractIterHelper<ir::Add>(expr, name_to_iter);
+    } else if (expr.As<ir::Sub>()) {
+      ExtractIterHelper<ir::Sub>(expr, name_to_iter);
+    } else if (expr.As<ir::Mul>()) {
+      ExtractIterHelper<ir::Mul>(expr, name_to_iter);
+    } else if (expr.As<ir::Div>()) {
+      ExtractIterHelper<ir::Div>(expr, name_to_iter);
+    } else if (expr.As<ir::Mod>()) {
+      ExtractIterHelper<ir::Mod>(expr, name_to_iter);
+    } else {
+      VLOG(4) << "Not support for extract iter: \n" << expr;
+      return;
+    }
+    return;
+  }
+
+  std::vector<ir::Expr> ConvertIndicesToIters(
+      const std::vector<ir::Expr>& indices) {
+    auto CopyIndiceItersToLocalBuffer =
+        [&](const std::unordered_map<std::string, ir::Expr>& name_to_iter,
+            const std::vector<ir::Expr>& indices) -> std::vector<ir::Expr> {
+      std::vector<ir::Expr> local_buffer_iters;
+      for (std::size_t i = 0; i < loop_vars_.size(); ++i) {
+        VLOG(6) << "loop var name: " << loop_vars_[i]->name;
+        if (name_to_iter.count(loop_vars_[i]->name) > 0) {
+          local_buffer_iters.push_back(name_to_iter.at(loop_vars_[i]->name));
+        }
+      }
+
+      while (local_buffer_iters.size() < indices.size()) {
+        local_buffer_iters.insert(local_buffer_iters.begin(), ir::Expr(0));
+      }
+      return local_buffer_iters;
+    };
+
+    std::unordered_map<std::string, ir::Expr> name_to_iter;
+    for (const auto& indice : indices) {
+      ExtractIterFromIndice(indice, &name_to_iter);
+      VLOG(6) << "extract iter: " << indice
+              << " iter_set size: " << name_to_iter.size();
+    }
+    return CopyIndiceItersToLocalBuffer(name_to_iter, indices);
+  }
+
+  void Visit(const ir::For* op, ir::Expr* expr) override {
+    auto* for_ir = expr->As<ir::For>();
+    loop_vars_.push_back(for_ir->loop_var);
+    IRMutator<>::Visit(op, expr);
+    loop_vars_.pop_back();
+  }
+
+  void Visit(const ir::Store* op, ir::Expr* expr) override {
+    auto store = expr->As<ir::Store>();
+    if (store->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::GPULocal) {
+      store->indices = ConvertIndicesToIters(store->indices);
+    }
+    ir::IRMutator<>::Visit(op, expr);
+  }
+
+  void Visit(const ir::Load* op, ir::Expr* expr) override {
+    auto load = expr->As<ir::Load>();
+    if (load->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::GPULocal) {
+      load->indices = ConvertIndicesToIters(load->indices);
+    }
+    ir::IRMutator<>::Visit(op, expr);
+  }
+
+  std::vector<ir::Var> loop_vars_;
+};
+
+void TransformLocalIndicesToIters(ir::Expr* expr) {
+  TransformLocalIndicesVisitor transform_local_indices_visitor;
+  transform_local_indices_visitor(expr);
+}
+
 void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
   VLOG(4) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
   EliminateCommonFactorHelper<Gcd>(expr);
   EliminateCommonFactorHelper<Offset>(expr);
+  EliminateCommonFactorHelper<Symbolic>(expr);
+
+  TransformLocalIndicesToIters(expr);
+
   VLOG(4) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 }
 

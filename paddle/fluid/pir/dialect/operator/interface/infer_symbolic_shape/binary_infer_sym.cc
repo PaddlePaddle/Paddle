@@ -88,6 +88,29 @@ bool AllcloseOpInferSymbolicShape(
   return true;
 }
 
+bool Atan2OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    y_shape.size(),
+                    common::errors::PreconditionNotMet(
+                        "Input(X) and Input(Y) must have the same "
+                        "dimension size. but got %d vs %d",
+                        x_shape.size(),
+                        y_shape.size()));
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  return true;
+}
+
 bool BceLossOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
