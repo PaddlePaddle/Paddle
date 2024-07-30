@@ -25,7 +25,7 @@ ScheduleBlockNode::ScheduleBlockNode(Expr block, const IRSchedule& ir_sch)
   PADDLE_ENFORCE_EQ(block.As<ScheduleBlockRealize>(),
                     true,
                     ::common::errors::InvalidArgument(
-                        "Expr is not a ScheduleBlockRealize: %s", block));
+                        "Expr is not a ScheduleBlockRealize: %s", std::to_string(block)));
   id_ = block.As<ScheduleBlockRealize>()
             ->schedule_block.As<ScheduleBlock>()
             ->name;
@@ -103,7 +103,7 @@ void ScheduleBlockGraph::Update(const IRSchedule& ir_sch) {
     PADDLE_ENFORCE_EQ(block.As<ScheduleBlockRealize>(),
                       true,
                       ::common::errors::InvalidArgument(
-                          "Expr is not a ScheduleBlockRealize: %s", block));
+                          "Expr is not a ScheduleBlockRealize: %s", std::to_string(block)));
     std::string id = block.As<ScheduleBlockRealize>()
                          ->schedule_block.As<ScheduleBlock>()
                          ->name;
@@ -121,7 +121,7 @@ void ScheduleBlockGraph::Update(const IRSchedule& ir_sch) {
           producer.As<ScheduleBlockRealize>(),
           true,
           ::common::errors::InvalidArgument(
-              "Expr is not a ScheduleBlockRealize: %s", producer));
+              "Expr is not a ScheduleBlockRealize: %s", std::to_string(producer)));
       std::string producer_id = producer.As<ScheduleBlockRealize>()
                                     ->schedule_block.As<ScheduleBlock>()
                                     ->name;
