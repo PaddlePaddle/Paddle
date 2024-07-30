@@ -4134,7 +4134,7 @@
   kernel :
     func : sign
   backward : sign_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::InferSymbolicShapeInterface
 
 - op : silu
   args : (Tensor x)
@@ -4285,6 +4285,7 @@
            sqrt_sr {selected_rows -> selected_rows}
   inplace : (x -> out)
   backward : sqrt_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : square
   args : (Tensor x)
