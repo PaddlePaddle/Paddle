@@ -123,9 +123,7 @@ void TestAPISizeAndShape() {
   PADDLE_ENFORCE_EQ(
       t1.shape(),
       tensor_shape,
-      phi::errors::InvalidArgument("t1.shape should be equal to tensor_shape, "
-                                   "but got %s",
-                                   t1.shape()));
+      phi::errors::InvalidArgument("t1.shape should be equal to tensor_shape, "));
 }
 
 void TestAPISlice() {
@@ -140,22 +138,19 @@ void TestAPISlice() {
       t1.slice(0, 5).shape(),
       tensor_shape_origin1,
       phi::errors::InvalidArgument("t1.slice(0, 5).shape should be equal to "
-                                   "{5, 5}, but got %s",
-                                   t1.slice(0, 5).shape()));
+                                   "{5, 5}"));
   PADDLE_ENFORCE_EQ(
       t1.slice(0, 3).shape(),
       tensor_shape_sub1,
       phi::errors::InvalidArgument("t1.slice(0, 3).shape should be equal to "
-                                   "{3, 5}, but got %s",
-                                   t1.slice(0, 3).shape()));
+                                   "{3, 5}"));
   auto t2 = paddle::experimental::empty(
       tensor_shape_origin2, DataType::FLOAT32, phi::GPUPlace());
   PADDLE_ENFORCE_EQ(
       t2.slice(4, 5).shape(),
       tensor_shape_sub2,
       phi::errors::InvalidArgument("t2.slice(4, 5).shape should be equal to "
-                                   "{1, 5, 5}, but got %s",
-                                   t2.slice(4, 5).shape()));
+                                   "{1, 5, 5}"));
 #endif
   auto t3 = paddle::experimental::empty(
       tensor_shape_origin1, DataType::FLOAT32, phi::CPUPlace());
@@ -163,22 +158,19 @@ void TestAPISlice() {
       t3.slice(0, 5).shape(),
       tensor_shape_origin1,
       phi::errors::InvalidArgument("t3.slice(0, 5).shape should be equal to "
-                                   "{5, 5}, but got %s",
-                                   t3.slice(0, 5).shape()));
+                                   "{5, 5}"));
   PADDLE_ENFORCE_EQ(
       t3.slice(0, 3).shape(),
       tensor_shape_sub1,
       phi::errors::InvalidArgument("t3.slice(0, 3).shape should be equal to "
-                                   "{3, 5}, but got %s",
-                                   t3.slice(0, 3).shape()));
+                                   "{3, 5}"));
   auto t4 = paddle::experimental::empty(
       tensor_shape_origin2, DataType::FLOAT32, phi::CPUPlace());
   PADDLE_ENFORCE_EQ(
       t4.slice(4, 5).shape(),
       tensor_shape_sub2,
       phi::errors::InvalidArgument("t4.slice(4, 5).shape should be equal to "
-                                   "{1, 5, 5}, but got %s",
-                                   t4.slice(4, 5).shape()));
+                                   "{1, 5, 5}"));
 
   // Test writing function for sliced tensor
   auto t = InitCPUTensorForTest<float>();
