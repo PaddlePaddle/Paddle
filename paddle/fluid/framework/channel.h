@@ -414,7 +414,7 @@ class ChannelWriter {
     PADDLE_ENFORCE_EQ(buffer_.empty(),
                       true,
                       phi::errors::InvalidArgument(
-                          "The buffer should not be empty! Forgot to flush."));
+                          "The buffer should be empty! Forgot to flush."));
   }
 
   ChannelObject<T>* channel() { return channel_; }
@@ -423,7 +423,7 @@ class ChannelWriter {
     PADDLE_ENFORCE_EQ(buffer_.empty(),
                       true,
                       phi::errors::InvalidArgument(
-                          "The buffer should not be empty! Forgot to flush."));
+                          "The buffer should be empty! Forgot to flush."));
     channel_ = channel;
     buffer_.clear();
     failed_ = !channel;
