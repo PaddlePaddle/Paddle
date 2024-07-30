@@ -58,15 +58,16 @@ def _is_master_grad_cast_op(block, op):
     ]
     if in_pir_mode:
         op_name = op.name()
+        if op_name != "pd_op.cast":
+            return False
         input_names = op.get_input_names()
         output_names = op.get_output_names()
     else:
         op_name = op.type
+        if op_name != "cast":
+            return False
         input_names = op.input_arg_names
         output_names = op.output_arg_names
-
-    if op_name != "cast":
-        return False
 
     assert len(input_names) == 1
     assert len(output_names) == 1
