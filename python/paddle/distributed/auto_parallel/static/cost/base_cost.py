@@ -946,6 +946,10 @@ def calc_time_by_modeling(op=None, desc=None, cluster=None):
 
 def calc_time_by_cost_model(op, cluster=None):
     """Calc op time by cost model and the unit is microsecond."""
+    in_pir_mode = paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
+        "FLAGS_enable_pir_api"
+    ]
+
     if not isinstance(op, paddle.base.framework.Operator):
         raise TypeError(
             f"OP must be paddle.base.framework.Operator, but got {type(op)}."
@@ -959,10 +963,19 @@ def calc_time_by_cost_model(op, cluster=None):
     ], "Only A100 and V100 gpu has been supported currently."
 
     time = 0.0  # microsecond
-    op_type = op.type
+
+    if in_pir_mode:
+        op_type = op.name().split("pd_op.")[-1]
+    else:
+        op_type = op.type
+
     # calc comp op time by flops
     if op_type not in NON_COMP_TYPE:
-        attrs = op.all_attrs()
+        if in_pir_mode:
+            attrs = op.attrs()
+        else:
+            attrs = op.all_attrs()
+
         # build comp op inputs desc to calc flops.
         # for example, a matmul op inputs desc will be {"X": [(1024, 1024)], "Y": [(1024, 1024)]}
         inputs = {}

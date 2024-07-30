@@ -22,6 +22,7 @@ from ..pass_base import register_pass
 from ..pass_utils import (
     AutoParallelStreamType,
     _add_event_dependency,
+    _pir_program_for_fthenb_and_1f1b,
     _program_for_fthenb_and_1f1b,
     split_program,
 )
@@ -267,12 +268,21 @@ class Pipeline1F1BPass(PipelinePassBase):
             "recv_v2": 0,
         }
 
-        op_type = op.type
+        if not self._in_pir_mode:
+            op_type = op.type
+        else:
+            op_type = op.name()
+            op_type.split("pd_op.")[-1]
+
         if op_type in handwritten_cost_map.keys():
             return handwritten_cost_map[op_type]
 
-        if op_type == "matmul_v2":
+        if self._in_pir_mode:
+            var_name = op.get_output_names()[0]
+        else:
             var_name = op.output_arg_names[0]
+
+        if op_type == "matmul_v2":
             shape = op.block._var_recursive(var_name).shape
             if shape == (1, 1024, 6144):
                 return 399
@@ -284,7 +294,6 @@ class Pipeline1F1BPass(PipelinePassBase):
                 return 244
 
         if op_type == "scale":
-            var_name = op.output_arg_names[0]
             shape = op.block._var_recursive(var_name).shape
             if shape == (1, 16, 1024, 128):
                 return 20
@@ -293,7 +302,7 @@ class Pipeline1F1BPass(PipelinePassBase):
 
         try:
             time = calc_time_by_cost_model(op)
-            if op.type == "c_allreduce_sum":
+            if "c_allreduce_sum" in op_type:
                 time *= 8
             return time
         except Exception as e:
@@ -336,13 +345,28 @@ class Pipeline1F1BPass(PipelinePassBase):
 
         return types, sub_programs
 
+    def _partial_pir_programs(self, program):
+        # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
+        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        types = [FORWARD, BACKWARD, OPT]
+        sub_program_list = _pir_program_for_fthenb_and_1f1b(
+            program, enable_send_recv_overlap
+        )
+
+        for i in range(len(types)):
+            logger.debug(
+                f"type = {types[i]}, sub_programs = {sub_program_list[i]}\n"
+            )
+        logger.debug(f"jobs_in_stable_phase = {self.jobs_in_stable_phase}")
+        return types, sub_program_list
+
     def _split_program_for_overlapping(self, job_type, program, split_points):
         assert job_type in [
             FORWARD,
             BACKWARD,
         ], f"job_type should be one of {[FORWARD, BACKWARD]}"
 
-        splitted_programs, __, __ = split_program(program, split_points)
+        splitted_programs, _, _ = split_program(program, split_points)
 
         splitted_job_types = []
         num_splitted_programs = len(splitted_programs)
@@ -352,8 +376,10 @@ class Pipeline1F1BPass(PipelinePassBase):
         return splitted_job_types, splitted_programs
 
     def is_comm_op_valid_to_overlap(self, op):
+        op_name = op.type if not self._in_pir_mode else op.name()
+
         return (
-            op.type == "c_allreduce_sum"
+            "c_allreduce_sum" in op_name
             and op.dist_attr.execution_stream
             == AutoParallelStreamType.CALC_STREAM.value
         )
