@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable
 
 from paddle.distributed import fleet
 
@@ -24,15 +27,21 @@ from . import (  # noqa: F401
 from .fs import HDFSClient, LocalFS
 from .ps_util import DistributedInfer
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.nn import Layer
+
 __all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]
 
 
-def recompute(function, *args, **kwargs):
+def recompute(
+    function: Callable[..., Layer], *args: Tensor, **kwargs: Any
+) -> Tensor:
     """
     recompute intermediate activations to save the memory.
 
     Parameters:
-        function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model
+        function(Callable[..., paddle.nn.Layer]): layer of sequence of layers that describes part of forward pass of the model
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
               in backward stage for gradient calculation.
         *args(Tensor): inputs to the function.
