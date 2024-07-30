@@ -125,11 +125,11 @@ class TestFusedMoEOp(OpTest):
             tensor_x,
             self.gate_weight,
             self.bmm_w0,
-            None if self.quant_method == "None" else self.scale0,
             self.bmm_b0,
             self.bmm_w1,
-            None if self.quant_method == "None" else self.scale1,
             self.bmm_b1,
+            None if self.quant_method == "None" else self.scale0,
+            None if self.quant_method == "None" else self.scale1,
             self.quant_method,
             2,
         )
