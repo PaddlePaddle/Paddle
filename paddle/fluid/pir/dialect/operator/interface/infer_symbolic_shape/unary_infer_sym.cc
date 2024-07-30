@@ -1625,7 +1625,4 @@ bool Unsqueeze_OpInferSymbolicShape(
   return UnsqueezeOpInferSymbolicShape(op, infer_context);
 }
 
-  return true;
-}
-
 }  // namespace paddle::dialect
