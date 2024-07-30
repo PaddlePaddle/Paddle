@@ -502,33 +502,41 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
         return output, model.parameters()
 
     def static_radam_mp(self, mp, use_amp):
-        paddle.enable_static()
         paddle.seed(2024)
+        paddle.enable_static()
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.optimizer.RAdam(0.1)
-        optimizer._multi_precision = mp
-        if use_amp:
-            optimizer = paddle.static.amp.decorate(
-                optimizer,
-                init_loss_scaling=128.0,
-                use_dynamic_loss_scaling=True,
-                use_pure_fp16=True,
-                use_fp16_guard=False,
-            )
+
         with paddle.static.program_guard(train_program, startup_program):
+            linear = paddle.nn.Linear(2, 10)
+            optimizer = paddle.optimizer.NAdam(
+                learning_rate=0.1, parameters=linear.parameters()
+            )
             if use_amp:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float16'
-                )
+                data = paddle.static.data('X', [2, 2], 'float16')
+                if paddle.framework.in_pir_mode():
+                    linear, optimizer = paddle.amp.decorate(
+                        models=linear,
+                        optimizers=optimizer,
+                        level='O2',
+                        master_grad=False,
+                    )
+                else:
+                    optimizer = paddle.static.amp.decorate(
+                        optimizer,
+                        init_loss_scaling=128.0,
+                        use_dynamic_loss_scaling=True,
+                        use_pure_fp16=True,
+                        use_fp16_guard=False,
+                    )
             else:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float32'
-                )
-            hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.mean(hidden)
+                data = paddle.static.data('X', [2, 2], 'float32')
+
+            out = linear(data)
+            loss = paddle.mean(out)
             optimizer.minimize(loss)
+
         exe.run(startup_program)
 
         np.random.seed(2024)
@@ -542,11 +550,10 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
         out = []
         for idx in range(5):
             (loss_data,) = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss.name]
+                train_program, feed={"X": x}, fetch_list=[loss]
             )
             out.append(loss_data)
 
-        paddle.disable_static()
         return out
 
     def test_main(self):

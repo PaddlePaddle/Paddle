@@ -73,7 +73,7 @@ class IRContext {
       err_msg << "TypeConvertError: convert " << data_.get()->type_info()
               << " to " << TIRContextNode::__type_info__;
 
-      PADDLE_THROW(phi::errors::InvalidArgument(err_msg.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(err_msg.str()));
     }
     return ctx_node;
   }
@@ -85,7 +85,7 @@ class IRContext {
       std::stringstream ss;
       ss << "TypeConvertError: convert " << data_.get()->type_info() << " to "
          << TIRContextNode::__type_info__;
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     }
     return ctx_node;
   }
@@ -240,7 +240,7 @@ IRContext IRBuilderNode::GetLastContext() const {
     std::stringstream ss;
     ss << "TypeError: The last context is not "
        << TIRContextNode::__type_info__;
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return contexts.back();
 }

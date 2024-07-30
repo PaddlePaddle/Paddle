@@ -158,10 +158,8 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
             Tensor(shape=[6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             [1, 2, 2, 4, 3, 3])
     """
-    if in_dynamic_mode():
-        return _legacy_C_ops.limit_by_capacity(
-            expert_count, capacity, 'n_worker', n_worker
-        )
+    if in_dynamic_or_pir_mode():
+        return _C_ops.limit_by_capacity(expert_count, capacity, n_worker)
     else:
         op_type = 'limit_by_capacity'
 

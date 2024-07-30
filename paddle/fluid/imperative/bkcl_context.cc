@@ -103,7 +103,7 @@ void BKCLParallelContext::Init() {
     VLOG(0) << "init BKCL context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " xpu id: " << xpu_id
             << " ring id: " << ring_id;
-    // it will assign bkcl_comm in XPUDeviceContext within ring_id
+    // it will assign bkcl_comm in XPUContext within ring_id
     platform::BKCLCommContext::Instance().CreateComm(&bkcl_ids[ring_id],
                                                      strategy_.nranks_,
                                                      strategy_.local_rank_,
@@ -134,7 +134,7 @@ void BKCLParallelContext::InitWithRingID(int ring_id) {
   VLOG(0) << "init BKCL context nranks: " << strategy_.nranks_
           << " local rank: " << strategy_.local_rank_ << " xpu id: " << xpu_id
           << " ring id: " << ring_id;
-  // it will assign bkcl_comm in XPUDeviceContext within ring_id
+  // it will assign bkcl_comm in XPUContext within ring_id
   platform::BKCLCommContext::Instance().CreateComm(
       &bkcl_ids[0], strategy_.nranks_, strategy_.local_rank_, xpu_id, ring_id);
 
@@ -155,7 +155,7 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
           "Dynamic graph mode does not support multi-CPU training yet."));
   auto place = place_;
 
-  auto *dev_ctx = static_cast<platform::XPUDeviceContext *>(
+  auto *dev_ctx = static_cast<phi::XPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
   platform::BKCLComm *comm =
       platform::BKCLCommContext::Instance().Get(ring_id, place);
@@ -218,7 +218,7 @@ void BKCLParallelContext::WaitCompute(int ring_id) {
                                             "but got ring id = %d, nrings = %d",
                                             ring_id,
                                             strategy_.nrings_));
-  auto compute_stream = static_cast<platform::XPUDeviceContext *>(
+  auto compute_stream = static_cast<phi::XPUContext *>(
                             phi::DeviceContextPool::Instance().Get(place_))
                             ->stream();
   auto comm_stream = platform::BKCLCommContext::Instance()
@@ -247,7 +247,7 @@ void BKCLParallelContext::WaitComm(int ring_id) {
                          .Get(ring_id, place_)
                          ->dev_context()
                          ->stream();
-  auto compute_stream = static_cast<platform::XPUDeviceContext *>(
+  auto compute_stream = static_cast<phi::XPUContext *>(
                             phi::DeviceContextPool::Instance().Get(place_))
                             ->stream();
   auto event = compute_events_[ring_id].get();
@@ -258,7 +258,7 @@ void BKCLParallelContext::WaitComm(int ring_id) {
 }
 
 void BKCLParallelContext::SynchronizeCompute() {
-  auto compute_dev_ctx = static_cast<platform::XPUDeviceContext *>(
+  auto compute_dev_ctx = static_cast<phi::XPUContext *>(
       phi::DeviceContextPool::Instance().Get(place_));
   compute_dev_ctx->Wait();
 }

@@ -39,7 +39,7 @@ class Squeeze2OpConverter : public OpConverter {
     if (axes.empty()) {
       for (int i = 0; i < input_dims.nbDims; i++) {
         if (input_dims.d[i] == -1) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
+          PADDLE_THROW(common::errors::InvalidArgument(
               "The necessary attributes of the squeeze2 operator axes is "
               "missing."));
         } else if (input_dims.d[i] == 1) {
@@ -51,7 +51,7 @@ class Squeeze2OpConverter : public OpConverter {
     PADDLE_ENFORCE_GT(
         axes.size(),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Attr(axes).size should be > 0 in squeeze2 op in TensorRT,"
             "but received axes.size() = %d.",
             axes.size()));

@@ -74,14 +74,14 @@ class ShrinkDepsOpFunctor {
       PADDLE_ENFORCE_EQ(
           graph_.HasOp(ops[i]),
           true,
-          phi::errors::InvalidArgument("Op does not exist in graph."));
+          common::errors::InvalidArgument("Op does not exist in graph."));
       op_to_idx[ops[i]] = i;
     }
 
     PADDLE_ENFORCE_EQ(
         op_to_idx.size(),
         ops.size(),
-        phi::errors::InvalidArgument("Graph may have duplicate ops."));
+        common::errors::InvalidArgument("Graph may have duplicate ops."));
 
     std::vector<std::vector<RelationShip>> ret(ops.size());
     for (auto &e : ret) {
@@ -251,7 +251,7 @@ ExtractComputationOpFromLastLivedVar(details::VarHandle *var,
   PADDLE_ENFORCE_EQ(
       computation_ops.empty(),
       false,
-      phi::errors::InvalidArgument("Computation ops should not be empty."));
+      common::errors::InvalidArgument("Computation ops should not be empty."));
 
   // stage four. Try to shrink computation op if they depend on each other.
   // Get the smallest set of the most ops.
@@ -265,7 +265,7 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
 
   PADDLE_ENFORCE(last_live_ops_of_vars.empty() && var_infos.empty(),
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "Last live ops and reference counts of vars should be "
                      "initialized at here."));
 
@@ -310,7 +310,7 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       PADDLE_ENFORCE_EQ(
           var_desc->Name(),
           var_name,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "A Var, it's VarName(%s) and DescName(%s) not same.",
               var_name,
               var_desc->Name()));
@@ -318,7 +318,7 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       PADDLE_ENFORCE_EQ(
           var_handles.empty(),
           false,
-          phi::errors::InvalidArgument("Variable %s not found.", var_name));
+          common::errors::InvalidArgument("Variable %s not found.", var_name));
       auto last_ver_var = var_handles.back();
 
       if (last_ver_var->Node()->IsCtrlVar()) {
@@ -337,15 +337,15 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
         continue;
       }
 
-      PADDLE_ENFORCE_EQ(
-          status,
-          LastLiveOpSearchStatus::kSuccess,
-          phi::errors::InvalidArgument("Status(%d) must be success.", status));
+      PADDLE_ENFORCE_EQ(status,
+                        LastLiveOpSearchStatus::kSuccess,
+                        common::errors::InvalidArgument(
+                            "Status(%d) must be success.", status));
       PADDLE_ENFORCE_EQ(
           result.empty(),
           false,
-          phi::errors::NotFound("Last living ops of %s cannot be empty.",
-                                var_name));
+          common::errors::NotFound("Last living ops of %s cannot be empty.",
+                                   var_name));
 
       std::string last_live_ops_log_str;
       for (auto &each_ret : result) {

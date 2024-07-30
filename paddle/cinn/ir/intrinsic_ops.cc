@@ -22,14 +22,14 @@ const Type& IntrinsicOp::GetInputType(int offset) const {
   PADDLE_ENFORCE_LT(
       offset,
       input_types_.size(),
-      phi::errors::InvalidArgument("offset %d is out of range", offset));
+      ::common::errors::InvalidArgument("offset %d is out of range", offset));
   return input_types_[offset];
 }
 const Type& IntrinsicOp::GetOutputType(int offset) const {
   PADDLE_ENFORCE_LT(
       offset,
       output_types_.size(),
-      phi::errors::InvalidArgument("offset %d is out of range", offset));
+      ::common::errors::InvalidArgument("offset %d is out of range", offset));
   return output_types_[offset];
 }
 
@@ -37,37 +37,37 @@ void IntrinsicOp::Verify(llvm::ArrayRef<Type> input_types,
                          llvm::ArrayRef<Type> output_types) const {
   PADDLE_ENFORCE_EQ(input_types.size(),
                     input_types_.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "input_types.size() != input_types_.size()"));
   PADDLE_ENFORCE_EQ(output_types.size(),
                     output_types_.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "output_types.size() != output_types_.size()"));
 
   for (int i = 0; i < input_types.size(); i++) {
     PADDLE_ENFORCE_EQ(input_types[i],
                       input_types_[i],
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "input_types[%d] != input_types_[%d]", i, i));
   }
 
   for (int i = 0; i < output_types.size(); i++) {
     PADDLE_ENFORCE_EQ(output_types[i],
                       output_types_[i],
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "output_types[%d] != output_types_[%d]", i, i));
   }
 }
 
 void IntrinsicOp::Verify(llvm::ArrayRef<Expr> inputs) const {
-  PADDLE_ENFORCE_EQ(
-      inputs.size(),
-      input_types_.size(),
-      phi::errors::InvalidArgument("inputs.size() != input_types_.size()"));
+  PADDLE_ENFORCE_EQ(inputs.size(),
+                    input_types_.size(),
+                    ::common::errors::InvalidArgument(
+                        "inputs.size() != input_types_.size()"));
   for (int i = 0; i < inputs.size(); i++) {
     PADDLE_ENFORCE_EQ(inputs[i].type().IgnoreConst(),
                       input_types_[i].IgnoreConst(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "inputs[%d].type() != input_types_[%d]", i, i));
   }
 }
@@ -127,15 +127,16 @@ Expr intrinsics::ArgsConstruct::Make(Var var, llvm::ArrayRef<Expr> args) {
   PADDLE_ENFORCE_EQ(
       var->type().ElementOf(),
       type_of<cinn_pod_value_t>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "var->type().ElementOf() != type_of<cinn_pod_value_t>()"));
-  PADDLE_ENFORCE_GE(var->type().lanes(),
-                    1,
-                    phi::errors::InvalidArgument("var->type().lanes() < 1"));
+  PADDLE_ENFORCE_GE(
+      var->type().lanes(),
+      1,
+      ::common::errors::InvalidArgument("var->type().lanes() < 1"));
   for (auto& arg : args) {
     PADDLE_ENFORCE_EQ(arg.type(),
                       type_of<cinn_pod_value_t*>(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "arg.type() != type_of<cinn_pod_value_t*>()"));
     n->AddInputType(var->type());
     n->AddInputType(arg.type());

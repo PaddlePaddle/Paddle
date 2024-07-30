@@ -50,14 +50,14 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
   std::string index_func_name;
   target.arch.Match(
       [&](common::UnknownArch) {
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(::common::errors::Fatal(
             "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
       },
       [&](common::X86Arch) {
         find_func_name.assign("cinn_host_next_smallest_int32");
       },
       [&](common::ARMArch) {
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(::common::errors::Fatal(
             "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
       },
       [&](common::NVGPUArch) {
@@ -169,15 +169,20 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
         CHECK(!args.empty())
             << "The input arguments of Sort compute is empty! Please check.\n";
         CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "At least 1 input tensors for Sort compute\n";
+        PADDLE_ENFORCE_GE(pack_args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "At least 1 input tensors for Sort compute\n"));
         Expr A = pack_args[0];
         CHECK(A.as_tensor());
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        CHECK_EQ(pack_args.size(), 2U);
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          2U,
+                          phi::errors::InvalidArgument(
+                              "The input argument's size of Sort should be 2"));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
         std::vector<ir::Tensor> out =
@@ -251,8 +256,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     CHECK(!args.empty())
         << "The input arguments of ArgSort compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 1U)
-        << "At least 1 input tensors for ArgSort compute\n";
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "The input arguments' size of ArgSort should be 1"));
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -260,7 +267,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
 
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    CHECK_EQ(pack_args.size(), 3U);
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      3U,
+                      phi::errors::InvalidArgument(
+                          "The input argument's size of ArgSort should be 3"));
     CHECK(pack_args[1].is_string());
     std::string tensor_name = pack_args[1].operator std::string();
     auto out = ArgSort(tensor_A, target, axis, is_ascend, tensor_name);

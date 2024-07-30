@@ -57,8 +57,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     auto* attr = ctx_.Attrs().GetAttr(name);
     PADDLE_ENFORCE_NOT_NULL(
         attr,
-        phi::errors::NotFound("Attribute (%s) should be in AttributeMap.",
-                              name));
+        common::errors::NotFound("Attribute (%s) should be in AttributeMap.",
+                                 name));
     return GetAttrValue(*attr);
   }
 
@@ -160,7 +160,7 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
 static inline void ValidCheck(const phi::MetaTensor& meta_tensor) {
   PADDLE_ENFORCE_EQ(meta_tensor.initialized(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The current CompatMetaTensor is not initialized."));
 }
 
@@ -220,7 +220,7 @@ DDim CompatMetaTensor::dims() const {
       auto& tensor_array = var->Get<framework::LoDTensorArray>();
       return common::make_ddim({static_cast<int64_t>(tensor_array.size())});
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Currently, only can get dims from DenseTensor or SelectedRows or "
           "DenseTensorArray."));
     }
@@ -248,7 +248,7 @@ phi::DataType CompatMetaTensor::dtype() const {
       // Unsupported get dtype from LoDTensorArray now
       return phi::DataType::UNDEFINED;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Currently, only can get dtype from DenseTensor or SelectedRows."));
     }
   } else {
@@ -272,7 +272,7 @@ DataLayout CompatMetaTensor::layout() const {
       // Unsupported get layout from LoDTensorArray now
       return phi::DataLayout::UNDEFINED;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Currently, only can get layout from DenseTensor or "
           "SelectedRows."));
     }
@@ -305,12 +305,12 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
       // `test_list` contains this behavior
       PADDLE_ENFORCE_EQ(dims.size(),
                         1UL,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "LoDTensorArray can only have one dimension."));
       // only set the array size for LoDTensorArray input
       tensor_array->resize(dims[0]);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Currently, only can set dims from DenseTensor or SelectedRows."));
     }
   } else {
@@ -339,7 +339,7 @@ void CompatMetaTensor::set_dtype(phi::DataType dtype) {
       // NOTE(chenweihang): do nothing
       // Unsupported set dtype for LoDTensorArray now
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Currently, only can set dtype from DenseTensor or SelectedRows."));
     }
   } else {
@@ -370,7 +370,7 @@ void CompatMetaTensor::set_layout(DataLayout layout) {
       // NOTE(chenweihang): do nothing
       // Unsupported set dtype for LoDTensorArray now
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Currently, only can set layout from DenseTensor or "
           "SelectedRows."));
     }
@@ -623,7 +623,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   PADDLE_GET_CONST(paddle::experimental::Scalar, attr)));
               break;
             default:
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
                   "InferMetaContext.",
                   attr_name));
@@ -641,7 +641,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(tensor_scalar);
             }
           } else {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "Invalid input.size() when cast op attribute `%s` to Scalar, "
                 "expected 1, but actually is %d .",
                 attr_name,
@@ -669,7 +669,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   phi::IntArray({PADDLE_GET_CONST(int, attr)}));
               break;
             default:
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to IntArray when "
                   "construct InferMetaContext.",
                   attr_name));
@@ -769,7 +769,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
             } break;
             default:
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to vector<Scalar> when "
                   "construct KernelContext.",
                   attr_names[i]));
@@ -827,7 +827,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   infer_meta_context.EmplaceBackAttr(vector_int64_attr);
                 } break;
                 default:
-                  PADDLE_THROW(phi::errors::Unimplemented(
+                  PADDLE_THROW(common::errors::Unimplemented(
                       "Unsupported cast op attribute `%s` to vector<int64_t> "
                       "when "
                       "construct KernelContext.",
@@ -851,7 +851,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   PADDLE_GET_CONST(std::vector<double>, attr));
               break;
             default:
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` when construct "
                   "KernelContext in dygraph.",
                   attr_names[i]));

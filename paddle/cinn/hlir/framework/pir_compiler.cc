@@ -111,7 +111,7 @@ pir::CINNKernelInfo PirCompiler::BuildBroadcastTree(
   const size_t task_size = group_compilation_contexts.size();
   PADDLE_ENFORCE_EQ(task_size,
                     leaf_groups.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "While compiling broadcast tree, the size of "
                         "group_compilation_contexts and groups should be "
                         "the same."));

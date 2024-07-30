@@ -43,13 +43,13 @@ class InferVarTypeContext {
 
   virtual Attribute GetAttr(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     return op_->GetAttr(name);
   }
 
   virtual bool HasInput(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     auto& inputs = op_->Inputs();
     auto input = inputs.find(name);
     return input != inputs.end() && !input->second.empty();
@@ -57,7 +57,7 @@ class InferVarTypeContext {
 
   virtual bool HasOutput(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     auto& outputs = op_->Outputs();
     auto output = outputs.find(name);
     return output != outputs.end() && !output->second.empty();
@@ -65,27 +65,27 @@ class InferVarTypeContext {
 
   virtual size_t InputSize(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     return op_->Inputs().at(name).size();
   }
 
   virtual size_t OutputSize(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     return op_->Outputs().at(name).size();
   }
 
   virtual const std::string& InputVarName(const std::string& name,
                                           const int index = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     return op_->Inputs().at(name)[index];
   }
 
   virtual bool InputTypeAnyOf(const std::string& name,
                               proto::VarType::Type type) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     auto& inputs = op_->Input(name);
     return std::any_of(
         inputs.begin(), inputs.end(), [this, &type](const std::string& name) {
@@ -96,7 +96,7 @@ class InferVarTypeContext {
   virtual bool InputTypeAllOf(const std::string& name,
                               proto::VarType::Type type) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     auto& inputs = op_->Input(name);
     return std::all_of(
         inputs.begin(), inputs.end(), [this, &type](const std::string& name) {
@@ -108,7 +108,7 @@ class InferVarTypeContext {
                                    const std::string& output_name,
                                    int index = 0) {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     auto& x_name = op_->Input(input_name).at(index);
     auto& out_name = op_->Output(output_name).at(index);
 
@@ -122,7 +122,7 @@ class InferVarTypeContext {
                              proto::VarType::Type type,
                              int index = 0) {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     if (ALL_ELEMENTS == index) {
       for (const auto& var_name : op_->Output(name)) {
         this->SetVarType(var_name, type);
@@ -136,21 +136,21 @@ class InferVarTypeContext {
   virtual proto::VarType::Type GetInputType(const std::string& name,
                                             const int& index = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     return this->GetVarType(op_->Input(name).at(index));
   }
 
   virtual proto::VarType::Type GetOutputType(const std::string& name,
                                              const int& index = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     return this->GetVarType(op_->Output(name).at(index));
   }
 
   virtual proto::VarType::Type GetInputDataType(const std::string& name,
                                                 const int& index = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     return this->GetVarDataType(op_->Input(name).at(index));
   }
 
@@ -158,7 +158,7 @@ class InferVarTypeContext {
                                  proto::VarType::Type type,
                                  int index = 0) {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     if (ALL_ELEMENTS == index) {
       for (const auto& var_name : op_->Output(name)) {
         this->SetVarDataType(var_name, type);
@@ -172,7 +172,7 @@ class InferVarTypeContext {
   virtual std::vector<proto::VarType::Type> GetInputDataTypes(
       const std::string& name, const int& index = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     return this->GetVarDataTypes(op_->Input(name).at(index));
   }
 
@@ -181,7 +181,7 @@ class InferVarTypeContext {
       const std::vector<proto::VarType::Type>& multiple_data_type,
       const int& index = 0) {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     auto& var_name = op_->Output(name).at(index);
     this->SetVarDataTypes(var_name, multiple_data_type);
   }
@@ -189,7 +189,7 @@ class InferVarTypeContext {
   virtual std::vector<int64_t> GetInputShape(const std::string& name,
                                              const int& index = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     auto& var_name = op_->Input(name).at(index);
     return this->GetVarShape(var_name);
   }
@@ -198,7 +198,7 @@ class InferVarTypeContext {
                               const std::vector<int64_t>& dims,
                               const int& index = 0) {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     auto& var_name = op_->Output(name).at(index);
     this->SetVarShape(var_name, dims);
   }
@@ -206,7 +206,7 @@ class InferVarTypeContext {
   virtual int32_t GetInputLoDLevel(const std::string& name,
                                    const int& index = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     auto& var_name = op_->Input(name).at(index);
     return this->GetVarLoDLevel(var_name);
   }
@@ -215,7 +215,7 @@ class InferVarTypeContext {
                                  int32_t lod_level,
                                  const int& index = 0) {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     auto& var_name = op_->Output(name).at(index);
     this->SetVarLoDLevel(var_name, lod_level);
   }
@@ -232,53 +232,58 @@ class InferVarTypeContext {
  protected:
   virtual bool HasVar(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("block_ should not be null"));
+        block_,
+        common::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindVarRecursive(name) != nullptr;
   }
 
   virtual const std::vector<std::string>& InputVars(
       const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     return op_->Input(name);
   }
 
   virtual const std::vector<std::string>& OutputVars(
       const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        op_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        op_, common::errors::PreconditionNotMet("op_ should not be null"));
     return op_->Output(name);
   }
 
   virtual proto::VarType::Type GetVarType(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("block_ should not be null"));
+        block_,
+        common::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetType();
   }
 
   virtual void SetVarType(const std::string& name, proto::VarType::Type type) {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("op_ should not be null"));
+        block_, common::errors::PreconditionNotMet("op_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetType(type);
   }
 
   virtual proto::VarType::Type GetVarDataType(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("block_ should not be null"));
+        block_,
+        common::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetDataType();
   }
 
   virtual void SetVarDataType(const std::string& name,
                               proto::VarType::Type type) {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("block_ should not be null"));
+        block_,
+        common::errors::PreconditionNotMet("block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetDataType(type);
   }
 
   virtual std::vector<proto::VarType::Type> GetVarDataTypes(
       const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("block_ should not be null"));
+        block_,
+        common::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetDataTypes();
   }
 
@@ -286,32 +291,37 @@ class InferVarTypeContext {
       const std::string& name,
       const std::vector<proto::VarType::Type>& multiple_data_type) {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("block_ should not be null"));
+        block_,
+        common::errors::PreconditionNotMet("block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetDataTypes(multiple_data_type);
   }
 
   virtual std::vector<int64_t> GetVarShape(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("block_ should not be null"));
+        block_,
+        common::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetShape();
   }
 
   virtual void SetVarShape(const std::string& name,
                            const std::vector<int64_t>& dims) {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("block_ should not be null"));
+        block_,
+        common::errors::PreconditionNotMet("block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetShape(dims);
   }
 
   virtual int32_t GetVarLoDLevel(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("block_ should not be null"));
+        block_,
+        common::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetLoDLevel();
   }
 
   virtual void SetVarLoDLevel(const std::string& name, int32_t lod_level) {
     PADDLE_ENFORCE_NOT_NULL(
-        block_, phi::errors::PreconditionNotMet("block_ should not be null"));
+        block_,
+        common::errors::PreconditionNotMet("block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetLoDLevel(lod_level);
   }
 
