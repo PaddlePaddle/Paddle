@@ -125,10 +125,10 @@ class MoeHelper {
   void ComputeFFN(const DenseTensor *X,
                   const DenseTensor *gate_weight,
                   const DenseTensor *ffn1_weight,
-                  const DenseTensor *ffn1_scale,
+                  const paddle::optional<DenseTensor> &ffn1_scale,
                   const DenseTensor *ffn1_bias,
                   const DenseTensor *ffn2_weight,
-                  const DenseTensor *ffn2_scale,
+                  const paddle::optional<DenseTensor> &ffn2_scale,
                   const DenseTensor *ffn2_bias,
                   const DenseTensor *moe_token_type_ids,
                   const int moe_topk,
@@ -307,7 +307,7 @@ class MoeHelper {
       int8_moe_gemm_runner_->moe_gemm_bias_act(
           reinterpret_cast<NvType *>(permuted_data_),
           reinterpret_cast<const uint8_t *>(ffn1_weight->data<int8_t>()),
-          reinterpret_cast<const NvType *>(ffn1_scale->data<T>()),
+          reinterpret_cast<const NvType *>(ffn1_scale.get_ptr()->data<T>()),
           reinterpret_cast<const NvType *>(fc1_expert_biases),
           reinterpret_cast<NvType *>(fc1_out),
           total_rows_before_expert_,
@@ -322,7 +322,7 @@ class MoeHelper {
           reinterpret_cast<NvType *>(permuted_data_),
           reinterpret_cast<const cutlass::uint4b_t *>(
               ffn1_weight->data<int8_t>()),
-          reinterpret_cast<const NvType *>(ffn1_scale->data<T>()),
+          reinterpret_cast<const NvType *>(ffn1_scale.get_ptr()->data<T>()),
           reinterpret_cast<const NvType *>(fc1_expert_biases),
           reinterpret_cast<NvType *>(fc1_out),
           total_rows_before_expert_,
@@ -367,7 +367,7 @@ class MoeHelper {
         int8_moe_gemm_runner_->moe_gemm(
             reinterpret_cast<NvType *>(act_out),
             reinterpret_cast<const uint8_t *>(ffn2_weight->data<int8_t>()),
-            reinterpret_cast<const NvType *>(ffn2_scale->data<T>()),
+            reinterpret_cast<const NvType *>(ffn2_scale.get_ptr()->data<T>()),
             reinterpret_cast<NvType *>(fc2_result),
             total_rows_before_expert_,
             expanded_active_expert_rows,
@@ -380,7 +380,7 @@ class MoeHelper {
             reinterpret_cast<NvType *>(act_out),
             reinterpret_cast<const cutlass::uint4b_t *>(
                 ffn2_weight->data<int8_t>()),
-            reinterpret_cast<const NvType *>(ffn2_scale->data<T>()),
+            reinterpret_cast<const NvType *>(ffn2_scale.get_ptr()->data<T>()),
             reinterpret_cast<NvType *>(fc2_result),
             total_rows_before_expert_,
             expanded_active_expert_rows,

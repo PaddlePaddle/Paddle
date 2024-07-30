@@ -849,4 +849,5 @@
   kernel:
     func: fused_moe
     data_type : x
+  optional : ffn1_scale, ffn2_scale
   support_dygraph_mode : true

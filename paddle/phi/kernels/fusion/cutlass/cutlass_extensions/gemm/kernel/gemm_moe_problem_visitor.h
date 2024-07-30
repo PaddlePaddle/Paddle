@@ -38,8 +38,6 @@
 
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/gemm.h"
-// #include
-// "/root/paddlejob/workspace/env_run/zhengshifeng/GitlabPaddle/Paddlernal/build/third_party/cutlass/src/extern_cutlass/include/cutlass/gemm/kernel/gemm_grouped_problem_visitor.h"
 #include "cutlass/gemm/kernel/gemm_grouped_problem_visitor.h"
 #include "cutlass/matrix_coord.h"
 

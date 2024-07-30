@@ -37,13 +37,13 @@ def fused_moe(
 
     Args:
         x (Tensor): the input Tensor. Its shape is [bsz, seq_len, d_model].
-        gate_weight (Tensor): the gate Tensor to choose expert. Its shape is [bsz, seq_len, e].
-        ffn1_weight (Tensor): the first batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward*2].
-        ffn1_scale (Tensor): the input scale Tensor Provided to weight for dequantization. Its shape is [e, d_model].
-        ffn1_bias (Tensor): the first batch matrix matmul bias. Its shape is [e, 1, d_feed_forward*2].
-        ffn2_weight (Tensor): the second batch matrix matmul weight. Its shape is [e, d_feed_forward, d_model].
-        ffn2_scale (Tensor): the input scale Tensor Provided to weight for dequantization. Its shape is [e, d_feed_forward].
-        ffn2_bias (Tensor): the second batch matrix matmul bias. Its shape is [e, 1, d_model].
+        gate_weight (Tensor): the gate Tensor to choose expert. Its shape is [bsz, seq_len, num_experts].
+        ffn1_weight (Tensor): the first batch matrix matmul weight. Its shape is [num_experts, d_model, d_feed_forward*2].
+        ffn1_scale (Tensor, optional): the input scale Tensor Provided to weight for dequantization. Its shape is [num_experts, d_model].
+        ffn1_bias (Tensor): the first batch matrix matmul bias. Its shape is [num_experts, 1, d_feed_forward*2].
+        ffn2_weight (Tensor): the second batch matrix matmul weight. Its shape is [num_experts, d_feed_forward, d_model].
+        ffn2_scale (Tensor, optional): the input scale Tensor Provided to weight for dequantization. Its shape is [num_experts, d_feed_forward].
+        ffn2_bias (Tensor): the second batch matrix matmul bias. Its shape is [num_experts, 1, d_model].
         quant_method (string): Currently not supported.
         moe_topk: Select the top k experts for each token.
 
