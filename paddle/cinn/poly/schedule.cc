@@ -194,10 +194,9 @@ std::map<std::string, isl::map> CollectScheduleMapFromGroup(
 
   std::vector<Stage *> stages;
   for (auto &node : group.nodes) {
-    PADDLE_ENFORCE_EQ(node->stage,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The stage is not exist in node! Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        node->stage,
+        phi::errors::NotFound("The stage is not exist in node! Please check."));
     stages.push_back(node->stage);
   }
 
@@ -297,14 +296,14 @@ SchedulerBase &SchedulerBase::After(const Stage &a, const Stage &b, int level) {
       schedule_graph_.RetrieveNode(a.id())->safe_as<ScheduleGraphNode>();
   auto *b_node =
       schedule_graph_.RetrieveNode(b.id())->safe_as<ScheduleGraphNode>();
-  PADDLE_ENFORCE_EQ(a_node,
-                    true,
-                    phi::errors::NotFound(
-                        "no node called %s registered in the graph", a.id()));
-  PADDLE_ENFORCE_EQ(b_node,
-                    true,
-                    phi::errors::NotFound(
-                        "no node called %s registered in the graph", b.id()));
+  PADDLE_ENFORCE_NOT_NULL(
+      a_node,
+      phi::errors::NotFound("no node called %s registered in the graph",
+                            a.id()));
+  PADDLE_ENFORCE_NOT_NULL(
+      b_node,
+      phi::errors::NotFound("no node called %s registered in the graph",
+                            b.id()));
 
   auto _a_edge_b_edge_ = a_node->LinkTo<ScheduleGraphEdge>(b_node);  // NOLINT
   auto &a_edge = std::get<0>(_a_edge_b_edge_);
