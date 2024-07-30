@@ -847,44 +847,6 @@ bool Reshape_OpInferSymbolicShape(
   return ReshapeOpInferSymbolicShape(op, infer_context);
 }
 
-bool RreluOpInferSymbolicShape(pir::Operation *op,
-                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-
-  float lower = op->attribute<pir::FloatAttribute>("lower").data();
-  float upper = op->attribute<pir::FloatAttribute>("upper").data();
-
-  PADDLE_ENFORCE_GE(
-      lower,
-      0,
-      phi::errors::InvalidArgument("The lower value should be greater than or "
-                                   "equal to 0. But received lower value = %f.",
-                                   lower));
-  PADDLE_ENFORCE_LE(
-      upper,
-      1,
-      phi::errors::InvalidArgument("The upper value should be less than or "
-                                   "equal to 1. But received upper value = %f.",
-                                   upper));
-  PADDLE_ENFORCE_GE(
-      upper,
-      lower,
-      phi::errors::InvalidArgument(
-          "The upper value should be greater than or equal to lower value. But "
-          "received upper value = %f, lower value = %f.",
-          upper,
-          lower));
-
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
-
-  if (op->result(1)) {
-    infer_context->SetShapeOrDataForValue(op->result(1), x_shape_or_data);
-  }
-
-  return true;
-}
-
 bool ShapeOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
