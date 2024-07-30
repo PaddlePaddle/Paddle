@@ -404,10 +404,13 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     pass_name = pipeline_strategy.schedule_mode
     assert pass_name in [
         "FThenB",
+        "1F1B",
     ], f"pipeline scheduler only support FThenB now, but receive {pass_name}"
 
     pass_attr = {}
     pass_attr["num_micro_batches"] = pipeline_strategy.accumulate_steps
+    pass_attr["pp_degree"] = pipeline_strategy.pp_degree
+    pass_attr["pp_stage"] = pipeline_strategy.pp_stage
 
     if pass_name == "1F1B":
         # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and

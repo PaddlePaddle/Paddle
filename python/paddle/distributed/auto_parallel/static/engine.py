@@ -67,6 +67,7 @@ from .pir_pass import (
 )
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
+from .utils import get_pp_degree_and_pp_stage
 
 
 class Engine:
@@ -800,8 +801,12 @@ class Engine:
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
         apply_reshard_pass(dist_program)
-
         # print('after reshard', dist_program, flush=1)
+
+        if self._strategy.pipeline.enable:
+            pp_degree, pp_stage = get_pp_degree_and_pp_stage(dist_program)
+            self._strategy.pp_degree = pp_degree
+            self._strategy.pp_stage = pp_stage
 
         remove_other_rank_input_output_pass(dist_program)
         # print(
@@ -809,7 +814,6 @@ class Engine:
         # )
 
         remove_other_rank_op_pass(dist_program, params_grads)
-
         # print('after remove_other_rank_op_pass', dist_program, flush=1)
 
         # Part 4: Optimization Pass

@@ -2498,3 +2498,26 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
         scale_loss_grad_var_name = first_backward_op.desc.output("Out")[0]
         if scale_loss_grad_var_name not in grad_var_to_var.keys():
             grad_var_to_var[scale_loss_grad_var_name] = scale_loss_var_name
+
+
+def get_pp_degree_and_pp_stage(dist_program):
+    process_meshes = set()
+    cur_rank = paddle.distributed.get_rank()
+    word_size = paddle.distributed.get_world_size()
+
+    for op in dist_program.global_block().ops:
+        process_mesh = op.dist_attr.process_mesh
+        if len(process_mesh.process_ids) < word_size:
+            process_meshes.add(op.dist_attr.process_mesh)
+
+    process_meshes = list(process_meshes)
+    process_meshes.sort(key=lambda x: x.process_ids[0])
+
+    pp_degree = len(process_meshes)
+    pp_stage = None
+
+    for idx, process_mesh in enumerate(process_meshes):
+        if cur_rank in process_mesh.process_ids:
+            pp_stage = idx
+            break
+    return pp_degree, pp_stage
