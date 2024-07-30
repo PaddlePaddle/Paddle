@@ -542,7 +542,16 @@ bool InverseOpInferSymbolicShape(
           "But received: Input(Input)'s dimension = %zu, shape = [%s].",
           input_rank,
           input_dims));
-
+  for (int i = 0; i < input_rank; i++) {
+    PADDLE_ENFORCE_EQ(
+        (input_dims[i] == 0),
+        false,
+        phi::errors::InvalidArgument(
+            "InverseOpInferSymbolicShape : The shape of Input(Input) is "
+            "expected to be constant. "
+            "But received: Input(Input)'s shape = [%s].",
+            input_dims));
+  }
   std::vector<symbol::DimExpr> output_dims = input_dims;
 
   infer_context->SetShapeOrDataForValue(
