@@ -165,7 +165,10 @@ class OpConverter {
         break;
 
       default:
-        CHECK(false) << "no OpConverter for optype " << op_desc.Type();
+        PADDLE_ENFORCE_EQ(false,
+                          true,
+                          phi::errors::Unimplemented(
+                              "No OpConverter for optype %s", op_desc.Type()));
     }
 
     PADDLE_ENFORCE_NOT_NULL(
