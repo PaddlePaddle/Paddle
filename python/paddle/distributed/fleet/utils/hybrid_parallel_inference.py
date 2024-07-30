@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from collections import defaultdict
 
 import numpy as np
+import numpy.typing as npt
 
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.base import core
@@ -161,17 +164,40 @@ class HybridParallelInferenceHelper:
 
     """
 
+    ring_id: int
+    role_maker: (
+        fleet.base.role_maker.PaddleCloudRoleMaker
+        | fleet.base.role_maker.RoleMakerBase
+    )
+    mp_ring_id: int
+    global_ring_id: int
+    endpoints: list[str]
+    current_endpoint: str
+    rank: int
+    nranks: int
+    num_pp: int
+    num_mp: int
+    global_endpoints: list[str]
+    global_rank: int
+    global_nranks: int
+    mp_group: npt.NDArray[np.int_]
+    pp_group: npt.NDArray[np.int_]
+
     def __init__(
         self,
-        startup_program,
-        main_program,
-        num_mp=1,
-        num_pp=1,
-        micro_batch_size=1,
-        beam_size=1,
-        init_comm=True,
-        role_maker=None,
-    ):
+        startup_program: Program,
+        main_program: Program,
+        num_mp: int = 1,
+        num_pp: int = 1,
+        micro_batch_size: int = 1,
+        beam_size: int = 1,
+        init_comm: bool = True,
+        role_maker: (
+            fleet.base.role_maker.PaddleCloudRoleMaker
+            | fleet.base.role_maker.RoleMakerBase
+            | None
+        ) = None,
+    ) -> None:
         assert isinstance(startup_program, Program)
         assert isinstance(main_program, Program)
 
@@ -772,16 +798,16 @@ class HybridParallelInferenceHelper:
 
     def gen_infer_program(
         self,
-        sync_in_while_lastpp2firstpp_var_names=None,
-        sync_in_while_var_names=None,
-        debug=False,
-    ):
+        sync_in_while_lastpp2firstpp_var_names: list[str] | None = None,
+        sync_in_while_var_names: list[str] | None = None,
+        debug: bool = False,
+    ) -> None:
         """
         Generate inference program.
         Params:
-            sync_in_while_lastpp2firstpp_var_names (list(str)): the vars in the last pipeline
+            sync_in_while_lastpp2firstpp_var_names (list(str)|None): the vars in the last pipeline
                 that need to send var to first pipeline and exclude bool dtype var
-            sync_in_while_var_names (list(str)): the vars sync among all pipeline in while block
+            sync_in_while_var_names (list(str)|None): the vars sync among all pipeline in while block
                 e.g cond. Note that cond cannot be bool dtype.
             debug (bool): the flag indicate debug
         """
