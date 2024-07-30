@@ -103,9 +103,8 @@ class PackedStepContext {
         range.second - range.first,
         1,
         ::common::errors::InvalidArgument(
-            "Input is not single param, idx: %s, receive range: %s",
-            std::to_string(idx),
-            std::to_string(range)));
+            "Input is not single param, idx: %d.",
+            idx));
     return inputs_[range.first];
   }
 
