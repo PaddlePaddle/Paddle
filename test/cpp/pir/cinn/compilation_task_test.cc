@@ -105,7 +105,7 @@ ProgramInfo BuildProgram(std::vector<int64_t> input_shape) {
 //   auto scope = std::make_shared<cinn::hlir::framework::Scope>();
 
 //   std::vector<GroupPtr> groups = std::get<1>(prog_info);
-//   CHECK_EQ(groups.size(), 1); 
+//   CHECK_EQ(groups.size(), 1);
 
 //   cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
 //   auto runtime_program = ir_compiler.Build(groups);
