@@ -2729,7 +2729,6 @@ set +x
 
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
 
-
         single_ut_mem_0_startTime_s=`date +%s`
         while read line
         do
