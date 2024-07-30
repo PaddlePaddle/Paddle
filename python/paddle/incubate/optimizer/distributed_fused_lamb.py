@@ -104,12 +104,13 @@ def init_communicator(block, rank, ranks, ring_id):
 
 def broadcast_parameters(block, parameters, ring_id):
     for p in parameters:
-        block.append_op(
-            type='c_broadcast',
-            inputs={'X': p},
-            outputs={'Out': p},
-            attrs={'ring_id': ring_id, 'use_calc_stream': True},
+        broadcast_op = block.append_op(
+            type='broadcast',
+            inputs={'x': p},
+            outputs={'out': p},
+            attrs={'ring_id': ring_id},
         )
+        broadcast_op.dist_attr.execution_stream = "default"
 
 
 class DistributedFusedLamb(Optimizer):

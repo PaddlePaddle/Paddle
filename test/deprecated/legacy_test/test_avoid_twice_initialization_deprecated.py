@@ -31,10 +31,10 @@ class TestAvoidTwiceInitialization(unittest.TestCase):
             name='var_a',
         )
         cur_block.append_op(
-            type="c_broadcast",
-            inputs={"X": [var]},
-            outputs={"Out": [var]},
-            attrs={'root': 0, 'ring_id': 0, 'use_calc_stream': False},
+            type="broadcast",
+            inputs={"x": [var]},
+            outputs={"out": [var]},
+            attrs={'root': 0, 'ring_id': 0},
         )
         cur_block.append_op(
             type="c_sync_comm_stream",
