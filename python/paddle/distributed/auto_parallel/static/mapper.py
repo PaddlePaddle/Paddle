@@ -35,7 +35,7 @@ def is_collective_comm_op(op):
         "c_reduce_max",
         "c_reduce_prod",
         "c_broadcast",
-        "c_allgather",
+        "all_gather",
     ]
     if op.type in comm_list:
         return True
@@ -100,7 +100,7 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
     tensor_bytes = tensor_size * get_dtype_bytes(tensor.dtype)
     if "c_allreduce" in comm_op_type:
         comm_volume = 2 * tensor_bytes
-    elif "c_allgather" in comm_op_type:
+    elif "all_gather" in comm_op_type:
         comm_volume = tensor_bytes
     elif "c_broadcast" in comm_op_type:
         if comm_op.attr("root") == src_rank:

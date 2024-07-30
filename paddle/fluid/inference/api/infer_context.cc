@@ -155,8 +155,8 @@ void InferXPUContext::SetConvAutotuneInfo(std::string conv_autotune_file,
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        platform::errors::Unavailable(
-            "Failed to set XPU conv autotune file %s.", conv_autotune_file));
+        common::errors::Unavailable("Failed to set XPU conv autotune file %s.",
+                                    conv_autotune_file));
   }
   if (conv_autotune_level > 0) {
     int ret;
@@ -165,8 +165,8 @@ void InferXPUContext::SetConvAutotuneInfo(std::string conv_autotune_file,
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        platform::errors::Unavailable("Failed to set XPU conv autotune  %d.",
-                                      conv_autotune_level));
+        common::errors::Unavailable("Failed to set XPU conv autotune  %d.",
+                                    conv_autotune_level));
   }
   if (conv_autotune_file_writeback) {
     int ret;
@@ -175,7 +175,7 @@ void InferXPUContext::SetConvAutotuneInfo(std::string conv_autotune_file,
         (std::to_string(conv_autotune_file_writeback)).c_str());
     PADDLE_ENFORCE_EQ(ret,
                       0,
-                      platform::errors::Unavailable(
+                      common::errors::Unavailable(
                           "Failed to set XPU conv autotune writeback %d.",
                           conv_autotune_file_writeback));
   }
@@ -188,7 +188,7 @@ void InferXPUContext::SetContextOption(const char* name, const char* value) {
   PADDLE_ENFORCE_EQ(
       ret,
       0,
-      platform::errors::Unavailable("Failed to set XPU option %s.", name));
+      common::errors::Unavailable("Failed to set XPU option %s.", name));
 }
 
 void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
@@ -208,8 +208,8 @@ void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        platform::errors::Unavailable("Failed to set XPU fc autotune file %s.",
-                                      fc_autotune_file));
+        common::errors::Unavailable("Failed to set XPU fc autotune file %s.",
+                                    fc_autotune_file));
   }
   if (fc_autotune_level > 0) {
     int ret;
@@ -218,8 +218,8 @@ void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        platform::errors::Unavailable("Failed to set XPU fc autotune  %d.",
-                                      fc_autotune_level));
+        common::errors::Unavailable("Failed to set XPU fc autotune  %d.",
+                                    fc_autotune_level));
   }
   if (fc_autotune_file_writeback) {
     int ret;
@@ -228,7 +228,7 @@ void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
         (std::to_string(fc_autotune_file_writeback)).c_str());
     PADDLE_ENFORCE_EQ(ret,
                       0,
-                      platform::errors::Unavailable(
+                      common::errors::Unavailable(
                           "Failed to set XPU fc autotune writeback %d.",
                           fc_autotune_file_writeback));
   }
@@ -262,18 +262,28 @@ void InferXPUContext::L3CacheAutotune() {
         phi::Allocation* l3_holder =
             new phi::Allocation(l3_block->data(), l3_block->size(), place);
         holder_map_[holder] = std::make_pair(l3_holder, true);
+
+        if (output_holder_set_.find(holder) != output_holder_set_.end()) {
+          VLOG(4) << "Insert output tensor's l3 holder:" << l3_holder->ptr();
+          SetOutHolder(l3_holder);
+        }
       }
     }
   } else {
     for (auto& holders : holder_map_) {
       auto* holder = holders.first;
       auto& holder_pair = holders.second;
-      if (!holder_pair.second) {
+      if (!holder_pair.second &&
+          output_holder_set_.find(holder) == output_holder_set_.end()) {
         swap(*holder, *(holder_pair.first));
         holder_pair.second = true;
       }
     }
   }
+}
+
+void InferXPUContext::SetOutHolder(phi::Allocation* holder) {
+  output_holder_set_.insert(holder);
 }
 #endif
 

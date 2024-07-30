@@ -89,8 +89,11 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
         CINNValuePack pack_args = args[0];
         CHECK(!pack_args.empty())
             << "at least one input tensor for " << op_name << " compute\n";
-
-        CHECK_EQ(pack_args.size(), 2);
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          2,
+                          phi::errors::InvalidArgument(
+                              "The input argument's size of reciprocal op "
+                              "should be 2."));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
 
@@ -101,7 +104,12 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
 
-        CHECK_EQ(pack_args.size(), 2U);
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          2U,
+                          phi::errors::InvalidArgument(
+                              "The input argument's size of reciprocal op "
+                              "should be 2."));
+
         tensor_name = pack_args[1].operator std::string();
 
         ir::Tensor out = Reciprocal(tensor_A, tensor_name);
@@ -135,8 +143,11 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
         CINNValuePack pack_args = args[0];
         CHECK(!pack_args.empty())
             << "at least one input tensor for " << op_name << " compute\n";
-
-        CHECK_EQ(pack_args.size(), 2);
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          2,
+                          phi::errors::InvalidArgument(
+                              "The input argument's size of reciprocal op "
+                              "should be 2."));
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
 
@@ -146,8 +157,11 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
         auto tensor_A = A.as_tensor_ref();
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-
-        CHECK_EQ(pack_args.size(), 2U);
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          2U,
+                          phi::errors::InvalidArgument(
+                              "The input argument's size of reciprocal op "
+                              "should be 2."));
         tensor_name = pack_args[1].operator std::string();
 
         ir::Tensor out = Reciprocal(tensor_A, tensor_name);

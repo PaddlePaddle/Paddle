@@ -17,7 +17,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 TEST(Gather, GatherData) {
   phi::DenseTensor* src = new phi::DenseTensor();

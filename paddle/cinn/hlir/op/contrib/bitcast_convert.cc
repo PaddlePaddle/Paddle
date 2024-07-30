@@ -59,22 +59,24 @@ std::shared_ptr<framework::OpStrategy> StrategyForBitcastConvert(
     const Target &target) {
   std::string op_name("bitcast_convert");
 
-  framework::CINNCompute bitcast_convert_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of " << op_name
-                             << " compute is empty! Please check.";
-        CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "1 input tensor for " << op_name << " compute";
-        std::string tensor_name = UniqName(op_name + "_Out");
-        Expr A_expr = pack_args[0];
-        CHECK(A_expr.as_tensor());
-        ir::Tensor A = A_expr.as_tensor_ref();
-        auto out = BitcastConvert(A, out_type[0], tensor_name);
-        std::vector<CINNValue> res;
-        res.push_back(CINNValue(out));
-        *ret = CINNValuePack{res};
-      });
+  framework::CINNCompute bitcast_convert_compute([=](lang::Args args,
+                                                     lang::RetValue *ret) {
+    CHECK(!args.empty()) << "The input argument of " << op_name
+                         << " compute is empty! Please check.";
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "The size of pack_args should be greater than 0 . "));
+    std::string tensor_name = UniqName(op_name + "_Out");
+    Expr A_expr = pack_args[0];
+    CHECK(A_expr.as_tensor());
+    ir::Tensor A = A_expr.as_tensor_ref();
+    auto out = BitcastConvert(A, out_type[0], tensor_name);
+    std::vector<CINNValue> res;
+    res.push_back(CINNValue(out));
+    *ret = CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(bitcast_convert_compute,

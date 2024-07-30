@@ -36,7 +36,6 @@
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"

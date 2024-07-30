@@ -55,7 +55,9 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
       PADDLE_ENFORCE_EQ(
-          i % 2, 0, phi::errors::InvalidArgument("'test_attr' must be even!"));
+          i % 2,
+          0,
+          common::errors::InvalidArgument("'test_attr' must be even!"));
     };
     AddAttr<int>("test_attr", "a simple test attribute")
         .AddCustomChecker(my_checker);
@@ -256,8 +258,8 @@ TEST(OperatorRegistrar, CUDA) {
 }
 
 static int op_test_value = 0;
-using paddle::platform::DeviceContext;
 using phi::CPUContext;
+using phi::DeviceContext;
 using phi::GPUContext;
 
 namespace paddle {

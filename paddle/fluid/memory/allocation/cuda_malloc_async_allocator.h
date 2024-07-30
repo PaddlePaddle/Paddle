@@ -19,8 +19,8 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace memory {
@@ -81,11 +81,6 @@ class CUDAMallocAsyncAllocator : public Allocator {
   gpuStream_t GetDefaultStream() const;
   void SetDefaultStream(gpuStream_t stream);
   void ClearFreeStream(bool sync = false);
-
-  ~CUDAMallocAsyncAllocator() {
-    VLOG(0) << "Async allocator is freed " << (this)
-            << " tid = " << std::this_thread::get_id();
-  }
 
  protected:
   void FreeImpl(phi::Allocation* allocation) override;

@@ -231,10 +231,10 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                              int scale_x_mode,
                              int scale_w_mode) {
   int r = 0;
+  xpu::ctx_guard RAII_GUARD(ctx);
   if (x_trans && std::getenv("XPU_PADDLE_FC_TRANS_A") != nullptr &&
       std::is_same<float, XPUType>::value) {
     XPUType* l3_addr = nullptr;
-    xpu::ctx_guard RAII_GUARD(ctx);
     l3_addr = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * k);
     PADDLE_ENFORCE_XDNN_NOT_NULL(l3_addr);
 
@@ -562,6 +562,8 @@ static void MatMulXPUFunction(
   const float* scale_y = fcinfo.scale_y;
   int scale_x_mode = fcinfo.scale_x_mode;
   int scale_y_mode = fcinfo.scale_y_mode;
+
+  xpu::ctx_guard RAII_GUARD(xpu_ctx);
   if (batch_size <= 1) {
     xblas_fc_api(xpu_ctx,
                  reinterpret_cast<const XPUType*>(x),
@@ -590,7 +592,6 @@ static void MatMulXPUFunction(
     const XPUType* x_data = reinterpret_cast<const XPUType*>(x);
     if (is_x_need_broadcast) {
       XPUType* x_broadcast_data = nullptr;
-      xpu::ctx_guard RAII_GUARD(xpu_ctx);
       x_broadcast_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(batch_size * m * k);
       PADDLE_ENFORCE_XDNN_NOT_NULL(x_broadcast_data);
       std::vector<int> x_shape = {1, m, k};
@@ -603,7 +604,6 @@ static void MatMulXPUFunction(
     const XPUType* y_data = reinterpret_cast<const XPUType*>(y);
     if (is_y_need_broadcast) {
       XPUType* y_broadcast_data = nullptr;
-      xpu::ctx_guard RAII_GUARD(xpu_ctx);
       y_broadcast_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(batch_size * k * n);
       PADDLE_ENFORCE_XDNN_NOT_NULL(y_broadcast_data);
       std::vector<int> y_shape = {1, k, n};
