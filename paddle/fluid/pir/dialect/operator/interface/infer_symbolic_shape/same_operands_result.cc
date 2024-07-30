@@ -144,6 +144,7 @@ OP_SAME_OPERANDS_AND_RESULT(Sigmoid)
 OP_SAME_OPERANDS_AND_RESULT(Sigmoid_)
 OP_SAME_OPERANDS_AND_RESULT(Silu)
 OP_SAME_OPERANDS_AND_RESULT(Sqrt)
+OP_SAME_OPERANDS_AND_RESULT(Sqrt_)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
