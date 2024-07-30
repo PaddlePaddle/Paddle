@@ -919,12 +919,12 @@ __global__ void topp_sampling_ft(T* sorted_probs,
     }
   }
   if (!skip) {
-#ifdef PADDLE_WITH_CUDA
-    int active_lane_id =
-        WARP_SIZE - __popc(selected_shared[warp_id]);  // first not 0
-#else
+#ifdef PADDLE_WITH_HIP
     int active_lane_id =
         WARP_SIZE - __popcll(selected_shared[warp_id]);  // first not 0
+#else
+    int active_lane_id =
+        WARP_SIZE - __popc(selected_shared[warp_id]);  // first not 0
 #endif
     if (lane_id == active_lane_id) {
       float val = static_cast<float>(sorted_probs[offset + i_activate]);
