@@ -242,14 +242,13 @@ std::vector<Expr> GetIfThenElseInRange(const Expr& top, const Expr& bottom) {
             phi::errors::NotFound(
                 "IfThenElse node's true_case should be Block!"));
         Expr true_case = tmp.As<IfThenElse>()->true_case;
-        PADDLE_ENFORCE_EQ(
-            true_case.As<ir::Block>()->stmts.size() == 1U &&
-                true_case.As<ir::Block>()->stmts[0].As<ir::For>(),
-            true,
-            phi::errors::InvalidArgument(
-                "Block node's stmts should be For! And the size of stmts "
-                "should be 1, but got %d.",
-                stmts.size()));
+        PADDLE_ENFORCE_EQ(true_case.As<ir::Block>()->stmts.size() == 1U &&
+                              true_case.As<ir::Block>()->stmts[0].As<ir::For>(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "Block node's stmts should be For! And the size "
+                              "of stmts should be 1, but got %d.",
+                              true_case.As<ir::Block>()->stmts.size()));
         tmp = true_case.As<ir::Block>()->stmts[0];
       }
       if (tmp.As<ir::For>()) {
