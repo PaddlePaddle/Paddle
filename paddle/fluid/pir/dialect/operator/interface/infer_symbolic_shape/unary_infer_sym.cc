@@ -552,6 +552,16 @@ bool InverseOpInferSymbolicShape(
             "But received: Input(Input)'s shape = [%s].",
             input_dims));
   }
+  if (input_dims[input_rank - 2] != 0 && input_dims[input_rank - 1] != 0) {
+    PADDLE_ENFORCE_EQ(
+        (input_dims[input_rank - 2] == input_dims[input_rank - 1]),
+        true,
+        phi::errors::InvalidArgument(
+            "InverseOpInferSymbolicShape : The last two dimensions of "
+            "Input(Input) is expected to be equal. "
+            "But received: Input(Input)'s shape = [%s].",
+            input_dims));
+  }
   std::vector<symbol::DimExpr> output_dims = input_dims;
 
   infer_context->SetShapeOrDataForValue(
