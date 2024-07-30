@@ -13,11 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#if defined(__CUDACC__) && CUDA_VERSION >= 11000
-#include <cuda_bf16.h>
-#endif
 #include <cuda_fp16.h>
 #include <vector>
+#include "paddle/phi/common/bfloat16.h"
 
 #include "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/gemm_epilogue_decl.h"
 

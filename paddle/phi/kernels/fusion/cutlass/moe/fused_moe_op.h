@@ -18,8 +18,8 @@
 
 #include <cuda.h>
 #include <cuda_fp16.h>
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -804,6 +804,18 @@ template void topk_gating_softmax_kernelLauncher(const half*,
                                                  const int,
                                                  const int,
                                                  cudaStream_t);
+#ifdef PADDLE_CUDA_BF16
+template void topk_gating_softmax_kernelLauncher(const __nv_bfloat16*,
+                                                 const bool*,
+                                                 __nv_bfloat16*,
+                                                 __nv_bfloat16*,
+                                                 int*,
+                                                 int*,
+                                                 const int,
+                                                 const int,
+                                                 const int,
+                                                 cudaStream_t);
+#endif
 // ===================== Specializations for init routing
 // =========================
 template void initialize_moe_routing_kernelLauncher(const float*,
@@ -824,6 +836,17 @@ template void initialize_moe_routing_kernelLauncher(const half*,
                                                     const int,
                                                     const int,
                                                     cudaStream_t);
+#ifdef PADDLE_CUDA_BF16
+template void initialize_moe_routing_kernelLauncher(const __nv_bfloat16*,
+                                                    __nv_bfloat16*,
+                                                    const int*,
+                                                    int*,
+                                                    const int,
+                                                    const int,
+                                                    const int,
+                                                    const int,
+                                                    cudaStream_t);
+#endif
 // ==================== Specializations for final routing
 // ===================================
 template void finalize_moe_routing_kernelLauncher(const float*,
@@ -848,6 +871,19 @@ template void finalize_moe_routing_kernelLauncher(const half*,
                                                   const int,
                                                   const int,
                                                   cudaStream_t);
+#ifdef PADDLE_CUDA_BF16
+template void finalize_moe_routing_kernelLauncher(const __nv_bfloat16*,
+                                                  __nv_bfloat16*,
+                                                  const __nv_bfloat16*,
+                                                  const float*,
+                                                  const int*,
+                                                  const int*,
+                                                  const int,
+                                                  const int,
+                                                  const int,
+                                                  const int,
+                                                  cudaStream_t);
+#endif
 template void compute_total_rows_before_expert(
     int*, const half*, const int, const int, int64_t*, cudaStream_t stream);
 

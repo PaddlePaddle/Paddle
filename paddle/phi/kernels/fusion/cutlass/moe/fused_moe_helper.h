@@ -56,7 +56,8 @@ void moe_token_type_ids_kernelLauncher(T *gating_output,
 
 namespace fusion {
 
-template <typename T, typename nvT = typename PDDataTypeTraits<T>::DataType>
+template <typename T,
+          typename nvT = typename phi::PDDataTypeTraits<T>::DataType>
 class MoeHelper {
  public:
   MoeHelper(const GPUContext &dev_ctx,
@@ -298,7 +299,7 @@ class MoeHelper {
                                         total_rows_before_expert_,
                                         ctx.stream());
 
-    using NvType = typename PDDataTypeTraits<T>::DataType;
+    using NvType = typename phi::PDDataTypeTraits<T>::DataType;
 
     VLOG(1) << " ENTER EXPERT \n";
 

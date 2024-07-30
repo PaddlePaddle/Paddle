@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -59,12 +61,12 @@ void FusedMoeKernel(const Context& ctx,
   auto* output_data = ctx.template Alloc<T>(out);
 
   auto fp16_moe_gemm_runner =
-      MoeGemmRunner<typename PDDataTypeTraits<T>::DataType,
-                    typename PDDataTypeTraits<T>::DataType>();
+      MoeGemmRunner<typename phi::PDDataTypeTraits<T>::DataType,
+                    typename phi::PDDataTypeTraits<T>::DataType>();
   auto int8_moe_gemm_runner =
-      MoeGemmRunner<typename PDDataTypeTraits<T>::DataType, uint8_t>();
+      MoeGemmRunner<typename phi::PDDataTypeTraits<T>::DataType, uint8_t>();
   auto int4_moe_gemm_runner =
-      MoeGemmRunner<typename PDDataTypeTraits<T>::DataType,
+      MoeGemmRunner<typename phi::PDDataTypeTraits<T>::DataType,
                     cutlass::uint4b_t>();
 
   auto moe_compute = MoeHelper<T>(ctx,
@@ -90,9 +92,17 @@ void FusedMoeKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
+#ifdef PADDLE_CUDA_BF16
 PD_REGISTER_KERNEL(fused_moe,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedMoeKernel,
-                   // float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#else
+PD_REGISTER_KERNEL(fused_moe,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedMoeKernel,
                    phi::dtype::float16) {}
+#endif

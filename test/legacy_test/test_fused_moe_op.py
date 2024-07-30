@@ -103,13 +103,10 @@ class TestFusedMoEOp(OpTest):
 
         self.gate = Linear(self.d_model, self.num_expert)
 
-        self.gate_weight = paddle.to_tensor(
-            self.gate.weight.numpy(),
-            dtype=paddle.float32,
-        )
+        self.gate_weight = self.gate.weight.cast(paddle.float32)
         self.gate_weight.stop_gradient = True
 
-        paddle.set_default_dtype("float16")
+        paddle.set_default_dtype(self.x_type)
         self.activation = swiglu
 
     def config(self):
@@ -143,15 +140,15 @@ class TestFusedMoEOp(OpTest):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         batch_size, sequence_length, hidden_dim = hidden_states.shape
         hidden_states = paddle.reshape(hidden_states, [-1, hidden_dim])
-        router_logits = self.gate(hidden_states)
+        router_logits = self.gate(hidden_states).cast(paddle.float32)
 
-        routing_weights = F.softmax(router_logits, axis=1, dtype='float32')
+        routing_weights = F.softmax(router_logits, axis=-1, dtype='float32')
         routing_weights, selected_experts = paddle.topk(
             routing_weights, self.top_k, axis=-1
         )
         routing_weights /= paddle.sum(routing_weights, axis=-1, keepdim=True)
         # we cast back to the input dtype
-        routing_weights = routing_weights.astype(hidden_states.dtype)
+        routing_weights = routing_weights.cast(np.float32)
 
         final_hidden_states = paddle.zeros_like(hidden_states)
 
@@ -190,11 +187,19 @@ class TestFusedMoEOp(OpTest):
         return final_hidden_states
 
     def test_fused_moe_op_new(self):
-        ref_out = self.GetBaselineOut(self.tensor_x)
-        fused_moe_out = self.GetFusedMoeOut(self.tensor_x)
+        ref_out = self.GetBaselineOut(self.tensor_x).cast(np.float32)
+        fused_moe_out = self.GetFusedMoeOut(self.tensor_x).cast(np.float32)
         np.testing.assert_allclose(
             ref_out, fused_moe_out, rtol=self.rtol, atol=self.atol
         )
+
+
+class TestFusedMoEOpBf16(TestFusedMoEOp):
+    def config(self):
+        super().config()
+        self.x_type = paddle.bfloat16
+        self.rtol = 1e-2
+        self.atol = 1e-2
 
 
 if __name__ == "__main__":
