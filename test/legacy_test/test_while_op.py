@@ -159,6 +159,7 @@ class BadInputTest(unittest.TestCase):
 
 
 class TestIgnoreVarNameInWhile(unittest.TestCase):
+    @test_with_pir_api
     def test_ignore_var(self):
         def cond(i, ten, temp, y):
             return i < ten
