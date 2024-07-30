@@ -234,7 +234,7 @@ class IterableDataset(Dataset[_T]):
             >>> def worker_init_fn(worker_id):
             ...     worker_info = get_worker_info()
             ...
-            ...     dataset: RangeIterableDataset = worker_info.dataset
+            ...     dataset: RangeIterableDataset = worker_info.dataset # type: ignore[assignment]
             ...     start = dataset.start
             ...     end = dataset.end
             ...     num_per_worker = int(
