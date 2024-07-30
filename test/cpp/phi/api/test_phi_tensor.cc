@@ -100,17 +100,15 @@ void TestAPIPlace() {
       tensor_shape, DataType::FLOAT32, phi::GPUPlace());
   PADDLE_ENFORCE_EQ(t1.place(),
                     phi::GPUPlace(),
-                    phi::errors::InvalidArgument("t1 should copy to "
-                                                 "GPUPlace, but got %s",
-                                                 t1.place()));
+                    phi::errors::InvalidArgument(
+                        "t1 should copy to GPUPlace, but got %s", t1.place()));
 #endif
   auto t2 = paddle::experimental::empty(
       tensor_shape, DataType::FLOAT32, phi::CPUPlace());
   PADDLE_ENFORCE_EQ(t2.place(),
                     phi::CPUPlace(),
-                    phi::errors::InvalidArgument("t2 should copy to "
-                                                 "CPUPlace, but got %s",
-                                                 t2.place()));
+                    phi::errors::InvalidArgument(
+                        "t2 should copy to CPUPlace, but got %s", t2.place()));
 }
 
 void TestAPISizeAndShape() {

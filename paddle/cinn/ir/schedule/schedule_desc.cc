@@ -143,10 +143,11 @@ class PackedStepContext {
     size_t input_idx = 0;
     for (auto&& param_name : step_kind->inputs_) {
       auto arg_it = desc.inputs.find(param_name);
-      PADDLE_ENFORCE_NE(arg_it,
-                        desc.inputs.end(),
-                        ::common::errors::InvalidArgument(
-                            "Can't find param: %s", param_name));
+      PADDLE_ENFORCE_NE(
+          arg_it,
+          desc.inputs.end(),
+          ::common::errors::InvalidArgument(
+              "Can't find param: %s while building inputs", param_name));
       auto&& args = arg_it->second;
       inputs_.insert(inputs_.end(),
                      std::make_move_iterator(args.begin()),
