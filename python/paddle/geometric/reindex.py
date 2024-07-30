@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle import _C_ops
@@ -35,7 +35,7 @@ def reindex_graph(
     count: Tensor,
     value_buffer: Tensor | None = None,
     index_buffer: Tensor | None = None,
-    name: Tensor | None = None,
+    name: str | None = None,
 ) -> tuple[Tensor, Tensor, Tensor]:
     """
 
@@ -150,8 +150,8 @@ def reindex_graph(
 
 def reindex_heter_graph(
     x: Tensor,
-    neighbors: list | tuple,
-    count: list | tuple,
+    neighbors: Sequence[Tensor],
+    count: Sequence[Tensor],
     value_buffer: Tensor | None = None,
     index_buffer: Tensor | None = None,
     name: str | None = None,

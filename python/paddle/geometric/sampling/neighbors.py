@@ -12,24 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 __all__ = []
 
 
 def sample_neighbors(
-    row,
-    colptr,
-    input_nodes,
-    sample_size=-1,
-    eids=None,
-    return_eids=False,
-    perm_buffer=None,
-    name=None,
-):
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    sample_size: int = -1,
+    eids: Tensor | None = None,
+    return_eids: bool = False,
+    perm_buffer: Tensor | None = None,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor] | tuple[Tensor, Tensor]:
     """
 
     Graph Sample Neighbors API.
@@ -170,15 +176,15 @@ def sample_neighbors(
 
 
 def weighted_sample_neighbors(
-    row,
-    colptr,
-    edge_weight,
-    input_nodes,
-    sample_size=-1,
-    eids=None,
-    return_eids=False,
-    name=None,
-):
+    row: Tensor,
+    colptr: Tensor,
+    edge_weight: Tensor,
+    input_nodes: Tensor,
+    sample_size: int = -1,
+    eids: Tensor | None = None,
+    return_eids: bool = False,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor] | tuple[Tensor, Tensor]:
     """
     Graph Weighted Sample Neighbors API.
 
