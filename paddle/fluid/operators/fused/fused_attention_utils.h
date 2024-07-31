@@ -115,8 +115,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     auto task = pg->AllReduce(&tensor, tensor, opts, false, true);
     task->Wait();
   } else {
-    auto dtype = paddle::platform::ToNCCLDataType(
-        paddle::framework::TransToProtoVarType(tensor.dtype()));
+    auto dtype = phi::ToNCCLDataType(tensor.dtype());
     int64_t numel = tensor.numel();
     const void *sendbuff = tensor.data<T>();
     auto place = ctx.GetPlace();

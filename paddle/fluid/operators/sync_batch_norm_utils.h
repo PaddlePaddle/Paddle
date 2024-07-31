@@ -587,7 +587,7 @@ void SyncBatchNormGradFunctor(
   }
 
   if (comm) {
-    int dtype = paddle::platform::ToNCCLDataType(scale.dtype());
+    int dtype = phi::ToNCCLDataType(scale.dtype());
     // In-place operation
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::ncclAllReduce(stats,

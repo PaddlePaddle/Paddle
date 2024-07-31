@@ -212,15 +212,14 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     } else {
       void* logits_max_buff = logits_max.mutable_data<T>(place);
 
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-          logits_max_buff,
-          logits_max_buff,
-          logits_max.numel(),
-          platform::ToNCCLDataType(
-              framework::TransToProtoVarType(logits_max.dtype())),
-          ncclMax,
-          comm->comm(),
-          stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::ncclAllReduce(logits_max_buff,
+                                      logits_max_buff,
+                                      logits_max.numel(),
+                                      phi::ToNCCLDataType(logits_max.dtype()),
+                                      ncclMax,
+                                      comm->comm(),
+                                      stream));
     }
 
     // step 2, obtain logit - logit_max
@@ -280,8 +279,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
           predict_logits_buff,
           predict_logits_buff,
           predicted_logits.numel(),
-          platform::ToNCCLDataType(
-              framework::TransToProtoVarType(predicted_logits.dtype())),
+          phi::ToNCCLDataType(predicted_logits.dtype()),
           ncclSum,
           comm->comm(),
           stream));
@@ -306,8 +304,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
           sum_exp_logits_buff,
           sum_exp_logits_buff,
           sum_exp_logits.numel(),
-          platform::ToNCCLDataType(
-              framework::TransToProtoVarType(sum_exp_logits.dtype())),
+          phi::ToNCCLDataType(sum_exp_logits.dtype()),
           ncclSum,
           comm->comm(),
           stream));

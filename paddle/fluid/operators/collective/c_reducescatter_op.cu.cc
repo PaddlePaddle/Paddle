@@ -101,8 +101,7 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     int64_t recv_numel = in->numel() / nranks;
     const T* send_buff = in->data<T>();
     T* recv_buff = out->data<T>();
-    int dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
+    int dtype = phi::ToNCCLDataType(in->dtype());
 
     if (comm_ctx) {
       comm_ctx->ReduceScatter(out, *in, ncclSum, stream);

@@ -38,8 +38,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int send_numel = x->numel();
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
+    ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
