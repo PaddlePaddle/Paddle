@@ -637,6 +637,49 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+
+  if (op->num_results() > 1 && op->result(1) != nullptr) {
+    symbol::TensorShapeOrDataDimExprs scalar_shape(
+        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
+    infer_context->SetShapeOrDataForValue(op->result(1), scalar_shape);
+  }
+
+  if (op->num_results() > 2 && op->result(2) != nullptr) {
+    symbol::TensorShapeOrDataDimExprs scalar_shape(
+        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
+    infer_context->SetShapeOrDataForValue(op->result(2), scalar_shape);
+  }
+
+  if (op->num_results() > 3 && op->result(3) != nullptr) {
+    symbol::TensorShapeOrDataDimExprs scalar_shape(
+        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
+    infer_context->SetShapeOrDataForValue(op->result(3), scalar_shape);
+  }
+
+  return true;
+}
+
+bool FakeQuantizeMovingAverageAbsMax_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(op, infer_context);
+}
+
+bool FakeQuantizeDequantizeMovingAverageAbsMaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(op, infer_context);
+}
+
+bool FakeQuantizeDequantizeMovingAverageAbsMax_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(op, infer_context);
+}
+
 bool FullWithTensorOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(1);
