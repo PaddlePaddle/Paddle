@@ -237,7 +237,7 @@ class NAdam(Optimizer):
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, (framework.Block, pir.Block)):
-            raise TypeError("block is not instance of framework.Block.")
+            raise TypeError("block is not instance of Block.")
 
         if isinstance(parameters, dict):
             parameters = parameters.get('params')
@@ -263,8 +263,8 @@ class NAdam(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
 
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
