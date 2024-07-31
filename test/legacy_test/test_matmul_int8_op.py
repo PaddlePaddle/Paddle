@@ -286,7 +286,6 @@ class TestMatmulInt8Op18(TestMatmulInt8):
     def setUp(self):
         self.matmul_int8_search_config = tempfile.NamedTemporaryFile(mode='w+')
 
-        # 原始配置文件的内容
         matmul_int8_search_config_content = (
             "1,1024,4096,21,0,0,15,5,6,24,0,0.00856064\n"
             "1,2048,8192,21,0,0,15,2,0,24,0,0.0108355\n"
