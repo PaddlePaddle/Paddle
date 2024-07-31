@@ -326,6 +326,8 @@ class RunnableProgram:
         rename_mapping = RunnableProgram.unify_value_names(
             self.backward_program, rename_mapping
         )
+        # check if every value has only one name.
+        assert len(rename_mapping.values()) == len(set(rename_mapping.keys()))
         return value_program_attr
 
     @staticmethod

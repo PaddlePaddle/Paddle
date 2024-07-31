@@ -97,14 +97,15 @@ static bool IsVariableRefArray(const Tensor &tensor) {
 
 static auto GetNameFromValue(const std::vector<::pir::Value> &values) {
   std::vector<std::string> names;
-  std::transform(
-      values.begin(),
-      values.end(),
-      std::back_inserter(names),
-      [](const ::pir::Value &v) {
-        return pir::utils::name_analysis::TryGetValueFirstName(v).value_or(
-            std::string(paddle::framework::kFakeVarName));
-      });
+  // check only one name
+  for (auto value : values) {
+    PADDLE_ENFORCE(pir::utils::name_analysis::IsOnlyOneValueName(value),
+                   "Value should have only one name");
+    names.push_back(
+        pir::utils::name_analysis::TryGetValueFirstName(value).value_or(
+            std::string(paddle::framework::kFakeVarName)));
+  }
+
   return names;
 }
 
@@ -493,29 +494,6 @@ inline void PirRunProgramAPI(
 
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
-
-    // check only one name
-    for (auto input_value : input_values) {
-      PADDLE_ENFORCE(pir::utils::name_analysis::IsOnlyOneValueName(input_value),
-                     "input value should have only one name");
-    }
-
-    for (auto output_value : output_values) {
-      PADDLE_ENFORCE(
-          pir::utils::name_analysis::IsOnlyOneValueName(output_value),
-          "output value should have only one name");
-    }
-
-    for (auto middle_value : middle_values) {
-      PADDLE_ENFORCE(
-          pir::utils::name_analysis::IsOnlyOneValueName(middle_value),
-          "middle value should have only one name");
-    }
-
-    for (auto param_value : param_values) {
-      PADDLE_ENFORCE(pir::utils::name_analysis::IsOnlyOneValueName(param_value),
-                     "param value should have only one name");
-    }
 
     // std::set<std::string> input_vars;
     // input_vars.insert(input_names.begin(), input_names.end());
