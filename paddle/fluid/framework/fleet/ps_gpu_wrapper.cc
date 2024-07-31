@@ -1076,10 +1076,10 @@ void PSGPUWrapper::FilterPull(std::shared_ptr<HeterContext> gpu_task,
     }
     if (dedup_size == pos) {
       PADDLE_ENFORCE_NE(shard_values[dedup_size],
-                        0,
+                        nullptr,
                         common::errors::InvalidArgument(
                             "The shard values after deduplication should not "
-                            "be 0, but got %d in positon %d.",
+                            "be nullptr, but got %d at position %d.",
                             shard_values[dedup_size],
                             dedup_size));
       ++dedup_size;
@@ -1087,10 +1087,10 @@ void PSGPUWrapper::FilterPull(std::shared_ptr<HeterContext> gpu_task,
     }
     shard_keys[dedup_size] = shard_keys[pos];
     PADDLE_ENFORCE_NE(shard_values[dedup_size],
-                      0,
+                      nullptr,
                       common::errors::InvalidArgument(
                           "The shard values after deduplication should not "
-                          "be 0, but got %d in positon %d.",
+                          "be nullptr, but got %d at positon %d.",
                           shard_values[dedup_size],
                           dedup_size));
     ++dedup_size;
@@ -1622,14 +1622,14 @@ void PSGPUWrapper::divide_to_device(std::shared_ptr<HeterContext> gpu_task) {
         auto& pos = dev_pos[k];
         d_dim_keys[cur + k] = h_dim_keys[pos];
         PADDLE_ENFORCE_NE(h_dim_ptrs[pos],
-                          0,
+                          nullptr,
                           common::errors::InvalidArgument(
                               "The value of local dimension pointer should not "
-                              "be 0 but recieved %d at position %d.",
+                              "be nullptr but recieved %d at position %d.",
                               h_dim_ptrs[pos],
                               pos));
-            << "total=" << total_keys_len << ", pos=" << pos << ", k=" << k
-            << ", len=" << len;
+        << "total=" << total_keys_len << ", pos=" << pos << ", k=" << k
+        << ", len=" << len;
         d_dim_ptr[cur + k] = h_dim_ptrs[pos];
       }
       device_dim_mutex[dev][j]->unlock();
