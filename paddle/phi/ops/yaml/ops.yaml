@@ -844,6 +844,7 @@
     param : [x, scale]
     data_type : x
   inplace : (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : check_numerics
   args : (Tensor tensor, str op_type = "", str var_name = "", int check_nan_inf_level = 0, int stack_height_limit = -1, str output_dir = "")
