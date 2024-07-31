@@ -204,7 +204,8 @@ std::string GetValueInfo(Value v) {
 
 phi::DataType GetTensorDtype(Type type) {
   if (!type) {
-    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The type of value is nullptr."));
   }
   if (auto dense_tensor_type = type.dyn_cast<DenseTensorType>()) {
     return dialect::TransToPhiDataType(dense_tensor_type.dtype());
@@ -219,7 +220,7 @@ phi::DataType GetTensorDtype(Type type) {
   } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
     return dialect::TransToPhiDataType(dense_array.dtype());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
         "SelectedRowsType, DenseTensorArrayType,SparseCooTensorType or "
         "SparseCsrTensorType."));
@@ -346,7 +347,7 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
     if (!intersection_op_flags[index]) {
       auto op_results = op->results();
       if (!input_vars_set.empty() && SomeInSet(op_results, input_vars_set)) {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "The input_var create by: '{%s}' is not involved in the "
             "output_vars calculation"
             "Please remove it from input_vars.",
@@ -568,8 +569,8 @@ void BindProgram(py::module *m) {
             } else if (mode == "opt") {
               return state_dict_opt;
             } else {
-              PADDLE_THROW(
-                  phi::errors::InvalidArgument("The mode is not supported."));
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "The mode is not supported."));
             }
           })
       .def("set_state_dict",
@@ -580,7 +581,7 @@ void BindProgram(py::module *m) {
              for (auto item : state_dict) {
                auto var = scope.FindVar(item.first);
                if (var == nullptr) {
-                 PADDLE_THROW(phi::errors::NotFound(
+                 PADDLE_THROW(common::errors::NotFound(
                      "The variable %s is not found.", item.first));
                } else {
                  *var->GetMutable<phi::DenseTensor>() = item.second;
@@ -879,7 +880,7 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> py::list {
              if (self.HasInterface<paddle::dialect::OpYamlInfoInterface>() ==
                  false) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
+               PADDLE_THROW(common::errors::InvalidArgument(
                    "Currently, we can only get input names of Operation that "
                    "has OpYamlInfoInterface"));
              }
@@ -1004,7 +1005,7 @@ void BindOperation(py::module *m) {
                 paddle::framework::OpProtoAndCheckerMaker::
                     OpCreationCallstackAttrName());
             PADDLE_ENFORCE(op_callstack.isa<pir::ArrayAttribute>(),
-                           phi::errors::PreconditionNotMet(
+                           common::errors::PreconditionNotMet(
                                "The callstack of operation `%s` should be an "
                                "array attribute.",
                                self.name()));
@@ -1013,7 +1014,7 @@ void BindOperation(py::module *m) {
             for (size_t i = 0; i < op_callstack_array_attr.size(); ++i) {
               PADDLE_ENFORCE(
                   op_callstack_array_attr.at(i).isa<StrAttribute>(),
-                  phi::errors::PreconditionNotMet(
+                  common::errors::PreconditionNotMet(
                       "The callstack info of operation `%s` should be array of "
                       "string attribute.",
                       self.name()));
@@ -1113,7 +1114,7 @@ pir::Value apply(Value self, py::object func) {
   py::gil_scoped_acquire gil;
   auto stop_gradient = self.attribute<BoolAttribute>(kAttrStopGradients);
   if (stop_gradient && !stop_gradient.data()) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Cannot apply function on a tensor that required gradient."));
   }
   PyObject *py_func = func.release().ptr();
@@ -1126,10 +1127,10 @@ pir::Value apply(Value self, py::object func) {
     res = PyObject_CallFunctionObjArgs(py_func, tmp_self, nullptr);
     Py_DECREF(tmp_self);
   } catch (std::exception &e) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Apply function of Tensor raises an exception: %s.", e.what()));
   } catch (...) {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Apply function of Tensor raises an unknown exception."));
   }
   if (res == Py_None) {
@@ -1215,7 +1216,7 @@ void BindValue(py::module *m) {
           "id",
           [](Value self) {
             if (self.impl() == nullptr) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "Currently, we can only get id of Value whose impl "
                   "is not nullptr"));
             } else {
@@ -1250,28 +1251,28 @@ void BindValue(py::module *m) {
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
           [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set shape when building static graph"));
           })
       .def_property(
           "_local_shape",
           [](Value self) {
             if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "_local_shape is only for distdense tensor."));
             }
             return phi::vectorize(
                 self.type().dyn_cast<DistDenseTensorType>().local_ddim());
           },
           [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set _local_shape when building static graph"));
           })
       .def_property(
           "dtype",
           [](Value self) { return GetValueDtype(self); },
           [](Value self, phi::DataType dtype) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
       .def("initialized",
@@ -1310,7 +1311,7 @@ void BindValue(py::module *m) {
              if (auto op_result = self.dyn_cast<OpResult>()) {
                return op_result.index();
              }
-             PADDLE_THROW(phi::errors::InvalidArgument(
+             PADDLE_THROW(common::errors::InvalidArgument(
                  "only support accesss index from op_result."));
            })
       .def("is_dense_tensor_type",
@@ -1415,28 +1416,28 @@ void BindType(py::module *m) {
           "shape",
           [](Type self) { return phi::vectorize(GetTensorDims(self)); },
           [](Type self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set shape when building static graph"));
           })
       .def_property(
           "dtype",
           [](Type self) { return GetTensorDtype(self); },
           [](Type self, phi::DataType dtype) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
       .def_property(
           "_local_shape",
           [](Type self) {
             if (!self.isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "_local_shape is only for distdense tensor."));
             }
             return phi::vectorize(
                 self.dyn_cast<DistDenseTensorType>().local_ddim());
           },
           [](Type self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set _local_shape when building static graph"));
           })
       .def("as_vec_type",
@@ -1482,7 +1483,7 @@ void BindType(py::module *m) {
                                        src_type.offset());
              return dst_type;
            } else {
-             PADDLE_THROW(phi::errors::InvalidArgument(
+             PADDLE_THROW(common::errors::InvalidArgument(
                  "Currently, we can only set shape for dense tensor"));
            }
          });
@@ -2047,7 +2048,7 @@ pir::Type CreateSelectedRowsTypeByDenseTensor(pir::Type dense_tensor_type) {
                                  type.lod(),
                                  type.offset());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, input is not a dense tensor type."));
   }
 }
@@ -2068,7 +2069,7 @@ pir::Type CreateDistDenseTensorTypeByDenseTensor(
                                     tensor_dist_attr,
                                     phi::make_ddim(lshape));
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, input is not a dense tensor type are not supported."));
   }
 }
@@ -2085,7 +2086,7 @@ static void inline CreateVariableIfNotExist(
     auto var = scope->FindVar(para_name);
     if (var == nullptr) {
       PADDLE_ENFORCE_NOT_NULL(exe,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "Parameter not Initialized, "
                                   "Please set argument [executor] not None "
                                   "or run startup program first"));
@@ -2412,7 +2413,7 @@ void BindPassManager(pybind11::module *m) {
                } else if (py::isinstance<py::float_>(attr.second)) {
                  pass->Set(attr.first, new float(attr.second.cast<float>()));
                } else {
-                 PADDLE_THROW(phi::errors::InvalidArgument(
+                 PADDLE_THROW(common::errors::InvalidArgument(
                      "The pass attr is not supported this type."));
                }
              }
@@ -2482,7 +2483,7 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                for (size_t i = 0; i < actual.size(); i++) {
                  if (!actual.at(i).isa<int64_t>()) {
                    print_expect_and_actual();
-                   PADDLE_THROW(phi::errors::InvalidArgument(
+                   PADDLE_THROW(common::errors::InvalidArgument(
                        "In OpTest, only supports cases where the type of "
                        "DimExpr "
                        "is int64_t."));

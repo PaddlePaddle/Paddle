@@ -46,7 +46,7 @@ static ncclRedOp_t str_to_nccl_red_type(std::string reduction) {
   auto it = str_to_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != str_to_type.end(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Invalid nccl reduction. Must be ncclMin | ncclMax | "
                         "ncclProd | ncclSum"));
   return it->second;
@@ -58,7 +58,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::GPU,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "This kernel only runs on GPU device."));
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
@@ -91,10 +91,10 @@ template <typename T, typename DeviceContext>
 class NCCLReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
-        true,
-        phi::errors::InvalidArgument("This kernel only runs on GPU device."));
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+                      true,
+                      common::errors::InvalidArgument(
+                          "This kernel only runs on GPU device."));
     auto x = ctx.Input<phi::DenseTensor>("X");  // x0, x1, x2
     auto out = ctx.Output<phi::DenseTensor>("Out");
     auto* comm = ctx.Input<Communicator>("Communicator");
@@ -132,10 +132,10 @@ template <typename T, typename DeviceContext>
 class NCCLBcastKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
-        true,
-        phi::errors::InvalidArgument("This kernel only runs on GPU device."));
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+                      true,
+                      common::errors::InvalidArgument(
+                          "This kernel only runs on GPU device."));
     int root = ctx.Attr<int>("root");
     auto* comm = ctx.Input<Communicator>("Communicator");
     // device id

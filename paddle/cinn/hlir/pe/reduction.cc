@@ -51,7 +51,9 @@ using lang::Compute;
 void GetRealAxes(int ndim,
                  const std::vector<int>& axes,
                  std::vector<int>* real_axes) {
-  CHECK(real_axes);
+  PADDLE_ENFORCE_NOT_NULL(real_axes,
+                          phi::errors::InvalidArgument(
+                              "The 'real_axes' pointer must not be null."));
   if (axes.empty()) {
     for (int i = 0; i < ndim; ++i) {
       real_axes->push_back(i);
@@ -120,7 +122,9 @@ void GetOutputShape(const std::vector<int>& real_axes,
                     std::vector<Expr>* output_shape,
                     const Tensor& tensor,
                     bool keep_dims) {
-  CHECK(output_shape);
+  PADDLE_ENFORCE_NOT_NULL(output_shape,
+                          phi::errors::InvalidArgument(
+                              "The 'output_shape' pointer must not be null."));
   auto ndim = tensor->shape.size();
   if (keep_dims) {
     for (size_t i = 0; i < ndim; ++i) {
@@ -141,7 +145,10 @@ void GetOutputShape(const std::vector<int>& real_axes,
     output_shape->push_back(cinn::common::make_one());
   }
 
-  CHECK(!tensor->shape.empty());
+  PADDLE_ENFORCE_EQ(
+      !tensor->shape.empty(),
+      true,
+      phi::errors::InvalidArgument("The 'tensor' shape must not be empty."));
   if (tensor->shape[0]->type() == Int(64)) {
     for (auto& shape_item : *output_shape) {
       shape_item->convert_int32_to_int64();
@@ -868,8 +875,10 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(
     ReduceFunc reduce_func,
     BlockReduceFunc block_reduce_func,
     ir::Expr initial) {
-  CHECK(!WithoutLastDimInReduce(A->shape, axes))
-      << "Can't find last axis in reduce!";
+  PADDLE_ENFORCE_EQ(
+      !WithoutLastDimInReduce(A->shape, axes),
+      true,
+      phi::errors::InvalidArgument("Can't find last axis in reduce!"));
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.

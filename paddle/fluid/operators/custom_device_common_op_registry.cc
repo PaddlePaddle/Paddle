@@ -64,19 +64,19 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GE(rank,
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "greater than or equal to 0.",
                           rank));
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_concat must be "
                           "greater than or equal to 2.",
                           nranks));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "less than that of nranks (%d).",
                           rank,
@@ -106,7 +106,7 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           nranks,
           comm->GetSize(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "nranks: %s should equal to %s", nranks, comm->GetSize()));
 
       int64_t send_numel = x->numel();
@@ -159,7 +159,7 @@ class CIdentityOpCustomDeviceKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rid,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for c_identity op must be non-negative.", rid));
     ctx.device_context().Alloc<T>(out);
 
@@ -179,19 +179,19 @@ class CSplitOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GE(rank,
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_split must be "
                           "greater than or equal to 0.",
                           rank));
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_split must be "
                           "greater than or equal to 2.",
                           nranks));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_split must be "
                           "less than that of nranks (%d).",
                           rank,
@@ -258,7 +258,7 @@ class CEmbeddingOpCustomDeviceKernel : public framework::OpKernel<T> {
               *reinterpret_cast<phi::DenseTensor*>(out_tensor.impl().get()))
           .Resize(out_dims);
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "CustomDevice c_embedding ids only support int32 or int64."));
     }
   }
@@ -318,7 +318,7 @@ class CEmbeddingGradOpCustomDeviceKernel : public framework::OpKernel<T> {
       table_grad_t->ShareDataWith(
           *reinterpret_cast<phi::DenseTensor*>(table_grad_tensor.impl().get()));
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "CustomDevice c_embedding ids only support int32 or int64."));
     }
   }
@@ -438,9 +438,9 @@ class CSoftmaxWithCrossEntropyOpCustomDeviceKernel
               *reinterpret_cast<phi::DenseTensor*>(loss_out.impl().get()))
           .Resize(loss_dims);
     } else {
-      PADDLE_THROW(
-          phi::errors::Unavailable("CustomDevice c_softmax_with_cross_entropy "
-                                   "only support ProcessGroup"));
+      PADDLE_THROW(common::errors::Unavailable(
+          "CustomDevice c_softmax_with_cross_entropy "
+          "only support ProcessGroup"));
     }
   }
 };
@@ -515,7 +515,7 @@ class CSoftmaxWithCrossEntropyGradCustomDeviceKernel
               logits_grad_out_tensor2.impl().get()))
           .Resize(softmax_dims);
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "CustomDevice c_softmax_with_cross_entropy_grad "
           "label_type only support int32/int64"));
     }
@@ -542,11 +542,11 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
       auto place = cond->place();
       PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
       PADDLE_ENFORCE_EQ(cond->numel(),
                         1,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The input `cond` should be shape [1]"));
       if (!cond->data<bool>()[0]) {
         VLOG(4) << "Skip all reduce Op since cond is 0";
@@ -593,8 +593,8 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
           break;
 
         default:
-          PADDLE_THROW(phi::errors::InvalidArgument("Invalid reduce type: %d",
-                                                    red_type));
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Invalid reduce type: %d", red_type));
       }
 
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
@@ -904,14 +904,14 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
     const auto& dev_ctx = ctx.template device_context<phi::CustomContext>();
     auto place = ctx.GetPlace();
 
-    PADDLE_ENFORCE_EQ(
-        local_count->dtype(),
-        phi::DataType::INT64,
-        phi::errors::InvalidArgument("Please use int64 type in local_count."));
-    PADDLE_ENFORCE_EQ(
-        global_count->dtype(),
-        phi::DataType::INT64,
-        phi::errors::InvalidArgument("Please use int64 type in global_count."));
+    PADDLE_ENFORCE_EQ(local_count->dtype(),
+                      phi::DataType::INT64,
+                      common::errors::InvalidArgument(
+                          "Please use int64 type in local_count."));
+    PADDLE_ENFORCE_EQ(global_count->dtype(),
+                      phi::DataType::INT64,
+                      common::errors::InvalidArgument(
+                          "Please use int64 type in global_count."));
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     const int64_t* cpu_local_count_data;
@@ -1116,14 +1116,14 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
-    PADDLE_ENFORCE_EQ(
-        local_count->dtype(),
-        phi::DataType::INT64,
-        phi::errors::InvalidArgument("Please use int64 type in local_count."));
-    PADDLE_ENFORCE_EQ(
-        global_count->dtype(),
-        phi::DataType::INT64,
-        phi::errors::InvalidArgument("Please use int64 type in global_count."));
+    PADDLE_ENFORCE_EQ(local_count->dtype(),
+                      phi::DataType::INT64,
+                      common::errors::InvalidArgument(
+                          "Please use int64 type in local_count."));
+    PADDLE_ENFORCE_EQ(global_count->dtype(),
+                      phi::DataType::INT64,
+                      common::errors::InvalidArgument(
+                          "Please use int64 type in global_count."));
 
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
