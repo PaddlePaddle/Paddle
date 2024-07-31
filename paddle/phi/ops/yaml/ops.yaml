@@ -13,7 +13,7 @@
   kernel :
     func : abs
     data_type : x
-  inplace: (x -> out)f
+  inplace: (x -> out)
   backward : abs_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
