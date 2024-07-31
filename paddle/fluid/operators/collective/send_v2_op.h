@@ -30,7 +30,7 @@ class SendOpV2CPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx UNUSED) const override {
     PADDLE_THROW(
-        phi::errors::Unavailable("Do not support send for cpu kernel now."));
+        common::errors::Unavailable("Do not support send for cpu kernel now."));
   }
 };
 
