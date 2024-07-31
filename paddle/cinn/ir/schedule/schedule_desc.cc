@@ -99,12 +99,10 @@ class PackedStepContext {
                       ::common::errors::InvalidArgument("idx overranges"));
     const auto& range = input_range_.at(idx);
 
-    PADDLE_ENFORCE_EQ(
-        range.second - range.first,
-        1,
-        ::common::errors::InvalidArgument(
-            "Input is not single param, idx: %d.",
-            idx));
+    PADDLE_ENFORCE_EQ(range.second - range.first,
+                      1,
+                      ::common::errors::InvalidArgument(
+                          "Input is not single param, idx: %d.", idx));
     return inputs_[range.first];
   }
 
