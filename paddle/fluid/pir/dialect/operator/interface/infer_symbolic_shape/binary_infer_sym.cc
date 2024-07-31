@@ -257,6 +257,53 @@ bool EmbeddingOpInferSymbolicShape(
   return true;
 }
 
+bool LUUnpackOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+  int x_rank = x_dims.size();
+
+  bool unpack_ludata = op->attribute<pir::BoolAttribute>("unpack_ludata").data();
+  bool unpack_pivots = op->attribute<pir::BoolAttribute>("unpack_pivots").data();
+
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of input must be greater than or equal to 2."));
+
+  int m = static_cast<int>(x_dims[x_rank - 1]);
+  int n = static_cast<int>(x_dims[x_rank - 2]);
+  symbol::DimExpr min_mn = symbol::min(m, n);
+
+  if (unpack_ludata) {
+    std::vector<symbol::DimExpr> ldims = x_dims;
+    std::vector<symbol::DimExpr> udims = x_dims;
+    if (m >= n) {
+      udims[x_rank - 2] = min_mn;
+    } else {
+      ldims[x_rank - 1] = min_mn;
+    }
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(ldims)});
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(udims)});
+  }
+
+  if (unpack_pivots) {
+    std::vector<symbol::DimExpr> pdims = x_dims;
+    pdims[x_rank - 1] = m;
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(pdims)});
+  }
+
+  return true;
+}
+
 bool SparseWeightEmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   PADDLE_THROW(phi::errors::Unimplemented(

@@ -583,6 +583,57 @@ bool LogsumexpOpInferSymbolicShape(
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
+bool LUOpInferSymbolicShape(pir::Operation *op,
+                            pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+  int x_rank = x_dims.size();
+
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of input must be greater than or equal to 2."));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+
+  auto m = x_dims[x_rank - 1];
+  auto n = x_dims[x_rank - 2];
+
+  symbol::DimExpr min_mn = symbol::min(m, n);
+
+  if (x_rank == 2) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(1)})});
+  } else {
+    std::vector<symbol::DimExpr> infos_dims(x_dims.begin(),
+                                            x_dims.begin() + x_rank - 2);
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(infos_dims)});
+  }
+
+  bool pivot = op->attribute<pir::BoolAttribute>("pivot").data();
+
+  if (pivot) {
+    std::vector<symbol::DimExpr> pivots_dims(x_dims.begin(),
+                                             x_dims.begin() + x_rank - 1);
+    pivots_dims[x_rank - 2] = min_mn;
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(pivots_dims)});
+  }
+
+  return true;
+}
+
 bool MaxOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
@@ -771,6 +822,36 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
         phi::errors::Unimplemented("ProdOpInferSymbolicShape: 'axis' only "
                                    "support FullIntArrayOp's result now."));
   }
+
+  return true;
+}
+
+bool ReduceIntArrayAxisOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &axis_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  bool keep_dim = infer_context->GetAttribute<bool>("keep_dim");
+  auto config = infer_context->GetAttribute<MetaConfig>("config");
+  bool reduce_all = false;
+  if (axis_shape_or_data.shape().size() == 0) {
+    reduce_all = true;
+  }
+
+  DDim out_dim;
+  if (config.is_runtime || !axis_shape_or_data.FromTensor()) {
+    out_dim = details::ReduceInferDim(
+        x, axis_shape_or_data.GetData(), keep_dim, reduce_all);
+  } else {
+    out_dim = details::ReduceInferDimForIntArrayAxis(
+        x, axis_shape_or_data, keep_dim, reduce_all);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorListShapeOrDataDimExprs(out_dim)});
 
   return true;
 }
