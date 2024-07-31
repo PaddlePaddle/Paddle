@@ -25,7 +25,10 @@ if TYPE_CHECKING:
 
 
 def send(
-    tensor: Tensor, dst: int = 0, group: Group = None, sync_op: bool = True
+    tensor: Tensor,
+    dst: int = 0,
+    group: Group | None = None,
+    sync_op: bool = True,
 ) -> task:
     """
     Send a tensor to the receiver.
@@ -62,7 +65,7 @@ def send(
     )
 
 
-def isend(tensor: Tensor, dst: int, group: Group = None) -> task:
+def isend(tensor: Tensor, dst: int, group: Group | None = None) -> task:
     """
     Send tensor asynchronously
 

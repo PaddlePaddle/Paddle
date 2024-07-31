@@ -35,9 +35,9 @@ from .serialization_utils import (
 
 def scatter(
     tensor: Tensor,
-    tensor_list: list[Tensor] | tuple[Tensor] = None,
+    tensor_list: list[Tensor] | tuple[Tensor] | None = None,
     src: int = 0,
-    group: Group = None,
+    group: Group | None = None,
     sync_op: bool = True,
 ) -> None:
     """
@@ -87,7 +87,7 @@ def scatter(
 
 def scatter_object_list(
     out_object_list: list[Any],
-    in_object_list: list[Any] = None,
+    in_object_list: list[Any] | None = None,
     src: int = 0,
     group: Group = None,
 ) -> None:

@@ -142,7 +142,7 @@ def _all_gather_in_static_mode(
 def all_gather(
     tensor_or_tensor_list: Tensor | list[Tensor],
     tensor: Tensor,
-    group: Group = None,
+    group: Group | None = None,
     sync_op: bool = True,
     use_calc_stream: bool = False,
 ) -> task:
