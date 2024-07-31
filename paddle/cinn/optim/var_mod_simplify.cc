@@ -51,8 +51,10 @@ struct ReplaceDivWithVarMutator : public ir::IRMutator<> {
     if (a.is_var() && b.is_constant()) {
       auto a_var = a.As<_Var_>();
       auto b_int = b.As<IntImm>();
-      CHECK(a_var);
-      CHECK(b_int);
+      PADDLE_ENFORCE_EQ(
+          a_var, true, phi::errors::InvalidArgument("a should be var"));
+      PADDLE_ENFORCE_EQ(
+          b_int, true, phi::errors::InvalidArgument("a should be var"));
       std::string var_name = a_var->name + "/" + std::to_string(b_int->value);
       div_var_map_[var_name] = ir::Div::Make(a, b);
       *expr = Var(var_name);
@@ -70,7 +72,8 @@ struct ReplaceVarWithDivMutator : public ir::IRMutator<> {
 
   void Visit(const _Var_* op, Expr* expr) override {
     auto* node = expr->As<_Var_>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            phi::errors::InvalidArgument("node is nullptr"));
     if (div_var_map_.count(node->name)) {
       *expr = div_var_map_[node->name];
     }

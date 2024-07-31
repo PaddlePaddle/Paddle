@@ -179,9 +179,12 @@ void Graph::ClearUnlinkedNodes(
     absl::flat_hash_map<std::string, std::vector<int>> *shape_dict,
     absl::flat_hash_map<std::string, Type> *type_dict,
     absl::flat_hash_map<std::string, std::string> *layout_dict) {
-  CHECK(shape_dict);
-  CHECK(type_dict);
-  CHECK(layout_dict);
+  PADDLE_ENFORCE_NOT_NULL(
+      shape_dict, phi::errors::InvalidArgument("%s is null", shape_dict));
+  PADDLE_ENFORCE_NOT_NULL(
+      type_dict, phi::errors::InvalidArgument("%s is null", type_dict));
+  PADDLE_ENFORCE_NOT_NULL(
+      layout_dict, phi::errors::InvalidArgument("%s is null", layout_dict));
   for (auto it = nodes_.begin(); it < nodes_.end(); ++it) {
     auto node = *it;
     if (node->inlinks().empty() && node->outlinks().empty()) {

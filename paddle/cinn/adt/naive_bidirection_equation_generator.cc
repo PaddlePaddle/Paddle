@@ -51,7 +51,12 @@ OpArgIndexes<std::optional<Index>> MakeOutMsgOpArgIndexes(
     const List<std::optional<Index>>& opt_out_msg_out_indexes) {
   List<Index> out_msg_in_indexes{};
   for (const auto& out_msg_in_index : *opt_out_msg_in_indexes) {
-    CHECK(out_msg_in_index.has_value());
+    PADDLE_ENFORCE_EQ(
+        out_msg_in_index.has_value(),
+        phi::errors::InvalidArgument(
+            "The value of out_msg_in_index should be valid, but got "
+            "out_msg_in_index = %s.",
+            out_msg_in_index->value().ToString()));
     out_msg_in_indexes->emplace_back(out_msg_in_index.value());
   }
   return OpArgIndexes<std::optional<Index>>{out_msg_in_indexes,
@@ -111,9 +116,14 @@ void NaiveBidirectionEquationGenerator::InitInMsgIndex2OutMsgIndex() {
             in_msg_indexes,
             out_msg_indexes,
             [&](const Index& in_index, const Index& out_index) {
-              CHECK(
+              PADDLE_ENFORCE_EQ(
                   this->in_msg_index2out_msg_index_.emplace(in_index, out_index)
-                      .second);
+                      .second,
+                  true,
+                  phi::errors::InvalidArgument(
+                      "The in_msg_index2out_msg_index_ should not have "
+                      "duplicate "
+                      "key, but got in_msg_index"));
             });
       };
 
@@ -160,9 +170,14 @@ NaiveBidirectionEquationGenerator::MakeGetterOpStmt4OpPlaceHolder() const {
       std::make_shared<FakeOpPlaceHolder2OpStmt>();
 
   for (std::size_t i = 0; i < fake_op_placeholders_->size(); ++i) {
-    CHECK(fake_op_placeholder2op_stmt
-              ->emplace(fake_op_placeholders_->at(i), op_stmts_->at(i))
-              .second);
+    PADDLE_ENFORCE_EQ(
+        fake_op_placeholder2op_stmt
+            ->emplace(fake_op_placeholders_->at(i), op_stmts_->at(i))
+            .second,
+        true,
+        phi::errors::InvalidArgument(
+            "The fake_op_placeholder2op_stmt should not have duplicate "
+            "key, but got fake_op_placeholder"));
   }
 
   return [fake_op_placeholder2op_stmt](
