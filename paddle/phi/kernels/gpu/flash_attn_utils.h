@@ -197,11 +197,14 @@ struct FlashAttnParamsBase {
         startend_row_indices ? startend_row_indices.get_ptr() : nullptr,
         max_seqlen_q);
 
-    PADDLE_ENFORCE_NE(attn_mask_tensor && startend_row_indices,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "attn_mask and attn_mask_start_row_indices cannot be "
-                          "set at same time."));
+    if (startend_row_indices != nullptr) {
+      PADDLE_ENFORCE_EQ(
+          attn_mask_tensor,
+          nullptr,
+          phi::errors::InvalidArgument(
+              "attn_mask and attn_mask_start_row_indices cannot be "
+              "set at same time."));
+    }
   }
 };
 
