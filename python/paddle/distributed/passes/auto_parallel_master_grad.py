@@ -52,6 +52,18 @@ _supported_optimizer_type = [
 logger = get_logger(logging.INFO, "MasterGradPass")
 
 
+def _is_master_grad_cast_op(block, op):
+    if op.type != "cast":
+        return False
+    assert len(op.input_arg_names) == 1
+    assert len(op.output_arg_names) == 1
+    input_var_name = op.input_arg_names[0]
+    return (
+        "@master_grad_fp16" in input_var_name
+        or "@master_grad_bf16" in input_var_name
+    )
+
+
 def get_output_in_varlist(op, var_names) -> List[str]:
     grad_names = []
     for output_name in op.output_arg_names:
