@@ -718,15 +718,14 @@
 
 - op : reshape
   args : (Tensor x, IntArray shape)
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : ReshapeWithXShapeInferMeta
+    func : ReshapeInferMeta
     spmd_rule : ReshapeInferSpmdDynamic
   kernel :
-    func : reshape
+    func : reshape_infer
   inplace : (x -> out)
   view: (x -> out)
-  intermediate : xshape
   backward: reshape_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 

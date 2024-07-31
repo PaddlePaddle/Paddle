@@ -23,7 +23,7 @@ void ReaderBase::ReadNext(paddle::framework::LoDTensorArray *out) {
   std::lock_guard<std::mutex> lock(mu_);
   PADDLE_ENFORCE_EQ(status_,
                     ReaderStatus::kRunning,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "The current reader has stopped running and cannot "
                         "continue to read the next batch of data."));
   ReadNextImpl(out);

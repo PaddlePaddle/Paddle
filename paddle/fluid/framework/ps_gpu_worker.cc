@@ -72,10 +72,10 @@ void PSGPUWorker::CreateDeviceResource(const ProgramDesc& main_prog) {
             continue;
           }
           auto* ptr = scope->FindLocalVar(var->Name());
-          PADDLE_ENFORCE_NE(
-              ptr,
-              nullptr,
-              phi::errors::NotFound("The var %s is not found.", var->Name()));
+          PADDLE_ENFORCE_NE(ptr,
+                            nullptr,
+                            common::errors::NotFound("The var %s is not found.",
+                                                     var->Name()));
           need_reuse.push_back(ptr);
         }
       }
@@ -90,10 +90,10 @@ void PSGPUWorker::CreateDeviceResource(const ProgramDesc& main_prog) {
             continue;
           }
           auto* ptr = thread_scope_->FindLocalVar(var->Name());
-          PADDLE_ENFORCE_NE(
-              ptr,
-              nullptr,
-              phi::errors::NotFound("The var %s is not found.", var->Name()));
+          PADDLE_ENFORCE_NE(ptr,
+                            nullptr,
+                            common::errors::NotFound("The var %s is not found.",
+                                                     var->Name()));
           need_reuse_var_.push_back(ptr);
         }
       }
@@ -240,12 +240,12 @@ int PSGPUWorker::OpRunAndShapeCheck(OperatorBase& op,
       op_name = op.Info().Proto().type();
     }
 
-#define SHAPE_CHECK_EQ(__VAL0, __VAL1)                                 \
-  PADDLE_ENFORCE_EQ(                                                   \
-      __VAL0,                                                          \
-      __VAL1,                                                          \
-      phi::errors::Fatal("Shape check dims/lods error, op name: %s .", \
-                         op_name))
+#define SHAPE_CHECK_EQ(__VAL0, __VAL1)                                    \
+  PADDLE_ENFORCE_EQ(                                                      \
+      __VAL0,                                                             \
+      __VAL1,                                                             \
+      common::errors::Fatal("Shape check dims/lods error, op name: %s .", \
+                            op_name))
 
     SHAPE_CHECK_EQ(pre_dims.size(), after_dims.size());
     for (size_t i = 0; i < pre_dims.size(); i++) {
@@ -373,7 +373,7 @@ void PSGPUWorker::TrainFiles() {
           need_reuse_var_vec_[thread_scope];
       PADDLE_ENFORCE_EQ(cur_scope_vars.size(),
                         need_reuse_var_.size(),
-                        phi::errors::Fatal("reuse vars size must be same."));
+                        common::errors::Fatal("reuse vars size must be same."));
       for (size_t i = 0; i < need_reuse_var_.size(); i++) {
         Variable* child = cur_scope_vars[i];
         Variable* parent = need_reuse_var_[i];
@@ -456,7 +456,7 @@ void PSGPUWorker::TrainFiles() {
           need_reuse_var_vec_[thread_scope];
       PADDLE_ENFORCE_EQ(cur_scope_vars.size(),
                         need_reuse_var_.size(),
-                        phi::errors::Fatal("reuse vars size must be same."));
+                        common::errors::Fatal("reuse vars size must be same."));
       for (size_t i = 0; i < need_reuse_var_.size(); i++) {
         Variable* child = cur_scope_vars[i];
         Variable* parent = need_reuse_var_[i];

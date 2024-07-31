@@ -321,7 +321,11 @@ void IrPrinter::Visit(const _Module_ *x) {}
 void IrPrinter::Visit(const _Var_ *x) { str_ += x->name; }
 void IrPrinter::Visit(const Alloc *x) {
   auto *buffer = x->destination.As<ir::_Buffer_>();
-  CHECK(buffer);
+  PADDLE_ENFORCE_NOT_NULL(
+      buffer,
+      phi::errors::InvalidArgument("The destination is not a valid buffer. "
+                                   "Please ensure that `x->destination` is "
+                                   "properly assigned to a buffer."));
   str_ += "alloc(";
   str_ += buffer->name;
   str_ += ", ";
@@ -340,7 +344,11 @@ void IrPrinter::Visit(const Select *x) {
 void IrPrinter::Visit(const Load *x) {
   if (x->is_addr_tensor()) {
     auto *tensor = x->tensor.As<ir::_Tensor_>();
-    CHECK(tensor);
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor,
+        phi::errors::InvalidArgument("The tensor is not valid. "
+                                     "Please ensure that `x->tensor` is "
+                                     "properly assigned to a tensor."));
     str_ += tensor->name;
   } else if (x->is_addr_scalar()) {
     Visit(x->tensor);
@@ -359,7 +367,12 @@ void IrPrinter::Visit(const Load *x) {
 void IrPrinter::Visit(const Store *x) {
   if (x->is_addr_tensor()) {
     auto *tensor_node = x->tensor.As<ir::_Tensor_>();
-    CHECK(tensor_node);
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_node,
+        phi::errors::InvalidArgument("The tensor node is not valid. "
+                                     "Please ensure that `x->tensor` is "
+                                     "properly assigned to a tensor node."));
+
     str_ += tensor_node->name;
   } else if (x->is_addr_scalar()) {
     Visit(x->tensor);
@@ -378,7 +391,12 @@ void IrPrinter::Visit(const Store *x) {
 }
 void IrPrinter::Visit(const Free *x) {
   auto *buffer = x->destination.As<ir::_Buffer_>();
-  CHECK(buffer);
+  PADDLE_ENFORCE_NOT_NULL(
+      buffer,
+      phi::errors::InvalidArgument("The destination is not a valid buffer. "
+                                   "Please ensure that `x->destination` is "
+                                   "properly assigned to a buffer."));
+
   str_ += "free(";
   str_ += buffer->name;
   str_ += ")";
@@ -434,7 +452,13 @@ void IrPrinter::Visit(const _LoweredFunc_ *f) {
   Visit(f->body);
 }
 void IrPrinter::Visit(const Let *f) {
-  CHECK(f->type().valid());
+  PADDLE_ENFORCE_EQ(
+      f->type().valid(),
+      true,
+      phi::errors::InvalidArgument(
+          "The type of `f` is not valid. "
+          "Please ensure that `f->type()` returns a valid type."));
+
   str_ += f->type().to_string();
   str_ += " ";
   Visit(f->symbol);
@@ -543,7 +567,11 @@ void IrPrinter::Visit(const PrimitiveNode *x) {
 
 void IrPrinter::Visit(const _BufferRange_ *x) {
   auto *buffer = x->buffer.As<ir::_Buffer_>();
-  CHECK(buffer);
+  PADDLE_ENFORCE_NOT_NULL(
+      buffer,
+      phi::errors::InvalidArgument(
+          "The buffer is not valid. "
+          "Please ensure that `x->buffer` is properly assigned to a buffer."));
   str_ += buffer->name;
   str_ += "[";
   for (std::size_t i = 0; i < x->ranges.size(); i++) {
