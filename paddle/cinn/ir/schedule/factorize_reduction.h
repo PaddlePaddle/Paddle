@@ -310,8 +310,9 @@ class RFBlockCreater : public ReduceBlockCreater {
       new_iter_values_.push_back(original_iter_value);
       return;
     }
-    PADDLE_ENFORCE_NOT_NULL(
+    PADDLE_ENFORCE_EQ(
         original_iter_var->is_reduce_axis,
+        true,
         phi::errors::InvalidArgument(
             "The original_iter_var is expected to be a reduce axis."));
 
