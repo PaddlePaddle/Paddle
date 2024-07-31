@@ -402,7 +402,11 @@ std::vector<const Expr *> IfThenElse::expr_fields() const {
   return {&condition, &true_case, &false_case};
 }
 
-Expr Store::Make(Expr tensor, Expr value, const std::vector<Expr> &indices) {
+Expr Store::Make(Expr tensor,
+                 Expr value,
+                 const std::vector<Expr> &indices,
+                 Expr offset,
+                 const std::vector<Expr> &view_shape) {
   CHECK(tensor.As<_Tensor_>()) << "tensor should be _Tensor_ type";
   auto node = make_shared<Store>();
   node->tensor = tensor;
@@ -414,6 +418,19 @@ Expr Store::Make(Expr tensor, Expr value, const std::vector<Expr> &indices) {
     node->set_type(
         tensor->type().ElementOf().with_lanes(node->index().type().lanes()));
   }
+
+  if (offset == Expr(0)) {
+    node->offset = node->index();
+  } else {
+    node->offset = offset;
+  }
+
+  if (view_shape.size() == 0) {
+    node->view_shape = tensor.as_tensor_ref()->shape;
+  } else {
+    node->view_shape = view_shape;
+  }
+
   return Expr(node);
 }
 

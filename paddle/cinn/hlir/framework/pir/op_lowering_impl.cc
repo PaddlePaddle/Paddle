@@ -33,6 +33,7 @@
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/check_tensor_buffer_map.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
@@ -220,6 +221,17 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     VLOG(3) << "OpFusion tensor-buffer map check succeed";
   }
 
+  for (size_t i = 0; i < func_bodies.size(); ++i) {
+    std::cerr << "ii " << i << "\t" << func_bodies[i] << std::endl;
+
+    auto consumer = ir::ir_utils::CollectIRNodesInOrder(
+        func_bodies[i], [&](const Expr* x) { return x->As<ir::Store>(); });
+
+    for (size_t j = 0; j < consumer.size(); ++j) {
+      std::cerr << "jj  " << j << "\t" << consumer[j] << std::endl;
+      std::cerr << consumer[j].As<ir::Store>()->offset << std::endl;
+    }
+  }
   // =========== CodeGen And Optimizer ================
 
   // 2.Do group schedule.

@@ -200,6 +200,23 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
   int current_reduce_axis = 0;
   if (vec_flatten_axis_.size() > 0) {
     auto loops = sch->GetLoops(block_id);
+
+    // fuse here
+    auto test_block = sch->GetBlock(block_id);
+
+    auto consumer = ir::ir_utils::CollectIRNodesInOrder(
+        test_block, [&](const Expr* x) { return x->As<ir::Store>(); });
+
+    for (auto j = 0; j < consumer.size(); ++j) {
+      std::cerr << "split jj " << consumer[j] << std::endl;
+      std::cerr << "offset " << consumer[j].As<ir::Store>()->offset
+                << std::endl;
+    }
+
+    std::cerr << "split test block " << test_block << std::endl;
+
+    std::cerr << "sp loop sp thread "
+              << "\t" << sp_loop << "\t" << sp_thread << std::endl;
     if (sp_loop > 1 && sp_thread > 1) {
       // [S, R] => [S(-1), S(inner_loop), S(thread), R]
       sch->Split(loops[0], {-1, sp_loop, sp_thread});
@@ -359,6 +376,7 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
   auto loops = sch->GetLoops(block_id);
+
   if (loops.size() == 3) {
     // [S, S', R] => [S, S'(-1), S'(32), R]
     auto split_loops = sch->Split(loops[1], std::vector<int>({-1, 32}));

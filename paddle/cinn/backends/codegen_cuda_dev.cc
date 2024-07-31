@@ -504,6 +504,9 @@ void CodeGenCUDA_Dev::Visit(const ir::Store *op) {
   // overload this visit function to especially deal with the case when it
   // accesses element at a cuda built-in vector, others still resolve to
   // CodeGenC
+
+  std::cerr << "code gen " << op->index() << std::endl;
+  std::cerr << "code gen offset " << op->offset << std::endl;
   if (PrintBuiltinVectorAccess(op, op->index(), true)) {
     str_ += " = ";
     IrPrinter::Visit(op->value);
