@@ -31,7 +31,7 @@ void relu_cpu_forward_kernel(const data_t* x_data,
   PADDLE_ENFORCE_NE(x_data,
                     nullptr,
                     phi::errors::InvalidArgument(
-                        "The input `x_data` is nullptr,  please check"))
+                        "The input `x_data` is nullptr,  please check"));
   PADDLE_ENFORCE_NE(out_data,
                     nullptr,
                     phi::errors::InvalidArgument(
