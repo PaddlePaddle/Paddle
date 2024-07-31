@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import numpy as np
 import hashlib
-import paddle
-from paddle import base
-from paddle import pir
-from paddle.base.log_helper import get_logger
-from paddle.base.core import get_value_shape_range_info
-from util import run_pir_pass, map_dtype
-from custom_plugin import PaddlePhiPluginCreator, GENERAL_PLUGIN_OPS_LIST
-from register import converter_registry
+import logging
+
+import numpy as np
+from custom_plugin import GENERAL_PLUGIN_OPS_LIST
 from impls.core import *
+from register import converter_registry
+from util import map_dtype
+
+import paddle
+from paddle import pir
+from paddle.base.core import get_value_shape_range_info
+from paddle.base.log_helper import get_logger
 
 
 def get_cache_path():
@@ -40,6 +41,7 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
+
 def get_trt_version():
     return trt.__version__
 
@@ -47,7 +49,7 @@ def get_trt_version():
 class PaddleToTensorRTConverter:
     def __init__(self, paddle_program, scope):
         try:
-            import tensorrt as trt
+            pass
         except Exception:
             _logger.info(
                 "import tensorrt failed, you may install it via `python3 -m pip install --upgrade tensorrt` according to https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html"
@@ -117,7 +119,20 @@ class PaddleToTensorRTConverter:
         opt_shape_map = {}
         max_shape_map = {}
         input_names = []
+
+        # 在处理 input_value2 时，确保对 `builtin.combine` 操作的处理是正确的
+        input_value2 = []
         for value in input_values:
+            defining_op = value.get_defining_op()
+            if defining_op.name() == "builtin.combine":
+                # 获取 combine 操作的所有输入
+                for operand in defining_op.operands():
+                    source = operand.source()
+                    input_value2.append(source)
+            else:
+                input_value2.append(value)
+
+        for value in input_value2:
             defining_op = value.get_defining_op()
             if defining_op.name() == "builtin.parameter":
                 param_name = defining_op.attrs()["parameter_name"]
@@ -165,10 +180,36 @@ class PaddleToTensorRTConverter:
                 value_to_trt_tensor[value.id] = input_tensor
 
         for op in operations:
-            operands = [
-                value_to_trt_tensor[operand.source().id]
-                for operand in op.operands()
-            ]
+            operands = []
+            for operand in op.operands():
+                source = operand.source()
+                define_op_name = source.get_defining_op().name()
+                # 如果是builtin.combine,获取其所有输入
+                if define_op_name == "builtin.combine":
+                    for combined_operand in source.get_defining_op().operands():
+                        combined_source = combined_operand.source()
+                        combined_source_id = combined_source.id
+                        if combined_source_id in value_to_trt_tensor:
+                            operands.append(
+                                value_to_trt_tensor[combined_source_id]
+                            )
+                        else:
+                            raise RuntimeError(
+                                f'{combined_source_id} not found in value_to_trt_tensor'
+                            )
+                else:
+                    source_id = source.id
+                    if source_id in value_to_trt_tensor:
+                        operands.append(value_to_trt_tensor[source_id])
+                    else:
+                        raise RuntimeError(
+                            f'{source_id} not found in value_to_trt_tensor'
+                        )
+                # operands.append(value_to_trt_tensor[operand.source().id])
+            # operands = [
+            #     value_to_trt_tensor[operand.source().id]
+            #     for operand in op.operands()
+            # ]
             layer = self.convert(network, op, operands)
 
             # _logger.info(f"start convert {op}")
@@ -200,9 +241,8 @@ class PaddleToTensorRTConverter:
             self.shape_map[result_value.id] = {
                 "min_shape": min_shape,
                 "opt_shape": opt_shape,
-                "max_shape": max_shape
+                "max_shape": max_shape,
             }
-            
 
         config = builder.create_builder_config()
         config.add_optimization_profile(profile)
@@ -227,17 +267,16 @@ class PaddleToTensorRTConverter:
             f.write(group_str)
         trt_params.engine_serialized_data = CACHE_FILE
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(program):
-
             pir.set_insertion_point(group_op)
             out = paddle._C_ops.tensorrt_engine(
-                input_values,
+                input_value2,
                 trt_params,
                 input_names,
                 out_names,
                 out_shapes,
                 out_types,
             )
-            import pdb;pdb.set_trace()
+
             for out_index in range(len(out)):
                 ori_value = output_values[out_index]
                 current_value = out[out_index]
@@ -247,7 +286,7 @@ class PaddleToTensorRTConverter:
                 self.shape_map[current_value.id] = {
                     "min_shape": orin_min_shape,
                     "opt_shape": orin_opt_shape,
-                    "max_shape": orin_max_shape
+                    "max_shape": orin_max_shape,
                 }
 
         return out
@@ -276,5 +315,5 @@ class PaddleToTensorRTConverter:
                 orin_out_values = op.results()
                 for o_i in range(len(orin_out_values)):
                     orin_out_values[o_i].replace_all_uses_with(new_out[o_i])
-                
+
                 self.program.global_block().remove_op(op)
