@@ -22,9 +22,9 @@ namespace ir {
 
 ScheduleBlockNode::ScheduleBlockNode(Expr block, const IRSchedule& ir_sch)
     : ir_sch_(ir_sch) {
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NE(
       block.As<ScheduleBlockRealize>(),
-      true,
+      nullptr,
       ::common::errors::InvalidArgument("Expr is not a ScheduleBlockRealize."));
   id_ = block.As<ScheduleBlockRealize>()
             ->schedule_block.As<ScheduleBlock>()
@@ -100,8 +100,8 @@ void ScheduleBlockGraph::Update(const IRSchedule& ir_sch) {
   std::vector<Expr> all_blocks = ir_sch.GetAllBlocks();
   Expr root_block = ir_sch.GetRootBlock(all_blocks[0]);
   for (Expr block : all_blocks) {
-    PADDLE_ENFORCE_EQ(block.As<ScheduleBlockRealize>(),
-                      true,
+    PADDLE_ENFORCE_NE(block.As<ScheduleBlockRealize>(),
+                      nullptr,
                       ::common::errors::InvalidArgument(
                           "Expr is not a ScheduleBlockRealize."));
     std::string id = block.As<ScheduleBlockRealize>()
@@ -117,8 +117,8 @@ void ScheduleBlockGraph::Update(const IRSchedule& ir_sch) {
 
     std::vector<Expr> producers = GetProducers(block, root_block);
     for (Expr producer : producers) {
-      PADDLE_ENFORCE_EQ(producer.As<ScheduleBlockRealize>(),
-                        true,
+      PADDLE_ENFORCE_NE(producer.As<ScheduleBlockRealize>(),
+                        nullptr,
                         ::common::errors::InvalidArgument(
                             "Expr is not a ScheduleBlockRealize."));
       std::string producer_id = producer.As<ScheduleBlockRealize>()
