@@ -1472,27 +1472,41 @@ def flashmask_attention(
             raise ValueError(
                 f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
             )
-    if has_end or not causal or return_seed_offset or return_softmax_lse:
+    if (
+        has_end
+        or not causal
+        or startend_row_indices.shape[1] != 1
+        or startend_row_indices.shape[0] != 1
+        or return_seed_offset
+        or return_softmax_lse
+    ):
         is_unpad = False
     else:
         is_unpad = bool(
             (paddle.diff(startend_row_indices[0, 0, :, 0]) >= 0).all()
         )
     if is_unpad:
-        cu_seqlens = paddle.unique(startend_row_indices[0, 0, :, 0])
+        cu_seqlens = paddle.concat(
+            [
+                paddle.zeros([1], dtype="int32"),
+                paddle.unique(startend_row_indices[0, 0, :, 0]),
+            ]
+        )
         max_seqlen = paddle.max(paddle.diff(cu_seqlens))
         scale = 1 / math.sqrt(query.shape[-1])
         out, _ = flash_attn_unpadded(
-            query,
-            key,
-            value,
+            query.flatten(0, 1),
+            key.flatten(0, 1),
+            value.flatten(0, 1),
             cu_seqlens,
             cu_seqlens,
             max_seqlen,
             max_seqlen,
             scale,
+            causal=causal,
+            dropout=dropout,
         )
-        return out
+        return out.unsqueeze(0)
 
     return_softmax = False
 
