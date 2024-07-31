@@ -64,7 +64,7 @@ std::vector<Tensor> Argmin(const Tensor &in_tensor,
   for (int i = 0; i < shape.size(); ++i) {
     PADDLE_ENFORCE_EQ(shape[i].is_constant(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input tensor's shape should be constant value."));
     if (pos_axis == i) {
       if (keep_dims) {
