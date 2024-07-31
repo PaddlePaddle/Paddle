@@ -236,6 +236,14 @@ class InferenceEngine:
                     )
                 input_specs.append(None)
 
+        for i in range(len(input_specs)):
+            if input_specs[i] is not None:
+                if isinstance(input_specs[i], list):
+                    for j in range(len(input_specs[i])):
+                        input_specs[i][j].stop_gradient = True
+                else:
+                    input_specs[i].stop_gradient = True
+
         # update the input_spec's shape for doing d2s
         d2s_shapes_id = 0
         # initial the self.d2s_input_names!
@@ -547,6 +555,15 @@ def inference(
             >>> decorator_result = mylayer(x)
 
     """
+    # if function has already been decorated by @paddle.incubate.jit.inference(), then we just return it.
+    if (
+        hasattr(function, "__name__")
+        and function.__name__ == "innermost_decorator"
+    ):
+        return function
+    elif isinstance(function, Layer):
+        if function.forward.__name__ == "innermost_decorator":
+            return function
 
     used_as_at_decorator = function is None
 
