@@ -32,7 +32,6 @@ from .param_attr import ParamAttr
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike, ParamAttrLike
     from paddle.base.framework import Operator
 
 
@@ -66,22 +65,22 @@ class LayerHelper(LayerHelperBase):
             ret.append(self.to_variable(inputs))
         return ret
 
-    def input(self, input_param_name: str = 'input') -> paddle.Tensor:
+    def input(self, input_param_name: str = 'input') -> Tensor:
         inputs = self.multiple_input(input_param_name)
         if len(inputs) != 1:
             raise f"{self.layer_type} layer only takes one input"
         return inputs[0]
 
     @property
-    def param_attr(self) -> ParamAttrLike | list[ParamAttrLike]:
+    def param_attr(self) -> ParamAttr | list[ParamAttr]:
         return ParamAttr._to_attr(self.kwargs.get('param_attr', None))
 
     @property
-    def bias_attr(self) -> ParamAttrLike | list[ParamAttrLike]:
+    def bias_attr(self) -> ParamAttr | list[ParamAttr]:
         return ParamAttr._to_attr(self.kwargs.get('bias_attr', None))
 
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of param_attr
-    def multiple_param_attr(self, length: int) -> list[ParamAttrLike]:
+    def multiple_param_attr(self, length: int) -> list[ParamAttr]:
         param_attr = self.param_attr
         if isinstance(param_attr, ParamAttr):
             param_attr = [param_attr]
@@ -97,12 +96,14 @@ class LayerHelper(LayerHelperBase):
 
     def iter_inputs_and_params(
         self, input_param_name: str = 'input'
-    ) -> Generator[tuple[Tensor, ParamAttrLike]]:
+    ) -> Generator[tuple[Tensor, ParamAttr]]:
         inputs = self.multiple_input(input_param_name)
         param_attrs = self.multiple_param_attr(len(inputs))
         yield from zip(inputs, param_attrs)
 
-    def input_dtype(self, input_param_name: str = 'input') -> None | DTypeLike:
+    def input_dtype(
+        self, input_param_name: str = 'input'
+    ) -> None | paddle.dtype:
         inputs = self.multiple_input(input_param_name)
         dtype = None
         for each in inputs:
@@ -114,7 +115,7 @@ class LayerHelper(LayerHelperBase):
                 )
         return dtype
 
-    def get_parameter(self, name: str) -> Parameter:
+    def get_parameter(self, name: str) -> Tensor:
         param = self.main_program.global_block().var(name)
         if not isinstance(param, Parameter):
             raise ValueError(f"no Parameter name {name} found")

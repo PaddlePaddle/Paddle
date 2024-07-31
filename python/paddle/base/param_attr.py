@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Sequence, overload
 
 import paddle
 from paddle.base.data_feeder import check_type
@@ -159,10 +159,23 @@ class ParamAttr:
         """
         self._set_default_initializer(paddle.nn.initializer.Constant(0.0))
 
+    @overload
     @staticmethod
-    def _to_attr(
-        arg: ParamAttrLike | Sequence[ParamAttrLike],
-    ) -> ParamAttrLike | list[ParamAttrLike]:
+    def _to_attr(arg: None) -> ParamAttr:
+        ...
+
+    @overload
+    @staticmethod
+    def _to_attr(arg: ParamAttrLike) -> ParamAttr:
+        ...
+
+    @overload
+    @staticmethod
+    def _to_attr(arg: Sequence[ParamAttrLike]) -> list[ParamAttr]:
+        ...
+
+    @staticmethod
+    def _to_attr(arg):
         """
         Create ParamAttr[s].
 
