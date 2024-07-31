@@ -23,7 +23,9 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
-def softmax_mask_fuse(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
+def softmax_mask_fuse(
+    x: Tensor, mask: Tensor, name: str | None = None
+) -> Tensor:
     """
     Do a masked softmax on x.
 
