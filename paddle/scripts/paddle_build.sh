@@ -2725,7 +2725,7 @@ set +x
         cp -r ${PADDLE_ROOT}/build/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
 
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
-	disable_ut_quickly="echo $disable_ut_quickly|^test_op"
+	disable_ut_quickly="echo $disable_ut_quickly|^test_.*op"
 
         test_cases=$(ctest -N -V) # get all test cases
 
