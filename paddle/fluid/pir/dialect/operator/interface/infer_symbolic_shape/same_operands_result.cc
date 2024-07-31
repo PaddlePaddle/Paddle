@@ -14,14 +14,16 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/same_operands_result.h"
 
-#define OP_SAME_OPERANDS_AND_RESULT(name)                                  \
-  bool name##OpInferSymbolicShape(                                         \
-      pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) { \
-    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =             \
-        infer_context->GetShapeOrDataForValue(op->operand_source(0));      \
-    infer_context->SetShapeOrDataForValue(op->result(0),                   \
-                                          operand_shape_or_data);          \
-    return true;                                                           \
+#define OP_SAME_OPERANDS_AND_RESULT(name)                                     \
+  bool name##OpInferSymbolicShape(                                            \
+      pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {    \
+    const auto &operand_shape =                                               \
+        infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape(); \
+    infer_context->SetShapeOrDataForValue(                                    \
+        op->result(0),                                                        \
+        symbol::ShapeOrDataDimExprs{                                          \
+            symbol::TensorShapeOrDataDimExprs(operand_shape)});               \
+    return true;                                                              \
   }
 
 namespace paddle::dialect {
