@@ -629,7 +629,7 @@ TEST(Predictor, Streams) {
             "but recieved %d.",
             paddle::ResourceManager::Instance().RefCount(stream2)));
     PADDLE_ENFORCE_EQ(
-        stream1,
+        stream,
         stream2,
         phi::errors::InvalidArgument(
             "paddle::ResourceManager::Instance().RefCount(stream) should be "
