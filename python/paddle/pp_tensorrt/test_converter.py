@@ -38,7 +38,7 @@ def test_paddle_to_tensorrt_conversion_dummy():
         with paddle.static.program_guard(program):
             executor = paddle.static.Executor()
             output_var = program.list_vars()[-1]
-            forbid_op_lower_trt(program, "pd_op.gelu")
+            # forbid_op_lower_trt(program, "pd_op.gelu")
             # Run the program with input_data
             for _ in range(1):
                 output_original = executor.run(
