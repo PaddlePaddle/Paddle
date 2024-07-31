@@ -81,7 +81,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
       } else if (absl::holds_alternative<bool>(attrs.attr_store.at("axis"))) {
         return std::vector<int>{};
       } else {
-        PADDLE_THROW(::common::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "reduce dimension's type is invalid!"));
       }
     }();
@@ -96,14 +96,30 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     }
     std::sort(reduce_axes.begin(), reduce_axes.end());
     // check reduce_axes
-    CHECK_LE(reduce_axes.size(), ndim);
-    CHECK_LT(reduce_axes.back(), ndim);
+    PADDLE_ENFORCE_LE(
+        reduce_axes.size(),
+        ndim,
+        phi::errors::InvalidArgument(
+            "The reduce axes size %d should be less than or equal "
+            "to the input tensor's dimension %d.",
+            educe_axes.size(),
+            ndim));
+    PADDLE_ENFORCE_LE(
+        reduce_axes.back(),
+        ndim,
+        phi::errors::InvalidArgument(
+            "The reduce axes size %d should be less than or equal "
+            "to the input tensor's dimension %d.",
+            reduce_axes.back(),
+            ndim));
     for (int idx = 1; idx < reduce_axes.size(); ++idx) {
-      CHECK_NE(reduce_axes[idx - 1], reduce_axes[idx]);
+      PADDLE_ENFORCE_NE(
+          reduce_axes[idx - 1],
+          reduce_axes[idx],
+          phi::errors::InvalidArgument("The reduce axes should be unique!"));
     }
   } else {
-    PADDLE_THROW(
-        ::common::errors::InvalidArgument("reduce dimension is not set!"));
+    PADDLE_THROW(phi::errors::InvalidArgument("reduce dimension is not set!"));
   }
 
   bool keepdim = false;
@@ -136,23 +152,23 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     PADDLE_ENFORCE_EQ(
         !args.empty(),
         true,
-        ::common::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input argument of %s compute is empty! Please check.",
             op_name));
     CINNValuePack arg_packs = args[0];
     PADDLE_ENFORCE_EQ(
         arg_packs.size(),
         2U,
-        ::common::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "There should be 2 input args for %s compute", op_name));
     PADDLE_ENFORCE_EQ(arg_packs[1].is_string(),
                       true,
-                      ::common::errors::InvalidArgument(
-                          "The arg_packs[1] is not empty! Please check."));
+                      phi::errors::InvalidArgument(
+                          "The arg_packs[1] should be string! Please check."));
     std::string tensor_name = arg_packs[1].operator std::string();
     Expr x_expr = arg_packs[0];
     PADDLE_ENFORCE_NOT_NULL(x_expr.as_tensor(),
-                            ::common::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "The x_expr can not as tensor! Please check."));
     ir::Tensor x = x_expr.as_tensor_ref();
 
@@ -160,7 +176,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                                                       "reduce_any"};
     PADDLE_ENFORCE_EQ(!bool_reduce_op.count(op_name) || x->type().is_bool(),
                       true,
-                      ::common::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The type of input argument %s of %s should be bool, "
                           "but get %s! Please check.",
                           x->name,
@@ -215,8 +231,14 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                          << " schedule is empty! Please check.";
 
     CINNValuePack arg_pack = args[0];
-    CHECK_GE(arg_pack.size(), 2UL);
-    CHECK_LE(arg_pack.size(), 8UL);
+    PADDLE_ENFORCE_GE(arg_pack.size(),
+                      2UL,
+                      phi::errors::InvalidArgument(
+                          "The input tensor size should be greater than 2!"));
+    PADDLE_ENFORCE_LE(arg_pack.size(),
+                      8UL,
+                      phi::errors::InvalidArgument(
+                          "The input tensor size should be less than 8!"));
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -242,7 +264,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     const auto ReduceSchedule = [&]() {
       if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
         if (arg_pack.size() == 4) {
-          CHECK_EQ(vec_tensor.size(), 2);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            2,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 2!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
 
@@ -254,7 +279,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else if (arg_pack.size() == 6) {
-          CHECK_EQ(vec_tensor.size(), 3);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            3,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 3!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
           Expr reduce_tmp_out = vec_tensor[2];
@@ -270,7 +298,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else if (arg_pack.size() == 7) {
-          CHECK_EQ(vec_tensor.size(), 4);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            4,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 4!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
           Expr reduce_tmp_out = vec_tensor[2];
@@ -288,7 +319,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else if (arg_pack.size() == 5) {
-          CHECK_EQ(vec_tensor.size(), 3);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            3,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 3!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
           Expr reduce_tmp_out = vec_tensor[2];
@@ -304,12 +338,14 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else {
-          PADDLE_THROW(
-              ::common::errors::InvalidArgument("Unkown Reduce Type!"));
+          PADDLE_THROW(phi::errors::InvalidArgument("Unkown Reduce Type!"));
         }
       } else {
         if (arg_pack.size() == 2) {
-          CHECK_EQ(vec_tensor.size(), 1);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            1,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 1!"));
           Expr reduce_out = vec_tensor[0];
 
           VLOG(3) << "Do IRGpuScheduleReduce Schedule!";
@@ -323,7 +359,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else if (arg_pack.size() == 6) {
-          CHECK_EQ(vec_tensor.size(), 3);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            3,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 3!"));
           Expr reduce_out = vec_tensor[0];
           Expr reduce_internal = vec_tensor[1];
           Expr reduce_reshape = vec_tensor[2];
@@ -339,8 +378,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else {
-          PADDLE_THROW(
-              ::common::errors::InvalidArgument("Unkown Reduce Type!"));
+          PADDLE_THROW(phi::errors::InvalidArgument("Unkown Reduce Type!"));
         }
       }
     };
@@ -407,7 +445,7 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       } else if (absl::holds_alternative<bool>(attrs.attr_store.at("axis"))) {
         return std::vector<int>{};
       } else {
-        PADDLE_THROW(::common::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "reduce dimension's type is invalid!"));
       }
     }();
@@ -421,14 +459,29 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       });
     }
     std::sort(reduce_axes.begin(), reduce_axes.end());
-    CHECK_LE(reduce_axes.size(), ndim);
-    CHECK_LT(reduce_axes.back(), ndim);
+    PADDLE_ENFORCE_LE(
+        reduce_axes.size(),
+        ndim,
+        phi::errors::InvalidArgument(
+            "The reduce axes size %d should be less than or equal "
+            "to the input tensor's dimension %d.",
+            reduce_axes.size(),
+            ndim));
+    PADDLE_ENFORCE_LT(reduce_axes.back(),
+                      ndim,
+                      phi::errors::InvalidArgument(
+                          "The reduce axes back %d should be less than "
+                          "to the input tensor's dimension %d.",
+                          reduce_axes.back(),
+                          ndim));
     for (int idx = 1; idx < reduce_axes.size(); ++idx) {
-      CHECK_NE(reduce_axes[idx - 1], reduce_axes[idx]);
+      PADDLE_ENFORCE_NE(
+          reduce_axes[idx - 1],
+          reduce_axes[idx],
+          phi::errors::InvalidArgument("The reduce axes should be unique!"));
     }
   } else {
-    PADDLE_THROW(
-        ::common::errors::InvalidArgument("reduce dimension is not set!"));
+    PADDLE_THROW(phi::errors::InvalidArgument("reduce dimension is not set!"));
   }
 
   bool keepdim = false;
@@ -441,8 +494,10 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
         CHECK(!args.empty()) << "The input argument of " << op_name
                              << " compute is empty! Please check.";
         CINNValuePack arg_packs = args[0];
-        CHECK_EQ(arg_packs.size(), 2U)
-            << "There should be 2 input args for " << op_name << " compute";
+        PADDLE_ENFORCE_EQ(arg_packs.size(),
+                          2U,
+                          phi::errors::InvalidArgument(
+                              "There should be 2 input args for compute"));
         CHECK(arg_packs[1].is_string());
         std::string tensor_name = arg_packs[1].operator std::string();
         Expr x_expr = arg_packs[0];
