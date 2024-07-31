@@ -64,11 +64,11 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         3,
-        phi::errors::InvalidArgument("The dimensions of x must be 3"
-                                     "(batch_size, seq_len, dim_embed),"
-                                     "but received dimensions of"
-                                     "Input is [%d]",
-                                     x_dim.size()));
+        common::errors::InvalidArgument("The dimensions of x must be 3"
+                                        "(batch_size, seq_len, dim_embed),"
+                                        "but received dimensions of"
+                                        "Input is [%d]",
+                                        x_dim.size()));
 
     if (ctx->HasInputs("CacheKV")) {
       // [2, batch_size, num_head, max_seq_len, head_size]
@@ -78,16 +78,16 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           c_dim.size(),
           5,
-          phi::errors::InvalidArgument("The CacheKV must be 5 dims, but got %d",
-                                       c_dim.size()));
+          common::errors::InvalidArgument(
+              "The CacheKV must be 5 dims, but got %d", c_dim.size()));
       PADDLE_ENFORCE_EQ(c_dim[0],
                         2,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The first dim of CacheKV must be 2, but got %d",
                             c_dim[0]));  // 2
       PADDLE_ENFORCE_EQ(c_dim[1],
                         x_dim[0],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The second dim of CacheKV must be equal with "
                             "batch size %d, but got %d",
                             x_dim[0],
@@ -193,7 +193,7 @@ class FusedMultiTransformerOpOpMaker
           PADDLE_ENFORCE_EQ(
               rotary_emb_dims >= 0 && rotary_emb_dims <= 2,
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "'rotary_emb_dims' in Op(Rotray) should be between"
                   "0 and 2, But received [%s].",
                   rotary_emb_dims));
@@ -204,7 +204,7 @@ class FusedMultiTransformerOpOpMaker
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'epsilon' in Op(LayerNorm) should be between"
                                 "0.0 and 0.001, But received [%s].",
                                 epsilon));
@@ -219,7 +219,7 @@ class FusedMultiTransformerOpOpMaker
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f,
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
 
@@ -236,7 +236,7 @@ class FusedMultiTransformerOpOpMaker
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train",
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
@@ -247,7 +247,7 @@ class FusedMultiTransformerOpOpMaker
                                 act_type == "swiglu" || act_type == "relu" ||
                                 act_type == "none",
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "Only support `gelu`, `geglu`, `swiglu`, "
                                 "`relu`, `none` activation in "
                                 "FusedMultiTransformer. "));
@@ -272,7 +272,7 @@ class FusedMultiTransformerOpOpMaker
           PADDLE_ENFORCE_EQ(
               norm_type == "layernorm" || norm_type == "rmsnorm",
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Only support `layernorm`, `rmsnorm` method for in"
                   "FusedMultiTransformerDyquant. "));
         });

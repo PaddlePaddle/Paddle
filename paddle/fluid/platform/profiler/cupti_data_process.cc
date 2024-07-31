@@ -18,8 +18,8 @@
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/phi/core/os_info.h"
 
 namespace paddle {
 namespace platform {
@@ -319,7 +319,7 @@ void AddApiRecord(const CUpti_ActivityAPI* api,
   event.name = CuptiRuntimeCbidStr::GetInstance().RuntimeKind(api->cbid);
   event.start_ns = api->start;
   event.end_ns = api->end;
-  event.process_id = GetProcessId();
+  event.process_id = phi::GetProcessId();
   uint64_t tid = 0;
   auto iter = tid_mapping.find(api->threadId);
   if (iter == tid_mapping.end()) {

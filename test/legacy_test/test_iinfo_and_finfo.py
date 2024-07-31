@@ -37,6 +37,8 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             'complex128',
             'bool',
         ]:
+            if isinstance(dtype, paddle.base.core.DataType):
+                dtype = paddle.pir.core.datatype_to_vartype[dtype]
             with self.assertRaises(ValueError):
                 _ = paddle.iinfo(dtype)
 
@@ -53,6 +55,8 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             ('int8', np.int8),
             ('uint8', np.uint8),
         ]:
+            if isinstance(paddle_dtype, paddle.base.core.DataType):
+                paddle_dtype = paddle.pir.core.datatype_to_vartype[paddle_dtype]
             xinfo = paddle.iinfo(paddle_dtype)
             xninfo = np.iinfo(np_dtype)
             self.assertEqual(xinfo.bits, xninfo.bits)

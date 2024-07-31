@@ -104,17 +104,12 @@ pir::CINNKernelInfo PirCompiler::BuildBroadcastTree(
   if (CompilationCache::Instance().Has(fusion_info)) {
     return CompilationCache::Instance().GetKernelInfo(fusion_info);
   }
-  CompilationContextMapper ctx_mapper(target_, leaf_groups);
-  auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
-  auto& compilation_results = ctx_mapper.MutableCompilationResult();
 
+  std::vector<GroupCompilationContext> group_compilation_contexts;
+  for (const auto& group : leaf_groups) {
+    group_compilation_contexts.emplace_back(target_, group);
+  }
   const size_t task_size = group_compilation_contexts.size();
-  PADDLE_ENFORCE_EQ(task_size,
-                    leaf_groups.size(),
-                    phi::errors::InvalidArgument(
-                        "While compiling broadcast tree, the size of "
-                        "group_compilation_contexts and groups should be "
-                        "the same."));
 
   const auto& ParallelLowering = [&]() {
     cinn::ir::InitScheduleConfig();

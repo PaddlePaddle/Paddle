@@ -76,7 +76,7 @@ std::string CodeGenC::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("Not supported OutputKind"));
+    PADDLE_THROW(::common::errors::Unimplemented("Not supported OutputKind"));
   }
   return str_;
 }
@@ -205,10 +205,10 @@ void CodeGenC::Visit(const ir::For *op) {
     Expr num_task_var = Var("num_task");
     IrPrinter::Visit((op->extent + num_task_var - 1) / num_task_var);
     str_ += ";\n";
-    PADDLE_ENFORCE_EQ(
-        min.as_int32(),
-        0,
-        phi::errors::InvalidArgument("The min of the for loop should be 0"));
+    PADDLE_ENFORCE_EQ(min.as_int32(),
+                      0,
+                      ::common::errors::InvalidArgument(
+                          "The min of the for loop should be 0"));
     auto task_id = Var("task_id");
     auto n_per_task = Var("n_per_task");
     min = task_id * n_per_task;
@@ -376,7 +376,7 @@ void CodeGenC::PrintCall_buffer_malloc(const ir::Call *op) {
   PADDLE_ENFORCE_EQ(
       op->read_args.size(),
       2UL,
-      phi::errors::InvalidArgument("The number of read_args should be 2"));
+      ::common::errors::InvalidArgument("The number of read_args should be 2"));
   str_ += op->name;
   str_ += "(";
   PrintCastExpr("void*", op->read_args[0]);
@@ -389,7 +389,7 @@ void CodeGenC::PrintCall_cinn_pod_value_to_(const ir::Call *op) {
   PADDLE_ENFORCE_EQ(
       op->read_args.size(),
       1UL,
-      phi::errors::InvalidArgument("The number of read_args should be 1"));
+      ::common::errors::InvalidArgument("The number of read_args should be 1"));
   str_ += op->name;
   str_ += "(";
   str_ += "&(";
@@ -402,7 +402,7 @@ void CodeGenC::PrintCall_get_address(const ir::Call *op) {
   PADDLE_ENFORCE_EQ(
       op->read_args.size(),
       1UL,
-      phi::errors::InvalidArgument("The number of read_args should be 1"));
+      ::common::errors::InvalidArgument("The number of read_args should be 1"));
   CHECK(op->write_args.empty());
   auto *read_var = op->read_args.front().as_var();
   auto *read_buf = op->read_args.front().as_buffer();
@@ -421,10 +421,10 @@ void CodeGenC::PrintCall_get_address(const ir::Call *op) {
 
 void CodeGenC::PrintCall_pod_values_to_array(const ir::Call *op) {
   CHECK(!op->read_args.empty());
-  PADDLE_ENFORCE_EQ(
-      op->write_args.size(),
-      1UL,
-      phi::errors::InvalidArgument("The number of write_args should be 1"));
+  PADDLE_ENFORCE_EQ(op->write_args.size(),
+                    1UL,
+                    ::common::errors::InvalidArgument(
+                        "The number of write_args should be 1"));
   auto output_var = op->write_args.front().as_var_ref();
   CHECK(output_var.defined());
 
@@ -553,7 +553,7 @@ void CodeGenC::Visit(const ir::Let *op) {
 }
 
 void CodeGenC::Visit(const ir::Reduce *op) {
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(::common::errors::InvalidArgument(
       "Reduce IR is just for internal representation, should not be "
       "used for CodeGen."));
 }
@@ -630,7 +630,7 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
   PADDLE_ENFORCE_EQ(
       op->alloc_output_buffer_exprs.size(),
       op->dealloc_output_buffer_exprs.size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The count of allocation and deallocation expressions is not "
           "match"));
 
@@ -762,8 +762,8 @@ void CodeGenC::PrintRuntimeType(const cinn_type_t &type) {
   } else if (type == cinn_float64_t()) {
     str_ += "cinn_float64_t()";
   } else {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("Unknown type is not supported to print"));
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "Unknown type is not supported to print"));
   }
 }
 
@@ -840,7 +840,7 @@ void CodeGenC::Visit(const ir::intrinsics::PodValueToX *op) {
   } else {
     std::stringstream ss;
     ss << "Not supported type: " << to_type;
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 
   str_ += "(";

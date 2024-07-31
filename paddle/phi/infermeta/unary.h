@@ -49,6 +49,15 @@ void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void AnchorGeneratorInferMeta(const MetaTensor& input,
+                              const std::vector<float>& anchor_sizes,
+                              const std::vector<float>& aspect_ratios,
+                              const std::vector<float>& variances,
+                              const std::vector<float>& stride,
+                              float offset,
+                              MetaTensor* anchors,
+                              MetaTensor* variances_out);
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,

@@ -100,7 +100,7 @@ struct CachedDimExprToValueConverter {
     const auto& tensor_dim = TensorDim4SymbolName(symbol_name);
     PADDLE_ENFORCE(
         tensor_dim.has_value(),
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "symbol [%s] are not bound to any input of generate_shape op",
             symbol_name));
     return std::visit(
@@ -155,23 +155,23 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(
       const symbol::Negative<symbol::DimExpr>& dim_expr) {
-    PADDLE_THROW(
-        phi::errors::Fatal("Dead code. This logical should handled by "
-                           "ConvertToValueImpl(symbol::Add<symbol::DimExpr>)"));
+    PADDLE_THROW(::common::errors::Fatal(
+        "Dead code. This logical should handled by "
+        "ConvertToValueImpl(symbol::Add<symbol::DimExpr>)"));
   }
 
   pir::Value ConvertToValueImpl(
       const symbol::Reciprocal<symbol::DimExpr>& dim_expr) {
-    PADDLE_THROW(
-        phi::errors::Fatal("Dead code. This logical should handled by "
-                           "ConvertToValueImpl(symbol::Mul<symbol::DimExpr>)"));
+    PADDLE_THROW(::common::errors::Fatal(
+        "Dead code. This logical should handled by "
+        "ConvertToValueImpl(symbol::Mul<symbol::DimExpr>)"));
   }
 
   pir::Value ConvertToValueImpl(const symbol::Add<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
     PADDLE_ENFORCE_GT(operands->size(),
                       0,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of operands is incorrect."
                           "Expected size is larger than 0, but receive %d.",
                           operands->size()));
@@ -195,7 +195,7 @@ struct CachedDimExprToValueConverter {
     const auto& [operands] = dim_expr;
     PADDLE_ENFORCE_GT(operands->size(),
                       0,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of operands is incorrect."
                           "Expected size is larger than 0, but receive %d.",
                           operands->size()));
@@ -222,7 +222,7 @@ struct CachedDimExprToValueConverter {
     const auto& [operands] = dim_expr;
     PADDLE_ENFORCE_GT(operands->size(),
                       0,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of operands is incorrect."
                           "Expected size is larger than 0, but receive %d.",
                           operands->size()));
@@ -239,7 +239,7 @@ struct CachedDimExprToValueConverter {
     const auto& [operands] = dim_expr;
     PADDLE_ENFORCE_GT(operands->size(),
                       0,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of operands is incorrect."
                           "Expected size is larger than 0, but receive %d.",
                           operands->size()));
@@ -257,7 +257,7 @@ struct CachedDimExprToValueConverter {
     const auto& [operands] = dim_expr;
     PADDLE_ENFORCE_GT(operands->size(),
                       0,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of operands is incorrect."
                           "Expected size is larger than 0, but receive %d.",
                           operands->size()));
@@ -308,18 +308,18 @@ TensorDim4SymbolNameT MakeGetterTensorDim4SymbolName(
   const auto& attr_map = op->attributes();
   const auto& iter = attr_map.find("symbol_bindings");
   PADDLE_ENFORCE((iter != attr_map.end()),
-                 phi::errors::PreconditionNotMet(
+                 ::common::errors::PreconditionNotMet(
                      "attr symbol_bindings MUST in attribute map for [%s] op",
                      op->name()));
   pir::Attribute attr = iter->second;
   auto* Convert =
       &cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings;
   const auto& symbol_bindings = Convert(attr);
-  PADDLE_ENFORCE(
-      symbol_bindings.has_value(),
-      phi::errors::PreconditionNotMet("attr symbol_bindings in op [%s] can "
-                                      "not be converted to symbol bindings",
-                                      op->name()));
+  PADDLE_ENFORCE(symbol_bindings.has_value(),
+                 ::common::errors::PreconditionNotMet(
+                     "attr symbol_bindings in op [%s] can "
+                     "not be converted to symbol bindings",
+                     op->name()));
   for (const auto& symbol_binding : symbol_bindings.value()) {
     InsertSymbolBinding(op, symbol_binding, &symbol_name2tensor_dim);
   }
@@ -334,13 +334,13 @@ std::vector<symbol::DimExpr> GetOutDimExprs(cinn::dialect::GenerateShapeOp op) {
   const auto& attr_map = op->attributes();
   const auto& iter = attr_map.find("output_dim_exprs");
   PADDLE_ENFORCE((iter != attr_map.end()),
-                 phi::errors::PreconditionNotMet(
+                 ::common::errors::PreconditionNotMet(
                      "attr output_dim_exprs MUST in attribute map for [%s] op",
                      op->name()));
   pir::Attribute output_dim_exprs_attr = iter->second;
   PADDLE_ENFORCE(
       output_dim_exprs_attr.isa<pir::ArrayAttribute>(),
-      phi::errors::PreconditionNotMet(
+      ::common::errors::PreconditionNotMet(
           "attr output_dim_exprs for [%s] op must be an pir::ArrayAttribute",
           op->name()));
   std::vector<symbol::DimExpr> ret{};

@@ -66,8 +66,6 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
 
-  bool IsScaleLossOp(ir::Node *node) const;
-
   void CreateComputationalOps(ir::Graph *result,
                               ir::Node *node,
                               size_t num_places) const;
@@ -81,13 +79,6 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   void CreateComputationalOp(ir::Graph *result,
                              ir::Node *node,
                              size_t dev_id) const;
-
-  bool IsSparseGradient(const std::string &og) const;
-
-  void InsertScaleLossGradOp(ir::Graph *result, const ir::Node *node) const;
-
-  void SetCommunicationContext(details::OpHandleBase *op_handle,
-                               const phi::Place &p) const;
 
   void CreateOpHandleIOs(ir::Graph *result,
                          ir::Node *node,
