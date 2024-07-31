@@ -511,28 +511,17 @@ bool BilinearInterpOpInferSymbolicShape(
 
 bool CheckFiniteAndUnscaleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  size_t num_inputs = op->num_operands();
-  size_t num_outputs = op->num_results();
+  auto input_size = op->operand_sources().size() - 1;
 
-  PADDLE_ENFORCE_EQ(
-      num_inputs,
-      num_outputs - 1,
-      common::errors::InvalidArgument(
-          "The input(X) and output(Out) should have the same size in "
-          "Operator(check_finite_and_unscale), size of input(X) is %d "
-          "and size of output(Out) is %d.",
-          num_inputs,
-          num_outputs - 1));
-
-  for (size_t i = 0; i < num_inputs; ++i) {
-    auto input_shape = infer_context->GetShapeOrDataForValue(op->operand(i));
-    infer_context->SetShapeOrDataForValue(op->result(i), input_shape);
+  for (size_t i = 0; i < input_size; ++i) {
+    const auto &x_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(i));
+    infer_context->SetShapeOrDataForValue(op->result(i), x_shape_or_data);
   }
 
   symbol::TensorShapeOrDataDimExprs found_infinite_shape({symbol::DimExpr(1)});
-  infer_context->SetShapeOrDataForValue(
-      op->result(num_outputs - 1),
-      symbol::ShapeOrDataDimExprs{found_infinite_shape});
+  infer_context->SetShapeOrDataForValue(op->result(input_size),
+                                        found_infinite_shape);
 
   return true;
 }
