@@ -400,7 +400,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
                         "ranks_vec[i]->size(), but recieved "
                         "keys_vec[i]->size() is %d, ranks_vec[i]->size() is %d",
                         keys_vec[i]->size(),
-                        ranks_vec[i]->size()))
+                        ranks_vec[i]->size()));
                 for (size_t j = 0; j < keys_vec[i]->size(); ++j) {
                   auto& key = (*keys_vec[i])[j];
                   auto& rank = (*ranks_vec[i])[j];
@@ -416,7 +416,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
                     common::errors::InvalidArgument(
                         "ranks_vec[i]->size() should be equal to 0, "
                         "but recieved %d.",
-                        ranks_vec[i]->size()))
+                        ranks_vec[i]->size()));
                 for (size_t j = 0; j < keys_vec[i]->size(); ++j) {
                   auto& key = (*keys_vec[i])[j];
                   int shard_idx = key % thread_keys_thread_num_;
@@ -459,7 +459,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
               "keys number, but recieved %d as total shard keys number and %d "
               "as total keys number.",
               total_shard_keys,
-              total_keys))
+              total_keys));
     }
   }
 
@@ -1236,7 +1236,7 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
                       "Size dismatch in merge_values.offsets.size()(size = "
                       "%zu) and static_cast<size_t>(node_size_)(size = %zu).",
                       merge_values.offsets.size(),
-                      static_cast<size_t>(node_size_)))
+                      static_cast<size_t>(node_size_)));
               std::vector<size_t> ranks_pos(num_ranks);
               for (int rank = 0; rank < num_ranks; ++rank) {
                 ranks_pos[rank] = merge_values.offsets[rank];
@@ -1446,7 +1446,7 @@ void PSGPUWrapper::MergeKeys(std::shared_ptr<HeterContext> gpu_task) {
                       "Size dismatch in merge_values.offsets.size()(size = "
                       "%zu) and static_cast<size_t>(node_size_)(size = %zu).",
                       merge_values.offsets.size(),
-                      static_cast<size_t>(node_size_)))
+                      static_cast<size_t>(node_size_)));
               std::vector<size_t> ranks_pos(num_ranks);
               for (int rank = 0; rank < num_ranks; ++rank) {
                 ranks_pos[rank] = merge_values.offsets[rank];
@@ -1627,7 +1627,7 @@ void PSGPUWrapper::divide_to_device(std::shared_ptr<HeterContext> gpu_task) {
                               "The value of local dimension pointer should not "
                               "be 0 but recieved %d at position %d.",
                               h_dim_ptrs[pos],
-                              pos))
+                              pos));
             << "total=" << total_keys_len << ", pos=" << pos << ", k=" << k
             << ", len=" << len;
         d_dim_ptr[cur + k] = h_dim_ptrs[pos];
