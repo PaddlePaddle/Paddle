@@ -443,9 +443,9 @@ void FlashAttnBaseKernel(
   if (!out->IsInitialized()) ctx.template Alloc<T>(out);
 
   DenseTensor flashmask_maxmin, downstart_row_indices, upend_row_indices,
-      downend_row_indices;
+      downend_row_indices, upstart_row_indices;
   void *downstart_row_indices_data = nullptr, *upend_row_indices_data = nullptr,
-       *downend_row_indices_data = nullptr;
+       *downend_row_indices_data = nullptr, *upstart_row_indices_data = nullptr;
   bool is_flashmask = params.startend_row_indices != nullptr;
   if (is_flashmask) {
     PADDLE_ENFORCE_EQ(
@@ -456,10 +456,11 @@ void FlashAttnBaseKernel(
             "[batch_size, num_heads,seq_len, mask_bounds]"));
     PADDLE_ENFORCE_EQ(
         startend_row_indices->dims()[3] == 1 ||
-            startend_row_indices->dims()[3] == 2,
+            startend_row_indices->dims()[3] == 2 ||
+            startend_row_indices->dims()[3] == 4,
         true,
         phi::errors::InvalidArgument("flashmask_attention startend_row_indices "
-                                     "mask_bounds in [1,2] are supported now"));
+                                     "mask_bounds must in [1,2,4]"));
     auto flashmask_maxmin_shape = params.startend_row_indices->dims();
     flashmask_maxmin_shape[2] = (flashmask_maxmin_shape[2] + 31) / 32 * 8;
     flashmask_maxmin.set_type(phi::DataType::INT32);
@@ -479,6 +480,16 @@ void FlashAttnBaseKernel(
             phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
         downend_row_indices_data = downend_row_indices.data();
       }
+    } else if (startend_row_indices->dims()[3] == 4) {
+      upend_row_indices =
+          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {3}, {4});
+      upend_row_indices_data = upend_row_indices.data();
+      downend_row_indices =
+          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
+      downend_row_indices_data = downend_row_indices.data();
+      upstart_row_indices =
+          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {2}, {3});
+      upstart_row_indices_data = upstart_row_indices.data();
     }
   }
 
@@ -551,7 +562,7 @@ void FlashAttnBaseKernel(
       is_flashmask ? params.startend_row_indices_dims.data() : nullptr,
       is_flashmask ? upend_row_indices_data : nullptr,
       is_flashmask ? downend_row_indices_data : nullptr,
-      nullptr,
+      is_flashmask ? upstart_row_indices_data : nullptr,
       is_flashmask ? flashmask_maxmin.data() : nullptr,
       q.strides()[1],
       k.strides()[1],

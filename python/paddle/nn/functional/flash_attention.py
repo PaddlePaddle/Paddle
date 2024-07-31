@@ -1343,7 +1343,7 @@ def flashmask_attention(
             - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 2],
                 indicating bidirectional attention. The values represent the starting row index of the left
                 lower triangular mask and the ending row index of the right upper triangular mask in the dense mask. The values r1, r2 in startend_row_indices indicate that elements in the lower left triangle of the Score matrix starting from the r1-th row downwards (inclusive) will be masked, and elements in the upper right triangle starting from the r2-th row upwards (exclusive) will be masked.
-            - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 4] (not implemented),
+            - When `causal=False` and the shape is [batch_size, num_heads, seq_len, 4] ,
                 indicating bidirectional attention. The values represent the start and end row indices of the
                 left lower triangular mask and the start and end row indices of the right upper triangular mask in the dense mask. The values r1, r2, r3, r4 in startend_row_indices indicate that elements in the lower left triangle of the Score matrix starting from the r1-th row downwards (inclusive) but above the r2-th row (exclusive) will be masked, and elements in the upper right triangle starting from the r3-th row downwards (inclusive) but above the r4-th row (exclusive) will be masked.
         - **dropout** (float) - The dropout ratio. Default is 0.0.
@@ -1465,9 +1465,7 @@ def flashmask_attention(
         if startend_row_indices.shape[-1] == 2:
             has_end = False
         elif startend_row_indices.shape[-1] == 4:
-            raise NotImplementedError(
-                "ending row index is not implemented yet."
-            )
+            has_end = True
         else:
             raise ValueError(
                 f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
