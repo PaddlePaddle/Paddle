@@ -20,74 +20,251 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/common/enforce.h"
 
 TEST(array_ref, array_ref) {
   paddle::array_ref<int> a;
-  CHECK_EQ(a.size(), size_t(0));
-  CHECK_EQ(a.data(), static_cast<int*>(nullptr));
+  PADDLE_ENFORCE_EQ(a.size(),
+                    size_t(0),
+                    phi::errors::InvalidArgument(
+                        "Array's size is invalid, expected %d but received %d.",
+                        size_t(0),
+                        a.size()));
+  PADDLE_ENFORCE_EQ(a.data(),
+                    static_cast<int*>(nullptr),
+                    phi::errors::InvalidArgument(
+                        "Array's data is invalid, expected %d but received %d.",
+                        static_cast<int*>(nullptr),
+                        a.data()));
 
   paddle::array_ref<int> b(paddle::none);
-  CHECK_EQ(b.size(), size_t(0));
-  CHECK_EQ(b.data(), static_cast<int*>(nullptr));
+  PADDLE_ENFORCE_EQ(b.size(),
+                    size_t(0),
+                    phi::errors::InvalidArgument(
+                        "Array's size is invalid, expected %d but received %d.",
+                        size_t(0),
+                        b.size()));
+  PADDLE_ENFORCE_EQ(b.data(),
+                    static_cast<int*>(nullptr),
+                    phi::errors::InvalidArgument(
+                        "Array's data is invalid, expected %d but received %d.",
+                        static_cast<int*>(nullptr),
+                        b.data()));
 
   int v = 1;
   paddle::array_ref<int> c(v);
-  CHECK_EQ(c.size(), size_t(1));
-  CHECK_EQ(c.data(), &v);
-  CHECK_EQ(c.equals(paddle::make_array_ref(v)), true);
+  PADDLE_ENFORCE_EQ(
+      c.size(),
+      size_t(1),
+      phi::errors::InvalidArgument(
+          "Array's size is invalid, expected %d(size_t(1)) but received %d.",
+          size_t(1),
+          c.size()));
+  PADDLE_ENFORCE_EQ(
+      c.data(),
+      &v,
+      phi::errors::InvalidArgument(
+          "Array's data is invalid, expected %d(&v) but received %d.",
+          &v,
+          c.data()));
+  PADDLE_ENFORCE_EQ(c.equals(paddle::make_array_ref(v)),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The output of paddle::make_array_ref(v) is wrong."));
 
   std::array<int, 5> v1 = {1, 2, 3, 4, 5};
   paddle::array_ref<int> d(v1.data(), 5);
-  CHECK_EQ(d.size(), size_t(5));
-  CHECK_EQ(d.data(), v1.data());
-  CHECK_EQ(d.equals(paddle::make_array_ref(v1.data(), 5)), true);
+  PADDLE_ENFORCE_EQ(
+      d.size(),
+      size_t(5),
+      phi::errors::InvalidArgument(
+          "Array's size is invalid, expected %d(size_t(5)) but received %d.",
+          size_t(5),
+          d.size()));
+  PADDLE_ENFORCE_EQ(d.data(),
+                    v1.data(),
+                    phi::errors::InvalidArgument(
+                        "Array's data is invalid, expected %d but received %d.",
+                        v1.data(),
+                        d.data()));
+  PADDLE_ENFORCE_EQ(
+      d.equals(paddle::make_array_ref(v1.data(), 5)),
+      true,
+      phi::errors::InvalidArgument(
+          "The output of paddle::make_array_ref(v1.data(), 5) is wrong."));
 
   paddle::array_ref<int> e(&v1[0], &v1[4]);
-  CHECK_EQ(e.size(), size_t(4));
-  CHECK_EQ(e.data(), v1.data());
-  CHECK_EQ(e.equals(paddle::make_array_ref(&v1[0], &v1[4])), true);
+  PADDLE_ENFORCE_EQ(
+      e.size(),
+      size_t(4),
+      phi::errors::InvalidArgument(
+          "Array's size is invalid, expected %d(size_t(4)) but received %d.",
+          size_t(4),
+          e.size()));
+  PADDLE_ENFORCE_EQ(
+      e.data(),
+      v1.data(),
+      phi::errors::InvalidArgument(
+          "Array's data is invalid, expected %d(v1.data()) but received %d.",
+          v1.data(),
+          e.data()));
+  PADDLE_ENFORCE_EQ(
+      e.equals(paddle::make_array_ref(&v1[0], &v1[4])),
+      true,
+      phi::errors::InvalidArgument(
+          "The output of paddle::make_array_ref(&v1[0], &v1[4]) is wrong."));
 
   paddle::small_vector<int, 3> small_vector{1, 2, 3};
   paddle::array_ref<int> f(small_vector);
-  CHECK_EQ(f.size(), size_t(3));
-  CHECK_EQ(f.data(), small_vector.data());
-  CHECK_EQ(f.equals(paddle::make_array_ref(small_vector)), true);
+  PADDLE_ENFORCE_EQ(
+      f.size(),
+      size_t(3),
+      phi::errors::InvalidArgument(
+          "Array's size is invalid, expected %d(size_t(3)) but received %d.",
+          size_t(3),
+          f.size()));
+  PADDLE_ENFORCE_EQ(f.data(),
+                    small_vector.data(),
+                    phi::errors::InvalidArgument(
+                        "Array's data is invalid, expected %d but received %d.",
+                        small_vector.data(),
+                        f.data()));
+  PADDLE_ENFORCE_EQ(
+      f.equals(paddle::make_array_ref(small_vector)),
+      true,
+      phi::errors::InvalidArgument(
+          "The output of paddle::make_array_ref(small_vector) is wrong."));
 
   std::vector<int> vector{1, 2, 3};
   paddle::array_ref<int> g(vector);
-  CHECK_EQ(g.size(), size_t(3));
-  CHECK_EQ(g.data(), vector.data());
-  CHECK_EQ(g.equals(paddle::make_array_ref(vector)), true);
+  PADDLE_ENFORCE_EQ(
+      g.size(),
+      size_t(3),
+      phi::errors::InvalidArgument(
+          "Array's size is invalid, expected %d(size_t(3)) but received %d.",
+          size_t(3),
+          g.size()));
+  PADDLE_ENFORCE_EQ(g.data(),
+                    vector.data(),
+                    phi::errors::InvalidArgument(
+                        "Array's data is invalid, expected %d but received %d.",
+                        vector.data(),
+                        g.data()));
+  PADDLE_ENFORCE_EQ(
+      g.equals(paddle::make_array_ref(vector)),
+      true,
+      phi::errors::InvalidArgument(
+          "The output of paddle::make_array_ref(vector) is wrong."));
 
   std::initializer_list<int> list = {1, 2, 3};
   paddle::array_ref<int> h(list);
-  CHECK_EQ(h.size(), size_t(3));
-  CHECK_EQ(h.data(), list.begin());
+  PADDLE_ENFORCE_EQ(
+      h.size(),
+      size_t(3),
+      phi::errors::InvalidArgument(
+          "Array's size is invalid, expected %d(size_t(3)) but received %d.",
+          size_t(3),
+          h.size()));
+  PADDLE_ENFORCE_EQ(h.data(),
+                    list.begin(),
+                    phi::errors::InvalidArgument(
+                        "Array's data is invalid, expected %d but received %d.",
+                        list.begin(),
+                        h.data()));
 
   paddle::array_ref<int> i(h);
-  CHECK_EQ(i.size(), size_t(3));
-  CHECK_EQ(i.data(), list.begin());
-  CHECK_EQ(i.equals(h), true);
-  CHECK_EQ(i.equals(paddle::make_array_ref(h)), true);
+  PADDLE_ENFORCE_EQ(
+      i.size(),
+      size_t(3),
+      phi::errors::InvalidArgument(
+          "Array's size is invalid, expected %d(size_t(3)) but received %d.",
+          size_t(3),
+          i.size()));
+  PADDLE_ENFORCE_EQ(i.data(),
+                    list.begin(),
+                    phi::errors::InvalidArgument(
+                        "Array's data is invalid, expected %d but received %d.",
+                        list.begin(),
+                        i.data()));
+  PADDLE_ENFORCE_EQ(
+      i.equals(h),
+      true,
+      phi::errors::InvalidArgument("Array i(h) is not equal with h"));
+  PADDLE_ENFORCE_EQ(i.equals(paddle::make_array_ref(h)),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "i(h) is not equal with paddle::make_array_ref(h)"));
 
   auto slice = i.slice(1, 2);
-  CHECK_EQ(slice.size(), size_t(2));
-  CHECK_EQ(slice[0], 2);
-  CHECK_EQ(slice[1], 3);
+  PADDLE_ENFORCE_EQ(
+      slice.size(),
+      size_t(2),
+      phi::errors::InvalidArgument(
+          "Slice's size is invalid, expected %d(size_t(2)) but received %d.",
+          size_t(2),
+          slice.size()));
+  PADDLE_ENFORCE_EQ(
+      slice[0],
+      2,
+      phi::errors::InvalidArgument(
+          "slice[0]'s value is invalid, expected 2 but received %d.",
+          slice[0]));
+  PADDLE_ENFORCE_EQ(
+      slice[1],
+      3,
+      phi::errors::InvalidArgument(
+          "slice[1]'s value is invalid, expected 3 but received %d.",
+          slice[1]));
 
   auto drop = i.drop_front(2);
-  CHECK_EQ(drop.size(), size_t(1));
-  CHECK_EQ(drop[0], 3);
+  PADDLE_ENFORCE_EQ(
+      drop.size(),
+      size_t(1),
+      phi::errors::InvalidArgument(
+          "Drop's size is invalid, expected %d(size_t(1)) but received %d.",
+          size_t(1),
+          drop.size()));
+  PADDLE_ENFORCE_EQ(
+      drop[0],
+      3,
+      phi::errors::InvalidArgument(
+          "drop[0]'s value is invalid, expected 3 but received %d.", drop[0]));
 
   static paddle::array_ref<int> nums = {1, 2, 3, 4, 5, 6, 7, 8};
   auto front = nums.take_front(3);
-  CHECK_EQ(front.size(), size_t(3));
+  PADDLE_ENFORCE_EQ(
+      front.size(),
+      size_t(3),
+      phi::errors::InvalidArgument(
+          "Front Array's size is invalid, expected %d but received %d.",
+          size_t(3),
+          front.size()));
   for (size_t i = 0; i < 3; ++i) {
-    CHECK_EQ(front[i], nums[i]);
+    PADDLE_ENFORCE_EQ(
+        front[i],
+        nums[i],
+        phi::errors::InvalidArgument(
+            "front[%d]'s value is invalid, expected %d but received %d.",
+            i,
+            nums[i],
+            front[i]));
   }
   auto back = nums.take_back(3);
-  CHECK_EQ(back.size(), size_t(3));
+  PADDLE_ENFORCE_EQ(
+      back.size(),
+      size_t(3),
+      phi::errors::InvalidArgument(
+          "Back Array's size is invalid, expected %d but received %d.",
+          size_t(3),
+          back.size()));
   for (size_t i = 0; i < 3; ++i) {
-    CHECK_EQ(back[i], nums[i + 5]);
+    PADDLE_ENFORCE_EQ(
+        back[i],
+        nums[i + 5],
+        phi::errors::InvalidArgument(
+            "back[%d]'s value is invalid, expected %d but received %d.",
+            i,
+            nums[i + 5],
+            back[i]));
   }
 }
