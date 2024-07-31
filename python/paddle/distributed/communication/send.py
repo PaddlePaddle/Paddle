@@ -12,10 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle.distributed.communication import stream
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
-def send(tensor, dst=0, group=None, sync_op=True):
+
+def send(
+    tensor: Tensor, dst: int = 0, group: Group = None, sync_op: bool = True
+) -> task:
     """
     Send a tensor to the receiver.
 
@@ -51,7 +62,7 @@ def send(tensor, dst=0, group=None, sync_op=True):
     )
 
 
-def isend(tensor, dst, group=None):
+def isend(tensor: Tensor, dst: int, group: Group = None) -> task:
     """
     Send tensor asynchronously
 
