@@ -144,12 +144,10 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), (1e-3, 1e-3)
