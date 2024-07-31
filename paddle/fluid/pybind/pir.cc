@@ -1246,10 +1246,6 @@ void BindValue(py::module *m) {
                                    name_analysis::GetValueAllNames(self);
                                return py::cast(names);
                              })
-      .def_property_readonly("_has_only_one_name",
-                             [](Value self) -> bool {
-                               return name_analysis::HasOnlyOneValueName(self);
-                             })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -1353,6 +1349,10 @@ void BindValue(py::module *m) {
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("_rename", &name_analysis::RenameValue)
+      .def("_has_only_one_name",
+           [](Value self) -> bool {
+             return name_analysis::HasOnlyOneValueName(self);
+           })
       .def("detach",
            [](Value self) {
              auto share_data_op =
