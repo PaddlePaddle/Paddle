@@ -928,6 +928,20 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool RreluOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand(0));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  if (op->num_results() > 1) {
+    infer_context->SetShapeOrDataForValue(op->result(1), x_shape_or_data);
+  }
+
+  return true;
+}
+
 bool ShapeSrOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return ShapeOpInferSymbolicShape(op, infer_context);
