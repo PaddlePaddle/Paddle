@@ -1321,7 +1321,7 @@ class Optimizer:
         global_block = paddle.static.default_main_program().global_block()
         target_block = global_block
 
-        start = len(target_block.ops)
+        last_op = target_block.ops[-1]
 
         self._create_global_learning_rate()
 
@@ -1373,8 +1373,8 @@ class Optimizer:
         self._finish_update(target_block, parameters_and_grads)
         paddle.base.core._set_warmup(False)
 
-        end = len(target_block.ops)
-        return target_block.ops[start:end]
+        start_index = target_block.ops.index(last_op) + 1
+        return target_block.ops[start_index:]
 
     def backward(
         self,
