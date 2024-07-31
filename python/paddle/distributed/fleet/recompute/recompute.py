@@ -365,14 +365,8 @@ def _recompute_without_reentrant(
                             inner_x.placements,
                         )
                     else:
-                        if isinstance(inner_x.dtype, paddle.base.core.DataType):
-                            inner_x_dtype = paddle.pir.core.datatype_to_vartype[
-                                inner_x.dtype
-                            ]
-                        else:
-                            inner_x_dtype = inner_x.dtype
                         tmp_tensor = core.eager.Tensor(
-                            inner_x_dtype,
+                            inner_x.dtype,
                             inner_x.shape,
                             inner_x.name + "cpy",
                             core.VarDesc.VarType.LOD_TENSOR,
