@@ -182,7 +182,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
                           "At least 1 input tensors for Sort compute\n"));
     Expr A = pack_args[0];
     PADDLE_ENFORCE_NOT_NULL(
-        A_expr.as_tensor(),
+        A.as_tensor(),
         phi::errors::InvalidArgument(
             "Required Input must be a tensor. Please check."));
     PADDLE_ENFORCE_NE(output_shapes.empty(),
@@ -294,7 +294,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
                           "The input arguments' size of ArgSort should be 1"));
     Expr A = pack_args[0];
     PADDLE_ENFORCE_NOT_NULL(
-        A_expr.as_tensor(),
+        A.as_tensor(),
         phi::errors::InvalidArgument(
             "Required Input must be a tensor. Please check."));
     PADDLE_ENFORCE_NE(
