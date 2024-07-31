@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 VarDesc::VarDesc(const VarDesc &other)
     : desc_(other.desc_),
@@ -459,5 +458,4 @@ bool operator==(const VarDesc &left, const VarDesc &right) {
          right.Proto()->SerializeAsString();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

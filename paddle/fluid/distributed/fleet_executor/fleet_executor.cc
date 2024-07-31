@@ -28,8 +28,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 FleetExecutor::FleetExecutor(const std::string& exe_desc_str) : carrier_ids_() {
   bool parse_flag = exe_desc_.ParseFromString(exe_desc_str);
@@ -290,5 +289,4 @@ void FleetExecutor::Run(const std::string& carrier_id) {
   carrier->Start();
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

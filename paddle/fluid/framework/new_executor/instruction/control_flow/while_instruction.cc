@@ -42,8 +42,7 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 WhileInstruction::WhileInstruction(
     size_t id,
@@ -237,5 +236,4 @@ void WhileInstruction::Run() {
   VLOG(6) << "while instruction run done";
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -33,8 +33,7 @@
 #include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 PhiKernelInstruction::PhiKernelInstruction(
     size_t id,
@@ -201,5 +200,4 @@ void PhiKernelInstruction::Run() {
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

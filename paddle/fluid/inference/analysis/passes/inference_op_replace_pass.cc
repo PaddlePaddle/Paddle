@@ -16,9 +16,7 @@
 
 #include "paddle/fluid/inference/analysis/argument.h"
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 
 void InferenceOpReplacePass::RunImpl(Argument* argument) {
   if (argument->use_pir()) {
@@ -47,6 +45,4 @@ std::string InferenceOpReplacePass::repr() const {
   return "inference_op_replace_pass";
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

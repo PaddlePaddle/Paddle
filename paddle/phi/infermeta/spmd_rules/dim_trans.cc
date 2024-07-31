@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 DimTrans::DimTrans(Type type) : type_(type) {}
 
@@ -376,5 +375,4 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
   return {new_input_dims_mapping, out_dims_mapping};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

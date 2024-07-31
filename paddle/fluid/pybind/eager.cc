@@ -54,8 +54,7 @@ using phi::distributed::ProcessMesh;
 using phi::distributed::TensorDistAttr;
 using phi::distributed::auto_parallel::str_join;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 namespace py = ::pybind11;
 
@@ -1573,5 +1572,4 @@ void BindEagerStringTensor(pybind11::module* module) {
   }
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

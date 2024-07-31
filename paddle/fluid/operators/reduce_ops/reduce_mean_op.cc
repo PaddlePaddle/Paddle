@@ -23,8 +23,7 @@
 #include "paddle/phi/infermeta/unary.h"
 
 namespace ops = paddle::operators;
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 class ReduceBaseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -336,8 +335,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
   virtual std::string GetName() const = 0;
   virtual std::string GetOpType() const = 0;
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 class __reduce_meanMaker__ : public ops::ReduceBaseOpMaker {
  protected:
