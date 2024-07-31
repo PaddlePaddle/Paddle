@@ -97,12 +97,11 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
         func_body, [](const Expr* x) { return x->As<ir::Store>(); });
     for (auto& expr : store_exprs) {
       auto* store_node = expr.As<ir::Store>();
-      PADDLE_ENFORCE_EQ(store_node,
-                        true,
-                        phi::errors::InvalidArgument("store_node is nullptr"));
+      PADDLE_ENFORCE_NOT_NULL(
+          store_node, phi::errors::InvalidArgument("store_node is nullptr"));
       auto* tensor = store_node->tensor.As<ir::_Tensor_>();
-      PADDLE_ENFORCE_EQ(
-          tensor, true, phi::errors::InvalidArgument("tensor is nullptr"));
+      PADDLE_ENFORCE_NOT_NULL(
+          tensor, phi::errors::InvalidArgument("tensor is nullptr"));
       VLOG(3) << "In store_exprs, its name is : " << tensor->name;
       PADDLE_ENFORCE_EQ(
           tensor->buffer.defined(),
