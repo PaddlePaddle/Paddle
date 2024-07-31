@@ -49,7 +49,7 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
                {{"value", src.Attr("full_int_array_1_value")}});
     const auto &reshape_1 = src.Op("pd_op.reshape");
     reshape_1({&src.Tensor("add_1_out"), &full_int_array_1()},
-              {&src.Tensor("reshape_1_out"), &src.Tensor("reshape_1_xshape")});
+              {&src.Tensor("reshape_1_out")});
     const auto &transpose_1 = src.Op("pd_op.transpose");
     src.Tensor("transpose_1_out") = transpose_1(src.Tensor("reshape_1_out"));
     const auto &full_1 =
@@ -70,7 +70,7 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
     const auto &full_int_array_2 = src.Op("pd_op.full_int_array");
     const auto &reshape_2 = src.Op("pd_op.reshape");
     reshape_2({&src.Tensor("add_2_out"), &full_int_array_2()},
-              {&src.Tensor("reshape_2_out"), &src.Tensor("reshape_2_xshape")});
+              {&src.Tensor("reshape_2_out")});
     const auto &transpose_2 = src.Op("pd_op.transpose");
     src.Tensor("transpose_2_out") = transpose_2(src.Tensor("reshape_2_out"));
 
@@ -87,7 +87,7 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
     const auto &full_int_array_3 = src.Op("pd_op.full_int_array");
     const auto &reshape_3 = src.Op("pd_op.reshape");
     reshape_3({&src.Tensor("add_3_out"), &full_int_array_3()},
-              {&src.Tensor("reshape_3_out"), &src.Tensor("reshape_3_xshape")});
+              {&src.Tensor("reshape_3_out")});
     const auto &transpose_3 = src.Op("pd_op.transpose");
     src.Tensor("transpose_3_out") = transpose_3(src.Tensor("reshape_3_out"));
 
@@ -113,7 +113,7 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
     const auto &full_int_array_4 = src.Op("pd_op.full_int_array");
     const auto &reshape_4 = src.Op("pd_op.reshape");
     reshape_4({&src.Tensor("transpose_4_out"), &full_int_array_4()},
-              {&src.Tensor("reshape_4_out"), &src.Tensor("reshape_4_xshape")});
+              {&src.Tensor("reshape_4_out")});
 
     //
     // Constraints.
@@ -285,7 +285,7 @@ class MultiHeadMatmulFuseWithBiasQKPattern
                {{"value", src.Attr("full_int_array_1_value")}});
     const auto &reshape_1 = src.Op("pd_op.reshape");
     reshape_1({&src.Tensor("add_1_out"), &full_int_array_1()},
-              {&src.Tensor("reshape_1_out"), &src.Tensor("reshape_1_xshape")});
+              {&src.Tensor("reshape_1_out")});
     const auto &transpose_1 = src.Op("pd_op.transpose");
     src.Tensor("transpose_1_out") = transpose_1(src.Tensor("reshape_1_out"));
     const auto &full_1 =
@@ -306,7 +306,7 @@ class MultiHeadMatmulFuseWithBiasQKPattern
     const auto &full_int_array_2 = src.Op("pd_op.full_int_array");
     const auto &reshape_2 = src.Op("pd_op.reshape");
     reshape_2({&src.Tensor("add_2_out"), &full_int_array_2()},
-              {&src.Tensor("reshape_2_out"), &src.Tensor("reshape_2_xshape")});
+              {&src.Tensor("reshape_2_out")});
     const auto &transpose_2 = src.Op("pd_op.transpose");
     src.Tensor("transpose_2_out") = transpose_2(src.Tensor("reshape_2_out"));
 
@@ -323,7 +323,7 @@ class MultiHeadMatmulFuseWithBiasQKPattern
     const auto &full_int_array_3 = src.Op("pd_op.full_int_array");
     const auto &reshape_3 = src.Op("pd_op.reshape");
     reshape_3({&src.Tensor("add_3_out"), &full_int_array_3()},
-              {&src.Tensor("reshape_3_out"), &src.Tensor("reshape_3_xshape")});
+              {&src.Tensor("reshape_3_out")});
     const auto &transpose_3 = src.Op("pd_op.transpose");
     src.Tensor("transpose_3_out") = transpose_3(src.Tensor("reshape_3_out"));
 
@@ -351,7 +351,7 @@ class MultiHeadMatmulFuseWithBiasQKPattern
     const auto &full_int_array_4 = src.Op("pd_op.full_int_array");
     const auto &reshape_4 = src.Op("pd_op.reshape");
     reshape_4({&src.Tensor("transpose_4_out"), &full_int_array_4()},
-              {&src.Tensor("reshape_4_out"), &src.Tensor("reshape_4_xshape")});
+              {&src.Tensor("reshape_4_out")});
 
     //
     // Constraints.
@@ -571,7 +571,7 @@ class VitAttentionFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("add_1_out") =
         add(pat.Tensor("matmul_out_1"), pat.Tensor("bias"));
     reshape_1({&pat.Tensor("add_1_out"), &full_int_array_1()},
-              {&pat.Tensor("reshape_1_out"), &pat.Tensor("reshape_1_xshape")});
+              {&pat.Tensor("reshape_1_out")});
     pat.Tensor("transpose_1_out") = transpose_1(pat.Tensor("reshape_1_out"));
     pat.Tensor("slice_out_1") = slice_1(
         pat.Tensor("transpose_1_out"), full_int_array_3(), full_int_array_4());
@@ -589,7 +589,7 @@ class VitAttentionFusePattern : public paddle::drr::DrrPatternBase {
         matmul_3(pat.Tensor("softmax_out"), pat.Tensor("slice_out_1"));
     pat.Tensor("transpose_3_out") = transpose_3(pat.Tensor("matmul_out_3"));
     reshape_2({&pat.Tensor("transpose_3_out"), &full_int_array_2()},
-              {&pat.Tensor("reshape_2_out"), &pat.Tensor("reshape_2_xshape")});
+              {&pat.Tensor("reshape_2_out")});
 
     // Constrains the activation is none
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {

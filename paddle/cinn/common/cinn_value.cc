@@ -126,28 +126,28 @@ CINNValue::operator std::string() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<std::string>(),
-      phi::errors::InvalidArgument("The type_code is not std::string."));
+      ::common::errors::InvalidArgument("The type_code is not std::string."));
   return absl::any_cast<std::string>(shared_);
 }
 CINNValue::operator ir::Var() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<ir::Var>(),
-      phi::errors::InvalidArgument("The type_code is not ir::Var."));
+      ::common::errors::InvalidArgument("The type_code is not ir::Var."));
   return absl::any_cast<ir::Var>(shared_);
 }
 CINNValue::operator ir::Expr() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<ir::Expr>(),
-      phi::errors::InvalidArgument("The type_code is not ir::Expr."));
+      ::common::errors::InvalidArgument("The type_code is not ir::Expr."));
   return absl::any_cast<Expr>(shared_);
 }
 CINNValue::operator CINNValuePack() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<CINNValuePack>(),
-      phi::errors::InvalidArgument("The type_code is not CINNValuePack."));
+      ::common::errors::InvalidArgument("The type_code is not CINNValuePack."));
   return absl::any_cast<CINNValuePack>(shared_);
 }
 
@@ -183,14 +183,14 @@ CINNValue &_CINNValuePack_::operator[](int offset) {
   PADDLE_ENFORCE_LT(
       offset,
       size(),
-      phi::errors::InvalidArgument("The offset is out of range."));
+      ::common::errors::InvalidArgument("The offset is out of range."));
   return values_[offset];
 }
 const CINNValue &_CINNValuePack_::operator[](int offset) const {
   PADDLE_ENFORCE_LT(
       offset,
       size(),
-      phi::errors::InvalidArgument("The offset is out of range."));
+      ::common::errors::InvalidArgument("The offset is out of range."));
   return values_[offset];
 }
 void _CINNValuePack_::AddValue(const CINNValue &value) {

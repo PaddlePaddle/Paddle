@@ -23,7 +23,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <vector>
 
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
@@ -54,6 +53,7 @@
 #include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -124,6 +124,8 @@ using pir::Type;
 using pir::Value;
 using pir::VectorType;
 using pybind11::return_value_policy;
+
+namespace name_analysis = pir::utils::name_analysis;
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
@@ -200,248 +202,10 @@ std::string GetValueInfo(Value v) {
   return ss.str();
 }
 
-namespace name_analysis {
-Value GetOutputValueByName(const Program &program, const std::string &name) {
-  auto &block = *program.block();
-  StrAttribute name_attr = StrAttribute::get(IrContext::Instance(), name);
-  Value value;
-  for (auto &op : block) {
-    if (op.isa<pir::ShadowOutputOp>()) {
-      if (op.attribute("output_name") == name_attr) {
-        if (value) {
-          PADDLE_THROW(common::errors::PreconditionNotMet(
-              "More than one shadow ouput named with %s found.", name));
-        }
-        value = op.operand_source(0);
-      }
-    }
-  }
-  return value;
-}
-
-Value GetParameterValueByName(const Program &program, const std::string &name) {
-  auto &block = *program.block();
-  StrAttribute name_attr = StrAttribute::get(IrContext::Instance(), name);
-  Value value;
-  for (auto &op : block) {
-    if (op.isa<pir::ParameterOp>()) {
-      if (op.attribute("parameter_name") == name_attr) {
-        if (value) {
-          PADDLE_THROW(common::errors::PreconditionNotMet(
-              "More than one parameter named with %s found.", name));
-        }
-        value = op.result(0);
-      }
-    }
-  }
-  return value;
-}
-
-void SetValueName(Value value, const std::string name) {
-  pir::Operation *define_op = value.defining_op();
-  if (define_op->isa<pir::ParameterOp>()) {
-    define_op->set_attribute(
-        "parameter_name", StrAttribute::get(pir::IrContext::Instance(), name));
-  } else if (define_op->isa<paddle::dialect::DataOp>()) {
-    define_op->set_attribute(
-        "name", StrAttribute::get(pir::IrContext::Instance(), name));
-  } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("Can Not set name for BlockArgument! "));
-  } else if (value.first_use()) {
-    auto nextOp = value.first_use().owner();
-    if (nextOp->isa<::pir::ShadowOutputOp>()) {
-      nextOp->set_attribute(
-          "output_name", StrAttribute::get(pir::IrContext::Instance(), name));
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Currently, we can only set name of Value which is "
-          "shadowoutput "));
-    }
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only set name of Value that "
-        "is persistable"));
-  }
-}
-
-std::map<std::string, std::string> RenameValue(Value value,
-                                               const std::string &new_name,
-                                               Block *block) {
-  std::map<std::string, std::string> rename_mapping;
-  VLOG(5) << "Strating to rename value to " << new_name;
-  // Handle kwarg
-  for (auto [name, kwarg] : block->kwargs()) {
-    if (kwarg == value) {
-      if (name == new_name) {
-        break;
-      }
-      Value new_value;
-      if (block->kwargs().count(new_name)) {
-        new_value = block->kwargs().at(new_name);
-      } else {
-        new_value = block->AddKwarg(new_name, value.type());
-      }
-      value.ReplaceAllUsesWith(new_value);
-      block->EraseKwarg(name);
-      value = new_value;
-      VLOG(5) << "Value is kwarg, rename it from " << name << " to "
-              << new_name;
-      rename_mapping.insert({name, new_name});
-      break;
-    }
-  }
-
-  // Handle inputs
-  auto defining_op = value.defining_op();
-  if (defining_op) {
-    // Handle DataOp
-    if (defining_op->isa<paddle::dialect::DataOp>()) {
-      auto name = defining_op->attribute<StrAttribute>("name").AsString();
-      if (name != new_name) {
-        defining_op->set_attribute(
-            "name", StrAttribute::get(pir::IrContext::Instance(), new_name));
-        VLOG(5) << "Value is defined by DataOp, rename it from " << name
-                << " to " << new_name;
-        rename_mapping.insert({name, new_name});
-      }
-    }
-
-    // Handle ParameterOp
-    if (defining_op->isa<pir::ParameterOp>()) {
-      auto name =
-          defining_op->attribute<StrAttribute>("parameter_name").AsString();
-      if (name != new_name) {
-        defining_op->set_attribute(
-            "parameter_name",
-            StrAttribute::get(pir::IrContext::Instance(), new_name));
-        VLOG(5) << "Value is defined by ParameterOp, rename it from " << name
-                << " to " << new_name;
-        rename_mapping.insert({name, new_name});
-      }
-    }
-
-    // Handle ConstantTensorOp
-    if (defining_op->isa<::pir::ConstantTensorOp>()) {
-      auto name =
-          defining_op->attribute<StrAttribute>("tensor_name").AsString();
-      if (name != new_name) {
-        defining_op->set_attribute(
-            "tensor_name",
-            StrAttribute::get(pir::IrContext::Instance(), new_name));
-        VLOG(5) << "Value is defined by ConstantTensorOp, rename it from "
-                << name << " to " << new_name;
-        rename_mapping.insert({name, new_name});
-      }
-    }
-  }
-
-  // Handle outputs
-  for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
-    auto user_op = iter->owner();
-    if (user_op->isa<::pir::ShadowOutputOp>()) {
-      // Handle ShadowOutputOp
-      auto name = user_op->attribute<StrAttribute>("output_name").AsString();
-      if (name == new_name) {
-        continue;
-      }
-      user_op->set_attribute(
-          "output_name",
-          StrAttribute::get(pir::IrContext::Instance(), new_name));
-      VLOG(5) << "Value is used by ShadowOutputOp, rename it from " << name
-              << " to " << new_name;
-      rename_mapping.insert({name, new_name});
-    } else if (user_op->isa<::pir::SetParameterOp>()) {
-      // Handle SetParameterOp
-      auto name = user_op->attribute<StrAttribute>("parameter_name").AsString();
-      if (name == new_name) {
-        continue;
-      }
-      user_op->set_attribute(
-          "parameter_name",
-          StrAttribute::get(pir::IrContext::Instance(), new_name));
-      VLOG(5) << "Value is used by SetParameterOp, rename it from " << name
-              << " to " << new_name;
-      rename_mapping.insert({name, new_name});
-    }
-  }
-  return rename_mapping;
-}
-
-std::optional<std::string> GetValueInputName(Value value) {
-  std::optional<std::string> name;
-  if (auto block_arg = value.dyn_cast<BlockArgument>()) {
-    if (block_arg.is_kwarg()) {
-      name = block_arg.keyword();
-    } else {
-      name = "arg_" + std::to_string(block_arg.index());
-    }
-  } else if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
-    name = param_op.param_name();
-  } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
-    name = data_op.attribute<StrAttribute>("name").AsString();
-  } else if (auto constant_op = value.defining_op<::pir::ConstantTensorOp>()) {
-    name = constant_op.tensor_name();
-  }
-  return name;
-}
-
-std::vector<std::string> GetValueOutputNames(Value value) {
-  std::vector<std::string> names;
-  for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
-    if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
-      names.push_back(
-          iter->owner()->attribute<StrAttribute>("output_name").AsString());
-    } else if (iter->owner()->isa<::pir::SetParameterOp>()) {
-      names.push_back(
-          iter->owner()->attribute<StrAttribute>("parameter_name").AsString());
-    }
-  }
-  return names;
-}
-
-std::vector<std::string> GetValueAllNames(Value value) {
-  std::vector<std::string> names;
-  std::optional<std::string> input_name = GetValueInputName(value);
-  if (input_name.has_value()) {
-    names.push_back(input_name.value());
-  }
-
-  std::vector<std::string> output_name = GetValueOutputNames(value);
-  for (auto &name : output_name) {
-    names.push_back(name);
-  }
-
-  return names;
-}
-
-std::string GetValueFirstName(Value value) {
-  auto name = TryGetValueFirstName(value);
-
-  PADDLE_ENFORCE(name.has_value(),
-                 phi::errors::InvalidArgument(
-                     "Currently, we can only get name of Value from "
-                     "DataOp/ParameterOp/BlockArgument/ConstantTensorOp/"
-                     "SetParameterOp and ShadowOutputOp."));
-
-  return name.value();
-}
-
-std::optional<std::string> TryGetValueFirstName(Value value) {
-  std::optional<std::string> name;
-
-  auto names = GetValueAllNames(value);
-  if (!names.empty()) {
-    return names[0];
-  }
-
-  return name;
-}
-}  // namespace name_analysis
-
 phi::DataType GetTensorDtype(Type type) {
   if (!type) {
-    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The type of value is nullptr."));
   }
   if (auto dense_tensor_type = type.dyn_cast<DenseTensorType>()) {
     return dialect::TransToPhiDataType(dense_tensor_type.dtype());
@@ -456,7 +220,7 @@ phi::DataType GetTensorDtype(Type type) {
   } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
     return dialect::TransToPhiDataType(dense_array.dtype());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
         "SelectedRowsType, DenseTensorArrayType,SparseCooTensorType or "
         "SparseCsrTensorType."));
@@ -547,10 +311,8 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
     for (uint64_t idx = 0; idx < input_vars.size(); idx++) {
       auto input = input_vars[idx];
       auto origin_op = input.defining_op();
-      std::string name = "input_" + std::to_string(idx);
-      if (auto names = name_analysis::TryGetValueFirstName(input)) {
-        name = names.value();
-      }
+      std::string name = name_analysis::TryGetValueFirstName(input).value_or(
+          "input_" + std::to_string(idx));
       auto new_input = AppendDataOp(global_block, input, name, *origin_op);
       input.ReplaceAllUsesWith(new_input);
       new_input_vars.push_back(new_input);
@@ -585,7 +347,7 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
     if (!intersection_op_flags[index]) {
       auto op_results = op->results();
       if (!input_vars_set.empty() && SomeInSet(op_results, input_vars_set)) {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "The input_var create by: '{%s}' is not involved in the "
             "output_vars calculation"
             "Please remove it from input_vars.",
@@ -783,7 +545,7 @@ void BindProgram(py::module *m) {
                 if (is_persistable && is_persistable.data()) {
                   if (var.defining_op()->isa<::pir::ParameterOp>()) {
                     std::string var_name =
-                        name_analysis::GetValueAllNames(var)[0];
+                        name_analysis::GetValueFirstName(var);
                     auto tensor =
                         scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
                     state_dict_param[var_name] = *tensor;
@@ -791,7 +553,7 @@ void BindProgram(py::module *m) {
                   } else if (var.defining_op()
                                  ->isa<paddle::dialect::DataOp>()) {
                     std::string var_name =
-                        name_analysis::GetValueAllNames(var)[0];
+                        name_analysis::GetValueFirstName(var);
                     auto tensor =
                         scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
                     state_dict_opt[var_name] = *tensor;
@@ -807,8 +569,8 @@ void BindProgram(py::module *m) {
             } else if (mode == "opt") {
               return state_dict_opt;
             } else {
-              PADDLE_THROW(
-                  phi::errors::InvalidArgument("The mode is not supported."));
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "The mode is not supported."));
             }
           })
       .def("set_state_dict",
@@ -819,7 +581,7 @@ void BindProgram(py::module *m) {
              for (auto item : state_dict) {
                auto var = scope.FindVar(item.first);
                if (var == nullptr) {
-                 PADDLE_THROW(phi::errors::NotFound(
+                 PADDLE_THROW(common::errors::NotFound(
                      "The variable %s is not found.", item.first));
                } else {
                  *var->GetMutable<phi::DenseTensor>() = item.second;
@@ -1118,7 +880,7 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> py::list {
              if (self.HasInterface<paddle::dialect::OpYamlInfoInterface>() ==
                  false) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
+               PADDLE_THROW(common::errors::InvalidArgument(
                    "Currently, we can only get input names of Operation that "
                    "has OpYamlInfoInterface"));
              }
@@ -1243,7 +1005,7 @@ void BindOperation(py::module *m) {
                 paddle::framework::OpProtoAndCheckerMaker::
                     OpCreationCallstackAttrName());
             PADDLE_ENFORCE(op_callstack.isa<pir::ArrayAttribute>(),
-                           phi::errors::PreconditionNotMet(
+                           common::errors::PreconditionNotMet(
                                "The callstack of operation `%s` should be an "
                                "array attribute.",
                                self.name()));
@@ -1252,7 +1014,7 @@ void BindOperation(py::module *m) {
             for (size_t i = 0; i < op_callstack_array_attr.size(); ++i) {
               PADDLE_ENFORCE(
                   op_callstack_array_attr.at(i).isa<StrAttribute>(),
-                  phi::errors::PreconditionNotMet(
+                  common::errors::PreconditionNotMet(
                       "The callstack info of operation `%s` should be array of "
                       "string attribute.",
                       self.name()));
@@ -1288,6 +1050,21 @@ void BindOperation(py::module *m) {
           },
           [](Operation &self, OperationDistAttribute op_dist_attr) {
             self.set_attribute(kAttrOpDistAttr, op_dist_attr);
+          })
+      .def_property(
+          "op_role",
+          [](Operation &self) -> py::object {
+            auto int_attr = self.attribute<Int32Attribute>("op_role");
+            if (int_attr) {
+              return py::cast(int_attr.data());
+            } else {
+              return py::cast<py::none>(Py_None);
+            }
+          },
+          [](Operation &self, const int &op_role) {
+            self.set_attribute(
+                "op_role",
+                Int32Attribute::get(pir::IrContext::Instance(), op_role));
           });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
@@ -1337,7 +1114,7 @@ pir::Value apply(Value self, py::object func) {
   py::gil_scoped_acquire gil;
   auto stop_gradient = self.attribute<BoolAttribute>(kAttrStopGradients);
   if (stop_gradient && !stop_gradient.data()) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Cannot apply function on a tensor that required gradient."));
   }
   PyObject *py_func = func.release().ptr();
@@ -1350,10 +1127,10 @@ pir::Value apply(Value self, py::object func) {
     res = PyObject_CallFunctionObjArgs(py_func, tmp_self, nullptr);
     Py_DECREF(tmp_self);
   } catch (std::exception &e) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Apply function of Tensor raises an exception: %s.", e.what()));
   } catch (...) {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Apply function of Tensor raises an unknown exception."));
   }
   if (res == Py_None) {
@@ -1439,7 +1216,7 @@ void BindValue(py::module *m) {
           "id",
           [](Value self) {
             if (self.impl() == nullptr) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "Currently, we can only get id of Value whose impl "
                   "is not nullptr"));
             } else {
@@ -1474,28 +1251,28 @@ void BindValue(py::module *m) {
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
           [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set shape when building static graph"));
           })
       .def_property(
           "_local_shape",
           [](Value self) {
             if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "_local_shape is only for distdense tensor."));
             }
             return phi::vectorize(
                 self.type().dyn_cast<DistDenseTensorType>().local_ddim());
           },
           [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set _local_shape when building static graph"));
           })
       .def_property(
           "dtype",
           [](Value self) { return GetValueDtype(self); },
           [](Value self, phi::DataType dtype) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
       .def("initialized",
@@ -1534,7 +1311,7 @@ void BindValue(py::module *m) {
              if (auto op_result = self.dyn_cast<OpResult>()) {
                return op_result.index();
              }
-             PADDLE_THROW(phi::errors::InvalidArgument(
+             PADDLE_THROW(common::errors::InvalidArgument(
                  "only support accesss index from op_result."));
            })
       .def("is_dense_tensor_type",
@@ -1639,28 +1416,28 @@ void BindType(py::module *m) {
           "shape",
           [](Type self) { return phi::vectorize(GetTensorDims(self)); },
           [](Type self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set shape when building static graph"));
           })
       .def_property(
           "dtype",
           [](Type self) { return GetTensorDtype(self); },
           [](Type self, phi::DataType dtype) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
       .def_property(
           "_local_shape",
           [](Type self) {
             if (!self.isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "_local_shape is only for distdense tensor."));
             }
             return phi::vectorize(
                 self.dyn_cast<DistDenseTensorType>().local_ddim());
           },
           [](Type self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set _local_shape when building static graph"));
           })
       .def("as_vec_type",
@@ -1706,7 +1483,7 @@ void BindType(py::module *m) {
                                        src_type.offset());
              return dst_type;
            } else {
-             PADDLE_THROW(phi::errors::InvalidArgument(
+             PADDLE_THROW(common::errors::InvalidArgument(
                  "Currently, we can only set shape for dense tensor"));
            }
          });
@@ -2005,11 +1782,9 @@ int AppendShadowOutputs(Program *program,
   std::unordered_set<pir::Value> added_value;
   for (const auto &value : outputs) {
     if (!added_value.count(value) || IsFakeValue(value)) {
-      std::string shadow_output_name = name_prefix + std::to_string(counter);
-      if (auto names = name_analysis::GetValueOutputNames(value);
-          !names.empty()) {
-        shadow_output_name = names[0];
-      }
+      std::string shadow_output_name =
+          name_analysis::TryGetValueFirstName(value).value_or(
+              name_prefix + std::to_string(counter));
       AppendShadowOutput(
           program, value, shadow_output_name, start_point + counter);
       counter += 1;
@@ -2116,10 +1891,8 @@ SplitedResult SplitForwardBackward(
       return;
     }
     std::string shadow_output_name =
-        std::string("output_") + std::to_string(counter);
-    if (auto names = name_analysis::TryGetValueFirstName(v)) {
-      shadow_output_name = names.value();
-    }
+        name_analysis::TryGetValueFirstName(v).value_or(
+            std::string("output_") + std::to_string(counter));
     auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
         {"output_name", StrAttribute::get(ctx, shadow_output_name)},
@@ -2275,7 +2048,7 @@ pir::Type CreateSelectedRowsTypeByDenseTensor(pir::Type dense_tensor_type) {
                                  type.lod(),
                                  type.offset());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, input is not a dense tensor type."));
   }
 }
@@ -2296,7 +2069,7 @@ pir::Type CreateDistDenseTensorTypeByDenseTensor(
                                     tensor_dist_attr,
                                     phi::make_ddim(lshape));
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, input is not a dense tensor type are not supported."));
   }
 }
@@ -2313,7 +2086,7 @@ static void inline CreateVariableIfNotExist(
     auto var = scope->FindVar(para_name);
     if (var == nullptr) {
       PADDLE_ENFORCE_NOT_NULL(exe,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "Parameter not Initialized, "
                                   "Please set argument [executor] not None "
                                   "or run startup program first"));
@@ -2640,7 +2413,7 @@ void BindPassManager(pybind11::module *m) {
                } else if (py::isinstance<py::float_>(attr.second)) {
                  pass->Set(attr.first, new float(attr.second.cast<float>()));
                } else {
-                 PADDLE_THROW(phi::errors::InvalidArgument(
+                 PADDLE_THROW(common::errors::InvalidArgument(
                      "The pass attr is not supported this type."));
                }
              }
@@ -2710,7 +2483,7 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                for (size_t i = 0; i < actual.size(); i++) {
                  if (!actual.at(i).isa<int64_t>()) {
                    print_expect_and_actual();
-                   PADDLE_THROW(phi::errors::InvalidArgument(
+                   PADDLE_THROW(common::errors::InvalidArgument(
                        "In OpTest, only supports cases where the type of "
                        "DimExpr "
                        "is int64_t."));

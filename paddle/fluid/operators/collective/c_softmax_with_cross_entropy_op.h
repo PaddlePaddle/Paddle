@@ -33,7 +33,7 @@ template <typename T, typename DeviceContext>
 class CSoftmaxWithCrossEntropyOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx UNUSED) const override {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Do not support c_embedding for cpu kernel now."));
   }
 };

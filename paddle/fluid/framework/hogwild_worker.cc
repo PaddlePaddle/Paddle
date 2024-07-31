@@ -178,14 +178,14 @@ void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope *root,
       PADDLE_ENFORCE_NE(
           src_var,
           nullptr,
-          phi::errors::NotFound("root scope not found var name=%s",
-                                obj.second.c_str()));
+          common::errors::NotFound("root scope not found var name=%s",
+                                   obj.second.c_str()));
       auto &src_tensor = src_var->Get<phi::DenseTensor>();
       auto dest_var = scope->FindLocalVar(obj.first);
-      PADDLE_ENFORCE_NE(
-          dest_var,
-          nullptr,
-          phi::errors::NotFound("dest name=%s is nullptr", obj.first.c_str()));
+      PADDLE_ENFORCE_NE(dest_var,
+                        nullptr,
+                        common::errors::NotFound("dest name=%s is nullptr",
+                                                 obj.first.c_str()));
       auto *dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
       auto dtype = framework::TransToProtoVarType(dest_tensor->dtype());
       framework::TransDataType(src_tensor, dtype, dest_tensor);
@@ -199,14 +199,14 @@ void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope *root,
     auto src_var = root->FindLocalVar(name);
     PADDLE_ENFORCE_NE(src_var,
                       nullptr,
-                      phi::errors::NotFound("root scope not found var name=%s",
-                                            name.c_str()));
+                      common::errors::NotFound(
+                          "root scope not found var name=%s", name.c_str()));
     auto &src_tensor = src_var->Get<phi::DenseTensor>();
     auto dest_var = scope->FindLocalVar(name);
     PADDLE_ENFORCE_NE(
         dest_var,
         nullptr,
-        phi::errors::NotFound("dest name=%s is nullptr", name.c_str()));
+        common::errors::NotFound("dest name=%s is nullptr", name.c_str()));
     auto *dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
     copyer->Copy(src_tensor, place, dest_tensor);
   }
@@ -564,8 +564,8 @@ size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
         auto dest_var = thread_scope_->Var(name);  // init local var
         PADDLE_ENFORCE_NE(dest_var,
                           nullptr,
-                          phi::errors::InvalidArgument("init var error name=%s",
-                                                       name.c_str()));
+                          common::errors::InvalidArgument(
+                              "init var error name=%s", name.c_str()));
         offload_vars_[op.get()].copy_vars.push_back(name);
         // nccl broadcast param
         if (is_offload_communication_) {
@@ -964,7 +964,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Root scope should be set before creating thread scope."));
 
   thread_scope_ = &root_scope_->NewScope();
@@ -1199,7 +1199,7 @@ bool HogwildWorker::CheckBatchNum(int flag) {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -1210,7 +1210,7 @@ bool HogwildWorker::CheckBatchNum(int flag) {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
     } else {

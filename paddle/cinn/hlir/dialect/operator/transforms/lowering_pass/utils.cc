@@ -105,7 +105,7 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
   }
   PADDLE_ENFORCE_GT(fusion_op.attributes().count("group_info"),
                     0UL,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "fusion_op should have group_info attribute."));
 
   const auto attr = fusion_op.attribute("group_info")
