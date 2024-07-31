@@ -377,6 +377,19 @@ bool EigvalshOpInferSymbolicShape(
   return EighOpInferSymbolicShape(op, infer_context);
 }
 
+bool FakeQuantizeAbsMaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  symbol::TensorShapeOrDataDimExprs out_scale_shape({symbol::DimExpr(1)});
+  infer_context->SetShapeOrDataForValue(op->result(1), out_scale_shape);
+
+  return true;
+}
+
 bool FftC2cOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
