@@ -212,7 +212,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_slice",
            [](phi::DenseTensor &self, int64_t begin_idx, int64_t end_idx) {
              if (!self.meta().is_contiguous()) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
+               PADDLE_THROW(common::errors::InvalidArgument(
                    "Tensor is not contiguous, cannot call "
                    "_slice on it."));
              }
@@ -491,7 +491,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         PADDLE_ENFORCE_EQ(
             CheckLoD(new_offset_lod, -1),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The provided recursive_sequence_lengths info is "
                 "invalid, "
                 "the LoD converted by recursive_sequence_lengths is %s",
@@ -516,7 +516,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_EQ(
                 CheckLoD(new_lod, common::vectorize(self.dims()).front()),
                 true,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "The provided LoD is invalid, the LoD is %s", new_lod));
             self.set_lod(new_lod);
           },
@@ -559,7 +559,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                 CheckLoD(new_offset_lod,
                          common::vectorize(self.dims()).front()),
                 true,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "The provided recursive_sequence_lengths info is "
                     "invalid, "
                     "the LoD converted by recursive_sequence_lengths is "
@@ -710,7 +710,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](phi::DenseTensor &self, const phi::DenseTensor src,
               py::tuple t) {
               if (!src.meta().is_contiguous()) {
-                PADDLE_THROW(phi::errors::InvalidArgument(
+                PADDLE_THROW(common::errors::InvalidArgument(
                     "Tensor is not contiguous, cannot call "
                     "share_buffer_with on it."));
               }
@@ -720,7 +720,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
              PADDLE_ENFORCE_NOT_NULL(
                  cuda_ipc_allocation,
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Tensor is not Cuda IPC shared tensor. "
                      "Now only Tensor shared by cuda ipc could use this "
                      "api."));
@@ -764,7 +764,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  self.Holder().get());
              PADDLE_ENFORCE_EQ(
                  phi::is_gpu_place(holder->place()), true,
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "Tensor is not on GPU. share_cuda only support GPU "
                      "Tensor, share_filename is for CPU tensor."));
 
@@ -872,7 +872,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              PADDLE_ENFORCE_EQ(
                  phi::is_cpu_place(holder->place()) ||
                      phi::is_cuda_pinned_place(holder->place()),
-                 true, phi::errors::InvalidArgument(
+                 true, common::errors::InvalidArgument(
                            "Tensor is not on CPU. share_filename only "
                            "support CPU Tensor."));
 
@@ -1023,7 +1023,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
           [](const phi::DenseTensor &t) {  // __getstate__
             auto holder = t.Holder();
             PADDLE_ENFORCE_EQ(phi::is_cpu_place(holder->place()), true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "Tensor is not on CPU."
                                   "Now only Tensor on CPU can be serialized."));
             auto *mmap_writer_allocation =
@@ -1031,7 +1031,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     holder.get());
             PADDLE_ENFORCE_NOT_NULL(
                 mmap_writer_allocation,
-                phi::errors::PreconditionNotMet(
+                common::errors::PreconditionNotMet(
                     "Tensor is not in shared memory."
                     "Now only Tensor on shared memory can be serialized."));
             int type_idx = static_cast<int>(t.type());

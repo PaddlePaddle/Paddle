@@ -62,12 +62,12 @@ struct VarIdToTypeIndexMapInitializerImpl {
     PADDLE_ENFORCE_EQ(
         id_to_type->count(kId),
         0,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Registered duplicate type id %d for type %s.", kId, type.name()));
     PADDLE_ENFORCE_EQ(
         type_to_id->count(type),
         0,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Registered duplicate type index %s for id %d.", type.name(), kId));
     id_to_type->emplace(kId, type);
     type_to_id->emplace(type, kId);
@@ -99,7 +99,7 @@ struct VarIdToTypeIndexMapHolder {
     PADDLE_ENFORCE_NE(
         it,
         Instance().id_to_type_map_.end(),
-        phi::errors::NotFound("Variable Id %d is not registered.", var_id));
+        common::errors::NotFound("Variable Id %d is not registered.", var_id));
     return it->second;
   }
 
@@ -107,7 +107,7 @@ struct VarIdToTypeIndexMapHolder {
     auto it = Instance().type_to_id_map_.find(type);
     PADDLE_ENFORCE_NE(it,
                       Instance().type_to_id_map_.end(),
-                      phi::errors::NotFound(
+                      common::errors::NotFound(
                           "Variable Type %s is not registered.", type.name()));
     return it->second;
   }

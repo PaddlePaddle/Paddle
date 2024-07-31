@@ -67,6 +67,7 @@ class TestSimpleNetForSemiAutoParallel:
         self._use_promote = eval(os.getenv("use_promote", '0'))
         self._amp_dtype = os.getenv("amp_dtype", 'float16')
         self._amp_level = os.getenv("amp_level", 'O0')
+        self._init_loss_scaling = 1024.0
         self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._in_pir_mode = paddle.base.framework.get_flags(
             "FLAGS_enable_pir_api"
@@ -104,6 +105,7 @@ class TestSimpleNetForSemiAutoParallel:
             amp.use_master_weight = self._master_weight
             amp.use_master_weight = self._master_grad
             amp.use_promote = self._use_promote
+            amp.init_loss_scaling = self._init_loss_scaling
 
         # static training
         dist_model = dist.to_static(
@@ -152,7 +154,9 @@ class TestSimpleNetForSemiAutoParallel:
                 master_grad=self._master_grad,
             )
         loss_list = []
-        scaler = paddle.amp.GradScaler(enable=self._amp)
+        scaler = paddle.amp.GradScaler(
+            enable=self._amp, init_loss_scaling=self._init_loss_scaling
+        )
         scaler = dist.shard_scaler(scaler)
         for epoch in range(self.num_batch):
             for batch_id, data in enumerate(dist_loader()):

@@ -625,7 +625,7 @@ void PrintProfiler(
     } else if (phi::ProfilerHelper::g_state == ProfilerState::kAll) {
       place = "All";
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Except profiler state must to be one of ['CPU', 'GPU' 'ALL'], but "
           "received Invalid profiler state."));
     }

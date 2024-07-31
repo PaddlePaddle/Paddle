@@ -142,7 +142,7 @@ ir::Tensor Squeeze(const ir::Tensor& A,
       } else {
         PADDLE_ENFORCE_EQ(A->shape[idx],
                           Expr(1),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The dimension to squeeze must be 1."));
       }
     }
@@ -188,7 +188,7 @@ ir::Tensor ExpandDims(const ir::Tensor& A,
         }
         PADDLE_ENFORCE_EQ(idx.size(),
                           A->shape.size(),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The index size not equal with the input rank."));
         return A(idx);
       },
@@ -346,7 +346,7 @@ ir::Tensor Tril(const ir::Tensor& A,
       [=](const std::vector<Expr>& indice) {
         PADDLE_ENFORCE_GE(indice.size(),
                           size_t(2),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The Tril op input tensor must have a rank "
                               "greater than or equal to 2."));
         std::vector<Expr> new_indice(indice.end() - 2, indice.end());
@@ -431,7 +431,7 @@ ir::Tensor IsClose(const ir::Tensor& x,
     PADDLE_ENFORCE_EQ(
         indice.size(),
         y->shape.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The indice size should be equal to y's shape size."));
     return fnop(x(indice), y(indice));
   };

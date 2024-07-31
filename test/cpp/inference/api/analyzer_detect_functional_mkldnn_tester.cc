@@ -141,19 +141,21 @@ void validate_cache_onednn(int cache_capacity = 1) {
   // Compare results
   // First and last value should be equal e.g. before using cache (empty) and
   // after releasing executor
-  PADDLE_ENFORCE_EQ(cache_filling[0],
-                    cache_filling[cache_filling.size() - 1],
-                    phi::errors::Fatal("Cache size before execution and after "
-                                       "releasing Executor do not match"));
+  PADDLE_ENFORCE_EQ(
+      cache_filling[0],
+      cache_filling[cache_filling.size() - 1],
+      common::errors::Fatal("Cache size before execution and after "
+                            "releasing Executor do not match"));
 
   // Iterate to check if cache is not increasing
   // over exceeding cache capacity
   if (cache_capacity != 0) {
     for (int i = cache_capacity + 1; i < num_samples + 1; ++i) {
-      PADDLE_ENFORCE_EQ(cache_filling[cache_capacity],
-                        cache_filling[i],
-                        phi::errors::Fatal("Cache capacity should not increase "
-                                           "after full capacity is used"));
+      PADDLE_ENFORCE_EQ(
+          cache_filling[cache_capacity],
+          cache_filling[i],
+          common::errors::Fatal("Cache capacity should not increase "
+                                "after full capacity is used"));
     }
   }
 }

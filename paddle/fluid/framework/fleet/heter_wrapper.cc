@@ -243,8 +243,8 @@ framework::proto::VarType::Type HeterWrapper::ToVarType(
     case VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("ToVarType:Unsupported type %d", type));
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "ToVarType:Unsupported type %d", type));
   }
 }
 

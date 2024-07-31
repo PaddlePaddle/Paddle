@@ -273,7 +273,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::reset_table(
   PADDLE_ENFORCE_LT(
       dev_id,
       device_num_,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "dev id %d more than device num %d", dev_id, device_num_));
 #if defined(PADDLE_WITH_CUDA)
   platform::CUDADeviceGuard guard(resource_->dev_id(dev_id));
@@ -1507,24 +1507,24 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
-      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r,
+                               XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(
       r2,
       XPU_SUCCESS,
-      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
-                            r2,
-                            XPUAPIErrorMsg[r2]));
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r2,
+                               XPUAPIErrorMsg[r2]));
 #endif
 
   auto accessor_wrapper_ptr =
@@ -1687,24 +1687,24 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
-      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r,
+                               XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(
       r2,
       XPU_SUCCESS,
-      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
-                            r2,
-                            XPUAPIErrorMsg[r2]));
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r2,
+                               XPUAPIErrorMsg[r2]));
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
@@ -1890,24 +1890,24 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_normal_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
-      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r,
+                               XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(
       r2,
       XPU_SUCCESS,
-      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
-                            r2,
-                            XPUAPIErrorMsg[r2]));
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r2,
+                               XPUAPIErrorMsg[r2]));
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
@@ -2065,24 +2065,24 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
-      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r,
+                               XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(
       r2,
       XPU_SUCCESS,
-      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
-                            r2,
-                            XPUAPIErrorMsg[r2]));
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r2,
+                               XPUAPIErrorMsg[r2]));
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
