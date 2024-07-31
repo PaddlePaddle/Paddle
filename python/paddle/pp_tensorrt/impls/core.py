@@ -476,12 +476,21 @@ def flatten_converter(network, paddle_op, inputs):
     return flatten_layer
 
 
+# 在converter中,pd_op.concat有三个输入,因为builtin.combine有两个输入
 @converter_registry.register("pd_op.concat")
 def concat_converter(network, paddle_op, inputs):
-    input_tensor, axis = inputs
-    concat_layer = network.add_concatenation(inputs=input_tensor)
-    if axis < 0:
-        axis = len(input_tensor.shape) + axis
+    input_tensors = inputs[:-1]
+    axis_tensor = inputs[-1]
+    concat_layer = network.add_concatenation(inputs=input_tensors)
 
+    full_op = paddle_op.operands()[1]
+    # 这是获取value
+    full_value = full_op.source()
+    full_operation = full_value.get_defining_op()
+    axis = full_operation.attrs()["value"]
+    axis = int(axis)
+    if axis < 0:
+        axis = len(input_tensors[0].shape) + axis
     concat_layer.axis = axis
+
     return concat_layer
