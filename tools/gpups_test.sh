@@ -13,7 +13,6 @@
 # limitations under the License.
 
 failuretest=''
-
 function collect_failed_tests() {
     for file in `ls $tmp_dir`; do
         exit_code=0
