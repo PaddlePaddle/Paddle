@@ -37,6 +37,7 @@ from converter_utils import (
     get_axes_for_reduce_op,
     get_dynamic_dims,
     has_dynamic_shape,
+    get_trt_plugin,
 )
 
 
@@ -477,7 +478,7 @@ def flatten_converter(network, paddle_op, inputs):
 
 
 # 在converter中,pd_op.concat有三个输入,因为builtin.combine有两个输入
-@converter_registry.register("pd_op.concat")
+@converter_registry.register("pd_op.concat",trt_version="8.x")
 def concat_converter(network, paddle_op, inputs):
     input_tensors = inputs[:-1]
     axis_tensor = inputs[-1]
@@ -494,3 +495,24 @@ def concat_converter(network, paddle_op, inputs):
     concat_layer.axis = axis
 
     return concat_layer
+
+@converter_registry.register("pd_op.gelu", trt_version="8.x")
+def gelu_converter(network,paddle_op,inputs):
+    input_val =inputs[0]
+    approximate =paddle_op.attrs()["approximate"]
+    if approximate !=False:
+        raise RuntimeError("GeLU converter currently doesn't support fast gelu compute")
+    
+    plugin_name ="CustomGeluPluginDynamic"
+    type_id =trt.PluginField("type_id",np.array(0,dtype=np.int32),trt.PluginFieldType.INT32)
+    
+    filed_collection =trt.PluginFieldCollection([type_id])
+    plugin_version="1"
+    
+    plugin=get_trt_plugin(plugin_name,filed_collection,plugin_version)
+    
+    layer=network.add_plugin_v2([input_val],plugin)
+    return layer
+    
+    
+    
