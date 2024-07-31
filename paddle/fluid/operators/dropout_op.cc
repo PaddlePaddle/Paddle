@@ -71,7 +71,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const float& drop_p) {
           PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f,
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'dropout_prob' must be between 0.0 and 1.0."));
         })
         .SupportTensor();
@@ -100,7 +100,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train",
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });

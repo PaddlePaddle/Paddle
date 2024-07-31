@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/binary_infer_sym.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
+
+COMMON_DECLARE_bool(manually_trans_conv_filter);
 
 namespace {
 
@@ -175,8 +178,7 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                                   in_s_or_d.shape().end());
 
   const std::vector<symbol::DimExpr> filter_data_dims = [&]() {
-    if (filter_s_or_d.shape().size() == 4 &&
-        filter_s_or_d.shape().at(1) == filter_s_or_d.shape().at(2)) {  // NHWC
+    if (channel_last && FLAGS_manually_trans_conv_filter) {  // NHWC
       return std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 1,
                                           filter_s_or_d.shape().end() - 1);
     } else {
