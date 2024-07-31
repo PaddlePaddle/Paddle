@@ -509,6 +509,33 @@ bool BilinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
+bool CheckFiniteAndUnscaleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  std::vector<symbol::ShapeOrDataDimExprs> xs_shapes;
+  for (size_t i = 0; i < op->num_operands() - 1; ++i) {
+    xs_shapes.push_back(
+        infer_context->GetShapeOrDataForValue(op->operand_source(i)));
+  }
+
+  for (size_t i = 0; i < xs_shapes.size(); ++i) {
+    symbol::TensorShapeOrDataDimExprs output_shape(xs_shapes[i].shape());
+    infer_context->SetShapeOrDataForValue(
+        op->result(i), symbol::ShapeOrDataDimExprs{output_shape});
+  }
+
+  symbol::TensorShapeOrDataDimExprs found_infinite_shape({symbol::DimExpr(1)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(op->num_results() - 1),
+      symbol::ShapeOrDataDimExprs{found_infinite_shape});
+
+  return true;
+}
+
+bool CheckFiniteAndUnscale_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return CheckFiniteAndUnscaleOpInferSymbolicShape(op, infer_context);
+}
+
 bool CrossEntropyWithSoftmaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &input_shape =
