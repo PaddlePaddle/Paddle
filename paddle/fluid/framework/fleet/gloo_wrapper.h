@@ -238,7 +238,7 @@ class GlooWrapper {
       PADDLE_ENFORCE_EQ(
           0,
           1,
-          phi::errors::InvalidArgument("AllReduce mode not known: " + mode));
+          common::errors::InvalidArgument("AllReduce mode not known: " + mode));
     }
     gloo::allreduce(opts);
 #else

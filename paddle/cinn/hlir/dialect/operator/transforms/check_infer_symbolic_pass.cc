@@ -199,9 +199,10 @@ class BlockDimExprsAsserter {
     auto opt_shape_tensor_from_dim_exprs =
         BuildShapeTensorFromDataDimExprs(inputs, output, OpDimExprs4Value);
     if (!opt_shape_tensor_from_dim_exprs.has_value()) return;
+    const auto& output_dims =
+        output.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    if (::common::contain_unknown_dim(output_dims)) return;
     pir::Value flatten_output = [&] {
-      const auto& output_dims =
-          output.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
       if (output_dims.size() > 1) {
         return builder_
             .Build<paddle::dialect::FlattenOp>(

@@ -49,13 +49,13 @@ std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(
     phi::DenseTensor* tensor, int axis) const {
   PADDLE_ENFORCE_LT(axis,
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input axis is required to be less than 2."));
   auto* data = tensor->data<float>();
   const auto dims = tensor->dims();
   PADDLE_ENFORCE_EQ(dims.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input tensor's rank is required to be 2."));
 
   const int rows = static_cast<int>(dims.at(0));
@@ -106,7 +106,7 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
       auto* var = scope->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          phi::errors::NotFound(
+          common::errors::NotFound(
               "The input persistable var [%s] of [%s] op is not found.",
               var_name,
               op_desc->Type()));
@@ -143,13 +143,13 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleGruWeightScales(
   auto* wx_var = scope->FindVar(wx_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       wx_var,
-      phi::errors::NotFound("The input persistable var [%s] is not found.",
-                            wx_var_name));
+      common::errors::NotFound("The input persistable var [%s] is not found.",
+                               wx_var_name));
   auto* wh_var = scope->FindVar(wh_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       wh_var,
-      phi::errors::NotFound("The input persistable var [%s] is not found.",
-                            wh_var_name));
+      common::errors::NotFound("The input persistable var [%s] is not found.",
+                               wh_var_name));
 
   const auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
   const auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
@@ -218,10 +218,10 @@ void ComputePropagateScalesMkldnnPass::ComputeGruWeightScales(
       PADDLE_ENFORCE_EQ(
           wx_names_size,
           wh_names_size,
-          phi::errors::Fatal("Mismatch in number of weights inputs (%d "
-                             "for WeightX vs. %d for WeightH).",
-                             wx_names_size,
-                             wh_names_size));
+          common::errors::Fatal("Mismatch in number of weights inputs (%d "
+                                "for WeightX vs. %d for WeightH).",
+                                wx_names_size,
+                                wh_names_size));
       for (int i = 0; i < wx_names_size; i++) {
         auto wh_var_name = wh_var_names[i];
         auto wx_var_name = wx_var_names[i];
@@ -242,13 +242,13 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleLstmWeightScales(
   auto* wx_var = scope->FindVar(wx_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       wx_var,
-      phi::errors::NotFound("The input persistable var [%s] is not found.",
-                            wx_var_name));
+      common::errors::NotFound("The input persistable var [%s] is not found.",
+                               wx_var_name));
   auto* wh_var = scope->FindVar(wh_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       wh_var,
-      phi::errors::NotFound("The input persistable var [%s] is not found.",
-                            wh_var_name));
+      common::errors::NotFound("The input persistable var [%s] is not found.",
+                               wh_var_name));
 
   const auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
   const auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
@@ -296,10 +296,10 @@ void ComputePropagateScalesMkldnnPass::ComputeLstmWeightScales(
       PADDLE_ENFORCE_EQ(
           wx_names_size,
           wh_names_size,
-          phi::errors::Fatal("Mismatch in number of weights inputs (%d "
-                             "for WeightX vs. %d for WeightH).",
-                             wx_names_size,
-                             wh_names_size));
+          common::errors::Fatal("Mismatch in number of weights inputs (%d "
+                                "for WeightX vs. %d for WeightH).",
+                                wx_names_size,
+                                wh_names_size));
 
       for (int i = 0; i < wx_names_size; i++) {
         auto wh_var_name = wh_var_names[i];
