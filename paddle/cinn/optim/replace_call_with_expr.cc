@@ -32,8 +32,9 @@ struct ReplaceCallWithExprModifier : public ir::IRMutator<> {
  private:
   void Visit(const ir::Call *expr, Expr *op) override {
     auto *node = op->As<ir::Call>();
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         !node->name.empty(),
+        true,
         phi::errors::InvalidArgument(
             "Call node must have a name, but an empty name was found."));
 
