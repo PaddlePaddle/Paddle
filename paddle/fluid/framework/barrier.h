@@ -53,11 +53,7 @@ class Barrier {
   ~Barrier() {
 #ifdef _LINUX
     int ret = pthread_barrier_destroy(&_barrier);
-    if (ret != 0UL) {
-      std::cerr << "Fail to initialize the barrier with error code " << ret
-                << "." << std::endl;
-      exit(EXIT_FAILURE);
-    }
+    CHECK_EQ(0, ret);
 #endif
   }
   void reset(int count) {
@@ -132,11 +128,7 @@ class Semaphore {
   ~Semaphore() {
 #ifdef _LINUX
     int ret = sem_destroy(&_sem);
-    if (ret != 0UL) {
-      std::cerr << "Fail to destroy the semaphore with error code " << ret
-                << "." << std::endl;
-      exit(EXIT_FAILURE);
-    }
+    CHECK_EQ(0, ret);
 #endif
   }
   void post() {
