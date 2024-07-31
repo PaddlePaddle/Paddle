@@ -61,6 +61,7 @@ struct CanFuseReduceTreeAndTrivialMatcher {
            !node->downstream().empty() &&
            std::holds_alternative<TrivialPattern>(
                node->downstream().at(0)->stmt_pattern()) &&
+           node->downstream().at(0)->downstream().size() == 0 &&
            graph.policy_manager()
                .template GetPolicy<GeneralTopoPolicy>()
                ->CanFuse(node, node->downstream().at(0)) &&
@@ -242,10 +243,16 @@ struct HorizontalFusionConstrain {
     const auto& rhs_pattern =
         std::get<HorizontalFusionPattern>(rhs->stmt_pattern());
 
-    return graph.policy_manager().GetPolicy<GeneralTopoPolicy>()->CanFuse(
-               lhs, rhs) &&
-           IsLoopFrameworkEqual(lhs_pattern.padding_patterns_.back().pattern,
-                                rhs_pattern.padding_patterns_.back().pattern);
+    bool canfuse =
+        graph.policy_manager().GetPolicy<GeneralTopoPolicy>()->CanFuse(lhs,
+                                                                       rhs);
+    bool loop_equal =
+        IsLoopFrameworkEqual(lhs_pattern.padding_patterns_.back().pattern,
+                             rhs_pattern.padding_patterns_.back().pattern);
+    VLOG(4) << "HorizontalFusionConstrain: "
+            << "\ncanfuse: " << (canfuse ? "True" : "False")
+            << "\nloop_equal: " << (loop_equal ? "True" : "False");
+    return canfuse && loop_equal;
   }
 };
 
@@ -275,7 +282,9 @@ struct InputOutputMaximumConstrain {
     const auto& all_ops = GetAllOps(lhs, rhs);
     int input_number = GetInputValuesExceptMiddle(all_ops).size();
     int output_number = GetOutputValuesExceptMiddle(all_ops).size();
-    return input_number + output_number < MAX_INPUT_OUTPUT_NUMBER;
+    int res = input_number + output_number < MAX_INPUT_OUTPUT_NUMBER;
+    VLOG(4) << "InputOutputMaximumConstrain: " << res;
+    return res;
   }
 };
 
@@ -361,6 +370,7 @@ struct HorizontalCheckMiddleOutputVar {
     for (const auto& right_dims : right_dims_vec) {
       identical_dep &= IdenticalDepAll(graph, right_dims, left_dims_vec);
     }
+    VLOG(4) << "IdenticalDepAll: " << (identical_dep ? "True" : "False");
     return identical_dep;
   }
 };

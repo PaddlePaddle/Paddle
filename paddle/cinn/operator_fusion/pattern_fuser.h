@@ -113,10 +113,12 @@ static StmtPattern MergePatternImpl(const TrivialPattern& first,
 static StmtPattern MergePatternImpl(
     const TrivialPattern& first, const ReduceTreePlusTrivialPattern& second) {
   auto connect_ops = FindDownstreamOps(first.sink_op());
-  return ReduceTreePlusTrivialPattern(
+  auto result = ReduceTreePlusTrivialPattern(
       FusePatternIfConnected(first, second.tree, connect_ops),
       FusePatternIfConnected(first, second.sink_trivial, connect_ops),
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
+  result.fake_reduce_iter_idx = second.fake_reduce_iter_idx;
+  return result;
 }
 
 static StmtPattern MergePatternImpl(const TrivialPattern& first,

@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include <variant>
 #include "paddle/cinn/operator_fusion/cluster_interface.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/expr_utils.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -216,6 +217,19 @@ std::vector<ir::Var> GetReduceIters(const ReduceOp& op) {
   }
   VLOG(4) << "GetReduceIters";
   return AppendBound(reduce_iter_vars, _GetRootExpr(op));
+}
+
+std::vector<int> GetExpandVarPos(const ReduceOp& op) {
+  std::vector<ir::Var> all_iter_vars = GetAllForIters(_GetRootExpr(op));
+  VLOG(4) << "all_iter_vars: " << cinn::utils::Join(all_iter_vars, ", ");
+  std::vector<int> expand_pos;
+
+  for (int i = 0; i < all_iter_vars.size(); i++) {
+    if (all_iter_vars[i]->name.find("expand_var") == 0) {
+      expand_pos.push_back(i);
+    }
+  }
+  return expand_pos;
 }
 
 ir::Expr GetInitExpr(const ReduceOp& op) {
@@ -504,7 +518,7 @@ void DebugPrintReduceVar(const FusibleOp& op) {
 }
 
 std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
-  VLOG(4) << "DebugPrint Op Origin: ";
+  VLOG(4) << "Start SplitReduceOp";
   VLOG(4) << "DebugPrint Op Origin: " << _GetRootExpr(reduce_op);
   ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
   // substitude compute_body with a new init value.
@@ -559,6 +573,15 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
                  ExprSetFinderUtils::Store2Value.GetSingle(new_reduce_body));
   const auto& result_reduce = ReduceOp(CreateExprWithNewComputeBody(
       reduce_op, ExprSetFinderUtils::Store2Value.GetSingle(new_reduce_body)));
+
+  auto expand_pos = GetExpandVarPos(reduce_op);
+  if (!expand_pos.empty()) {
+    auto pad_result_trivial = std::get<TrivialOp>(
+        cinn::fusion::DoPadding(result_trivial, expand_pos).back());
+    auto pad_result_reduce = std::get<ReduceOp>(
+        cinn::fusion::DoPadding(result_reduce, expand_pos).back());
+    return std::make_pair(pad_result_trivial, pad_result_reduce);
+  }
   VLOG(4) << "SplitReduceTransform End~";
   return std::make_pair(result_trivial, result_reduce);
 }
