@@ -556,8 +556,8 @@ bool L1NormOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool L1Norm_OpInferSymbolicShape(pir::Operation *op,
-                                pir::InferSymbolicShapeContext *infer_context) {
+bool L1Norm_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   std::vector<symbol::DimExpr> output_shape;
   infer_context->SetShapeOrDataForValue(
       op->result(0),
