@@ -40,7 +40,8 @@ from pybind11_stubgen.structs import (
     Value,
 )
 
-# some invalid attr from pybind11
+# some invalid attr from pybind11.
+# the line been commented means no mapping can be found.
 PYBIND11_ATTR_MAPPING = {
     '<Precision.Float32: 0>': 'paddle.base.core.AnalysisConfig.Precision.Float32',
     '<ReduceOp.SUM: 0>': 'paddle.base.core.ReduceOp.SUM',
