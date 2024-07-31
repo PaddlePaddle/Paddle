@@ -71,7 +71,7 @@ void VisitEachInMsgOutMsgPair(const List<Index>& in_msg_indexes,
   PADDLE_ENFORCE_EQ(
       in_msg_indexes->size(),
       out_msg_indexes->size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of in_msg_indexes and out_msg_indexes should be equal, but "
           "got in_msg_indexes size = %d, out_msg_indexes size = %d.",
           in_msg_indexes->size(),

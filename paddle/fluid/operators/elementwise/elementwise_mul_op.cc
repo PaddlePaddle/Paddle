@@ -85,7 +85,7 @@ class ElementwiseMulCompositeGradOpMaker
     PADDLE_ENFORCE_EQ(
         axis,
         -1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "We only support axis = -1 in composite mul_grad but we got: ",
             axis));
     prim::multiply_grad<prim::DescTensor>(
@@ -135,12 +135,12 @@ class ElementwiseMulCompositeDoubleGradOpMaker
 
     // get attr
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    PADDLE_ENFORCE_EQ(
-        axis,
-        -1,
-        phi::errors::InvalidArgument("We only support axis = -1 in composite "
-                                     "add_doubel_grad but we got: ",
-                                     axis));
+    PADDLE_ENFORCE_EQ(axis,
+                      -1,
+                      common::errors::InvalidArgument(
+                          "We only support axis = -1 in composite "
+                          "add_doubel_grad but we got: ",
+                          axis));
 
     // get output
     paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");

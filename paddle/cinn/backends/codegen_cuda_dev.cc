@@ -123,7 +123,7 @@ std::vector<Expr> FilterDeallocTempBuffers(const std::vector<Expr> &frees) {
   for (const Expr &free : frees) {
     const ir::Free *op = free.As<ir::Free>();
     PADDLE_ENFORCE_NOT_NULL(
-        op, phi::errors::InvalidArgument("Free is not a free node"));
+        op, ::common::errors::InvalidArgument("Free is not a free node"));
     bool has_symbolic_constant = false;
     const ir::_Buffer_ *buffer = op->destination.As<ir::_Buffer_>();
     for (Expr shape : buffer->shape) {
@@ -292,7 +292,7 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Not supported OutputKind"));
+    PADDLE_THROW(::common::errors::InvalidArgument("Not supported OutputKind"));
   }
 
   if (for_nvrtc_) {
@@ -307,7 +307,7 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
   PADDLE_ENFORCE_NE(
       buffer->type(),
       Void(),
-      phi::errors::InvalidArgument("buffer type should not be void"));
+      ::common::errors::InvalidArgument("buffer type should not be void"));
   // Calculate buffer size and determine if it contains a symbolic constant
   Expr buffer_size(1);
   for (int i = 0; i < buffer->shape.size(); i++) {
@@ -378,7 +378,7 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     std::stringstream ss;
     ss << "CUDA device codegen not support memory " << buffer->name << ", type "
        << buffer->memory_type;
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 }
 

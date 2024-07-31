@@ -51,7 +51,7 @@ class IRVisitorRequireReImpl {
         std::stringstream ss;
         ss << "not supported NodeTy, the expr->node_type() = "
            << expr->node_type();
-        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+        PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 #undef __
     }
     return RetTy();

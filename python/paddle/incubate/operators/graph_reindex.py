@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 from paddle.utils import deprecated
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 @deprecated(
@@ -26,14 +33,14 @@ from paddle.utils import deprecated
     reason="paddle.incubate.graph_reindex will be removed in future",
 )
 def graph_reindex(
-    x,
-    neighbors,
-    count,
-    value_buffer=None,
-    index_buffer=None,
-    flag_buffer_hashtable=False,
-    name=None,
-):
+    x: Tensor,
+    neighbors: Tensor,
+    count: Tensor,
+    value_buffer: Tensor | None = None,
+    index_buffer: Tensor | None = None,
+    flag_buffer_hashtable: bool = False,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
     """
 
     Graph Reindex API.
@@ -89,7 +96,7 @@ def graph_reindex(
             >>> neighbors_e1 = paddle.to_tensor(neighbors_e1, dtype="int64")
             >>> count_e1 = paddle.to_tensor(count_e1, dtype="int32")
 
-            >>> reindex_src, reindex_dst, out_nodes = paddle.incubate.graph_reindex(
+            >>> reindex_src, reindex_dst, out_nodes = paddle.incubate.graph_reindex(  # type: ignore[operator]
             ...     x,
             ...     neighbors_e1,
             ...     count_e1,
@@ -111,7 +118,11 @@ def graph_reindex(
 
             >>> neighbors = paddle.concat([neighbors_e1, neighbors_e2])
             >>> count = paddle.concat([count_e1, count_e2])
-            >>> reindex_src, reindex_dst, out_nodes = paddle.incubate.graph_reindex(x, neighbors, count)
+            >>> reindex_src, reindex_dst, out_nodes = paddle.incubate.graph_reindex(  # type: ignore[operator]
+            ...     x,
+            ...     neighbors,
+            ...     count,
+            ... )
             >>> print(reindex_src)
             Tensor(shape=[12], dtype=int64, place=Place(cpu), stop_gradient=True,
             [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1])

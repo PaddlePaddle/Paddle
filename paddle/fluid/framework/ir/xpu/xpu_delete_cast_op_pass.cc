@@ -390,7 +390,7 @@ int XpuDeleteCastOpPass::ApplyCastCacheKVInitializationPass(
 
 void XpuDeleteCastOpPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   if (!graph->IsMainGraph()) {
     VLOG(3) << "'xpu_delete_cast_op_pass' needs info in all "
                "graphs, so it "

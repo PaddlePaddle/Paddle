@@ -75,6 +75,7 @@ message MpConfig {
     optional bool need_broadcast_data = 8 [default = true];
     // Recompute AllGather in forward of ColumnSequenceParallelLinear to reduce the memory usage.
     optional bool recompute_allgather = 9 [default = false];
+    optional bool sp_async_reduce_scatter = 10 [default = false];
 }
 
 message PpConfig {

@@ -188,7 +188,7 @@ List<int> GetReduceAxis(const List<ScheduleDim>& loop_sizes) {
     } else if (sched_dim.Has<tInjective<LoopSize>>()) {
       // do nothing
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Dead code"));
+      PADDLE_THROW(::common::errors::Fatal("Dead code"));
     }
   }
   return reduce_axis;
@@ -203,7 +203,7 @@ List<int> GetInjectiveAxis(const List<ScheduleDim>& loop_sizes) {
     } else if (sched_dim.Has<tInjective<LoopSize>>()) {
       injective_axis->emplace_back(i);
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Dead code"));
+      PADDLE_THROW(::common::errors::Fatal("Dead code"));
     }
   }
   return injective_axis;

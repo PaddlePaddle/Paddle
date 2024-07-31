@@ -453,6 +453,8 @@ class ProgramHelper:
                 # Release the reduntant params
                 param.get_tensor()._clear()
                 continue
+            if not param._is_initialized():
+                continue
             if param.is_dense():
                 # get param_var's dist_attr
                 var = main_program.global_block().vars[param.name]

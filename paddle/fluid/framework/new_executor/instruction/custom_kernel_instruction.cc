@@ -36,7 +36,7 @@ void CustomKernelInstruction::BuildCustomContext(
       // make sure ctx has valid inplace optional outputs
       PADDLE_ENFORCE(
           paddle::framework::detail::IsOptionalVar(pair.second),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Custom operator couldn't find custom output name for %s. If "
               "you are using inplace optional inputs & outputs, please "
               "check "
@@ -63,7 +63,7 @@ void CustomKernelInstruction::BuildCustomContext(
     PADDLE_ENFORCE_EQ(
         name2id.count(t),
         true,
-        phi::errors::NotFound("param [%s] MUST in name2id map", t));
+        common::errors::NotFound("param [%s] MUST in name2id map", t));
 
     pir::Value ptr = op_->operand_source(op_yaml_info.InputName2Id().at(t));
     if (!IsInvalid(ptr)) {
@@ -94,7 +94,7 @@ void CustomKernelInstruction::BuildCustomContext(
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
     auto var = inner_scope->FindVar(in_var_name);
     if (var->IsType<phi::DenseTensor>()) {
@@ -127,7 +127,7 @@ void CustomKernelInstruction::BuildCustomContext(
           custom_in.set_impl(tensor_in);
           vec_custom_in.push_back(std::move(custom_in));
         } else {
-          PADDLE_THROW(phi::errors::Unimplemented(
+          PADDLE_THROW(common::errors::Unimplemented(
               "Only support Vector<DenseTensor> and vector<SelectedRows> now, "
               "not support vector<%d>.",
               variable_array[i]->Type()));
@@ -138,19 +138,19 @@ void CustomKernelInstruction::BuildCustomContext(
       vec_input_ptrs_.push_back(vec_input_ptrs);
       custom_kernel_ctx_.EmplaceBackInputs(vec_custom_in);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented("Not support var type [%d] ",
-                                              var->Type()));
+      PADDLE_THROW(common::errors::Unimplemented("Not support var type [%d] ",
+                                                 var->Type()));
     }
   }
   // EmplaceBackAttributes
   auto& vec_attr_params = op_yaml_info.AttrParams(true);
   for (auto& t : vec_attr_params) {
-    PADDLE_ENFORCE_NE(
-        attr_map.find(t),
-        attr_map.end(),
-        phi::errors::NotFound("Not found %s in attr_map, it maybe need mapping "
-                              "it in OpTranslator.",
-                              t));
+    PADDLE_ENFORCE_NE(attr_map.find(t),
+                      attr_map.end(),
+                      common::errors::NotFound(
+                          "Not found %s in attr_map, it maybe need mapping "
+                          "it in OpTranslator.",
+                          t));
     auto& attr_type_name = op_yaml_info.AttrTypeName(t);
     if (attr_type_name == "pir::Int32Attribute") {
       custom_attrs_.push_back(
@@ -189,7 +189,7 @@ void CustomKernelInstruction::BuildCustomContext(
         PADDLE_ENFORCE_EQ(
             array_list[0].isa<pir::Int32Attribute>(),
             true,
-            phi::errors::Unimplemented(
+            common::errors::Unimplemented(
                 "the 0th elementwise MUST be pir::Int32Attribute"));
         for (size_t i = 0; i < array_list.size(); ++i) {
           vec_res.push_back(
@@ -209,8 +209,8 @@ void CustomKernelInstruction::BuildCustomContext(
           }
 
         } else {
-          PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                                  attr_type_name));
+          PADDLE_THROW(common::errors::Unimplemented(
+              "attr type not support [%s] ", attr_type_name));
         }
       }
       custom_attrs_.push_back(vec_res);
@@ -223,7 +223,7 @@ void CustomKernelInstruction::BuildCustomContext(
         PADDLE_ENFORCE_EQ(
             array_list[0].isa<pir::Int64Attribute>(),
             true,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "Element in array list MUST be pir::Int64Attribute "));
 
         for (size_t i = 0; i < array_list.size(); ++i) {
@@ -241,7 +241,7 @@ void CustomKernelInstruction::BuildCustomContext(
         PADDLE_ENFORCE_EQ(
             array_list[0].isa<pir::StrAttribute>(),
             true,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "Element in array list MUST be pir::StrAttribute "));
 
         for (size_t i = 0; i < array_list.size(); ++i) {
@@ -253,8 +253,8 @@ void CustomKernelInstruction::BuildCustomContext(
       custom_kernel_ctx_.EmplaceBackAttr(vec_res);
 
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                              attr_type_name));
+      PADDLE_THROW(common::errors::Unimplemented("attr type not support [%s] ",
+                                                 attr_type_name));
     }
     VLOG(6) << "ctx->EmplaceBackAttr: " << t;
   }
@@ -268,7 +268,7 @@ void CustomKernelInstruction::BuildCustomContext(
       PADDLE_ENFORCE(
           paddle::framework::detail::IsOptionalVar(out_name) &&
               !inplace_id_map.empty(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Custom operator couldn't find custom output for name %s. If "
               "you "
               "are using inplace optional inputs & outputs, please check "
@@ -309,7 +309,7 @@ void CustomKernelInstruction::BuildCustomContext(
       std::vector<paddle::Tensor> custom_vec_out;
       PADDLE_ENFORCE(
           !inplace_id_map.empty() || (i == 0UL && op_->num_results() == 1UL),
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "If custom operator's outputs contains `paddle::Vec()` type "
               "without setting InplaceMap, it only can hold one output."));
       for (size_t j = 0; j < variable_array.size(); ++j) {
@@ -325,7 +325,7 @@ void CustomKernelInstruction::BuildCustomContext(
           custom_out.set_impl(tensor_out);
           custom_vec_out.push_back(std::move(custom_out));
         } else {
-          PADDLE_THROW(phi::errors::Unimplemented(
+          PADDLE_THROW(common::errors::Unimplemented(
               "Only support Vector<DenseTensor> now, "
               "not support vector<%d>.",
               variable_array[j]->Type()));
@@ -335,8 +335,8 @@ void CustomKernelInstruction::BuildCustomContext(
               << value_exec_info_.GetVarName(out_ptr);
       custom_kernel_ctx_.EmplaceBackOutputs(custom_vec_out);
     } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("only support DenseTensor and vector "));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "only support DenseTensor and vector "));
     }
   }
 
@@ -383,7 +383,7 @@ CustomKernelInstruction::CustomKernelInstruction(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
   PADDLE_ENFORCE_NOT_NULL(
       yaml_interface,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", custom_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(custom_op_name_),
@@ -440,7 +440,7 @@ void CustomKernelInstruction::UpdateOutputMeta(
   PADDLE_ENFORCE_EQ(
       output_shapes.size(),
       cache_out_ptrs_.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of output shapes after running custom operator's "
           "InferShapeFunc is wrong, "
           "expected contains %d Tensors' shape, but actually contains %d "
@@ -451,7 +451,7 @@ void CustomKernelInstruction::UpdateOutputMeta(
   PADDLE_ENFORCE_EQ(
       output_dtypes.size(),
       cache_out_ptrs_.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of output dtypes after running custom operator's "
           "InferDtypeFunc is wrong, "
           "expected contains %d Tensors' dtype, but actually contains %d "
