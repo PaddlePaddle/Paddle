@@ -16,8 +16,6 @@ import logging
 import os
 import sys
 
-
-
 import numpy as np
 
 current_dir = os.path.dirname(os.path.abspath(__file__))

@@ -30,9 +30,11 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
+
 #include "paddle/fluid/platform/tensorrt/helper.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -43,6 +45,10 @@ COMMON_DECLARE_bool(trt_ibuilder_cache);
 
 namespace paddle {
 namespace platform {
+
+namespace plugin {
+class PluginTensorRT;
+}  // namespace plugin
 
 // The code is mainly from TensorRT, thanks to the project.
 class TrtCudaGraph {
@@ -142,6 +148,10 @@ class TensorRTEngine {
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : params_(params), logger_(logger) {
     dy::initLibNvInferPlugins(&logger_, "");
+    static std::once_flag trt_plugin_registered;
+    std::call_once(trt_plugin_registered, []() {
+      paddle::inference::tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
+    });
   }
 
   // Add an input and set its name, data type and dimension.

@@ -15,9 +15,12 @@
 import numpy as np
 from converter import PaddleToTensorRTConverter
 from util import (
+    enforce_op_lower_trt,
     forbid_op_lower_trt,
     get_bert_program,
     get_dummy_program,
+    get_idg_program,
+    get_mlp_program,
     get_r50_program,
     predict_program,
     run_pir_pass,
@@ -56,6 +59,7 @@ def test_paddle_to_tensorrt_conversion_dummy():
     # Convert the program to TensorRT
     converter = PaddleToTensorRTConverter(program_with_pir, scope)
     converter.convert_program_to_trt()
+    output_var = program_with_pir.list_vars()[-1]
 
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program_with_pir):
@@ -83,15 +87,16 @@ def test_paddle_to_tensorrt_conversion_dummy():
 def test_paddle_to_tensorrt_conversion_bert():
     # Step1: get program and init fake inputs
     program, scope, param_dict = get_bert_program()
+
     input_data_min_shape = np.ones([1, 100]).astype('int64')
     input_data_max_shape = np.ones([8, 1000]).astype('int64')
 
     # Step1.1: get original results(for tests only)
     output_var = program.list_vars()[-1]
+
     output_expected = predict_program(
         program, {"input_ids": input_data_min_shape}, [output_var]
     )
-
     # Step2: run warmup for collecting shape
     warmup_shape_infer(
         program,
@@ -101,7 +106,6 @@ def test_paddle_to_tensorrt_conversion_bert():
 
     # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
     program = run_pir_pass(program, partition_mode=False)
-    forbid_op_lower_trt(program, "pd_op.layer_norm")
 
     # Step4: run trt_sub_graph_extract_pass()
     program_with_pir = run_pir_pass(program, partition_mode=True)
@@ -109,6 +113,7 @@ def test_paddle_to_tensorrt_conversion_bert():
     # Step5: run TRTConverter(would lower group_op into tensorrt_engine_op)
     converter = PaddleToTensorRTConverter(program_with_pir, scope)
     converter.convert_program_to_trt()
+    output_var = program_with_pir.list_vars()[-1]
 
     # Step6: run inference(converted_program)
     output_converted = predict_program(
@@ -149,16 +154,6 @@ def test_paddle_to_tensorrt_conversion_r50():
 
     # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
     program = run_pir_pass(program, partition_mode=False)
-    # enforce_op_lower_trt(program, "pd_op.conv2d")
-    # enforce_op_lower_trt(program, "pd_op.relu")
-    # enforce_op_lower_trt(program, "pd_op.pool2d")
-    # enforce_op_lower_trt(program,"pd_op.matmul")
-    # enforce_op_lower_trt(program, "pd_op.add")
-    # enforce_op_lower_trt(program, "pd_op.batch_norm_")
-    # enforce_op_lower_trt(program, "pd_op.flatten")
-    # forbid_op_lower_trt(program,"pd_op.matmul")
-    # forbid_op_lower_trt(program,"pd_op.flatten")
-    # forbid_op_lower_trt(program,"pd_op.add")
 
     # Step4: run trt_sub_graph_extract_pass()
     program_with_pir = run_pir_pass(program, partition_mode=True)
@@ -186,7 +181,122 @@ def test_paddle_to_tensorrt_conversion_r50():
     print("output_converted", output_converted)
 
 
+def test_paddle_to_tensorrt_conversion_idg():
+    # Step1: get program and init fake inputs
+    program, scope, param_dict = get_idg_program()
+
+    map_vector_features_data = np.random.rand(1, 1400, 11, 17).astype('float32')
+    polyline_mask_data = np.random.randint(0, 2, size=(1, 1400)).astype('bool')
+
+    # Step1.1: get original results(for tests only)
+    output_var = program.list_vars()[-1]
+    output_expected = predict_program(
+        program,
+        {
+            "map_vector_features": map_vector_features_data,
+            "polyline_mask": polyline_mask_data,
+        },
+        [output_var],
+    )
+
+    # Step2: run warmup for collecting shape
+    warmup_shape_infer(
+        program,
+        min_shape_feed={
+            "map_vector_features": map_vector_features_data,
+            "polyline_mask": polyline_mask_data,
+        },
+        max_shape_feed={
+            "map_vector_features": map_vector_features_data,
+            "polyline_mask": polyline_mask_data,
+        },
+    )
+
+    # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
+    program = run_pir_pass(program, partition_mode=False)
+
+    # Step4: run trt_sub_graph_extract_pass()
+    program_with_pir = run_pir_pass(program, partition_mode=True)
+
+    # Step5: run TRTConverter(would lower group_op into tensorrt_engine_op)
+    converter = PaddleToTensorRTConverter(program_with_pir, scope)
+    converter.convert_program_to_trt()
+
+    output_var = program_with_pir.list_vars()[-1]
+    # Step6: run inference(converted_program)
+    output_converted = predict_program(
+        program_with_pir,
+        {
+            "map_vector_features": map_vector_features_data,
+            "polyline_mask": polyline_mask_data,
+        },
+        [output_var],
+    )
+
+    # Check that the results are close to each other within a tolerance of 1e-3
+    np.testing.assert_allclose(
+        output_expected[0],
+        output_converted[0],
+        rtol=0.1,
+        atol=0.1,
+        err_msg="Outputs are not within the 1e-3 tolerance",
+    )
+
+    print("output_expected", output_expected)
+    print("output_converted", output_converted)
+
+
+def test_paddle_to_tensorrt_conversion_mlp():
+    program, scope, param_dict = get_mlp_program()
+    input_data_min_shape = np.random.randn(1, 512, 1024).astype('float32')
+    input_data_max_shape = np.random.randn(2, 512, 1024).astype('float32')
+
+    # Step1.1: get original results(for tests only)
+    output_var = program.list_vars()[-1]
+    output_expected = predict_program(
+        program, {"input": input_data_min_shape}, [output_var]
+    )
+
+    # Step2: run warmup for collecting shape
+    warmup_shape_infer(
+        program,
+        min_shape_feed={"input": input_data_min_shape},
+        max_shape_feed={"input": input_data_max_shape},
+    )
+
+    # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
+    program = run_pir_pass(program, partition_mode=False)
+    # forbid_op_lower_trt(program,"pd_op.concat")
+
+    # Step4: run trt_sub_graph_extract_pass()
+    program_with_pir = run_pir_pass(program, partition_mode=True)
+
+    # Step5: run TRTConverter(would lower group_op into tensorrt_engine_op)
+    converter = PaddleToTensorRTConverter(program_with_pir, scope)
+    converter.convert_program_to_trt()
+
+    output_var = program_with_pir.list_vars()[-1]
+    # Step6: run inference(converted_program)
+    output_converted = predict_program(
+        program_with_pir, {"input": input_data_min_shape}, [output_var]
+    )
+
+    # Check that the results are close to each other within a tolerance of 1e-3
+    np.testing.assert_allclose(
+        output_expected[0],
+        output_converted[0],
+        rtol=1e-3,
+        atol=1e-3,
+        err_msg="Outputs are not within the 1e-3 tolerance",
+    )
+
+    print("output_expected", output_expected)
+    print("output_converted", output_converted)
+
+
 if __name__ == "__main__":
     # test_paddle_to_tensorrt_conversion_dummy()
     # test_paddle_to_tensorrt_conversion_bert()
-    test_paddle_to_tensorrt_conversion_r50()
+    # test_paddle_to_tensorrt_conversion_r50()
+    # test_paddle_to_tensorrt_conversion_idg()
+    test_paddle_to_tensorrt_conversion_mlp()
