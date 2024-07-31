@@ -86,9 +86,10 @@ struct DimExprToIrExprVisitor {
 
   ir::Expr operator()(const Max<DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    PADDLE_ENFORCE_EQ(!operands->empty(),
-                      true,
-                      phi::errors::InvalidArgument("operands is empty"));
+    PADDLE_ENFORCE_EQ(
+        !operands->empty(),
+        true,
+        phi::errors::InvalidArgument("The value in dim_expr is empty"));
     ir::Expr max = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
       max = ir::Max::Make(max, ConvertToIrExpr(operands->at(i)));
@@ -98,9 +99,10 @@ struct DimExprToIrExprVisitor {
 
   ir::Expr operator()(const Min<DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    PADDLE_ENFORCE_EQ(!operands->empty(),
-                      true,
-                      phi::errors::InvalidArgument("operands is empty"));
+    PADDLE_ENFORCE_EQ(
+        !operands->empty(),
+        true,
+        phi::errors::InvalidArgument("The value in dim_expr is empty"));
     ir::Expr min = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
       min = ir::Min::Make(min, ConvertToIrExpr(operands->at(i)));
@@ -111,9 +113,10 @@ struct DimExprToIrExprVisitor {
   // convert Broadcast to Max
   ir::Expr operator()(const Broadcast<DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    PADDLE_ENFORCE_EQ(!operands->empty(),
-                      true,
-                      phi::errors::InvalidArgument("operands is empty"));
+    PADDLE_ENFORCE_EQ(
+        !operands->empty(),
+        true,
+        phi::errors::InvalidArgument("The value in dim_expr is empty"));
     ir::Expr max = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
       max = ir::Max::Make(max, ConvertToIrExpr(operands->at(i)));

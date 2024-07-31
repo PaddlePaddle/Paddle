@@ -37,12 +37,13 @@ GetSubReshapeDimRanges(const List<DimExpr>& lhs_dims,
   if (GetNumel(lhs_dims) != GetNumel(rhs_dims)) {
     return std::nullopt;
   }
-  PADDLE_ENFORCE_EQ(!lhs_dims->empty(),
-                    true,
-                    phi::errors::InvalidArgument("lhs_dims is empty"));
+  PADDLE_ENFORCE_EQ(
+      !lhs_dims->empty(),
+      true,
+      phi::errors::InvalidArgument("Sorry,but lhs_dims is empty"));
   PADDLE_ENFORCE_EQ(!rhs_dims->empty(),
                     true,
-                    phi::errors::InvalidArgument("rhs_dims is empty"));
+                    phi::errors::InvalidArgument("Sory,but rhs_dims is empty"));
   std::vector<std::pair<int, int>> lhs_ranges{};
   std::vector<std::pair<int, int>> rhs_ranges{};
   int lhs_start = 0;

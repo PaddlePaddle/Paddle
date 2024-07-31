@@ -101,7 +101,8 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
           store_node, phi::errors::InvalidArgument("store_node is nullptr"));
       auto* tensor = store_node->tensor.As<ir::_Tensor_>();
       PADDLE_ENFORCE_NOT_NULL(
-          tensor, phi::errors::InvalidArgument("tensor is nullptr"));
+          tensor,
+          phi::errors::InvalidArgument("Sorry,but store_node is nullptr"));
       VLOG(3) << "In store_exprs, its name is : " << tensor->name;
       PADDLE_ENFORCE_EQ(
           tensor->buffer.defined(),
@@ -194,7 +195,8 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
           });
       PADDLE_ENFORCE_EQ(it != args.end(),
                         true,
-                        phi::errors::InvalidArgument("it is not end"));
+                        phi::errors::InvalidArgument(
+                            "it which refers to first element should be end"));
       if (it->is_input()) {
         args.erase(it);
       } else if (it->is_output()) {

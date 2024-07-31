@@ -127,12 +127,14 @@ GetArgStaticDimT MakeGetterArgStaticDim(const List<Tensor>& tensors) {
   return [=](std::size_t tensor_idx,
              std::size_t dim_idx) -> std::optional<std::int64_t> {
     const auto& opt_expr = GetArgDim(tensors, tensor_idx, dim_idx);
-    PADDLE_ENFORCE_EQ(opt_expr.has_value(),
-                      true,
-                      phi::errors::InvalidArgument("opt_expr is empty"));
+    PADDLE_ENFORCE_EQ(
+        opt_expr.has_value(),
+        true,
+        phi::errors::InvalidArgument("Sorry,but opt_expr don't has value"));
     PADDLE_ENFORCE_EQ(opt_expr.value().Has<std::int64_t>(),
                       true,
-                      phi::errors::InvalidArgument("opt_expr is not int64_t"));
+                      phi::errors::InvalidArgument(
+                          "Sorry,but opt_expr should has value int64_t"));
     return opt_expr.value().Get<std::int64_t>();
   };
 }
