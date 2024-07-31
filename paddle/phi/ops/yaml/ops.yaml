@@ -2444,6 +2444,7 @@
     data_type : x
   inplace : (x -> out)
   backward : index_add_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_put
   args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
@@ -2455,6 +2456,7 @@
     data_type : x
   inplace : (x -> out)
   backward : index_put_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_sample
   args : (Tensor x, Tensor index)
