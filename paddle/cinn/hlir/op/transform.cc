@@ -75,7 +75,6 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
         phi::errors::InvalidArgument("the size of pack_args should be greater "
                                      "than or equal to 2, but got %d.",
                                      pack_args.size()));
-    () << "at least 2 input tensors for Matmul compute\n";
     Expr A = pack_args[0];
     Expr B = pack_args[1];
     PADDLE_ENFORCE_NOT_NULL(A.as_tensor(),
@@ -502,7 +501,7 @@ std::shared_ptr<OpStrategy> StrategyForMul(
         !args.empty(),
         true,
         phi::errors::InvalidArgument("The input argument of matmul schedule is "
-                                     "empty! Please check.\n", ));
+                                     "empty! Please check.\n"));
     CINNValuePack arg_pack = args[0];
     std::vector<CINNValue> results =
         pe::IRGpuScheduleMatMul(arg_pack, output_shape, target);
