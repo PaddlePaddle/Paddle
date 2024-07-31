@@ -648,6 +648,13 @@ def _pir_parse_program(
             new_grad = paddle._C_ops.scale_(new_grad, 1.0 / k_steps, 0.0, False)
             new_grad.get_defining_op().op_role = int(OpRole.Optimize)
 
+        # Note(luchang): paddle._C_ops.scale_ will insert two ops: full and scale.
+        # The full op can not get from the get_defining_op(), so we need to set the op_role for the full op.
+        for op in reversed(main_block.ops):
+            if op.op_role == int(OpRole.Backward):
+                break
+            op.op_role = int(OpRole.Optimize)
+
 
 @register_pass("auto_parallel_gradient_merge_pass")
 class GradientMergePass(PassBase):
