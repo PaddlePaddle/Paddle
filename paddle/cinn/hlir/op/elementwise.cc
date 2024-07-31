@@ -164,11 +164,10 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
                           pack_args[1]));
     std::string tensor_name = pack_args[1].operator std::string();
     Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument("The pack_args[0] should be "
-                                                   "tensor! Please check.",
-                                                   op_name));
+    PADDLE_ENFORCE(A_expr.as_tensor(),
+                   phi::errors::InvalidArgument("The pack_args[0] should be "
+                                                "tensor! Please check.",
+                                                op_name));
     ir::Tensor A = A_expr.as_tensor_ref();
     auto out = pe_func(A, tensor_name);
     std::vector<CINNValue> res;
@@ -203,67 +202,66 @@ std::shared_ptr<OpStrategy> StrategyForScale(
       bias_after_scale = absl::get<bool>(iter.second);
     }
   }
-  framework::CINNCompute scale_compute([=](lang::Args args,
-                                           lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        !args.empty(),
-        true,
-        phi::errors::InvalidArgument("The input argument of scale compute "
-                                     "is empty! Please check."));
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_EQ(
-        !pack_args.empty(),
-        true,
-        phi::errors::InvalidArgument("The input tensors of scale compute "
-                                     "is empty! Please check."));
-    Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] is not a tensor! Please check."));
-    ir::Tensor A = A_expr.as_tensor_ref();
-    ir::Tensor out;
-    PADDLE_ENFORCE_EQ(
-        pack_args.size(),
-        2,
-        phi::errors::InvalidArgument("the size of pack_args should be "
-                                     "equal to 2, but got %d.",
-                                     pack_args.size()));
-    PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "the type of pack_args[1] should be string! "
-                          "Please check."));
-    std::string tensor_name = pack_args[1].operator std::string();
+  framework::CINNCompute scale_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        PADDLE_ENFORCE_EQ(
+            !args.empty(),
+            true,
+            phi::errors::InvalidArgument("The input argument of scale compute "
+                                         "is empty! Please check."));
+        CINNValuePack pack_args = args[0];
+        PADDLE_ENFORCE_EQ(
+            !pack_args.empty(),
+            true,
+            phi::errors::InvalidArgument("The input tensors of scale compute "
+                                         "is empty! Please check."));
+        Expr A_expr = pack_args[0];
+        PADDLE_ENFORCE(A_expr.as_tensor(),
+                       phi::errors::InvalidArgument(
+                           "The pack_args[0] is not a tensor! Please check."));
+        ir::Tensor A = A_expr.as_tensor_ref();
+        ir::Tensor out;
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2,
+            phi::errors::InvalidArgument("the size of pack_args should be "
+                                         "equal to 2, but got %d.",
+                                         pack_args.size()));
+        PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "the type of pack_args[1] should be string! "
+                              "Please check."));
+        std::string tensor_name = pack_args[1].operator std::string();
 
-    // Paddle upscale float16 or bfloat16 compute to float32,
-    // we made CINN consistent with this behavior of Paddle
-    bool should_upscale_fp32 =
-        A->type() == cinn::common::F16() || A->type() == cinn::common::BF16();
+        // Paddle upscale float16 or bfloat16 compute to float32,
+        // we made CINN consistent with this behavior of Paddle
+        bool should_upscale_fp32 = A->type() == cinn::common::F16() ||
+                                   A->type() == cinn::common::BF16();
 
-    out = Compute(
-        A->shape,
-        [=](const std::vector<Expr> &indice) {
-          Expr cast_scale = should_upscale_fp32
-                                ? Expr(scale)
-                                : ir::Cast::Make(A->type(), Expr(scale));
-          Expr cast_bias = should_upscale_fp32
-                               ? Expr(bias)
-                               : ir::Cast::Make(A->type(), Expr(bias));
-          Expr cast_A_indice =
-              should_upscale_fp32
-                  ? ir::Cast::Make(cinn::common::F32(), A(indice))
-                  : A(indice);
-          Expr add_result = bias_after_scale
-                                ? cast_scale * cast_A_indice + cast_bias
-                                : cast_scale * (cast_A_indice + cast_bias);
-          return should_upscale_fp32 ? ir::Cast::Make(A->type(), add_result)
-                                     : add_result;
-        },
-        tensor_name);
+        out = Compute(
+            A->shape,
+            [=](const std::vector<Expr> &indice) {
+              Expr cast_scale = should_upscale_fp32
+                                    ? Expr(scale)
+                                    : ir::Cast::Make(A->type(), Expr(scale));
+              Expr cast_bias = should_upscale_fp32
+                                   ? Expr(bias)
+                                   : ir::Cast::Make(A->type(), Expr(bias));
+              Expr cast_A_indice =
+                  should_upscale_fp32
+                      ? ir::Cast::Make(cinn::common::F32(), A(indice))
+                      : A(indice);
+              Expr add_result = bias_after_scale
+                                    ? cast_scale * cast_A_indice + cast_bias
+                                    : cast_scale * (cast_A_indice + cast_bias);
+              return should_upscale_fp32 ? ir::Cast::Make(A->type(), add_result)
+                                         : add_result;
+            },
+            tensor_name);
 
-    *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
-  });
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
+      });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(scale_compute,
@@ -292,67 +290,66 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
       bias_after_scale = absl::get<bool>(iter.second);
     }
   }
-  framework::CINNCompute scale_compute([=](lang::Args args,
-                                           lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(!args.empty(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The input argument of scale compute is empty! "
-                          "Please check."));
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_EQ(!pack_args.empty(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The input tensors of scale compute is empty! "
-                          "Please check."));
-    Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] is not a tensor! Please check."));
-    ir::Tensor A = A_expr.as_tensor_ref();
-    ir::Tensor out;
-    PADDLE_ENFORCE_EQ(
-        pack_args.size(),
-        2,
-        phi::errors::InvalidArgument("the size of pack_args should be "
-                                     "equal to 2, but got %d.",
-                                     pack_args.size()));
-    PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "the type of pack_args[1] should be string! "
-                          "Please check."));
-    std::string tensor_name = pack_args[1].operator std::string();
+  framework::CINNCompute scale_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        PADDLE_ENFORCE_EQ(!args.empty(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "The input argument of scale compute is empty! "
+                              "Please check."));
+        CINNValuePack pack_args = args[0];
+        PADDLE_ENFORCE_EQ(!pack_args.empty(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "The input tensors of scale compute is empty! "
+                              "Please check."));
+        Expr A_expr = pack_args[0];
+        PADDLE_ENFORCE(A_expr.as_tensor(),
+                       phi::errors::InvalidArgument(
+                           "The pack_args[0] is not a tensor! Please check."));
+        ir::Tensor A = A_expr.as_tensor_ref();
+        ir::Tensor out;
+        PADDLE_ENFORCE_EQ(
+            pack_args.size(),
+            2,
+            phi::errors::InvalidArgument("the size of pack_args should be "
+                                         "equal to 2, but got %d.",
+                                         pack_args.size()));
+        PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "the type of pack_args[1] should be string! "
+                              "Please check."));
+        std::string tensor_name = pack_args[1].operator std::string();
 
-    // Paddle upscale float16 or bfloat16 compute to float32,
-    // we made CINN consistent with this behavior of Paddle
-    bool should_upscale_fp32 =
-        A->type() == cinn::common::F16() || A->type() == cinn::common::BF16();
+        // Paddle upscale float16 or bfloat16 compute to float32,
+        // we made CINN consistent with this behavior of Paddle
+        bool should_upscale_fp32 = A->type() == cinn::common::F16() ||
+                                   A->type() == cinn::common::BF16();
 
-    out = Compute(
-        A->shape,
-        [=](const std::vector<Expr> &indice) {
-          Expr cast_scale = should_upscale_fp32
-                                ? Expr(scale)
-                                : ir::Cast::Make(A->type(), Expr(scale));
-          Expr cast_bias = should_upscale_fp32
-                               ? Expr(bias)
-                               : ir::Cast::Make(A->type(), Expr(bias));
-          Expr cast_A_indice =
-              should_upscale_fp32
-                  ? ir::Cast::Make(cinn::common::F32(), A(indice))
-                  : A(indice);
-          Expr add_result = bias_after_scale
-                                ? cast_scale * cast_A_indice + cast_bias
-                                : cast_scale * (cast_A_indice + cast_bias);
-          return should_upscale_fp32 ? ir::Cast::Make(A->type(), add_result)
-                                     : add_result;
-        },
-        tensor_name);
+        out = Compute(
+            A->shape,
+            [=](const std::vector<Expr> &indice) {
+              Expr cast_scale = should_upscale_fp32
+                                    ? Expr(scale)
+                                    : ir::Cast::Make(A->type(), Expr(scale));
+              Expr cast_bias = should_upscale_fp32
+                                   ? Expr(bias)
+                                   : ir::Cast::Make(A->type(), Expr(bias));
+              Expr cast_A_indice =
+                  should_upscale_fp32
+                      ? ir::Cast::Make(cinn::common::F32(), A(indice))
+                      : A(indice);
+              Expr add_result = bias_after_scale
+                                    ? cast_scale * cast_A_indice + cast_bias
+                                    : cast_scale * (cast_A_indice + cast_bias);
+              return should_upscale_fp32 ? ir::Cast::Make(A->type(), add_result)
+                                         : add_result;
+            },
+            tensor_name);
 
-    *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
-  });
+        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
+      });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(scale_compute, lang::PackedFunc(), "strategy.scale.x86", 1);
@@ -784,10 +781,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
                                      "equal to 1, but got %d.",
                                      pack_args.size()));
     Expr A = pack_args[0];
-    PADDLE_ENFORCE_EQ(A.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[0] should be tensor! Please check."));
     PADDLE_ENFORCE_EQ(
         !output_shapes.empty(),
         true,
@@ -850,10 +846,9 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
             "the input_size should be greater than or equal to 1, but got %d",
             input_size));
     Expr x = input_args[0];
-    PADDLE_ENFORCE_EQ(x.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The input_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(x.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The input_args[0] should be tensor! Please check."));
 
     PADDLE_ENFORCE_EQ(
         input_args.size(),
@@ -904,10 +899,9 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
                           "equal to 1, but got %d.",
                           pack_args.size()));
     Expr A = pack_args[0];
-    PADDLE_ENFORCE_EQ(A.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[0] should be tensor! Please check."));
     PADDLE_ENFORCE_EQ(
         !output_shapes.empty(),
         true,
@@ -975,10 +969,9 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
                           "equal to 1, but got %d.",
                           pack_args.size()));
     Expr A = pack_args[0];
-    PADDLE_ENFORCE_EQ(A.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[0] should be tensor! Please check."));
     PADDLE_ENFORCE_EQ(
         !output_shapes.empty(),
         true,
@@ -1043,10 +1036,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForCast(
                           "equal to 1, but got %d.",
                           pack_args.size()));
     Expr A = pack_args[0];
-    PADDLE_ENFORCE_EQ(A.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[0] should be tensor! Please check."));
     PADDLE_ENFORCE_EQ(!output_shapes.empty(),
                       true,
                       phi::errors::InvalidArgument(
@@ -1100,10 +1092,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForCastSymbolic(
                           "equal to 1, but got %d.",
                           pack_args.size()));
     Expr A = pack_args[0];
-    PADDLE_ENFORCE_EQ(A.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[0] should be tensor! Please check."));
     PADDLE_ENFORCE_EQ(!output_shapes.empty(),
                       true,
                       phi::errors::InvalidArgument(
@@ -1155,10 +1146,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStore(
                           pack_args.size()));
 
     Expr A = pack_args[0];
-    PADDLE_ENFORCE_EQ(A.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[0] should be tensor! Please check."));
     PADDLE_ENFORCE_EQ(!output_shapes.empty(),
                       true,
                       phi::errors::InvalidArgument(
@@ -1212,10 +1202,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStoreSymbolic(
                           "equal to 1, but got %d.",
                           pack_args.size()));
     Expr A = pack_args[0];
-    PADDLE_ENFORCE_EQ(A.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[0] should be tensor! Please check."));
     PADDLE_ENFORCE_EQ(!output_shapes.empty(),
                       true,
                       phi::errors::InvalidArgument(
@@ -1552,15 +1541,13 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssignOutSymbolic(
                                      "equal to 3, but got %d.",
                                      pack_args.size()));
     Expr x = pack_args[0];
-    PADDLE_ENFORCE_EQ(x.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(x.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[0] should be tensor! Please check."));
     Expr out = pack_args[1];
-    PADDLE_ENFORCE_EQ(out.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[1] should be tensor! Please check."));
+    PADDLE_ENFORCE(out.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[1] should be tensor! Please check."));
     PADDLE_ENFORCE_EQ(!output_shapes.empty(),
                       true,
                       phi::errors::InvalidArgument(
@@ -1639,17 +1626,15 @@ std::shared_ptr<OpStrategy> StrategyForIsClose(
 
     // the input tensor are in front
     Expr x_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(x_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(x_expr.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[0] should be tensor! Please check."));
     auto x_tensor = x_expr.as_tensor_ref();
 
     Expr y_expr = pack_args[1];
-    PADDLE_ENFORCE_EQ(y_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[1] should be tensor! Please check."));
+    PADDLE_ENFORCE(y_expr.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[1] should be tensor! Please check."));
     auto y_tensor = y_expr.as_tensor_ref();
 
     auto out = pe::IsClose(
@@ -1711,17 +1696,15 @@ std::shared_ptr<OpStrategy> StrategyForIsCloseSymbolic(
 
     // the input tensor are in front
     Expr x_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(x_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[0] should be tensor! Please check."));
+    PADDLE_ENFORCE(x_expr.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[0] should be tensor! Please check."));
     auto x_tensor = x_expr.as_tensor_ref();
 
     Expr y_expr = pack_args[1];
-    PADDLE_ENFORCE_EQ(y_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The pack_args[1] should be tensor! Please check."));
+    PADDLE_ENFORCE(y_expr.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The pack_args[1] should be tensor! Please check."));
     auto y_tensor = y_expr.as_tensor_ref();
 
     auto out = pe::IsClose(
