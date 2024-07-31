@@ -193,6 +193,35 @@ bool EmptyOpInferSymbolicShape(pir::Operation *op,
   }
 }
 
+bool EyeInferSymbolicShape(pir::Operation *op,
+                           pir::InferSymbolicShapeContext *infer_context) {
+  const auto &num_rows =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &num_columns =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  int64_t rows, columns;
+  if (!infer_context->is_runtime() && num_rows.FromTensor()) {
+    rows = -1;
+  } else {
+    rows = num_rows.to<int64_t>();
+  }
+
+  if (!infer_context->is_runtime() && num_columns.FromTensor()) {
+    columns = -1;
+  } else {
+    columns = num_columns.to<int64_t>();
+    if (columns == -1) columns = rows;
+  }
+
+  std::vector<symbol::DimExpr> out_dims = {rows, columns};
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        symbol::ShapeOrDataDimExprs(out_dims));
+  infer_context->SetDTypeForValue(op->result(0), dtype);
+
+  return true;
+}
+
 bool FeedOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const common::DDim &result_dims =
