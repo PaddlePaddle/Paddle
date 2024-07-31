@@ -1446,6 +1446,7 @@
     func : edit_distance
     data_type : DataType::FLOAT32
   optional : hypslength, refslength
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : eig
   args: (Tensor x)
