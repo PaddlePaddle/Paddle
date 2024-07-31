@@ -82,7 +82,7 @@ struct IrReplaceMutator : ir::IRMutator<Expr*> {
 }  // namespace
 
 void IrReplaceVarBroadcast(ir::Expr* expr, ir::Expr from, ir::Expr to) {
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NE(
       expr,
       nullptr,
       phi::errors::InvalidArgument("Input expr should not be nullptr"));
@@ -90,7 +90,7 @@ void IrReplaceVarBroadcast(ir::Expr* expr, ir::Expr from, ir::Expr to) {
 }
 
 void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to) {
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NE(
       expr,
       nullptr,
       phi::errors::InvalidArgument("Input expr should not be nullptr"));
