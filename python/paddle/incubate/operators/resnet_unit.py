@@ -38,7 +38,7 @@ def resnet_unit(
     bias_x: Tensor,
     mean_x: Tensor,
     var_x: Tensor,
-    z: str | None,
+    z: Tensor | None,
     filter_z: Tensor | None,
     scale_z: Tensor | None,
     bias_z: Tensor | None,
@@ -334,7 +334,7 @@ class ResNetUnit(Layer):
             self.mean_z = None
             self.var_z = None
 
-    def forward(self, x, z=None):
+    def forward(self, x: Tensor, z: Tensor | None = None) -> Tensor:
         if self._fuse_add and z is None:
             raise ValueError("z can not be None")
 
