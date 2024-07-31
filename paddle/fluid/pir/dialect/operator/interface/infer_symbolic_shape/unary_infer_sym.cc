@@ -546,7 +546,7 @@ bool KthvalueOpInferSymbolicShape(
   return true;
 }
 
-bool L1Norm_OpInferSymbolicShape(pir::Operation *op,
+bool L1NormOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   std::vector<symbol::DimExpr> output_shape;
   infer_context->SetShapeOrDataForValue(
