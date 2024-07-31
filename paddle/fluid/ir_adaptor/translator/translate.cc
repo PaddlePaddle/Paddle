@@ -14,8 +14,12 @@
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 
+#include <algorithm>
+#include <fstream>
 #include <memory>
 
+#include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -29,6 +33,32 @@ namespace paddle {
 
 using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
 using Program = pir::Program;
+namespace ir = framework::ir;
+
+std::unique_ptr<LegacyProgramDesc> RefineLegacyProgramDesc(
+    const LegacyProgramDesc& program) {
+  auto write_program = [](const std::string& filename,
+                          const LegacyProgramDesc& prog) {
+    std::ofstream ofs(filename, std::ios::binary);
+    ofs << const_cast<LegacyProgramDesc&>(prog).Proto()->SerializeAsString();
+  };
+  write_program("/home/lvyongkang/Paddle/before.prog", program);
+
+  auto graph = std::make_unique<ir::Graph>(program);
+
+  auto apply_graph_pass = [&](const std::string& pass_name) {
+    auto pass = ir::PassRegistry::Instance().Get(pass_name);
+    graph.reset(pass->Apply(graph.release()));
+  };
+  apply_graph_pass("map_legacy_op_to_normal_pass");
+
+  std::unique_ptr<LegacyProgramDesc> refined_program(new LegacyProgramDesc);
+
+  ir::GraphToProgram(*graph, refined_program.get());
+  write_program("/home/lvyongkang/Paddle/after.prog", *refined_program);
+
+  return refined_program;
+}
 
 std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program) {
@@ -38,7 +68,9 @@ std::unique_ptr<Program> TranslateLegacyProgramToProgram(
   ctx->GetOrRegisterDialect<dialect::OneDNNOperatorDialect>();
 #endif
   auto program = std::make_unique<Program>(ctx);
-  translator::ProgramTranslator program_translator(&legacy_program,
+  auto refine_legacy_program = RefineLegacyProgramDesc(legacy_program);
+  translator::ProgramTranslator program_translator(refine_legacy_program.get(),
+                                                   // &legacy_program,
                                                    program.get());
   VLOG(6) << "begin to translate";
   program_translator.Translate();
