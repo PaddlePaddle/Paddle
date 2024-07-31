@@ -1647,8 +1647,9 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
-                          MetaTensor* out) {
-  return ElementwiseRawInferMeta(x, y, -1, out);
+                          MetaTensor* out,
+                          MetaConfig config) {
+  return ElementwiseRawInferMeta(x, y, -1, out, config);
 }
 
 void BitwiseShiftInferMeta(const MetaTensor& x,
@@ -1691,7 +1692,17 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
+    std::cout << "x_dims1 = " << x_dims << std::endl;
+    std::cout << "y_dims1 = " << y_dims << std::endl;
+
 #ifdef PADDLE_WITH_DNNL
+    std::cout << "config.is_run_mkldnn_kernel = " << config.is_run_mkldnn_kernel
+              << std::endl;
+    std::cout << "phi::OneDNNContext::tls().get_cur_paddle_data_layout() = "
+              << phi::OneDNNContext::tls().get_cur_paddle_data_layout()
+              << std::endl;
+    std::cout << "x_dims.size() = " << x_dims.size() << std::endl;
+    std::cout << "y_dims.size() = " << y_dims.size() << std::endl;
     bool should_rotate =
         config.is_run_mkldnn_kernel &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -1710,6 +1721,8 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
       }
     }
 #endif
+    std::cout << "x_dims2 = " << x_dims << std::endl;
+    std::cout << "y_dims2 = " << y_dims << std::endl;
     funcs::GetBroadcastDimsArrays(x_dims,
                                   y_dims,
                                   x_dims_array.data(),
