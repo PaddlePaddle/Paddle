@@ -49,6 +49,15 @@ void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void AnchorGeneratorInferMeta(const MetaTensor& input,
+                              const std::vector<float>& anchor_sizes,
+                              const std::vector<float>& aspect_ratios,
+                              const std::vector<float>& variances,
+                              const std::vector<float>& stride,
+                              float offset,
+                              MetaTensor* anchors,
+                              MetaTensor* variances_out);
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -355,9 +364,6 @@ void HashInferMeta(const MetaTensor& x,
                    int num_hash,
                    int64_t mod_by,
                    MetaTensor* out);
-
-void HistogramInferMeta(
-    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out);
 
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
@@ -714,6 +720,8 @@ void FillSplitOutDims(const MetaTensor& x,
                       const std::vector<int64_t>& sections_vec,
                       std::vector<MetaTensor*>* out);
 
+void SequenceSoftmaxInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void SplitInferMeta(const MetaTensor& x_meta,
                     const IntArray& sections,
                     const Scalar& axis,
@@ -852,6 +860,8 @@ void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
+void UnchangedInferMetaIncludingTensorArray(const MetaTensor& x,
+                                            MetaTensor* out);
 void UnchangedVectorInferMeta(const std::vector<const MetaTensor*>& xs,
                               std::vector<MetaTensor*> outs);
 

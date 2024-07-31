@@ -20,9 +20,9 @@ import subprocess
 import sys
 import time
 from contextlib import closing
-from distutils.util import strtobool
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
+from paddle.utils import strtobool
 
 from ..utils.log_utils import get_logger
 
@@ -473,7 +473,7 @@ def start_local_trainers(
         fn = None
         if log_dir is not None:
             os.makedirs(log_dir, exist_ok=True)
-            fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
+            fn = open("%s/workerlog.%d" % (log_dir, t.rank), "a")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)

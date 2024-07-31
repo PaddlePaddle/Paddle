@@ -13,9 +13,12 @@
 # limitations under the License.
 import warnings
 
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.base import framework
-from paddle.base.framework import in_dygraph_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_pir_mode,
+)
 from paddle.optimizer import Optimizer
 
 
@@ -81,6 +84,7 @@ class LarsMomentumOptimizer(Optimizer):
             ...     feed={"inp": np_inp},
             ...     fetch_list=[out.name])
     """
+
     _velocity_acc_str = "velocity"
 
     def __init__(
@@ -184,7 +188,7 @@ class LarsMomentumOptimizer(Optimizer):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             tmp, tmp2 = _legacy_C_ops.lars_momentum(
                 [param_and_grad[0]],
                 [param_and_grad[1]],
@@ -205,6 +209,21 @@ class LarsMomentumOptimizer(Optimizer):
                 "rescale_grad",
                 self._rescale_grad,
             )
+        elif in_pir_mode():
+            _, _, _ = _C_ops.lars_momentum_(
+                [param_and_grad[0]],
+                [param_and_grad[1]],
+                [velocity_acc],
+                [lr],
+                master_weight,
+                self._momentum,
+                self._lars_coeff,
+                [_lars_weight_decay],
+                self._epsilon,
+                find_master,
+                self._rescale_grad,
+            )
+            return None
         else:
             # create the momentum optimize op
             momentum_op = block.append_op(

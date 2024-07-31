@@ -584,7 +584,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
                                                     fea_num_per_node);
             PADDLE_ENFORCE_EQ(ret,
                               0,
-                              platform::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "Get_feature_of_nodes error."));
 
             CUDA_CHECK(cudaMemcpyAsync(
@@ -1228,7 +1228,7 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
                   if (pos == -1) {
                     PADDLE_ENFORCE_EQ((k == merge_num),
                                       true,
-                                      phi::errors::InvalidArgument(
+                                      common::errors::InvalidArgument(
                                           "shardid=%d, k=%d, merge_num=%d.",
                                           shard_id,
                                           k,
@@ -1275,7 +1275,7 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
                   if (pos == -1) {
                     PADDLE_ENFORCE_EQ((k == merge_num),
                                       true,
-                                      phi::errors::InvalidArgument(
+                                      common::errors::InvalidArgument(
                                           "shardid=%d, k=%d, merge_num=%d.",
                                           shard_id,
                                           k,
@@ -1432,7 +1432,7 @@ void PSGPUWrapper::MergeKeys(std::shared_ptr<HeterContext> gpu_task) {
                   if (pos == -1) {
                     PADDLE_ENFORCE_EQ((k == merge_num),
                                       true,
-                                      phi::errors::InvalidArgument(
+                                      common::errors::InvalidArgument(
                                           "shardid=%d, k=%d, merge_num=%d.",
                                           shard_id,
                                           k,
@@ -1477,7 +1477,7 @@ void PSGPUWrapper::MergeKeys(std::shared_ptr<HeterContext> gpu_task) {
                   if (pos == -1) {
                     PADDLE_ENFORCE_EQ((k == merge_num),
                                       true,
-                                      phi::errors::InvalidArgument(
+                                      common::errors::InvalidArgument(
                                           "shardid=%d, k=%d, merge_num=%d.",
                                           shard_id,
                                           k,
@@ -2081,7 +2081,7 @@ void PSGPUWrapper::BeginPass() {
   timer.Start();
   if (current_task_) {
     PADDLE_THROW(
-        platform::errors::Fatal("[BeginPass] current task is not ended."));
+        common::errors::Fatal("[BeginPass] current task is not ended."));
   }
 
   debug_gpu_memory_info("befor build task");
@@ -2090,7 +2090,7 @@ void PSGPUWrapper::BeginPass() {
   timer.Pause();
 
   if (current_task_ == nullptr) {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "[BeginPass] after build_task, current task is not null."));
   }
   if (FLAGS_gpugraph_dedup_pull_push_mode) {
@@ -2177,7 +2177,7 @@ void PSGPUWrapper::HbmToSparseTable() {
 
   if (!current_task_) {
     PADDLE_THROW(
-        platform::errors::Fatal("[EndPass] current task has been ended."));
+        common::errors::Fatal("[EndPass] current task has been ended."));
   }
   size_t keysize_max = 0;
   // in case of feasign_num = 0, skip dump_to_cpu
@@ -2325,7 +2325,7 @@ void PSGPUWrapper::DumpToMem() {
 #endif
 }
 
-void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
+void PSGPUWrapper::PullSparse(const phi::Place& place,
                               const int table_id,
                               const std::vector<const uint64_t*>& keys,
                               const std::vector<float*>& values,
@@ -2335,7 +2335,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
              "PullSparse is not used.";
 }
 
-void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
+void PSGPUWrapper::PullSparse(const phi::Place& place,
                               const int table_id,
                               const std::vector<const uint64_t*>& keys,
                               const std::vector<float*>& values,
@@ -2354,10 +2354,10 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   VLOG(3) << "PullSparse max_dim:" << max_mf_dim_
           << " pull_feature_value_size:" << pull_type_size_;
 
-  if (platform::is_cpu_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+  if (phi::is_cpu_place(place)) {
+    PADDLE_THROW(common::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GpuPs now."));
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     int device_id = place.GetDeviceId();
     platform::CUDADeviceGuard guard(device_id);
@@ -2379,7 +2379,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
               << total_length << "] dedup mode";
 
       auto stream = dynamic_cast<phi::GPUContext*>(
-                        platform::DeviceContextPool::Instance().Get(place))
+                        phi::DeviceContextPool::Instance().Get(place))
                         ->stream();
 
       uint64_t* total_keys = dev.keys_tensor.mutable_data<uint64_t>(
@@ -2471,7 +2471,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
 
       PADDLE_ENFORCE_GT(dedup_size,
                         0,
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "dedup keys need more than zero failed in BoxPS."));
       dev.dedup_key_length = dedup_size;
 
@@ -2582,7 +2582,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     }
     pull_gpups_timer.Pause();
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
     VLOG(3) << "Begin Xpu Ps PullSparse";
     size_t total_length =
@@ -2646,7 +2646,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                                       feature_value_size);
 #endif
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "GpuPs/XpuPs: PullSparse Only Support CUDAPlace or XPUPlace Now."));
   }
   all_timer.Pause();
@@ -2656,7 +2656,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   VLOG(3) << "End PullSparse";
 }
 
-void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
+void PSGPUWrapper::PushSparseGrad(const phi::Place& place,
                                   const int table_id,
                                   const std::vector<const uint64_t*>& keys,
                                   const std::vector<const float*>& grad_values,
@@ -2671,10 +2671,10 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
       GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   size_t grad_value_size = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
 
-  if (platform::is_cpu_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+  if (phi::is_cpu_place(place)) {
+    PADDLE_THROW(common::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GPUPS now."));
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     int device_id = place.GetDeviceId();
     platform::CUDADeviceGuard guard(device_id);
@@ -2686,7 +2686,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
               << "] dedup mode, device:" << device_id << ", index"
               << devid_2_index;
       auto stream = dynamic_cast<phi::GPUContext*>(
-                        platform::DeviceContextPool::Instance().Get(place))
+                        phi::DeviceContextPool::Instance().Get(place))
                         ->stream();
       uint64_t* total_keys = dev.keys_tensor.data<uint64_t>();
       int* slot_dims = dev.dims_tensor.data<int>();
@@ -2800,7 +2800,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     }
     push_gpups_timer.Pause();
 #endif
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
@@ -2835,7 +2835,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     push_gpups_timer.Pause();
 #endif
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "GPUPS: PushSparseGrad Only Support CUDAPlace Now."));
   }
   all_timer.Pause();

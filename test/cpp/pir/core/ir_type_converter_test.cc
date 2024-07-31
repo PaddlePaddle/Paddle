@@ -64,7 +64,9 @@ TEST(TypeConverterTest, parameterless_type) {
                                  pir::Int64Type,
                                  pir::BoolType,
                                  pir::Complex64Type,
-                                 pir::Complex128Type>();
+                                 pir::Complex128Type,
+                                 pir::Float8E4M3FNType,
+                                 pir::Float8E5M2Type>();
 }
 
 void test_index_type() {

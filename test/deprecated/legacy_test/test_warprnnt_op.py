@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 from paddle import _C_ops
-from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
@@ -232,14 +231,9 @@ class TestWarpRNNTOp(OpTest):
 
     def test_check_grad(self):
         self.outputs["warprnntgrad"] = self.gradient
-        if core.is_compiled_with_rocm():
-            self.check_grad(
-                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
-            )
-        else:
-            self.check_grad(
-                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
-            )
+        self.check_grad(
+            ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
+        )
 
 
 class TestWarpRNNTFP64Op(TestWarpRNNTOp):
@@ -250,14 +244,9 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
     def test_check_grad(self):
         self.acts.astype(np.float64)
         self.outputs["warprnntgrad"] = self.gradient
-        if core.is_compiled_with_rocm():
-            self.check_grad(
-                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
-            )
-        else:
-            self.check_grad(
-                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
-            )
+        self.check_grad(
+            ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
+        )
 
 
 class TestWarpRNNTOpError(unittest.TestCase):

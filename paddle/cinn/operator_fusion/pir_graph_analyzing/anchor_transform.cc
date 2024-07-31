@@ -115,12 +115,13 @@ AnchorTransform CreateAnchorTransform(const TransformInfo& info) {
   return result;
 }
 
-std::vector<AnchorTransform> PossibleTransform(pir::Value v) {
+std::vector<AnchorTransform> PossibleTransform(
+    pir::Value v, const std::unordered_set<pir::Operation*>& ops) {
   std::vector<AnchorTransform> result;
 
   // Transform to Upstream
   auto defining_op = v.defining_op();
-  if (defining_op != nullptr) {
+  if (defining_op != nullptr && ops.find(defining_op) != ops.end()) {
     size_t output_idx = GetResultIdx(v, defining_op);
     for (size_t i = 0; i < defining_op->num_operands(); ++i) {
       result.emplace_back(CreateAnchorTransform(
@@ -132,6 +133,9 @@ std::vector<AnchorTransform> PossibleTransform(pir::Value v) {
   for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
        ++consumer_it) {
     auto downstream_op = consumer_it->owner();
+    if (ops.find(downstream_op) == ops.end()) {
+      continue;
+    }
     size_t input_idx = GetOperandIdx(v, downstream_op);
     for (size_t i = 0; i < downstream_op->num_results(); i++) {
       result.emplace_back(CreateAnchorTransform(

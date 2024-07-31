@@ -30,6 +30,7 @@ from ..framework import (
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 
 if TYPE_CHECKING:
@@ -235,7 +236,10 @@ def argmax(
         flatten = True
         axis = 0
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
+    elif in_pir_mode():
+        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmax')
         return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmax", **locals())
@@ -254,7 +258,7 @@ def argmax(
             ],
             'paddle.argmax',
         )
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
+        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmax')
         attrs = {}
         out = helper.create_variable_for_type_inference(var_dtype)
         attrs['keepdims'] = keepdim
@@ -333,7 +337,10 @@ def argmin(
         flatten = True
         axis = 0
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
+    elif in_pir_mode():
+        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
         return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmin", **locals())
@@ -999,6 +1006,16 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
             [1. 5. 6. 9.]
     """
     if in_dynamic_or_pir_mode():
+        if in_pir_mode():
+            check_variable_and_dtype(
+                x,
+                'x',
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+                'paddle.tensor.search.mask_select',
+            )
+            check_variable_and_dtype(
+                mask, 'mask', ['bool'], 'paddle.tensor.search.masked_select'
+            )
         return _C_ops.masked_select(x, mask)
     else:
         check_variable_and_dtype(

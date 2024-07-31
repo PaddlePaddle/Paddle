@@ -21,7 +21,7 @@ TuplePushOp ContainerOpInterface::tuple_push_op() {
   PADDLE_ENFORCE_EQ(
       value.HasOneUse(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The inlet value of container op can only be used once."));
   return value.first_use().owner()->dyn_cast<TuplePushOp>();
 }
@@ -30,7 +30,7 @@ TuplePopOp ContainerOpInterface::tuple_pop_op() {
   PADDLE_ENFORCE_EQ(
       value.HasOneUse(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The outlet value of container op can only be used once."));
   return value.first_use().owner()->dyn_cast<TuplePopOp>();
 }

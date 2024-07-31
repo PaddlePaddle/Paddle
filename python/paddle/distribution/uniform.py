@@ -11,8 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence, Union
 
 import numpy as np
+import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
@@ -21,6 +25,20 @@ from paddle.base.framework import Variable
 from paddle.distribution import distribution
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
+    from paddle import Tensor
+    from paddle._typing import NestedSequence
+
+    _UniformBoundary: TypeAlias = Union[
+        float,
+        Sequence[float],
+        NestedSequence[float],
+        npt.NDArray[Union[np.float32, np.float64]],
+        Tensor,
+    ]
 
 
 class Uniform(distribution.Distribution):
@@ -100,7 +118,15 @@ class Uniform(distribution.Distribution):
                 [0.50000000])
     """
 
-    def __init__(self, low, high, name=None):
+    low: Tensor
+    high: Tensor
+
+    def __init__(
+        self,
+        low: _UniformBoundary,
+        high: _UniformBoundary,
+        name: str | None = None,
+    ) -> None:
         if not in_dynamic_mode():
             check_type(
                 low,
@@ -165,7 +191,7 @@ class Uniform(distribution.Distribution):
 
         super().__init__(self.low.shape)
 
-    def sample(self, shape, seed=0):
+    def sample(self, shape: list[int], seed: int = 0) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
@@ -218,7 +244,7 @@ class Uniform(distribution.Distribution):
             else:
                 return output
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log probability density/mass function.
 
         Args:
@@ -247,7 +273,7 @@ class Uniform(distribution.Distribution):
                 paddle.log(lb * ub), paddle.log(self.high - self.low), name=name
             )
 
-    def probs(self, value):
+    def probs(self, value: Tensor) -> Tensor:
         """Probability density/mass function.
 
         Args:
@@ -272,7 +298,7 @@ class Uniform(distribution.Distribution):
             ub = paddle.cast(ub_bool, dtype=value.dtype)
             return paddle.divide((lb * ub), (self.high - self.low), name=name)
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Shannon entropy in nats.
 
         The entropy is

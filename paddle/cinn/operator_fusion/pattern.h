@@ -101,7 +101,7 @@ struct ReduceTreePattern {
   std::vector<ReduceTreePattern>& childs() { return childs_; }
   void InsertChild(const ReduceTreePattern& child) { childs_.push_back(child); }
   std::vector<ReducePattern> FlattenReducePattern() const {
-    std::vector<ReducePattern> result;
+    std::vector<ReducePattern> result{root_};
     for (const auto& child : childs_) {
       result = ConcatVector(result, child.FlattenReducePattern());
     }
@@ -235,7 +235,7 @@ struct AnchorPattern {
   pir::Value anchor() const { return anchor_; }
   bool can_recompute() const {
     // Current Algorithm:
-    // An AnchorPattern can be recomputed iff:
+    // An AnchorPattern can be recomputed if:
     // 1. It didn't go through any pattern merging during prior fusions, which
     // means it only has one output_expr in anchor_state.
     // 2. It only contains trivial ops.

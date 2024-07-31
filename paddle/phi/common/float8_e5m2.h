@@ -77,7 +77,7 @@ struct PADDLE_ALIGN(1) float8_e5m2 {
     fb.ui ^= sign;
 
     if (fb.ui >= fp8_max) {
-      result = fb.ui > fp32_inf ? UINT8_C(0x7F) : UINT8_C(0x7C);
+      result = fb.ui > fp32_inf ? UINT8_C(0x7F) : UINT8_C(0x7B);
     } else {
       if (fb.ui < (UINT32_C(113) << 23)) {
         fb.f = fb.f + denorm_mask.f;
@@ -172,7 +172,8 @@ struct PADDLE_ALIGN(1) float8_e5m2 {
     // https://github.com/pytorch/pytorch/blob/main/c10/util/Float8_e5m2.h
     uint16_t half_representation = x;
     half_representation <<= 8;
-    return static_cast<float>(static_cast<float16>(half_representation));
+    return static_cast<float>(
+        phi::dtype::raw_uint16_to_float16(half_representation));
 #endif
   }
 

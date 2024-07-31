@@ -12,11 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 
-def blha_get_max_len(seq_lens_encoder, seq_lens_decoder, batch_size):
+
+def blha_get_max_len(
+    seq_lens_encoder: Tensor, seq_lens_decoder: Tensor, batch_size: Tensor
+) -> tuple[Tensor, Tensor]:
     """
     Apply Fused BlhaGetMaxLen kernel. Typically used before the block_multihead_attention operator.
 

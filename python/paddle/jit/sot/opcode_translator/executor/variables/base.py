@@ -26,7 +26,7 @@ from ....profiler import event_register
 from ....utils import NameGenerator, get_unbound_method, log
 from ....utils.exceptions import FallbackError, HasNoAttributeError
 from ..dispatcher import Dispatcher
-from ..guard import StringifyExpression, check_guard, union_free_vars
+from ..guard import StringifiedExpression, check_guard, union_free_vars
 from ..mutable_data import MutableDictLikeData
 from ..tracker import (
     DummyTracker,
@@ -330,24 +330,24 @@ class VariableBase:
         return hash(self.id)
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         """
-        Create a StringifyExpression object that represents a guard expression for this variable.
+        Create a StringifiedExpression object that represents a guard expression for this variable.
 
         Returns:
-            StringifyExpression: An object that contains the guard expression and the free variables used in the expression.
+            StringifiedExpression: An object that contains the guard expression and the free variables used in the expression.
         """
 
         # Get a ValueTracer object from the Tracker object associated with the variable
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
         return [
-            StringifyExpression(
+            StringifiedExpression(
                 f"id(type({{}})) == {id(self.get_py_type())}",
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-            StringifyExpression(
+            StringifiedExpression(
                 f"{{}} == {self.get_py_value()!r}",
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),

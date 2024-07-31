@@ -18,11 +18,9 @@
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
-#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/placeholder.h"
@@ -283,6 +281,15 @@ ExprSetFinder ScheduleBlockRealizeIsInit = FilterMaker(
                       ->name.find("__reduce_init") != std::string::npos);
     },
     "ScheduleBlockRealizeIsInit");
+
+ExprSetFinder ScheduleBlockRealizeIsSplitTransform = FilterMaker(
+    [](const ir::Expr& e) -> bool {
+      return (e.As<ir::ScheduleBlockRealize>() &&
+              e.As<ir::ScheduleBlockRealize>()
+                      ->schedule_block.As<ir::ScheduleBlock>()
+                      ->name.find("_split_transform") != std::string::npos);
+    },
+    "ScheduleBlockRealizeIsSplitTransform");
 
 ExprSetFinder IsFor = FilterMaker(
     [](const ir::Expr& e) -> bool { return e.As<ir::For>(); }, "IsFor");

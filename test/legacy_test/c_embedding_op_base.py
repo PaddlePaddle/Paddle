@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle.framework import core
@@ -149,6 +153,77 @@ class TestCEmbeddingOpFP32(TestCEmbeddingOpBase):
 
     def init_dtype(self):
         self.dtype = "float32"
+        self.ids_dtype = "int32"
+
+
+class TestCEmbeddingOpFP16(TestCEmbeddingOpBase):
+    def setUp(self):
+        self.init_dtype()
+        self.initcase()
+
+    def initcase(self):
+        self.op_type = "c_embedding"
+        self.python_api = c_embedding_wrapper
+        table = np.random.random((17, 64)).astype(self.dtype)
+        ids = np.random.randint(low=0, high=17 * 2, size=(2, 4)).astype(
+            self.ids_dtype
+        )
+        self.start_index = 10
+        ids[0][1] = 12
+        ids[0][2] = 12
+        ids[1][2] = 12
+        ids[1][3] = 12
+        self.end_index = self.start_index + 17
+
+        self.inputs = {'W': table, 'Ids': ids}
+        np_out = get_c_embedding(self.start_index, self.end_index, table, ids)
+        self.outputs = {'Out': np_out.reshape((2, 4, 64))}
+        self.attrs = {'start_index': self.start_index}
+
+        if core.is_compiled_with_xpu():
+            self.__class__.use_xpu = True
+        elif core.is_compiled_with_cuda():
+            self.__class__.exist_fp64_check_grad = True
+
+    def init_dtype(self):
+        self.dtype = "float16"
+        self.ids_dtype = "int32"
+
+
+class TestCEmbeddingOpBF16(TestCEmbeddingOpBase):
+    def setUp(self):
+        self.init_dtype()
+        self.initcase()
+
+    def initcase(self):
+        self.op_type = "c_embedding"
+        self.python_api = c_embedding_wrapper
+        table = np.random.random((17, 64)).astype('float32')
+        table_bf16 = convert_float_to_uint16(table)
+        table = convert_uint16_to_float(table_bf16)
+        ids = np.random.randint(low=0, high=17 * 2, size=(2, 4)).astype(
+            self.ids_dtype
+        )
+        self.start_index = 10
+        ids[0][1] = 12
+        ids[0][2] = 12
+        ids[1][2] = 12
+        ids[1][3] = 12
+        self.end_index = self.start_index + 17
+
+        self.inputs = {'W': table_bf16, 'Ids': ids}
+        np_out = get_c_embedding(self.start_index, self.end_index, table, ids)
+        np_out = convert_float_to_uint16(np_out)
+        self.outputs = {'Out': np_out.reshape((2, 4, 64))}
+        self.attrs = {'start_index': self.start_index}
+
+        if core.is_compiled_with_xpu():
+            self.__class__.use_xpu = True
+        elif core.is_compiled_with_cuda():
+            self.__class__.exist_fp64_check_grad = True
+
+    def init_dtype(self):
+        self.dtype = np.uint16
         self.ids_dtype = "int32"
 
 

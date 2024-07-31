@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import numbers
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
 import paddle
 from paddle.base import framework
 from paddle.distribution import distribution
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 class Geometric(distribution.Distribution):
@@ -67,7 +73,9 @@ class Geometric(distribution.Distribution):
             1.41421354)
     """
 
-    def __init__(self, probs):
+    probs: Tensor
+
+    def __init__(self, probs: float | Tensor) -> None:
         if isinstance(
             probs,
             (numbers.Real, paddle.Tensor, framework.Variable, paddle.pir.Value),
@@ -101,12 +109,12 @@ class Geometric(distribution.Distribution):
         super().__init__(batch_shape)
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of geometric distribution."""
         return 1.0 / self.probs - 1.0
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of geometric distribution."""
         return paddle.to_tensor(
             (1.0 / self.probs - 1.0) / self.probs,
@@ -114,11 +122,11 @@ class Geometric(distribution.Distribution):
         )
 
     @property
-    def stddev(self):
+    def stddev(self) -> Tensor:
         """Standard deviation of Geometric distribution."""
         return paddle.sqrt(self.variance)
 
-    def pmf(self, k):
+    def pmf(self, k: int | Tensor) -> Tensor:
         r"""Probability mass function evaluated at k.
 
         .. math::
@@ -152,7 +160,7 @@ class Geometric(distribution.Distribution):
                 f"Expected type of k is number.Real|framework.Variable|Value, but got {type(k)}"
             )
 
-    def log_pmf(self, k):
+    def log_pmf(self, k: int | Tensor) -> Tensor:
         r"""Log probability mass function evaluated at k.
 
         .. math::
@@ -185,11 +193,11 @@ class Geometric(distribution.Distribution):
                 f"Expected type of k is number.Real|framework.Variable|Value, but got {type(k)}"
             )
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Sample from Geometric distribution with sample shape.
 
         Args:
-            shape (tuple(int)): Sample shape.
+            shape (Sequence[int]): Sample shape.
 
         Returns:
             Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
@@ -211,11 +219,11 @@ class Geometric(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape=()):
+    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
-            shape(tuple(int)): The shape of generated samples.
+            shape(Sequence[int]): The shape of generated samples.
 
         Returns:
             Tensor: A sample tensor that fits the Geometric distribution.
@@ -248,7 +256,7 @@ class Geometric(distribution.Distribution):
 
         return paddle.floor(paddle.log(uniform) / paddle.log1p(-(self.probs)))
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Entropy of dirichlet distribution.
 
         .. math::
@@ -275,7 +283,7 @@ class Geometric(distribution.Distribution):
 
         return -(x + y) / self.probs
 
-    def cdf(self, k):
+    def cdf(self, k: int | Tensor) -> Tensor:
         r"""Cdf of geometric distribution.
 
         .. math::
@@ -309,7 +317,7 @@ class Geometric(distribution.Distribution):
                 f"Expected type of k is number.Real|framework.Variable|Value, but got {type(k)}"
             )
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Geometric) -> Tensor:
         r"""Calculate the KL divergence KL(self || other) with two Geometric instances.
 
         .. math::

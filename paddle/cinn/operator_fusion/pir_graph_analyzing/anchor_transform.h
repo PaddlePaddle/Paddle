@@ -157,7 +157,8 @@ struct AnchorState {
 };
 
 AnchorTransform CreateAnchorTransform(const TransformInfo& info);
-std::vector<AnchorTransform> PossibleTransform(pir::Value v);
+std::vector<AnchorTransform> PossibleTransform(
+    pir::Value v, const std::unordered_set<pir::Operation*>& ops);
 TransformInfo GetTransformInfo(AnchorTransform trans);
 std::string DebugStrOfAnchorTransform(const AnchorTransform& trans);
 }  // namespace cinn::fusion

@@ -16,9 +16,12 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/slice_kernel.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -28,6 +31,11 @@ void SplitStridedKernel(const Context& dev_ctx,
                         const IntArray& sections UNUSED,
                         const Scalar& axis_scalar,
                         std::vector<DenseTensor*> outs) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   int64_t num = static_cast<int64_t>(outs.size());
   int64_t start = 0;
 
@@ -53,6 +61,11 @@ void SplitWithNumStridedKernel(const Context& dev_ctx,
                                int num,
                                const Scalar& axis_scalar,
                                std::vector<DenseTensor*> outs) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   int axis_value = axis_scalar.to<int>();
   auto input_axis_dim = x.dims().at(axis_value);
   std::vector<int64_t> sections_vec;

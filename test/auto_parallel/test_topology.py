@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.static.topo import SingleNodeTopology
+from paddle.distributed.launch.utils.topology import SingleNodeTopology
 
 
 def check_empty_json_object(json_object):

@@ -42,9 +42,9 @@ phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
   VLOG(10) << "cudaHostAlloc " << size << " " << ptr;
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
   platform::RecordMemEvent(ptr,
-                           platform::CUDAPinnedPlace(),
+                           phi::GPUPinnedPlace(),
                            size,
                            platform::TracerMemEventType::ReservedAllocate);
-  return new Allocation(ptr, size, platform::CUDAPinnedPlace());
+  return new Allocation(ptr, size, phi::GPUPinnedPlace());
 }
 }  // namespace paddle::memory::allocation

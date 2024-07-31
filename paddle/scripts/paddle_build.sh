@@ -18,6 +18,7 @@
 #                   Utils
 #=================================================
 
+# nothing to modify
 set -ex
 
 if [ -z ${BRANCH} ]; then
@@ -2369,6 +2370,7 @@ set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue

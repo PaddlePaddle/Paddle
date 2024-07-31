@@ -49,7 +49,7 @@ static void ConstructFwdAndBwdMap(
   PADDLE_ENFORCE_LE(
       grad_outputs_names.size(),
       inputs_names.size(),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Grad outputs num should be less equal than forward inputs num."));
   for (size_t i = 0; i < grad_outputs_names.size(); i++) {
     auto end = grad_outputs_names[i].find("@GRAD@GRAD");
@@ -89,7 +89,7 @@ static void ConstructFwdAndBwdMap(
             }
           }
         } else {
-          PADDLE_THROW(paddle::platform::errors::NotFound(
+          PADDLE_THROW(phi::errors::NotFound(
               "All Grad outputs should be end of @GRAD@GRAD or @GRAD@NEW or "
               "@GRAD and we got %s is not one of them, "
               "please check your op and change to fit the rule.",
@@ -144,7 +144,7 @@ static void ConstructFwdAndBwdMap(
         std::find(attrs_names.begin(), attrs_names.end(), grad_attrs_names[i]);
     PADDLE_ENFORCE_NE(end,
                       attrs_names.end(),
-                      paddle::platform::errors::NotFound(
+                      phi::errors::NotFound(
                           "All Grad attrs should be one of forward attrs and "
                           "we got %s is not one of them, please check your "
                           "op and change to fit the rule.",

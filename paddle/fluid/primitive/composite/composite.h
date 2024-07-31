@@ -1340,15 +1340,19 @@ Tensor sigmoid_cross_entropy_with_logits_decomp(
   const Tensor zero = full_like_decomp<T>(x, 0, x.type(), x.place());
   const Tensor one = full_like_decomp<T>(x, 1, x.type(), x.place());
   Tensor pos_weight_tensor;
+  Tensor tmp_out;
   if (pos_weight) {
     pos_weight_tensor = pos_weight.get();
+    auto max_val = where<T>(x < zero, -x, zero);
+    auto term1 = (one - label) * x;
+    auto term2 = log<T>(exp<T>(-max_val) + exp<T>(-x - max_val));
+    tmp_out = term1 + pos_weight_tensor * (term2 + max_val);
   } else {
-    pos_weight_tensor = one;
+    auto term1 = where<T>(x > zero, x, zero);
+    auto term2 = x * label;
+    auto term3 = log<T>(one + exp<T>(-abs<T>(x)));
+    tmp_out = term1 - term2 + term3;
   }
-  auto term1 = where<T>(x > zero, x, zero);
-  auto term2 = x * label;
-  auto term3 = log<T>(one + exp<T>(-abs<T>(x)));
-  const Tensor tmp_out = term1 - term2 + term3 * pos_weight_tensor;
   const Tensor ignore_index_tensor =
       full_like_decomp<T>(x, ignore_index, label.type(), label.place());
   auto out = where<T>(label == ignore_index_tensor, zero, tmp_out);
@@ -1512,6 +1516,93 @@ Tensor elu_decomp(const Tensor& x, const float alpha) {
   } else {
     return ans;
   }
+}
+
+template <typename T>
+Tensor lerp_decomp(const Tensor& x, const Tensor& y, const Tensor& weight) {
+  Tensor x_cast = x;
+  Tensor y_cast = y;
+  Tensor weight_cast = weight;
+  bool need_cast = false;
+  if (is_half_dtype(x.dtype())) {
+    need_cast = true;
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+  if (is_half_dtype(y.dtype())) {
+    need_cast = true;
+    y_cast = cast<T>(y, DataType::FLOAT32);
+  }
+  if (is_half_dtype(weight.dtype())) {
+    need_cast = true;
+    weight_cast = cast<T>(weight, DataType::FLOAT32);
+  }
+  Tensor res = x_cast + weight_cast * (y_cast - x_cast);
+  if (need_cast) {
+    return cast<T>(res, x.dtype());
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
+Tensor log_loss_decomp(const Tensor& input,
+                       const Tensor& label,
+                       float epsilon) {
+  Tensor ones = full_scalar<T>(1.0, input.dtype());
+  Tensor eps = full_scalar<T>(epsilon);
+  Tensor term1 = -label * log<T>(input + eps);
+  Tensor term2 = (ones - label) * log<T>(ones - input + eps);
+  return term1 - term2;
+}
+
+template <typename T>
+Tensor kldiv_loss_decomp(const Tensor& x,
+                         const Tensor& label,
+                         const std::string& reduction,
+                         bool log_target) {
+  bool dynamic_shape = has_dynamic_shape(x.shape());
+  Tensor loss;
+  if (log_target) {
+    loss = exp<T>(label) * (label - x);
+  } else {
+    Tensor output = label * (log<T>(label) - x);
+    Tensor zero = full_scalar<T>(0.0, label.dtype());
+    Tensor zeros;
+    if (dynamic_shape) {
+      zeros = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
+    } else {
+      zeros = full<T>(x.shape(), 0, x.dtype());
+    }
+    loss = where<T>(label > zero, output, zeros);
+  }
+
+  if (reduction == "batchmean") {
+    if (x.shape().size() > 0) {
+      if (dynamic_shape) {
+        return sum<T>(loss) / get_slice<T>(shape<T>(x), 0);
+      } else {
+        return sum<T>(loss) / x.shape()[0];
+      }
+    } else {
+      return sum<T>(loss);
+    }
+  }
+  if (reduction == "mean") {
+    return mean_decomp<T>(loss, {}, false);
+  }
+  if (reduction == "sum") {
+    return sum<T>(loss);
+  }
+  return loss;
+}
+
+template <typename T>
+Tensor softsign_decomp(const Tensor& x) {
+  // softsign = x / (1 + abs(x))
+
+  Tensor x_abs = abs<T>(x);
+  Tensor one = full_scalar<T>(1.0, x.dtype());
+  return x / (one + x_abs);
 }
 
 }  // namespace details

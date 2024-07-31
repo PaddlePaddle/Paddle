@@ -275,7 +275,7 @@ std::string PatternGraph::GraphInfo() const {
   ss << "\n========= GraphInfo ===========";
   for (const auto& v : all_pattern_nodes_) {
     ss << "\n" << v->DebugStr();
-    ss << "\n    IsOutput: " << IsOutputNodeMatcher()(*this, v);
+    ss << "    IsOutput: " << IsOutputNodeMatcher()(*this, v);
     ss << "\n    Loop Framework is: " << GetLoopFramework(v->stmt_pattern());
   }
   ss << "\n===============================";
@@ -308,12 +308,12 @@ PatternNodePtr PatternGraph::MergeNode(const PatternNodePtr& upstream,
   PADDLE_ENFORCE_EQ(
       vec_unique(merged_node->upstream()),
       true,
-      phi::errors::PreconditionNotMet(
+      ::common::errors::PreconditionNotMet(
           "The upstream nodes of the merged node are not unique."));
   PADDLE_ENFORCE_EQ(
       vec_unique(merged_node->downstream()),
       true,
-      phi::errors::PreconditionNotMet(
+      ::common::errors::PreconditionNotMet(
           "The downstream nodes of the merged node are not unique."));
 
   // deal with the graph storage.

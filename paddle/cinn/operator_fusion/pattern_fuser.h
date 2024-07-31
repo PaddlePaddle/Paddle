@@ -113,10 +113,12 @@ static StmtPattern MergePatternImpl(const TrivialPattern& first,
 static StmtPattern MergePatternImpl(
     const TrivialPattern& first, const ReduceTreePlusTrivialPattern& second) {
   auto connect_ops = FindDownstreamOps(first.sink_op());
-  return ReduceTreePlusTrivialPattern(
+  auto result = ReduceTreePlusTrivialPattern(
       FusePatternIfConnected(first, second.tree, connect_ops),
       FusePatternIfConnected(first, second.sink_trivial, connect_ops),
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
+  result.fake_reduce_iter_idx = second.fake_reduce_iter_idx;
+  return result;
 }
 
 static StmtPattern MergePatternImpl(const TrivialPattern& first,
@@ -460,12 +462,20 @@ struct LoopFrameworkVisitor {
   }
 
   MaybeLoopFramework operator()(const UnsupportPattern& pattern) {
-    PADDLE_ENFORCE(false, "Not support GetLoopRange.");
+    PADDLE_THROW(
+        ::common::errors::Unimplemented("Unsupport for GetLoopRange."));
   }
 
   MaybeLoopFramework operator()(const AnchorPattern& pattern) {
-    const auto& exprs = GetDimExprsFromValue(pattern.anchor());
-    return exprs;
+    const auto& loops = GetDimExprsFromValue(pattern.anchor());
+    auto anchor_op = pattern.anchor().defining_op();
+    if (GetOpPatternKind(anchor_op) == hlir::framework::kReduction) {
+      const auto& reduce_axes = GetReduceAxisIdx(anchor_op);
+      const auto& reduce_loops = GatherVector(
+          GetDimExprsFromValue(anchor_op->operand(0).source()), reduce_axes);
+      return ConcatVector(loops, reduce_loops);
+    }
+    return loops;
   }
 };
 
@@ -524,8 +534,6 @@ static StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
       {pad_first, pad_second},
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
-
-//
 
 static StmtPattern MergePattern(const StmtPattern& first,
                                 const StmtPattern& second) {

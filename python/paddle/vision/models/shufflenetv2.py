@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import paddle
 from paddle import nn
@@ -121,7 +121,7 @@ class InvertedResidual(nn.Layer):
         in_channels: int,
         out_channels: int,
         stride: Size2,
-        activation_layer: type[nn.Layer] = nn.ReLU,
+        activation_layer: Callable[..., nn.Layer] = nn.ReLU,
     ) -> None:
         super().__init__()
         self._conv_pw = ConvNormActivation(
@@ -171,7 +171,7 @@ class InvertedResidualDS(nn.Layer):
         in_channels: int,
         out_channels: int,
         stride: Size2,
-        activation_layer: type[nn.Layer] = nn.ReLU,
+        activation_layer: Callable[..., nn.Layer] = nn.ReLU,
     ) -> None:
         super().__init__()
 

@@ -38,7 +38,7 @@ struct DimUsage {
       // as the related op.
       PADDLE_ENFORCE_EQ(v.use_empty(),
                         false,
-                        phi::errors::PreconditionNotMet(
+                        ::common::errors::PreconditionNotMet(
                             "Value is an input value, it should have a use."));
       return v.first_use().owner();
     };
@@ -55,7 +55,7 @@ struct DimUsage {
     auto shape_analysis_ptr = shape_analysis_.lock();
     PADDLE_ENFORCE_NOT_NULL(
         shape_analysis_ptr,
-        phi::errors::PreconditionNotMet("shape_analysis_ptr is nullptr."));
+        ::common::errors::PreconditionNotMet("shape_analysis_ptr is nullptr."));
     return *shape_analysis_ptr;
   }
 

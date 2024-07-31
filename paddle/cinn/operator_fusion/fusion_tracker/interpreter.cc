@@ -89,7 +89,6 @@ void RunTmpTransformInstr(const std::shared_ptr<TmpTransformInstr>& instr,
 void RunTrivialLoopAlignInstr(
     const std::shared_ptr<TrivialLoopAlignInstr>& instr,
     FusionInterpreter* interpreter) {
-  PADDLE_ENFORCE_EQ(interpreter->scope[instr->upstream_]->fusion_ops.size(), 1);
   PADDLE_ENFORCE_EQ(interpreter->scope[instr->downstream_]->fusion_ops.size(),
                     1);
   auto upstream_op = std::get<ReduceOp>(

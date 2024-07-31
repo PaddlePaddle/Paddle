@@ -282,7 +282,8 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
       cluster_node.group_kind =
           cluster_node.group_kind > op_kind ? cluster_node.group_kind : op_kind;
     }
-    cluster_node.tracker = trackers[i];
+    // Deep copy trackers to avoid shared tracker conflict in different node
+    cluster_node.tracker = trackers[i]->Clone();
     output_cluster_nodes.push_back(cluster_node);
   }
   VLOG(4) << "Finished Creating Cluster Nodes!";

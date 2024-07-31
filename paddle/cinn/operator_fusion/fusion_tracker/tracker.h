@@ -32,14 +32,21 @@ enum InstructionType {
 };
 
 struct FusionInstruction {
+  using FusionInstrPtr = std::shared_ptr<FusionInstruction>;
   virtual InstructionType type() const { return T_Base; }
   virtual std::string DebugStr() const { return "BaseInstr"; }
+  virtual FusionInstrPtr Clone() {
+    return std::make_shared<FusionInstruction>(*this);
+  }
 };
+
+using FusionInstrPtr = std::shared_ptr<FusionInstruction>;
 
 struct CopyInstr : public FusionInstruction {
   CopyInstr(const std::string& origin_name, const std::string& new_name)
       : origin_name_(origin_name), new_name_(new_name) {}
   virtual InstructionType type() const { return T_Copy; }
+  virtual FusionInstrPtr Clone() { return std::make_shared<CopyInstr>(*this); }
   std::string origin_name_;
   std::string new_name_;
 
@@ -52,6 +59,9 @@ struct CombineInstr : public FusionInstruction {
   CombineInstr(const std::vector<std::string>& names, const std::string& result)
       : names_(names), result_(result) {}
   virtual InstructionType type() const { return T_Combine; }
+  virtual FusionInstrPtr Clone() {
+    return std::make_shared<CombineInstr>(*this);
+  }
   std::vector<std::string> names_;
   std::string result_;
 
@@ -69,6 +79,9 @@ struct CombineInstr : public FusionInstruction {
 struct ReturnInstr : public FusionInstruction {
   explicit ReturnInstr(const std::string& target) : target_(target) {}
   virtual InstructionType type() const { return T_Return; }
+  virtual FusionInstrPtr Clone() {
+    return std::make_shared<ReturnInstr>(*this);
+  }
   std::string target_;
 
   virtual std::string DebugStr() const { return "ReturnInstr || " + target_; }
@@ -96,6 +109,9 @@ struct InitPatternInstr : public FusionInstruction {
     return idx_in_fusion_op;
   }
   virtual InstructionType type() const { return T_InitPattern; }
+  virtual FusionInstrPtr Clone() {
+    return std::make_shared<InitPatternInstr>(*this);
+  }
   pir::Operation* op_;
   std::string result_;
 
@@ -113,6 +129,9 @@ struct TrivialInlineInstr : public FusionInstruction {
                      const std::string& result)
       : upstream_(upstream), downstream_(downstream), result_(result) {}
   virtual InstructionType type() const { return T_TrivialInline; }
+  virtual FusionInstrPtr Clone() {
+    return std::make_shared<TrivialInlineInstr>(*this);
+  }
   std::string upstream_;
   std::string downstream_;
   std::string result_;
@@ -135,6 +154,9 @@ struct TmpTransformInstr : public FusionInstruction {
         out_upstream_(out_upstream),
         fake_reduce_iter_idx_(fake_reduce_iter_idx) {}
   InstructionType type() const override { return T_TmpTransform; }
+  virtual FusionInstrPtr Clone() {
+    return std::make_shared<TmpTransformInstr>(*this);
+  }
   std::string upstream_;
   std::string downstream_;
   std::string out_upstream_;
@@ -157,6 +179,9 @@ struct TrivialLoopAlignInstr : public FusionInstruction {
         result_(result),
         fake_reduce_iter_idx_(fake_reduce_iter_idx) {}
   virtual InstructionType type() const { return T_TrivialLoopAlign; }
+  virtual FusionInstrPtr Clone() {
+    return std::make_shared<TrivialLoopAlignInstr>(*this);
+  }
   std::string upstream_;
   std::string downstream_;
   std::string result_;
@@ -174,6 +199,9 @@ struct AnchorTransformInstr : public FusionInstruction {
                        const AnchorTransformRoute& transform_route)
       : target_(target), result_(result), transform_route_(transform_route) {}
   virtual InstructionType type() const { return T_AnchorTransform; }
+  virtual FusionInstrPtr Clone() {
+    return std::make_shared<AnchorTransformInstr>(*this);
+  }
   std::string target_;
   std::string result_;
   AnchorTransformRoute transform_route_;
@@ -189,6 +217,9 @@ struct PaddingInstr : public FusionInstruction {
                const std::vector<int>& padding_pos)
       : target_(target), result_(result), padding_pos_(padding_pos) {}
   virtual InstructionType type() const { return T_Padding; }
+  virtual FusionInstrPtr Clone() {
+    return std::make_shared<PaddingInstr>(*this);
+  }
   std::string target_;
   std::string result_;
   std::vector<int> padding_pos_;
@@ -197,8 +228,6 @@ struct PaddingInstr : public FusionInstruction {
     return "PaddingInstr || " + target_ + " => " + result_;
   }
 };
-
-using FusionInstrPtr = std::shared_ptr<FusionInstruction>;
 
 template <typename T>
 std::shared_ptr<T> dynamic_cast_instr_with_err(FusionInstrPtr instr) {
@@ -218,6 +247,16 @@ struct FusionTracker {
     ExtendVector(&instructions_, down->instructions_);
   }
   void append(FusionInstrPtr instr) { instructions_.emplace_back(instr); }
+
+  FusionTrackerPtr Clone() {
+    auto new_tracker = std::make_shared<FusionTracker>();
+    std::vector<FusionInstrPtr> new_instructions;
+    for (auto instr : instructions_) {
+      new_tracker->append(instr->Clone());
+    }
+    return new_tracker;
+  }
+
   std::string DebugStr() const {
     std::stringstream ss;
     ss << "FusionTracker: \n";

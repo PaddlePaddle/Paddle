@@ -272,11 +272,37 @@ class TestDequantizeOp(OpTest):
         ydq = dequantize_max_abs(yq, scale, self.max_range)
         scale = np.array(scale).astype(self.data_type)
         zero_point = np.zeros(scale.shape, dtype="int32")
+        if isinstance(self.bit_length, tuple):
+            if (
+                self.bit_length[0] == 4
+                and self.bit_length[1] == 3
+                and len(self.bit_length) == 2
+            ):
+                self._qmin = -1 * 448
+                self._qmax = 448
+            elif (
+                self.bit_length[0] == 5
+                and self.bit_length[1] == 2
+                and len(self.bit_length) == 2
+            ):
+                self._qmin = -1 * 57344
+                self._qmax = 57344
+            else:
+                raise NotImplementedError(
+                    "Currently, only float8_e4m3 and float8_e5m2 formats are supported. Please set quant_bits to (4,3) or (5,2) for the corresponding format."
+                )
+        else:
+            self._qmax = (1 << (self.bit_length - 1)) - 1
+            self._qmin = -1 * self._qmax - 1
+        if isinstance(self.bit_length, tuple):
+            self.bit_length = self.bit_length[0] + self.bit_length[1] + 1
 
         self.inputs = {'X': yq, 'Scale': scale, 'ZeroPoint': zero_point}
         self.attrs = {
             'bit_length': self.bit_length,
             'quant_axis': self.quant_axis,
+            'qmin': self._qmin,
+            'qmax': self._qmax,
         }
         self.outputs = {'Y': ydq}
 
@@ -335,6 +361,14 @@ class TestDequantizeOp5Bits(TestDequantizeOp):
     def set_args(self):
         self.bit_length = 5
         self.max_range = math.pow(2, self.bit_length - 1) - 1
+        self.data_type = "float32"
+        self.quant_axis = -1
+
+
+class TestDequantizeOpFP8(TestDequantizeOp):
+    def set_args(self):
+        self.bit_length = (4, 3)
+        self.max_range = 448
         self.data_type = "float32"
         self.quant_axis = -1
 

@@ -44,6 +44,7 @@ include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}utf8proc/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/include")
+include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/include")
 
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/lib")
@@ -51,6 +52,7 @@ link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}utf8proc/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/lib")
+link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 if(WITH_ONNXRUNTIME)
   include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/include")
@@ -207,6 +209,7 @@ if(NOT WIN32)
       xxhash
       cryptopp
       utf8proc
+      ${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib/libyaml-cpp.a
       ${EXTERNAL_LIB})
   if(WITH_SHARED_PHI)
     set(DEPS
@@ -231,7 +234,8 @@ else()
       cryptopp-static
       utf8proc_static
       ${EXTERNAL_LIB})
-  set(DEPS ${DEPS} shlwapi.lib)
+  set(DEPS ${DEPS} shlwapi.lib
+           ${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib/yaml-cpp.lib)
 endif()
 
 if(WITH_GPU)

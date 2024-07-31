@@ -222,7 +222,7 @@ class TestUniqueOpAxisNone(TestUniqueOp):
             return_counts=True,
             axis=None,
         )
-        if np.__version__.startswith('2.'):
+        if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
             inverse = inverse.flatten()
         self.attrs = {
             'dtype': int(core.VarDesc.VarType.INT32),
@@ -276,7 +276,7 @@ class TestUniqueOpAxisNeg(TestUniqueOp):
             return_counts=True,
             axis=-1,
         )
-        if np.__version__.startswith('2.'):
+        if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
             inverse = inverse.flatten()
         self.attrs = {
             'dtype': int(core.VarDesc.VarType.INT32),
@@ -330,7 +330,7 @@ class TestUniqueOpAxis1(TestUniqueOp):
             return_counts=True,
             axis=1,
         )
-        if np.__version__.startswith('2.'):
+        if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
             inverse = inverse.flatten()
         self.attrs = {
             'dtype': int(core.VarDesc.VarType.INT32),
@@ -396,7 +396,7 @@ class TestUniqueAPI(unittest.TestCase):
             return_counts=True,
             axis=0,
         )
-        if np.__version__.startswith('2.'):
+        if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
             np_inverse = np_inverse.flatten()
         self.assertTrue((out.numpy() == np_out).all(), True)
         self.assertTrue((index.numpy() == np_index).all(), True)

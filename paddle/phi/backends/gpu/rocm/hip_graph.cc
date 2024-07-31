@@ -19,6 +19,8 @@
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
+#ifdef PADDLE_WITH_HIP
+
 namespace phi {
 namespace backends {
 namespace gpu {
@@ -106,7 +108,7 @@ void CUDAGraph::Reset() {
   for (auto iter = cudagraph_post_reset_callbacks_.rbegin();
        iter != cudagraph_post_reset_callbacks_.rend();
        ++iter) {
-    (*iter)();
+    (*iter)(*this);
   }
   cudagraph_post_reset_callbacks_.clear();
   is_reset_ = true;
@@ -363,3 +365,5 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(hipGraph_t graph) {
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi
+
+#endif

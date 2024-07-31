@@ -15,12 +15,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/multiclass_nms3_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #else
 #include <cub/cub.cuh>
-#endif
 #include "cuda.h"  // NOLINT
+#endif
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
@@ -633,7 +634,11 @@ void SetUniformOffsets(gpuStream_t stream,
                        const int num_segments,
                        const int offset,
                        int* d_offsets) {
+#ifdef PADDLE_WITH_HIP
+  const int BS = 256;
+#else
   const int BS = 32;
+#endif
   const int GS = (num_segments + 1 + BS - 1) / BS;
   SetUniformOffsetsKernel<BS>
       <<<GS, BS, 0, stream>>>(num_segments, offset, d_offsets);
@@ -738,11 +743,12 @@ void GatherNMSOutputsGPU(gpuStream_t stream,
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(
       hipMemsetAsync(num_detections, 0, num_images * sizeof(int), stream));
+  const int BS = 256;
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(num_detections, 0, num_images * sizeof(int), stream));
-#endif
   const int BS = 32;
+#endif
   const int GS = 32;
   GatherNMSOutputsKernel<T_BBOX, T_SCORE, BS>
       <<<GS, BS, 0, stream>>>(share_location,

@@ -3179,6 +3179,20 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
   }
 };
 
+struct TopPSamplingOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "seed") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    } else if (info.name == "k") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 0);
+    } else if (info.name == "mode") {
+      (*attribute_map)[info.name] = pir::StrAttribute::get(ctx, "truncated");
+    }
+  }
+};
+
 struct FusedElemwiseAddActivationOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -3208,32 +3222,20 @@ struct FusedElemwiseAddActivationGradOpTranscriber
   }
 };
 
-struct FakeQuantizeMovingAverageAbsMaxOpTranscriber : public OpTranscriber {
+// a more general version for fake quantize ops
+// if one has a more special property, then don't use this
+struct FakeQuantizeOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
                                   const OpAttributeInfo& info) override {
     if (info.name == "round_type") {
       (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
-    }
-  }
-};
-
-struct FakeChannelWiseDequantizeMaxAbsOpTranscriber : public OpTranscriber {
-  void HandleNonexistentAttribute(pir::IrContext* ctx,
-                                  pir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "quant_axis") {
+    } else if (info.name == "x_num_col_dims") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
+    } else if (info.name == "round_type") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
+    } else if (info.name == "quant_axis") {
       (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 0);
-    }
-  }
-};
-
-struct FakeQuantizeRangeAbsMaxOpTranscriber : public OpTranscriber {
-  void HandleNonexistentAttribute(pir::IrContext* ctx,
-                                  pir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "round_type") {
-      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 1);
     }
   }
 };
@@ -3579,6 +3581,63 @@ struct QuantizeLinearOpTranscriber : public OpTranscriber {
     if (info.name == "moving_rate") {
       (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.9);
     }
+    if (info.name == "qmin") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -128);
+    }
+    if (info.name == "qmax") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 127);
+    }
+  }
+};
+
+struct Reshape2GradOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    VLOG(4) << "Translate Reshape2Grad...";
+    pir::Builder builder(ctx, block);
+    auto& input_xshape_name = op_desc.Input("XShape")[0];
+    auto& input_outgrad_name = op_desc.Input("Out@GRAD")[0];
+    auto& out_name = op_desc.Output("X@GRAD")[0];
+    pir::Value xshape_value;
+    VLOG(10) << "create data op for " << input_xshape_name;
+    auto var_desc = op_desc.Block()->FindVarRecursive(input_xshape_name);
+    auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
+    auto shape_vec = var_desc->GetShape();
+    shape_vec.erase(shape_vec.begin());
+    xshape_value = builder
+                       .Build<paddle::dialect::DataOp>(
+                           input_xshape_name, shape_vec, dtype, phi::Place())
+                       .result(0);
+
+    VLOG(10) << "create data op for " << input_xshape_name << " done";
+
+    if (param_map->Has(input_xshape_name)) {
+      auto value =
+          param_map->at(input_xshape_name).value.dyn_cast<pir::OpResult>();
+      auto* defining_op = value.owner();
+      value.ReplaceAllUsesWith(xshape_value);
+      param_map->PopValue(input_xshape_name);
+      defining_op->Erase();
+    }
+
+    param_map->PushValue(input_xshape_name, xshape_value);
+    auto* defining_op = xshape_value.dyn_cast<pir::OpResult>().owner();
+    auto attr_map = defining_op->attributes();
+
+    PADDLE_ENFORCE_EQ(param_map->Has(input_outgrad_name),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Reshape2_Grad op does not have input Out@GRAD"));
+    auto& input_outgrad_value = param_map->at(input_outgrad_name).value;
+
+    dialect::ReshapeGradOp reshape_grad_op =
+        builder.Build<dialect::ReshapeGradOp>(xshape_value,
+                                              input_outgrad_value);
+    param_map->PushValue(out_name, reshape_grad_op.result(0));
+
+    return reshape_grad_op.operation();
   }
 };
 
@@ -3609,11 +3668,12 @@ OpTranslator::OpTranslator() {
   special_handlers["fused_elemwise_add_activation_grad"] =
       FusedElemwiseAddActivationGradOpTranscriber();
   special_handlers["fake_quantize_moving_average_abs_max"] =
-      FakeQuantizeMovingAverageAbsMaxOpTranscriber();
+      FakeQuantizeOpTranscriber();
   special_handlers["fake_channel_wise_dequantize_max_abs"] =
-      FakeChannelWiseDequantizeMaxAbsOpTranscriber();
-  special_handlers["fake_quantize_range_abs_max"] =
-      FakeQuantizeRangeAbsMaxOpTranscriber();
+      FakeQuantizeOpTranscriber();
+  special_handlers["fake_quantize_range_abs_max"] = FakeQuantizeOpTranscriber();
+  special_handlers["fake_quantize_dequantize_moving_average_abs_max"] =
+      FakeQuantizeOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
@@ -3634,6 +3694,7 @@ OpTranslator::OpTranslator() {
   special_handlers["slice"] = SliceOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
+  special_handlers["top_p_sampling"] = TopPSamplingOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["tril_triu_grad"] = TrilAndTriuGradOpTranscriber();
   special_handlers["matmul"] = LegacyMatmulOpTranscriber();
@@ -3672,6 +3733,7 @@ OpTranslator::OpTranslator() {
   special_handlers["c_embedding"] = CEmbeddingOpTranscriber();
   special_handlers["quantize_linear"] = QuantizeLinearOpTranscriber();
   special_handlers["dequantize_linear"] = QuantizeLinearOpTranscriber();
+  special_handlers["reshape2_grad"] = Reshape2GradOpTranscriber();
 }
 
 }  // namespace translator

@@ -327,7 +327,7 @@ Node *logsigmoid_handler(Graph *graph, Node *node) {
 Node *mish_handler(Graph *graph, Node *node) {
   auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
   if (!is_float_equal(threshold_, 20.0f)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "For mish op, only support threshold = 20.0"));
   }
   auto x = GetInputVarNode("X", node);
@@ -346,7 +346,7 @@ Node *prelu_handler(Graph *graph, Node *node) {
   auto alpha_rank = alpha->Var()->GetShape().size();
   if (x_rank != alpha_rank) {
     if (alpha_rank > 1) {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "For prelu op, Only support rank of alpha <=1 while Rank(alpha) != "
           "Rank(input)."));
     }
@@ -354,14 +354,14 @@ Node *prelu_handler(Graph *graph, Node *node) {
 
   if (x_rank != alpha_rank) {
     if (alpha_rank > 1) {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "For prelu op, Only support rank of alpha <= 1 while rank of alpha "
           "is not equal with rank of input for operator prelu"));
     }
     if (x_rank <= 1) {
       PADDLE_THROW(
-          platform::errors::Unimplemented("For prelu op, Rank of input should "
-                                          "greater than 2 for operator prelu"));
+          common::errors::Unimplemented("For prelu op, Rank of input should "
+                                        "greater than 2 for operator prelu"));
     }
     auto shape = std::vector<int64_t>(x_rank - 1, 1);
     shape[0] = -1;

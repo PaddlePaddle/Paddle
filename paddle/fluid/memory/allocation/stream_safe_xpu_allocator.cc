@@ -15,8 +15,8 @@
 #include "paddle/fluid/memory/allocation/stream_safe_xpu_allocator.h"
 #include <thread>
 
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {
@@ -87,7 +87,7 @@ void StreamSafeXPUAllocation::RecordStreamPrivate(XPUStream stream) {
 
 StreamSafeXPUAllocator::StreamSafeXPUAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    platform::XPUPlace place,
+    phi::XPUPlace place,
     XPUStream default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(std::move(place)),
@@ -163,7 +163,7 @@ void StreamSafeXPUAllocator::FreeImpl(phi::Allocation* allocation) {
   }
 }
 
-uint64_t StreamSafeXPUAllocator::ReleaseImpl(const platform::Place& place) {
+uint64_t StreamSafeXPUAllocator::ReleaseImpl(const phi::Place& place) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
   std::vector<StreamSafeXPUAllocator*>& allocators = allocator_map_[place];
   uint64_t released_size = 0;
@@ -200,7 +200,7 @@ uint64_t StreamSafeXPUAllocator::ProcessUnfreedAllocationsAndRelease() {
 
 thread_local std::once_flag StreamSafeXPUAllocation::once_flag_;
 
-std::map<platform::Place, std::vector<StreamSafeXPUAllocator*>>
+std::map<phi::Place, std::vector<StreamSafeXPUAllocator*>>
     StreamSafeXPUAllocator::allocator_map_;
 SpinLock StreamSafeXPUAllocator::allocator_map_lock_;
 

@@ -70,6 +70,9 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
       [](const symbol::TensorListShapeOrDataDimExprs& dim_expr) {
         return true;
       },
+      [](const symbol::RankedTensorArrayShapeOrDataDimExprs& dim_expr) {
+        return false;
+      },
       [](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
         return false;
       }};
@@ -113,6 +116,10 @@ bool MakeGenerateShapeOpAttribute(
     std::vector<pir::Attribute>* output_dim_expr_attrs,
     GenerateShapeOp::SymbolBindings* symbol_bindings) {
   const auto& shape_or_data_dim_exprs = ShapeOrDataDimExprs4Value(output_shape);
+  if (!paddle::dialect::details::HasCompleteData(shape_or_data_dim_exprs)) {
+    LOG(WARNING) << "The output_shape has no data.";
+    return false;
+  }
   ExprVec data_vec =
       paddle::dialect::details::GetExprVecFromData(shape_or_data_dim_exprs);
   // CHECK(shape_or_data_dim_exprs.data().has_value());
