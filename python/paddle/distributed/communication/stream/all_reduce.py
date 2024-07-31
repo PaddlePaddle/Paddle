@@ -72,16 +72,11 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
     #       Use use_calc_stream rather than sync_op
     helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
-        type="all_reduce",
-        inputs={'x': [tensor]},
-        outputs={'out': [tensor]},
-        attrs={
-            'ring_id': ring_id,
-            'reduce_type': op,
-        },
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={'ring_id': ring_id, 'use_calc_stream': sync_op},
     )
-    if sync_op:
-        op.dist_attr.execution_stream = "default"
 
 
 def all_reduce(
