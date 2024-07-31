@@ -197,7 +197,7 @@ struct FlashAttnParamsBase {
         startend_row_indices ? startend_row_indices.get_ptr() : nullptr,
         max_seqlen_q);
 
-    if (startend_row_indices != nullptr) {
+    if (startend_row_indices.is_initialized()) {
       PADDLE_ENFORCE_EQ(
           attn_mask_tensor,
           nullptr,
