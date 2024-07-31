@@ -1246,9 +1246,9 @@ void BindValue(py::module *m) {
                                    name_analysis::GetValueAllNames(self);
                                return py::cast(names);
                              })
-      .def_property_readonly("_is_only_one_name",
+      .def_property_readonly("_has_only_one_name",
                              [](Value self) -> bool {
-                               return name_analysis::IsOnlyOneValueName(self);
+                               return name_analysis::HasOnlyOneValueName(self);
                              })
       .def_property(
           "shape",

@@ -345,7 +345,7 @@ class RunnableProgram:
         # Get all values again because some values has been erased.
         for value in RunnableProgram._get_program_all_values(program):
             if value.has_name:
-                assert value._is_only_one_name()
+                assert value._has_only_one_name()
         return rename_mapping
 
     @cached_property

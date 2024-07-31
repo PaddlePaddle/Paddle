@@ -40,7 +40,7 @@ std::vector<std::string> GetValueOutputNames(pir::Value value);
 pir::Value GetOutputValueByName(const pir::Program &program,
                                 const std::string &name);
 
-inline bool IsOnlyOneValueName(pir::Value value) {
+inline bool HasOnlyOneValueName(pir::Value value) {
   std::vector<std::string> names = GetValueAllNames(value);
   return std::set<std::string>(names.begin(), names.end()).size() <= 1;
 }

@@ -99,7 +99,7 @@ static auto GetNameFromValue(const std::vector<::pir::Value> &values) {
   std::vector<std::string> names;
   // check only one name
   for (auto value : values) {
-    PADDLE_ENFORCE(pir::utils::name_analysis::IsOnlyOneValueName(value),
+    PADDLE_ENFORCE(pir::utils::name_analysis::HasOnlyOneValueName(value),
                    "Value should have only one name");
     names.push_back(
         pir::utils::name_analysis::TryGetValueFirstName(value).value_or(
