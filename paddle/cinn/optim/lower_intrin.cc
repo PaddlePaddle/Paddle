@@ -42,10 +42,7 @@ void LowerIntrinImpl(common::X86Arch, const Target &target, Expr *e) {
 
     void Visit(const ir::Add *op, Expr *expr) override {
       auto *node = expr->As<ir::Add>();
-      PADDLE_ENFORCE_EQ(
-          node,
-          true,
-          phi::errors::InvalidArgument("The node is not a Add node."));
+      PADDLE_ENFORCE_NOT_NULL(node, "The node is not a Add node.");
       Expr ret;
       if (node->type().is_float()) {
         if (const ir::Mul *mul = node->b().As<ir::Mul>()) {
@@ -73,10 +70,7 @@ void LowerIntrinImpl(common::X86Arch, const Target &target, Expr *e) {
 
     void Visit(const ir::Call *op, Expr *expr) override {
       auto *node = expr->As<ir::Call>();
-      PADDLE_ENFORCE_EQ(
-          node,
-          true,
-          phi::errors::InvalidArgument("The node is not a Call node."));
+      PADDLE_ENFORCE_NOT_NULL(node, "The node is not a Call node.");
       LowerCpuIntrinsicOp(node, expr);
     }
 
@@ -88,9 +82,8 @@ void LowerIntrinImpl(common::X86Arch, const Target &target, Expr *e) {
             true,
             phi::errors::InvalidArgument("The node name is empty."));
         auto *func_ptr = ir::Registry::Get("lower_cpu_intrinsic_" + node->name);
-        PADDLE_ENFORCE_EQ(
+        PADDLE_ENFORCE_NOT_NULL(
             func_ptr,
-            true,
             phi::errors::InvalidArgument(
                 "find no rule to lower cpu intrinsic for lower_cpu_intrinsic_" +
                 node->name));
