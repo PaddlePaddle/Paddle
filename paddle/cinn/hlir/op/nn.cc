@@ -470,7 +470,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     }
     PADDLE_ENFORCE_NE(vec_ast.empty(),
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The vector 'vec_ast' must not be empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
@@ -530,7 +530,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
   auto strategy = std::make_shared<framework::OpStrategy>();
   PADDLE_ENFORCE_GT(out_type.size(),
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "Out_type of conv2d op is empty! Please check."));
   strategy->AddImpl(conv2d_compute, conv2d_schedule, "strategy.conv2d.x86", 1);
   return strategy;
@@ -567,7 +567,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                                                       lang::RetValue *ret) {
     PADDLE_ENFORCE_NE(args.empty(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input argument of depthwise_conv compute is "
                           "empty! Please check.\n"));
     CINNValuePack pack_args = args[0];
@@ -604,9 +604,9 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     PADDLE_ENFORCE_EQ(
         data_format == "NCHW" || data_format == "NHWC",
         true,
-        platform::errors::InvalidArgument("Only support NCHW/NHWC data_format, "
-                                          "but received data_format is %s.",
-                                          data_format));
+        phi::errors::InvalidArgument("Only support NCHW/NHWC data_format, "
+                                     "but received data_format is %s.",
+                                     data_format));
     std::vector<ir::Tensor> out;
     PADDLE_ENFORCE_GE(pack_args.size(),
                       3,
@@ -616,7 +616,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                           pack_args.size()));
     PADDLE_ENFORCE_EQ(pack_args[2].is_string(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The third element of pack_args must be a string."));
     std::string tensor_name = pack_args[2].operator std::string();
     if (data_format == "NCHW") {
@@ -666,7 +666,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
       res.push_back(CINNValue(t));
     }
     PADDLE_ENFORCE(out.size() == 2U || out.size() == 1U || out.size() == 5U,
-                   platform::errors::InvalidArgument(
+                   phi::errors::InvalidArgument(
                        "The output tensor sizes of depthwise_conv op should be "
                        "1 or 2 or 5, "
                        "but received %d.",
@@ -675,52 +675,52 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule depthwise_conv2d_schedule(
-      [=](lang::Args args, lang::RetValue *ret) {
-        PADDLE_ENFORCE_EQ(args.empty(),
-                          false,
-                          platform::errors::InvalidArgument(
-                              "The input argument of InjectiveSchedule is "
-                              "empty! Please check.\n"));
-        cinn::common::CINNValuePack arg_pack = args[0];
-        std::vector<Expr> vec_ast;
-        std::vector<Expr> vec_tensor;
-        for (int i = 0; i < arg_pack.size(); i++) {
-          if (arg_pack[i].is_expr()) {
-            Expr temp = arg_pack[i];
-            vec_ast.emplace_back(temp);
-          } else if (arg_pack[i].is_tensor()) {
-            Expr temp = arg_pack[i];
-            vec_tensor.emplace_back(temp);
-          }
-        }
-        PADDLE_ENFORCE_NE(vec_ast.empty(),
-                          true,
-                          platform::errors::PreconditionNotMet(
-                              "The 'vec_ast' must not be empty."));
-        ir::ModuleExpr mod_expr(vec_ast);
-        ir::IRSchedule ir_sch(mod_expr);
-        ir_sch.MergeExprs();
-        target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                          [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-                          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                          [&](common::NVGPUArch) {
-                            pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
-                          },
-                          [&](common::HygonDCUArchHIP) {
-                            PADDLE_THROW(::common::errors::Unimplemented(
-                                "CINN old obsolete code!"));
-                          });
-        std::vector<cinn::common::CINNValue> res{
-            cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-        *ret = cinn::common::CINNValuePack{res};
-      });
+  framework::CINNSchedule depthwise_conv2d_schedule([=](lang::Args args,
+                                                        lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(args.empty(),
+                      false,
+                      phi::errors::InvalidArgument(
+                          "The input argument of InjectiveSchedule is "
+                          "empty! Please check.\n"));
+    cinn::common::CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    std::vector<Expr> vec_tensor;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
+      } else if (arg_pack[i].is_tensor()) {
+        Expr temp = arg_pack[i];
+        vec_tensor.emplace_back(temp);
+      }
+    }
+    PADDLE_ENFORCE_NE(
+        vec_ast.empty(),
+        true,
+        phi::errors::PreconditionNotMet("The 'vec_ast' must not be empty."));
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::NVGPUArch) {
+                        pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
+                      },
+                      [&](common::HygonDCUArchHIP) {
+                        PADDLE_THROW(::common::errors::Unimplemented(
+                            "CINN old obsolete code!"));
+                      });
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   PADDLE_ENFORCE_GT(
       out_type.size(),
       0,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Out_type of depthwise_conv op is empty! Please check."));
   if (out_type[0] == Float(32)) {
     strategy->AddImpl(depthwise_conv2d_compute,
@@ -753,7 +753,7 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
                                                lang::RetValue *ret) {
     PADDLE_ENFORCE_NE(args.empty(),
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The input argument of batchnorm compute is empty! "
                           "Please check.\n"));
     CINNValuePack arg_pack = args[0];
@@ -851,7 +851,7 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
   auto strategy = std::make_shared<framework::OpStrategy>();
   PADDLE_ENFORCE_GT(out_type.size(),
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Out_type of batchnorm op is empty! Please check."));
   if (out_type[0] == Float(32)) {
     strategy->AddImpl(batchnorm_compute,
@@ -876,13 +876,13 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
     PADDLE_ENFORCE_NE(
         args.size(),
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input argument of pool1d compute is empty! Please check."));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_NE(
         pack_args.size(),
         0,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "The input tensor of pool1d compute is empty! Please check."));
     Expr A = pack_args[0];
     PADDLE_ENFORCE_NOT_NULL(
@@ -918,22 +918,22 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
     }
     PADDLE_ENFORCE_NE(kernel_size.empty(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "kernel_size for pool1d is empty. Please check."));
 
     PADDLE_ENFORCE_NE(stride_size.empty(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "stride_size for pool1d is empty. Please check."));
 
     PADDLE_ENFORCE_NE(padding_size.empty(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "padding_size for pool1d is empty. Please check."));
 
     PADDLE_ENFORCE_EQ(pool_type == "max" || pool_type == "avg",
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "pool_type for pool1d should be 'max' or 'avg'."));
 
     PADDLE_ENFORCE_EQ(pack_args.size(),
@@ -943,7 +943,7 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
                           pack_args.size()));
     PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The second element of pack_args must be a string."));
     std::string tensor_name = pack_args[1].operator std::string();
 
@@ -958,12 +958,12 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
                           tensor_name);
     PADDLE_ENFORCE_EQ(out.size() == 1U || out.size() == 2U,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The size of pe::Pool1d's output should be 1 or 2."));
 
     PADDLE_ENFORCE_NE(out_type.empty(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output type of Pool1d is empty! Please check."));
 
     std::vector<CINNValue> res;
@@ -978,7 +978,7 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
     PADDLE_ENFORCE_NE(
         args.empty(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input argument of pool1d schedule is empty! Please check."));
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
@@ -994,7 +994,7 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
     }
     PADDLE_ENFORCE_NE(vec_ast.empty(),
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The vector vec_ast must not be empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
@@ -1639,7 +1639,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
                           pack_args.size()));
     PADDLE_ENFORCE_EQ(pack_args[pack_args.size() - 1].is_string(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The last element of pack_args must be a string."));
     std::string tensor_name =
         pack_args[pack_args.size() - 1].operator std::string();
@@ -1677,7 +1677,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
     PADDLE_ENFORCE_NE(
         args.empty(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input arguments of softmax schedule is empty! Please check."));
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
@@ -1689,7 +1689,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
     }
     PADDLE_ENFORCE_NE(vec_ast.empty(),
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The vector 'vec_ast' must not be empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
@@ -1770,19 +1770,19 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
                                                    lang::RetValue *ret) {
     PADDLE_ENFORCE_GT(args.size(),
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input arguments of dropout_infer compute is "
                           "empty! Please check."));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_NE(
         pack_args.empty(),
         true,
-        platform::errors::InvalidArgument("The input tensors of dropout_infer "
-                                          "compute is empty! Please check."));
+        phi::errors::InvalidArgument("The input tensors of dropout_infer "
+                                     "compute is empty! Please check."));
     Expr A_expr = pack_args[0];
     PADDLE_ENFORCE_NOT_NULL(
         A_expr.as_tensor(),
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "The expression must be convertible to a tensor."));
     ir::Tensor A = A_expr.as_tensor_ref();
 
@@ -1794,7 +1794,7 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
     PADDLE_ENFORCE_EQ(
         pack_args[1].is_string(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The element at index 1 of pack_args must be a string."));
     std::string tensor_name = pack_args[1].operator std::string();
 
@@ -1823,7 +1823,7 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
     PADDLE_ENFORCE_NE(
         args.empty(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input argument of select compute is empty! Please check.\n"));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(
@@ -1838,14 +1838,14 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
     Expr false_value = pack_args[2];
     PADDLE_ENFORCE_NOT_NULL(
         condition.as_tensor(),
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "The tensor returned by condition.as_tensor() must not be null."));
     PADDLE_ENFORCE_NOT_NULL(
         true_value.as_tensor(),
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "The tensor returned by true_value.as_tensor() must not be null."));
     PADDLE_ENFORCE_NOT_NULL(false_value.as_tensor(),
-                            platform::errors::PreconditionNotMet(
+                            phi::errors::PreconditionNotMet(
                                 "The tensor returned by "
                                 "false_value.as_tensor() must not be null."));
     PADDLE_ENFORCE_EQ(
@@ -1857,7 +1857,7 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
     PADDLE_ENFORCE_EQ(
         pack_args[3].is_string(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The element at index 3 of pack_args must be a string."));
     std::string tensor_name = pack_args[3].operator std::string();
 
@@ -1872,7 +1872,7 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
   auto strategy = std::make_shared<framework::OpStrategy>();
   PADDLE_ENFORCE_NE(out_type.size(),
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Out_type of select op is empty! Please check."));
   strategy->AddImpl(select_compute,
                     GetInjectiveScheduleFunc(output_shapes, target, false),
