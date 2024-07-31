@@ -128,7 +128,7 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
+        self.trt_param.workspace_size = 1073741824
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
