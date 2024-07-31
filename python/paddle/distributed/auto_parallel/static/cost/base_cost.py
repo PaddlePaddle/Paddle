@@ -961,7 +961,7 @@ def calc_time_by_cost_model(op, cluster=None):
     time = 0.0  # microsecond
     op_type = op.type
     # calc comp op time by flops
-    if op.type not in NON_COMP_TYPE:
+    if op_type not in NON_COMP_TYPE:
         attrs = op.all_attrs()
         # build comp op inputs desc to calc flops.
         # for example, a matmul op inputs desc will be {"X": [(1024, 1024)], "Y": [(1024, 1024)]}
