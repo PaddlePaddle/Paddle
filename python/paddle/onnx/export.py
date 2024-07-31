@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     from paddle.nn import Layer
     from paddle.static import InputSpec
 
-    # from Paddle2ONNX/paddleonnx/utils.py
     class _ConfigsList(TypedDict):
         output_spec: NotRequired[list[Tensor]]
         with_hook: NotRequired[bool]
