@@ -4824,6 +4824,7 @@
     func : view_shape
   backward : view_shape_grad
   no_need_buffer : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
