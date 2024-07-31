@@ -78,7 +78,8 @@ const char* pystr_to_cstr(PyObject* pystr) {
   if (PyUnicode_Check(pystr))
     return PyUnicode_AsUTF8(pystr);
   else
-    PADDLE_THROW(phi::errors::InvalidArgument("Input PyObject is not string!"));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("Input PyObject is not string!"));
 }
 
 /*========================== SkipCodeInfo ===============================*/

@@ -53,7 +53,7 @@ class MemcpyD2HFunctor {
 
   void operator()(const phi::SelectedRows &rows) const {
     // (JZ-LIANG) to support SelectedRows
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Memcpy for SelectedRows is NOT support yet."));
   }
 
@@ -62,7 +62,7 @@ class MemcpyD2HFunctor {
     PADDLE_ENFORCE_EQ(
         true,
         false,
-        phi::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "Not support type for Memcpy  op with type %s", typeid(T).name()));
   }
 
@@ -76,7 +76,7 @@ class MemcpyD2HFunctor {
     } else if (dst_place_type_ == 0) {
       framework::TensorCopy(src, phi::CPUPlace(), dev_ctx_, &dst);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
     }
     // NOTE(Aurelius84): host <-> device memory copies of a memory block of 64
