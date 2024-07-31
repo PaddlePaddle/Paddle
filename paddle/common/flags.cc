@@ -1104,6 +1104,19 @@ PHI_DEFINE_EXPORTED_string(cinn_subgraph_graphviz_dir,
                            "Specify the directory path of dot file of "
                            "graph, which is used for debug.");
 
+/*
+ * CINN related FLAG
+ * Name: FLAGS_enable_auto_recompute
+ * Since Version: 3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_enable_auto_recompute=true would use CINN with its
+ * auto-recompute feature enabled
+ */
+PHI_DEFINE_EXPORTED_bool(FLAGS_enable_auto_recompute,
+                         false,
+                         "It controls whether to use cinn with "
+                         "its auto-recompute feature enabled");
+
 #endif
 
 /*
