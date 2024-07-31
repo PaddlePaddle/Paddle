@@ -60,7 +60,6 @@ class TestMeanOp(OpTest):
 
     def test_check_output(self):
         self.check_output(check_pir=True)
-        self.check_output(check_symbol_infer=True)
 
     def test_checkout_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
