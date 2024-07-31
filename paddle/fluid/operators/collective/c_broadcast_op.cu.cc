@@ -62,8 +62,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     } else {
       // NOTE(liyurui): This will be removed after moving this operator to phi.
       int numel = x->numel();
-      ncclDataType_t dtype =
-          platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
+      ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       if (root == comm->rank()) {
         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(

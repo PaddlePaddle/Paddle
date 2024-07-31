@@ -36,8 +36,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
+    ncclDataType_t dtype = phi::ToNCCLDataType(in->dtype());
 
     int nranks = ctx.Attr<int>("nranks");
     int rid = ctx.Attr<int>("ring_id");

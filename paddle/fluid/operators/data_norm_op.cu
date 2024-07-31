@@ -251,8 +251,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_size),
             reinterpret_cast<void *>(d_batch_size),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm_ctx->GetNcclComm(),
             stream));
@@ -260,8 +259,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_sum),
             reinterpret_cast<void *>(d_batch_sum),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm_ctx->GetNcclComm(),
             stream));
@@ -269,8 +267,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_square_sum),
             reinterpret_cast<void *>(d_batch_square_sum),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm_ctx->GetNcclComm(),
             stream));
@@ -279,8 +276,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_size),
             reinterpret_cast<void *>(d_batch_size),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm->comm(),
             stream));
@@ -288,8 +284,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_sum),
             reinterpret_cast<void *>(d_batch_sum),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm->comm(),
             stream));
@@ -297,8 +292,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_square_sum),
             reinterpret_cast<void *>(d_batch_square_sum),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm->comm(),
             stream));

@@ -239,8 +239,7 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
+    ncclDataType_t dtype = phi::ToNCCLDataType(in->dtype());
     int64_t numel = in->numel();
     const void* sendbuff = in->data();
     out->Resize(in->dims());

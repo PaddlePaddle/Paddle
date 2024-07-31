@@ -136,8 +136,7 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
                                        peer,
                                        nranks));
 
-      ncclDataType_t dtype =
-          platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
+      ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
 
       if (comm_ctx) {
         auto send_buf = distributed::GetPartialTensor(*x, offset, send_numel);

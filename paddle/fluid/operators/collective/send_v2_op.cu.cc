@@ -46,8 +46,7 @@ void send_shape_info(const phi::DenseTensor& x,
             "to send the shape info."));
   }
   phi::DataType shape_dtype = phi::DataType::INT32;
-  ncclDataType_t nccl_dtype =
-      platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dtype));
+  ncclDataType_t nccl_dtype = phi::ToNCCLDataType(shape_dtype);
   auto dims = x.dims();
   int shape_size = dims.size();
 
@@ -217,8 +216,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto& x = x_array.at(idx);
         int numel = x.numel();
-        ncclDataType_t dtype =
-            platform::ToNCCLDataType(framework::TransToProtoVarType(x.dtype()));
+        ncclDataType_t dtype = phi::ToNCCLDataType(x.dtype());
         if (comm_ctx) {
           comm_ctx->Send(x, numel, peer, stream);
         } else {
@@ -247,8 +245,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     if (comm_ctx) {
       comm_ctx->Send(*x, numel, peer, stream);
     } else {
-      ncclDataType_t dtype =
-          platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
+      ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
           x->data<T>(), numel, dtype, peer, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " send "
