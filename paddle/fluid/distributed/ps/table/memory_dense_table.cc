@@ -129,13 +129,19 @@ int32_t MemoryDenseTable::SetGlobalLR(float *lr) {
 }
 
 int32_t MemoryDenseTable::Pull(TableContext &context) {
-  CHECK(context.value_type == Dense);
+  PADDLE_ENFORCE_EQ(context.value_type,
+                    Dense,
+                    phi::platform::errors::InvalidArgument(
+                        "Context value type must be 'Dense'."));
   float *pull_values = context.pull_context.values;
   return PullDense(pull_values, context.num);
 }
 
 int32_t MemoryDenseTable::Push(TableContext &context) {
-  CHECK(context.value_type == Dense);
+  PADDLE_ENFORCE_EQ(context.value_type,
+                    Dense,
+                    phi::platform::errors::InvalidArgument(
+                        "Context value type must be 'Dense'."));
   if (context.push_context.values != nullptr) {
     if (!context.push_context.is_param) {
       return PushDense(context.push_context.values, context.num);
@@ -272,9 +278,12 @@ int32_t MemoryDenseTable::Load(const std::string &path,
           }
           size_t str_len =
               paddle::string::str_to_float(line_data.data(), data_buff_ptr);
-          CHECK(str_len == param_col_ids_.size())
-              << "expect " << param_col_ids_.size() << " float, but got "
-              << str_len;
+          PADDLE_ENFORCE_EQ(
+              str_len,
+              param_col_ids_.size(),
+              phi::errors::InvalidArgument("Expected %d floats, but got %d.",
+                                           param_col_ids_.size(),
+                                           str_len));
           for (size_t col_idx = 0; col_idx < str_len; ++col_idx) {
             if (param_col_ids_[col_idx] < 0) {
               continue;
