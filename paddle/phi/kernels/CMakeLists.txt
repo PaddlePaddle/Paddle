@@ -216,8 +216,6 @@ if(WITH_ROCM)
     REMOVE_ITEM
     kernel_cu
     "gpudnn/mha_cudnn_frontend.cu"
-    "fusion/gpu/blha_get_max_len.cu"
-    "fusion/gpu/block_multi_head_attention_kernel.cu"
     "fusion/gpu/fused_bn_add_activation_grad_kernel.cu"
     "fusion/gpu/fused_bn_add_activation_kernel.cu"
     "fusion/gpu/fusion_transpose_flatten_concat_kernel.cu")

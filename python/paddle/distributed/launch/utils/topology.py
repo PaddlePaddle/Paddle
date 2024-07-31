@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import json
+import os
 import subprocess
 import warnings
+
+import paddle
 
 
 def call_cmd(cmd, err_msg, default_value):
@@ -132,6 +135,8 @@ class SingleNodeTopology:
             return 48000, 24000
         elif "A100" in model:
             return 19500, 9700
+        elif "A800" in model:
+            return 19500, 9700
         elif "V100" in model:
             return 15700, 7800
         elif "P100" in model:
@@ -143,7 +148,7 @@ class SingleNodeTopology:
         column_id = 2 + target_id
 
         cmd = (
-            "cat matrix.txt | awk 'FNR=="
+            "cat /tmp/matrix.txt | awk 'FNR=="
             + str(row_id)
             + " {print $"
             + str(column_id)
@@ -202,6 +207,9 @@ class SingleNodeTopology:
         default_value = "8"
         self.nb_devices = int(call_cmd(cmd, err_msg, default_value))
 
+        local_size = int(os.getenv("PADDLE_LOCAL_SIZE"))
+        if local_size < self.nb_devices:
+            self.nb_devices = local_size
         # Get PCIe latency and bandwidth (ms, GB/s)
         for i in range(self.nb_devices):
             cmd = (
@@ -236,8 +244,9 @@ class SingleNodeTopology:
         dev_dp_gflops = []  # GB/s
 
         # Get device info
+        rank_fisrt = paddle.paddle.distributed.get_rank()
         for i in range(self.nb_devices):
-            dev_global_ids.append(i)
+            dev_global_ids.append(i + rank_fisrt)
             dev_local_ids.append(i)
             dev_types.append("GPU")
 
@@ -278,6 +287,8 @@ class SingleNodeTopology:
 
         self.machine['latency'] = self.pcie_latency
         self.machine['bandwidth'] = self.pcie_bandwidth
+        self.machine['device_type'] = dev_types[0]
+        self.machine['device_type_full'] = f"{dev_types[0]}-{dev_models[0]}"
         self.machine['devices'] = self.devices
 
     def get_link_info(self):
@@ -287,11 +298,12 @@ class SingleNodeTopology:
         link_latencies = []  # ms
         link_bandwidths = []  # GB/s
 
-        cmd = "nvidia-smi topo -m > matrix.txt"
+        cmd = "nvidia-smi topo -m > /tmp/matrix.txt"
         err_msg = "Failed to get topo matrix"
         default_value = ""
         call_cmd(cmd, err_msg, default_value)
 
+        rank_fisrt = paddle.paddle.distributed.get_rank()
         # Get link info between devices
         for i in range(self.nb_devices):
             for j in range(self.nb_devices):
@@ -299,8 +311,8 @@ class SingleNodeTopology:
                     link_types.append("X")
                     link_bandwidths.append(-1.0)
                 else:
-                    link_source_global_ids.append(i)
-                    link_target_global_ids.append(j)
+                    link_source_global_ids.append(i + rank_fisrt)
+                    link_target_global_ids.append(j + rank_fisrt)
                     link_latencies.append(0.0)
                     if i > j:
                         index = j * self.nb_devices + i
@@ -317,10 +329,10 @@ class SingleNodeTopology:
             link_types.pop(i * self.nb_devices + i)
             link_bandwidths.pop(i * self.nb_devices + i)
 
-        cmd = "rm matrix.txt"
+        cmd = "rm /tmp/matrix.txt"
         err_msg = "Failed to delete matrix.txt"
         default_value = ""
-        call_cmd(cmd, err_msg, default_value)
+        # call_cmd(cmd, err_msg, default_value)
 
         for i in range(len(link_types)):
             link = {}
@@ -344,7 +356,6 @@ class SingleNodeTopology:
         self.get_link_info()
 
         self.json_object = json.dumps(self.machine, indent=4)
-        print(self.json_object)
 
     def dump(self, output_path):
         with open(output_path, "w") as outfile:

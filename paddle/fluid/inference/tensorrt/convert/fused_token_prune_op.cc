@@ -98,7 +98,7 @@ class FusedTokenPruneOpConverter : public OpConverter {
       layer->setName(
           ("fused_token_prune(Output: " + output_name + ")").c_str());
     } else {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "You are running the Ernie(Bert) model in static shape mode, which "
           "is not supported for the time being.\n"
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "

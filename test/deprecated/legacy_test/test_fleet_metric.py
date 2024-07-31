@@ -13,6 +13,7 @@
 # limitations under the License.
 """Test fleet metric."""
 
+import os
 import unittest
 
 import numpy as np
@@ -24,6 +25,7 @@ from paddle.distributed.fleet.base.util_factory import UtilBase
 from paddle.distributed.fleet.metrics import metric
 
 paddle.enable_static()
+os.environ['FLAGS_enable_pir_api'] = '0'
 
 
 class TestFleetMetric(unittest.TestCase):

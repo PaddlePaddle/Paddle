@@ -93,7 +93,7 @@ void RewriterBase::ReplaceOpWithIf(
     const std::function<bool(OpOperand)>& functor) {
   PADDLE_ENFORCE_EQ(op->num_results(),
                     new_values.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "incorrect number of values to replace operation"));
   NotifyRootReplaced(op, new_values);
 
@@ -124,7 +124,7 @@ void RewriterBase::ReplaceOp(Operation* op,
   PADDLE_ENFORCE_EQ(
       op->num_results(),
       new_values.size(),
-      phi::errors::InvalidArgument("incorrect # of replacement values"));
+      common::errors::InvalidArgument("incorrect # of replacement values"));
   op->ReplaceAllUsesWith(new_values);
 
   NotifyOperationRemoved(op);
@@ -135,9 +135,9 @@ void RewriterBase::EraseOp(Operation* op) {
   PADDLE_ENFORCE_EQ(
       op->use_empty(),
       true,
-      phi::errors::InvalidArgument("Erase op failed. op(%s) is used, the "
-                                   "expectation is that it is not used",
-                                   op->name()));
+      common::errors::InvalidArgument("Erase op failed. op(%s) is used, the "
+                                      "expectation is that it is not used",
+                                      op->name()));
   NotifyOperationRemoved(op);
   op->Erase();
 }
@@ -167,7 +167,7 @@ void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
                                                    Operation* new_op) {
   PADDLE_ENFORCE_EQ(op->num_results(),
                     new_op->num_results(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "replacement op doesn't match results of original op"));
   // TODO(zhangbopd): Add unit test for this.
   if (op->num_results() == 1) {
