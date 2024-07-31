@@ -43,7 +43,7 @@ def reduce_mean_wrapper(x, axis=0, keepdim=False, reduce_all=False):
 
 class TestMeanOp(OpTest):
     def setUp(self):
-        self.op_type = "mean"
+        self.op_type = "mean_all"
         self.python_api = paddle.mean
         self.public_python_api = paddle.mean
         self.dtype = np.float64
