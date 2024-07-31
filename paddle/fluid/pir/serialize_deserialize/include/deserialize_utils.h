@@ -483,8 +483,7 @@ pir::Type AttrTypeReader::ReadBuiltInType(const std::string type_name,
   } else {
     PADDLE_ENFORCE(false,
                    phi::errors::InvalidArgument(
-                       "Unknown Type %s for parse paddleoperator dialect type",
-                       type_name));
+                       "Unknown Type %s for parse builtintype", type_name));
     return pir::Type();
   }
 }
