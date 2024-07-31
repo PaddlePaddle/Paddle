@@ -514,7 +514,6 @@ bool CheckFiniteAndUnscaleOpInferSymbolicShape(
   size_t num_inputs = op->operand_source_size();
   size_t num_outputs = op->result_size();
 
-  // Ensure the number of inputs and outputs are equal
   PADDLE_ENFORCE_EQ(
       num_inputs,
       num_outputs,
@@ -525,18 +524,15 @@ bool CheckFiniteAndUnscaleOpInferSymbolicShape(
           num_inputs,
           num_outputs));
 
-  // Set the shape and dtype for each output based on the corresponding input
   for (size_t i = 0; i < num_inputs; ++i) {
     auto input_shape =
         infer_context->GetShapeOrDataForValue(op->operand_source(i));
     infer_context->SetShapeOrDataForValue(op->result(i), input_shape);
   }
 
-  // Set the shape and dtype for found_infinite output
   symbol::TensorShapeOrDataDimExprs found_infinite_shape({symbol::DimExpr(1)});
   infer_context->SetShapeOrDataForValue(
-      op->result(num_outputs -
-                 1),  // Assuming the last result is found_infinite
+      op->result(num_outputs - 1),
       symbol::ShapeOrDataDimExprs{found_infinite_shape});
 
   return true;
