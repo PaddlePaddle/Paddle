@@ -51,12 +51,10 @@ OpArgIndexes<std::optional<Index>> MakeOutMsgOpArgIndexes(
     const List<std::optional<Index>>& opt_out_msg_out_indexes) {
   List<Index> out_msg_in_indexes{};
   for (const auto& out_msg_in_index : *opt_out_msg_in_indexes) {
-    PADDLE_ENFORCE_EQ(
-        out_msg_in_index.has_value(),
-        phi::errors::InvalidArgument(
-            "The value of out_msg_in_index should be valid, but got "
-            "out_msg_in_index = %s.",
-            out_msg_in_index->value().ToString()));
+    PADDLE_ENFORCE_EQ(out_msg_in_index.has_value(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The out_msg_in_index should have value."));
     out_msg_in_indexes->emplace_back(out_msg_in_index.value());
   }
   return OpArgIndexes<std::optional<Index>>{out_msg_in_indexes,
@@ -121,9 +119,8 @@ void NaiveBidirectionEquationGenerator::InitInMsgIndex2OutMsgIndex() {
                       .second,
                   true,
                   phi::errors::InvalidArgument(
-                      "The in_msg_index2out_msg_index_ should not have "
-                      "duplicate "
-                      "key, but got in_msg_index"));
+                      "The out_msg_index2in_msg_index_ map has already "
+                      "contained the out_index."));
             });
       };
 
@@ -176,8 +173,8 @@ NaiveBidirectionEquationGenerator::MakeGetterOpStmt4OpPlaceHolder() const {
             .second,
         true,
         phi::errors::InvalidArgument(
-            "The fake_op_placeholder2op_stmt should not have duplicate "
-            "key, but got fake_op_placeholder"));
+            "The fake_op_placeholder2op_stmt map has already contained the "
+            "fake_op_placeholder."));
   }
 
   return [fake_op_placeholder2op_stmt](

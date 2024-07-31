@@ -181,9 +181,9 @@ llvm::Value* CodeGenX86::Visit(const ir::For* op) {
                                      op->body,
                                      op->vectorize_info());
         auto for_node = new_for.As<ir::For>();
-        PADDLE_ENFORCE_EQ(for_node,
-                          true,
-                          phi::errors::InvalidArgument("for_node is nullptr"));
+        PADDLE_ENFORCE_NOT_NULL(
+            for_node,
+            phi::errors::InvalidArgument("the node new_for can't be nullptr"));
         CreateSerialFor(for_node, num_task.as_int32());
       } else {
         Expr extent = op->extent;
@@ -198,9 +198,9 @@ llvm::Value* CodeGenX86::Visit(const ir::For* op) {
                                      op->body,
                                      op->vectorize_info());
         auto for_node = new_for.As<ir::For>();
-        PADDLE_ENFORCE_EQ(for_node,
-                          true,
-                          phi::errors::InvalidArgument("for_node is nullptr"));
+        PADDLE_ENFORCE_NOT_NULL(
+            for_node,
+            phi::errors::InvalidArgument("the node new_for can't be null"));
         CreateSerialFor(for_node);
       }
       parallel_env_.in_parallel_loop = false;

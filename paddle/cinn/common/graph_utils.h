@@ -111,8 +111,11 @@ class GraphNode : public Object {
         break;
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(a, phi::errors::InvalidArgument("a is nullptr"));
-    PADDLE_ENFORCE_NOT_NULL(b, phi::errors::InvalidArgument("b is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(
+        a, phi::errors::InvalidArgument("Sorry,but outlinks is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(
+        b,
+        phi::errors::InvalidArgument("Sorry, but other->inlinks_ is nullptr"));
     return std::make_tuple(a, b);
   }
 

@@ -310,7 +310,9 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
 
   void Visit(const ScheduleBlock* op, Expr* expr) override {
     auto* node = expr->As<ScheduleBlock>();
-    PADDLE_ENFORCE_NOT_NULL(node, phi::errors::InvalidArgument("node is null"));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            phi::errors::InvalidArgument(
+                                "The node expr->As<ScheduleBlock>() is null"));
     for (auto& var : node->iter_vars) {
       if (var->lower_bound.defined()) {
         Visit(&var->lower_bound, &var->lower_bound);

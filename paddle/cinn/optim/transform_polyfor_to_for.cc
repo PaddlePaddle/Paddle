@@ -99,9 +99,8 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
       if (node->condition.As<ir::LE>()) {
         auto le = node->condition.As<ir::LE>();
 
-        PADDLE_ENFORCE_EQ(
+        PADDLE_ENFORCE_NOT_NULL(
             le->a().As<ir::Sub>(),
-            true,
             phi::errors::InvalidArgument("The value of le is incorrect."
                                          "Expected value is 0"));
         PADDLE_ENFORCE_EQ(le->b().As<ir::IntImm>()->value,
@@ -114,9 +113,8 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
         node->condition = ir::LE::Make(sub->a(), sub->b());
       } else if (node->condition.As<ir::LT>()) {
         auto lt = node->condition.As<ir::LT>();
-        PADDLE_ENFORCE_EQ(
+        PADDLE_ENFORCE_NOT_NULL(
             lt->a().As<ir::Sub>(),
-            true,
             phi::errors::InvalidArgument("The value of lt is incorrect."
                                          "Expected value is 0"));
         PADDLE_ENFORCE_EQ(lt->b().As<ir::IntImm>()->value,
