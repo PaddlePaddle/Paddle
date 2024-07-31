@@ -66,10 +66,11 @@ std::vector<int64_t> ComputeOutShape(
 std::vector<paddle::Tensor> ConcatForwardDynamicAxis(
     const std::vector<paddle::Tensor>& inputs, const paddle::Tensor& axis_t) {
   // check inputs
-  PADDLE_ENFORCE_GE(inputs.size(),
-                    1,
-                    "No Tensor need to be concat, now input size is %u",
-                    inputs.size());
+  PADDLE_ENFORCE_GE(
+      inputs.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "No Tensor need to be concat, now input size is %u", inputs.size()));
   for (auto& t : inputs) {
     CHECK_INPUT(t);
   }
@@ -102,10 +103,11 @@ std::vector<paddle::Tensor> ConcatBackwardDynamicAxis(
     const paddle::Tensor& grad_out,
     const paddle::Tensor& axis_t) {
   // check input
-  PADDLE_ENFORCE_GE(inputs.size(),
-                    1,
-                    "No Tensor need to be concat, now input size is %u",
-                    inputs.size());
+  PADDLE_ENFORCE_GE(
+      inputs.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "No Tensor need to be concat, now input size is %u", inputs.size()));
   for (auto& t : inputs) {
     CHECK_INPUT(t);
   }
@@ -160,10 +162,11 @@ PD_BUILD_GRAD_OP(custom_concat)
 std::vector<paddle::Tensor> ConcatForwardStaticAxis(
     const std::vector<paddle::Tensor>& inputs, const int64_t& axis) {
   // check inputs
-  PADDLE_ENFORCE_GE(inputs.size(),
-                    1,
-                    "No Tensor need to be concat, now input size is %u",
-                    inputs.size());
+  PADDLE_ENFORCE_GE(
+      inputs.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "No Tensor need to be concat, now input size is %u", inputs.size()));
   for (auto& t : inputs) {
     CHECK_INPUT(t);
   }
@@ -194,10 +197,11 @@ std::vector<paddle::Tensor> ConcatBackwardStaticAxis(
     const paddle::Tensor& grad_out,
     const int64_t& axis) {
   // check input
-  PADDLE_ENFORCE_GE(inputs.size(),
-                    1,
-                    "No Tensor need to be concat, now input size is %u",
-                    inputs.size());
+  PADDLE_ENFORCE_GE(
+      inputs.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "No Tensor need to be concat, now input size is %u", inputs.size()));
   for (auto& t : inputs) {
     CHECK_INPUT(t);
   }
