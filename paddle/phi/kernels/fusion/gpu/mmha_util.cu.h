@@ -47,7 +47,6 @@
     \brief Functor used by mmha kernel.
 */
 
-#ifndef PADDLE_WITH_HIP
 #pragma once
 
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000
@@ -55,12 +54,47 @@
 #include <cuda_bf16.h>
 #endif
 
+#ifdef PADDLE_WITH_HIP
+#include <float.h>
+#include <hip/hip_bf16.h>
+#include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#define __nv_bfloat16 __hip_bfloat16
+#define __nv_bfloat162 __hip_bfloat162
+#else
 #include <cuda_fp16.h>
 #include <float.h>
 #include <cub/cub.cuh>
+#endif
 
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+
+#ifdef PADDLE_WITH_HIP
+/// integral_constant
+template <typename _Tp, _Tp __v>
+struct kernel_dtype_integral_constant {
+  static constexpr _Tp value = __v;
+  typedef _Tp value_type;
+  typedef kernel_dtype_integral_constant<_Tp, __v> type;
+  constexpr operator value_type() const noexcept { return value; }
+};
+
+/// The type used as a compile-time boolean with true value.
+typedef kernel_dtype_integral_constant<bool, true> true_type;
+/// The type used as a compile-time boolean with false value.
+typedef kernel_dtype_integral_constant<bool, false> false_type;
+
+/// is_same
+template <typename, typename>
+struct kernel_dtype_is_same : public false_type {};
+
+template <typename _Tp>
+struct kernel_dtype_is_same<_Tp, _Tp> : public true_type {};
+
+#endif
 
 namespace phi {
 namespace fusion {
@@ -87,7 +121,7 @@ struct Float4_ {
   float2 y;
 };
 
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 struct bf16_4_t {
   __nv_bfloat162 x;
   __nv_bfloat162 y;
@@ -542,13 +576,22 @@ inline __device__ __nv_bfloat16 bf16hmul(const __nv_bfloat16 x,
 
 inline __device__ float half_to_float(uint16_t h) {
   float f;
+#ifdef PADDLE_WITH_HIP
+  asm volatile("v_cvt_f32_f16 %0, %1;\n" : "=v"(f) : "v"(h));
+#else
   asm volatile("cvt.f32.f16 %0, %1;\n" : "=f"(f) : "h"(h));
+#endif
   return f;
 }
 
 inline __device__ float2 half2_to_float2(uint32_t v) {
   uint16_t lo, hi;
+#ifdef PADDLE_WITH_HIP
+  lo = v & 0xffff;
+  hi = (v >> 16) & 0xffff;
+#else
   asm volatile("mov.b32 {%0, %1}, %2;\n" : "=h"(lo), "=h"(hi) : "r"(v));
+#endif
   return make_float2(half_to_float(lo), half_to_float(hi));
 }
 
@@ -561,6 +604,9 @@ inline __device__ uint32_t float2_to_half2(float2 f) {
   asm volatile("cvt.rn.f16x2.f32 %0, %1, %2;\n"
                : "=r"(tmp.u32)
                : "f"(f.y), "f"(f.x));
+#elif defined(PADDLE_WITH_HIP)
+  asm volatile("v_cvt_f16_f32 %0, %1;\n" : "=v"(tmp.u16[0]) : "v"(f.x));
+  asm volatile("v_cvt_f16_f32 %0, %1;\n" : "=v"(tmp.u16[1]) : "v"(f.y));
 #else
   asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[0]) : "f"(f.x));
   asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[1]) : "f"(f.y));
@@ -654,13 +700,21 @@ inline __device__ float4 add(float4 a, float4 b) {
 
 inline __device__ uint16_t add(uint16_t a, uint16_t b) {
   uint16_t c;
+#ifdef PADDLE_WITH_HIP
+  asm volatile("v_add_f16 %0, %1, %2;" : "=v"(c) : "v"(a), "v"(b));
+#else
   asm volatile("add.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
+#endif
   return c;
 }
 
 inline __device__ uint32_t add(uint32_t a, uint32_t b) {
   uint32_t c;
+#ifdef PADDLE_WITH_HIP
+  asm volatile("v_pk_add_f16 %0, %1, %2;\n" : "=v"(c) : "v"(a), "v"(b));
+#else
   asm volatile("add.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
+#endif
   return c;
 }
 
@@ -1821,14 +1875,22 @@ inline __device__ float4 mul(float4 a, float4 b) {
 template <>
 inline __device__ uint16_t mul(uint16_t a, uint16_t b) {
   uint16_t c;
+#ifdef PADDLE_WITH_HIP
+  asm volatile("v_mul_f16 %0, %1, %2;" : "=v"(c) : "v"(a), "v"(b));
+#else
   asm volatile("mul.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
+#endif
   return c;
 }
 
 template <>
 inline __device__ uint32_t mul(uint32_t a, uint32_t b) {
   uint32_t c;
+#ifdef PADDLE_WITH_HIP
+  asm volatile("v_pk_mul_f16 %0, %1, %2;\n" : "=v"(c) : "v"(a), "v"(b));
+#else
   asm volatile("mul.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
+#endif
   return c;
 }
 
@@ -2225,9 +2287,15 @@ inline __device__ float4 fma(float4 a, float4 b, float4 c) {
 
 inline __device__ uint32_t fma(uint32_t a, uint32_t b, uint32_t c) {
   uint32_t d;
+#ifdef PADDLE_WITH_HIP
+  asm volatile("v_pk_fma_f16 %0, %1, %2, %3;\n"
+               : "=v"(d)
+               : "v"(a), "v"(b), "v"(c));
+#else
   asm volatile("fma.rn.f16x2 %0, %1, %2, %3;\n"
                : "=r"(d)
                : "r"(a), "r"(b), "r"(c));
+#endif
   return d;
 }
 
@@ -2294,7 +2362,11 @@ inline __device__ bf16_4_t fma(float a, Float4_ b, bf16_4_t c) {
 
 inline __device__ uint32_t h0_h0(uint16_t a) {
   uint32_t b;
+#ifdef PADDLE_WITH_HIP
+  b = (a << 16) | a;
+#else
   asm volatile("mov.b32 %0, {%1, %1};" : "=r"(b) : "h"(a));
+#endif
   return b;
 }
 
@@ -2514,6 +2586,7 @@ round_tmp<uint8_t, float16, CacheType::INT8>(float16 val) {
   return static_cast<uint8_t>(quant_value + 128.0);
 }
 
+#ifndef PADDLE_WITH_HIP
 template <>
 inline __device__ uint8_t
 round_tmp<uint8_t, __nv_bfloat16, CacheType::INT8>(__nv_bfloat16 val) {
@@ -2523,6 +2596,7 @@ round_tmp<uint8_t, __nv_bfloat16, CacheType::INT8>(__nv_bfloat16 val) {
   quant_value = quant_value < -127.0f ? -127.0f : quant_value;
   return static_cast<uint8_t>(quant_value + 128.0);
 }
+#endif
 
 template <>
 inline __device__ uint16_t
@@ -3394,7 +3468,11 @@ inline __device__ float block_sum(float* red_smem, float sum) {
 
 #pragma unroll
   for (int mask = WARP_SIZE_T / 2; mask >= 1; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+    sum += __shfl_xor(sum, mask);
+#else
     sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+#endif
   }
 
   if (lane == 0) {
@@ -3408,10 +3486,17 @@ inline __device__ float block_sum(float* red_smem, float sum) {
 
 #pragma unroll
   for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+    sum += __shfl_xor(sum, mask);
+#else
     sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+#endif
   }
-
+#ifdef PADDLE_WITH_HIP
+  return __shfl(sum, 0);
+#else
   return __shfl_sync(uint32_t(-1), sum, 0);
+#endif
 }
 
 template <typename T>
@@ -3640,7 +3725,11 @@ inline __device__ float qk_dot_(const K_vec (&q)[N],
   float qk = sum(qk_vec);
 #pragma unroll
   for (int mask = THREADS_PER_KEY / 2; mask >= 1; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+    qk += __shfl_xor(qk, mask);
+#else
     qk += __shfl_xor_sync(uint32_t(-1), qk, mask);
+#endif
   }
   return qk;
 }
@@ -3663,7 +3752,16 @@ constexpr float QUANT_MIN_BOUND = -127.0;
 template <typename T>
 struct QuantFunc {
   __host__ __device__ uint8_t operator()(T x, float quant_scale) {
+#ifdef PADDLE_WITH_HIP
+    float tmp;
+    if constexpr (kernel_dtype_is_same<T, half>::value) {
+      tmp = __half2float(x) * quant_scale;
+    } else {
+      tmp = static_cast<float>(x) * quant_scale;
+    }
+#else
     float tmp = static_cast<float>(x) * quant_scale;
+#endif
     tmp = round(tmp);
     if (tmp > QUANT_MAX_BOUND)
       tmp = QUANT_MAX_BOUND;
@@ -3681,7 +3779,7 @@ struct MaxFunc {
 template <>
 struct MaxFunc<half> {
   __device__ half operator()(half a, half b) {
-#if __CUDA_ARCH__ >= 800
+#if __CUDA_ARCH__ >= 800 || defined(PADDLE_WITH_HIP)
     return __hmax(a, b);
 #else
     return max(static_cast<float>(a), static_cast<float>(b));
@@ -3710,7 +3808,7 @@ struct AbsFunc {
 template <>
 struct AbsFunc<half> {
   __device__ half operator()(half x) {
-#if __CUDA_ARCH__ >= 800
+#if __CUDA_ARCH__ >= 800 || defined(PADDLE_WITH_HIP)
     return __habs(x);
 #else
     return abs(static_cast<float>(x));
@@ -3733,7 +3831,16 @@ struct AbsFunc<__nv_bfloat16> {
 
 template <typename T, typename Vec, int VecSize>
 __inline__ __device__ T LocalReduceMax(Vec& vec) {  // NOLINT
+#ifdef PADDLE_WITH_HIP
+  T local_max;
+  if constexpr (kernel_dtype_is_same<T, half>::value) {
+    local_max = __float2half(0.0f);
+  } else {
+    local_max = static_cast<T>(0.0f);
+  }
+#else
   T local_max = static_cast<T>(0.0);
+#endif
 #pragma unroll
   for (int i = 0; i < VecSize; ++i) {
     local_max = vec[i] > local_max ? vec[i] : local_max;
@@ -3745,8 +3852,12 @@ template <typename T>
 __inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
 #pragma unroll
   for (int mask = HALF_WARP; mask > 0; mask >>= 1) {
+#ifdef PADDLE_WITH_HIP
+    val = MaxFunc<T>()(val, __shfl_xor(val, mask, WARP_SIZE_TMP));
+#else
     val =
         MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE_TMP));
+#endif
   }
   return val;
 }
@@ -3765,14 +3876,22 @@ __inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
 
   __syncthreads();
 
+#ifdef PADDLE_WITH_HIP
+  T abs_max_val;
+  if constexpr (kernel_dtype_is_same<T, half>::value) {
+    abs_max_val = __float2half(0.0f);
+  } else {
+    abs_max_val = static_cast<T>(0.0f);
+  }
+  abs_max_val = smem[threadIdx.x];
+#else
   T abs_max_val = (threadIdx.x < (blockDim.x / WARP_SIZE_TMP))
                       ? smem[threadIdx.x]
                       : static_cast<T>(0.0f);
+#endif
   abs_max_val = WarpReduceAbsMax(abs_max_val, mask);
   return abs_max_val;
 }
 
 }  // namespace fusion
 }  // namespace phi
-
-#endif  // PADDLE_WITH_HIP

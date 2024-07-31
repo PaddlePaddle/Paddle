@@ -69,18 +69,6 @@ class Tracker:
         """
         raise NotImplementedError()
 
-    def match_expr(self, expr: str) -> bool:
-        """
-        Match the expression with the tracked variables.
-
-        Args:
-            expr (str): The expression to be matched.
-
-        Returns:
-            bool: True if the expression matches the tracked variables, False otherwise.
-        """
-        return self.trace_value_from_frame().inlined_expr == expr
-
     def is_traceable(self) -> bool:
         """
         Determine if all the tracked variables can be traced from the frame.

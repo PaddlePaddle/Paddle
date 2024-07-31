@@ -73,19 +73,19 @@ nvinfer1::Dims Pool3DPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Pool3D Plugin only has one input, so the nbInputs "
                         "value should be 1, but get %d.",
                         nbInputs));
-  PADDLE_ENFORCE_EQ(
-      index,
-      0,
-      phi::errors::InvalidArgument("The Pool3D Plugin only has one input, so "
-                                   "the index value should be 0, but get %d.",
-                                   index));
+  PADDLE_ENFORCE_EQ(index,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The Pool3D Plugin only has one input, so "
+                        "the index value should be 0, but get %d.",
+                        index));
   PADDLE_ENFORCE_EQ(inputDims[0].nbDims,
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Pool3D Plugin only has four Dimensions, so the "
                         "nbDims value should be 4, but get %d.",
                         inputDims[0].nbDims));
@@ -225,14 +225,14 @@ nvinfer1::DimsExprs Pool3DPluginDynamic::getOutputDimensions(
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nb_inputs,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Split plugin should be only one input."));
 
   PADDLE_ENFORCE_EQ(
       inputs[0].d[1]->isConstant(),
       true,
-      phi::errors::InvalidArgument("The channel dimension should be "
-                                   "static, but we found it's dynamic."));
+      common::errors::InvalidArgument("The channel dimension should be "
+                                      "static, but we found it's dynamic."));
   nvinfer1::DimsExprs output(inputs[0]);
   if (is_global_) {
     output.d[2] = expr_builder.constant(1);
@@ -328,16 +328,16 @@ bool Pool3DPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   return ((in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
@@ -350,14 +350,14 @@ nvinfer1::DataType Pool3DPluginDynamic::getOutputDataType(
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Pool3D Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
   PADDLE_ENFORCE_EQ(
       (input_types[0] == nvinfer1::DataType::kFLOAT),
       true,
-      phi::errors::InvalidArgument("The input type should be float"));
+      common::errors::InvalidArgument("The input type should be float"));
   return input_types[0];
 }
 

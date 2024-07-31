@@ -30,6 +30,94 @@ np.random.seed(10)
 SHAPE = [16, 10]
 
 
+class TestModel(paddle.nn.Layer):
+    def __init__(self, param_lr, y_no_grad, cond_i):
+        super().__init__()
+        self.param_lr = param_lr
+
+        self.shape = SHAPE
+        self.y_no_grad = y_no_grad
+        self.cond_i = cond_i
+        self._init_param()
+
+        self.param_x = paddle.create_parameter(
+            dtype="float32",
+            shape=self.shape,
+            attr=base.ParamAttr(learning_rate=self.param_lr, name="param_x"),
+            default_initializer=paddle.nn.initializer.Assign(self.x),
+        )
+
+        self.param_y = paddle.create_parameter(
+            dtype="float32",
+            shape=self.shape,
+            attr=base.ParamAttr(learning_rate=self.param_lr, name="param_y"),
+            default_initializer=paddle.nn.initializer.Assign(self.y),
+        )
+        self.param_z = paddle.create_parameter(
+            dtype="float32",
+            shape=self.shape,
+            attr=base.ParamAttr(learning_rate=self.param_lr, name="param_z"),
+            default_initializer=paddle.nn.initializer.Assign(self.z),
+        )
+
+    def _init_param(self):
+        self.x = np.ones(self.shape).astype('float32')
+        self.y = np.ones(self.shape).astype('float32') * 2.0
+        self.z = np.ones(self.shape).astype('float32') * 3.0
+
+    def forward(self):
+        sum_xy = paddle.add(self.param_x, self.param_y, name='sum_xy')
+        sub_yz = paddle.subtract(self.param_y, self.param_z, name='sub_yz')
+        # useless = paddle.static.nn.fc(self.param_x, size=1, name='fc_useless')
+
+        def cond_true():
+            cond_yz = paddle.add(self.param_y, self.param_z, name='sum_cond_yz')
+            # param_y will not be updated
+            self.param_y.stop_gradient = self.y_no_grad
+            cond_res = paddle.add(cond_yz, self.param_z, name='sum_cond_true')
+            cond_useless = paddle.multiply(self.param_x, self.param_y)
+            return cond_res
+
+        def cond_false():
+            cond_res = paddle.add(
+                self.param_y, self.param_z, name='sum_cond_false'
+            )
+            cond_useless = paddle.multiply(self.param_z, self.param_z)
+            return cond_res
+
+        self.cond_i = paddle.assign(np.array([self.cond_i], dtype='float32'))
+        sum_cond = paddle.static.nn.cond(
+            self.cond_i > 1.0, cond_true, cond_false
+        )
+        sum_all = paddle.add_n([sum_xy, sub_yz, sum_cond])
+
+        return sum_all
+
+    def _calc_gradient(self, cond_i):
+        """
+        Calculate grads of params
+        """
+        grads = []
+        d_out_val = np.ones_like(self.x).astype("float32") / np.prod(self.shape)
+        grads.append(d_out_val)  # x_grad
+        if cond_i > 1:
+            y_grad_ratio, z_grad_ratio = 0 if self.y_no_grad else 3, 1
+        else:
+            y_grad_ratio, z_grad_ratio = 3, 0
+        if not self.y_no_grad:
+            grads.append(d_out_val * y_grad_ratio)  # y_grad
+        grads.append(d_out_val * z_grad_ratio)  # z_grad
+
+        return grads
+
+    def _apply_gradient(self, param, grad, name):
+        """
+        The way of updating grad in optimizer.(such as SGD)
+        This method should be override.
+        """
+        return param - self.attr['lr'] * grad
+
+
 class SimpleNetWithCond:
     """
     Build net with conditional Block and useless layers.
@@ -244,35 +332,106 @@ class TestOptimizer(unittest.TestCase):
                             self.optimizer._accumulators = defaultdict(
                                 lambda: {}
                             )
-                            test_net = self.NetClass(
-                                self.optimizer, param_lr, y_no_grad
-                            )
-                            (
-                                fetch_list,
-                                decorated_optimizer,
-                            ) = test_net.build_net(cond_i, use_bf16)
-                            if use_bf16:
-                                self.optimizer = decorated_optimizer
-
-                            exe = base.Executor(place)
-                            exe.run(init_program)
-                            if use_bf16:
-                                self.optimizer.amp_init(exe.place)
-
-                            # Train 2 steps to check validity
-                            for batch_i in range(2):
-                                res = exe.run(
-                                    main_program, fetch_list=fetch_list
+                            fetch_list = []
+                            if paddle.framework.in_pir_mode():
+                                model = TestModel(param_lr, y_no_grad, cond_i)
+                                self.optimizer = paddle.optimizer.SGD(
+                                    learning_rate=1.0,
+                                    parameters=model.parameters(),
                                 )
-                                gt_grads = test_net._calc_gradient(cond_i)
-                                gt_params = self._apply_optimize(
-                                    test_net, gt_grads
-                                )
-                                param_grads = gt_params + gt_grads
-                                for i in range(len(res)):
-                                    np.testing.assert_allclose(
-                                        res[i], param_grads[i]
+                                params_grads = []
+                                if use_bf16:
+                                    model, self.optimizer = paddle.amp.decorate(
+                                        models=model,
+                                        optimizers=self.optimizer,
+                                        level='O2',
+                                        dtype='bfloat16',
                                     )
+
+                                    with paddle.amp.auto_cast(
+                                        level='O2',
+                                        dtype='bfloat16',
+                                        use_promote=True,
+                                    ):
+                                        out = model()
+                                        loss = paddle.mean(out)
+                                        (
+                                            _,
+                                            params_grads,
+                                        ) = self.optimizer.minimize(loss)
+                                else:
+                                    out = model()
+                                    loss = paddle.mean(out)
+                                    _, params_grads = self.optimizer.minimize(
+                                        loss
+                                    )
+
+                                param_x, param_y, param_z = model.parameters()
+
+                                for param, grad in params_grads:
+                                    if param.is_same(param_x):
+                                        param_x_grad = grad
+                                    elif param.is_same(param_y):
+                                        param_y_grad = grad
+                                    elif param.is_same(param_z):
+                                        param_z_grad = grad
+                                fetch_list = (
+                                    [
+                                        param_x,
+                                        param_z,
+                                        param_x_grad,
+                                        param_z_grad,
+                                    ]
+                                    if y_no_grad
+                                    else [
+                                        param_x,
+                                        param_y,
+                                        param_z,
+                                        param_x_grad,
+                                        param_y_grad,
+                                        param_z_grad,
+                                    ]
+                                )
+                                exe = base.Executor(place)
+                                exe.run(init_program)
+                                if not paddle.framework.in_pir_mode():
+                                    if use_bf16:
+                                        self.optimizer.amp_init(exe.place)
+
+                                for batch_i in range(2):
+                                    res = exe.run(
+                                        main_program, fetch_list=fetch_list
+                                    )
+                            else:
+                                test_net = self.NetClass(
+                                    self.optimizer, param_lr, y_no_grad
+                                )
+                                (
+                                    fetch_list,
+                                    decorated_optimizer,
+                                ) = test_net.build_net(cond_i, use_bf16)
+                                if use_bf16:
+                                    self.optimizer = decorated_optimizer
+
+                                exe = base.Executor(place)
+                                exe.run(init_program)
+                                if use_bf16:
+                                    self.optimizer.amp_init(exe.place)
+
+                                # Train 2 steps to check validity
+                                for batch_i in range(2):
+                                    res = exe.run(
+                                        main_program, fetch_list=fetch_list
+                                    )
+                                    gt_grads = test_net._calc_gradient(cond_i)
+                                    gt_params = self._apply_optimize(
+                                        test_net, gt_grads
+                                    )
+                                    param_grads = gt_params + gt_grads
+                                    for i in range(len(res)):
+                                        np.testing.assert_allclose(
+                                            res[i], param_grads[i]
+                                        )
 
 
 @unittest.skipIf(
@@ -280,9 +439,14 @@ class TestOptimizer(unittest.TestCase):
 )
 class TestSGDOptimizer(TestOptimizer):
     def test_optimizer_multiblock_except(self):
-        with self.assertRaisesRegex(
-            ValueError, "var param_y not in this block"
-        ):
+        if not paddle.framework.in_pir_mode():
+            with self.assertRaisesRegex(
+                ValueError, "var param_y not in this block"
+            ):
+                self._check_grads(use_bf16=True)
+
+    def test_optimizer_amp(self):
+        if paddle.framework.in_pir_mode():
             self._check_grads(use_bf16=True)
 
 
