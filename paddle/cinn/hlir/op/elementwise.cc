@@ -103,9 +103,8 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
                           pack_args[1]))
     std::string tensor_name = pack_args[1].operator std::string();
     Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE(
         A_expr.as_tensor(),
-        true,
         phi::errors::InvalidArgument("The pack_args[0] should be tensor!"
                                      "Please check.",
                                      op_name))
