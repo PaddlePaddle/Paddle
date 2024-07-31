@@ -240,7 +240,7 @@ bool BatchNormOpInferSymbolicShape(
   std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
 
   std::string data_layout_str =
-      op->attribute<pir::StrAttribute>("data_layout").AsString();
+      op->attribute<pir::StrAttribute>("data_format").AsString();
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
   PADDLE_ENFORCE_GE(
