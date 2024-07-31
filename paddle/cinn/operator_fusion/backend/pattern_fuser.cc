@@ -28,7 +28,7 @@ StmtPattern<BackendStage> ConvertToStmtPattern(
   const auto& kind = GetOpPatternKind(content.op);
   if (kind == hlir::framework::kReduction) {
     PADDLE_ENFORCE_EQ(
-        content.expr->has_value(),
+        content.expr.has_value(),
         true,
         phi::errors::InvalidArgument(
             "The content.expr should have value in ConvertToStmtPattern."));
@@ -38,7 +38,7 @@ StmtPattern<BackendStage> ConvertToStmtPattern(
              kind == hlir::framework::kBroadcast ||
              kind == hlir::framework::kInjective) {
     PADDLE_ENFORCE_EQ(
-        content.expr->has_value(),
+        content.expr.has_value(),
         true,
         phi::errors::InvalidArgument(
             "The content.expr should have value in ConvertToStmtPattern."));
