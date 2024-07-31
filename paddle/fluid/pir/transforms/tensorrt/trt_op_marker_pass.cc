@@ -56,7 +56,7 @@ DEFINE_GENERAL_PATTERN(Dropout, paddle::dialect::DropoutOp)
 DEFINE_GENERAL_PATTERN(Bmm, paddle::dialect::BmmOp)
 DEFINE_GENERAL_PATTERN(Concat, paddle::dialect::ConcatOp)
 DEFINE_GENERAL_PATTERN(Nonzero, paddle::dialect::NonzeroOp)
-
+DEFINE_GENERAL_PATTERN(Gelu, paddle::dialect::GeluOp)
 DEFINE_GENERAL_PATTERN(Fused_gemm_epilogue,
                        paddle::dialect::FusedGemmEpilogueOp)
 DEFINE_GENERAL_PATTERN(Layer_norm, paddle::dialect::LayerNormOp)
@@ -797,6 +797,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(FusedConv2dAddAct)
     ADD_PATTERN(DepthwiseConv2d)
     ADD_PATTERN(Nonzero)
+    ADD_PATTERN(Gelu)
 
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
