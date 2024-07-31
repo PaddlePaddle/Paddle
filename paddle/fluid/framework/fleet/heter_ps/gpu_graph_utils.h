@@ -69,8 +69,12 @@ inline std::vector<int> shuffle_int_vector(int n) {
 #define CUDA_CHECK(cmd)                                                       \
   do {                                                                        \
     cudaError_t e = cmd;                                                      \
-    CHECK(e == cudaSuccess) << "Cuda failure " << __FILE__ << ":" << __LINE__ \
-                            << " " << cudaGetErrorString(e) << std::endl;     \
+    PADDLE_ENFORCE_EQ(e,                                                      \
+                      cudaSuccess,                                            \
+                      phi::errors::InvalidArgument("CUDA error at %s:%s: %s", \
+                                                   __FILE__,                  \
+                                                   __LINE__,                  \
+                                                   cudaGetErrorString(e)));   \
   } while (0)
 
 class CudaDeviceRestorer {

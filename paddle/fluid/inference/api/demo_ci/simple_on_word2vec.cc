@@ -58,7 +58,11 @@ void Main(bool use_gpu) {
 
     //# 3. Run
     std::vector<PaddleTensor> outputs;
-    CHECK(predictor->Run(slots, &outputs));
+    PADDLE_ENFORCE_EQ(predictor->Run(slots, &outputs),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Failed to run the predictor. Please check the input "
+                          "data and model configuration."));
 
     //# 4. Get output.
     CHECK_EQ(outputs.size(), 1UL);
@@ -104,7 +108,11 @@ void MainThreads(int num_threads, bool use_gpu) {
         std::vector<PaddleTensor> inputs(4, tensor);
         std::vector<PaddleTensor> outputs;
         // 3. Run
-        CHECK(predictor->Run(inputs, &outputs));
+        PADDLE_ENFORCE_EQ(predictor->Run(slots, &outputs),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "Failed to run the predictor. Please check the "
+                              "input data and model configuration."));
 
         // 4. Get output.
         CHECK_EQ(outputs.size(), 1UL);
