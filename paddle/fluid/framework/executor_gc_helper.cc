@@ -203,7 +203,7 @@ void DeleteUnusedTensors(const Scope &scope,
       lod_tensor_arr->clear();
     } else if (var->IsType<Strings>()) {
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Type %s of variable %s is not supported eager deletion.",
           framework::ToTypeName(var->Type()),
           var_name));
@@ -253,10 +253,10 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
                                     const bool &for_partial_block) {
   ProgramDesc program{origin_program};
   size_t block_num = program.Size();
-  PADDLE_ENFORCE_GE(
-      block_num,
-      1,
-      phi::errors::PermissionDenied("Program should have at least one block"));
+  PADDLE_ENFORCE_GE(block_num,
+                    1,
+                    common::errors::PermissionDenied(
+                        "Program should have at least one block"));
   // Note(zhangbo): For dygraph2static inplace policy, origin_program is a
   // partial program(only include forward or backward), and control flow op's
   // attr skip_eager_deletion_vars has been updated at graph->program before
@@ -309,16 +309,16 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
       for (auto sub_block_id : sub_block_ids) {
         PADDLE_ENFORCE_GE(sub_block_id,
                           0,
-                          phi::errors::PermissionDenied(
+                          common::errors::PermissionDenied(
                               "sub_block id must be non-negative number"));
         PADDLE_ENFORCE_LT(sub_block_id,
                           block_num,
-                          phi::errors::PermissionDenied(
+                          common::errors::PermissionDenied(
                               "sub_block id exceeds max block num"));
         PADDLE_ENFORCE_EQ(
             found_skip_vars[sub_block_id],
             false,
-            phi::errors::PermissionDenied(
+            common::errors::PermissionDenied(
                 "there are 2 ops which refer to the same sub_block %d",
                 sub_block_id));
 

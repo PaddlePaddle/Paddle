@@ -72,8 +72,8 @@ proto::VarType::Type ToDataType(std::type_index type) {
   if (it != gDataTypeMap().cpp_to_proto_.end()) {
     return it->second;
   }
-  PADDLE_THROW(phi::errors::Unimplemented("Not support %s as tensor data type.",
-                                          platform::demangle(type.name())));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Not support %s as tensor data type.", platform::demangle(type.name())));
 }
 
 std::type_index ToTypeIndex(proto::VarType::Type type) {
@@ -81,7 +81,7 @@ std::type_index ToTypeIndex(proto::VarType::Type type) {
   if (it != gDataTypeMap().proto_to_cpp_.end()) {
     return it->second;
   }
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support proto::VarType::Type(%d) as tensor type.",
       static_cast<int>(type)));
 }
@@ -95,7 +95,7 @@ std::string DataTypeToString(const proto::VarType::Type type) {
   if (type == proto::VarType::RAW) {
     return "RAW(runtime decided type)";
   }
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support proto::VarType::Type(%d) as tensor type.",
       static_cast<int>(type)));
 }
@@ -105,8 +105,8 @@ size_t SizeOfType(proto::VarType::Type type) {
   if (it != gDataTypeMap().proto_to_size_.end()) {
     return it->second;
   }
-  PADDLE_THROW(phi::errors::Unimplemented("Not support %s as tensor type.",
-                                          DataTypeToString(type)));
+  PADDLE_THROW(common::errors::Unimplemented("Not support %s as tensor type.",
+                                             DataTypeToString(type)));
 }
 
 // Now only supports promotion of complex type
@@ -123,7 +123,7 @@ int DataTypeNumAlign(const proto::VarType::Type t) {
              t == proto::VarType::COMPLEX128) {
     cast_type_num = static_cast<int>(t) - 21;
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Only supports to align data type include float32, float64, complex64 "
         "and complex128, but received data type is `s`.",
         DataTypeToString(t)));

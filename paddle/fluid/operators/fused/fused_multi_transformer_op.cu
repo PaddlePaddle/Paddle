@@ -206,19 +206,19 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     if (time_step) {
       PADDLE_ENFORCE_EQ(time_step->place(),
                         phi::CPUPlace(),
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The place of input(TimeStep) must be CPUPlace."));
       // cache_seq_len
       int time_step_value = time_step->data<int>()[0];
       PADDLE_ENFORCE_GT(time_step_value,
                         0,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The value of time_step must > 0, but now is %d",
                             time_step_value));
       PADDLE_ENFORCE_EQ(
           seq_len,
           1,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "In decode stage, the seq_len of input must be 1, but now is %d",
               seq_len));
       out_seq_len += time_step_value;
@@ -240,7 +240,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       } else if (src_mask->dims()[1] == num_head) {
         mask_broadcast_num_heads = false;
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Unknow dimension for attn_mask, the num_head(2nd) "
             "dimension is invalid, it should be 1 or num_head(%d), "
             "but got %d",
@@ -499,7 +499,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                              gqa_group_size);
       } else if (cache_kv_out) {  // generation context stage
         if (!encoder_remove_padding) {
-          PADDLE_THROW(phi::errors::InvalidArgument(
+          PADDLE_THROW(common::errors::InvalidArgument(
               "encoder_remove_padding must be True, but got False"));
         }
         if (rotary_emb_dims != 0) {

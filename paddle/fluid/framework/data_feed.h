@@ -1159,7 +1159,7 @@ class DataFeed {
   virtual ~DataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
   virtual bool CheckFile(const char* filename UNUSED) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(CheckFile) is not implemented."));
   }
   // Set filelist for DataFeed.
@@ -1383,7 +1383,7 @@ class DataFeed {
   }
 
   virtual void DoWalkandSage() {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(DoWalkandSage) is not implemented."));
   }
 
@@ -1399,7 +1399,7 @@ class DataFeed {
 
   virtual bool IsTrainMode() { return train_mode_; }
   virtual void LoadIntoMemory() {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(LoadIntoMemory) is not implemented."));
   }
   virtual void SetPlace(const phi::Place& place) { place_ = place; }
@@ -1411,7 +1411,7 @@ class DataFeed {
   }
 
   virtual void PackToScope(MiniBatchGpuPack* pack, const Scope* scope) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(PackToScope) is not implemented."));
   }
   virtual void SetInsIdVec(MiniBatchGpuPack* pack) {}
@@ -1419,11 +1419,11 @@ class DataFeed {
 
   virtual void DumpWalkPath(std::string dump_path UNUSED,
                             size_t dump_rate UNUSED) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(DumpWalkPath) is not implemented."));
   }
   virtual void DumpSampleNeighbors(std::string dump_path) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(DumpSampleNeighbors) is not implemented"));
   }
 
@@ -1719,7 +1719,7 @@ class MultiSlotType {
   void CheckType(const std::string& type) const {
     PADDLE_ENFORCE_EQ((type == "uint64" || type == "float"),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "MultiSlotType error, expect type is uint64 or "
                           "float, but received type is %s.",
                           type));
@@ -1728,14 +1728,14 @@ class MultiSlotType {
     PADDLE_ENFORCE_EQ(
         type_[0],
         'f',
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "MultiSlotType error, add %s value to float slot.", type_));
   }
   void CheckUint64() const {
     PADDLE_ENFORCE_EQ(
         type_[0],
         'u',
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "MultiSlotType error, add %s value to uint64 slot.", type_));
   }
   std::vector<float> float_feasign_;
@@ -1855,10 +1855,10 @@ class RecordCandidateList {
     PADDLE_ENFORCE_LT(
         index,
         candidate_list_.size(),
-        phi::errors::OutOfRange("Your index [%lu] exceeds the number of "
-                                "elements in candidate_list[%lu].",
-                                index,
-                                candidate_list_.size()));
+        common::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                   "elements in candidate_list[%lu].",
+                                   index,
+                                   candidate_list_.size()));
     return candidate_list_[index];
   }
   void SetSlotIndexToReplace(
