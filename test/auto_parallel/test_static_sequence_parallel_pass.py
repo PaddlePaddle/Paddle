@@ -174,7 +174,7 @@ class TestGradSync(unittest.TestCase):
 
         for op in ops:
             # check sequence parallel allgather
-            if op.type == "c_allgather":
+            if op.type == "all_gather":
                 assert (
                     int(op.attr("nranks")) == 4
                 ), "sequence parallel allgather error with nranks [{}]".format(

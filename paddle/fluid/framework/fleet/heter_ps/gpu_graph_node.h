@@ -505,7 +505,7 @@ struct GpuPsCommGraphFea {
     PADDLE_ENFORCE_LE(
         slot_num,
         255,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of slot_num should not be greater than 255 "
             ", but the slot_num is %d ",
             slot_num));
@@ -583,7 +583,7 @@ struct GpuPsCommGraphFloatFea {
     PADDLE_ENFORCE_LE(
         slot_num,
         255,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of slot_num should not be greater than 255 "
             ", but the slot_num is %d ",
             slot_num));

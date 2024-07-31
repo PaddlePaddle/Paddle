@@ -392,7 +392,7 @@ void ResourceManager::InitCPUResource() {
 CPUContextResource* ResourceManager::GetCPUResource() const {
   PADDLE_ENFORCE_NOT_NULL(
       cpu_resource_.get(),
-      phi::errors::PreconditionNotMet("cpu_resource should be not null!"));
+      common::errors::PreconditionNotMet("cpu_resource should be not null!"));
   return cpu_resource_.get();
 }
 
@@ -415,7 +415,7 @@ void* ResourceManager::InitGPUResource(const phi::Place& place, void* stream) {
 void ResourceManager::DestroyGPUResource(void* stream) {
   PADDLE_ENFORCE_EQ(gpu_resources_.count(stream),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The stream[%p] not found in gpu_resources.", stream));
   Decrease(stream);
 }
@@ -435,7 +435,7 @@ void ResourceManager::Increase(void* stream) { ++ref_count_[stream]; }
 GPUContextResource* ResourceManager::GetGPUResource(void* stream) const {
   PADDLE_ENFORCE_EQ(gpu_resources_.count(stream),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The stream[%p] not found in gpu_resources.", stream));
   return gpu_resources_.at(stream).get();
 }
@@ -448,8 +448,8 @@ void ResourceManager::GpuResourceSwitchStream(void* old_stream,
   PADDLE_ENFORCE_EQ(
       gpu_resources_.count(old_stream),
       true,
-      phi::errors::InvalidArgument("The stream[%p] not found in gpu_resources.",
-                                   old_stream));
+      common::errors::InvalidArgument(
+          "The stream[%p] not found in gpu_resources.", old_stream));
 
   // NOTE: stream may be used by multiple predictor, skip resource
   //       operation if resource of new_stream is already exists

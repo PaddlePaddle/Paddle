@@ -62,7 +62,7 @@ class DeleteIsolatedNodePass : public Pass {
 
 void DeleteIsolatedNodePass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   if (!graph->IsMainGraph()) {
     VLOG(3) << "Pass(apply in main graph) will delete isolated nodes in all "
                "subgraphs.";

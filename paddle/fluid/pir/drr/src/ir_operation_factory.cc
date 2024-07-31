@@ -384,6 +384,10 @@ std::vector<pir::Value> GetIrValuesByDrrTensors(
 void BindIrOutputsWithDrrOutputs(const std::vector<const Tensor*>& tensors,
                                  pir::Operation* op,
                                  MatchContextImpl* match_ctx) {
+  if (op->isa<paddle::dialect::ReshapeOp>()) {
+    match_ctx->BindIrValue(tensors[0]->name(), op->result(0));
+    return;
+  }
   PADDLE_ENFORCE_LE(
       tensors.size(),
       op->num_results(),

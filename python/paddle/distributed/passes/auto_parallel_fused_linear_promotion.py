@@ -61,8 +61,9 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "elementwise_add_grad",
             "c_allreduce_sum",
             "scale",
-            "c_allgather",
+            "all_gather",
             "matmul_v2_grad",
+            "all_gather",
         ],
     },
     {  # DP + MP
@@ -82,8 +83,9 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "scale",
             "c_allreduce_sum",
             "scale",
-            "c_allgather",
+            "all_gather",
             "matmul_v2_grad",
+            "all_gather",
         ],
     },
     # amp_level == 'o1'
@@ -97,7 +99,8 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "elementwise_add_grad",
             "c_allreduce_sum",
             "scale",
-            "c_allgather",
+            "all_gather",
+            "all_gather",
             "matmul_v2_grad",
         ],
     },
@@ -118,8 +121,9 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
             "scale",
             "c_allreduce_sum",
             "scale",
-            "c_allgather",
+            "all_gather",
             "matmul_v2_grad",
+            "all_gather",
         ],
     },
 ]
@@ -631,7 +635,7 @@ class FusedLinearPromotionPass(PassBase):
         to_delete_grad_of_param = []
         if is_first_rank:
             if is_sp:
-                # place the comm_op(c_allgather) before the elementwise_add_grad
+                # place the comm_op(all_gather) before the elementwise_add_grad
                 for segment in reversed(backward_segments):
                     add_grad_op = global_block.ops[segment[0]]
                     matmul_grad_op = global_block.ops[segment[-1] - 1]

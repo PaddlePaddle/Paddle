@@ -13,11 +13,60 @@
 # limitations under the License.
 """This is definition of dataset class, which is high performance IO."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, TypedDict
+
 from google.protobuf import text_format
 
 import paddle
 from paddle.base import core
 from paddle.base.proto import data_feed_pb2
+
+if TYPE_CHECKING:
+    from typing_extensions import NotRequired, TypeAlias, Unpack
+
+    from paddle import Tensor
+    from paddle.distributed.fleet import Fleet
+
+    _InputType: TypeAlias = Literal[0, 1]
+    _CurrentPhase: TypeAlias = Literal[0, 1]
+
+    class _DatasetBaseSettings(TypedDict):
+        batch_size: NotRequired[int]
+        thread_num: NotRequired[int]
+        use_var: NotRequired[list[Tensor]]
+        pipe_command: NotRequired[str]
+        input_type: NotRequired[_InputType]
+        fs_name: NotRequired[str]
+        fs_ugi: NotRequired[str]
+        download_cmd: NotRequired[str]
+
+    class _InMemoryDatasetDistributedSettings(TypedDict):
+        merge_size: NotRequired[int]
+        parse_ins_id: NotRequired[bool]
+        parse_content: NotRequired[bool]
+        fleet_send_batch_size: NotRequired[int]
+        fleet_send_sleep_seconds: NotRequired[int]
+        fea_eval: NotRequired[bool]
+        candidate_size: NotRequired[int]
+
+    class _InMemoryDatasetSettings(_DatasetBaseSettings):
+        data_feed_type: NotRequired[str]
+        queue_num: NotRequired[int]
+
+    class _InMemoryDatasetFullSettings(
+        _InMemoryDatasetDistributedSettings, _InMemoryDatasetSettings
+    ):
+        pass
+
+    class _BoxPSDatasetSettings(_DatasetBaseSettings):
+        rank_offset: NotRequired[str]
+        pv_batch_size: NotRequired[int]
+        parse_logkey: NotRequired[bool]
+        merge_by_sid: NotRequired[bool]
+        enable_pv_merge: NotRequired[bool]
+
 
 __all__ = []
 
@@ -25,7 +74,14 @@ __all__ = []
 class DatasetBase:
     """Base dataset class."""
 
-    def __init__(self):
+    proto_desc: data_feed_pb2.DataFeedDesc
+    dataset: core.Dataset
+    thread_num: int
+    filelist: list[str]
+    use_ps_gpu: bool
+    psgpu: core.PSGPU | None
+
+    def __init__(self) -> None:
         """Init."""
         # define class name here
         # to decide whether we need create in memory instance
@@ -39,15 +95,15 @@ class DatasetBase:
 
     def init(
         self,
-        batch_size=1,
-        thread_num=1,
-        use_var=[],
-        pipe_command="cat",
-        input_type=0,
-        fs_name="",
-        fs_ugi="",
-        download_cmd="cat",
-    ):
+        batch_size: int = 1,
+        thread_num: int = 1,
+        use_var: list[Tensor] = [],
+        pipe_command: str = "cat",
+        input_type: _InputType = 0,
+        fs_name: str = "",
+        fs_ugi: str = "",
+        download_cmd: str = "cat",
+    ) -> None:
         """
         should be called only once in user's python scripts to initialize settings of dataset instance.
         Normally, it is called by InMemoryDataset or QueueDataset.
@@ -124,7 +180,7 @@ class DatasetBase:
         self.dataset.set_thread_num(thread_num)
         self.thread_num = thread_num
 
-    def set_filelist(self, filelist):
+    def set_filelist(self, filelist: list[str]) -> None:
         """
         Set file list in current worker. The filelist is indicated by a list of file names (string).
 
@@ -362,7 +418,37 @@ class InMemoryDataset(DatasetBase):
 
     """
 
-    def __init__(self):
+    dataset: core.Dataset
+    proto_desc: data_feed_pb2.DataFeedDesc
+    fleet_send_batch_size: int | None
+    is_user_set_queue_num: bool
+    queue_num: int | None
+    parse_ins_id: bool
+    parse_content: bool
+    parse_logkey: bool
+    merge_by_sid: bool
+    enable_pv_merge: bool
+    merge_by_lineid: bool
+    fleet_send_sleep_seconds: int | None
+    batch_size: int
+    thread_num: int
+    use_var: list[Tensor]
+    input_type: _InputType
+    fs_name: str
+    fs_ugi: str
+    pipe_command: str
+    download_cmd: str
+    data_feed_type: str
+    queue_num: int
+    merge_size: int
+    parse_ins_id: bool
+    parse_content: bool
+    fleet_send_batch_size: int
+    fleet_send_sleep_seconds: int
+    fea_eval: bool
+    candidate_size: int
+
+    def __init__(self) -> None:
         """Init."""
         super().__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
@@ -377,7 +463,9 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
 
-    def _init_distributed_settings(self, **kwargs):
+    def _init_distributed_settings(
+        self, **kwargs: Unpack[_InMemoryDatasetDistributedSettings]
+    ) -> None:
         """
         :api_attr: Static Graph
 
@@ -439,7 +527,9 @@ class InMemoryDataset(DatasetBase):
             candidate_size = kwargs.get("candidate_size", 10000)
             self._set_fea_eval(candidate_size, True)
 
-    def update_settings(self, **kwargs):
+    def update_settings(
+        self, **kwargs: Unpack[_InMemoryDatasetFullSettings]
+    ) -> None:
         """
         :api_attr: Static Graph
 
@@ -520,7 +610,7 @@ class InMemoryDataset(DatasetBase):
                 candidate_size = kwargs.get("candidate_size", 10000)
                 self._set_fea_eval(candidate_size, True)
 
-    def init(self, **kwargs):
+    def init(self, **kwargs: Unpack[_InMemoryDatasetSettings]) -> None:
         """
         :api_attr: Static Graph
 
@@ -799,7 +889,7 @@ class InMemoryDataset(DatasetBase):
             table_id, fea_dim, read_thread_num, consume_thread_num, shard_num
         )
 
-    def set_date(self, date):
+    def set_date(self, date: str) -> None:
         """
         :api_attr: Static Graph
 
@@ -838,14 +928,14 @@ class InMemoryDataset(DatasetBase):
 
     def tdm_sample(
         self,
-        tree_name,
-        tree_path,
-        tdm_layer_counts,
-        start_sample_layer,
-        with_hierarchy,
-        seed,
-        id_slot,
-    ):
+        tree_name: str,
+        tree_path: str,
+        tdm_layer_counts: list[int],
+        start_sample_layer: int,
+        with_hierarchy: bool,
+        seed: int,
+        id_slot: int,
+    ) -> None:
         self.dataset.tdm_sample(
             tree_name,
             tree_path,
@@ -856,7 +946,7 @@ class InMemoryDataset(DatasetBase):
             id_slot,
         )
 
-    def load_into_memory(self, is_shuffle=False):
+    def load_into_memory(self, is_shuffle: bool = False) -> None:
         """
         :api_attr: Static Graph
 
@@ -897,7 +987,7 @@ class InMemoryDataset(DatasetBase):
             self.psgpu.set_dataset(self.dataset)
             self.psgpu.load_into_memory(is_shuffle)
 
-    def preload_into_memory(self, thread_num=None):
+    def preload_into_memory(self, thread_num: int | None = None) -> None:
         """
         :api_attr: Static Graph
 
@@ -939,7 +1029,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.create_preload_readers()
         self.dataset.preload_into_memory()
 
-    def wait_preload_done(self):
+    def wait_preload_done(self) -> None:
         """
         :api_attr: Static Graph
 
@@ -974,7 +1064,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.wait_preload_done()
         self.dataset.destroy_preload_readers()
 
-    def local_shuffle(self):
+    def local_shuffle(self) -> None:
         """
         :api_attr: Static Graph
 
@@ -1008,7 +1098,9 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.local_shuffle()
 
-    def global_shuffle(self, fleet=None, thread_num=12):
+    def global_shuffle(
+        self, fleet: Fleet | None = None, thread_num: int = 12
+    ) -> None:
         """
         :api_attr: Static Graph
 
@@ -1069,7 +1161,7 @@ class InMemoryDataset(DatasetBase):
         if fleet is not None:
             fleet._role_maker.barrier_worker()
 
-    def release_memory(self):
+    def release_memory(self) -> None:
         """
         :api_attr: Static Graph
 
@@ -1109,7 +1201,7 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.release_memory()
 
-    def get_memory_data_size(self, fleet=None):
+    def get_memory_data_size(self, fleet: Fleet | None = None) -> int:
         """
         :api_attr: Static Graph
 
@@ -1120,7 +1212,7 @@ class InMemoryDataset(DatasetBase):
             This function may cause bad performance, because it has barrier
 
         Args:
-            fleet(Fleet): Fleet Object.
+            fleet(Fleet|None): Fleet Object.
 
         Returns:
             The size of memory data.
@@ -1165,7 +1257,7 @@ class InMemoryDataset(DatasetBase):
             return global_data_size[0]
         return local_data_size[0]
 
-    def get_shuffle_data_size(self, fleet=None):
+    def get_shuffle_data_size(self, fleet: Fleet | None = None) -> int:
         """
         :api_attr: Static Graph
 
@@ -1177,7 +1269,7 @@ class InMemoryDataset(DatasetBase):
             because it has barrier. It does not affect global shuffle.
 
         Args:
-            fleet(Fleet): Fleet Object.
+            fleet(Fleet|None): Fleet Object.
 
         Returns:
             The size of shuffle data.
@@ -1248,7 +1340,7 @@ class InMemoryDataset(DatasetBase):
             self.dataset.set_fea_eval(fea_eval, record_candidate_size)
         self.fea_eval = fea_eval
 
-    def slots_shuffle(self, slots):
+    def slots_shuffle(self, slots: list[str]) -> None:
         """
         Slots Shuffle
         Slots Shuffle is a shuffle method in slots level, which is usually used
@@ -1304,14 +1396,14 @@ class QueueDataset(DatasetBase):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize QueueDataset
         """
         super().__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
 
-    def init(self, **kwargs):
+    def init(self, **kwargs: Unpack[_DatasetBaseSettings]) -> None:
         """
         :api_attr: Static Graph
 
@@ -1346,14 +1438,14 @@ class FileInstantDataset(DatasetBase):
             >>> dataset = paddle.distributed.fleet.FileInstantDataset()
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize FileInstantDataset
         """
         super().__init__()
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
 
-    def init(self, **kwargs):
+    def init(self, **kwargs: Unpack[_DatasetBaseSettings]) -> None:
         """
         should be called only once in user's python scripts to initialize settings of dataset instance
         """
@@ -1371,7 +1463,9 @@ class BoxPSDataset(InMemoryDataset):
             >>> dataset = paddle.distributed.fleet.BoxPSDataset()
     """
 
-    def __init__(self):
+    boxps: core.BoxPS
+
+    def __init__(self) -> None:
         """
         Initialize BoxPSDataset
         """
@@ -1379,7 +1473,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps = core.BoxPS(self.dataset)
         self.proto_desc.name = "PaddleBoxDataFeed"
 
-    def init(self, **kwargs):
+    def init(self, **kwargs: Unpack[_BoxPSDatasetSettings]) -> None:
         """
         should be called only once in user's python scripts to initialize settings of dataset instance
         """
@@ -1480,7 +1574,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         self.enable_pv_merge = enable_pv_merge
 
-    def set_date(self, date):
+    def set_date(self, date: str) -> None:
         """
         Workaround for date
         """
@@ -1489,7 +1583,7 @@ class BoxPSDataset(InMemoryDataset):
         day = int(date[6:])
         self.boxps.set_date(year, month, day)
 
-    def begin_pass(self):
+    def begin_pass(self) -> None:
         """
         Begin Pass
         Notify BoxPS to load sparse parameters of next pass to GPU Memory
@@ -1503,7 +1597,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         self.boxps.begin_pass()
 
-    def end_pass(self, need_save_delta):
+    def end_pass(self, need_save_delta: bool) -> None:
         """
         End Pass
         Notify BoxPS that current pass ended
@@ -1517,7 +1611,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         self.boxps.end_pass(need_save_delta)
 
-    def wait_preload_done(self):
+    def wait_preload_done(self) -> None:
         """
         Wait async preload done
         Wait Until Feed Pass Done
@@ -1535,7 +1629,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         self.boxps.wait_feed_pass_done()
 
-    def load_into_memory(self):
+    def load_into_memory(self) -> None:
         """
         Load next pass into memory and notify boxps to fetch its emb from SSD
 
@@ -1552,7 +1646,7 @@ class BoxPSDataset(InMemoryDataset):
         self._prepare_to_run()
         self.boxps.load_into_memory()
 
-    def preload_into_memory(self):
+    def preload_into_memory(self) -> None:
         """
         Begin async preload next pass while current pass may be training
 
@@ -1577,7 +1671,7 @@ class BoxPSDataset(InMemoryDataset):
     def _dynamic_adjust_after_train(self):
         pass
 
-    def slots_shuffle(self, slots):
+    def slots_shuffle(self, slots: list[str]) -> None:
         """
         Slots Shuffle
         Slots Shuffle is a shuffle method in slots level, which is usually used
@@ -1600,7 +1694,7 @@ class BoxPSDataset(InMemoryDataset):
         slots_set = set(slots)
         self.boxps.slots_shuffle(slots_set)
 
-    def set_current_phase(self, current_phase):
+    def set_current_phase(self, current_phase: _CurrentPhase) -> None:
         """
         Set current phase in train. It is useful for untest.
         current_phase : 1 for join, 0 for update.
@@ -1619,7 +1713,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         self.dataset.set_current_phase(current_phase)
 
-    def get_pv_data_size(self):
+    def get_pv_data_size(self) -> int:
         """
         Get memory data size of Pv, user can call this function to know the pv num
         of ins in all workers after load into memory.
@@ -1644,7 +1738,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         return self.dataset.get_pv_data_size()
 
-    def preprocess_instance(self):
+    def preprocess_instance(self) -> None:
         """
         Merge pv instance and convey it from input_channel to input_pv_channel.
         It will be effective when enable_pv_merge_ is True.
@@ -1663,7 +1757,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         self.dataset.preprocess_instance()
 
-    def postprocess_instance(self):
+    def postprocess_instance(self) -> None:
         """
         Divide pv instance and convey it to input_channel.
 

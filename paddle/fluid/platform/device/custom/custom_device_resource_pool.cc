@@ -23,7 +23,7 @@ CustomDeviceStreamResourcePool::CustomDeviceStreamResourcePool(
   PADDLE_ENFORCE_EQ(
       phi::is_custom_place(place),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
 
   int dev_cnt = phi::DeviceManager::GetDeviceCount(place.GetDeviceType());
@@ -76,7 +76,7 @@ CustomDeviceStreamResourcePool& CustomDeviceStreamResourcePool::Instance(
   PADDLE_ENFORCE_EQ(
       phi::is_custom_place(place),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
   if (pool.find(place.GetDeviceType()) == pool.end()) {
     pool.insert({place.GetDeviceType(),
@@ -92,10 +92,10 @@ CustomDeviceStreamResourcePool& CustomDeviceStreamResourcePool::Instance(
   PADDLE_ENFORCE_LT(
       place.GetDeviceId(),
       pool[place.GetDeviceType()].size(),
-      phi::errors::OutOfRange("Device id is out of range, device id shall "
-                              "be less than %d, but received %d. ",
-                              pool[place.GetDeviceType()].size(),
-                              place.GetDeviceId()));
+      common::errors::OutOfRange("Device id is out of range, device id shall "
+                                 "be less than %d, but received %d. ",
+                                 pool[place.GetDeviceType()].size(),
+                                 place.GetDeviceId()));
   return *pool[place.GetDeviceType()][place.GetDeviceId()];
 }
 
@@ -104,12 +104,12 @@ std::shared_ptr<CustomDeviceStreamObject> CustomDeviceStreamResourcePool::New(
   PADDLE_ENFORCE_GE(
       dev_idx,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
       dev_idx,
       pool_.size(),
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
           pool_.size(),
           dev_idx));
@@ -121,7 +121,7 @@ CustomDeviceEventResourcePool::CustomDeviceEventResourcePool(
   PADDLE_ENFORCE_EQ(
       phi::is_custom_place(place),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
 
   int dev_cnt = phi::DeviceManager::GetDeviceCount(place.GetDeviceType());
@@ -174,7 +174,7 @@ CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(
   PADDLE_ENFORCE_EQ(
       phi::is_custom_place(place),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
   if (pool.find(place.GetDeviceType()) == pool.end()) {
     pool.insert(
@@ -190,10 +190,10 @@ CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(
   PADDLE_ENFORCE_LT(
       place.GetDeviceId(),
       pool[place.GetDeviceType()].size(),
-      phi::errors::OutOfRange("Device id is out of range, device id shall "
-                              "be less than %d, but received %d. ",
-                              pool[place.GetDeviceType()].size(),
-                              place.GetDeviceId()));
+      common::errors::OutOfRange("Device id is out of range, device id shall "
+                                 "be less than %d, but received %d. ",
+                                 pool[place.GetDeviceType()].size(),
+                                 place.GetDeviceId()));
   return *pool[place.GetDeviceType()][place.GetDeviceId()];
 }
 
@@ -202,12 +202,12 @@ std::shared_ptr<CustomDeviceEventObject> CustomDeviceEventResourcePool::New(
   PADDLE_ENFORCE_GE(
       dev_idx,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
       dev_idx,
       pool_.size(),
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
           pool_.size(),
           dev_idx));

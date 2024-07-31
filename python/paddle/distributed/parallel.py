@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import itertools
 import os
@@ -20,6 +21,11 @@ import warnings
 from collections import OrderedDict, namedtuple
 from contextlib import contextmanager
 from multiprocessing import Manager, Process
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generator,
+)
 
 import numpy as np
 
@@ -54,12 +60,15 @@ from paddle.framework import (
     core,
     in_dynamic_mode,
 )
-from paddle.nn.layer import layers
+from paddle.nn.layer import Layer
 from paddle.utils import deprecated
 
 from . import parallel_helper
 from .backup_env import getenv_or_backup
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.nn.layer.layers import _StateDict
 __all__ = []
 
 ParallelStrategy = core.ParallelStrategy
@@ -126,7 +135,9 @@ def _split_tensors(coalesced_grads_and_grad_vars):
 
 @imperative_base.no_grad
 @framework.dygraph_only
-def build_groups(vars, group_size):
+def build_groups(
+    vars: list[Tensor], group_size: int
+) -> list[list[Tensor | list[Tensor] | list[int]]]:
     group_idx = 0
     memory_counter = 0
     var_groups = OrderedDict()
@@ -150,12 +161,12 @@ def build_groups(vars, group_size):
 @imperative_base.no_grad
 @framework.dygraph_only
 def sync_params_buffers(
-    model,
-    comm_group=None,
-    src_rank=0,
-    is_model_parallel=False,
-    fuse_params=True,
-):
+    model: Layer,
+    comm_group: Group | None = None,
+    src_rank: int = 0,
+    is_model_parallel: bool = False,
+    fuse_params: bool = True,
+) -> None:
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.eager.Tensor):
@@ -204,7 +215,7 @@ def sync_params_buffers(
             )
 
 
-class DataParallel(layers.Layer):
+class DataParallel(Layer):
     """
     Run the dygraph module with data parallelism.
 
@@ -351,15 +362,22 @@ class DataParallel(layers.Layer):
 
     """
 
+    find_unused_parameters: bool
+    grad_need_sync: bool
+    group: Group | None
+    var_dtype: Tensor
+    comm_buffer_size: int
+    last_comm_buffer_size: int
+
     def __init__(
         self,
-        layers,
-        strategy=None,
-        comm_buffer_size=25,
-        last_comm_buffer_size=1,
-        find_unused_parameters=False,
-        group=None,
-    ):
+        layers: Layer,
+        strategy: ParallelStrategy | None = None,
+        comm_buffer_size: int = 25,
+        last_comm_buffer_size: float = 1,
+        find_unused_parameters: bool = False,
+        group: Group | None = None,
+    ) -> None:
         super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
@@ -426,7 +444,7 @@ class DataParallel(layers.Layer):
                 "program. 3, Is the current environment multi-card."
             )
 
-    def init_reducer(self):
+    def init_reducer(self) -> None:
         layers_param = []
         params_set = set()
         for sublayer in self.sublayers():
@@ -495,7 +513,7 @@ class DataParallel(layers.Layer):
         return []
 
     @contextmanager
-    def no_sync(self):
+    def no_sync(self) -> Generator[None, None, None]:
         """
         A context manager to stop gradient synchronization. Within no_sync(),
         gradients of parameters will only be accumulated on model and not
@@ -538,7 +556,7 @@ class DataParallel(layers.Layer):
         finally:
             self.grad_need_sync = tmp_grad_need_sync
 
-    def forward(self, *inputs, **kwargs):
+    def forward(self, *inputs: Any, **kwargs: Any) -> Tensor:
         outputs = self._layers(*inputs, **kwargs)
         if (
             self._strategy.nranks > 1
@@ -570,10 +588,10 @@ class DataParallel(layers.Layer):
 
     def state_dict(
         self,
-        destination=None,
-        include_sublayers=True,
-        structured_name_prefix="",
-    ):
+        destination: _StateDict | None = None,
+        include_sublayers: bool = True,
+        structured_name_prefix: str = "",
+    ) -> _StateDict:
         '''
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
@@ -608,7 +626,9 @@ class DataParallel(layers.Layer):
         )
 
     @framework.deprecate_stat_dict
-    def set_state_dict(self, state_dict, use_structured_name=True):
+    def set_state_dict(
+        self, state_dict: _StateDict, use_structured_name: bool = True
+    ) -> None:
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
@@ -733,7 +753,7 @@ class ParallelEnv:
         ), "nccl_nrings should be less than 9, which is enough in most scenarios."
 
     @property
-    def rank(self):
+    def rank(self) -> int:
         """
         Rank of current trainer.
 
@@ -754,7 +774,7 @@ class ParallelEnv:
         return self._rank
 
     @property
-    def world_size(self):
+    def world_size(self) -> int:
         """
         The number of trainers (number of processes participating in current job).
 
@@ -775,7 +795,7 @@ class ParallelEnv:
         return self._world_size
 
     @property
-    def device_id(self):
+    def device_id(self) -> int:
         """
         The ID of selected GPU card for parallel training.
 
@@ -795,7 +815,7 @@ class ParallelEnv:
         return self._device_id
 
     @property
-    def device_type(self):
+    def device_type(self) -> str:
         """
         The type of custom device for parallel training.
 
@@ -805,7 +825,7 @@ class ParallelEnv:
         return self._device_type
 
     @property
-    def current_endpoint(self):
+    def current_endpoint(self) -> str:
         """
         The endpoint of current trainer, it is in the form of (node IP + port).
 
@@ -825,7 +845,7 @@ class ParallelEnv:
         return self._current_endpoint
 
     @property
-    def trainer_endpoints(self):
+    def trainer_endpoints(self) -> list[str]:
         """
         The endpoints of all trainer nodes in the task,
         which are used to broadcast the NCCL ID when NCCL2 is initialized.
@@ -847,7 +867,7 @@ class ParallelEnv:
         return self._trainer_endpoints
 
     @property
-    def nrings(self):
+    def nrings(self) -> int:
         """
         Nrings of current trainer.
 
@@ -867,7 +887,7 @@ class ParallelEnv:
         return self._nrings
 
     @property
-    def pg_timeout(self):
+    def pg_timeout(self) -> int:
         """
         timeout of process group.
 
@@ -954,7 +974,7 @@ def _print_modified_flags(modified_flags):
         )
 
 
-def init_parallel_env():
+def init_parallel_env() -> Group:
     """
 
     Initialize parallel training environment in dynamic graph mode.
@@ -1229,7 +1249,7 @@ def init_parallel_env():
     return group
 
 
-def get_rank(group=None):
+def get_rank(group: Group | None = None) -> int:
     """
     Returns the rank of current trainer in the given group, ranks are consecutive integers in [0, ``world_size``).
     If none of the group is given, the global group will be used as default.
@@ -1263,7 +1283,7 @@ def get_rank(group=None):
     return _get_global_parallel_env().rank
 
 
-def get_world_size(group=None):
+def get_world_size(group: Group | None = None) -> int:
     """
     Returns the number of trainers (number of processes participating in current job) in the given group.
     If none of the group is given, the global group will be used as default.

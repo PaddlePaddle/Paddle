@@ -962,6 +962,14 @@ void KernelWithXShapeInferMeta(const MetaTensor& xshape,
   dx->share_lod(xshape);
 }
 
+void ReshapeGradInferMeta(const MetaTensor& xshape,
+                          const MetaTensor& out,
+                          MetaTensor* dx) {
+  dx->set_dims(xshape.dims());
+  dx->set_dtype(out.dtype());
+  dx->share_lod(xshape);
+}
+
 void LUGradInferMeta(const MetaTensor& x,
                      const MetaTensor& out,
                      const MetaTensor& pivots,

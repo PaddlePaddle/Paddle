@@ -48,7 +48,10 @@ std::vector<Tensor> Argmin(const Tensor &in_tensor,
                            const std::string &name) {
   auto shape = in_tensor->shape;
   auto ndim = shape.size();
-  CHECK_GT(ndim, 0) << "tensor's dim must be more than 0";
+  PADDLE_ENFORCE_GT(
+      ndim,
+      0,
+      phi::errors::InvalidArgument("tensor's dim must be more than 0"));
 
   int pos_axis = axis;
   if (axis < 0) {
@@ -100,7 +103,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
   if (attrs.attr_store.count("axis")) {
     axis = absl::get<int>(attrs.attr_store.at("axis"));
   } else {
-    PADDLE_THROW(phi::errors::Fatal("reduce dimension is not set!"));
+    PADDLE_THROW(::common::errors::Fatal("reduce dimension is not set!"));
   }
   if (attrs.attr_store.count("keep_dim")) {
     keep_dims = absl::get<bool>(attrs.attr_store.at("keep_dim"));
