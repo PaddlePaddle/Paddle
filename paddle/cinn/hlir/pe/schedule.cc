@@ -261,9 +261,21 @@ void GetConv2dFactors(absl::flat_hash_map<std::string, int> *factors,
     auto &params = ScheduleParam::get_x86_instance().GetParam();
     if (params.count(key)) {
       VLOG(3) << "find saved param, key is: " << key;
-      CHECK(!params[key]["oc_bn"].empty());
-      CHECK(!params[key]["ic_bn"].empty());
-      CHECK(!params[key]["ow_bn"].empty());
+      PADDLE_ENFORCE_EQ(
+          !params[key]["oc_bn"].empty(),
+          true,
+          phi::errors::InvalidArgument(
+              "The parameter 'oc_bn' for key '%s' must not be empty.", key));
+      PADDLE_ENFORCE_EQ(
+          !params[key]["ic_bn"].empty(),
+          true,
+          phi::errors::InvalidArgument(
+              "The parameter 'ic_bn' for key '%s' must not be empty.", key));
+      PADDLE_ENFORCE_EQ(
+          !params[key]["ow_bn"].empty(),
+          true,
+          phi::errors::InvalidArgument(
+              "The parameter 'ow_bn' for key '%s' must not be empty.", key));
       (*factors)["oc_bn"] = params[key]["oc_bn"].back();
       (*factors)["ic_bn"] = params[key]["ic_bn"].back();
       (*factors)["ow_bn"] = params[key]["ow_bn"].back();
@@ -495,8 +507,10 @@ inline void InputDirectConvCudaParam(
   schedule_data["f"] = int_data[3];
   schedule_data["y"] = int_data[4];
   schedule_data["x"] = int_data[5];
-  CHECK(model_data.count(key) == 0)
-      << "Key " << key << "in conv cuda param already exists.";
+  PADDLE_ENFORCE_EQ(model_data.count(key),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Key '%s' in conv CUDA param already exists.", key));
   model_data[key] = schedule_data;
 }
 

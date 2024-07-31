@@ -62,8 +62,64 @@ class ReshardOp : public pir::Op<ReshardOp, VjpInterface, OpYamlInfoInterface> {
 
   void VerifySig();
 };
+
+class LocalTensorsFromDistOp
+    : public pir::Op<LocalTensorsFromDistOp, VjpInterface> {
+ public:
+  using Op::Op;
+  static const char* name() { return "dist_op.local_tensors_from_dtensor"; }
+  static const char* attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  TEST_API static void Build(
+      pir::Builder& builder,             // NOLINT
+      pir::OperationArgument& argument,  // NOLINT
+      pir::Value input,
+      const std::vector<TensorDistAttribute>& local_dist_attrs,
+      const TensorDistAttribute& global_dist_attr);
+
+  static OpInfoTuple GetOpInfo();
+  static std::vector<std::vector<pir::Value>> Vjp(
+      pir::Operation* op,
+      const std::vector<std::vector<pir::Value>>& inputs_,
+      const std::vector<std::vector<pir::Value>>& outputs,
+      const std::vector<std::vector<pir::Value>>& out_grads,
+      const std::vector<std::vector<bool>>& stop_gradients);
+
+  void VerifySig();
+  std::vector<pir::Value> results() { return operation()->results(); }
+};
+
+class DistTensorFromLocalsOp
+    : public pir::Op<DistTensorFromLocalsOp, VjpInterface> {
+ public:
+  using Op::Op;
+  static const char* name() { return "dist_op.dtensor_from_local_tensors"; }
+  static const char* attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  TEST_API static void Build(
+      pir::Builder& builder,             // NOLINT
+      pir::OperationArgument& argument,  // NOLINT
+      const std::vector<pir::Value>& inputs,
+      const std::vector<TensorDistAttribute>& local_dist_attrs,
+      const TensorDistAttribute& global_dist_attr,
+      const phi::DDim& global_dims);
+
+  static OpInfoTuple GetOpInfo();
+  static std::vector<std::vector<pir::Value>> Vjp(
+      pir::Operation* op,
+      const std::vector<std::vector<pir::Value>>& inputs_,
+      const std::vector<std::vector<pir::Value>>& outputs,
+      const std::vector<std::vector<pir::Value>>& out_grads,
+      const std::vector<std::vector<bool>>& stop_gradients);
+
+  void VerifySig();
+  std::vector<pir::Value> results() { return operation()->results(); }
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShardTensorOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ReshardOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::LocalTensorsFromDistOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DistTensorFromLocalsOp)
