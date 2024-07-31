@@ -31,7 +31,7 @@ class TestAddActivationXpuFusePattern(PassTest):
         |
      add_var
         |
-      relu
+       act
         |
       out_var
     """
