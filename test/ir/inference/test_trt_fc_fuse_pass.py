@@ -76,6 +76,7 @@ class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
                 {'data': [32, 128, 32, 8]},
                 {'data': [32, 128, 32, 8]},
                 {'data': [32, 128, 32, 8]},
+                False,
             )
         )
         self.fetch_list = [out]
@@ -111,6 +112,7 @@ class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
                 {'data': [3, 24, 16, 16]},
                 {'data': [3, 24, 16, 16]},
                 {'data': [3, 24, 16, 16]},
+                False,
             )
         )
         self.fetch_list = [out]

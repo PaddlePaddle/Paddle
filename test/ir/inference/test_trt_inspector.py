@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import subprocess
 import sys
 import unittest
@@ -49,7 +50,10 @@ class TensorRTInspectorTest1(InferencePassTest):
             1 << 30, 1, 0, AnalysisConfig.Precision.Float32, False, False, True
         )
         self.dynamic_shape_params = TensorRTInspectorTest1.DynamicShapeParam(
-            {'data': [1, 16, 16]}, {'data': [1, 16, 16]}, {'data': [1, 16, 16]}
+            {'data': [1, 16, 16]},
+            {'data': [1, 16, 16]},
+            {'data': [1, 16, 16]},
+            False,
         )
         self.fetch_list = [out]
 
@@ -114,7 +118,10 @@ class TensorRTInspectorTest2(InferencePassTest):
             True,
         )
         self.dynamic_shape_params = TensorRTInspectorTest2.DynamicShapeParam(
-            {'data': [1, 16, 16]}, {'data': [1, 16, 16]}, {'data': [1, 16, 16]}
+            {'data': [1, 16, 16]},
+            {'data': [1, 16, 16]},
+            {'data': [1, 16, 16]},
+            False,
         )
         self.fetch_list = [out]
 
