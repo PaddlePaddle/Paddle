@@ -348,14 +348,7 @@ class ChannelReader {
     Reset(channel);
   }
 
-  ~ChannelReader() {
-    PADDLE_ENFORCE_EQ(
-        cursor_,
-        0,
-        phi::errors::InvalidArgument("Param cursor should be equal to 0, but "
-                                     "got %d. Forgot to read buffer data.",
-                                     cursor_));
-  }
+  ~ChannelReader() { CHECK(cursor_ == 0) << "Forgot to read buffer data"; }
 
   ChannelObject<T>* channel() { return channel_; }
 
@@ -410,12 +403,7 @@ class ChannelWriter {
     Reset(channel);
   }
 
-  ~ChannelWriter() {
-    PADDLE_ENFORCE_EQ(buffer_.empty(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The buffer should be empty! Forgot to flush."));
-  }
+  ~ChannelWriter() { CHECK(buffer_.empty()) << "Forgot to flush"; }
 
   ChannelObject<T>* channel() { return channel_; }
 
