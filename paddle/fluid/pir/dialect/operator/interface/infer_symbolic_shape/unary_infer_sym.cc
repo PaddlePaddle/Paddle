@@ -564,6 +564,21 @@ bool KthvalueOpInferSymbolicShape(
   return true;
 }
 
+bool L1NormOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  std::vector<symbol::DimExpr> output_shape;
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+  return true;
+}
+
+bool L1Norm_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return L1Norm_OpInferSymbolicShape(op, infer_context);
+}
+
 bool LogcumsumexpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // same as CumsumOpInferSymbolicShape
@@ -928,14 +943,21 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool RreluOpInferSymbolicShape(pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(0));
+bool RreluOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
 
-  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   if (op->num_results() > 1 && op->result(1) != nullptr) {
-    infer_context->SetShapeOrDataForValue(op->result(1), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(x_shape)});
   }
 
   return true;
