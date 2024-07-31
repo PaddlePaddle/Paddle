@@ -1537,10 +1537,12 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
   }();
 
   PADDLE_ENFORCE_EQ(!starts_expr.empty(),
+                    true,
                     phi::errors::InvalidArgument(
                         "The Slice op doesn't find [starts] attribute!"
                         "It is a mandatory attribute, please check."));
   PADDLE_ENFORCE_EQ(!ends_expr.empty(),
+                    true,
                     phi::errors::InvalidArgument(
                         "The Slice op doesn't find [ends] attribute!"
                         "It is a mandatory attribute, please check."));
