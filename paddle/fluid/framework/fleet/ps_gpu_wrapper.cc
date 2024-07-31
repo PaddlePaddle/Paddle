@@ -1628,8 +1628,6 @@ void PSGPUWrapper::divide_to_device(std::shared_ptr<HeterContext> gpu_task) {
                               "be nullptr but recieved %d at position %d.",
                               h_dim_ptrs[pos],
                               pos));
-        << "total=" << total_keys_len << ", pos=" << pos << ", k=" << k
-        << ", len=" << len;
         d_dim_ptr[cur + k] = h_dim_ptrs[pos];
       }
       device_dim_mutex[dev][j]->unlock();
