@@ -43,7 +43,7 @@ class SelectInputOp : public framework::OperatorBase {
     PADDLE_ENFORCE_LT(
         output_branch,
         x_names.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input 'Mask' in SelectInputOp is invalid. "
             "'Mask' must be less than the size of input vector 'X'. "
             "But received Mask = %d, X's size = %d.",
