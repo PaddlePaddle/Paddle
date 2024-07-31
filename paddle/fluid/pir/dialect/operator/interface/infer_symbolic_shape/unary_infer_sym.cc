@@ -670,6 +670,22 @@ bool NumelOpInferSymbolicShape(pir::Operation *op,
 
   return true;
 }
+bool NumberCountOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  PADDLE_ENFORCE_GT(x_dims.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Input tensor must have at least one dimension."));
+
+  std::vector<symbol::DimExpr> output_shape;
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{output_shape});
+
+  return true;
+}
 
 bool PadOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {

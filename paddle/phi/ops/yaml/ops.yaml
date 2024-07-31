@@ -4988,3 +4988,4 @@
   kernel:
      func: number_count
      data_type: numbers
+  interfaces: paddle::dialect::InferSymbolicShapeInterface
