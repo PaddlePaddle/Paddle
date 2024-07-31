@@ -77,10 +77,8 @@ class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &reduce_scatter =
-        res.Op("pd_op.reduce_scatter",
-               {{"ring_id", pat.Attr("ring_id")},
-                {"nranks", pat.Attr("num")},
-                {"use_calc_stream", pat.Attr("use_calc_stream")}},
+        res.Op(paddle::dialect::ReduceScatterOp::name(),
+               {{"ring_id", pat.Attr("ring_id")}, {"nranks", pat.Attr("num")}},
                {{"execution_stream", pat.Attr("execution_stream")},
                 {"force_record_event", pat.Attr("force_record_event")},
                 {"event_to_record", pat.Attr("event_to_record")},
@@ -198,10 +196,8 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
                                     {{"transpose_x", pat.Attr("trans_x")},
                                      {"transpose_y", pat.Attr("trans_y")}});
     const auto &res_reduce_scatter =
-        res.Op("pd_op.reduce_scatter",
-               {{"ring_id", pat.Attr("ring_id")},
-                {"nranks", pat.Attr("num")},
-                {"use_calc_stream", pat.Attr("use_calc_stream")}},
+        res.Op(paddle::dialect::ReduceScatterOp::name(),
+               {{"ring_id", pat.Attr("ring_id")}, {"nranks", pat.Attr("num")}},
                {{"force_record_event", pat.Attr("force_record_event")},
                 {"event_to_record", pat.Attr("event_to_record")},
                 {"events_to_wait", pat.Attr("events_to_wait")}});
