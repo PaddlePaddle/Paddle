@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
 
 import numpy as np
@@ -283,10 +284,51 @@ class TestMatmulInt8Op18(TestMatmulInt8):
         self.trans_y = True
 
     def setUp(self):
+        self.matmul_int8_search_config = tempfile.NamedTemporaryFile(mode='w+')
+
+        # 原始配置文件的内容
+        matmul_int8_search_config_content = (
+            "1,1024,4096,21,0,0,15,5,6,24,0,0.00856064\n"
+            "1,2048,8192,21,0,0,15,2,0,24,0,0.0108355\n"
+            "2,1024,4096,21,0,0,15,6,0,18,0,0.00855072\n"
+            "2,2048,8192,21,0,0,15,16,3,23,0,0.011007\n"
+            "3,1024,4096,21,0,0,15,2,0,24,0,0.00856992\n"
+            "3,2048,8192,21,0,0,15,2,0,24,0,0.0108426\n"
+            "4,1024,4096,21,0,0,15,4,0,18,0,0.0086016\n"
+            "4,2048,8192,21,0,0,15,4,5,18,0,0.0109056\n"
+            "8,1024,4096,21,0,0,15,4,5,24,0,0.00874304\n"
+            "8,2048,8192,21,0,0,15,12,0,23,0,0.0113786\n"
+            "12,1024,4096,21,0,0,15,16,5,23,0,0.0085504\n"
+            "12,2048,8192,21,0,0,15,4,5,24,0,0.0118294\n"
+            "16,1024,4096,21,0,0,15,6,6,23,0,0.0085504\n"
+            "16,2048,8192,21,0,0,15,4,5,24,0,0.0118886\n"
+            "32,1024,4096,21,0,0,15,32,3,18,0,0.00864256\n"
+            "32,2048,8192,21,0,0,15,16,5,23,0,0.0125747\n"
+            "48,1024,4096,21,0,0,15,2,3,18,0,0.0087344\n"
+            "48,2048,8192,21,0,0,15,6,3,23,0,0.0134963\n"
+            "64,1024,4096,21,0,0,15,12,0,24,0,0.00903168\n"
+            "64,2048,8192,21,0,0,18,32,5,18,0,0.0140778\n"
+            "96,1024,4096,21,0,0,15,2,6,23,0,0.0103629\n"
+            "96,2048,8192,21,0,0,17,5,0,21,0,0.0172032\n"
+            "128,1024,4096,21,0,0,15,4,5,24,0,0.0105498\n"
+            "128,2048,8192,21,0,0,18,32,0,21,0,0.0179302\n"
+            "160,1024,4096,21,0,0,18,4,0,18,0,0.0116931\n"
+            "160,2048,8192,21,0,0,20,2,3,17,0,0.0220877\n"
+            "192,1024,4096,21,0,0,18,8,3,18,0,0.0115712\n"
+            "192,2048,8192,21,0,0,20,8,5,17,0,0.0223437\n"
+            "224,1024,4096,21,0,0,17,5,3,18,0,0.0126874\n"
+            "224,2048,8192,21,0,0,20,8,6,17,0,0.0231117\n"
+            "256,1024,4096,21,0,0,17,8,3,18,0,0.0131379\n"
+            "256,2048,8192,21,0,0,20,2,5,17,0,0.0239411\n"
+        )
+
+        self.matmul_int8_search_config.write(matmul_int8_search_config_content)
+        self.matmul_int8_search_config.seek(0)
+
         paddle.set_flags({'FLAGS_enable_blaslt_global_search': 1})
         paddle.set_flags(
             {
-                'FLAGS_cublaslt_device_best_config': './test_matmul_int8_search_config.csv'
+                'FLAGS_cublaslt_device_best_config': self.matmul_int8_search_config.name
             }
         )
         super().setUp()
@@ -294,6 +336,7 @@ class TestMatmulInt8Op18(TestMatmulInt8):
     def tearDown(self):
         paddle.set_flags({'FLAGS_enable_blaslt_global_search': 0})
         paddle.set_flags({'FLAGS_cublaslt_device_best_config': ''})
+        self.matmul_int8_search_config.close()
 
 
 class TestMatmulInt8OpBroadcast1(TestMatmulInt8):
