@@ -2604,6 +2604,7 @@
     data_type : x
   inplace: (x -> out)
   backward : l1_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : label_smooth
   args : (Tensor label, Tensor prior_dist, float epsilon = 0.0f)
