@@ -115,7 +115,7 @@ void NaiveBidirectionEquationGenerator::InitInMsgIndex2OutMsgIndex() {
             out_msg_indexes,
             [&](const Index& in_index, const Index& out_index) {
               PADDLE_ENFORCE_EQ(
-                  this->out_msg_index2in_msg_index_.emplace(out_index, in_index)
+                  this->in_msg_index2out_msg_index_.emplace(in_index, out_index)
                       .second,
                   true,
                   phi::errors::InvalidArgument(
