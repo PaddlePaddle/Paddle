@@ -44,26 +44,26 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rid,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for partial_send op must be non-negative.", rid));
     PADDLE_ENFORCE_GE(
         peer,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The peer (%d) for partial_send op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(num,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The num (%d) for partial_send op must >=1", num));
     PADDLE_ENFORCE_EQ(
         (id >= 0 && id < num),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The id (%d) for partial_send op must >=0 and <num (%d)", id, num));
     PADDLE_ENFORCE_EQ(
         (numel % num),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input numel (%d) must be divisible by num(%d)", numel, num));
 
     int64_t send_numel = numel / num;
@@ -92,7 +92,7 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             comm_context_manager.Has(std::to_string(rid)),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "You choose to use new communication library by "
                 "setting environment "
                 "variable FLAGS_dynamic_static_unified_comm True. "
@@ -104,7 +104,7 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_NE(
             comm_ctx,
             nullptr,
-            phi::errors::Unavailable(
+            common::errors::Unavailable(
                 "NCCLCommContext is nullptr, collective op should "
                 "has ring_id attr."));
 
@@ -131,13 +131,12 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_LT(
           peer,
           nranks,
-          phi::errors::InvalidArgument("The value of peer (%d) you set must "
-                                       "be less than ranks (%d).",
-                                       peer,
-                                       nranks));
+          common::errors::InvalidArgument("The value of peer (%d) you set must "
+                                          "be less than ranks (%d).",
+                                          peer,
+                                          nranks));
 
-      ncclDataType_t dtype =
-          platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
+      ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
 
       if (comm_ctx) {
         auto send_buf = distributed::GetPartialTensor(*x, offset, send_numel);
@@ -157,8 +156,8 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
     }
 #else
     PADDLE_THROW(
-        phi::errors::Unavailable("PaddlePaddle should be compiled with NCCL "
-                                 "and NCCL version >= 2.7.3 is needed."));
+        common::errors::Unavailable("PaddlePaddle should be compiled with NCCL "
+                                    "and NCCL version >= 2.7.3 is needed."));
 #endif
   }
 };

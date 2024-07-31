@@ -115,17 +115,17 @@ class DataNormKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         2,
-        phi::errors::PreconditionNotMet("The Input dim size should be 2"));
+        common::errors::PreconditionNotMet("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
 
     PADDLE_ENFORCE_LT(0,
                       N,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dims of Input(X) should be greater than 0."));
     PADDLE_ENFORCE_LT(0,
                       C,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dims of Input(X) should be greater than 0."));
 
     const T *batch_size_in =
@@ -174,7 +174,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         2,
-        phi::errors::PreconditionNotMet("The Input dim size should be 2"));
+        common::errors::PreconditionNotMet("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
 
@@ -226,7 +226,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             comm_context_manager.Has(std::to_string(rid)),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "You choose to use new communication library by "
                 "setting environment "
                 "variable FLAGS_dynamic_static_unified_comm True. "
@@ -238,7 +238,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
         PADDLE_ENFORCE_NE(
             comm_ctx,
             nullptr,
-            phi::errors::Unavailable(
+            common::errors::Unavailable(
                 "NCCLCommContext is nullptr, collective op should "
                 "has ring_id attr."));
       } else {
@@ -251,8 +251,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_size),
             reinterpret_cast<void *>(d_batch_size),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm_ctx->GetNcclComm(),
             stream));
@@ -260,8 +259,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_sum),
             reinterpret_cast<void *>(d_batch_sum),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm_ctx->GetNcclComm(),
             stream));
@@ -269,8 +267,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_square_sum),
             reinterpret_cast<void *>(d_batch_square_sum),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm_ctx->GetNcclComm(),
             stream));
@@ -279,8 +276,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_size),
             reinterpret_cast<void *>(d_batch_size),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm->comm(),
             stream));
@@ -288,8 +284,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_sum),
             reinterpret_cast<void *>(d_batch_sum),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm->comm(),
             stream));
@@ -297,15 +292,14 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
             reinterpret_cast<const void *>(d_batch_square_sum),
             reinterpret_cast<void *>(d_batch_square_sum),
             C,
-            platform::ToNCCLDataType(
-                framework::TransToProtoVarType(x->dtype())),
+            phi::ToNCCLDataType(x->dtype()),
             ncclSum,
             comm->comm(),
             stream));
       }
-      platform::GpuStreamSync(stream);
+      phi::backends::gpu::GpuStreamSync(stream);
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU, and need_sync_stats connot be "
           "supported on windows now."));
 #endif

@@ -385,7 +385,11 @@ ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
   const auto& origin_shape = GetOutputDimValues(sched_mesh);
   std::int64_t origin_numel = 1;
   for (const auto& dim : *origin_shape) {
-    CHECK(dim.Has<std::int64_t>());
+    PADDLE_ENFORCE_EQ(
+        dim.Has<std::int64_t>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Each dimension in 'origin_shape' must have an int64_t value."));
     origin_numel *= dim.Get<std::int64_t>();
   }
 
@@ -393,14 +397,27 @@ ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
   bool dynamic_shape = false;
   for (const auto& dim : shape) {
     if (dim < 0) {
-      CHECK(dim == -1 && !dynamic_shape);
+      PADDLE_ENFORCE_EQ(
+          dim == -1 && !dynamic_shape,
+          true,
+          phi::errors::InvalidArgument("Negative dimension in 'shape' must be "
+                                       "-1 to represent dynamic shape. "
+                                       "But received: %d",
+                                       dim));
       dynamic_shape = true;
     } else {
       numel *= dim;
     }
   }
-
-  CHECK(dynamic_shape || numel == origin_numel);
+  PADDLE_ENFORCE_EQ(dynamic_shape || numel == origin_numel,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The total number of elements must match between "
+                        "'shape' and 'origin_shape' "
+                        "unless there is a dynamic shape. "
+                        "But received: numel = %d, origin_numel = %d",
+                        numel,
+                        origin_numel));
   List<LoopSize> reshape_to{};
   for (const auto& dim : shape) {
     if (dim < 0) {
@@ -465,7 +482,13 @@ ScheduleMesh MeshPaddingRoundUp(
       continue;
     }
     std::int64_t align_size = align_sizes.at(i).value();
-    CHECK(shape->at(i).Has<std::int64_t>());
+    PADDLE_ENFORCE_EQ(
+        shape->at(i).Has<std::int64_t>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Each dimension in 'shape' must have an int64_t value. "
+            "But the dimension at index %d does not.",
+            i));
     std::int64_t dim = shape->at(i).Get<std::int64_t>();
     std::int64_t padding_size =
         (dim + align_size - 1) / align_size * align_size;
