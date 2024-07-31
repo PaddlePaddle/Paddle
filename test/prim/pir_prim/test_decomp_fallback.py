@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
 
-# NOTE: To run this test, please use the following command:
-# FLAGS_enable_pir_api=1 FLAGS_prim_all=True python test_fallback.py
+import numpy as np
+
+import paddle
 
 
 class TestFallBackBase(unittest.TestCase):
