@@ -3516,7 +3516,7 @@ function distribute_test() {
 
     echo "Start auto_parallel Test"
     cd ${work_dir}
-    timeout 50m bash tools/auto_parallel/ci_auto_parallel.sh
+    timeout 50m bash tools/auto_parallel/ci_distributed_stable.sh
     EXIT_CODE=$?
     echo "End auto_parallel Test"
 
