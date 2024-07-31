@@ -97,15 +97,14 @@ static bool IsVariableRefArray(const Tensor &tensor) {
 
 static auto GetNameFromValue(const std::vector<::pir::Value> &values) {
   std::vector<std::string> names;
-  // check only one name
-  for (auto value : values) {
-    PADDLE_ENFORCE(pir::utils::name_analysis::HasOnlyOneValueName(value),
-                   "Value should have only one name");
-    names.push_back(
-        pir::utils::name_analysis::TryGetValueFirstName(value).value_or(
-            std::string(paddle::framework::kFakeVarName)));
-  }
-
+  std::transform(
+      values.begin(),
+      values.end(),
+      std::back_inserter(names),
+      [](const ::pir::Value &v) {
+        return pir::utils::name_analysis::TryGetValueFirstName(v).value_or(
+            std::string(paddle::framework::kFakeVarName));
+      });
   return names;
 }
 
