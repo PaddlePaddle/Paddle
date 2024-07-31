@@ -141,10 +141,11 @@ TEST(AutogradMeta, MemberFunction) {
   PADDLE_ENFORCE_EQ(
       tmp_auto->Persistable(),
       false,
-      phi::errors::Fatal("tmp_auto->Persistable() shoule be false now"));
+      phi::errors::Fatal("tmp_auto->Persistable() should be false now"));
   tmp_auto->SetPersistable(true);
   PADDLE_ENFORCE_EQ(
       tmp_auto->Persistable(),
-      false,
-      phi::errors::Fatal("tmp_auto->Persistable() should be false now"));
+      true,
+      phi::errors::Fatal(
+          "tmp_auto->Persistable() should be true now after SetPersistable()"));
 }
