@@ -4149,7 +4149,7 @@
   kernel :
     func : silu
   backward : silu_grad
-  interfaces : paddle::dialect::LayoutTransformationInterface
+  interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
 
 - op : sin
   args : (Tensor x)
