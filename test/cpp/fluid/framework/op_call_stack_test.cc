@@ -25,9 +25,9 @@ namespace details {
 
 static void ThrowEnforceNotMet() {
   PADDLE_THROW(
-      phi::errors::InvalidArgument("\n----------------------\nError Message "
-                                   "Summary:\n----------------------\n"
-                                   "Created error."));
+      common::errors::InvalidArgument("\n----------------------\nError Message "
+                                      "Summary:\n----------------------\n"
+                                      "Created error."));
 }
 
 }  // namespace details

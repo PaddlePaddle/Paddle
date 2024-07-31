@@ -61,8 +61,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PushDenseOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
-    NceOp::name(),
-    NceGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
     MovingAverageAbsMaxScale_Op::name(),
     CReduceAvgOp::name(),

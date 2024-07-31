@@ -200,7 +200,7 @@ class ScaleOpConverter : public OpConverter {
 
       PADDLE_ENFORCE_EQ(layer != nullptr,
                         true,
-                        phi::errors::Fatal("Create scale layer failed."));
+                        common::errors::Fatal("Create scale layer failed."));
 
       if (input_dim.nbDims < 3) {
         nvinfer1::Dims squeeze_shape;

@@ -75,13 +75,13 @@ void PD_run() {
   PADDLE_ENFORCE_EQ(
       size,
       2,
-      phi::errors::InvalidArgument("The Output shape's size is NOT match."));
+      common::errors::InvalidArgument("The Output shape's size is NOT match."));
   std::vector<int> ref_outshape_size({9, 6});
   for (int i = 0; i < 2; ++i) {
-    PADDLE_ENFORCE_EQ(
-        out_shape[i],
-        ref_outshape_size[i],
-        phi::errors::InvalidArgument("The Output shape's size is NOT match."));
+    PADDLE_ENFORCE_EQ(out_shape[i],
+                      ref_outshape_size[i],
+                      common::errors::InvalidArgument(
+                          "The Output shape's size is NOT match."));
   }
   PD_DeletePaddleBuf(buf);
 }

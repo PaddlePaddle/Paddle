@@ -51,7 +51,7 @@ class ReadInferShape : public framework::InferShapeBase {
       PADDLE_ENFORCE_EQ(
           reader_dims.size(),
           out_names.size(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The reader's dim number doesn't match the output number."));
       ctx->SetOutputsDim("Out", reader_dims);
       auto in_desc =
@@ -61,7 +61,7 @@ class ReadInferShape : public framework::InferShapeBase {
       PADDLE_ENFORCE_EQ(
           in_lod_levels.size(),
           out_var_ptrs.size(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "LoDLevels of Input(Reader) must be the same as the "
               "number of Outputs(Out)."));
       for (size_t i = 0; i < out_var_ptrs.size(); ++i) {
@@ -82,7 +82,7 @@ class ReadInferVarType : public framework::StaticGraphVarTypeInference {
       auto dtypes = GetDataTypes(ctx, reader_name);
       PADDLE_ENFORCE_EQ(dtypes.size(),
                         out_names.size(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The number of input reader's dtypes do not match "
                             "the output variable number."));
       for (size_t i = 0; i < dtypes.size(); ++i) {
@@ -120,8 +120,8 @@ class ReadOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(
         ins.size(),
         out_arg_names.size(),
-        phi::errors::InvalidArgument("input data number and output data "
-                                     "number of read_op do not match"));
+        common::errors::InvalidArgument("input data number and output data "
+                                        "number of read_op do not match"));
 
     const std::vector<phi::DDim>& shapes = reader->Shapes();
     const std::vector<framework::proto::VarType::Type>& var_types =
@@ -130,7 +130,7 @@ class ReadOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(
         out_arg_names.size(),
         need_check_feed.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Output size of read_op and the number of fed "
             "variables of reader do not match. Received size of output is %d, "
             "number of fed variables of reader is %d",
@@ -145,7 +145,7 @@ class ReadOp : public framework::OperatorBase {
         PADDLE_ENFORCE_EQ(
             DimensionIsCompatibleWith(shapes[i], in_dims),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The fed Variable %s should have dimensions = %d, "
                 "shape = [%s], but received fed shape [%s]",
                 out_arg_names[i],
@@ -155,7 +155,7 @@ class ReadOp : public framework::OperatorBase {
         PADDLE_ENFORCE_EQ(
             framework::TransToProtoVarType(ins[i].dtype()),
             var_types[i],
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The data type of fed Variable %s must be %s, but received %s",
                 out_arg_names[i],
                 var_types[i],

@@ -148,7 +148,7 @@ bool IsWeight(ir::Node *op_node,
 
 void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "During the trt_support_nhwc_pass, the graph "
                               "should not be null."));
   FusePassBase::Init("trt_support_nhwc_pass", graph);
@@ -299,7 +299,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
       UpdateWeightVars();
       UpdateOutputVars();
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "During the trt_support_nhwc_pass, %s op not supported. Please "
           "update the supported op lists.",
           op_desc->Type()));

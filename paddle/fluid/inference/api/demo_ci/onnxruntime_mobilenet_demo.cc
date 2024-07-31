@@ -76,11 +76,21 @@ void Main() {
       });
   LOG(INFO) << "output.size " << out_data.size()
             << "  max_index:" << out_index[0];
-  CHECK_EQ(out_data.size(), 1000);
+  PADDLE_ENFORCE_EQ(out_data.size(),
+                    1000,
+                    phi::errors::InvalidArgument(
+                        "Required out_data.size() should be equal to 1000. "));
   int max_index = out_index[0];
-  CHECK_EQ(max_index, 13);
+  PADDLE_ENFORCE_EQ(max_index,
+                    13,
+                    phi::errors::InvalidArgument(
+                        "Required max_index should be equal to 13. "));
   float max_score = out_data[max_index];
-  CHECK_LE(fabs(max_score - 0.99981), 1e-4);
+  PADDLE_ENFORCE_LE(
+      fabs(max_score - 0.99981),
+      1e-4,
+      phi::errors::InvalidArgument("Required fabs(max_score - 0.99981) shoule "
+                                   "be less than or euqal to 1e-4. "));
 }
 
 }  // namespace demo

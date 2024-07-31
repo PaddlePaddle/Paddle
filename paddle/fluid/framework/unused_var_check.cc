@@ -128,7 +128,7 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
         "OP-Should-Not-Have-Unused-Input]";
     PADDLE_ENFORCE_EQ(unsed_input_var_names.size(),
                       0,
-                      phi::errors::PermissionDenied(
+                      common::errors::PermissionDenied(
                           "Unused input variables check failed: %s", err_msg));
   }
 }

@@ -28,7 +28,6 @@
 
 namespace paddle {
 namespace distributed {
-using XPUDeviceContext = paddle::platform::XPUDeviceContext;
 
 ProcessGroupBKCL::BKCLTask::BKCLTask(const Place& place,
                                      int rank,
@@ -203,8 +202,8 @@ void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
   calc_event_ = std::make_shared<XPUEventManager>();
   auto* calc_ctx = static_cast<phi::XPUContext*>(
       phi::DeviceContextPool::Instance().Get(place));
-  // must use XPUDeviceContext here to make sure XPUContext::Init() is called
-  auto comm_ctx = std::make_unique<XPUDeviceContext>(place, true);
+  // must use phi::XPUContext here to make sure XPUContext::Init() is called
+  auto comm_ctx = std::make_unique<phi::XPUContext>(place, true);
   // comm_ctx does not require a pre-allocated GM buffer
   comm_ctx->x_context()->set_option("XPUAPI_DEFAULT_SIZE", "1");
   auto bkcl_comm_ctx = this->GetCommContext();
