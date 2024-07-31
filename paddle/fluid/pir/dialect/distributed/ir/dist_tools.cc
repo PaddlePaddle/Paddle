@@ -203,38 +203,52 @@ bool HasDistInput(const std::vector<pir::Value>& inputs,
   return false;
 }
 
+// return the tensor dist attribute of converted value.
+pir::Attribute CvtValueToDist(pir::Value value,
+                              ProcessMeshAttribute mesh_attr) {
+  if (!value || !value.type()) return nullptr;
+  PADDLE_ENFORCE_EQ(
+      value.type().isa<DistTypeInterface>(),
+      false,
+      common::errors::InvalidArgument("Can't convert value type to dist. "
+                                      "Because it is already a dist type"));
+  auto dense_type = value.type().dyn_cast<pir::DenseTensorType>();
+  if (!dense_type) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Currently only support convert dense_tensor_type to dist type."));
+  }
+  auto ctx = pir::IrContext::Instance();
+  auto dist_type = DistDenseTensorType::get(ctx, dense_type, mesh_attr);
+  value.set_type(dist_type);
+  if (auto op = value.defining_op()) {
+    PADDLE_ENFORCE_EQ(
+        op->num_results(),
+        1u,
+        common::errors::InvalidArgument(
+            "Currently only allowed add dist attribue for operation with "
+            "single output. The current op is %s",
+            op->name()));
+    std::vector<pir::Attribute> dist_operand_attrs;
+    for (auto pre_value : op->operands_source()) {
+      dist_operand_attrs.push_back(CvtValueToDist(pre_value, mesh_attr));
+    }
+    op->set_attribute(
+        kAttrOpDistAttr,
+        OperationDistAttribute::get(ctx,
+                                    mesh_attr,
+                                    dist_operand_attrs,
+                                    {dist_type.tensor_dist_attr()}));
+  }
+  return dist_type.tensor_dist_attr();
+}
+
 void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
                         ProcessMeshAttribute mesh_attr) {
   for (auto value : inputs) {
     if (auto type = value.type()) {
       if (type.isa<DistTypeInterface>() || type.isa<pir::VectorType>())
         continue;
-      auto dense_type = type.dyn_cast<pir::DenseTensorType>();
-      if (!dense_type) {
-        PADDLE_THROW(common::errors::Unimplemented(
-            "Currently only support convert dense_tensor_type to dist type."));
-      }
-      auto ctx = pir::IrContext::Instance();
-      auto dist_type = DistDenseTensorType::get(ctx, dense_type, mesh_attr);
-      value.set_type(dist_type);
-      if (auto define_op = value.defining_op()) {
-        if (define_op->num_operands() != 0u) {
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "Currently only allowed add dist attribue for leaf nodes "
-              "operation. The current op is %s",
-              define_op->name()));
-        }
-        if (define_op->num_results() != 1u) {
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "Currently only allowed add dist attribue for operation with "
-              "single output. The current op is %s",
-              define_op->name()));
-        }
-        define_op->set_attribute(
-            kAttrOpDistAttr,
-            OperationDistAttribute::get(
-                ctx, mesh_attr, {}, {dist_type.tensor_dist_attr()}));
-      }
+      CvtValueToDist(value, mesh_attr);
     }
   }
 }

@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Generator, Sequence
 
 import paddle.distributed as dist
 from paddle import framework
@@ -96,7 +96,9 @@ class P2POp:
 
 
 @contextlib.contextmanager
-def _coalescing_manager(group, tasks=None):
+def _coalescing_manager(
+    group: Group, tasks: task | None = None
+) -> Generator[None, None, None]:
     group = _get_global_group() if group is None else group
     pg = group.process_group
     pg._start_coalescing()
@@ -109,7 +111,7 @@ def _coalescing_manager(group, tasks=None):
             pg._end_coalescing(tasks)
 
 
-def _check_p2p_op_list(p2p_op_list):
+def _check_p2p_op_list(p2p_op_list: Sequence[P2POp]) -> None:
     """
     Helper to check that the ``p2p_op_list`` is a list of P2POp instances and
     all ops use the same backend.

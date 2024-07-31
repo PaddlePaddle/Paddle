@@ -70,7 +70,7 @@ class MemcpyD2HKernel {
     PADDLE_ENFORCE_EQ(
         ctx.HasOutput("Out"),
         true,
-        phi::errors::NotFound("Output(Out) of memcpy_d2h_op is not found."));
+        common::errors::NotFound("Output(Out) of memcpy_d2h_op is not found."));
     auto *out = ctx.OutputVar("Out");
     // Get dev_ctx from ExecutionContext, it's D2H stream
     auto &dev_ctx = ctx.device_context();

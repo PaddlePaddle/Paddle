@@ -496,8 +496,8 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
 
     def static_nadam_mp(self, mp, use_amp):
         paddle.enable_static()
+        paddle.seed(2024)
         with paddle.pir_utils.OldIrGuard():
-            paddle.seed(2024)
             exe = paddle.static.Executor('gpu')
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
@@ -597,6 +597,46 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
 
             return out
 
+    def static_nadam_amp_o2_without_scaler(self):
+        paddle.enable_static()
+        paddle.seed(2024)
+        with paddle.pir_utils.IrGuard():
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
+                exe = paddle.static.Executor('gpu')
+                linear = paddle.nn.Linear(2, 10)
+                optimizer = paddle.optimizer.NAdam(
+                    0.1, parameters=linear.parameters()
+                )
+                linear, optimizer = paddle.amp.decorate(
+                    optimizers=optimizer,
+                    models=linear,
+                    level='O2',
+                )
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float32'
+                )
+                with paddle.amp.auto_cast(
+                    level='O2', dtype='float16', use_promote=True
+                ):
+                    out = linear(data)
+                    loss = paddle.mean(out)
+                optimizer.minimize(loss)
+                exe.run(startup_program)
+
+                np.random.seed(2024)
+
+                x = np.random.random(size=(2, 2)).astype('float32')
+                out = []
+                for idx in range(5):
+                    (loss_data,) = exe.run(
+                        train_program, feed={"X": x}, fetch_list=[loss]
+                    )
+                    out.append(loss_data)
+
+                return out
+
     def test_main(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -619,6 +659,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
         "Test static mode"
         output1_st = self.static_nadam_mp(use_amp=True, mp=True)
         output2_st = self.static_nadam_mp(use_amp=False, mp=False)
+        output3_st = self.static_nadam_amp_o2_without_scaler()
         for idx in range(len(output1_st)):
             np.testing.assert_allclose(
                 output1_st[idx].astype('float32'),
@@ -633,6 +674,14 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
             np.testing.assert_allclose(
                 output1_pir[idx].astype('float32'),
                 output2_pir[idx].astype('float32'),
+                rtol=1e-05,
+                atol=0.1,
+            )
+
+        for idx in range(len(output1_st)):
+            np.testing.assert_allclose(
+                output1_st[idx].astype('float32'),
+                output3_st[idx].astype('float32'),
                 rtol=1e-05,
                 atol=0.1,
             )

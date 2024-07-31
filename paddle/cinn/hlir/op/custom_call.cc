@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 #ifdef CINN_WITH_CUDNN
@@ -64,8 +65,11 @@ class CustomCallArgsFuncRegistry {
   ArgsFunc Lookup(const std::string &custom_call,
                   const cinn::common::Target &target) {
     auto id = custom_call + "_" + target.arch_str();
-    CHECK(func_map_.count(id))
-        << "Can't find " << custom_call << " for target " << target.arch_str();
+    PADDLE_ENFORCE_EQ(
+        func_map_.count(id),
+        true,
+        phi::errors::NotFound(
+            "Can't find %s for target %s", custom_call, target.arch_str()));
     return func_map_[id];
   }
 
@@ -95,7 +99,10 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
         phi::errors::InvalidArgument(
             "The size of 'pack_args' should be 2, but received size %d.",
             pack_args.size()));
-    CHECK(pack_args[0].is_string() && pack_args[1].is_string());
+    PADDLE_ENFORCE_EQ(pack_args[0].is_string() && pack_args[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The pack_arg[0] and pack_arg[1] should be string."));
     std::string func_name = pack_args[0].operator std::string();
     std::string custom_call_api = pack_args[1].operator std::string();
 
@@ -203,8 +210,15 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
   bool is_infer = attr_store.count("is_infer")
                       ? absl::get<bool>(attr_store.at("is_infer"))
                       : false;
-  CHECK((x_num_col_dims == 0 && y_num_col_dims == 0) ||
-        (x_num_col_dims > 0 && y_num_col_dims > 0));
+  PADDLE_ENFORCE_EQ(
+      (x_num_col_dims == 0 && y_num_col_dims == 0) ||
+          (x_num_col_dims > 0 && y_num_col_dims > 0),
+      true,
+      phi::errors::InvalidArgument(
+          "x_num_col_dims and y_num_cole_dims should both be 0 or positive"
+          "now x_num_col_dims is %d and y_num_col_dims is %d",
+          x_num_col_dims,
+          y_num_col_dims));
 
   std::vector<ir::Expr> a_shape, b_shape;
   if (x_num_col_dims == 0 && y_num_col_dims == 0) {
@@ -525,7 +539,11 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvForward(
       phi::errors::InvalidArgument(
           "The size of 'inputs' should be 2, but received size %d.",
           inputs.size()));
-  // CHECK_EQ(output_shapes.size(), 1UL);
+  /* PADDLE_ENFORCE_EQ(
+       output_shapes.size(), 1UL,
+       phi::errors::InvalidArgument(
+           "The size of 'output_shapes' should be 1, but received size %d.",
+           output_shapes.size())); */
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
                     ? absl::get<float>(attr_store.at("alpha"))
@@ -533,9 +551,17 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvForward(
   float beta =
       attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
 
-  CHECK(attr_store.count("padding"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("padding"),
+      true,
+      phi::errors::NotFound(
+          "The CudnnConvForward custom_call must has attribute \"padding\""));
   auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
-  CHECK(attr_store.count("stride"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("stride"),
+      true,
+      phi::errors::NotFound(
+          "The CudnnConvForward custom_call must has attribute \"stride\""));
   auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
                       ? absl::get<std::vector<int>>(attr_store.at("dilation"))
@@ -608,9 +634,17 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvBackwardData(
   float beta =
       attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
 
-  CHECK(attr_store.count("padding"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("padding"),
+      true,
+      phi::errors::NotFound("The CudnnConvBackwardData custom_call"
+                            "must has attribute \"padding\""));
   auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
-  CHECK(attr_store.count("stride"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("stride"),
+      true,
+      phi::errors::NotFound("The CudnnConvBackwardData custom_call"
+                            "must has attribute \"stride\""));
   auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
                       ? absl::get<std::vector<int>>(attr_store.at("dilation"))
@@ -682,9 +716,17 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvBackwardFilter(
   float beta =
       attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
 
-  CHECK(attr_store.count("padding"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("padding"),
+      true,
+      phi::errors::NotFound("The CudnnConvBackwardFilter custom_call"
+                            "must has attribute \"padding\""));
   auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
-  CHECK(attr_store.count("stride"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("stride"),
+      true,
+      phi::errors::NotFound("The CudnnConvBackwardFilter custom_call"
+                            "must has attribute \"stride\""));
   auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
                       ? absl::get<std::vector<int>>(attr_store.at("dilation"))
@@ -757,15 +799,34 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolForward(
   float beta =
       attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
 
-  CHECK(attr_store.count("kernel_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("kernel_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolForward custom_call"
+                            "must has attribute \"kernel_size\""));
   auto kernel = absl::get<std::vector<int>>(attr_store.at("kernel_size"));
-  CHECK(attr_store.count("padding_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("padding_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolForward custom_call"
+                            "must has attribute \"padding_size\""));
   auto padding = absl::get<std::vector<int>>(attr_store.at("padding_size"));
-  CHECK(attr_store.count("stride_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("stride_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolForward custom_call"
+                            "must has attribute \"stride_size\""));
   auto stride = absl::get<std::vector<int>>(attr_store.at("stride_size"));
-  CHECK(attr_store.count("pool_type"));
+  PADDLE_ENFORCE_EQ(attr_store.count("pool_type"),
+                    true,
+                    phi::errors::NotFound("The CudnnPoolForward custom_call"
+                                          "must has attribute \"pool_type\""));
   auto pool_type = absl::get<std::string>(attr_store.at("pool_type"));
-  CHECK(attr_store.count("data_format"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("data_format"),
+      true,
+      phi::errors::NotFound("The CudnnPoolForward custom_call"
+                            "must has attribute \"data_format\""));
   std::string data_format =
       absl::get<std::string>(attr_store.at("data_format"));
 
@@ -832,15 +893,34 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolBackward(
   float beta =
       attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
 
-  CHECK(attr_store.count("kernel_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("kernel_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolBackward custom_call"
+                            "must has attribute \"kernel_size\""));
   auto kernel = absl::get<std::vector<int>>(attr_store.at("kernel_size"));
-  CHECK(attr_store.count("padding_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("padding_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolBackward custom_call"
+                            "must has attribute \"padding_size\""));
   auto padding = absl::get<std::vector<int>>(attr_store.at("padding_size"));
-  CHECK(attr_store.count("stride_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("stride_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolBackward custom_call"
+                            "must has attribute \"stride_size\""));
   auto stride = absl::get<std::vector<int>>(attr_store.at("stride_size"));
-  CHECK(attr_store.count("pool_type"));
-  auto pool_type = absl::get<std::string>(attrs.attr_store.at("pool_type"));
-  CHECK(attr_store.count("data_format"));
+  PADDLE_ENFORCE_EQ(attr_store.count("pool_type"),
+                    true,
+                    phi::errors::NotFound("The CudnnPoolBackward custom_call"
+                                          "must has attribute \"pool_type\""));
+  auto pool_type = absl::get<std::string>(attr_store.at("pool_type"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("data_format"),
+      true,
+      phi::errors::NotFound("The CudnnPoolBackward custom_call"
+                            "must has attribute \"data_format\""));
   std::string data_format =
       absl::get<std::string>(attrs.attr_store.at("data_format"));
 
@@ -899,7 +979,11 @@ std::vector<ir::Expr> CustomCallArgsForAssertTrue(
           output_shapes.size()));
 
   const auto &attr_store = attrs.attr_store;
-  CHECK(attr_store.count("msg"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("msg"),
+      true,
+      phi::errors::NotFound(
+          "The assert_true custom_call must has attribute \"msg\""));
   // TODO(thisjiang): change type from 'int' to 'std::string' when custom call
   // support 'std::string' type
   int msg = absl::get<int>(attr_store.at("msg"));
@@ -1009,7 +1093,11 @@ std::vector<ir::Expr> CustomCallArgsForCholesky(
           "The size of 'inputs' should be 1, but received size %d.",
           inputs.size()));
   const auto &attr_store = attrs.attr_store;
-  CHECK(attr_store.count("upper"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("upper"),
+      true,
+      phi::errors::NotFound(
+          "The cholesky custom_call must has attribute \"upper\""));
 
   ir::Tensor x = inputs.front();
   int ndim = static_cast<int>(x->shape.size());
@@ -1038,10 +1126,24 @@ std::vector<ir::Expr> CustomCallArgsForTriangularSolve(
           "The size of 'inputs' should be 2, but received size %d.",
           inputs.size()));
   const auto &attr_store = attrs.attr_store;
-  CHECK(attr_store.count("left_side"));
-  CHECK(attr_store.count("upper"));
-  CHECK(attr_store.count("transpose_a"));
-  CHECK(attr_store.count("unit_diagonal"));
+  PADDLE_ENFORCE_EQ(attr_store.count("left_side"),
+                    true,
+                    phi::errors::NotFound("The TriangularSolve custom_call"
+                                          "must has attribute \"left_side\""));
+  PADDLE_ENFORCE_EQ(attr_store.count("upper"),
+                    true,
+                    phi::errors::NotFound("The TriangularSolve custom_call"
+                                          "must has attribute \"upper\""));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("transpose_a"),
+      true,
+      phi::errors::NotFound("The TriangularSolve custom_call"
+                            "must has attribute \"transpose_a\""));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("unit_diagonal"),
+      true,
+      phi::errors::NotFound("The TriangularSolve custom_call"
+                            "must has attribute \"unit_diagonal\""));
 
   ir::Tensor a = inputs[0];
   ir::Tensor b = inputs[1];
@@ -1077,9 +1179,14 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
   const auto &attr_store = attrs.attr_store;
-  CHECK(attr_store.count("value"))
-      << "The memset custom_call must has attribute \"value\"";
-  CHECK(inputs.empty()) << "The memset custom_call should not has any input";
+  PADDLE_ENFORCE_EQ(attr_store.count("value"),
+                    true,
+                    phi::errors::NotFound(
+                        "The memset custom_call must has attribute \"value\""));
+  PADDLE_ENFORCE_EQ(inputs.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The memset custom_call should not has any input"));
   PADDLE_ENFORCE_EQ(
       output_shapes.size(),
       1,

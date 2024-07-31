@@ -244,7 +244,7 @@ bool RuntimeInferShapeContext::HasInput(const std::string& name) const {
   PADDLE_ENFORCE_EQ(
       in.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input %s should not contain more than one inputs.", name));
   return in[0] != nullptr;
 }
@@ -263,7 +263,7 @@ bool RuntimeInferShapeContext::HasOutput(const std::string& name) const {
   PADDLE_ENFORCE_EQ(
       out.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Output %s should not contain more than one outputs.", name));
   return out[0] != nullptr;
 }
@@ -320,7 +320,7 @@ std::string RuntimeInferShapeContext::GetInputNameByIdx(size_t idx) const {
       paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
   PADDLE_ENFORCE_LT(idx,
                     op_proto->inputs().size(),
-                    phi::errors::OutOfRange(
+                    common::errors::OutOfRange(
                         "The index should be less than the size of inputs of "
                         "operator %s, but got index is %d and size is %d",
                         op_.Type(),
@@ -334,7 +334,7 @@ std::string RuntimeInferShapeContext::GetOutputNameByIdx(size_t idx) const {
       paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
   PADDLE_ENFORCE_LT(idx,
                     op_proto->outputs().size(),
-                    phi::errors::OutOfRange(
+                    common::errors::OutOfRange(
                         "The index should be less than the size of outputs of "
                         "operator %s, but got index is %d and size is %d",
                         op_.Type(),
@@ -351,20 +351,20 @@ void RuntimeInferShapeContext::ShareDim(const std::string& in,
   auto out_it = ctx_.outputs.find(out);
   PADDLE_ENFORCE_NE(in_it,
                     ctx_.inputs.end(),
-                    phi::errors::NotFound("Input %s does not exist.", in));
+                    common::errors::NotFound("Input %s does not exist.", in));
   PADDLE_ENFORCE_NE(out_it,
                     ctx_.outputs.end(),
-                    phi::errors::NotFound("Output %s does not exist.", out));
+                    common::errors::NotFound("Output %s does not exist.", out));
   PADDLE_ENFORCE_LT(i,
                     in_it->second.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The index of input dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
                         in_it->second.size(),
                         i));
   PADDLE_ENFORCE_LT(j,
                     out_it->second.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The index of output dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
                         out_it->second.size(),
@@ -376,7 +376,7 @@ void RuntimeInferShapeContext::ShareDim(const std::string& in,
   PADDLE_ENFORCE_EQ(
       in_var->Type(),
       out_var->Type(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The type of input (%s) and output (%s) are inconsistent.", in, out));
 
   if (in_var->IsType<phi::SelectedRows>()) {
@@ -390,7 +390,7 @@ void RuntimeInferShapeContext::ShareDim(const std::string& in,
     auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_lod_tensor->Resize(in_lod_tensor.dims());
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Currently, the input type of ShareDim only can be phi::DenseTensor "
         "or SelectedRows."));
   }
@@ -402,11 +402,11 @@ void RuntimeInferShapeContext::ShareAllLoD(const std::string& in,
   auto out_it = ctx_.outputs.find(out);
   PADDLE_ENFORCE_NE(in_it,
                     ctx_.inputs.end(),
-                    phi::errors::NotFound(
+                    common::errors::NotFound(
                         "Input [%s] found error in Op [%s]", in, op_.Type()));
   PADDLE_ENFORCE_NE(out_it,
                     ctx_.outputs.end(),
-                    phi::errors::NotFound(
+                    common::errors::NotFound(
                         "Output [%s] found error in Op [%s]", out, op_.Type()));
 
   auto& in_var_list = in_it->second;
@@ -415,7 +415,7 @@ void RuntimeInferShapeContext::ShareAllLoD(const std::string& in,
   PADDLE_ENFORCE_EQ(
       in_var_list.size(),
       out_var_list.size(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Op [%s]: Input var size should be equal with output var size",
           op_.Type()));
 
@@ -432,7 +432,7 @@ void RuntimeInferShapeContext::ShareAllLoD(const std::string& in,
     PADDLE_ENFORCE_EQ(
         out_var->IsType<phi::DenseTensor>(),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The %d-th output of Output(%s) must be phi::DenseTensor.",
             i,
             out_var_names[i]));
@@ -457,20 +457,20 @@ void RuntimeInferShapeContext::ShareLoD(const std::string& in,
   auto out_it = ctx_.outputs.find(out);
   PADDLE_ENFORCE_NE(in_it,
                     ctx_.inputs.end(),
-                    phi::errors::NotFound("Input %s does not exist.", in));
+                    common::errors::NotFound("Input %s does not exist.", in));
   PADDLE_ENFORCE_NE(out_it,
                     ctx_.outputs.end(),
-                    phi::errors::NotFound("Output %s does not exist.", out));
+                    common::errors::NotFound("Output %s does not exist.", out));
   PADDLE_ENFORCE_LT(i,
                     in_it->second.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The index of input dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
                         in_it->second.size(),
                         i));
   PADDLE_ENFORCE_LT(j,
                     out_it->second.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The index of output dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
                         out_it->second.size(),
@@ -482,7 +482,7 @@ void RuntimeInferShapeContext::ShareLoD(const std::string& in,
   PADDLE_ENFORCE_EQ(
       out_var->IsType<phi::DenseTensor>(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The %zu-th output of Output(%s) must be phi::DenseTensor.", j, out));
   auto& in_tensor = in_var->Get<phi::DenseTensor>();
   auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
@@ -511,7 +511,7 @@ void RuntimeInferShapeContext::ShareLoD(const std::string& in,
 
 int32_t RuntimeInferShapeContext::GetLoDLevel(const std::string& in,
                                               size_t i) const {
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "GetLoDLevel is only used in compile time. The calculation of "
       "output's actual lod is different among operators so that should be "
       "set in the runtime kernel."));
@@ -520,7 +520,7 @@ int32_t RuntimeInferShapeContext::GetLoDLevel(const std::string& in,
 void RuntimeInferShapeContext::SetLoDLevel(const std::string& out,
                                            int32_t lod_level,
                                            size_t j) const {
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "SetLoDLevel is only used in compile time. The calculation of "
       "output's actual lod is different among operators so that should be "
       "set in the runtime kernel."));
@@ -563,7 +563,7 @@ DDim RuntimeInferShapeContext::GetInputDim(const std::string& name) const {
   PADDLE_ENFORCE_EQ(
       vars.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(%s) should hold one element, but now it holds %zu elements.",
           name,
           vars.size()));
@@ -597,10 +597,10 @@ void RuntimeInferShapeContext::SetOutputDim(const std::string& name,
   PADDLE_ENFORCE_EQ(
       vars.size(),
       1UL,
-      phi::errors::InvalidArgument("Output(%s) should hold one element, "
-                                   "but now it holds %zu elements.",
-                                   name,
-                                   vars.size()));
+      common::errors::InvalidArgument("Output(%s) should hold one element, "
+                                      "but now it holds %zu elements.",
+                                      name,
+                                      vars.size()));
   SetDim(vars[0], dim);
 }
 
@@ -673,13 +673,13 @@ std::vector<DDim> RuntimeInferShapeContext::GetOutputsDim(
 
 DDim RuntimeInferShapeContext::GetDim(Variable* var) const {
   PADDLE_ENFORCE_NOT_NULL(
-      var, phi::errors::InvalidArgument("Input variable is nullptr."));
+      var, common::errors::InvalidArgument("Input variable is nullptr."));
   if (var->IsType<phi::DenseTensor>()) {
     return var->Get<phi::DenseTensor>().dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     return var->Get<phi::SelectedRows>().GetCompleteDims();
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Only phi::DenseTensor or SelectedRows support 'GetDim', but input "
         "Variable's type is %s.",
         ToTypeName(var->Type())));
@@ -699,7 +699,7 @@ std::vector<DDim> RuntimeInferShapeContext::GetDims(
 
 std::vector<DDim> RuntimeInferShapeContext::GetRepeatedDims(
     const std::string& name) const {
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "GetRepeatedDims method only ban be used in compile time."));
 }
 
@@ -709,7 +709,7 @@ void RuntimeInferShapeContext::SetDim(Variable* var, const DDim& dim) {
   } else if (var->IsType<phi::SelectedRows>()) {
     var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Variable type error, expect phi::DenseTensor or SelectedRows, but "
         "received "
         "(%s).",
@@ -722,7 +722,7 @@ void RuntimeInferShapeContext::SetDims(const std::vector<Variable*>& vars,
   size_t length = vars.size();
   PADDLE_ENFORCE_EQ(length,
                     dims.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of input variables do not match the "
                         "number of input dimensions, the number of variables "
                         "is %zu, the number of dimensions is %zu.",
@@ -738,7 +738,7 @@ void RuntimeInferShapeContext::SetDims(const std::vector<Variable*>& vars,
 
 void RuntimeInferShapeContext::SetRepeatedDims(const std::string& name,
                                                const std::vector<DDim>& dims) {
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "SetRepeatedDims method only can be used in compile time."));
 }
 
@@ -766,7 +766,7 @@ const std::vector<Variable*>& RuntimeInferShapeContext::InputVars(
   PADDLE_ENFORCE_NE(
       it,
       ctx_.inputs.end(),
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Operator (%s) does not have the input (%s).", op_.Type(), name));
   return it->second;
 }
@@ -777,7 +777,7 @@ const std::vector<Variable*>& RuntimeInferShapeContext::OutputVars(
   PADDLE_ENFORCE_NE(
       it,
       ctx_.outputs.end(),
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Operator (%s) does not have the outputs (%s).", op_.Type(), name));
   return it->second;
 }
@@ -787,7 +787,7 @@ void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (phi::is_gpu_place(place)) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
           "reinstall Paddle with CUDA support.",
           place));
@@ -797,7 +797,7 @@ void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
 #endif
     } else if (phi::is_xpu_place(place)) {
 #ifndef PADDLE_WITH_XPU
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
           "reinstall Paddle with XPU support.",
           place));
@@ -807,7 +807,7 @@ void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
 #endif
     } else if (phi::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
           "reinstall Paddle with CustomDevice support.",
           place));
@@ -856,7 +856,7 @@ std::string OperatorBase::Input(const std::string& name) const {
   PADDLE_ENFORCE_LE(
       ins.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Operator %s's input %s should contain only one variable.",
           type_,
           name));
@@ -869,7 +869,7 @@ const std::vector<std::string>& OperatorBase::Inputs(
   PADDLE_ENFORCE_NE(
       it,
       inputs_.end(),
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Operator %s does not have the input %s.", type_, name));
   return it->second;
 }
@@ -887,7 +887,7 @@ std::string OperatorBase::Output(const std::string& name) const {
   PADDLE_ENFORCE_LE(
       outs.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Operator %s's output %s should contain only one variable.",
           type_,
           name));
@@ -900,7 +900,7 @@ const std::vector<std::string>& OperatorBase::Outputs(
   PADDLE_ENFORCE_NE(
       it,
       outputs_.end(),
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Operator %s does not have an output called %s.", type_, name));
   return it->second;
 }
@@ -1066,7 +1066,7 @@ void OperatorBase::CheckAllInputOutputSet() const {
       PADDLE_ENFORCE_NE(
           inputs_.find(in.name()),
           inputs_.end(),
-          phi::errors::NotFound(
+          common::errors::NotFound(
               "Operator %s's input (%s) is not set.", Type(), in.name()));
     }
   }
@@ -1076,7 +1076,7 @@ void OperatorBase::CheckAllInputOutputSet() const {
       PADDLE_ENFORCE_NE(
           outputs_.find(out.name()),
           outputs_.end(),
-          phi::errors::NotFound(
+          common::errors::NotFound(
               "Operator %s's output (%s) is not set.", Type(), out.name()));
     }
   }
@@ -1102,7 +1102,7 @@ const phi::DenseTensor* GetLoDTensorOrSelectedRowsValueFromVar(
   } else if (var.IsType<phi::SelectedRows>()) {
     return &(var.Get<phi::SelectedRows>().value());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Variable type is %s, expect phi::DenseTensor or SelectedRows.",
         ToTypeName(var.Type())));
   }
@@ -1114,7 +1114,7 @@ phi::DenseTensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
   } else if (var->IsType<phi::SelectedRows>()) {
     return var->GetMutable<phi::SelectedRows>()->mutable_value();
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Variable type is %s, expect phi::DenseTensor or SelectedRows.",
         ToTypeName(var->Type())));
   }
@@ -1161,7 +1161,7 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   PADDLE_ENFORCE_LE(
       it->second.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Operator %s's input %s should contain only one variable.",
           op_.Type(),
           name));
@@ -1175,7 +1175,7 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
   PADDLE_ENFORCE_LE(
       it->second.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Operator %s's output %s should contain only one variable.",
           op_.Type(),
           name));
@@ -1201,7 +1201,7 @@ ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const {
                    PADDLE_ENFORCE_EQ(
                        var->IsType<phi::DenseTensor>(),
                        true,
-                       phi::errors::InvalidArgument(
+                       common::errors::InvalidArgument(
                            "Input variable should be phi::DenseTensor, "
                            "but the received type is %s.",
                            ToTypeName(var->Type())));
@@ -1331,18 +1331,18 @@ static void CheckTensorNANOrInf(const std::string& op_type,
       framework::TransToProtoVarType(tensor.dtype()) != proto::VarType::FP64) {
     return;
   }
-  PADDLE_ENFORCE_NE(
-      framework::TensorContainsInf(tensor),
-      true,
-      phi::errors::Fatal("Operator %s output phi::DenseTensor %s contains Inf.",
-                         op_type,
-                         name));
-  PADDLE_ENFORCE_NE(
-      framework::TensorContainsNAN(tensor),
-      true,
-      phi::errors::Fatal("Operator %s output phi::DenseTensor %s contains NAN.",
-                         op_type,
-                         name));
+  PADDLE_ENFORCE_NE(framework::TensorContainsInf(tensor),
+                    true,
+                    common::errors::Fatal(
+                        "Operator %s output phi::DenseTensor %s contains Inf.",
+                        op_type,
+                        name));
+  PADDLE_ENFORCE_NE(framework::TensorContainsNAN(tensor),
+                    true,
+                    common::errors::Fatal(
+                        "Operator %s output phi::DenseTensor %s contains NAN.",
+                        op_type,
+                        name));
 }
 
 bool OperatorWithKernel::SupportGPU() const {
@@ -1401,7 +1401,7 @@ bool OperatorWithKernel::SupportXPU() const {
     }
   }
 #else
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "should not call OperatorWithKernel::SupportXPU() when not compiled with "
       "XPU support."));
   return false;
@@ -1435,7 +1435,7 @@ bool OperatorWithKernel::SupportCustomDevice() const {
     }
   }
 #else
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "should not call OperatorWithKernel::SupportCustomDevice() when not "
       "compiled with "
       "CustomDevice support."));
@@ -1627,7 +1627,7 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
     PADDLE_ENFORCE_GE(
         platform::DnnVersion(),
         8100,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
   }
 #endif  // PADDLE_WITH_CUDA
@@ -1641,7 +1641,7 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
 }
 
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
-  PADDLE_THROW(phi::errors::PermissionDenied(
+  PADDLE_THROW(common::errors::PermissionDenied(
       "The default InferShape function of OperatorWithKernel is not allowed to "
       "be called, please override corresponding InferShape function in the "
       "specific operator."));
@@ -2334,7 +2334,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   PADDLE_ENFORCE_NE(
       kernels_iter,
       all_op_kernels.end(),
-      phi::errors::Unimplemented(
+      common::errors::Unimplemented(
           "There are no kernels which are registered in the %s operator.",
           type_));
 
@@ -2441,9 +2441,9 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   PADDLE_ENFORCE_NE(
       kernel_iter,
       kernels.end(),
-      phi::errors::NotFound("Operator (%s) does not have kernel for %s.",
-                            type_,
-                            KernelTypeToString(expected_kernel_key)));
+      common::errors::NotFound("Operator (%s) does not have kernel for %s.",
+                               type_,
+                               KernelTypeToString(expected_kernel_key)));
 
   std::lock_guard<std::mutex> lock(cache_update_mutex_);
   if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
@@ -2459,15 +2459,15 @@ void OperatorWithKernel::TransferInplaceVarsBack(
   for (auto& var_name : inplace_vars) {
     VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
     auto* origin_var = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        origin_var,
-        phi::errors::InvalidArgument("The variable[%s] is nullptr.", var_name));
+    PADDLE_ENFORCE_NOT_NULL(origin_var,
+                            common::errors::InvalidArgument(
+                                "The variable[%s] is nullptr.", var_name));
     auto* original_tensor =
         GetMutableLoDTensorOrSelectedRowsValueFromVar(origin_var);
     auto* var = transfer_scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        phi::errors::InvalidArgument("The variable[%s] is nullptr.", var_name));
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            common::errors::InvalidArgument(
+                                "The variable[%s] is nullptr.", var_name));
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     original_tensor->ShareDataWith(*transformed_tensor);
   }
@@ -2519,7 +2519,7 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
       const auto* tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       PADDLE_ENFORCE_NOT_NULL(
           tensor,
-          phi::errors::Unavailable(
+          common::errors::Unavailable(
               "Forward tensor is nullptr when handle complex data to real."));
       // only need record type, the allocation may have been released
       auto dst_type = framework::TransToProtoVarType(tensor->dtype());
@@ -2787,7 +2787,7 @@ Scope* OperatorWithKernel::PrepareData(
     const auto& input_defs = phi_kernel_->args_def().input_defs();
     PADDLE_ENFORCE_EQ(input_names.size(),
                       input_defs.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of inputs_args names (%d) must be equal to "
                           "the size of kernel input_defs (%d).",
                           input_names.size(),
@@ -2903,14 +2903,14 @@ void OperatorWithKernel::ParseMultiInputDataType(
         PADDLE_ENFORCE_EQ(
             sp_t->initialized(),
             true,
-            phi::errors::InvalidArgument("The %s Op's Input Variable `%s` "
-                                         "contains uninitialized Tensor.",
-                                         Type(),
-                                         name));
+            common::errors::InvalidArgument("The %s Op's Input Variable `%s` "
+                                            "contains uninitialized Tensor.",
+                                            Type(),
+                                            name));
         proto::VarType::Type tmp =
             paddle::framework::TransToProtoVarType(sp_t->dtype());
         PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
-                       phi::errors::InvalidArgument(
+                       common::errors::InvalidArgument(
                            "The DataType of %s Op's duplicable or different "
                            "slot Variable %s must be "
                            "consistent or register GetExpectedKernelType. The "
@@ -2932,7 +2932,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(t->IsInitialized(),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The %s Op's Input Variable `%s` "
                               "contains uninitialized phi::DenseTensor.",
                               Type(),
@@ -2940,7 +2940,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
         proto::VarType::Type tmp =
             paddle::framework::TransToProtoVarType(t->dtype());
         PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
-                       phi::errors::InvalidArgument(
+                       common::errors::InvalidArgument(
                            "The DataType of %s Op's duplicable or different "
                            "slot Variable %s must be "
                            "consistent or register GetExpectedKernelType. The "
@@ -2972,7 +2972,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   PADDLE_ENFORCE_NE(
       data_type,
       default_data_type,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "DataType should be indicated by input Variable at %s.", Type()));
   return data_type;
 }
@@ -2990,7 +2990,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   PADDLE_ENFORCE_NE(
       data_type,
       default_data_type,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Input Variable(%s) of (%s) Operator used to determine kernel "
           "data type is empty or not phi::DenseTensor or SelectedRows or "
           "LoDTensorArray.",
@@ -3009,7 +3009,7 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
   Variable* var = const_cast<Variable*>(ctx.InputVar(name));
   PADDLE_ENFORCE_NOT_NULL(
       var,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "The variable %s is not found when promote complex types.", name));
   // 2. get tensor and check
   phi::DenseTensor* t = nullptr;
@@ -3018,17 +3018,17 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
   } else if (var->IsType<phi::SelectedRows>()) {
     t = var->GetMutable<phi::SelectedRows>()->mutable_value();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported input variable type in complex type promotion."));
   }
   PADDLE_ENFORCE_NOT_NULL(t,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The phi::DenseTensor of variable %s is nullptr "
                               "when promote complex types."));
   PADDLE_ENFORCE_EQ(
       t->IsInitialized(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The phi::DenseTensor in the %s Op's Input Variable %s(%s) is "
           "not initialized.",
           Type(),
@@ -3138,7 +3138,7 @@ static void SetDnnAttrIntoDeviceContext(
         one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
         break;
       default:
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported Attribute value type `%s` for phi.",
             platform::demangle(attr.type().name())));
     }
@@ -3157,7 +3157,7 @@ static void SetDnnAttrIntoDeviceContext(
         gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
         break;
       default:
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported Attribute value type `%s` for phi.",
             platform::demangle(attr.type().name())));
     }
@@ -3190,7 +3190,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
   PADDLE_ENFORCE_EQ(input_names.size(),
                     input_defs.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of inputs_args names (%d) must be equal to "
                         "the size of kernel input_defs (%d).",
                         input_names.size(),
@@ -3198,7 +3198,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
   PADDLE_ENFORCE_EQ(output_names.size(),
                     output_defs.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of outputs_args names (%d) must be equal to "
                         "the size of kernel output_defs (%d).",
                         output_names.size(),
@@ -3206,7 +3206,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
   PADDLE_ENFORCE_EQ(attr_names.size(),
                     attr_defs.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of attribute_args names (%d) must be equal "
                         "to the size of kernel attribute_defs (%d).",
                         attr_names.size(),
@@ -3257,7 +3257,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
         tensor_in = &(var->Get<framework::FeedList>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
       }
@@ -3312,7 +3312,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
-          PADDLE_THROW(phi::errors::Unimplemented(
+          PADDLE_THROW(common::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
               framework::ToTypeName(var->Type())));
         }
@@ -3365,7 +3365,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                   paddle::experimental::Scalar, attr_iter->second)));
               break;
             default:
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
                   "KernelContext in dygraph.",
                   attr_names[i]));
@@ -3397,7 +3397,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                   &PADDLE_GET_CONST(int64_t, attr_iter->second), 1));
               break;
             default:
-              PADDLE_THROW(phi::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to IntArray when "
                   "construct KernelContext.",
                   attr_names[i]));
@@ -3419,9 +3419,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
         PADDLE_ENFORCE_NE(
             attr_iter,
             Attrs().end(),
-            phi::errors::NotFound("(%s) is not found in AttributeMap when "
-                                  "building static KernelContext.",
-                                  attr_names[i]));
+            common::errors::NotFound("(%s) is not found in AttributeMap when "
+                                     "building static KernelContext.",
+                                     attr_names[i]));
         switch (AttrTypeID(attr_iter->second)) {
           case proto::AttrType::INTS: {
             const auto& vec =
@@ -3480,7 +3480,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             phi_kernel_context->EmplaceBackAttr(std::move(scalar_list));
           } break;
           default:
-            PADDLE_THROW(phi::errors::Unimplemented(
+            PADDLE_THROW(common::errors::Unimplemented(
                 "Unsupported cast op attribute `%s` to vector<Scalar> when "
                 "construct KernelContext.",
                 attr_names[i]));
@@ -3493,9 +3493,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
           PADDLE_ENFORCE_NE(
               attr_iter,
               RuntimeAttrs().end(),
-              phi::errors::NotFound("(%s) is not found in AttributeMap when "
-                                    "building static KernelContext.",
-                                    attr_names[i]));
+              common::errors::NotFound("(%s) is not found in AttributeMap when "
+                                       "building static KernelContext.",
+                                       attr_names[i]));
         }
 
         switch (attr_defs[i].type_index) {
@@ -3551,7 +3551,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                 phi_kernel_context->EmplaceBackAttr(vector_int64_attr);
               } break;
               default:
-                PADDLE_THROW(phi::errors::Unimplemented(
+                PADDLE_THROW(common::errors::Unimplemented(
                     "Unsupported cast op attribute `%s` to vector<int64_t> "
                     "when "
                     "construct KernelContext.",
@@ -3567,7 +3567,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                 PADDLE_GET_CONST(std::vector<std::string>, attr_iter->second));
             break;
           default:
-            PADDLE_THROW(phi::errors::Unimplemented(
+            PADDLE_THROW(common::errors::Unimplemented(
                 "Unsupported cast op attribute `%s` when construct "
                 "KernelContext in dygraph.",
                 attr_names[i]));
@@ -3644,12 +3644,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
         PADDLE_ENFORCE_EQ(
             ins_vector.size(),
             1UL,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "OneDNN's extra input only allows one input tensor."));
         auto* var = ins_vector[0];
         PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "OneDNN's extra input only can be DenseTensor."));
         one_dnn_ctx->SetDnnInput(input_name, &(var->Get<phi::DenseTensor>()));
       }
