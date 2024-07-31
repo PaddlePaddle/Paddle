@@ -33,7 +33,7 @@ def sample_neighbors(
     input_nodes: Tensor,
     sample_size: int = ...,
     eids: Tensor | None = ...,
-    return_eids: bool = Literal[True],
+    return_eids: Literal[True] = ...,
     perm_buffer: Tensor | None = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]:
@@ -47,7 +47,7 @@ def sample_neighbors(
     input_nodes: Tensor,
     sample_size: int = ...,
     eids: Tensor | None = ...,
-    return_eids: bool = Literal[False],
+    return_eids: Literal[False] = ...,
     perm_buffer: Tensor | None = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor]:
@@ -225,7 +225,7 @@ def weighted_sample_neighbors(
     input_nodes: Tensor,
     sample_size: int = ...,
     eids: Tensor | None = ...,
-    return_eids: bool = Literal[True],
+    return_eids: Literal[True] = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]:
     ...
@@ -239,7 +239,7 @@ def weighted_sample_neighbors(
     input_nodes: Tensor,
     sample_size: int = ...,
     eids: Tensor | None = ...,
-    return_eids: bool = Literal[False],
+    return_eids: Literal[False] = ...,
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor]:
     ...
