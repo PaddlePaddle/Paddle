@@ -90,7 +90,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     out->set_lod(x->lod());
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }

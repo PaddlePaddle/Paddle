@@ -58,7 +58,7 @@ static void CheckCommContextHasRingId(
     const distributed::CommContextManager &comm_context_manager, int ring_id) {
   PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "You choose to use new communication library by "
                         "setting environment "
                         "variable FLAGS_dynamic_static_unified_comm True. "
@@ -284,7 +284,7 @@ static const T *GetInputTensorPtr(const DenseTensor *in_tensor,
                                   int64_t *numel = nullptr) {
   PADDLE_ENFORCE_NOT_NULL(
       in_tensor,
-      phi::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
+      common::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
   if (in_tensor->initialized()) {
     if (numel) *numel = in_tensor->numel();
     return in_tensor->data<T>();
@@ -305,23 +305,23 @@ static T *GetSameInOutTensorPtr(const Context &dev_ctx,
     PADDLE_ENFORCE_EQ(
         AllowNotExist,
         true,
-        phi::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
+        common::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
     if (numel) *numel = 0;
     return nullptr;
   }
 
   PADDLE_ENFORCE_NOT_NULL(
       in_tensor,
-      phi::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
+      common::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
   PADDLE_ENFORCE_NOT_NULL(
       out_tensor,
-      phi::errors::InvalidArgument("Output(%s) cannot be NULL.", out_name));
+      common::errors::InvalidArgument("Output(%s) cannot be NULL.", out_name));
   const T *in_data = in_tensor->data<T>();
 
   T *out_data = dev_ctx.template Alloc<T>(out_tensor);
   PADDLE_ENFORCE_EQ(in_data,
                     out_data,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(%s) and Output(%s) must be the same Tensor.",
                         in_name,
                         out_name));
@@ -552,11 +552,11 @@ static void MultiTensorUpdateLambMomentAndTrustRatioDiv(
   int numel = offsets[n] - offsets[0];
   PADDLE_ENFORCE_GE(weight_decay_end_idx,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The weight decay end index should be >= 0."));
   PADDLE_ENFORCE_LE(weight_decay_end_idx,
                     n,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The weight decay end index should be < %d.", n));
   auto weight_decay_end_numel = offsets[weight_decay_end_idx] - offsets[0];
 
@@ -581,11 +581,12 @@ static void MultiTensorUpdateLambMomentAndTrustRatioDiv(
     PADDLE_ENFORCE_EQ(
         step,
         nullptr,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Output(Step) cannot be updated twice in one mini-batch."));
   } else {
     PADDLE_ENFORCE_NOT_NULL(
-        step, phi::errors::InvalidArgument("Output(Step) cannot be nullptr."));
+        step,
+        common::errors::InvalidArgument("Output(Step) cannot be nullptr."));
   }
 
 #define PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL                        \
@@ -622,10 +623,10 @@ struct LambBetaPowUpdateOnceHelper {
   LambBetaPowUpdateOnceHelper(T *beta1pow, T *beta2pow, T beta1, T beta2) {
     PADDLE_ENFORCE_NOT_NULL(
         beta1pow,
-        phi::errors::InvalidArgument("The beta1pow should not be nullptr."));
+        common::errors::InvalidArgument("The beta1pow should not be nullptr."));
     PADDLE_ENFORCE_NOT_NULL(
         beta2pow,
-        phi::errors::InvalidArgument("The beta2pow should not be nullptr."));
+        common::errors::InvalidArgument("The beta2pow should not be nullptr."));
     beta1pow_ = beta1pow;
     beta2pow_ = beta2pow;
     beta1_ = beta1;
@@ -650,11 +651,11 @@ struct LambBetaPowUpdateOnceHelper<T, false> {
     PADDLE_ENFORCE_EQ(
         beta1pow,
         nullptr,
-        phi::errors::InvalidArgument("The beta1pow should be nullptr."));
+        common::errors::InvalidArgument("The beta1pow should be nullptr."));
     PADDLE_ENFORCE_EQ(
         beta2pow,
         nullptr,
-        phi::errors::InvalidArgument("The beta2pow should be nullptr."));
+        common::errors::InvalidArgument("The beta2pow should be nullptr."));
   }
 
   HOSTDEVICE void UpdateBetaPows() const {}
@@ -666,11 +667,11 @@ struct LambParamHelper {
     constexpr bool kIsSameType = std::is_same<T, MasterT<T>>::value;
     PADDLE_ENFORCE_EQ(kIsSameType,
                       false,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "T must not be the same with MasterT<T>."));
     PADDLE_ENFORCE_NOT_NULL(
         master_param,
-        phi::errors::InvalidArgument("Master parameter must be provided."));
+        common::errors::InvalidArgument("Master parameter must be provided."));
     param_ = param;
     master_param_ = master_param;
   }
@@ -691,11 +692,11 @@ struct LambParamHelper<T, false> {
     PADDLE_ENFORCE_EQ(
         kIsSameType,
         true,
-        phi::errors::InvalidArgument("T must be the same with MasterT<T>."));
+        common::errors::InvalidArgument("T must be the same with MasterT<T>."));
     if (master_param != nullptr) {
       PADDLE_ENFORCE_EQ(static_cast<void *>(param),
                         static_cast<void *>(master_param),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Master parameter must be nullptr or the same as "
                             "non-master parameter."));
     }
@@ -819,12 +820,12 @@ static void MultiTensorUpdateLambParamAndBetaPows(
   if (has_beta_pow) {
     PADDLE_ENFORCE_NOT_NULL(
         beta2pow,
-        phi::errors::InvalidArgument("Beta2Pow should not be nullptr."));
+        common::errors::InvalidArgument("Beta2Pow should not be nullptr."));
   } else {
     PADDLE_ENFORCE_EQ(
         beta2pow,
         nullptr,
-        phi::errors::InvalidArgument("Beta2Pow should be nullptr."));
+        common::errors::InvalidArgument("Beta2Pow should be nullptr."));
   }
 
   const int block_dim = 512;
@@ -990,7 +991,7 @@ static void NCCLSumWithScaleBase(const T *sendbuff,
     if (scale != nullptr) {
       PADDLE_ENFORCE_EQ(nranks,
                         1,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "nranks must be 1 when scale != nullptr."));
       LaunchScaleKernel(dev_ctx, sendbuff, scale, recvbuff, numel, stream);
     }
@@ -1191,7 +1192,7 @@ static std::string GetMinMaxStr(const T *x, size_t n, const phi::Place &place) {
   PADDLE_ENFORCE_EQ(
       place.GetType() == phi::AllocationType::GPU,
       true,
-      phi::errors::InvalidArgument("Only support CUDAPlace currently."));
+      common::errors::InvalidArgument("Only support CUDAPlace currently."));
 
   auto *dev_ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
@@ -1471,7 +1472,7 @@ void DistributedFusedLambKernel(
                                                   &fp32_numel);
   PADDLE_ENFORCE_GE(fp32_numel,
                     fp16_numel,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The element number in FP32FusedParam should be not "
                         "less than FP16FusedParam."));
   fp32_numel -= fp16_numel;  // the FP32FusedParam contains fp32 param and
@@ -1485,7 +1486,7 @@ void DistributedFusedLambKernel(
     PADDLE_ENFORCE_EQ(
         has_fp16_param,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Either FP32FusedGrad or FP16FusedGrad cannot be NULL."));
   }
   auto numel = fp32_numel + fp16_numel;
@@ -1495,19 +1496,19 @@ void DistributedFusedLambKernel(
   // The NVIDIA cub library does not support number > INT32_MAX
   PADDLE_ENFORCE_LE(numel,
                     std::numeric_limits<int>::max(),
-                    phi::errors::Unimplemented(
+                    common::errors::Unimplemented(
                         "Too many parameter number. Only <= %d is supported.",
                         std::numeric_limits<int>::max()));
 
   PADDLE_ENFORCE_GE(
       acc_steps,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The gradient accumulation steps should be not less than 1."));
   if (acc_steps > 1) {
     PADDLE_ENFORCE_NOT_NULL(
         acc_step,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Output(AccStep) cannot be nullptr when Attr(acc_steps) > 1."));
     bool is_initialized = acc_step->initialized();
     int64_t *acc_step_data;
@@ -1523,7 +1524,7 @@ void DistributedFusedLambKernel(
     float *fp32_acc_grad_data = nullptr;
     if (has_fp32_param) {
       PADDLE_ENFORCE_NOT_NULL(fp32_acc_grad,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "Output(FP32AccFusedGrad) cannot be nullptr "
                                   "when Attr(acc_steps) > 1."));
       if (!fp32_acc_grad->initialized()) {
@@ -1538,7 +1539,7 @@ void DistributedFusedLambKernel(
     float *master_acc_grad = nullptr;
     if (has_fp16_param) {
       PADDLE_ENFORCE_NOT_NULL(fp16_acc_grad,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "Output(FP16AccFusedGrad) cannot be nullptr "
                                   "when Attr(acc_steps) > 1."));
       if (!fp16_acc_grad->initialized()) {
@@ -1658,7 +1659,7 @@ void DistributedFusedLambKernel(
   auto param_num = fp32_global_param_num + fp16_global_param_num;
   PADDLE_ENFORCE_LE(local_param_num,
                     param_num,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The local parameter number should not exceed the "
                         "global parameter number."));
   VLOG(1) << "local_param_num = " << local_param_num
@@ -1681,7 +1682,7 @@ void DistributedFusedLambKernel(
       dev_ctx, &moment1, moment1_out, "Moment1", "Moment1Out", &partial_numel);
   PADDLE_ENFORCE_EQ(numel % partial_numel,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The total parameter number %d should be divided "
                         "exactly by the element number %d of Moment1.",
                         numel,
@@ -1696,14 +1697,14 @@ void DistributedFusedLambKernel(
 
   PADDLE_ENFORCE_EQ(fp32_numel % num_devices,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The fp32 parameter number %d should be divided "
                         "exactly by the device number %d.",
                         fp32_numel,
                         num_devices));
   PADDLE_ENFORCE_EQ(fp16_numel % num_devices,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The fp16 parameter number %d should be divided "
                         "exactly by the device number %d.",
                         fp16_numel,
@@ -1720,11 +1721,11 @@ void DistributedFusedLambKernel(
   // use_master_param_norm, is_grad_scaled_by_nranks
   PADDLE_ENFORCE_GE(nranks,
                     num_devices,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The nranks must be not less than num_devices."));
   PADDLE_ENFORCE_EQ(nranks % num_devices,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The nranks must be exactly divided by num_devices."));
   bool local_shard = (nranks > num_devices);
 
@@ -2416,7 +2417,7 @@ void DistributedFusedLambKernel(
 
   VLOG(1) << "IsFinite: " << IsFinite(dev_ctx, fp32_square_grad_norm);
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "distributed_fused_lamb op should be used with NCCL/RCCL."));
 #endif
 }
