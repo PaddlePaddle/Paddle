@@ -13,12 +13,17 @@
 // limitations under the License.
 
 #include "paddle/phi/core/distributed/collective/process_group.h"
+#include "paddle/phi/core/distributed/nccl_async_time_profiler.h"
 
 namespace phi::distributed {
 
 bool ProcessGroup::Task::IsCompleted() {
   std::lock_guard<std::mutex> lock(mutex_);
   return is_completed_;
+}
+
+std::unordered_map<int, float> ProcessGroup::GetProfiles() {
+  return NCCLAsyncTimeProfiler::GetInstance().GetProfiles();
 }
 
 ProcessGroup::ProcessGroup(int rank, int size, int gid)

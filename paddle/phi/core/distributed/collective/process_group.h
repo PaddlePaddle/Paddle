@@ -100,6 +100,11 @@ class ProcessGroup {
            std::string(", backend: ") + GetBackendName();
   }
 
+  void EnableProfiling() { profile_enabled_ = true; }
+  void DisableProfiling() { profile_enabled_ = true; }
+
+  static std::unordered_map<int, float> GetProfiles();
+
   virtual std::string GetBackendName() const = 0;
 
   virtual phi::DeviceContext* GetDeviceContext(
@@ -502,6 +507,7 @@ class ProcessGroup {
   int rank_;
   int size_;
   int gid_;
+  bool profile_enabled_{false};
 };
 
 class ProcessGroupIdMap
