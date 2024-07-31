@@ -326,9 +326,6 @@ class RunnableProgram:
         rename_mapping = RunnableProgram.unify_value_names(
             self.backward_program, rename_mapping
         )
-        # check if every value has only one name.
-        for value in rename_mapping.values():
-            assert value._is_only_one_name()
         return value_program_attr
 
     @staticmethod
@@ -345,6 +342,10 @@ class RunnableProgram:
             rename_mapping.update(
                 value._rename(new_name, program.global_block())
             )
+        # Get all values again because some values has been erased.
+        for value in RunnableProgram._get_program_all_values(program):
+            if value.has_name:
+                assert value._is_only_one_name()
         return rename_mapping
 
     @cached_property
