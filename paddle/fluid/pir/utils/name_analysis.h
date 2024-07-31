@@ -42,17 +42,7 @@ pir::Value GetOutputValueByName(const pir::Program &program,
 
 inline bool IsOnlyOneValueName(pir::Value value) {
   std::vector<std::string> names = GetValueAllNames(value);
-  if (names.size() == 1 || names.empty()) {
-    return true;
-  }
-
-  std::set<std::string> names_set(names.begin(), names.end());
-
-  if (names_set.size() == 1) {
-    return true;
-  } else {
-    return false;
-  }
+  return std::set<std::string>(names.begin(), names.end()).size() <= 1;
 }
 
 }  // namespace name_analysis
