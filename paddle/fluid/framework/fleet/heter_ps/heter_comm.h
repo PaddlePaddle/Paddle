@@ -360,7 +360,7 @@ class HeterComm {
           phi::errors::InvalidArgument("The given length %u is greater than "
                                        "the memory length %u, Please Check!",
                                        len * value_bytes,
-                                       all_grads_sem->size()));
+                                       all_grads_mem->size()));
     }
     void init_pull(const size_t& len) {
       pull_res.h_recv_fea_num = len;
