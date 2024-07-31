@@ -928,15 +928,14 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool RreluOpInferSymbolicShape(pir::Operation *op,
-                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand(0));
+bool RreluOpInferSymbolicShape(pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape = x_shape_or_data.shape();
 
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
-  if (op->num_results() > 1) {
-    infer_context->SetShapeOrDataForValue(op->result(1), x_shape_or_data);
+  if (op->num_results() > 1 && op->result(1) != nullptr) {
+    infer_context->SetShapeOrDataForValue(op->result(1), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
   }
 
   return true;
