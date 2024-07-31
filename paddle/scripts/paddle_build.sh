@@ -2760,16 +2760,19 @@ set +x
         test_cases=$(ctest -N -V) # get all test cases
 
         pushd ${PADDLE_ROOT}/build/paddle/cinn
-        ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_cinn_ut_list_tmp
+        ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp
         popd
         pushd ${PADDLE_ROOT}/build/test/cinn
-        ctest -N -E "test_paddle_model_convertor|test_cinn_fake_resnet|test_cinn_sub_graph_map_expr|test_assign_value_op_mapper|test_batch_norm_op"  | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' >> ${PADDLE_ROOT}/build/all_cinn_ut_list_tmp
+        ctest -N -E "test_paddle_model_convertor|test_cinn_fake_resnet|test_cinn_sub_graph_map_expr|test_assign_value_op_mapper|test_batch_norm_op"  | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' >> ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp
         popd
-        ctest -N -L "RUN_TYPE=CINN" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' >> ${PADDLE_ROOT}/build/all_cinn_ut_list_tmp
-        cat ${PADDLE_ROOT}/build/all_cinn_ut_list_tmp | sort | uniq > ${PADDLE_ROOT}/build/all_cinn_ut_list
+        ctest -N -L "RUN_TYPE=CINN" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_ut_list
+        cat ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp | sort | uniq > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
         echo "========================================"
-        echo "all_cinn_ut_list: "
-        cat ${PADDLE_ROOT}/build/all_cinn_ut_list
+        echo "pr_ci_cinn_ut_list: "
+        cat ${PADDLE_ROOT}/build/pr_ci_cinn_ut_list
+        echo "========================================"
+        echo "pr_ci_cinn_gpu_ut_list: "
+        cat ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
         echo "========================================"
 
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
@@ -2777,17 +2780,17 @@ set +x
         run_cinn_ut=`check_cinn_file_diff`
         if [[ "OFF" == ${run_cinn_ut} ]]; then
           echo "No CINN-related changes were found"
-          echo "Skip CINN UT CI"
+          echo "Skip PR-CI-CINN-GPU UT CI"
         else
-            # run cinn ut
-            cinn_ut_startTime_s=`date +%s`
+            # run pr-ci-cinn-gpu ut
+            cinn_gpu_ut_startTime_s=`date +%s`
             while read line
             do
                 card_test "$line" 1
-            done < $PADDLE_ROOT/tools/cinn_case_file
-            cinn_ut_endTime_s=`date +%s`
-            echo "ipipe_log_param_cinn_TestCases_Total_Time: $[ $cinn_ut_endTime_s - $cinn_ut_startTime_s ]s"
-            echo "ipipe_log_param_cinn_TestCases_Total_Time: $[ $cinn_ut_endTime_s - $cinn_ut_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
+            done < $PADDLE_ROOT/tools/new_pr_ci_cinn_gpu_ut_list
+            cinn_gpu_ut_endTime_s=`date +%s`
+            echo "ipipe_log_param_cinn_gpu_TestCases_Total_Time: $[ $cinn_gpu_ut_endTime_s - $cinn_gpu_ut_startTime_s ]s"
+            echo "ipipe_log_param_cinn_gpu_TestCases_Total_Time: $[ $cinn_gpu_ut_endTime_s - $cinn_gpu_ut_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
 
             # pr-ci-cinn-gpu
             export LD_LIBRARY_PATH=/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
@@ -2804,6 +2807,15 @@ set +x
                 exit -1
             fi
         fi
+        # run pr-ci-cinn ut
+        cinn_ut_startTime_s=`date +%s`
+        while read line
+        do
+            card_test "$line" 1
+        done < $PADDLE_ROOT/tools/new_pr_ci_cinn_ut_list
+        cinn_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_cinn_TestCases_Total_Time: $[ $cinn_ut_endTime_s - $cinn_ut_startTime_s ]s"
+        echo "ipipe_log_param_cinn_TestCases_Total_Time: $[ $cinn_ut_endTime_s - $cinn_ut_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
 
         single_ut_mem_0_startTime_s=`date +%s`
         while read line
