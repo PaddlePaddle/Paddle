@@ -1271,6 +1271,7 @@
   kernel:
     func: dequantize_log
     data_type: x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : det
   args : (Tensor x)
