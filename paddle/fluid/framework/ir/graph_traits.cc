@@ -84,14 +84,14 @@ NodesDFSIterator::NodesDFSIterator(const NodesDFSIterator &other)
 Node &NodesDFSIterator::operator*() {
   PADDLE_ENFORCE_EQ(stack_.empty(),
                     false,
-                    phi::errors::OutOfRange("The iterator exceeds range."));
+                    common::errors::OutOfRange("The iterator exceeds range."));
   return *stack_.top();
 }
 
 NodesDFSIterator &NodesDFSIterator::operator++() {
   PADDLE_ENFORCE_EQ(stack_.empty(),
                     false,
-                    phi::errors::OutOfRange("The iterator exceeds range."));
+                    common::errors::OutOfRange("The iterator exceeds range."));
   visited_.insert(stack_.top());
   auto *cur = stack_.top();
   stack_.pop();
@@ -125,14 +125,14 @@ NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
   PADDLE_ENFORCE_EQ(
       source.empty(),
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Start points of topological sorting should not be empty!"));
   // CHECK all the inputs' in-degree is 0
   for (auto *node : source) {
     PADDLE_ENFORCE_EQ(
         CheckNodeIndegreeEquals(*node, 0),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "In start points of topological sorting, the indegree of each "
             "point should be 0. Node(%s)'s indegree is not 0.",
             node->Name()));
@@ -169,7 +169,7 @@ Node &NodesTSIterator::operator*() {
   PADDLE_ENFORCE_LT(
       cursor_,
       sorted_.size(),
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "The iterator exceeds range. Container size is %d, but index is %d.",
           sorted_.size(),
           cursor_));
@@ -197,7 +197,7 @@ Node *NodesTSIterator::operator->() {
   PADDLE_ENFORCE_LT(
       cursor_,
       sorted_.size(),
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "The iterator exceeds range. Container size is %d, but index is %d.",
           sorted_.size(),
           cursor_));

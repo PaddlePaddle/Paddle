@@ -58,7 +58,7 @@ inline bool IsInterpretercoreFastGCEnabled() {
                         memory::allocation::AllocatorFacade::Instance()
                                 .IsCUDAMallocAsyncAllocatorUsed() == true,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "StreamSafeAllocator and AsyncAllocator shouldn't be "
                         "True together."));
   PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
@@ -67,7 +67,7 @@ inline bool IsInterpretercoreFastGCEnabled() {
                                 .IsCUDAMallocAsyncAllocatorUsed() == false &&
                         FLAGS_new_executor_use_cuda_graph,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "When FLAGS_new_executor_use_cuda_graph is true, "
                         "Either IsStreamSafeCUDAAllocatorUsed or "
                         "IsCUDAMallocAsyncAllocatorUsed must be true, but "

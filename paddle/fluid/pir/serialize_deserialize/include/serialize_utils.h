@@ -20,6 +20,7 @@
 
 #include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 #include "paddle/phi/common/data_type.h"
@@ -287,6 +288,28 @@ Json AttrTypeWriter::WriteBuiltInAttr(const pir::Attribute& attr) {
   return attr_json;
 }
 
+template <typename T>
+Json serializeTypeToJsonIncludeWriteType(const T& type) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(type) + "." + type.name();
+  Json content = Json::array();
+  content.push_back(writeType(type.dtype()));
+
+  std::vector<int64_t> dims_;
+  for (auto i = 0; i < type.dims().size(); i++) {
+    dims_.push_back(type.dims().at(i));
+  }
+  content.push_back(dims_);
+
+  content.push_back(DataLayoutToString(type.data_layout()));
+
+  content.push_back(type.lod());
+
+  content.push_back(type.offset());
+  json_obj[DATA] = content;
+  return json_obj;
+}
+
 Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
   Json type_json = Json::object();
   if (type.isa<pir::BoolType>()) {
@@ -355,25 +378,8 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
     return type_json;
   } else if (type.isa<pir::DenseTensorType>()) {
     VLOG(8) << "Write DenseTensorType ... ";
-    auto type_ = type.dyn_cast<pir::DenseTensorType>();
-
-    type_json[ID] = COMPRESS_DIALECT_NAME(type_) + "." + type_.name();
-    Json content = Json::array();
-    content.push_back(writeType(type_.dtype()));
-
-    std::vector<int64_t> dims_;
-    for (auto i = 0; i < type_.dims().size(); i++) {
-      dims_.push_back(type_.dims().at(i));
-    }
-    content.push_back(dims_);
-
-    content.push_back(DataLayoutToString(type_.data_layout()));
-
-    content.push_back(type_.lod());
-
-    content.push_back(type_.offset());
-    type_json[DATA] = content;
-    return type_json;
+    return pir::serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
+        type.dyn_cast<pir::DenseTensorType>());
   } else {
     PADDLE_ENFORCE(false,
                    phi::errors::InvalidArgument(
@@ -413,11 +419,46 @@ Json AttrTypeWriter::WritePaddleOperatorAttr(const pir::Attribute& attr) {
 }
 
 Json AttrTypeWriter::WritePaddleOperatorType(const pir::Type& type) {
-  PADDLE_ENFORCE(false,
-                 phi::errors::InvalidArgument(
-                     "Unknown Type when write paddle.operatordialect type"));
+  Json type_json = Json::object();
+  if (type.isa<paddle::dialect::DenseTensorArrayType>()) {
+    VLOG(8) << "Write DenseTensorArrayType ... ";
+    auto type_ = type.dyn_cast<paddle::dialect::DenseTensorArrayType>();
 
-  return Json::object();
+    type_json[ID] = COMPRESS_DIALECT_NAME(type_) + "." + type_.name();
+    Json content = Json::array();
+    content.push_back(writeType(type_.dtype()));
+
+    std::vector<int64_t> dims_;
+    for (auto i = 0; i < type_.dims().size(); i++) {
+      dims_.push_back(type_.dims().at(i));
+    }
+    content.push_back(dims_);
+
+    content.push_back(DataLayoutToString(type_.data_layout()));
+
+    type_json[DATA] = content;
+    return type_json;
+  } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
+    VLOG(8) << "Write SelectedRowsType ... ";
+    return pir::serializeTypeToJsonIncludeWriteType<
+        paddle::dialect::SelectedRowsType>(
+        type.dyn_cast<paddle::dialect::SelectedRowsType>());
+  } else {
+    // }else if (type.isa<paddle::dialect::SparseCooTensorType>()) {
+    //   VLOG(8) << "Write SparseCooTensorType ... ";
+    //   return pir::serializeTypeToJson<paddle::dialect::SparseCooTensorType>(
+    //       type.dyn_cast<paddle::dialect::SparseCooTensorType>());
+    // }else if(type.isa<paddle::dialect::SparseCsrTensorType>()){
+    //     VLOG(8) << "Write SparseCsrTensorType ... ";
+    //   return pir::serializeTypeToJson<paddle::dialect::SparseCsrTensorType>(
+    //       type.dyn_cast<paddle::dialect::SparseCsrTensorType>());
+    // }
+    PADDLE_ENFORCE(false,
+                   phi::errors::InvalidArgument(
+                       "Unknown Type when write paddle.operatordialect type"));
+
+    return Json::object();
+  }
 }
 
 }  // namespace pir

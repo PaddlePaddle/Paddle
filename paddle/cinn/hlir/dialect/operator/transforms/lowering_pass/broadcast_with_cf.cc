@@ -99,7 +99,7 @@ void SetBroadcastLeafGroup(
   PADDLE_ENFORCE_EQ(
       origin_group->ops().size(),
       new_group->ops().size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of origin group ops and new group ops is not equal,"
           "where the size of origin group ops:%d but the size of new group "
           "ops:%d.",

@@ -899,8 +899,36 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
             paddle.enable_static()
 
+        def run_inplace(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            index_tensor1 = paddle.to_tensor(self.index_np1)
+            value_tensor = paddle.to_tensor(self.value)
+            x_tensor.put_along_axis_(
+                index_tensor1, value_tensor, 0, 'assign', True, False
+            )
+            out_ref = copy.deepcopy(self.x_np)
+            for i in range(self.index1_shape[0]):
+                for j in range(self.index1_shape[1]):
+                    out_ref[self.index_np1[i, j], j] = self.value[i, j]
+            np.testing.assert_allclose(x_tensor.numpy(), out_ref, rtol=0.001)
+
+            x_tensor = paddle.to_tensor(self.x_np)
+            index_tensor2 = paddle.to_tensor(self.index_np2)
+            x_tensor.put_along_axis_(
+                index_tensor2, 10, 1, 'assign', True, False
+            )
+            out_ref = copy.deepcopy(self.x_np)
+            for i in range(self.index2_shape[0]):
+                for j in range(self.index2_shape[1]):
+                    out_ref[i, self.index_np2[i, j]] = 10
+            np.testing.assert_allclose(x_tensor.numpy(), out_ref, rtol=0.001)
+
+            paddle.enable_static()
+
         for place in self.place:
             run(place)
+            run_inplace(place)
 
     @test_with_pir_api
     def test_api_static(self):
@@ -977,6 +1005,11 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             )
         except Exception as error:
             self.assertIsInstance(error, ValueError)
+        # len(values.shape) != len(indices.shape)
+        try:
+            tensorx.put_along_axis_(indices, values, 0, 'assign', True, False)
+        except Exception as error:
+            self.assertIsInstance(error, ValueError)
         indices = paddle.to_tensor(
             [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]
         ).astype("int32")
@@ -987,12 +1020,22 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             )
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
+        # indices too large
+        try:
+            tensorx.put_along_axis_(indices, 1.0, 0, 'assign', True, False)
+        except Exception as error:
+            self.assertIsInstance(error, RuntimeError)
         indices = paddle.to_tensor([[10]]).astype("int32")
         # the element of indices out of range
         try:
             res = paddle.put_along_axis(
                 tensorx, indices, 1.0, 0, 'assign', True, False
             )
+        except Exception as error:
+            self.assertIsInstance(error, RuntimeError)
+        # the element of indices out of range
+        try:
+            tensorx.put_along_axis_(indices, 1.0, 0, 'assign', True, False)
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
 

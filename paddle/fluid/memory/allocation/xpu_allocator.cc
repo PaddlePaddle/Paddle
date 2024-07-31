@@ -27,7 +27,7 @@ void XPUAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       allocation->place(),
       place_,
-      phi::errors::PermissionDenied(
+      common::errors::PermissionDenied(
           "XPU memory is freed in incorrect device. This may be a bug"));
   platform::RecordedXPUFree(
       allocation->ptr(), allocation->size(), place_.device);
@@ -44,12 +44,12 @@ phi::Allocation* XPUAllocator::AllocateImpl(size_t size) {
     return new Allocation(ptr, size, phi::Place(place_));
   }
 
-  PADDLE_THROW_BAD_ALLOC(
-      phi::errors::ResourceExhausted("\n\nOut of memory error on XPU %d. "
-                                     "Cannot allocate %s memory on XPU %d.\n\n",
-                                     place_.device,
-                                     string::HumanReadableSize(size),
-                                     place_.device));
+  PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
+      "\n\nOut of memory error on XPU %d. "
+      "Cannot allocate %s memory on XPU %d.\n\n",
+      place_.device,
+      string::HumanReadableSize(size),
+      place_.device));
 }
 
 }  // namespace allocation
