@@ -350,6 +350,8 @@ class TestMatrixPowerAPIError(unittest.TestCase):
         )
 
     def test_old_ir_errors(self):
+        if paddle.framework.use_pir_api():
+            return
         # When out is set, the data type must be the same as input.
         input = paddle.static.data(
             name="input_1", shape=[4, 4], dtype="float32"

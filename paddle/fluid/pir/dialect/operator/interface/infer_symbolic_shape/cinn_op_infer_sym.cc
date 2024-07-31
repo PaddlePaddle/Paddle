@@ -218,6 +218,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
       op->result(0),
       paddle::dialect::slice_utils::SliceRawInferSymbolicShape(
           op->operand_source(0),
+          op->result(0),
           starts,
           ends,
           axes_raw,

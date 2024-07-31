@@ -131,7 +131,6 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'self_dp_attention',
     'get_tensor_from_selected_rows',
     'print',
-    'number_count',
     'assign_value',
     'share_data_',
     'onednn_to_paddle_layout',

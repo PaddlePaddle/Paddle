@@ -756,15 +756,15 @@ class SymbolicVariable(VariableBase):
     ):
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
-        for expr, symbolic_input in symbolic_inputs.items():
-            if tracker.match_expr(expr):
-                symbolic_input.setdefault(value, 0)
-                symbolic_input[value] += 1
-                if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:
-                    return False
-                if len(symbolic_input.keys()) > 1:
-                    return True
+        if tracker_expr in symbolic_inputs:
+            symbolic_input = symbolic_inputs[tracker_expr]
+            symbolic_input.setdefault(value, 0)
+            symbolic_input[value] += 1
+            if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:
                 return False
+            if len(symbolic_input.keys()) > 1:
+                return True
+            return False
         return False
 
     @staticmethod
