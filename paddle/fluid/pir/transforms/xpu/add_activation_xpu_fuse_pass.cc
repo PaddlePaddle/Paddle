@@ -58,11 +58,11 @@ class AddActivationPattern : public paddle::drr::DrrPatternBase {
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     std::string act_op_name;
-    if (act_type == 1)
+    if (act_type == 1) {
       act_op_name = paddle::dialect::ReluOp::name();
-    else if (act_type == 4)
+    } else if (act_type == 4) {
       act_op_name = paddle::dialect::GeluOp::name();
-    else {
+    } else {
       phi::errors::InvalidArgument("Unsupported activation type.");
     }
 
