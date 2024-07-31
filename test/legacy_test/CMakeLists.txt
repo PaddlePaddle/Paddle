@@ -1020,6 +1020,7 @@ set(TEST_CINN_OPS
     test_metrics
     test_meshgrid_op
     test_index_select_op
+    test_instance_norm_op
     test_mean_op
     test_clip_op
     test_gather_op
@@ -1246,3 +1247,5 @@ py_test_modules(test_install_check_pir MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
 set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
+set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
+                                                                        120)

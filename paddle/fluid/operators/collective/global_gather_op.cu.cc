@@ -41,11 +41,11 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     auto global_count_type =
         framework::TransToProtoVarType(global_count->dtype());
     if (local_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in local_count."));
     }
     if (global_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
     auto out = ctx.Output<phi::DenseTensor>("Out");
@@ -73,14 +73,13 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
+    ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for global gather op must be non-negative.",
             ring_id));
     auto place = ctx.GetPlace();
@@ -94,7 +93,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm "
@@ -105,7 +104,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -192,11 +191,12 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       }
     }
 #else
-    PADDLE_THROW(phi::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+    PADDLE_THROW(
+        common::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
 #else
     PADDLE_THROW(
-        phi::errors::Unavailable("PaddlePaddle should compile with GPU."));
+        common::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };
@@ -214,11 +214,11 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
     auto global_count_type =
         framework::TransToProtoVarType(global_count->dtype());
     if (local_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in local_count."));
     }
     if (global_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
     auto out = ctx.Output<phi::DenseTensor>("Out");
@@ -250,7 +250,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for global gather op must be non-negative.",
             ring_id));
     auto place = ctx.GetPlace();
@@ -308,11 +308,12 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
 #endif
 
 #else
-    PADDLE_THROW(phi::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+    PADDLE_THROW(
+        common::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
 #else
     PADDLE_THROW(
-        phi::errors::Unavailable("PaddlePaddle should compile with GPU."));
+        common::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };

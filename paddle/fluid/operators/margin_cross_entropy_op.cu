@@ -98,7 +98,7 @@ void GetClassInterval(const gpuStream_t& stream,
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -109,7 +109,7 @@ void GetClassInterval(const gpuStream_t& stream,
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
     } else {
@@ -287,7 +287,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_EQ(
             comm_context_manager.Has(std::to_string(ring_id)),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "You choose to use new communication library by "
                 "setting environment "
                 "variable FLAGS_dynamic_static_unified_comm True. "
@@ -299,7 +299,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_NE(
             comm_ctx,
             nullptr,
-            phi::errors::Unavailable(
+            common::errors::Unavailable(
                 "NCCLCommContext is nullptr, collective op should "
                 "has ring_id attr."));
       } else {
