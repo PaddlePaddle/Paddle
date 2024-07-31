@@ -400,31 +400,6 @@ static inline int32_t cinn_max(int32_t a, int32_t b) { return a > b ? a : b; }
             __VA_ARGS__);       \
   } while (0)
 
-#define CINN_CHECK(cond)                \
-  if (!(cond)) {                        \
-    CINN_LOG("check %s failed", #cond); \
-    abort();                            \
-  }
-#define CINN_CHECK_LT(a, b)                                \
-  if (!(a < b)) {                                          \
-    cinn_print_debug_string("check %d > %d failed", a, b); \
-    abort();                                               \
-  }
-#define CINN_CHECKP(cond, ...) \
-  if (!(cond)) {               \
-    CINN_LOG(__VA_ARGS__);     \
-    abort();                   \
-  }
-#define CINN_CHECK_EQ(a, b)                                        \
-  {                                                                \
-    if ((a) != (b)) {                                              \
-      CINN_LOG("check %s == %s failed, %d != %d", #a, #b, (a), b); \
-      abort();                                                     \
-    }                                                              \
-  }                                                                \
-  while (false)                                                    \
-    ;  // NOLINT
-
 #endif  // CINN_RUNTIME_CINN_RUNTIME_H_
 
 union cinn_value_t {
