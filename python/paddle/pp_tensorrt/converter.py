@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
 import logging
-
 import numpy as np
-from custom_plugin import GENERAL_PLUGIN_OPS_LIST
-from impls.core import *
-from register import converter_registry
-from util import map_dtype
-
+import hashlib
 import paddle
+from paddle import base
 from paddle import pir
-from paddle.base.core import get_value_shape_range_info
 from paddle.base.log_helper import get_logger
+from paddle.base.core import get_value_shape_range_info
+from util import run_pir_pass, map_dtype
+from custom_plugin import PaddlePhiPluginCreator, GENERAL_PLUGIN_OPS_LIST
+from register import converter_registry
+from impls.core import *
 
 
 def get_cache_path():
@@ -49,7 +48,7 @@ def get_trt_version():
 class PaddleToTensorRTConverter:
     def __init__(self, paddle_program, scope):
         try:
-            pass
+            import tensorrt as trt
         except Exception:
             _logger.info(
                 "import tensorrt failed, you may install it via `python3 -m pip install --upgrade tensorrt` according to https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html"
