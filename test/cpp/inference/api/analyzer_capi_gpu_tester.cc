@@ -33,7 +33,11 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
   int num_thread = PD_CpuMathLibraryNumThreads(config);
-  CHECK(10 == num_thread) << "NO";
+  PADDLE_ENFORCE_EQ(10,
+                    num_thread,
+                    phi::errors::InvalidArgument("The num of thread should be"
+                                                 "equal to 10, but got %d.",
+                                                 num_thread));
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
   PD_SetModel(config, model_dir.c_str(), nullptr);
@@ -42,32 +46,95 @@ TEST(PD_AnalysisConfig, use_gpu) {
   LOG(INFO) << model_dir_;
   PD_EnableUseGpu(config, 100, 0);
   bool use_gpu = PD_UseGpu(config);
-  CHECK(use_gpu) << "NO";
+  PADDLE_ENFORCE_EQ(use_gpu,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "GPU is not enabled. "
+                        "The configuration indicates that GPU should be used, "
+                        "but it is currently disabled. "
+                        "Please check your configuration settings and ensure "
+                        "that GPU is properly enabled."));
   int device = PD_GpuDeviceId(config);
-  CHECK(0 == device) << "NO";
+  PADDLE_ENFORCE_EQ(
+      device,
+      0,
+      phi::errors::InvalidArgument("The device ID is incorrect. "
+                                   "Expected device ID is 0, but received %d. "
+                                   "Please check your device configuration and "
+                                   "ensure the correct device ID is used.",
+                                   device));
   int init_size = PD_MemoryPoolInitSizeMb(config);
-  CHECK(100 == init_size) << "NO";
+  PADDLE_ENFORCE_EQ(init_size,
+                    100,
+                    phi::errors::InvalidArgument(
+                        "The initial size of the memory pool is incorrect. "
+                        "Expected size is 100 MB, but received %d MB. "
+                        "Please check your configuration settings and ensure "
+                        "the correct memory pool size is set.",
+                        init_size));
   float frac = PD_FractionOfGpuMemoryForPool(config);
   LOG(INFO) << frac;
   PD_EnableCUDNN(config);
   bool cudnn = PD_CudnnEnabled(config);
-  CHECK(cudnn) << "NO";
+  PADDLE_ENFORCE_EQ(cudnn,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "cuDNN is not enabled. "
+                        "The configuration indicates that cuDNN should be "
+                        "enabled, but it is currently disabled. "
+                        "Please check your configuration settings and ensure "
+                        "that cuDNN is properly enabled."));
   PD_SwitchIrOptim(config, true);
   bool ir_optim = PD_IrOptim(config);
-  CHECK(ir_optim) << "NO";
+  PADDLE_ENFORCE_EQ(ir_optim,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "IR optimization is not enabled. "
+                        "The configuration indicates that IR optimization "
+                        "should be enabled, but it is currently disabled. "
+                        "Please check your configuration settings and ensure "
+                        "that IR optimization is properly enabled."));
   PD_EnableTensorRtEngine(
       config, 1 << 20, 1, 3, Precision::kFloat32, false, false);
   bool trt_enable = PD_TensorrtEngineEnabled(config);
-  CHECK(trt_enable) << "NO";
+  PADDLE_ENFORCE_EQ(trt_enable,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "TensorRT engine is not enabled. "
+                        "The configuration indicates that TensorRT engine "
+                        "should be enabled, but it is currently disabled. "
+                        "Please check your configuration settings and ensure "
+                        "that TensorRT engine is properly enabled."));
   PD_EnableMemoryOptim(config);
   bool memory_optim_enable = PD_MemoryOptimEnabled(config);
-  CHECK(memory_optim_enable) << "NO";
+  PADDLE_ENFORCE_EQ(memory_optim_enable,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Memory optimization is not enabled. "
+                        "The configuration indicates that memory optimization "
+                        "should be enabled, but it is currently disabled. "
+                        "Please check your configuration settings and ensure "
+                        "that memory optimization is properly enabled."));
   PD_EnableProfile(config);
   bool profiler_enable = PD_ProfileEnabled(config);
-  CHECK(profiler_enable) << "NO";
+  PADDLE_ENFORCE_EQ(profiler_enable,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Profiler is not enabled. "
+                        "The configuration indicates that the profiler should "
+                        "be enabled, but it is currently disabled. "
+                        "Please check your configuration settings and ensure "
+                        "that the profiler is properly enabled."));
   PD_SetInValid(config);
   bool is_valid = PD_IsValid(config);
-  CHECK(!is_valid) << "NO";
+  PADDLE_ENFORCE_EQ(
+      is_valid,
+      true,
+      phi::errors::InvalidArgument(
+          "Configuration is not valid. "
+          "The configuration should be valid, but it is currently invalid. "
+          "Please check your configuration settings and ensure they are "
+          "correct."));
   PD_DeleteAnalysisConfig(config);
 }
 
@@ -77,7 +144,14 @@ TEST(PD_AnalysisConfig, trt_int8) {
   PD_EnableUseGpu(config, 100, 0);
   PD_EnableTensorRtEngine(config, 1 << 20, 1, 3, Precision::kInt8, false, true);
   bool trt_enable = PD_TensorrtEngineEnabled(config);
-  CHECK(trt_enable) << "NO";
+  PADDLE_ENFORCE_EQ(trt_enable,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "TensorRT engine is not enabled. "
+                        "The configuration indicates that TensorRT engine "
+                        "should be enabled, but it is currently disabled. "
+                        "Please check your configuration settings and ensure "
+                        "that TensorRT engine is properly enabled."));
   PD_DeleteAnalysisConfig(config);
 }
 
@@ -88,7 +162,14 @@ TEST(PD_AnalysisConfig, trt_fp16) {
   PD_EnableTensorRtEngine(
       config, 1 << 20, 1, 3, Precision::kHalf, false, false);
   bool trt_enable = PD_TensorrtEngineEnabled(config);
-  CHECK(trt_enable) << "NO";
+  PADDLE_ENFORCE_EQ(trt_enable,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "TensorRT engine is not enabled. "
+                        "The configuration indicates that TensorRT engine "
+                        "should be enabled, but it is currently disabled. "
+                        "Please check your configuration settings and ensure "
+                        "that TensorRT engine is properly enabled."));
   PD_Predictor *predictor = PD_NewPredictor(config);
   PD_DeletePredictor(predictor);
   PD_DeleteAnalysisConfig(config);

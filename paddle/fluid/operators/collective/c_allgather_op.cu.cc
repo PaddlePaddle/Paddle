@@ -36,8 +36,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
+    ncclDataType_t dtype = phi::ToNCCLDataType(in->dtype());
 
     int nranks = ctx.Attr<int>("nranks");
     int rid = ctx.Attr<int>("ring_id");
@@ -67,7 +66,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -78,7 +77,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -88,7 +87,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           nranks,
           comm->nranks(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "nranks: %s should equal to %s", nranks, comm->nranks()));
       stream = comm->stream();
       VLOG(3) << "old NCCLCommContext has rid " << rid;
@@ -112,7 +111,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     }
 
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }

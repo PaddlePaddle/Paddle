@@ -1271,6 +1271,7 @@
   kernel:
     func: dequantize_log
     data_type: x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : det
   args : (Tensor x)
@@ -3348,6 +3349,7 @@
   data_transform:
     skip_transform : x
   no_need_buffer : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : one_hot
   args : (Tensor x, Scalar(int) num_classes)
@@ -4416,7 +4418,7 @@
   kernel :
     func : swish
   backward : swish_grad
-  interfaces : paddle::dialect::LayoutTransformationInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : sync_batch_norm_
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
@@ -4824,6 +4826,7 @@
     func : view_shape
   backward : view_shape_grad
   no_need_buffer : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)

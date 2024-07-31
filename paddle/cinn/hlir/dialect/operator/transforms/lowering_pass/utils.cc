@@ -17,6 +17,7 @@
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
@@ -58,28 +59,31 @@ std::vector<pir::Value> GetBlockOutsideInput(
   return vec_res;
 }
 
-std::unordered_map<std::string, pir::Attribute>
-CompileBroadcastGroupsAsOpAttribute(
-    const std::vector<OpLoweringGroupPtr>& leaf_groups,
-    OpLoweringGroupPtr origin_group) {
-  PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
-  auto fn_ptr_res = pir_compiler.BuildBroadcastTree(leaf_groups, origin_group);
-  std::unordered_map<std::string, ::pir::Attribute> op_attrs{
-      {cinn::dialect::JitKernelOp::kAttrName,
-       cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),
-                                                   fn_ptr_res)}};
-  return op_attrs;
-}
-
 std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
     const OpLoweringGroupPtr& group) {
-  const auto CreateKernelInfo = [&]() -> hlir::framework::pir::CINNKernelInfo {
-    if (FLAGS_enable_cinn_compile_cache) {
+  const auto& CreateKernelInfo = [&]() -> CINNKernelInfo {
+    const auto& CreateFromCache = [&]() {
       hlir::framework::pir::FusionInfo fusion_info(*group);
       return CompilationCache::Instance().GetKernelInfo(fusion_info);
+    };
+    const auto& CreateFromNewCompile = [&]() {
+      const auto& optional_broadcast_group_list =
+          GetBroadcastGroupListForOptimize(group);
+      if (optional_broadcast_group_list.has_value()) {
+        std::vector<OpLoweringGroupPtr> group_list =
+            optional_broadcast_group_list.value();
+        PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
+        return pir_compiler.BuildBroadcastTree(group_list, group);
+      } else {
+        PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
+        return pir_compiler.Build({group})[0];
+      }
+    };
+
+    if (FLAGS_enable_cinn_compile_cache) {
+      return CreateFromCache();
     } else {
-      PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
-      return pir_compiler.Build({group})[0];
+      return CreateFromNewCompile();
     }
   };
   std::unordered_map<std::string, ::pir::Attribute> attrs{
