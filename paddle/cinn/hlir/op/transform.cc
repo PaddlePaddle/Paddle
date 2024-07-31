@@ -852,7 +852,6 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
                                      "output_shapes(%d), but got %d.",
                                      output_shapes[0].size(),
                                      axis.size()));
-    << "axis size is not equal output_shapes size! Please check setting.\n";
     // check axis and shape
     for (int idx = 0; idx < axis.size(); ++idx) {
       PADDLE_ENFORCE_EQ(axis[idx] >= 0 && axis[idx] < axis.size(),
