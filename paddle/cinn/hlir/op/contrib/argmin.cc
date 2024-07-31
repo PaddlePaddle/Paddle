@@ -122,9 +122,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
     CHECK_GE(pack_args.size(), 1U)
         << "There should be 1 input args for argmax compute";
     Expr in_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NOT_NULL(
         in_expr.as_tensor(),
-        true,
         phi::errors::InvalidArgument(
             "The input argument of argmin compute is not tensor."));
     Tensor in_tensor = in_expr.as_tensor_ref();

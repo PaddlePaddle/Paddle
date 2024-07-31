@@ -146,10 +146,10 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
  private:
   void Visit(const ir::ScheduleBlockRealize* op, ir::Expr* expr) override {
     const auto* sbr_node = expr->As<ir::ScheduleBlockRealize>();
-    PADDLE_ENFORCE_EQ(sbr_node,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The input expr should be a ScheduleBlockRealize"));
+    PADDLE_ENFORCE_NOT_NULL(
+        sbr_node,
+        phi::errors::InvalidArgument(
+            "The input expr should be a ScheduleBlockRealize"));
     const auto& iter_values = sbr_node->iter_values;
     const auto* sb_node = sbr_node->schedule_block.As<ir::ScheduleBlock>();
     const auto& iter_vars = sb_node->iter_vars;
@@ -168,10 +168,8 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::For* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::For>();
-    PADDLE_ENFORCE_EQ(
-        node,
-        true,
-        phi::errors::InvalidArgument("The input expr should be a For"));
+    PADDLE_ENFORCE_NOT_NULL(
+        node, phi::errors::InvalidArgument("The input expr should be a For"));
     for_var_extents_.push_back(
         {node->loop_var, ir::ir_utils::IRCopy(node->extent)});
     ir::IRMutator<>::Visit(op, expr);
@@ -180,10 +178,9 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::Load* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::Load>();
-    PADDLE_ENFORCE_EQ(
-        node,
-        true,
-        phi::errors::InvalidArgument("The input expr should be a Load"));
+    PADDLE_ENFORCE_NOT_NULL(
+        node, phi::errors::InvalidArgument("The input expr should be a Load"));
+
     const auto& load_buffer = node->tensor.as_tensor_ref()->buffer;
     if (load_buffer->memory_type == ir::MemoryType::Heap) {
       std::vector<ir::Expr> tensor_indices;
@@ -201,10 +198,8 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::Store* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::Store>();
-    PADDLE_ENFORCE_EQ(
-        node,
-        true,
-        phi::errors::InvalidArgument("The input expr should be a Store"));
+    PADDLE_ENFORCE_NOT_NULL(
+        node, phi::errors::InvalidArgument("The input expr should be a Store"));
     const auto& store_buffer = node->tensor.as_tensor_ref()->buffer;
     if (store_buffer->memory_type == ir::MemoryType::Heap) {
       global_store_buffer_names_.insert(store_buffer->name);
@@ -228,30 +223,26 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
  private:
   void Visit(const ir::Block* op, Expr* expr) override {
     auto* node = expr->As<ir::Block>();
-    PADDLE_ENFORCE_EQ(
-        node,
-        true,
-        phi::errors::InvalidArgument("The input expr should be a Block"));
+    PADDLE_ENFORCE_NOT_NULL(
+        node, phi::errors::InvalidArgument("The input expr should be a Block"));
     current_block_ = node;
     IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
     auto* node = expr->As<ir::ScheduleBlockRealize>();
-    PADDLE_ENFORCE_EQ(node,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The input expr should be a ScheduleBlockRealize"));
+    PADDLE_ENFORCE_NOT_NULL(
+        node,
+        phi::errors::InvalidArgument(
+            "The input expr should be a ScheduleBlockRealize"));
     current_sbr_ = node;
     IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::Load* op, Expr* expr) override {
     auto* node = expr->As<ir::Load>();
-    PADDLE_ENFORCE_EQ(
-        node,
-        true,
-        phi::errors::InvalidArgument("The input expr should be a Load"));
+    PADDLE_ENFORCE_NOT_NULL(
+        node, phi::errors::InvalidArgument("The input expr should be a Load"));
     const auto& buffer_name = node->tensor.as_tensor_ref()->buffer->name;
     if (eliminate_buffer_names_.count(buffer_name) == 0) {
       return;
@@ -267,10 +258,10 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
                               const std::string& buffer_name) {
     ir::Expr sb = ir::ir_utils::IRCopy(current_sbr_->schedule_block);
     ir::ScheduleBlock* sb_node = sb.As<ir::ScheduleBlock>();
-    PADDLE_ENFORCE_EQ(sb_node,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The input expr should be a ScheduleBlock"));
+    PADDLE_ENFORCE_NOT_NULL(
+        sb_node,
+        phi::errors::InvalidArgument(
+            "The input expr should be a ScheduleBlockRealize"));
     const auto& old_tensor = load_node->tensor.as_tensor_ref();
     ir::Expr new_tensor =
         ir::_Tensor_::Make(old_tensor->name + "_local",

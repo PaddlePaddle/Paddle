@@ -109,16 +109,14 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
                           "than 2"));
     Expr A = pack_args[0];
     Expr B = pack_args[1];
-    PADDLE_ENFORCE_EQ(
-        A.as_tensor(),
-        true,
-        phi::errors::InvalidArgument(
-            "The input argument of lookup_table compute is not tensor."));
-    PADDLE_ENFORCE_EQ(
-        B.as_tensor(),
-        true,
-        phi::errors::InvalidArgument(
-            "The input argument of lookup_table compute is not tensor."));
+    PADDLE_ENFORCE_NOT_NULL(A.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The input argument of lookup_table compute "
+                                "is not tensor."));
+    PADDLE_ENFORCE_NOT_NULL(B.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The input argument of lookup_table compute "
+                                "is not tensor."));
     PADDLE_ENFORCE_EQ(
         !output_shapes.empty(),
         true,

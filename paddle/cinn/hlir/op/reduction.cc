@@ -443,42 +443,42 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
     keepdim = absl::get<bool>(attrs.attr_store.at("keepdim"));
   }
 
-  framework::CINNCompute reduction_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        PADDLE_ENFORCE_EQ(
-            !args.empty(),
-            true,
-            phi::errors::InvalidArgument(
-                "The input argument of compute is empty! Please check."));
-        CINNValuePack arg_packs = args[0];
-        CHECK_EQ(arg_packs.size(), 2U)
-            << "There should be 2 input args for " << op_name << " compute";
-        PADDLE_ENFORCE_EQ(arg_packs[1].is_string(),
-                          true,
-                          phi::errors::InvalidArgument(
-                              "The arg_packs[1] is not empty! Please check."));
-        std::string tensor_name = arg_packs[1].operator std::string();
-        Expr x_expr = arg_packs[0];
-        PADDLE_ENFORCE_EQ(x_expr.as_tensor(),
-                          true,
-                          phi::errors::InvalidArgument(
-                              "The input argument of compute is not tensor."));
-        ir::Tensor x = x_expr.as_tensor_ref();
+  framework::CINNCompute reduction_compute([=](lang::Args args,
+                                               lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of compute is empty! Please check."));
+    CINNValuePack arg_packs = args[0];
+    CHECK_EQ(arg_packs.size(), 2U)
+        << "There should be 2 input args for " << op_name << " compute";
+    PADDLE_ENFORCE_EQ(arg_packs[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The arg_packs[1] is not empty! Please check."));
+    std::string tensor_name = arg_packs[1].operator std::string();
+    Expr x_expr = arg_packs[0];
+    PADDLE_ENFORCE_NOT_NULL(x_expr.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The x_expr can not as tensor! Please check."));
 
-        std::unordered_set<std::string> bool_reduce_op = {"reduce_all",
-                                                          "reduce_any"};
-        PADDLE_ENFORCE_EQ(!bool_reduce_op.count(op_name) || x->type().is_bool(),
-                          true,
-                          phi::errors::InvalidArgument(
-                              "The type of input argument should be bool, "
-                              "Please check."));
+    ir::Tensor x = x_expr.as_tensor_ref();
 
-        VLOG(3) << "Do Reduce Compute!";
-        auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
+    std::unordered_set<std::string> bool_reduce_op = {"reduce_all",
+                                                      "reduce_any"};
+    PADDLE_ENFORCE_EQ(!bool_reduce_op.count(op_name) || x->type().is_bool(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The type of input argument should be bool, "
+                          "Please check."));
 
-        std::vector<CINNValue> cinn_values{CINNValue(out)};
-        *ret = CINNValuePack{cinn_values};
-      });
+    VLOG(3) << "Do Reduce Compute!";
+    auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
+
+    std::vector<CINNValue> cinn_values{CINNValue(out)};
+    *ret = CINNValuePack{cinn_values};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(

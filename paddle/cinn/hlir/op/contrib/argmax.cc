@@ -135,11 +135,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
                       phi::errors::InvalidArgument(
                           "There should be 1 input args for argmax compute"));
     Expr in_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NOT_NULL(
         in_expr.as_tensor(),
-        true,
         phi::errors::InvalidArgument(
-            "The input argument of argmax compute must be tensor."));
+            "The input argument of argmax compute is null."));
     Tensor in_tensor = in_expr.as_tensor_ref();
     PADDLE_ENFORCE_EQ(pack_args.size(),
                       2U,
