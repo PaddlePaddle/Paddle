@@ -98,11 +98,7 @@ SpmdInfo AdamInferSpmdDynamic(const DistMetaTensor& param,
         errors::InvalidArgument(
             "skip_update should be replicated, but got shard on mesh %d.",
             skip_update_dist_attr.dims_mapping()[0]));
-    PADDLE_ENFORCE_EQ(
-        skip_update_dist_attr.partial_status().size(),
-        0,
-        errors::InvalidArgument("skip_update should be replicated, but got "
-                                "patial status not empty"));
+    skip_update_dist_attr.clean_partial_status();
     if (skip_update_dist_attr.process_mesh().ndim() > 1 &&
         phi::distributed::IsSubMesh(skip_update_dist_attr.process_mesh(),
                                     param_dist_attr.process_mesh())) {

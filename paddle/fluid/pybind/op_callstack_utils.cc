@@ -27,7 +27,7 @@ pir::Attribute CallStackRecorder::GetOpCallstackInfo() {
   if (nullptr == traceback_module) {
     Py_DECREF(traceback_str);
     Py_DECREF(traceback_module);
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Failed to import traceback module while getting callstack information "
         "for %s.",
         api_name_));
@@ -38,7 +38,7 @@ pir::Attribute CallStackRecorder::GetOpCallstackInfo() {
     Py_DECREF(tb);
     Py_DECREF(traceback_str);
     Py_DECREF(traceback_module);
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Failed to get callstack object while getting callstack information "
         "for "
         "%s.",
@@ -89,7 +89,7 @@ void CallStackRecorder::AttachToOps() {
       paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
   PADDLE_ENFORCE_EQ(before_insertion_block_,
                     after_insertion_point.first,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The block obtained before and after calling the "
                         "static API %s is inconsistent.",
                         api_name_));
