@@ -1280,6 +1280,7 @@
   kernel :
     func : determinant
   backward : det_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : detection_map
   args: (Tensor detect_res, Tensor label, Tensor has_state, Tensor pos_count, Tensor
