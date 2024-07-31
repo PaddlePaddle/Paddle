@@ -52,33 +52,6 @@ _supported_optimizer_type = [
 logger = get_logger(logging.INFO, "MasterGradPass")
 
 
-def _is_master_grad_cast_op(block, op):
-    in_pir_mode = paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
-        "FLAGS_enable_pir_api"
-    ]
-    if in_pir_mode:
-        op_name = op.name()
-        input_names = op.get_input_names()
-        output_names = op.get_output_names()
-    else:
-        op_name = op.type
-        input_names = op.input_arg_names
-        output_names = op.output_arg_names
-
-    if op_name != "cast":
-        return False
-
-    assert len(input_names) == 1
-    assert len(output_names) == 1
-
-    input_var_name = input_names[0]
-
-    return (
-        "@master_grad_fp16" in input_var_name
-        or "@master_grad_bf16" in input_var_name
-    )
-
-
 def get_output_in_varlist(op, var_names) -> List[str]:
     grad_names = []
     for output_name in op.output_arg_names:
