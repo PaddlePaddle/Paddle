@@ -31,15 +31,14 @@ __global__ void InverseAndMemset(const T* s, T* o, bool* found_inf) {
 }
 
 template <typename T, typename MT>
-__global__ void CheckFiniteAndUnscale(const T* xs,
+__global__ void CheckFiniteAndUnscale(const T** xs,
                                       const MT* scale,
-				      const int64_t num,
+                                      int64_t size,
                                       int64_t* starts,
                                       bool* found_inf,
-                                      T* outs) {
+                                      T** outs) {
   const int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
-  /*
   // copy starts array from global memory to shared memory
   extern __shared__ int64_t s_starts[];
   for (int i = threadIdx.x; i <= size; i += blockDim.x) {
@@ -49,7 +48,6 @@ __global__ void CheckFiniteAndUnscale(const T* xs,
 
   const int64_t num = s_starts[size];
   int xs_index = 0;
-  */
   bool local_found_inf = false;
   const MT local_scale = *scale;
   for (int64_t idx = tid; idx < num; idx += gridDim.x * blockDim.x) {
@@ -59,7 +57,6 @@ __global__ void CheckFiniteAndUnscale(const T* xs,
     // because 10 <= idx < 20 ==>
     // the idx element locate in the 3rd tensor (notice the 2nd tensor size is
     // 0)
-    /*
     int next_xs_index = xs_index;
     while (idx >= s_starts[next_xs_index]) next_xs_index++;
     xs_index = next_xs_index - 1;
@@ -68,12 +65,12 @@ __global__ void CheckFiniteAndUnscale(const T* xs,
     const T* in = xs[xs_index];
     T* out = outs[xs_index];
     int64_t in_idx = idx - s_starts[xs_index];
-    */
 
     // Unscale
-    MT val = static_cast<MT>(xs[idx]) * local_scale;
+    MT val = static_cast<MT>(in[in_idx]) * local_scale;
     T narrow_val = static_cast<T>(val);
-    outs[idx] = narrow_val;
+    out[in_idx] = narrow_val;
+
     // CheckFinite
     if (!isfinite(narrow_val)) {
       local_found_inf = true;
@@ -338,19 +335,16 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                      dev_ctx.stream());
 
   // Launch Kernel
-  for(int i = 0; i < xs_size; i++) {
-    int64_t total_num_x = xs[i]->numel();
-    int threads_per_block = std::min(static_cast<int64_t>(512), total_num_x);
-    int elements_per_block =
-        threads_per_block * 20;  // each thread deal with 20 number
-    int blocks_per_grid =
-        (total_num_x + elements_per_block - 1) / elements_per_block;
-    CheckFiniteAndUnscale<T, MPDType><<<blocks_per_grid,
-                                        threads_per_block,
-                                        (xs_size + 1) * sizeof(int64_t),
-                                        dev_ctx.stream()>>>(
-        h_xs[i], inverse_scale_v, total_num_x, d_starts, found_inf_data, h_outs[i]);
-  }
+  int threads_per_block = std::min(static_cast<int64_t>(1024), total_num);
+  int elements_per_block =
+      threads_per_block * 20;  // each thread deal with 20 number
+  int blocks_per_grid =
+      (total_num + elements_per_block - 1) / elements_per_block;
+  CheckFiniteAndUnscale<T, MPDType><<<blocks_per_grid,
+                                      threads_per_block,
+                                      (xs_size + 1) * sizeof(int64_t),
+                                      dev_ctx.stream()>>>(
+      d_xs, inverse_scale_v, xs_size, d_starts, found_inf_data, d_outs);
 }
 
 }  // namespace phi
