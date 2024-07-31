@@ -89,7 +89,7 @@ def scatter_object_list(
     out_object_list: list[Any],
     in_object_list: list[Any] | None = None,
     src: int = 0,
-    group: Group = None,
+    group: Group | None = None,
 ) -> None:
     """
 
