@@ -212,10 +212,9 @@ std::shared_ptr<OpStrategy> StrategyForSplit(
                           "The input tensors of split compute is empty! Please "
                           "check."));
     Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument("The A_expr should be a "
-                                                   "tensor in split compute."));
+    PADDLE_ENFORCE(A_expr.as_tensor(),
+                   phi::errors::InvalidArgument("The A_expr should be a "
+                                                "tensor in split compute."));
     ir::Tensor A = A_expr.as_tensor_ref();
 
     std::vector<std::string> tensor_names;
@@ -315,13 +314,11 @@ std::shared_ptr<OpStrategy> StrategyForConcat(
     std::vector<ir::Tensor> input_tensors;
     for (int i = 0; i < input_size; i++) {
       Expr tensor = pack_args[i];
-      PADDLE_ENFORCE_EQ(
-          tensor.as_tensor(),
-          true,
-          phi::errors::InvalidArgument(
-              "The %d-th pack_args in function concat should be a "
-              "tensor.",
-              i));
+      PADDLE_ENFORCE(tensor.as_tensor(),
+                     phi::errors::InvalidArgument(
+                         "The %d-th pack_args in function concat should be a "
+                         "tensor.",
+                         i));
       input_tensors.push_back(tensor.as_tensor_ref());
     }
 
@@ -385,9 +382,8 @@ std::shared_ptr<OpStrategy> StrategyForConcatSymbolic(
     std::vector<ir::Tensor> input_tensors;
     for (int i = 0; i < input_size; i++) {
       Expr tensor = pack_args[i];
-      PADDLE_ENFORCE_EQ(
+      PADDLE_ENFORCE(
           tensor.as_tensor(),
-          true,
           phi::errors::InvalidArgument(
               "The pack_args[%d] should be tensor! Please check.", i));
       input_tensors.push_back(tensor.as_tensor_ref());
@@ -554,18 +550,15 @@ std::shared_ptr<OpStrategy> StrategyForCublasGemm(
     Expr lhs = input_args[0];
     Expr rhs = input_args[1];
     Expr bias = input_args[2];
-    PADDLE_ENFORCE_EQ(lhs.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The lhs of cublas_gemm should be a tensor."));
-    PADDLE_ENFORCE_EQ(rhs.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The rhs of cublas_gemm should be a tensor."));
-    PADDLE_ENFORCE_EQ(bias.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The bias of cublas_gemm should be a tensor."));
+    PADDLE_ENFORCE(lhs.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The lhs of cublas_gemm should be a tensor."));
+    PADDLE_ENFORCE(rhs.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The rhs of cublas_gemm should be a tensor."));
+    PADDLE_ENFORCE(bias.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The bias of cublas_gemm should be a tensor."));
     auto bias_tensor = bias.as_tensor_ref();
     // dummy gemm computation, which will be replaced by
     // cinn_gpu_cublas_gemm in the GemmRewriter pass.
@@ -624,10 +617,9 @@ std::shared_ptr<OpStrategy> StrategyForLayoutTransform(
                           "The input arguments of layout_transform compute is "
                           "empty! Please check."));
     Expr A = input_args[0];
-    PADDLE_ENFORCE_EQ(A.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The A of layout_transform should be a tensor."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The A of layout_transform should be a tensor."));
 
     PADDLE_ENFORCE_EQ(
         input_args.size(),
@@ -734,11 +726,9 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
                       phi::errors::InvalidArgument(
                           "at least one input tensor for reverse compute"));
     Expr A = input_args[0];
-    PADDLE_ENFORCE_EQ(
-        A.as_tensor(),
-        true,
-        phi::errors::InvalidArgument(
-            "The input_args[0] should be a tensor! Please check."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The input_args[0] should be a tensor! Please check."));
 
     PADDLE_ENFORCE_EQ(
         input_args.size(),
@@ -809,11 +799,10 @@ std::shared_ptr<OpStrategy> StrategyForReverseSymbolic(
                       phi::errors::InvalidArgument(
                           "at least one input tensor for reverse compute"));
     Expr A = input_args[0];
-    PADDLE_ENFORCE_EQ(A.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The input_args[0] should be a tensor! Please "
-                          "check."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The input_args[0] should be a tensor! Please "
+                       "check."));
 
     PADDLE_ENFORCE_EQ(
         input_args.size(),
@@ -909,10 +898,9 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
                       phi::errors::InvalidArgument(
                           "at least one input tensor for transpose compute"));
     Expr A = input_args[0];
-    PADDLE_ENFORCE_EQ(A.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The input argument is not Tensor! Please check."));
+    PADDLE_ENFORCE(A.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The input argument is not Tensor! Please check."));
     PADDLE_ENFORCE_EQ(
         input_args.size(),
         2,
@@ -1063,15 +1051,13 @@ std::shared_ptr<OpStrategy> StrategyForGather(
                               "tensors for Gather compute, but got %d.",
                               input_size));
         Expr x = input_args[0];
-        PADDLE_ENFORCE_EQ(
+        PADDLE_ENFORCE(
             x.as_tensor(),
-            true,
             phi::errors::InvalidArgument("The first input args's type should "
                                          "be Tensor! Please check again."));
         Expr index = input_args[1];
-        PADDLE_ENFORCE_EQ(
+        PADDLE_ENFORCE(
             index.as_tensor(),
-            true,
             phi::errors::InvalidArgument("The second input args's type should "
                                          "be Tensor! Please check again."));
 
@@ -1211,24 +1197,21 @@ std::shared_ptr<OpStrategy> StrategyForScatterAssign(
                           "The output_shapes is empty! Please check."));
 
     Expr expr_input = arg_pack[0];
-    PADDLE_ENFORCE_EQ(expr_input.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The arg_pack[0] should be a tensor! Please check."));
+    PADDLE_ENFORCE(expr_input.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The arg_pack[0] should be a tensor! Please check."));
     auto tensor_input = expr_input.as_tensor_ref();
 
     Expr expr_updates = arg_pack[1];
-    PADDLE_ENFORCE_EQ(expr_updates.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The arg_pack[1] should be a tensor! Please check."));
+    PADDLE_ENFORCE(expr_updates.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The arg_pack[1] should be a tensor! Please check."));
     auto tensor_updates = expr_updates.as_tensor_ref();
 
     Expr expr_index = arg_pack[2];
-    PADDLE_ENFORCE_EQ(expr_index.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The arg_pack[2] should be a tensor! Please check."));
+    PADDLE_ENFORCE(expr_index.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The arg_pack[2] should be a tensor! Please check."));
     auto tensor_index = expr_index.as_tensor_ref();
 
     PADDLE_ENFORCE_EQ(
@@ -1298,24 +1281,21 @@ std::shared_ptr<OpStrategy> StrategyForScatterAdd(
                           "The output_shapes is empty! Please check."));
 
     Expr expr_input = arg_pack[0];
-    PADDLE_ENFORCE_EQ(expr_input.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The arg_pack[0] should be a tensor! Please check."));
+    PADDLE_ENFORCE(expr_input.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The arg_pack[0] should be a tensor! Please check."));
     auto tensor_input = expr_input.as_tensor_ref();
 
     Expr expr_updates = arg_pack[1];
-    PADDLE_ENFORCE_EQ(expr_updates.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The arg_pack[1] should be a tensor! Please check."));
+    PADDLE_ENFORCE(expr_updates.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The arg_pack[1] should be a tensor! Please check."));
     auto tensor_updates = expr_updates.as_tensor_ref();
 
     Expr expr_index = arg_pack[2];
-    PADDLE_ENFORCE_EQ(expr_index.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The arg_pack[2] should be a tensor! Please check."));
+    PADDLE_ENFORCE(expr_index.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The arg_pack[2] should be a tensor! Please check."));
     auto tensor_index = expr_index.as_tensor_ref();
 
     PADDLE_ENFORCE_EQ(
@@ -1441,11 +1421,10 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
                               "The input tensors of slice compute is empty! "
                               "Please check."));
         Expr A_expr = arg_pack[0];
-        PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                          true,
-                          phi::errors::InvalidArgument(
-                              "The 1-th input_args should be a tensor! Please "
-                              "check."));
+        PADDLE_ENFORCE(A_expr.as_tensor(),
+                       phi::errors::InvalidArgument(
+                           "The 1-th input_args should be a tensor! Please "
+                           "check."));
         ir::Tensor A = A_expr.as_tensor_ref();
 
         PADDLE_ENFORCE_EQ(arg_pack.size(),
@@ -1616,11 +1595,10 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
                           "The input tensors of slice compute is empty! "
                           "Please check."));
     Expr A_expr = arg_pack[0];
-    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The 1-th args_packs should be a tensor! Please "
-                          "check."));
+    PADDLE_ENFORCE(A_expr.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The 1-th args_packs should be a tensor! Please "
+                       "check."));
     ir::Tensor A = A_expr.as_tensor_ref();
 
     const std::string tensor_name = [&] {
@@ -1758,17 +1736,15 @@ std::shared_ptr<OpStrategy> StrategyForSliceAssign(
                                      "SliceAssign compute, but got %d.",
                                      input_size));
     Expr input = arg_pack[0];
-    PADDLE_ENFORCE_EQ(input.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The 1-th input_args should be a tensor! Please "
-                          "check."));
+    PADDLE_ENFORCE(input.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The 1-th input_args should be a tensor! Please "
+                       "check."));
     Expr assign = arg_pack[1];
-    PADDLE_ENFORCE_EQ(assign.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The 2-th input_args should be a tensor! Please "
-                          "check."));
+    PADDLE_ENFORCE(assign.as_tensor(),
+                   phi::errors::InvalidArgument(
+                       "The 2-th input_args should be a tensor! Please "
+                       "check."));
 
     PADDLE_ENFORCE_EQ(
         arg_pack.size(),
