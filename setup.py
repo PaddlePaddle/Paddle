@@ -25,6 +25,7 @@ import subprocess
 import sys
 import time
 from contextlib import contextmanager
+from pathlib import Path
 from subprocess import CalledProcessError
 
 from setuptools import Command, Extension, setup
@@ -1902,13 +1903,11 @@ def generate_stub_files(paddle_binary_dir, paddle_source_dir):
     )
     print('-' * 2, 'End Generate stub file tensor.pyi ... ')
 
-    print('-' * 2, 'Generate stub file for pybind11 ... ')
-    from pathlib import Path
-
+    print('-' * 2, 'Generate stub file for python binding APIs ... ')
     import gen_pybind11_stub
 
     gen_pybind11_stub.generate_stub_file(
-        output_dir=paddle_binary_dir + '/python/paddle/_typing/libs/',
+        output_dir=str(Path(paddle_binary_dir) / 'python/paddle/_typing/libs/'),
         module_name='paddle.base.libpaddle',
         ignore_all_errors=True,
         ops_yaml=[
@@ -1936,7 +1935,7 @@ def generate_stub_files(paddle_binary_dir, paddle_source_dir):
         libpaddle_dst,
     )
 
-    print('-' * 2, 'End Generate stub for pybind11 ... ')
+    print('-' * 2, 'End Generate stub for python binding APIs ... ')
 
 
 def main():

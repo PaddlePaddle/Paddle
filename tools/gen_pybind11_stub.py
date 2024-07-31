@@ -379,8 +379,8 @@ def parse_args():
 
 
 def generate_stub_file(
-    output_dir,
-    module_name,
+    output_dir: str,
+    module_name: str,
     ignore_all_errors: bool = False,
     print_invalid_expressions_as_is: bool = False,
     ops_yaml: list[str] | None = None,
