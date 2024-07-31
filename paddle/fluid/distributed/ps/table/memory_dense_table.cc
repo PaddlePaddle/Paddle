@@ -129,19 +129,19 @@ int32_t MemoryDenseTable::SetGlobalLR(float *lr) {
 }
 
 int32_t MemoryDenseTable::Pull(TableContext &context) {
-  PADDLE_ENFORCE_EQ(context.value_type,
-                    Dense,
-                    phi::platform::errors::InvalidArgument(
-                        "Context value type must be 'Dense'."));
+  PADDLE_ENFORCE_EQ(
+      context.value_type,
+      Dense,
+      phi::errors::InvalidArgument("Context value type must be 'Dense'."));
   float *pull_values = context.pull_context.values;
   return PullDense(pull_values, context.num);
 }
 
 int32_t MemoryDenseTable::Push(TableContext &context) {
-  PADDLE_ENFORCE_EQ(context.value_type,
-                    Dense,
-                    phi::platform::errors::InvalidArgument(
-                        "Context value type must be 'Dense'."));
+  PADDLE_ENFORCE_EQ(
+      context.value_type,
+      Dense,
+      phi::errors::InvalidArgument("Context value type must be 'Dense'."));
   if (context.push_context.values != nullptr) {
     if (!context.push_context.is_param) {
       return PushDense(context.push_context.values, context.num);
