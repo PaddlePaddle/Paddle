@@ -120,10 +120,10 @@ void TestAPISizeAndShape() {
       phi::errors::InvalidArgument("t1.size should be equal to 25, "
                                    "but got %d",
                                    t1.size()));
-  PADDLE_ENFORCE_EQ(
-      t1.shape(),
-      tensor_shape,
-      phi::errors::InvalidArgument("t1.shape should be equal to tensor_shape, "));
+  PADDLE_ENFORCE_EQ(t1.shape(),
+                    tensor_shape,
+                    phi::errors::InvalidArgument(
+                        "t1.shape should be equal to tensor_shape, "));
 }
 
 void TestAPISlice() {
