@@ -286,7 +286,7 @@ class QuantConfig:
             source, paddle.nn.Layer
         ), "The source layer to be placed should be a subclass of paddle.nn.Layer"
         assert isinstance(target, type) and issubclass(
-            source, paddle.nn.Layer
+            target, paddle.nn.Layer
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
         self._customized_qat_layer_mapping[source] = target
