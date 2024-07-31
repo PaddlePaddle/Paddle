@@ -7,7 +7,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
-    func : ElementwiseInferMeta
+    func : ElementwiseRawInferMeta
     spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : add
