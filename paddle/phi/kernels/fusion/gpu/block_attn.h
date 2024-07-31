@@ -2836,5 +2836,27 @@ void InvokeTransposeRemovePadding(const phi::GPUContext &dev_ctx,
                                                        padding_offset);
 }
 
+template <typename T>
+static void VLOGMatrix(const T *mat_d,
+                       int num,
+                       std::string name,
+                       int max_num = 10) {
+  num = num < max_num ? num : max_num;
+  std::vector<T> tmp(num);
+  cudaMemcpy(tmp.data(), mat_d, sizeof(T) * num, cudaMemcpyDeviceToHost);
+
+  std::stringstream ss;
+
+  for (int i = 0; i < num; ++i) {
+    if (std::is_same<T, int8_t>::value) {
+      ss << static_cast<int>(tmp[i]) << ", ";
+    } else {
+      ss << std::setprecision(8) << (float)(tmp[i]) << ", ";  // NOLINT
+    }
+  }
+  LOG(INFO) << "===>: " << name;
+  LOG(INFO) << ss.str();
+}
+
 }  // namespace fusion
 }  // namespace phi

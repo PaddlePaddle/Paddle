@@ -271,7 +271,7 @@ void DispatchWithDtype(
     DenseTensor* value_cache_out) {
   phi::DenseTensor qkv_buf;
   phi::DenseTensor fmha_buf;
-
+  VLOGMatrix(qkv.data<T>(), 10, "***qkv pos1***", 10);
   VLOG(1) << "fmha_out " << fmha_out->dims();
   if (out_scale <= 0) {
     dev_ctx.template Alloc<T>(fmha_out);
@@ -281,8 +281,10 @@ void DispatchWithDtype(
     dev_ctx.template Alloc<T>(&fmha_buf);
     dev_ctx.template Alloc<int8_t>(fmha_out);
   }
+  VLOGMatrix(fmha_buf.data<T>(), 10, "***fmha_buf pos1***", 10);
 
-  InitValue(dev_ctx, fmha_buf.data<T>(), fmha_buf.numel(), static_cast<T>(0.));
+  // InitValue(dev_ctx, fmha_buf.data<T>(), fmha_buf.numel(), static_cast<T>(0.));
+  VLOGMatrix(fmha_buf.data<T>(), 10, "***fmha_buf pos11***", 10);
   const auto& input_dims = qkv.dims();
   const auto& key_cache_dims = key_cache.dims();
   const int token_num = input_dims[0];
@@ -418,6 +420,7 @@ void DispatchWithDtype(
 
   if (max_enc_len_this_time_data > 0) {
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
+    VLOGMatrix(qkv_buf.data<T>(), 10, "qkv_buf rope before", 10);
     if (rope_emb) {
       rotary_qk_variable(dev_ctx,
                          qkv_buf.data<T>(),
@@ -432,6 +435,7 @@ void DispatchWithDtype(
                          dim_head,
                          use_neox_style);
     }
+    VLOGMatrix(qkv_buf.data<T>(), 10, "qkv_buf rope after", 10);
     VLOG(3) << "rope end";
     VLOG(3) << "causual: " << causual;
     if (!use_pre_cache) {
@@ -474,6 +478,7 @@ void DispatchWithDtype(
                                       &seed_offset);
       // Reshape fmha_buf back (to 2-D), to not affect following codes.
       fmha_buf.Resize(fmha_shape);
+      VLOGMatrix(fmha_buf.data<T>(), 10, "***fmha_buf pos2***", 10);
     } else {
       qkv_transpose_split<T>(
           dev_ctx,
@@ -523,6 +528,7 @@ void DispatchWithDtype(
     }
 
     VLOG(3) << "flash end";
+    VLOGMatrix(fmha_buf.data<T>(), 10, "***fmha_buf pos3***", 10);
     if (cache_k_quant_scales && dynamic_cachekv_quant) {
       DynamicQuantCacheKernel<T>(dev_ctx,
                                  qkv_buf,
@@ -568,6 +574,10 @@ void DispatchWithDtype(
   }
   VLOG(3) << "encoder done";
   VLOG(3) << "max_dec_len_this_time: " << max_dec_len_this_time_data;
+  VLOG(3) << "GetDecoderTensor's args:" << "max_dec_len_this_time_data: " << max_dec_len_this_time_data;
+  VLOG(3) << "max_seq_len: " << max_seq_len << " token_num: " << token_num;
+  VLOGMatrix(cum_offsets.data<int>(), 10, "cum_offsets", 10);
+  VLOGMatrix(qkv_buf.data<T>(), 10, "qkv_buf  before GetDecoderTensor", 10);
   if (max_dec_len_this_time_data > 0) {
     GetDecoderTensor<T>(dev_ctx,
                         qkv_buf,
@@ -590,6 +600,68 @@ void DispatchWithDtype(
       }
     }
     VLOG(1) << "cachekv_quant_mode " << cachekv_quant_mode;
+
+    VLOGMatrix(qkv_out_decoder.data<T>(), 10, "qkv_out_decoder", 10);
+    VLOG(1) << "cachekv_quant_mode " << cachekv_quant_mode;
+    VLOGMatrix(fmha_buf.data<T>(), 10, "fmha_buf", 10);
+
+    if ((*key_cache_out).initialized()){
+      VLOGMatrix(*key_cache_out).data<T>(), 10, "key_cache_out", 10);
+    }else{
+      VLOG(3) << "key_cache_out is nullptr";
+    }
+
+    if ((*value_cache_out).initialized()){
+      VLOGMatrix((*value_cache_out).data<T>(), 10, "value_cache_out", 10);
+    }else{
+      VLOG(3) << "value_cache_out is nullptr";
+    }
+
+    if (seq_lens_decoder.initialized()) {
+      VLOGMatrix(seq_lens_decoder.data<T>(), 10, "seq_lens_decoder", 10);
+    }else{
+        VLOG(3) << "seq_lens_decoder is null";
+    }
+
+    VLOG(3) << "bsz: " << bsz << " max_block_per_seq :" << max_block_per_seq << " block_size: " << block_size
+    << " max_seq_len: " << max_seq_len << " pre_cache_length: " << pre_cache_length << " q_num_head: " << num_head
+    << " kv_num_head: " << num_head << " dim_head: " << dim_head << " max_dec_len_this_time_data: " << max_dec_len_this_time_data
+    << " quant_round_type: " << quant_round_type << " quant_max_bound: " << quant_max_bound
+    << " quant_min_bound" << quant_min_bound << " cachekv_quant_mode: " << cachekv_quant_mode;
+
+    auto cache_k_qa = cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr;
+    auto cache_v_qa = cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr;
+    auto cache_k_deq = cache_k_dequant_scales ? cache_k_dequant_scales.get_ptr() : nullptr;
+    auto cache_v_deq = cache_v_dequant_scales ? cache_v_dequant_scales.get_ptr() : nullptr;
+
+    // log cache_k_qa
+    if (cache_k_qa && cache_k_qa->initialized()) {
+        VLOGMatrix(cache_k_qa->data<T>(), 10, "cache_k_qa", 10);
+    } else {
+        VLOG(3) << "cache_k_qa is nullptr or not initialized";
+    }
+
+    // log cache_v_qa
+    if (cache_v_qa && cache_v_qa->initialized()) {
+        VLOGMatrix(cache_v_qa->data<T>(), 10, "cache_v_qa", 10);
+    } else {
+        VLOG(3) << "cache_v_qa is nullptr or not initialized";
+    }
+
+    // log cache_k_deq
+    if (cache_k_deq && cache_k_deq->initialized()) {
+        VLOGMatrix(cache_k_deq->data<T>(), 10, "cache_k_deq", 10);
+    } else {
+        VLOG(3) << "cache_k_deq is nullptr or not initialized";
+    }
+
+    // log cache_v_deq
+    if (cache_v_deq && cache_v_deq->initialized()) {
+        VLOGMatrix(cache_v_deq->data<T>(), 10, "cache_v_deq", 10);
+    } else {
+        VLOG(3) << "cache_v_deq is nullptr or not initialized";
+    }
+
     blha<T>(dev_ctx,
             qkv_out_decoder,
             nullptr,  // qkv_bias
@@ -655,8 +727,34 @@ void DispatchWithDtype(
           quant_max_bound,
           quant_min_bound);
     }
+    
     VLOG(3) << "decoder done";
   }
+
+    if ((*qkv_out).initialized()){
+      VLOGMatrix((*qkv_out).data<T>(), 10, "qkv_out_buf final", 10);
+    }else{
+      LOG(INFO) << "qkv_out is nullptr";
+    }
+
+    if ((*fmha_out).initialized()){
+      VLOGMatrix((*fmha_out).data<T>(), 10, "fmha_out_buf  final", 10);
+    }else{
+      LOG(INFO) << "fmha_out is nullptr";
+    }
+
+
+    if ((*key_cache_out).initialized()){
+      VLOGMatrix((*key_cache_out).data<T>(), 10, "key_cache_out  final", 10);
+    }else{
+      LOG(INFO) << "key_cache_out is nullptr";
+    }
+
+    if ((*value_cache_out).initialized()){
+      VLOGMatrix((*value_cache_out).data<T>(), 10, "value_cache_out  final", 10);
+    }else{
+      VLOG(3) << "value_cache_out is nullptr";
+    }
 }
 
 template <typename T, typename Context>
