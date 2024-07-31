@@ -728,7 +728,6 @@ class SplitWithNumOpPattern
 
     auto input_var_name = op.operand_source(0);
     auto input_var_name_type = input_var_name.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    LOG(INFO)<<input_var_name_type;
     auto input_var_name_shape = input_var_name_type.dims();
     axis_value += (axis_value < 0) ? input_var_name_shape.size() : 0;
     if (input_var_name_shape[axis_value] == -1) {

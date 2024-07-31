@@ -423,9 +423,9 @@ class TestSplitTRTPattern(PassTest):
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(
-                    name='x', shape=[3,9,5], dtype='int64'
+                    name='x', shape=[3,9,5], dtype='float32'
                 )
-                num_or_sections = 3
+                num_or_sections = 3.0
                 axis = 1
                 split_out = paddle.split(x, num_or_sections=num_or_sections, axis=axis)
                 out = paddle.assign(split_out[0])
@@ -433,7 +433,7 @@ class TestSplitTRTPattern(PassTest):
                 out2 = paddle.assign(split_out[2])
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x": np.random.random([3,9,5]).astype("int64"),
+                    "x": np.random.random([3,9,5]).astype("float32"),
                 }
 
                 self.fetch_list = [out,out1,out2]
