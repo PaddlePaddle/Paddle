@@ -671,6 +671,11 @@ bool FakeQuantizeRangeAbsMaxOpInferSymbolicShape(
   return true;
 }
 
+bool FakeQuantizeRangeAbsMax_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FakeQuantizeRangeAbsMaxOpInferSymbolicShape(op, infer_context);
+}
+
 bool FullWithTensorOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(1);
