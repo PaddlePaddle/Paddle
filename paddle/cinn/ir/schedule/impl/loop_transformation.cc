@@ -44,6 +44,12 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::string primitive = "Split";
   std::ostringstream os;
 
+  std::cerr << "factor is\n";
+
+  for (auto& f : factors) {
+    std::cerr << "Fffffffff " << f << std::endl;
+  }
+
   if (!loop.As<ir::For>()) {
     os << "Expr param(loop) must be For node! Please check!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
@@ -57,7 +63,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     os << "The factors param of Split should not be empty! Please check!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
-
+  std::cerr << "split vars  " << loop.As<For>()->loop_var << std::endl;
   if (loop.As<For>()->extent.is_constant()) {
     int tot_extent = for_node->extent.get_constant();
 
@@ -90,6 +96,10 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
       new_node = IfThenElse::Make(LT::Make(substitute_value, for_node->extent),
                                   new_node);
     }
+
+    Expr offset = Expr(0);
+    Expr stride = Expr(1);
+
     for (int i = processed_factors.size() - 1; i >= 0; i--) {
       if (!new_node.As<ir::Block>()) new_node = Block::Make({new_node});
       new_node = For::Make(new_loop_vars[i],
@@ -98,10 +108,21 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
                            for_node->for_type(),
                            for_node->device_api,
                            new_node);
+
+      std::cerr << "new node " << new_loop_vars[i] << "\t"
+                << processed_factors[i] << std::endl;
+      offset = offset + stride * new_loop_vars[i];
+      stride = stride * Expr(processed_factors[i]);
       splited_loops[i] = new_node;
     }
 
+    std::cerr << "new offset !!! "
+              << cinn::common::AutoSimplify(substitute_value) << std::endl;
+
     this->Replace(loop, new_node);
+
+    this->UpdateSplitOffset(loop.As<For>()->loop_var,
+                            cinn::common::AutoSimplify(substitute_value));
     VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
     return splited_loops;
   }
@@ -324,6 +345,9 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
     fused_extent = fused_extent * for_nodes[i]->extent;
   }
   fused_extent = cinn::common::AutoSimplify(fused_extent);
+
+  std::cerr << "after fuse exetent " << fused_extent << std::endl;
+  std::cerr << "fused vars !!!!! " << fused_var << std::endl;
   if (!fused_body.As<ir::Block>()) fused_body = Block::Make({fused_body});
   Expr new_stmt = For::Make(fused_var,
                             Expr(0),
@@ -344,6 +368,73 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
   std::string primitive = "Fuse";
   std::ostringstream os;
   std::vector<Expr> all_loops = this->GetLoops(block_name);
+
+  std::vector<Expr> base_shape;
+  std::vector<Var> loop_vars;
+
+  for (size_t i = 0; i < all_loops.size(); ++i) {
+    base_shape.push_back(all_loops[i].As<ir::For>()->extent);
+    loop_vars.push_back(all_loops[i].As<ir::For>()->loop_var);
+    std::cerr << "loop vars " << all_loops[i].As<ir::For>()->loop_var
+              << std::endl;
+    std::cerr << "extend " << all_loops[i].As<ir::For>()->extent << std::endl;
+  }
+
+  Expr merge_offset = Expr(0);
+
+  std::string suffix;
+  suffix = loop_vars[loops_index[0]]->name;
+  int loops_number = loops_index.size();
+  for (int i = 1; i < loops_number; ++i) {
+    suffix += "_" + loop_vars[loops_index[i]]->name;
+  }
+  suffix += "_fused";
+
+  Expr last_stride;
+  for (size_t i = 0; i < loops_index.size(); ++i) {
+    Expr base = loop_vars[loops_index[i]];
+    last_stride = Expr(1);
+    for (size_t j = loops_index[i] + 1; j < base_shape.size(); ++j) {
+      base = base * base_shape[j];
+
+      last_stride = last_stride * base_shape[j];
+    }
+
+    merge_offset = merge_offset + base;
+  }
+
+  std::cerr << "base offset !!!!  " << merge_offset << std::endl;
+
+  std::cerr << "simp base offset " << cinn::common::AutoSimplify(merge_offset)
+            << std::endl;
+
+  Expr base_offset_simp = cinn::common::AutoSimplify(merge_offset);
+
+  Var fused_var(suffix);
+  Expr fused_expr(fused_var);
+
+  Expr new_offset = fused_expr * last_stride;
+
+  Expr new_offset_simp = cinn::common::AutoSimplify(new_offset);
+  std::cerr << "shuffix  " << suffix << "\t" << new_offset << std::endl;
+
+  std::cerr << "new offset is " << new_offset_simp << std::endl;
+
+  std::vector<Expr> new_indices;
+  std::set<int> merge_set(loops_index.begin(), loops_index.end());
+
+  bool insert_flags = false;
+  for (int i = 0; i < all_loops.size(); ++i) {
+    if (merge_set.count(i)) {
+      if (!insert_flags) {
+        new_indices.push_back(fused_expr);
+      }
+      insert_flags = true;
+    } else {
+      new_indices.push_back(all_loops[i].As<ir::For>()->loop_var);
+    }
+  }
+
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
   for (int i = 0; i < loops_index.size(); ++i) {
@@ -366,7 +457,26 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
     }
     loops_expr.emplace_back(all_loops[i]);
   }
+
+  // fuse here
+  // auto test_block = this->GetBlock( block_name);
+  auto test_block = all_loops[0];
+
+  auto consumer = ir::ir_utils::CollectIRNodesInOrder(
+      test_block, [&](const Expr* x) { return x->As<ir::Store>(); });
+
+  this->UpdateMergeOffset(loops_index, new_indices);
+
+  for (auto j = 0; j < consumer.size(); ++j) {
+    std::cerr << "consumer jj " << consumer[j] << std::endl;
+
+    std::cerr << "22 " << consumer[j].As<ir::Store>()->offset << std::endl;
+  }
+
+  std::cerr << "test block " << test_block << std::endl;
+
   return this->Fuse(loops_expr);
+
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 

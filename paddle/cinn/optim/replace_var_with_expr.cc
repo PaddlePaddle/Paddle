@@ -84,6 +84,10 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
     do_replace_ = false;
     ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
     ir::IRMutator<>::Visit(&node->value, &node->value);
+    std::cerr << "before offset \t" << node->offset << std::endl;
+    ir::IRMutator<>::Visit(&node->offset, &node->offset);
+
+    std::cerr << "after offset \t" << node->offset << std::endl;
   }
 
   void Visit(const ir::Load* expr, Expr* op) override {

@@ -256,16 +256,21 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
       var_name = "z";
     if (for_ir->is_gpu_block_binded()) {
       var_name = "blockIdx." + var_name;
+      std::cerr << "replace block \n" << *expr << std::endl;
+      std::cerr << "replace block " << op->loop_var << std::endl;
       optim::ReplaceVarWithExpr(
           expr, op->loop_var, ir::Expr(ir::Var(var_name)));
     } else if (for_ir->is_gpu_thread_binded()) {
       var_name = "threadIdx." + var_name;
+      std::cerr << "replace thread \n" << *expr << std::endl;
+      std::cerr << "replace thread " << op->loop_var << std::endl;
       optim::ReplaceVarWithExpr(
           expr, op->loop_var, ir::Expr(ir::Var(var_name)));
     }
 
     ir::IRMutator<>::Visit(&for_ir->body, &for_ir->body);
   }
+
   void Visit(const ir::PolyFor *op, Expr *expr) override {
     PADDLE_THROW(phi::errors::InvalidArgument("Unkown PolyFor!"));
   }
@@ -439,10 +444,13 @@ void OptimizeExprGPU(Expr *expr) {
   // resize buffer axis
   UpdateBufferAxisPass(expr);
 
+  VLOG(4) << "After buffer axis  Expr: \n" << *expr;
+
   // replace var name with block/thread
   ReplaceLoopVarToGpu replace_loop_var_to_gpu;
   replace_loop_var_to_gpu(expr);
 
+  VLOG(4) << "replace gpu loops Expr: \n" << *expr;
   // update shared buffer axis
   SharedAxisVisitor shared_axis_visitor;
   shared_axis_visitor(expr);

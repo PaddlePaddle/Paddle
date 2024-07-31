@@ -290,7 +290,7 @@ std::shared_ptr<::pir::Program> BuildScaleGroupProgram() {
 
   // full -> softmax(max -> subtract -> exp -> sum -> divide)
   const float value_one = 1.0;
-  const std::vector<int64_t> shape = {16, 16};
+  const std::vector<int64_t> shape = {32, 32};
   auto x = builder
                .Build<paddle::dialect::FullOp>(
                    shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace())
@@ -488,35 +488,34 @@ TEST(GroupOp, TestBuildScale) {
 //   RunAndCheckResult(program.get(), false);
 // }
 
-// std::shared_ptr<::pir::Program> BuildSum2GroupProgram() {
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   auto program = std::make_shared<::pir::Program>(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+std::shared_ptr<::pir::Program> BuildSum2GroupProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-//   auto x = builder
-//                .Build<paddle::dialect::FullOp>(std::vector<int64_t>({16,
-//                16}),
-//                                                0.0,
-//                                                phi::DataType::FLOAT32,
-//                                                phi::GPUPlace())
-//                .result(0);
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({16, 16}),
+                                               0.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
 
-//   auto cos = builder.Build<paddle::dialect::CosOp>(x).result(0);
+  auto cos = builder.Build<paddle::dialect::CosOp>(x).result(0);
 
-//   auto y = builder
-//                .Build<paddle::dialect::FullOp>(std::vector<int64_t>({8, 8}),
-//                                                0.0,
-//                                                phi::DataType::FLOAT32,
-//                                                phi::GPUPlace())
-//                .result(0);
+  auto y = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({8, 8}),
+                                               0.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
 
-//   auto sin = builder.Build<paddle::dialect::SinOp>(y).result(0);
+  auto sin = builder.Build<paddle::dialect::SinOp>(y).result(0);
 
-//   builder.Build<paddle::dialect::FetchOp>(cos, "out", 0);
-//   builder.Build<paddle::dialect::FetchOp>(sin, "out2", 0);
-//   return program;
-// }
+  builder.Build<paddle::dialect::FetchOp>(cos, "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(sin, "out2", 0);
+  return program;
+}
 
 // TEST(GroupOp, TestBuildSum2Group) {
 //   // Step 1: Construct pir::Program
