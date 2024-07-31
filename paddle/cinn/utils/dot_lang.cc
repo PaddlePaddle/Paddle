@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <sstream>
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace utils {
