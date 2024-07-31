@@ -28,20 +28,19 @@ from .fs import HDFSClient, LocalFS
 from .ps_util import DistributedInfer
 
 if TYPE_CHECKING:
-    from paddle import Tensor
     from paddle.nn import Layer
 
 __all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]
 
 
 def recompute(
-    function: Callable[..., Layer], *args: Tensor, **kwargs: Any
-) -> Tensor:
+    function: Layer | Callable[..., Any], *args: Any, **kwargs: Any
+) -> Any:
     """
     recompute intermediate activations to save the memory.
 
     Parameters:
-        function(Callable[..., paddle.nn.Layer]): layer of sequence of layers that describes part of forward pass of the model
+        function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
               in backward stage for gradient calculation.
         *args(Tensor): inputs to the function.
