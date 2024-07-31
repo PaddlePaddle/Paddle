@@ -206,7 +206,7 @@ bool ChannelShuffleOpInferSymbolicShape(
   infer_context->AddEqualCstr(channels, expected_channels);
 
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
-  
+
   return true;
 }
 
