@@ -67,7 +67,7 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
         # The most auto unittests have been monitored in PR-CI-Distribute-stable,
         # while the other tests of llama model will be executed in PR-CI-Auto-Parallel.
         for ((i=0; i<${#target_lists_for_semi_auto_ci[@]}; i++)); do
-            if [ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ];then
+            if [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
                 case_list[${#case_list[*]}]="auto_unit_test"
                 break
             else
@@ -77,7 +77,7 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
         # The dynamic unittests have been monitored in PR-CI-Distribute-stable
         # and will be no longer redundantly executed in PR-CI-Auto-Parallel.
         for ((i=0; i<${#target_lists_for_dygraph_ci[@]}; i++)); do
-            if [${file_item} == *${target_lists_for_dygraph_ci[i]}* ];then
+            if [[${file_item} == *${target_lists_for_dygraph_ci[i]}* ]];then
                 case_list[${#case_list[*]}]="dygraph_unit_test"
                 break
             else
