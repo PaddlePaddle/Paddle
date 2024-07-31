@@ -1246,6 +1246,10 @@ void BindValue(py::module *m) {
                                    name_analysis::GetValueAllNames(self);
                                return py::cast(names);
                              })
+      .def_property_readonly("_is_only_one_name",
+                             [](Value self) -> bool {
+                               return name_analysis::IsOnlyOneValueName(self);
+                             })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },

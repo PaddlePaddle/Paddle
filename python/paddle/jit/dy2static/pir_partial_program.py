@@ -327,7 +327,8 @@ class RunnableProgram:
             self.backward_program, rename_mapping
         )
         # check if every value has only one name.
-        assert len(rename_mapping.values()) == len(set(rename_mapping.values()))
+        for value in rename_mapping.values():
+            assert value._is_only_one_name()
         return value_program_attr
 
     @staticmethod
