@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
@@ -31,11 +31,11 @@ def sample_neighbors(
     row: Tensor,
     colptr: Tensor,
     input_nodes: Tensor,
-    sample_size: int = -1,
-    eids: Tensor | None = None,
-    return_eids: bool = True,
-    perm_buffer: Tensor | None = None,
-    name: str | None = None,
+    sample_size: int = ...,
+    eids: Tensor | None = ...,
+    return_eids: bool = Literal[True],
+    perm_buffer: Tensor | None = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]:
     ...
 
@@ -45,12 +45,26 @@ def sample_neighbors(
     row: Tensor,
     colptr: Tensor,
     input_nodes: Tensor,
-    sample_size: int = -1,
-    eids: Tensor | None = None,
-    return_eids: bool = False,
-    perm_buffer: Tensor | None = None,
-    name: str | None = None,
+    sample_size: int = ...,
+    eids: Tensor | None = ...,
+    return_eids: bool = Literal[False],
+    perm_buffer: Tensor | None = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def sample_neighbors(
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    sample_size: int = ...,
+    eids: Tensor | None = ...,
+    return_eids: bool = ...,
+    perm_buffer: Tensor | None = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
     ...
 
 
@@ -59,7 +73,7 @@ def sample_neighbors(
     colptr,
     input_nodes,
     sample_size=-1,
-    eids: Tensor = None,
+    eids=None,
     return_eids=False,
     perm_buffer=None,
     name=None,
@@ -209,10 +223,10 @@ def weighted_sample_neighbors(
     colptr: Tensor,
     edge_weight: Tensor,
     input_nodes: Tensor,
-    sample_size: int = -1,
-    eids: Tensor | None = None,
-    return_eids: bool = True,
-    name: str | None = None,
+    sample_size: int = ...,
+    eids: Tensor | None = ...,
+    return_eids: bool = Literal[True],
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]:
     ...
 
@@ -223,11 +237,25 @@ def weighted_sample_neighbors(
     colptr: Tensor,
     edge_weight: Tensor,
     input_nodes: Tensor,
-    sample_size: int = -1,
-    eids: Tensor | None = None,
-    return_eids: bool = False,
-    name: str | None = None,
+    sample_size: int = ...,
+    eids: Tensor | None = ...,
+    return_eids: bool = Literal[False],
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def weighted_sample_neighbors(
+    row: Tensor,
+    colptr: Tensor,
+    edge_weight: Tensor,
+    input_nodes: Tensor,
+    sample_size: int = ...,
+    eids: Tensor | None = ...,
+    return_eids: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
     ...
 
 
