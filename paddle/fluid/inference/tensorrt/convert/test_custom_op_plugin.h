@@ -18,7 +18,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "paddle/common/enforce.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {
