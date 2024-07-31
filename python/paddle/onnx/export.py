@@ -11,15 +11,46 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
+from typing import (
+    TYPE_CHECKING,
+    TypedDict,
+)
+
+from typing_extensions import (
+    NotRequired,
+    Unpack,
+)
 
 from paddle.utils import try_import
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.nn import Layer
+    from paddle.static import InputSpec
+
+    # from Paddle2ONNX/paddleonnx/utils.py
+    class _ConfigsList(TypedDict):
+        output_spec: NotRequired[list[Tensor]]
+        with_hook: NotRequired[bool]
+        combine_params: NotRequired[bool]
+        clip_extra: NotRequired[bool]
+        skip_forward: NotRequired[bool]
+        input_names_after_prune: NotRequired[list[str]]
+
 
 __all__ = []
 
 
-def export(layer, path, input_spec=None, opset_version=9, **configs):
+def export(
+    layer: Layer,
+    path: str,
+    input_spec: list[InputSpec | Tensor] | None = None,
+    opset_version: int = 9,
+    **configs: Unpack[_ConfigsList],
+) -> None:
     """
     Export Layer to ONNX format, which can use for inference via onnxruntime or other backends.
     For more details, Please refer to `paddle2onnx <https://github.com/PaddlePaddle/paddle2onnx>`_ .
@@ -28,7 +59,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         layer (Layer): The Layer to be exported.
         path (str): The path prefix to export model. The format is ``dirname/file_prefix`` or ``file_prefix`` ,
             and the exported ONNX file suffix is ``.onnx`` .
-        input_spec (list[InputSpec|Tensor], optional): Describes the input of the exported model's forward
+        input_spec (list[InputSpec|Tensor]|None, optional): Describes the input of the exported model's forward
             method, which can be described by InputSpec or example Tensor. If None, all input variables of
             the original Layer's forward method would be the inputs of the exported ``ONNX`` model. Default: None.
         opset_version(int, optional): Opset version of exported ONNX model.
