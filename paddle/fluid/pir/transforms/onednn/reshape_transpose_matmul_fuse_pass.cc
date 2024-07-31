@@ -54,7 +54,7 @@ class ReshapeTransposeMatmulFusePattern : public paddle::drr::DrrPatternBase {
 
     const auto &reshape = pat.Op(paddle::dialect::ReshapeOp::name());
     reshape({&pat.Tensor("reshape_in"), &pat.Tensor("shape")},
-            {&pat.Tensor("reshape_out"), &pat.Tensor("Xshape")});
+            {&pat.Tensor("reshape_out")});
 
     const auto &transpose = pat.Op(paddle::dialect::TransposeOp::name(),
                                    {{"perm", pat.Attr("perm")}});
@@ -170,7 +170,7 @@ class ReshapeTransposeFusedMatmulFusePattern
 
     const auto &reshape = pat.Op(paddle::dialect::ReshapeOp::name());
     reshape({&pat.Tensor("reshape_in"), &pat.Tensor("shape")},
-            {&pat.Tensor("reshape_out"), &pat.Tensor("Xshape")});
+            {&pat.Tensor("reshape_out")});
 
     const auto &transpose = pat.Op(paddle::dialect::TransposeOp::name(),
                                    {{"perm", pat.Attr("perm")}});

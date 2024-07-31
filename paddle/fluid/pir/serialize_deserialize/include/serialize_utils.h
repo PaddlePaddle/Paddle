@@ -309,6 +309,17 @@ Json serializeTypeToJsonIncludeWriteType(const T& type) {
   json_obj[DATA] = content;
   return json_obj;
 }
+template <>
+Json serializeTypeToJsonIncludeWriteType<>(const pir::VectorType& type) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(type) + "." + type.name();
+  Json content = Json::array();
+  for (auto type_x : type.data()) {
+    content.push_back(writeType(type_x));
+  }
+  json_obj[DATA] = content;
+  return json_obj;
+}
 
 template <>
 Json serializeTypeToJsonIncludeWriteType<paddle::dialect::SparseCooTensorType>(
@@ -366,6 +377,7 @@ Json serializeTypeToJsonIncludeWriteType<paddle::dialect::SparseCsrTensorType>(
   json_obj[DATA] = content;
   return json_obj;
 }
+
 template <>
 Json serializeTypeToJsonIncludeWriteType<paddle::dialect::DenseTensorArrayType>(
     const paddle::dialect::DenseTensorArrayType& type) {
@@ -444,14 +456,8 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
     //  when use template func serializeTypeToJson
   } else if (type.isa<pir::VectorType>()) {
     VLOG(8) << "Write VectorType ... ";
-    auto type_ = type.dyn_cast<pir::VectorType>();
-    type_json[ID] = COMPRESS_DIALECT_NAME(type_) + "." + type_.name();
-    Json content = Json::array();
-    for (auto type_x : type_.data()) {
-      content.push_back(writeType(type_x));
-    }
-    type_json[DATA] = content;
-    return type_json;
+    return pir::serializeTypeToJsonIncludeWriteType<pir::VectorType>(
+        type.dyn_cast<pir::VectorType>());
   } else if (type.isa<pir::DenseTensorType>()) {
     VLOG(8) << "Write DenseTensorType ... ";
     return pir::serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
@@ -520,7 +526,6 @@ Json AttrTypeWriter::WritePaddleOperatorType(const pir::Type& type) {
     PADDLE_ENFORCE(false,
                    phi::errors::InvalidArgument(
                        "Unknown Type when write paddle.operatordialect type"));
-
     return Json::object();
   }
 }

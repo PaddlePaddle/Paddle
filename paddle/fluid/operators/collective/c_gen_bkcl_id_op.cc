@@ -31,10 +31,10 @@ namespace operators {
 static void GenBKCLID(std::vector<BKCLUniqueId>* bkcl_ids) {
   for (size_t i = 0; i < bkcl_ids->size(); ++i) {
     BKCLResult_t ret = bkcl_get_unique_id(&(*bkcl_ids)[i]);
-    PADDLE_ENFORCE_EQ(
-        BKCL_SUCCESS,
-        ret,
-        phi::errors::PreconditionNotMet("bkcl get unique id failed [%d]", ret));
+    PADDLE_ENFORCE_EQ(BKCL_SUCCESS,
+                      ret,
+                      common::errors::PreconditionNotMet(
+                          "bkcl get unique id failed [%d]", ret));
   }
 }
 
@@ -46,8 +46,8 @@ static void CopyBKCLIDToVar(const std::vector<BKCLUniqueId>& bkcl_ids,
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::NotFound("Variable with name %s is not found",
-                              var_name.c_str()));
+        common::errors::NotFound("Variable with name %s is not found",
+                                 var_name.c_str()));
     auto bkcl_id = var->GetMutable<BKCLUniqueId>();
     memcpy(bkcl_id, &bkcl_ids[i], sizeof(BKCLUniqueId));
   }

@@ -337,6 +337,17 @@ T deserializeTypeFromJsonIncludeParseType(Json* type_json,
   size_t offset = data_json.at(4).get<size_t>();
   return T::get(ctx, dtype, ddim, data_layout, lod, offset);
 }
+
+template <>
+pir::VectorType deserializeTypeFromJsonIncludeParseType<pir::VectorType>(
+    Json* type_json, pir::IrContext* ctx) {
+  std::vector<pir::Type> content;
+  for (auto& type_x : type_json->at(DATA)) {
+    content.push_back(parseType(&type_x));
+  }
+  return pir::VectorType::get(ctx, content);
+}
+
 template <>
 paddle::dialect::DenseTensorArrayType
 deserializeTypeFromJsonIncludeParseType<paddle::dialect::DenseTensorArrayType>(
@@ -463,11 +474,8 @@ pir::Type AttrTypeReader::ReadBuiltInType(const std::string type_name,
     return pir::deserializeTypeFromJson<pir::Complex128Type>(type_json, ctx);
   } else if (type_name == pir::VectorType::name()) {
     VLOG(8) << "Parse VectorType ... ";
-    std::vector<pir::Type> content;
-    for (auto& type_x : type_json->at(DATA)) {
-      content.push_back(parseType(&type_x));
-    }
-    return pir::VectorType::get(ctx, content);
+    return pir::deserializeTypeFromJsonIncludeParseType<pir::VectorType>(
+        type_json, ctx);
   } else if (type_name == pir::DenseTensorType::name()) {
     VLOG(8) << "Parse DenseTensorType ... ";
     return pir::deserializeTypeFromJsonIncludeParseType<pir::DenseTensorType>(
@@ -475,9 +483,10 @@ pir::Type AttrTypeReader::ReadBuiltInType(const std::string type_name,
   } else {
     PADDLE_ENFORCE(false,
                    phi::errors::InvalidArgument(
-                       "Unknown Type %s for parse builtintype", type_name));
+                       "Unknown Type %s for parse paddleoperator dialect type",
+                       type_name));
+    return pir::Type();
   }
-  return pir::Type();
 }
 
 pir::Type AttrTypeReader::ReadPaddleOperatorType(const std::string type_name,
