@@ -142,6 +142,32 @@ bool BceLoss_OpInferSymbolicShape(
   return BceLossOpInferSymbolicShape(op, infer_context);
 }
 
+bool CompareAllInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Obtain the dimensions of x and y
+  auto x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto y_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+
+  // Ensure that the dimensions of x are not smaller than those of y
+  if (x_dims.size() < y_dims.size()) {
+    throw phi::errors::InvalidArgument(
+        "The size of y_dims should not be greater than x_dims.");
+  }
+
+  // Set the output dimensions
+  std::vector<symbol::DimExpr> out_dims = {
+      symbol::DimExpr()};  // Adjust the dimensions as necessary
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  // Share the LOD (Level of Detail) from x to out
+  infer_context->ShareLOD(op->operand_source(0), op->result(0));
+  return true;
+}
+
 bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<int> strides =

@@ -1538,6 +1538,7 @@
     func : CompareAllInferMeta
   kernel :
     func : equal_all
+   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : erf
   args : (Tensor x)
