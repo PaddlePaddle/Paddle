@@ -183,7 +183,7 @@ class Pool2dOpConverter : public OpConverter {
               engine_, PaddingNd, *input1, g_pre_pad, g_post_pad);
           PADDLE_ENFORCE_NOT_NULL(
               pad_layer,
-              phi::errors::Fatal(
+              common::errors::Fatal(
                   "Pad layer in poolOp converter could not be "
                   "created. The pointer to pad layer is `NULL`."));
           input1 = pad_layer->getOutput(0);
@@ -243,7 +243,7 @@ class Pool2dOpConverter : public OpConverter {
           engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
       PADDLE_ENFORCE_NOT_NULL(
           pool_layer,
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "trt pool layer in converter could not be created."));
       auto output_name = op_desc.Output("Out")[0];
       pool_layer->setName(("pool2d (Output: " + output_name + ")").c_str());
@@ -276,7 +276,7 @@ class Pool2dOpConverter : public OpConverter {
 
           PADDLE_ENFORCE_NOT_NULL(
               pad_layer,
-              phi::errors::Fatal(
+              common::errors::Fatal(
                   "Pad layer in poolOp converter could not be "
                   "created. The pointer to pad layer is `NULL`."));
           input1 = pad_layer->getOutput(0);
@@ -285,7 +285,7 @@ class Pool2dOpConverter : public OpConverter {
               engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
           PADDLE_ENFORCE_NOT_NULL(
               pool_layer,
-              phi::errors::Fatal(
+              common::errors::Fatal(
                   "trt pool layer in converter could not be created."));
           pool_layer->setStrideNd(nv_strides);
           pool_layer->setPaddingNd(nv_paddings);
@@ -311,7 +311,7 @@ class Pool2dOpConverter : public OpConverter {
           auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
           PADDLE_ENFORCE_NOT_NULL(
               pool_layer,
-              phi::errors::Fatal(
+              common::errors::Fatal(
                   "trt pool plugin layer in converter could not be created."));
           layer = pool_layer;
         }
@@ -326,7 +326,7 @@ class Pool2dOpConverter : public OpConverter {
               engine_, PaddingNd, *input1, g_pre_pad, g_post_pad);
           PADDLE_ENFORCE_NOT_NULL(
               pad_layer,
-              phi::errors::Fatal(
+              common::errors::Fatal(
                   "Pad layer in poolOp converter could not be "
                   "created. The pointer to pad layer is `NULL`."));
           input1 = pad_layer->getOutput(0);
@@ -336,7 +336,7 @@ class Pool2dOpConverter : public OpConverter {
             engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
         PADDLE_ENFORCE_NOT_NULL(
             pool_layer,
-            phi::errors::Fatal(
+            common::errors::Fatal(
                 "trt pool layer in converter could not be created."));
         pool_layer->setStrideNd(nv_strides);
         pool_layer->setPaddingNd(nv_paddings);
@@ -366,7 +366,7 @@ class Pool2dOpConverter : public OpConverter {
       auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
       PADDLE_ENFORCE_NOT_NULL(
           pool_layer,
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "trt pool plugin layer in converter could not be created."));
       layer = pool_layer;
     }

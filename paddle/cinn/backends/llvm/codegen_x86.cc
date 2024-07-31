@@ -146,7 +146,7 @@ void CodeGenX86::CreateParallelLaunch(Expr body, int num_task) {
   std::swap(f_, f);
   PADDLE_ENFORCE_NE(par_env.parallel_loop_count,
                     0,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "find no parallel loop within parallel launch"));
   b_->SetInsertPoint(launch_end);
 }

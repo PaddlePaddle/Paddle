@@ -64,7 +64,7 @@ class LeakyReluOpConverter : public OpConverter {
                                              power.get());
     PADDLE_ENFORCE_NOT_NULL(
         scale_layer,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invalid scale layer in leaky_relu TRT op converter. "
             "The scale layer should not be null."));
     // y_relu = (x > 0) : x : 0
@@ -72,7 +72,7 @@ class LeakyReluOpConverter : public OpConverter {
         engine_, Activation, *input, nvinfer1::ActivationType::kRELU);
     PADDLE_ENFORCE_NOT_NULL(
         relu_layer,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invalid relu layer in leaky_relu TRT op converter. "
             "The relu layer should not be null."));
     //
@@ -87,7 +87,7 @@ class LeakyReluOpConverter : public OpConverter {
                                                   power.get());
     PADDLE_ENFORCE_NOT_NULL(
         scale_relu_layer,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invalid scale_relu layer in leaky_relu TRT op converter. The "
             "scale_relu layer should not be null."));
     output_layer = TRT_ENGINE_ADD_LAYER(engine_,
@@ -97,7 +97,7 @@ class LeakyReluOpConverter : public OpConverter {
                                         nvinfer1::ElementWiseOperation::kSUM);
     PADDLE_ENFORCE_NOT_NULL(
         output_layer,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invalid output layer in leaky_relu TRT op "
             "converter. The output layer should not be null."));
     // keep alpha tensor to avoid release it's memory
@@ -106,7 +106,7 @@ class LeakyReluOpConverter : public OpConverter {
         (engine_->weight_map.find(alpha_name) == engine_->weight_map.end());
     PADDLE_ENFORCE_EQ(alpha_not_in_weight_map,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The name of parameter alpha in leaky_relu TRT op "
                           "converter is already "
                           "found in the weight map. The same weight cannot be "

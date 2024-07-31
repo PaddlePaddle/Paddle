@@ -45,20 +45,20 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
     auto dev_ctx = static_cast<phi::GPUContext*>(
         phi::DeviceContextPool::Instance().Get(place));
 
-    platform::GpuStreamSync(dev_ctx->stream());
+    phi::backends::gpu::GpuStreamSync(dev_ctx->stream());
 
 #elif defined(PADDLE_WITH_XPU_BKCL)
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::XPU,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Sync stream op can run on xpu place only for now."));
 
     auto dev_ctx = static_cast<phi::XPUContext*>(
         phi::DeviceContextPool::Instance().Get(place));
     dev_ctx->Wait();
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }
