@@ -532,7 +532,8 @@ def shuffle_batch(x: Tensor, seed: int | Tensor | None = None) -> Tensor:
         op_attrs["startup_seed"] = seed
         if paddle.framework.in_pir_mode():
             seed = paddle.full([], 0, "int64")
-            seed.persistable = False
+            out, _, _ = _C_ops.shuffle_batch(x, seed, op_attrs["startup_seed"])
+            return out
         else:
             seed = helper.create_variable(
                 name=unique_name.generate("shuffle_batch_seed"),
@@ -540,7 +541,7 @@ def shuffle_batch(x: Tensor, seed: int | Tensor | None = None) -> Tensor:
                 persistable=False,
             )
     if paddle.framework.in_pir_mode():
-        out, _, _ = _C_ops.shuffle_batch(x, seed, **op_attrs)
+        out, _, _ = _C_ops.shuffle_batch(x, seed, 0)
         return out
     helper.append_op(
         type='shuffle_batch',
