@@ -512,8 +512,7 @@ bool BilinearInterpOpInferSymbolicShape(
 bool CheckFiniteAndUnscaleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   std::vector<symbol::ShapeOrDataDimExprs> xs_shapes;
-  for (size_t i = 0; i < op->num_operands() - 1;
-       ++i) {  // 忽略最后一个为 found_infinite
+  for (size_t i = 0; i < op->num_operands() - 1; ++i) {
     xs_shapes.push_back(
         infer_context->GetShapeOrDataForValue(op->operand_source(i)));
   }
