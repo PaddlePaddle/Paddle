@@ -180,8 +180,9 @@ struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
   // each statement in ISL is bound to a Store node.
   void Visit(const ir::Store* op, Expr* expr) override {
     auto* tensor_n = op->tensor.As<ir::_Tensor_>();
-    PADDLE_ENFORCE_NOT_NULL(tensor_n,
-                            phi::errors::InvalidArgument("tensor_n is null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_n,
+        phi::errors::InvalidArgument("Sorry, but op->tensor is null"));
     auto it = vectorizes.find(tensor_n->name);
     if (it != vectorizes.end()) {
       PADDLE_ENFORCE_LT(
@@ -226,8 +227,9 @@ struct MarkUnrollMutator : public ir::IRMutator<Expr*> {
   // each statement in ISL is bound to a Store node.
   void Visit(const ir::Store* op, Expr* expr) override {
     auto* tensor_n = op->tensor.As<ir::_Tensor_>();
-    PADDLE_ENFORCE_NOT_NULL(tensor_n,
-                            phi::errors::InvalidArgument("tensor_n is null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_n,
+        phi::errors::InvalidArgument("Sorry, but op->tensor is null"));
     auto it = unrolls.find(tensor_n->name);
     if (it != unrolls.end()) {
       for (int level : it->second) {
@@ -269,8 +271,9 @@ struct MarkParallelMutator : public ir::IRMutator<Expr*> {
   // each statement in ISL is bound to a Store node.
   void Visit(const ir::Store* op, Expr* expr) override {
     auto* tensor_n = op->tensor.As<ir::_Tensor_>();
-    PADDLE_ENFORCE_NOT_NULL(tensor_n,
-                            phi::errors::InvalidArgument("tensor_n is null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_n,
+        phi::errors::InvalidArgument("Sorry, but op->tensor is null"));
     auto it = parallels.find(tensor_n->name);
     if (it != parallels.end()) {
       for (int level : it->second) {

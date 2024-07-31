@@ -42,7 +42,7 @@ void LowerIntrinImpl(common::X86Arch, const Target &target, Expr *e) {
 
     void Visit(const ir::Add *op, Expr *expr) override {
       auto *node = expr->As<ir::Add>();
-      PADDLE_ENFORCE_NOT_NULL(node, "The node is not a Add node.");
+      PADDLE_ENFORCE_NOT_NULL(node, "The node can not be treat as a Add node.");
       Expr ret;
       if (node->type().is_float()) {
         if (const ir::Mul *mul = node->b().As<ir::Mul>()) {
@@ -70,7 +70,8 @@ void LowerIntrinImpl(common::X86Arch, const Target &target, Expr *e) {
 
     void Visit(const ir::Call *op, Expr *expr) override {
       auto *node = expr->As<ir::Call>();
-      PADDLE_ENFORCE_NOT_NULL(node, "The node is not a Call node.");
+      PADDLE_ENFORCE_NOT_NULL(node,
+                              "The node can not be treat as a Call node.");
       LowerCpuIntrinsicOp(node, expr);
     }
 

@@ -263,7 +263,10 @@ struct IrExprGetter {
   std::vector<ir::Expr> operator()(
       const UnsupportPattern<BackendStage>& pattern) {
     PADDLE_ENFORCE_EQ(
-        false, true, phi::errors::InvalidArgument("Not Implemented."));
+        false,
+        true,
+        phi::errors::InvalidArgument(
+            "The pattern is unsupported which leads to an error."));
   }
 };
 
