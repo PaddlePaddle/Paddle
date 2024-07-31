@@ -511,22 +511,21 @@ bool BilinearInterpOpInferSymbolicShape(
 
 bool CheckFiniteAndUnscaleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  size_t num_inputs = op->operand_source_size();
-  size_t num_outputs = op->result_size();
+  size_t num_inputs = op->num_operands();
+  size_t num_outputs = op->num_results();
 
   PADDLE_ENFORCE_EQ(
       num_inputs,
-      num_outputs,
+      num_outputs - 1,
       common::errors::InvalidArgument(
           "The input(X) and output(Out) should have the same size in "
           "Operator(check_finite_and_unscale), size of input(X) is %d "
           "and size of output(Out) is %d.",
           num_inputs,
-          num_outputs));
+          num_outputs - 1));
 
   for (size_t i = 0; i < num_inputs; ++i) {
-    auto input_shape =
-        infer_context->GetShapeOrDataForValue(op->operand_source(i));
+    auto input_shape = infer_context->GetShapeOrDataForValue(op->operand(i));
     infer_context->SetShapeOrDataForValue(op->result(i), input_shape);
   }
 
@@ -540,7 +539,7 @@ bool CheckFiniteAndUnscaleOpInferSymbolicShape(
 
 bool CheckFiniteAndUnscale_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return CheckFiniteAndUnscale_OpInferSymbolicShape(
+  return CheckFiniteAndUnscaleOpInferSymbolicShape(
       pir::Operation * op, pir::InferSymbolicShapeContext * infer_context);
 }
 
