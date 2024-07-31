@@ -27,6 +27,8 @@ class NormMode(enum.Enum):
 
 
 def _get_norm_mode(norm, forward):
+    if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+        return norm
     if norm == "ortho":
         return NormMode.by_sqrt_n
     if norm is None or norm == "backward":
@@ -35,6 +37,8 @@ def _get_norm_mode(norm, forward):
 
 
 def _get_inv_norm(n, norm_mode):
+    if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+        return norm_mode
     assert isinstance(norm_mode, NormMode), f"invalid norm_type {norm_mode}"
     if norm_mode == NormMode.none:
         return 1.0
@@ -44,7 +48,7 @@ def _get_inv_norm(n, norm_mode):
 
 
 # 1d transforms
-def _fftc2c(a, n=None, axis=-1, norm=None, forward=None):
+def _fftc2c(a, n=None, axis=-1, norm=None, forward=None, out=None):
     a = asarray(a)
     if n is None:
         n = a.shape[axis]

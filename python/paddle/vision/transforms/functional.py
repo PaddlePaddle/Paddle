@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import numbers
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 from PIL import Image
@@ -25,6 +25,7 @@ import paddle
 from paddle._typing import unreached
 
 from ...base.framework import Variable
+from ...base.libpaddle.pir import Value
 from . import (
     functional_cv2 as F_cv2,
     functional_pil as F_pil,
@@ -32,11 +33,11 @@ from . import (
 )
 
 if TYPE_CHECKING:
-    from typing import Literal, TypeGuard, TypeVar, Union
+    from typing import Literal, TypeVar, Union
 
     import numpy.typing as npt
     from PIL.Image import Image as PILImage
-    from typing_extensions import TypeAlias
+    from typing_extensions import TypeAlias, TypeGuard
 
     from paddle import Tensor
     from paddle._typing import DataLayoutImage, Size2, Size3, Size4
@@ -64,7 +65,7 @@ def _is_tensor_image(img: _ImageDataType) -> TypeGuard[Tensor]:
     """
     Return True if img is a Tensor for dynamic mode or Variable for static graph mode.
     """
-    return isinstance(img, (paddle.Tensor, Variable))
+    return isinstance(img, (paddle.Tensor, Variable, Value))
 
 
 def _is_numpy_image(img: _ImageDataType) -> TypeGuard[npt.NDArray[Any]]:
@@ -436,12 +437,12 @@ def adjust_brightness(
             >>> fake_img = Image.fromarray(fake_img)
             >>> print(fake_img.size)
             (300, 256)
-            >>> print(fake_img.load()[1,1])
+            >>> print(fake_img.load()[1,1]) # type: ignore[index]
             (61, 155, 171)
             >>> converted_img = F.adjust_brightness(fake_img, 0.5)
             >>> print(converted_img.size)
             (300, 256)
-            >>> print(converted_img.load()[1,1])
+            >>> print(converted_img.load()[1,1]) # type: ignore[index]
             (30, 77, 85)
 
 
@@ -982,13 +983,35 @@ def to_grayscale(img: _ImageDataT, num_output_channels: int = 1) -> _ImageDataT:
         return F_cv2.to_grayscale(img, num_output_channels)
 
 
+@overload
 def normalize(
-    img: _ImageDataT,
+    img: Tensor,
     mean: list[float] | tuple[float, float, float],
     std: list[float] | tuple[float, float, float],
-    data_format: DataLayoutImage = 'CHW',
-    to_rgb: bool = False,
-) -> _ImageDataT:
+    data_format: DataLayoutImage = ...,
+    to_rgb: bool = ...,
+) -> Tensor:
+    ...
+
+
+@overload
+def normalize(
+    img: PILImage | npt.NDArray[Any],
+    mean: list[float] | tuple[float, float, float],
+    std: list[float] | tuple[float, float, float],
+    data_format: DataLayoutImage = ...,
+    to_rgb: bool = ...,
+) -> npt.NDArray[Any]:
+    ...
+
+
+def normalize(
+    img,
+    mean,
+    std,
+    data_format='CHW',
+    to_rgb=False,
+):
     """Normalizes a tensor or image with mean and standard deviation.
 
     Args:

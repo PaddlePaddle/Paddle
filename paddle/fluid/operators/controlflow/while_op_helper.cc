@@ -253,7 +253,7 @@ bool StrInVariableNameMap(const std::string &name,
 void TransferVariablePlace(const framework::Scope *scope,
                            const std::string &var_name,
                            const phi::Place &dst_place,
-                           const platform::DeviceContext &dev_ctx) {
+                           const phi::DeviceContext &dev_ctx) {
   framework::Variable *var = scope->FindVar(var_name);
   if (var == nullptr) {
     VLOG(4) << "[TransferVariablePlace]"

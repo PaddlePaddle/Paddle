@@ -28,7 +28,9 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/common/layout.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -481,11 +483,11 @@ void SyncBatchNormGradFunctor(
   const auto *saved_inv_var =
       saved_variance.template data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-  auto alloc_ptr = phi::memory_utils::Alloc(
-      ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-  auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
+  phi::DenseTensor stats_tensor;
+  stats_tensor.Resize({static_cast<int64_t>(bytes)});
+  ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
+  auto *stats_data = stats_tensor.data<BatchNormParamType<T>>();
+  auto *stats = reinterpret_cast<BatchNormParamType<T> *>(stats_data);
 
   const int block = 512;
   const int threads = 256;
@@ -596,6 +598,15 @@ void SyncBatchNormGradFunctor(
                                     comm,
                                     stream));
     VLOG(3) << "Sync result using all reduce";
+  } else {
+    if (FLAGS_dynamic_static_unified_comm) {
+      auto comm_ctx =
+          static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
+      if (comm_ctx) {
+        comm_ctx->AllReduce(&stats_tensor, stats_tensor, ncclSum, stream);
+        VLOG(3) << "Sync result using all reduce";
+      }
+    }
   }
 #endif
 

@@ -1427,6 +1427,47 @@ void BilinearInterpGradKernel(
 }
 
 template <typename T, typename Context>
+void LegacyBilinearInterpGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const DenseTensor& out_grad,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    float scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* x_grad) {
+  const auto& dim_x = x.dims();
+  std::vector<float> scale_vec;
+  if (scale > 0) {
+    for (int i = 0; i < dim_x.size() - 2; i++) {
+      scale_vec.push_back(scale);
+    }
+  }
+  InterpolateGradKernel<T, Context>(dev_ctx,
+                                    x,
+                                    out_size,
+                                    size_tensor,
+                                    scale_tensor,
+                                    out_grad,
+                                    data_layout,
+                                    out_d,
+                                    out_h,
+                                    out_w,
+                                    scale_vec,
+                                    interp_method,
+                                    align_corners,
+                                    align_mode,
+                                    x_grad);
+}
+
+template <typename T, typename Context>
 void NearestInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
@@ -1454,6 +1495,47 @@ void NearestInterpGradKernel(
                                     out_h,
                                     out_w,
                                     scale,
+                                    interp_method,
+                                    align_corners,
+                                    align_mode,
+                                    x_grad);
+}
+
+template <typename T, typename Context>
+void LegacyNearestInterpGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const DenseTensor& out_grad,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    float scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* x_grad) {
+  const auto& dim_x = x.dims();
+  std::vector<float> scale_vec;
+  if (scale > 0) {
+    for (int i = 0; i < dim_x.size() - 2; i++) {
+      scale_vec.push_back(scale);
+    }
+  }
+  InterpolateGradKernel<T, Context>(dev_ctx,
+                                    x,
+                                    out_size,
+                                    size_tensor,
+                                    scale_tensor,
+                                    out_grad,
+                                    data_layout,
+                                    out_d,
+                                    out_h,
+                                    out_w,
+                                    scale_vec,
                                     interp_method,
                                     align_corners,
                                     align_mode,
@@ -1576,10 +1658,34 @@ PD_REGISTER_KERNEL(bilinear_interp_grad,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
+PD_REGISTER_KERNEL(legacy_bilinear_interp_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LegacyBilinearInterpGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(nearest_interp_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::NearestInterpGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
+PD_REGISTER_KERNEL(legacy_nearest_interp_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LegacyNearestInterpGradKernel,
                    float,
                    double,
                    phi::dtype::float16,

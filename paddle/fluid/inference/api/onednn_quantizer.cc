@@ -51,18 +51,18 @@ static phi::DenseTensor CreateScaleTensor(int64_t channels_num = 1);
 static void check_var(const Variable* var, const std::string& var_name) {
   PADDLE_ENFORCE_NOT_NULL(
       var,
-      platform::errors::PreconditionNotMet("%s is not in the scope", var_name));
+      common::errors::PreconditionNotMet("%s is not in the scope", var_name));
   PADDLE_ENFORCE_EQ(
       var->IsType<phi::DenseTensor>(),
       true,
-      platform::errors::PreconditionNotMet("Only support lod tensor now."));
+      common::errors::PreconditionNotMet("Only support lod tensor now."));
 }
 
 static void check_tensor(const phi::DenseTensor& tensor) {
   PADDLE_ENFORCE_GT(
       tensor.dims().size(),
       0,
-      platform::errors::InvalidArgument("Tensor dimension is empty."));
+      common::errors::InvalidArgument("Tensor dimension is empty."));
 }
 
 void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForRNNWeights(
@@ -135,7 +135,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
         auto input_var_name = op->Input("X")[0];
         PADDLE_ENFORCE_NE(scales_.find(input_var_name),
                           scales_.end(),
-                          platform::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "Input scales must be calculated before the "
                               "output scales to infer if output is unsigned."));
         if (scales_.find(input_var_name) != scales_.end()) {
@@ -146,7 +146,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
         auto input_var_name = op->Input("Input")[0];
         PADDLE_ENFORCE_NE(scales_.find(input_var_name),
                           scales_.end(),
-                          platform::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "Input scales must be calculated before the "
                               "output scales to infer if output is unsigned."));
         if (scales_.find(input_var_name) != scales_.end()) {
@@ -161,7 +161,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
           PADDLE_ENFORCE_NE(
               scales_.find(input_var_name),
               scales_.end(),
-              platform::errors::PreconditionNotMet(
+              common::errors::PreconditionNotMet(
                   "Input scales must be calculated before the "
                   "output scales to infer if output is unsigned."));
           is_unsigned = is_unsigned && scales_[input_var_name].first;
@@ -205,7 +205,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
 
   PADDLE_ENFORCE_GT(var_tensor.numel(),
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "MkldnnQuantizer: phi::DenseTensor of variable %s for "
                         "quantization of op "
                         "%s of connection %s should not be empty.",
@@ -283,7 +283,7 @@ AnalysisPredictor::MkldnnQuantizer::GetKLScalingFactor(
     PADDLE_ENFORCE_EQ(
         is_positive,
         true,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
             min_val));
 
@@ -396,7 +396,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxScalingFactor(
     PADDLE_ENFORCE_GE(
         min_val,
         0.0f,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
             min_val));
 
@@ -420,7 +420,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
     PADDLE_ENFORCE_GE(
         min_val,
         0.0f,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
             min_val));
 
@@ -547,17 +547,17 @@ AnalysisPredictor::MkldnnQuantizer::Histogram(
     size_t num_bins) const {
   PADDLE_ENFORCE_GT(num_bins,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "MkldnnQuantizer: To calculate Histogram, num_bins (" +
                         std::to_string(num_bins) + ") must be positive."));
   PADDLE_ENFORCE_GT(var_tensor.numel(),
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "MkldnnQuantizer: To calculate Histogram, the tensor "
                         "must not be empty."));
   PADDLE_ENFORCE_GE(max_val,
                     min_val,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "MkldnnQuantizer: To calculate Histogram, max_val (" +
                         std::to_string(max_val) +
                         ") must be greater or equal"
@@ -579,7 +579,7 @@ AnalysisPredictor::MkldnnQuantizer::Histogram(
 }
 
 void AnalysisPredictor::MkldnnQuantizer::ClearDeviceContext() const {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   phi::OneDNNContext* dev_ctx =
       (phi::OneDNNContext*)pool.Get(predictor_.place_);
   dev_ctx->ResetBlobMap(phi::OneDNNContext::tls().get_curr_exec());
@@ -594,7 +594,7 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
   auto* scope_ptr = arg->scope_ptr();
   PADDLE_ENFORCE_NOT_NULL(
       scope_ptr,
-      platform::errors::PreconditionNotMet("The scope should not be nullptr."));
+      common::errors::PreconditionNotMet("The scope should not be nullptr."));
   arg->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 
   auto* builder = predictor_.config_.pass_builder();
@@ -628,7 +628,7 @@ bool AnalysisPredictor::MkldnnQuantizer::RunQuantizePasses() const {
   PADDLE_ENFORCE_EQ(
       arg->scope_valid(),
       true,
-      platform::errors::PreconditionNotMet("The scope should be valid."));
+      common::errors::PreconditionNotMet("The scope should be valid."));
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD(arg.get(), ir_analyzed_program);
   predictor_.inference_program_.reset(
@@ -643,7 +643,7 @@ bool AnalysisPredictor::MkldnnQuantizer::RunWarmup() const {
   VLOG(3) << "Predictor: run a quantization warmup iteration";
   auto warmup_data = qconfig_->warmup_data();
   PADDLE_ENFORCE_NOT_NULL(warmup_data,
-                          platform::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "Warmup data cannot be NULL in the config."));
   PrettyLogH1("--- Running warmup iteration for quantization");
 
@@ -661,7 +661,7 @@ float AnalysisPredictor::MkldnnQuantizer::SafeEntropy(
     int Q_sum) const {
   PADDLE_ENFORCE_EQ(reference_distr_P.size(),
                     candidate_distr_Q.size(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The P size %d should be equal to Q size %d",
                         reference_distr_P.size(),
                         candidate_distr_Q.size()));
@@ -677,7 +677,7 @@ float AnalysisPredictor::MkldnnQuantizer::SafeEntropy(
       PADDLE_ENFORCE_NE(
           q_idx,
           0,
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "MkldnnQuantizer: Fatal error!, idx = " + std::to_string(idx) +
               " qindex = 0! p_idx = " + std::to_string(p_idx)));
     }

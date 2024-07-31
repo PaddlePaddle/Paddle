@@ -1137,6 +1137,7 @@ class Layer:
         self,
         prefix: str = '',
         include_sublayers: bool = True,
+        remove_duplicate: bool = True,
     ) -> Iterable[tuple[str, Tensor]]:
         """
         Returns an iterator over all parameters in the Layer, yielding tuple of name and parameter.
@@ -1145,6 +1146,8 @@ class Layer:
             prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
             include_sublayers(bool, optional): Whether include the parameters of sublayers.
                 If True, also include the named parameters from sublayers. Default: True.
+            remove_duplicate(bool, optional): Whether to remove duplicated parameters in the result.
+                Default: True.
 
         Yields:
             (string, Parameter): Tuple of name and Parameter
@@ -1188,7 +1191,11 @@ class Layer:
             ValueSet() if in_pir_mode() and not in_to_static_mode() else set()
         )
         named_sublayers = (
-            self.named_sublayers(prefix=prefix, include_self=True)
+            self.named_sublayers(
+                prefix=prefix,
+                include_self=True,
+                remove_duplicate=remove_duplicate,
+            )
             if include_sublayers
             else zip([prefix], [self])
         )
@@ -1197,7 +1204,8 @@ class Layer:
             for key, param in params:
                 if param is None or param in params_set:
                     continue
-                params_set.add(param)
+                if remove_duplicate:
+                    params_set.add(param)
                 name = layer_prefix + ('.' if layer_prefix else '') + key
                 yield name, param
 
@@ -1206,6 +1214,7 @@ class Layer:
         prefix: str = '',
         include_self: bool = False,
         layers_set: set[Layer] | None = None,
+        remove_duplicate: bool = True,
     ) -> Iterable[tuple[str, Layer]]:
         """
         Returns an iterator over all sublayers in the Layer, yielding tuple of name and sublayer.
@@ -1215,6 +1224,8 @@ class Layer:
             prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
             include_self(bool, optional): Whether include the Layer itself. Default: False.
             layers_set(set, optional): The set to record duplicate sublayers. Default: None.
+            remove_duplicate(bool, optional): Whether to remove duplicated sublayers in the result.
+                Default: True.
 
         Yields:
             (string, Layer): Tuple of name and Layer
@@ -1231,18 +1242,44 @@ class Layer:
                 ...     print(prefix, layer)
                 0 Linear(in_features=10, out_features=3, dtype=float32)
                 1 Linear(in_features=3, out_features=10, dtype=float32)
+
+                >>> l = paddle.nn.Linear(10, 3)
+                >>> model = paddle.nn.Sequential(l, l)
+                >>> for prefix, layer in model.named_sublayers(include_self=True, remove_duplicate=True):
+                ...     print(prefix, layer)
+                 Sequential(
+                  (0): Linear(in_features=10, out_features=3, dtype=float32)
+                  (1): Linear(in_features=10, out_features=3, dtype=float32)
+                )
+                0 Linear(in_features=10, out_features=3, dtype=float32)
+
+                >>> l = paddle.nn.Linear(10, 3)
+                >>> model = paddle.nn.Sequential(l, l)
+                >>> for prefix, layer in model.named_sublayers(include_self=True, remove_duplicate=False):
+                ...     print(prefix, layer)
+                 Sequential(
+                  (0): Linear(in_features=10, out_features=3, dtype=float32)
+                  (1): Linear(in_features=10, out_features=3, dtype=float32)
+                )
+                0 Linear(in_features=10, out_features=3, dtype=float32)
+                1 Linear(in_features=10, out_features=3, dtype=float32)
+
         """
         if layers_set is None:
             layers_set = set()
         if include_self and self not in layers_set:
-            layers_set.add(self)
+            if remove_duplicate:
+                layers_set.add(self)
             yield prefix, self
         for key, layer in self._sub_layers.items():
             if layer is None:
                 continue
             layer_prefix = prefix + ('.' if prefix else '') + key
             yield from layer.named_sublayers(
-                prefix=layer_prefix, include_self=True, layers_set=layers_set
+                prefix=layer_prefix,
+                include_self=True,
+                layers_set=layers_set,
+                remove_duplicate=remove_duplicate,
             )
 
     def register_buffer(
@@ -1350,7 +1387,10 @@ class Layer:
         return ret
 
     def named_buffers(
-        self, prefix: str = '', include_sublayers: bool = True
+        self,
+        prefix: str = '',
+        include_sublayers: bool = True,
+        remove_duplicate: bool = True,
     ) -> Iterable[tuple[str, Tensor]]:
         """
         Returns an iterator over all buffers in the Layer, yielding tuple of name and Tensor.
@@ -1359,6 +1399,8 @@ class Layer:
             prefix(str, optional): Prefix to prepend to all buffer names. Default: ''.
             include_sublayers(bool, optional): Whether include the buffers of sublayers.
                 If True, also include the named buffers from sublayers. Default: True.
+            remove_duplicate(bool, optional): Whether to remove duplicated buffers in the result.
+                Default: True.
 
         Yields:
             (string, Tensor): Tuple of name and tensor
@@ -1392,7 +1434,11 @@ class Layer:
         """
         buffers_set = set()
         named_sublayers = (
-            self.named_sublayers(prefix=prefix, include_self=True)
+            self.named_sublayers(
+                prefix=prefix,
+                include_self=True,
+                remove_duplicate=remove_duplicate,
+            )
             if include_sublayers
             else zip([prefix], [self])
         )
@@ -1401,7 +1447,8 @@ class Layer:
             for key, buffer in buffers:
                 if buffer is None or buffer in buffers_set:
                     continue
-                buffers_set.add(buffer)
+                if remove_duplicate:
+                    buffers_set.add(buffer)
                 name = layer_prefix + ('.' if layer_prefix else '') + key
                 yield name, buffer
 

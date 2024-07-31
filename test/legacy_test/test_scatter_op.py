@@ -618,7 +618,13 @@ class TestScatterBF16Op6(TestScatterOp6):
 
 class TestScatterAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
         self.executed_api()

@@ -58,7 +58,9 @@ def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
     return result.reshape(label.shape)
 
 
-def softmax_with_cross_entropy_grad(softmax, label, loss_grad, axis):
+def softmax_with_cross_entropy_grad(
+    softmax, label, loss_grad, axis, ignore_index=-1
+):
     shape = softmax.shape
     axis %= len(shape)
     n = int(np.prod(shape[:axis]))
@@ -69,14 +71,17 @@ def softmax_with_cross_entropy_grad(softmax, label, loss_grad, axis):
     for i in range(n * d):
         row = int(i / d)
         col = i % d
-        if col == label_2d[row]:
-            logit_grad_2d[row][col] = (
-                logit_grad_2d[row][col] - 1.0
-            ) * loss_grad_2d[row]
+        if label_2d[row] == ignore_index:
+            logit_grad_2d[row][col] = 0
         else:
-            logit_grad_2d[row][col] = (
-                logit_grad_2d[row][col] * loss_grad_2d[row]
-            )
+            if col == label_2d[row]:
+                logit_grad_2d[row][col] = (
+                    logit_grad_2d[row][col] - 1.0
+                ) * loss_grad_2d[row]
+            else:
+                logit_grad_2d[row][col] = (
+                    logit_grad_2d[row][col] * loss_grad_2d[row]
+                )
     logit_grad = logit_grad_2d.reshape(softmax.shape)
     return logit_grad
 
@@ -144,6 +149,7 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             label = np.random.randint(
                 0, self.num_class, size=label_shape, dtype='int32'
             )
+            ignore_index = label[0][0]
             loss_grad = np.random.uniform(
                 low=-10.0, high=10.0, size=label_shape
             ).astype(np_dtype)
@@ -165,9 +171,15 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
 
             # calculate analytic result
             need_softmax = np.apply_along_axis(stable_softmax, -1, inputs)
-            need_loss = cross_entropy(need_softmax, label, False, -1)
+            need_loss = cross_entropy(
+                need_softmax, label, False, -1, ignore_index
+            )
             need_logits_grad = softmax_with_cross_entropy_grad(
-                need_softmax, label, loss_grad, axis=-1
+                need_softmax,
+                label,
+                loss_grad,
+                axis=-1,
+                ignore_index=ignore_index,
             )
 
             # get real result

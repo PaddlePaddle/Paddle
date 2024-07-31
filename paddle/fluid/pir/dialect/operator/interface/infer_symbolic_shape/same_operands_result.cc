@@ -33,7 +33,6 @@ OP_SAME_OPERANDS_AND_RESULT(Acos_)
 OP_SAME_OPERANDS_AND_RESULT(Acosh)
 OP_SAME_OPERANDS_AND_RESULT(Acosh_)
 OP_SAME_OPERANDS_AND_RESULT(Angle)
-OP_SAME_OPERANDS_AND_RESULT(Argsort)
 OP_SAME_OPERANDS_AND_RESULT(Asin)
 OP_SAME_OPERANDS_AND_RESULT(Asin_)
 OP_SAME_OPERANDS_AND_RESULT(Asinh)
@@ -72,10 +71,13 @@ OP_SAME_OPERANDS_AND_RESULT(Exp_)
 OP_SAME_OPERANDS_AND_RESULT(Expm1)
 OP_SAME_OPERANDS_AND_RESULT(Expm1_)
 OP_SAME_OPERANDS_AND_RESULT(Exponential_)
+OP_SAME_OPERANDS_AND_RESULT(Fill)
+OP_SAME_OPERANDS_AND_RESULT(Fill_)
 OP_SAME_OPERANDS_AND_RESULT(Fetch)
 OP_SAME_OPERANDS_AND_RESULT(Flip)
 OP_SAME_OPERANDS_AND_RESULT(Floor)
 OP_SAME_OPERANDS_AND_RESULT(Floor_)
+OP_SAME_OPERANDS_AND_RESULT(FullLike)
 OP_SAME_OPERANDS_AND_RESULT(Imag)
 OP_SAME_OPERANDS_AND_RESULT(Increment)
 OP_SAME_OPERANDS_AND_RESULT(Increment_)
@@ -98,6 +100,7 @@ OP_SAME_OPERANDS_AND_RESULT(Logit_)
 OP_SAME_OPERANDS_AND_RESULT(Pow)
 OP_SAME_OPERANDS_AND_RESULT(Poisson)
 OP_SAME_OPERANDS_AND_RESULT(Pow_)
+OP_SAME_OPERANDS_AND_RESULT(Prelu)
 OP_SAME_OPERANDS_AND_RESULT(Print)
 OP_SAME_OPERANDS_AND_RESULT(PutAlongAxis)
 OP_SAME_OPERANDS_AND_RESULT(PutAlongAxis_)
@@ -173,6 +176,15 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
     infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   }
 
+  return true;
+}
+
+bool ArgsortOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(1), operand_shape_or_data);
   return true;
 }
 

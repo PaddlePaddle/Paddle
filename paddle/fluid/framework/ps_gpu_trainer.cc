@@ -61,10 +61,10 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   for (int i = 0; i < place_num; ++i) {
     int num = trainer_desc.worker_places(i);
 #ifdef PADDLE_WITH_CUDA
-    platform::CUDAPlace place = platform::CUDAPlace(num);
+    phi::GPUPlace place = phi::GPUPlace(num);
 #endif
 #ifdef PADDLE_WITH_XPU_KP
-    platform::XPUPlace place = platform::XPUPlace(num);
+    phi::XPUPlace place = phi::XPUPlace(num);
 #endif
     places_.push_back(place);
     dev_ids.push_back(num);
@@ -263,7 +263,7 @@ void PSGPUTrainer::RegisterHeterCallback() {
 }
 
 void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                  const platform::Place& place) {
+                                  const phi::Place& place) {
   for (size_t i = 0; i < places_.size(); ++i) {
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
@@ -360,15 +360,15 @@ template <typename T>
 void PSGPUTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
                                     phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_root;
-  TensorCopySync(*root_tensor, platform::CPUPlace(), &tmp_root);
+  TensorCopySync(*root_tensor, phi::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   phi::DenseTensor tmp_tensor;
-  TensorCopySync(*tensor, platform::CPUPlace(), &tmp_tensor);
+  TensorCopySync(*tensor, phi::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
     tmp_root_data[i] += data[i];
   }
-  TensorCopySync(tmp_root, platform::CPUPlace(), root_tensor);
+  TensorCopySync(tmp_root, phi::CPUPlace(), root_tensor);
 }
 
 void PSGPUTrainer::MergeDenseParam() {

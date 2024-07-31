@@ -233,7 +233,10 @@ class SlotObjAllocator {
       deleter_(tmp);
       --capacity_;
     }
-    CHECK_EQ(capacity_, static_cast<size_t>(0));
+    PADDLE_ENFORCE_EQ(capacity_,
+                      static_cast<size_t>(0),
+                      phi::errors::InvalidArgument(
+                          "There still are some nodes are not deleted"));
   }
   T* acquire(void) {
     T* x = NULL;
@@ -314,7 +317,10 @@ class SlotObjPool {
     input->clear();
   }
   void put(SlotRecord* input, size_t size) {
-    CHECK(ins_chan_->WriteMove(size, input) == size);
+    PADDLE_ENFORCE_EQ(ins_chan_->WriteMove(size, input),
+                      size,
+                      phi::errors::InvalidArgument(
+                          "Incompatible size of input with given size"));
   }
   void run(void) {
     std::vector<SlotRecord> input;
@@ -488,7 +494,9 @@ struct HostBuffer {
     CUDA_CHECK(cudaHostAlloc(reinterpret_cast<void**>(&host_buffer),
                              buf_size * sizeof(T),
                              cudaHostAllocDefault));
-    CHECK(host_buffer != NULL);
+    PADDLE_ENFORCE_NOT_NULL(host_buffer,
+                            phi::errors::ResourceExhausted(
+                                "Alloc memory failed on CUDA, please Check"));
   }
   void free() {
     if (host_buffer != NULL) {
@@ -538,13 +546,13 @@ struct BatchGPUValue {
 
 class MiniBatchGpuPack {
  public:
-  MiniBatchGpuPack(const paddle::platform::Place& place,
+  MiniBatchGpuPack(const phi::Place& place,
                    const std::vector<UsedSlotInfo>& infos,
                    phi::StreamId stream_id);
   ~MiniBatchGpuPack();
   bool is_use() { return is_using_; }
   void set_use_flag(bool is_use) { is_using_ = is_use; }
-  void reset(const paddle::platform::Place& place);
+  void reset(const phi::Place& place);
   void pack_instance(const SlotRecord* ins_vec, int num);
   int ins_num() { return ins_num_; }
   int pv_num() { return pv_num_; }
@@ -628,7 +636,7 @@ class MiniBatchGpuPack {
 
  private:
   bool is_using_ = false;
-  paddle::platform::Place place_;
+  phi::Place place_;
   std::unique_ptr<phi::CUDAStream> stream_holder_;
   cudaStream_t stream_;
   BatchGPUValue value_;
@@ -682,7 +690,7 @@ class MiniBatchGpuPackMgr {
   }
 
   // thread unsafe
-  MiniBatchGpuPack* get(const paddle::platform::Place& place,
+  MiniBatchGpuPack* get(const phi::Place& place,
                         const std::vector<UsedSlotInfo>& infos) {
     int device_id = place.GetDeviceId();
     for (size_t i = 0; i < pack_list_[device_id].size(); i++) {
@@ -1068,7 +1076,7 @@ class GraphDataGenerator {
 
   cudaStream_t train_stream_;
   cudaStream_t sample_stream_;
-  paddle::platform::Place place_;
+  phi::Place place_;
   std::vector<phi::DenseTensor*> feed_vec_;
   std::vector<UsedSlotInfo>* feed_info_;  // adapt for float feature
   std::vector<size_t> offset_;
@@ -1144,7 +1152,7 @@ class DataFeed {
   virtual ~DataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
   virtual bool CheckFile(const char* filename UNUSED) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(CheckFile) is not implemented."));
   }
   // Set filelist for DataFeed.
@@ -1368,7 +1376,7 @@ class DataFeed {
   }
 
   virtual void DoWalkandSage() {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(DoWalkandSage) is not implemented."));
   }
 
@@ -1384,13 +1392,11 @@ class DataFeed {
 
   virtual bool IsTrainMode() { return train_mode_; }
   virtual void LoadIntoMemory() {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(LoadIntoMemory) is not implemented."));
   }
-  virtual void SetPlace(const paddle::platform::Place& place) {
-    place_ = place;
-  }
-  virtual const paddle::platform::Place& GetPlace() const { return place_; }
+  virtual void SetPlace(const phi::Place& place) { place_ = place; }
+  virtual const phi::Place& GetPlace() const { return place_; }
 
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   virtual MiniBatchGpuPack* get_pack(MiniBatchGpuPack* last_pack) {
@@ -1398,7 +1404,7 @@ class DataFeed {
   }
 
   virtual void PackToScope(MiniBatchGpuPack* pack, const Scope* scope) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(PackToScope) is not implemented."));
   }
   virtual void SetInsIdVec(MiniBatchGpuPack* pack) {}
@@ -1406,11 +1412,11 @@ class DataFeed {
 
   virtual void DumpWalkPath(std::string dump_path UNUSED,
                             size_t dump_rate UNUSED) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(DumpWalkPath) is not implemented."));
   }
   virtual void DumpSampleNeighbors(std::string dump_path) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "This function(DumpSampleNeighbors) is not implemented"));
   }
 
@@ -1469,7 +1475,7 @@ class DataFeed {
   std::vector<SlotConf> slot_conf_;
   std::vector<std::string> ins_id_vec_;
   std::vector<std::string> ins_content_vec_;
-  platform::Place place_;
+  phi::Place place_;
   std::string uid_slot_;
 
   // The input type of pipe reader, 0 for one sample, 1 for one batch
@@ -1706,7 +1712,7 @@ class MultiSlotType {
   void CheckType(const std::string& type) const {
     PADDLE_ENFORCE_EQ((type == "uint64" || type == "float"),
                       true,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "MultiSlotType error, expect type is uint64 or "
                           "float, but received type is %s.",
                           type));
@@ -1715,14 +1721,14 @@ class MultiSlotType {
     PADDLE_ENFORCE_EQ(
         type_[0],
         'f',
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "MultiSlotType error, add %s value to float slot.", type_));
   }
   void CheckUint64() const {
     PADDLE_ENFORCE_EQ(
         type_[0],
         'u',
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "MultiSlotType error, add %s value to uint64 slot.", type_));
   }
   std::vector<float> float_feasign_;
@@ -1842,10 +1848,10 @@ class RecordCandidateList {
     PADDLE_ENFORCE_LT(
         index,
         candidate_list_.size(),
-        platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
-                                     "elements in candidate_list[%lu].",
-                                     index,
-                                     candidate_list_.size()));
+        common::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                   "elements in candidate_list[%lu].",
+                                   index,
+                                   candidate_list_.size()));
     return candidate_list_[index];
   }
   void SetSlotIndexToReplace(

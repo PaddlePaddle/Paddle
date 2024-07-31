@@ -14,4 +14,7 @@
 #pragma once
 
 #include "nlohmann/json.hpp"
+#include "yaml-cpp/yaml.h"
+
 using Json = nlohmann::json;
+using Yaml = YAML::Node;

@@ -2175,7 +2175,7 @@ def margin_cross_entropy(
     scale: float = ...,
     group=...,
     return_softmax: Literal[True] = ...,
-    reduction: _ReduceMode = ...,
+    reduction: _ReduceMode | None = ...,
 ) -> tuple[Tensor, Tensor]:
     ...
 
@@ -2190,7 +2190,7 @@ def margin_cross_entropy(
     scale: float = ...,
     group=...,
     return_softmax: Literal[False] = ...,
-    reduction: _ReduceMode = ...,
+    reduction: _ReduceMode | None = ...,
 ) -> Tensor:
     ...
 
@@ -2205,7 +2205,7 @@ def margin_cross_entropy(
     scale: float = ...,
     group=...,
     return_softmax: bool = ...,
-    reduction: _ReduceMode = ...,
+    reduction: _ReduceMode | None = ...,
 ) -> Tensor | tuple[Tensor, Tensor]:
     ...
 

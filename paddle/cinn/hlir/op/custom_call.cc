@@ -15,7 +15,6 @@
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -26,6 +25,7 @@
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 #ifdef CINN_WITH_CUDNN
@@ -65,8 +65,11 @@ class CustomCallArgsFuncRegistry {
   ArgsFunc Lookup(const std::string &custom_call,
                   const cinn::common::Target &target) {
     auto id = custom_call + "_" + target.arch_str();
-    CHECK(func_map_.count(id))
-        << "Can't find " << custom_call << " for target " << target.arch_str();
+    PADDLE_ENFORCE_EQ(
+        func_map_.count(id),
+        true,
+        phi::errors::NotFound(
+            "Can't find %s for target %s", custom_call, target.arch_str()));
     return func_map_[id];
   }
 
@@ -82,10 +85,24 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
   framework::CINNCompute compute([=](lang::Args args, lang::RetValue *ret) {
-    CHECK_EQ(args.size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        args.size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The size of 'args' should be 1, but received size %d.",
+            args.size()));
+
     CINNValuePack pack_args = args[0];
-    CHECK_EQ(pack_args.size(), 2UL);
-    CHECK(pack_args[0].is_string() && pack_args[1].is_string());
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        2UL,
+        phi::errors::InvalidArgument(
+            "The size of 'pack_args' should be 2, but received size %d.",
+            pack_args.size()));
+    PADDLE_ENFORCE_EQ(pack_args[0].is_string() && pack_args[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The pack_arg[0] and pack_arg[1] should be string."));
     std::string func_name = pack_args[0].operator std::string();
     std::string custom_call_api = pack_args[1].operator std::string();
 
@@ -143,10 +160,30 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(inputs.size(), 2);
-  CHECK_EQ(output_shapes.size(), 1);
-  CHECK_LE(inputs[0]->shape.size(), 4);
-  CHECK_LE(inputs[1]->shape.size(), 4);
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The size of 'inputs' should be 2, but received size %d.",
+          inputs.size()));
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The size of 'output_shapes' should be 1, but received size %d.",
+          output_shapes.size()));
+  PADDLE_ENFORCE_LE(inputs[0]->shape.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The shape size of the first input should be less than "
+                        "or equal to 4, but received size %d.",
+                        inputs[0]->shape.size()));
+  PADDLE_ENFORCE_LE(inputs[1]->shape.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The shape size of the second input should be less "
+                        "than or equal to 4, but received size %d.",
+                        inputs[1]->shape.size()));
 
   const auto &attr_store = attrs.attr_store;
   bool trans_a = attr_store.count("trans_a")
@@ -173,8 +210,15 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
   bool is_infer = attr_store.count("is_infer")
                       ? absl::get<bool>(attr_store.at("is_infer"))
                       : false;
-  CHECK((x_num_col_dims == 0 && y_num_col_dims == 0) ||
-        (x_num_col_dims > 0 && y_num_col_dims > 0));
+  PADDLE_ENFORCE_EQ(
+      (x_num_col_dims == 0 && y_num_col_dims == 0) ||
+          (x_num_col_dims > 0 && y_num_col_dims > 0),
+      true,
+      phi::errors::InvalidArgument(
+          "x_num_col_dims and y_num_cole_dims should both be 0 or positive"
+          "now x_num_col_dims is %d and y_num_col_dims is %d",
+          x_num_col_dims,
+          y_num_col_dims));
 
   std::vector<ir::Expr> a_shape, b_shape;
   if (x_num_col_dims == 0 && y_num_col_dims == 0) {
@@ -240,19 +284,41 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
     b_shape.emplace_back(b_width);
 
     if (is_infer) {
-      CHECK_EQ(a_width, b_width)
-          << "The K dimension of mul should be equal! Please check.";
+      PADDLE_ENFORCE_EQ(a_width,
+                        b_width,
+                        phi::errors::InvalidArgument(
+                            "The K dimension of mul should be equal! Received: "
+                            "a_width = %d, b_width = %d.",
+                            a_width,
+                            b_width));
+
       trans_b = true;
     } else {
-      CHECK_EQ(a_width, b_height)
-          << "The K dimension of mul should be equal! Please check.";
+      PADDLE_ENFORCE_EQ(a_width,
+                        b_height,
+                        phi::errors::InvalidArgument(
+                            "The K dimension of mul should be equal! Received: "
+                            "a_width = %d, b_height = %d.",
+                            a_width,
+                            b_height));
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
+    PADDLE_THROW(::common::errors::InvalidArgument("Unkown Matmul Setting!"));
   }
 
-  CHECK_EQ(a_shape.size(), 4);
-  CHECK_EQ(b_shape.size(), 4);
+  PADDLE_ENFORCE_EQ(
+      a_shape.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The size of 'a_shape' should be 4, but received size %d.",
+          a_shape.size()));
+
+  PADDLE_ENFORCE_EQ(
+      b_shape.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The size of 'b_shape' should be 4, but received size %d.",
+          b_shape.size()));
   // func args
   std::vector<ir::Expr> args = {ir::Expr(trans_a),
                                 ir::Expr(trans_b),
@@ -268,9 +334,29 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_GT(inputs.size(), 2);
-  CHECK_GT(output_shapes.size(), 1);
-  CHECK_EQ(inputs.size() - 1, output_shapes.size());
+  PADDLE_ENFORCE_GT(
+      inputs.size(),
+      2,
+      phi::errors::InvalidArgument("The size of 'inputs' should be "
+                                   "greater than 2, but received size %d.",
+                                   inputs.size()));
+
+  PADDLE_ENFORCE_GT(
+      output_shapes.size(),
+      1,
+      phi::errors::InvalidArgument("The size of 'output_shapes' should "
+                                   "be greater than 1, but received size %d.",
+                                   output_shapes.size()));
+
+  PADDLE_ENFORCE_EQ(
+      inputs.size() - 1,
+      output_shapes.size(),
+      phi::errors::InvalidArgument("The size of 'inputs' minus 1 should "
+                                   "be equal to the size of 'output_shapes'. "
+                                   "Received: inputs.size() - 1 = %d, "
+                                   "output_shapes.size() = %d.",
+                                   inputs.size() - 1,
+                                   output_shapes.size()));
 
   const auto &attr_store = attrs.attr_store;
   bool trans_a = attr_store.count("trans_a")
@@ -297,11 +383,28 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
   bool is_infer = attr_store.count("is_infer")
                       ? absl::get<bool>(attr_store.at("is_infer"))
                       : false;
-  CHECK((x_num_col_dims == 0 && y_num_col_dims == 0) ||
-        (x_num_col_dims > 0 && y_num_col_dims > 0));
+  PADDLE_ENFORCE_EQ(
+      (x_num_col_dims == 0 && y_num_col_dims == 0) ||
+          (x_num_col_dims > 0 && y_num_col_dims > 0),
+      true,
+      phi::errors::InvalidArgument("The values of 'x_num_col_dims' and "
+                                   "'y_num_col_dims' must either both be 0 "
+                                   "or both be greater than 0. Received: "
+                                   "x_num_col_dims = %d, y_num_col_dims = %d.",
+                                   x_num_col_dims,
+                                   y_num_col_dims));
 
   ir::Tensor left, right;
-  CHECK(attr_store.count("side"));
+  PADDLE_ENFORCE_EQ(
+      (x_num_col_dims == 0 && y_num_col_dims == 0) ||
+          (x_num_col_dims > 0 && y_num_col_dims > 0),
+      true,
+      phi::errors::InvalidArgument("The values of 'x_num_col_dims' and "
+                                   "'y_num_col_dims' must either both be 0 "
+                                   "or both be greater than 0. Received: "
+                                   "x_num_col_dims = %d, y_num_col_dims = %d.",
+                                   x_num_col_dims,
+                                   y_num_col_dims));
   if (absl::get<std::string>(attr_store.at("side")) == "left") {
     left = inputs[0];
     right = inputs[1];
@@ -374,19 +477,41 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
     b_shape.emplace_back(b_width);
 
     if (is_infer) {
-      CHECK_EQ(a_width, b_width)
-          << "The K dimension of mul should be equal! Please check.";
+      PADDLE_ENFORCE_EQ(a_width,
+                        b_width,
+                        phi::errors::InvalidArgument(
+                            "The K dimension of mul should be equal! "
+                            "Received: a_width = %d, b_width = %d.",
+                            a_width,
+                            b_width));
       trans_b = true;
     } else {
-      CHECK_EQ(a_width, b_height)
-          << "The K dimension of mul should be equal! Please check.";
+      PADDLE_ENFORCE_EQ(a_width,
+                        b_height,
+                        phi::errors::InvalidArgument(
+                            "The K dimension of mul should be equal! "
+                            "Received: a_width = %d, b_height = %d.",
+                            a_width,
+                            b_height));
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
+    PADDLE_THROW(::common::errors::InvalidArgument("Unkown Matmul Setting!"));
   }
 
-  CHECK_EQ(a_shape.size(), 4);
-  CHECK_EQ(b_shape.size(), 4);
+  PADDLE_ENFORCE_EQ(
+      a_shape.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The size of 'a_shape' should be 4, but received size %d.",
+          a_shape.size()));
+
+  PADDLE_ENFORCE_EQ(
+      b_shape.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The size of 'b_shape' should be 4, but received size %d.",
+          b_shape.size()));
+
   // func args
   std::vector<ir::Expr> args = {
       absl::get<std::string>(attr_store.at("side")) == "left" ? ir::Expr(0)
@@ -408,8 +533,17 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvForward(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(inputs.size(), 2UL);
-  // CHECK_EQ(output_shapes.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "The size of 'inputs' should be 2, but received size %d.",
+          inputs.size()));
+  /* PADDLE_ENFORCE_EQ(
+       output_shapes.size(), 1UL,
+       phi::errors::InvalidArgument(
+           "The size of 'output_shapes' should be 1, but received size %d.",
+           output_shapes.size())); */
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
                     ? absl::get<float>(attr_store.at("alpha"))
@@ -417,9 +551,17 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvForward(
   float beta =
       attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
 
-  CHECK(attr_store.count("padding"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("padding"),
+      true,
+      phi::errors::NotFound(
+          "The CudnnConvForward custom_call must has attribute \"padding\""));
   auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
-  CHECK(attr_store.count("stride"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("stride"),
+      true,
+      phi::errors::NotFound(
+          "The CudnnConvForward custom_call must has attribute \"stride\""));
   auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
                       ? absl::get<std::vector<int>>(attr_store.at("dilation"))
@@ -471,8 +613,20 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvBackwardData(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(inputs.size(), 2UL);
-  CHECK_EQ(output_shapes.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "The size of 'inputs' should be 2, but received size %d.",
+          inputs.size()));
+
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'output_shapes' should be 1, but received size %d.",
+          output_shapes.size()));
+
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
                     ? absl::get<float>(attr_store.at("alpha"))
@@ -480,9 +634,17 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvBackwardData(
   float beta =
       attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
 
-  CHECK(attr_store.count("padding"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("padding"),
+      true,
+      phi::errors::NotFound("The CudnnConvBackwardData custom_call"
+                            "must has attribute \"padding\""));
   auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
-  CHECK(attr_store.count("stride"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("stride"),
+      true,
+      phi::errors::NotFound("The CudnnConvBackwardData custom_call"
+                            "must has attribute \"stride\""));
   auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
                       ? absl::get<std::vector<int>>(attr_store.at("dilation"))
@@ -533,8 +695,20 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvBackwardFilter(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(inputs.size(), 2UL);
-  CHECK_EQ(output_shapes.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "The size of 'inputs' should be 2, but received size %d.",
+          inputs.size()));
+
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'output_shapes' should be 1, but received size %d.",
+          output_shapes.size()));
+
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
                     ? absl::get<float>(attr_store.at("alpha"))
@@ -542,9 +716,17 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvBackwardFilter(
   float beta =
       attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
 
-  CHECK(attr_store.count("padding"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("padding"),
+      true,
+      phi::errors::NotFound("The CudnnConvBackwardFilter custom_call"
+                            "must has attribute \"padding\""));
   auto padding = absl::get<std::vector<int>>(attr_store.at("padding"));
-  CHECK(attr_store.count("stride"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("stride"),
+      true,
+      phi::errors::NotFound("The CudnnConvBackwardFilter custom_call"
+                            "must has attribute \"stride\""));
   auto stride = absl::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
                       ? absl::get<std::vector<int>>(attr_store.at("dilation"))
@@ -596,8 +778,20 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolForward(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(inputs.size(), 1UL);
-  CHECK_EQ(output_shapes.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'inputs' should be 1, but received size %d.",
+          inputs.size()));
+
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'output_shapes' should be 1, but received size %d.",
+          output_shapes.size()));
+
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
                     ? absl::get<float>(attr_store.at("alpha"))
@@ -605,15 +799,34 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolForward(
   float beta =
       attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
 
-  CHECK(attr_store.count("kernel_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("kernel_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolForward custom_call"
+                            "must has attribute \"kernel_size\""));
   auto kernel = absl::get<std::vector<int>>(attr_store.at("kernel_size"));
-  CHECK(attr_store.count("padding_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("padding_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolForward custom_call"
+                            "must has attribute \"padding_size\""));
   auto padding = absl::get<std::vector<int>>(attr_store.at("padding_size"));
-  CHECK(attr_store.count("stride_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("stride_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolForward custom_call"
+                            "must has attribute \"stride_size\""));
   auto stride = absl::get<std::vector<int>>(attr_store.at("stride_size"));
-  CHECK(attr_store.count("pool_type"));
+  PADDLE_ENFORCE_EQ(attr_store.count("pool_type"),
+                    true,
+                    phi::errors::NotFound("The CudnnPoolForward custom_call"
+                                          "must has attribute \"pool_type\""));
   auto pool_type = absl::get<std::string>(attr_store.at("pool_type"));
-  CHECK(attr_store.count("data_format"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("data_format"),
+      true,
+      phi::errors::NotFound("The CudnnPoolForward custom_call"
+                            "must has attribute \"data_format\""));
   std::string data_format =
       absl::get<std::string>(attr_store.at("data_format"));
 
@@ -659,8 +872,20 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolBackward(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(inputs.size(), 3UL);
-  CHECK_EQ(output_shapes.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      3UL,
+      phi::errors::InvalidArgument(
+          "The size of 'inputs' should be 3, but received size %d.",
+          inputs.size()));
+
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'output_shapes' should be 1, but received size %d.",
+          output_shapes.size()));
+
   const auto &attr_store = attrs.attr_store;
   float alpha = attr_store.count("alpha")
                     ? absl::get<float>(attr_store.at("alpha"))
@@ -668,15 +893,34 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolBackward(
   float beta =
       attr_store.count("beta") ? absl::get<float>(attr_store.at("beta")) : 0.0f;
 
-  CHECK(attr_store.count("kernel_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("kernel_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolBackward custom_call"
+                            "must has attribute \"kernel_size\""));
   auto kernel = absl::get<std::vector<int>>(attr_store.at("kernel_size"));
-  CHECK(attr_store.count("padding_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("padding_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolBackward custom_call"
+                            "must has attribute \"padding_size\""));
   auto padding = absl::get<std::vector<int>>(attr_store.at("padding_size"));
-  CHECK(attr_store.count("stride_size"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("stride_size"),
+      true,
+      phi::errors::NotFound("The CudnnPoolBackward custom_call"
+                            "must has attribute \"stride_size\""));
   auto stride = absl::get<std::vector<int>>(attr_store.at("stride_size"));
-  CHECK(attr_store.count("pool_type"));
-  auto pool_type = absl::get<std::string>(attrs.attr_store.at("pool_type"));
-  CHECK(attr_store.count("data_format"));
+  PADDLE_ENFORCE_EQ(attr_store.count("pool_type"),
+                    true,
+                    phi::errors::NotFound("The CudnnPoolBackward custom_call"
+                                          "must has attribute \"pool_type\""));
+  auto pool_type = absl::get<std::string>(attr_store.at("pool_type"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("data_format"),
+      true,
+      phi::errors::NotFound("The CudnnPoolBackward custom_call"
+                            "must has attribute \"data_format\""));
   std::string data_format =
       absl::get<std::string>(attrs.attr_store.at("data_format"));
 
@@ -720,10 +964,26 @@ std::vector<ir::Expr> CustomCallArgsForAssertTrue(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(inputs.size(), 1UL);
-  CHECK_EQ(output_shapes.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'inputs' should be 1, but received size %d.",
+          inputs.size()));
+
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'output_shapes' should be 1, but received size %d.",
+          output_shapes.size()));
+
   const auto &attr_store = attrs.attr_store;
-  CHECK(attr_store.count("msg"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("msg"),
+      true,
+      phi::errors::NotFound(
+          "The assert_true custom_call must has attribute \"msg\""));
   // TODO(thisjiang): change type from 'int' to 'std::string' when custom call
   // support 'std::string' type
   int msg = absl::get<int>(attr_store.at("msg"));
@@ -740,7 +1000,12 @@ std::vector<ir::Expr> CustomCallArgsForGaussianRandom(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(output_shapes.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'output_shapes' should be 1, but received size %d.",
+          output_shapes.size()));
 
   const auto &attr_store = attrs.attr_store;
 
@@ -763,7 +1028,12 @@ std::vector<ir::Expr> CustomCallArgsForUniformRandom(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(output_shapes.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'output_shapes' should be 1, but received size %d.",
+          output_shapes.size()));
 
   const auto &attr_store = attrs.attr_store;
 
@@ -777,7 +1047,13 @@ std::vector<ir::Expr> CustomCallArgsForUniformRandom(
                  ? absl::get<int>(attrs.attr_store.at("seed"))
                  : 0;
 
-  CHECK_GE(max, min) << "Arg max must greater than min, please check.";
+  PADDLE_ENFORCE_GE(
+      max,
+      min,
+      phi::errors::InvalidArgument("Arg 'max' must be greater than or equal to "
+                                   "'min'. Received: max = %d, min = %d.",
+                                   max,
+                                   min));
 
   std::vector<ir::Expr> args = {ir::Expr(min), ir::Expr(max), ir::Expr(seed)};
 
@@ -788,7 +1064,12 @@ std::vector<ir::Expr> CustomCallArgsForRandInt(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(output_shapes.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'output_shapes' should be 1, but received size %d.",
+          output_shapes.size()));
 
   const auto &attr_store = attrs.attr_store;
 
@@ -805,9 +1086,18 @@ std::vector<ir::Expr> CustomCallArgsForCholesky(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(inputs.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of 'inputs' should be 1, but received size %d.",
+          inputs.size()));
   const auto &attr_store = attrs.attr_store;
-  CHECK(attr_store.count("upper"));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("upper"),
+      true,
+      phi::errors::NotFound(
+          "The cholesky custom_call must has attribute \"upper\""));
 
   ir::Tensor x = inputs.front();
   int ndim = static_cast<int>(x->shape.size());
@@ -829,12 +1119,31 @@ std::vector<ir::Expr> CustomCallArgsForTriangularSolve(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(inputs.size(), 2UL);
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "The size of 'inputs' should be 2, but received size %d.",
+          inputs.size()));
   const auto &attr_store = attrs.attr_store;
-  CHECK(attr_store.count("left_side"));
-  CHECK(attr_store.count("upper"));
-  CHECK(attr_store.count("transpose_a"));
-  CHECK(attr_store.count("unit_diagonal"));
+  PADDLE_ENFORCE_EQ(attr_store.count("left_side"),
+                    true,
+                    phi::errors::NotFound("The TriangularSolve custom_call"
+                                          "must has attribute \"left_side\""));
+  PADDLE_ENFORCE_EQ(attr_store.count("upper"),
+                    true,
+                    phi::errors::NotFound("The TriangularSolve custom_call"
+                                          "must has attribute \"upper\""));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("transpose_a"),
+      true,
+      phi::errors::NotFound("The TriangularSolve custom_call"
+                            "must has attribute \"transpose_a\""));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("unit_diagonal"),
+      true,
+      phi::errors::NotFound("The TriangularSolve custom_call"
+                            "must has attribute \"unit_diagonal\""));
 
   ir::Tensor a = inputs[0];
   ir::Tensor b = inputs[1];
@@ -870,11 +1179,20 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
   const auto &attr_store = attrs.attr_store;
-  CHECK(attr_store.count("value"))
-      << "The memset custom_call must has attribute \"value\"";
-  CHECK(inputs.empty()) << "The memset custom_call should not has any input";
-  CHECK_EQ(output_shapes.size(), 1)
-      << "The memset custom_call should only has one output";
+  PADDLE_ENFORCE_EQ(attr_store.count("value"),
+                    true,
+                    phi::errors::NotFound(
+                        "The memset custom_call must has attribute \"value\""));
+  PADDLE_ENFORCE_EQ(inputs.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The memset custom_call should not has any input"));
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1,
+      phi::errors::InvalidArgument("The memset custom_call should only have "
+                                   "one output, but received size %d.",
+                                   output_shapes.size()));
 
   struct Visitor {
     int *scalar_;
@@ -893,7 +1211,7 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     std::stringstream ss;                                             \
     ss << "The type of \"value\" of memset custom_call not support: " \
        << #TYPE;                                                      \
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));             \
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));        \
   }
 
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::string)
@@ -912,7 +1230,11 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
   const auto &value_attr = attr_store.at("value");
   absl::visit(Visitor(&value), value_attr);
   // can support memset non-0 ?
-  CHECK_EQ(value, 0) << "Now memset only support value is 0!";
+  PADDLE_ENFORCE_EQ(
+      value,
+      0,
+      phi::errors::InvalidArgument(
+          "Now memset only supports value 0, but received value %d.", value));
 
   size_t count = 1;
   for (auto dim : output_shapes[0]) {
@@ -933,10 +1255,19 @@ std::vector<ir::Expr> CustomCallArgsForMemcpy(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<std::vector<int>> &output_shapes) {
-  CHECK_EQ(inputs.size(), 1)
-      << "The memcpy custom_call should only has one input";
-  CHECK_EQ(output_shapes.size(), 1)
-      << "The memcpy custom_call should only has one output";
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      1,
+      phi::errors::InvalidArgument("The memcpy custom_call should only have "
+                                   "one input, but received size %d.",
+                                   inputs.size()));
+
+  PADDLE_ENFORCE_EQ(
+      output_shapes.size(),
+      1,
+      phi::errors::InvalidArgument("The memcpy custom_call should only have "
+                                   "one output, but received size %d.",
+                                   output_shapes.size()));
 
   const auto &input_shape = ToPodVector<int>(inputs[0]->shape);
 
@@ -982,10 +1313,6 @@ bool RegisterCustomCallArgsFunc() {
       cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForTriangularSolve);
   CustomCallArgsFuncRegistry::Global().Register(
-      "cinn_assert_true_nvgpu",
-      cinn::common::DefaultNVGPUTarget(),
-      CustomCallArgsForAssertTrue);
-  CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cuda_memset",
       cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForMemset);
@@ -1030,11 +1357,6 @@ bool RegisterCustomCallArgsFunc() {
       CustomCallArgsForCholesky);
 
 #endif
-
-  CustomCallArgsFuncRegistry::Global().Register(
-      "cinn_assert_true_host",
-      cinn::common::DefaultHostTarget(),
-      CustomCallArgsForAssertTrue);
 
   return true;
 }

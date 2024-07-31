@@ -28,7 +28,7 @@ class Scope;
 class CinnJitInstruction : public InstructionBase {
  public:
   CinnJitInstruction(size_t id,
-                     const platform::Place& place,
+                     const phi::Place& place,
                      ::pir::Operation* op,
                      const ValueExecutionInfo* value_exec_info);
 
@@ -45,7 +45,7 @@ class CinnJitInstruction : public InstructionBase {
 
   std::shared_ptr<FnPtrImpl> fn_ptr_impl_{nullptr};
 
-  platform::Place place_;
+  phi::Place place_;
 
   phi::DeviceContext* dev_ctx_;
 

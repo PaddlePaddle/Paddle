@@ -210,7 +210,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)

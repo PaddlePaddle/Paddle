@@ -44,7 +44,7 @@ class ComputationOpHandle : public OpHandleBase {
  public:
   ComputationOpHandle(ir::Node *node,
                       Scope *scope,
-                      platform::Place place,
+                      phi::Place place,
                       size_t scope_idx);
 
   OperatorBase *GetOp() { return op_.get(); }
@@ -57,7 +57,7 @@ class ComputationOpHandle : public OpHandleBase {
 
   Scope *GetScope() { return scope_; }
 
-  const platform::Place &GetPlace() const { return place_; }
+  const phi::Place &GetPlace() const { return place_; }
 
   void SetLockAndRecordEventFree(bool b) { is_lock_and_record_event_free_ = b; }
 
@@ -73,7 +73,7 @@ class ComputationOpHandle : public OpHandleBase {
  private:
   std::unique_ptr<OperatorBase> op_;
   Scope *scope_;
-  platform::Place place_;
+  phi::Place place_;
   size_t scope_idx_;
   bool is_lock_and_record_event_free_{false};
 };

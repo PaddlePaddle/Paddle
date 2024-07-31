@@ -39,7 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
@@ -164,7 +164,7 @@ inline void MergeVars(const std::string &var_name,
   PADDLE_ENFORCE_NE(vars.empty(),
                     true,
                     phi::errors::InvalidArgument("vector vars are empty."));
-  auto cpu_place = platform::CPUPlace();
+  auto cpu_place = phi::CPUPlace();
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
 

@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define random api
+from __future__ import annotations
+
+from typing import Sequence
+
 import paddle
 from paddle.base import core
 
 __all__ = []
 
 
-def seed(seed):
+def seed(seed: int) -> paddle.base.core.Generator:
     """
 
     Sets the seed for global default generator, which manages the random number generation.
@@ -63,7 +66,9 @@ def seed(seed):
     return core.default_cpu_generator().manual_seed(seed)
 
 
-def get_rng_state(device=None):
+def get_rng_state(
+    device: str | None = None,
+) -> list[paddle.base.core.GeneratorState]:
     """
     Get all random states of random generators of specified device.
 
@@ -73,7 +78,7 @@ def get_rng_state(device=None):
             If None, return the generators of current device (specified by ``set_device``).
 
     Returns:
-        GeneratorState:  object.
+        list[GeneratorState], object.
 
     Examples:
         .. code-block:: python
@@ -116,7 +121,7 @@ def get_rng_state(device=None):
     return state_list
 
 
-def get_cuda_rng_state():
+def get_cuda_rng_state() -> list[paddle.base.core.GeneratorState]:
     """
 
     Get random state of cuda generators.
@@ -142,7 +147,10 @@ def get_cuda_rng_state():
     return state_list
 
 
-def set_rng_state(state_list, device=None):
+def set_rng_state(
+    state_list: Sequence[paddle.base.core.GeneratorState],
+    device: str | None = None,
+) -> None:
     """
 
     Sets generator state for all device generators.
@@ -208,7 +216,9 @@ def set_rng_state(state_list, device=None):
         )
 
 
-def set_cuda_rng_state(state_list):
+def set_cuda_rng_state(
+    state_list: Sequence[paddle.base.core.GeneratorState],
+) -> None:
     """
 
     Sets generator state for all cuda generators.
@@ -236,7 +246,7 @@ def set_cuda_rng_state(state_list):
             core.default_cuda_generator(i).set_state(state_list[i])
 
 
-def _manual_program_seed(seed):
+def _manual_program_seed(seed: int) -> None:
     """
     Sets global seed for generating random numbers.
 
@@ -255,9 +265,9 @@ def _manual_program_seed(seed):
     program.global_seed(seed)
 
 
-def set_random_seed_generator(name, seed):
+def set_random_seed_generator(name: str, seed: int) -> None:
     core.set_random_seed_generator(name, seed)
 
 
-def get_random_seed_generator(name):
+def get_random_seed_generator(name: str) -> paddle.base.core.Generator:
     return core.get_random_seed_generator(name)

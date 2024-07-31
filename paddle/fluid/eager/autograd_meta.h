@@ -71,7 +71,7 @@ class AutogradMeta : public AbstractAutogradMeta {
   const paddle::Tensor& Grad() const {
     PADDLE_ENFORCE_NOT_NULL(
         grad_.get(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Should Not get NULL from Grad pointer, since "
             "we should have default Tensor once we init AutoGradMeta. "
             "if you got this error may indicates framework error in "
@@ -86,7 +86,7 @@ class AutogradMeta : public AbstractAutogradMeta {
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(
         grad_node.get(),
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Should Not set NULL as GradNode pointer, since "
             "our default Edge and autogradMeta has nullptr for "
             "grad node. Set Nullptr will lead error."));

@@ -395,6 +395,7 @@ class TestStackListOfSingleTensor(unittest.TestCase):
         paddle.disable_static()
         paddle.seed(2022)
         self.x = [paddle.randn((4, 2, 6), dtype="float32")]
+        self.x[0].stop_gradient = False
 
     def test_list_single_tensor(self):
         expect = paddle.stack(self.x)

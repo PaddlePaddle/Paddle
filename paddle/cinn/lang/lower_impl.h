@@ -183,7 +183,15 @@ struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
     CHECK(tensor_n);
     auto it = vectorizes.find(tensor_n->name);
     if (it != vectorizes.end()) {
-      CHECK_LT(it->second.level, forloop_stack.size());
+      PADDLE_ENFORCE_LT(
+          it->second.level,
+          forloop_stack.size(),
+          phi::errors::InvalidArgument(
+              "Required it->second.level shall be less than "
+              "forloop_stack.size()."
+              "But receive it->second.level = %d, forloop_stack.size() = %d ",
+              it->second.level,
+              forloop_stack.size()));
       forloop_stack[it->second.level]->set_vectorize_info(it->second);
       CHECK(it->second.valid());
     }
@@ -219,7 +227,13 @@ struct MarkUnrollMutator : public ir::IRMutator<Expr*> {
     if (it != unrolls.end()) {
       for (int level : it->second) {
         VLOG(1) << "Mark " << level << " Unrolled";
-        CHECK_LT(level, stack.size());
+        PADDLE_ENFORCE_LT(level,
+                          stack.size(),
+                          phi::errors::InvalidArgument(
+                              "Required level shall be less than stack.size()."
+                              "But receive level = %d, stack.size() = %d ",
+                              level,
+                              stack.size()));
         stack[level]->set_unrolled();
       }
     }
@@ -255,7 +269,13 @@ struct MarkParallelMutator : public ir::IRMutator<Expr*> {
     if (it != parallels.end()) {
       for (int level : it->second) {
         VLOG(1) << "Mark " << level << " Parallelled";
-        CHECK_LT(level, stack.size());
+        PADDLE_ENFORCE_LT(level,
+                          stack.size(),
+                          phi::errors::InvalidArgument(
+                              "Required level shall be less than stack.size()."
+                              "But receive level = %d, stack.size() = %d ",
+                              level,
+                              stack.size()));
         stack[level]->set_parallel();
       }
     }

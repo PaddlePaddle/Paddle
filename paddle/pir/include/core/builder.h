@@ -35,6 +35,8 @@ class IndexType;
 class BoolType;
 class Complex64Type;
 class Complex128Type;
+class Float8E4M3FNType;
+class Float8E5M2Type;
 class StrAttribute;
 class BoolAttribute;
 class FloatAttribute;
@@ -108,7 +110,8 @@ class Builder {
   /// Set the insertion point to the end of the specified block.
   void SetInsertionPointToBlockEnd(Block *block) {
     PADDLE_ENFORCE_NOT_NULL(
-        block, phi::errors::PreconditionNotMet("argument of block is nullptr"));
+        block,
+        common::errors::PreconditionNotMet("argument of block is nullptr"));
     set_insertion_point(block, block->end());
   }
 
@@ -145,6 +148,8 @@ class Builder {
   IR_API Float64Type float64_type();
   IR_API Complex64Type complex64_type();
   IR_API Complex128Type complex128_type();
+  IR_API Float8E4M3FNType float8e4m3fn_type();
+  IR_API Float8E5M2Type float8e5m2_type();
 
   IR_API StrAttribute str_attr(const std::string &value);
   IR_API BoolAttribute bool_attr(bool value);

@@ -96,6 +96,13 @@ class AvgPool1D(Layer):
 
     """
 
+    kernel_size: Size1
+    stride: Size1 | None
+    padding: _PaddingSizeMode | Size1 | Size2
+    exclusive: bool
+    ceil_mode: bool
+    name: str | None
+
     def __init__(
         self,
         kernel_size: Size1,
@@ -203,6 +210,15 @@ class AvgPool2D(Layer):
 
     """
 
+    kernel_size: Size2
+    stride: Size2 | None
+    padding: _PaddingSizeMode | Size2 | Size4
+    ceil_mode: bool
+    exclusive: bool
+    divisor: float | None
+    data_format: DataLayout2D
+    name: str | None
+
     def __init__(
         self,
         kernel_size: Size2,
@@ -301,6 +317,15 @@ class AvgPool3D(Layer):
             [1, 2, 1, 16, 16]
 
     """
+
+    kernel_size: Size3
+    stride: Size3 | None
+    padding: _PaddingSizeMode | Size3 | Size6
+    ceil_mode: bool
+    exclusive: bool
+    divisor: float | None
+    data_format: DataLayout3D
+    name: str | None
 
     def __init__(
         self,
@@ -401,6 +426,14 @@ class LPPool1D(Layer):
             [1, 3, 16]
 
     """
+
+    norm_type: float
+    kernel_size: Size1
+    stride: Size1 | None
+    padding: _PaddingSizeMode | Size1 | Size2
+    ceil_mode: bool
+    data_format: DataLayout1D
+    name: str | None
 
     def __init__(
         self,
@@ -509,6 +542,14 @@ class LPPool2D(Layer):
 
     """
 
+    norm_type: float
+    kernel_size: Size2
+    stride: Size2 | None
+    padding: _PaddingSizeMode | Size2 | Size4
+    ceil_mode: bool
+    data_format: DataLayout2D
+    name: str | None
+
     def __init__(
         self,
         norm_type: float,
@@ -609,6 +650,13 @@ class MaxPool1D(Layer):
             [1, 3, 16]
 
     """
+
+    kernel_size: Size1
+    stride: Size1 | None
+    padding: _PaddingSizeMode | Size1 | Size2
+    return_mask: bool
+    ceil_mode: bool
+    name: str | None
 
     def __init__(
         self,
@@ -720,6 +768,14 @@ class MaxPool2D(Layer):
             [1, 3, 16, 16]
     """
 
+    kernel_size: Size2
+    stride: Size2 | None
+    padding: _PaddingSizeMode | Size2 | Size4
+    return_mask: bool
+    ceil_mode: bool
+    data_format: DataLayout2D
+    name: str | None
+
     def __init__(
         self,
         kernel_size: Size2,
@@ -820,6 +876,14 @@ class MaxPool3D(Layer):
             [1, 2, 1, 16, 16]
     """
 
+    kernel_size: Size3
+    stride: Size3 | None
+    padding: _PaddingSizeMode | Size3 | Size6
+    return_mask: bool
+    ceil_mode: bool
+    data_format: DataLayout3D
+    name: str | None
+
     def __init__(
         self,
         kernel_size: Size3,
@@ -827,7 +891,7 @@ class MaxPool3D(Layer):
         padding: _PaddingSizeMode | Size3 | Size6 = 0,
         return_mask: bool = False,
         ceil_mode: bool = False,
-        data_format: DataLayout3D | str = 'NCDHW',
+        data_format: DataLayout3D = 'NCDHW',
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -907,6 +971,9 @@ class AdaptiveAvgPool1D(Layer):
             >>> print(pool_out.shape)
             [1, 3, 16]
     """
+
+    output_size: int
+    name: str | None
 
     def __init__(self, output_size: int, name: str | None = None) -> None:
         super().__init__()
@@ -1178,6 +1245,10 @@ class AdaptiveMaxPool1D(Layer):
 
     """
 
+    output_size: int
+    return_mask: bool
+    name: str | None
+
     def __init__(
         self,
         output_size: int,
@@ -1446,6 +1517,13 @@ class MaxUnPool1D(Layer):
 
     """
 
+    kernel_size: Size1
+    stride: Size1 | None
+    padding: _PaddingSizeMode | Size1 | Size2
+    data_format: DataLayout1D
+    output_size: Sequence[int] | None
+    name: str | None
+
     def __init__(
         self,
         kernel_size: Size1,
@@ -1541,6 +1619,13 @@ class MaxUnPool2D(Layer):
 
     """
 
+    kernel_size: Size2
+    stride: Size2 | None
+    padding: _PaddingSizeMode | Size2 | Size4
+    data_format: DataLayout2D
+    output_size: Sequence[int] | None
+    name: str | None
+
     def __init__(
         self,
         kernel_size: Size2,
@@ -1635,6 +1720,13 @@ class MaxUnPool3D(Layer):
             [1, 1, 4, 4, 6]
 
     """
+
+    kernel_size: Size3
+    stride: Size3 | None
+    padding: _PaddingSizeMode | Size3 | Size6
+    data_format: DataLayout3D
+    output_size: Sequence[int] | None
+    name: str | None
 
     def __init__(
         self,

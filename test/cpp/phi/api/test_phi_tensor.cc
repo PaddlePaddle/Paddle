@@ -50,7 +50,11 @@ void TestCopyTensor() {
   auto t1_cpu_cp = t1.copy_to(phi::CPUPlace(), /*blocking=*/false);
   CHECK((phi::CPUPlace() == t1_cpu_cp.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
-    CHECK_EQ(t1_cpu_cp.template data<T>()[i], T(5));
+    PADDLE_ENFORCE_EQ(
+        t1_cpu_cp.template data<T>()[i],
+        T(5),
+        phi::errors::InvalidArgument(
+            "t1_cpu_cp.template data<T>()[%d] should be equal to T(5) ", i));
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   VLOG(2) << "Do GPU copy test";
@@ -62,7 +66,12 @@ void TestCopyTensor() {
       t1_gpu_cp_cp.copy_to(phi::CPUPlace(), /*blocking=*/false);
   CHECK((phi::CPUPlace() == t1_gpu_cp_cp_cpu.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
-    CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], T(5));
+    PADDLE_ENFORCE_EQ(
+        t1_gpu_cp_cp_cpu.template data<T>()[i],
+        T(5),
+        phi::errors::InvalidArgument(
+            "t1_gpu_cp_cp_cpu.template data<T>()[%d] should be equal to T(5) ",
+            i));
   }
 #endif
 }
@@ -82,7 +91,10 @@ void TestAPIPlace() {
 void TestAPISizeAndShape() {
   std::vector<int64_t> tensor_shape = {5, 5};
   auto t1 = paddle::experimental::empty(tensor_shape);
-  CHECK_EQ(t1.size(), 25);
+  PADDLE_ENFORCE_EQ(
+      t1.size(),
+      25,
+      phi::errors::InvalidArgument("t1.size should be equal to 25 "));
   CHECK(t1.shape() == tensor_shape);
 }
 
@@ -117,7 +129,12 @@ void TestAPISlice() {
   }
   auto* t_data_ptr = t.data<float>();
   for (int64_t i = 0; i < t_sliced.size(); i++) {
-    CHECK_EQ(t_data_ptr[i], static_cast<float>(10));
+    PADDLE_ENFORCE_EQ(
+        t_data_ptr[i],
+        static_cast<float>(10),
+        phi::errors::InvalidArgument("Required t_data_ptr[%d] should be equal "
+                                     "to static_cast<float>(10) ",
+                                     i));
   }
 }
 

@@ -53,7 +53,7 @@ Expr Widen(Expr e, int lanes) {
   PADDLE_ENFORCE_EQ(
       e.type().lanes(),
       1,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Cannot broadcast lanes from %d to %d.", e.type().lanes(), lanes));
   return ir::Broadcast::Make(e, lanes);
 }
@@ -748,7 +748,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       PADDLE_ENFORCE_GT(
           forloop->vectorize_info().factor,
           0,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The value of factor in forloop's vectorize_info is incorrect."
               "Expected value is larger than 0, but receive %d. ",
               forloop->vectorize_info().factor));
@@ -820,7 +820,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       PADDLE_ENFORCE_GT(
           extent,
           0,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "Loop over %s has extent %d"
               ". Can only vectorize loops over a constant extent > 1",
               Expr(new_forloop->loop_var),
@@ -960,7 +960,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
   Expr SplitForLoop(For *forloop, int factor) {
     PADDLE_ENFORCE_GT(factor,
                       1,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The value of factor in SplitForLoop is incorrect."
                           "Expected value is larger than 1, but receive %d. ",
                           factor));

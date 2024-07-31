@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import check_variable_and_dtype
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import (
+    LayerHelper,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+)
 
 
 def _number_count(numbers, upper_range):
@@ -86,8 +90,8 @@ def _assign_pos(x, cum_count):
             Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             [2, 0, 3, 1])
     """
-    if in_dynamic_mode():
-        return _legacy_C_ops.assign_pos(x, cum_count, cum_count[-1])
+    if in_dynamic_or_pir_mode():
+        return _C_ops.assign_pos(x, cum_count, cum_count[-1])
     else:
         op_type = 'assign_pos'
 
@@ -154,10 +158,8 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
             Tensor(shape=[6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             [1, 2, 2, 4, 3, 3])
     """
-    if in_dynamic_mode():
-        return _legacy_C_ops.limit_by_capacity(
-            expert_count, capacity, 'n_worker', n_worker
-        )
+    if in_dynamic_or_pir_mode():
+        return _C_ops.limit_by_capacity(expert_count, capacity, n_worker)
     else:
         op_type = 'limit_by_capacity'
 

@@ -82,7 +82,7 @@ std::string GetExternFuncNameArchPrefixImpl(common::UnknownArch,
                                             const std::string& func_name) {
   std::stringstream ss;
   ss << func_name << " only supports X86 and NVGPU! Please Check.\n";
-  PADDLE_THROW(phi::errors::Fatal(ss.str()));
+  PADDLE_THROW(::common::errors::Fatal(ss.str()));
 }
 
 std::string GetExternFuncNameArchPrefixImpl(common::X86Arch,
@@ -94,7 +94,7 @@ std::string GetExternFuncNameArchPrefixImpl(common::ARMArch,
                                             const std::string& func_name) {
   std::stringstream ss;
   ss << func_name << " only supports X86 and NVGPU! Please Check.\n";
-  PADDLE_THROW(phi::errors::Fatal(ss.str()));
+  PADDLE_THROW(::common::errors::Fatal(ss.str()));
 }
 
 std::string GetExternFuncNameArchPrefixImpl(common::NVGPUArch,
@@ -167,7 +167,7 @@ std::string GetExternFuncName(const cinn::common::Target& target,
     std::stringstream ss;
     ss << "Can not find type: " << type
        << " for extern function. Please Check.\n";
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return func_proto_name;
 }

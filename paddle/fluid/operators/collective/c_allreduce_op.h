@@ -16,13 +16,13 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
@@ -41,8 +41,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
-#include <gloo/allreduce.h>
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#include "paddle/phi/core/distributed/gloo_comm_context.h"
 #endif
 
 namespace paddle {
@@ -85,50 +84,20 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
-    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto& dev_ctx = ctx.device_context<phi::CPUContext>();
+    auto x = *(ctx.Input<phi::DenseTensor>("X"));
     auto out = ctx.Output<phi::DenseTensor>("Out");
+    out->Resize(x.dims());
+    dev_ctx.Alloc<T>(out);
 
-    auto place = ctx.GetPlace();
-    int64_t send_numel = in->numel();
-    const T* send_buff = in->data<T>();
-    T* recv_buff = out->mutable_data<T>(in->dims(), place);
-    auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(),
-        true,
-        phi::errors::PreconditionNotMet(
-            "You must initialize the gloo environment first to use it."));
-    gloo::AllreduceOptions opts(gloo->GetContext());
-    opts.setInput(const_cast<T*>(send_buff), send_numel);
-    opts.setOutput(recv_buff, send_numel);
-    switch (red_type) {
-      case kRedSum:
-        opts.setReduceFunction(
-            static_cast<void (*)(void*, const void*, const void*, size_t)>(
-                &gloo::sum<T>));
-        break;
-      case kRedMax:
-        opts.setReduceFunction(
-            static_cast<void (*)(void*, const void*, const void*, size_t)>(
-                &gloo::max<T>));
-        break;
-      case kRedMin:
-        opts.setReduceFunction(
-            static_cast<void (*)(void*, const void*, const void*, size_t)>(
-                &gloo::min<T>));
-        break;
-      case kRedProd:
-        opts.setReduceFunction(
-            static_cast<void (*)(void*, const void*, const void*, size_t)>(
-                &gloo::product<T>));
-        break;
-      default:
-        PADDLE_ENFORCE_EQ(
-            true,
-            false,
-            phi::errors::InvalidArgument("Invalid reduce type: %d.", red_type));
-    }
-    gloo::allreduce(opts);
+    auto comm_ctx = static_cast<phi::distributed::GlooCommContext*>(
+        dev_ctx.GetCommContext());
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      ::common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+    comm_ctx->AllReduce(out, x, static_cast<int>(red_type));
 #else
     PADDLE_THROW(phi::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
@@ -174,26 +143,26 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
       // Use ProcessGroup
-      distributed::ProcessGroup* pg = map->get(rid);
-      distributed::AllreduceOptions opts;
+      phi::distributed::ProcessGroup* pg = map->get(rid);
+      phi::distributed::AllreduceOptions opts;
       switch (red_type) {
         case kRedSum:
-          opts.reduce_op = distributed::ReduceOp::SUM;
+          opts.reduce_op = phi::distributed::ReduceOp::SUM;
           break;
 
         case kRedMax:
-          opts.reduce_op = distributed::ReduceOp::MAX;
+          opts.reduce_op = phi::distributed::ReduceOp::MAX;
           break;
 
         case kRedMin:
-          opts.reduce_op = distributed::ReduceOp::MIN;
+          opts.reduce_op = phi::distributed::ReduceOp::MIN;
           break;
 
         case kRedProd:
-          opts.reduce_op = distributed::ReduceOp::PRODUCT;
+          opts.reduce_op = phi::distributed::ReduceOp::PRODUCT;
           break;
 
         default:
@@ -320,26 +289,26 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
       // Use ProcessGroup
-      distributed::ProcessGroup* pg = map->get(rid);
-      distributed::AllreduceOptions opts;
+      phi::distributed::ProcessGroup* pg = map->get(rid);
+      phi::distributed::AllreduceOptions opts;
       switch (red_type) {
         case kRedSum:
-          opts.reduce_op = distributed::ReduceOp::SUM;
+          opts.reduce_op = phi::distributed::ReduceOp::SUM;
           break;
 
         case kRedMax:
-          opts.reduce_op = distributed::ReduceOp::MAX;
+          opts.reduce_op = phi::distributed::ReduceOp::MAX;
           break;
 
         case kRedMin:
-          opts.reduce_op = distributed::ReduceOp::MIN;
+          opts.reduce_op = phi::distributed::ReduceOp::MIN;
           break;
 
         case kRedProd:
-          opts.reduce_op = distributed::ReduceOp::PRODUCT;
+          opts.reduce_op = phi::distributed::ReduceOp::PRODUCT;
           break;
 
         default:
@@ -411,7 +380,8 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
         nccl_red_type = ncclProd;
         break;
 
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
       case kRedAvg:
         nccl_red_type = ncclAvg;
         break;

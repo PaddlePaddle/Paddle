@@ -177,6 +177,14 @@ TypeTranslator::TypeTranslator() {
        [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
          return pir::Complex128Type::get(ctx);
        }},
+      {VarType::FP8_E4M3FN,
+       [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
+         return pir::Float8E4M3FNType::get(ctx);
+       }},
+      {VarType::FP8_E5M2,
+       [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
+         return pir::Float8E5M2Type::get(ctx);
+       }},
       {VarType::LOD_TENSOR, HandleTensor},
       {VarType::LOD_TENSOR_ARRAY, HandleTensorArray},
       {VarType::SELECTED_ROWS, HandleSelectedRows},

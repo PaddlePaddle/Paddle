@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "paddle/cinn/adt/op_equation_context.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/pe/broadcast.h"
@@ -82,7 +81,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
       } else if (absl::holds_alternative<bool>(attrs.attr_store.at("axis"))) {
         return std::vector<int>{};
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(::common::errors::InvalidArgument(
             "reduce dimension's type is invalid!"));
       }
     }();
@@ -103,7 +102,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
       CHECK_NE(reduce_axes[idx - 1], reduce_axes[idx]);
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("reduce dimension is not set!"));
+    PADDLE_THROW(
+        ::common::errors::InvalidArgument("reduce dimension is not set!"));
   }
 
   bool keepdim = false;
@@ -136,23 +136,23 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     PADDLE_ENFORCE_EQ(
         !args.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The input argument of %s compute is empty! Please check.",
             op_name));
     CINNValuePack arg_packs = args[0];
     PADDLE_ENFORCE_EQ(
         arg_packs.size(),
         2U,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "There should be 2 input args for %s compute", op_name));
     PADDLE_ENFORCE_EQ(arg_packs[1].is_string(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The arg_packs[1] is not empty! Please check."));
     std::string tensor_name = arg_packs[1].operator std::string();
     Expr x_expr = arg_packs[0];
     PADDLE_ENFORCE_NOT_NULL(x_expr.as_tensor(),
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "The x_expr can not as tensor! Please check."));
     ir::Tensor x = x_expr.as_tensor_ref();
 
@@ -160,7 +160,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                                                       "reduce_any"};
     PADDLE_ENFORCE_EQ(!bool_reduce_op.count(op_name) || x->type().is_bool(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The type of input argument %s of %s should be bool, "
                           "but get %s! Please check.",
                           x->name,
@@ -304,7 +304,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else {
-          PADDLE_THROW(phi::errors::InvalidArgument("Unkown Reduce Type!"));
+          PADDLE_THROW(
+              ::common::errors::InvalidArgument("Unkown Reduce Type!"));
         }
       } else {
         if (arg_pack.size() == 2) {
@@ -338,7 +339,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else {
-          PADDLE_THROW(phi::errors::InvalidArgument("Unkown Reduce Type!"));
+          PADDLE_THROW(
+              ::common::errors::InvalidArgument("Unkown Reduce Type!"));
         }
       }
     };
@@ -405,7 +407,7 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       } else if (absl::holds_alternative<bool>(attrs.attr_store.at("axis"))) {
         return std::vector<int>{};
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(::common::errors::InvalidArgument(
             "reduce dimension's type is invalid!"));
       }
     }();
@@ -425,7 +427,8 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       CHECK_NE(reduce_axes[idx - 1], reduce_axes[idx]);
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("reduce dimension is not set!"));
+    PADDLE_THROW(
+        ::common::errors::InvalidArgument("reduce dimension is not set!"));
   }
 
   bool keepdim = false;
@@ -575,176 +578,23 @@ STRATEGY_FOR_REDUCE_SYMBOLIC(reduce_any,
 #undef STRATEGY_FOR_REDUCE
 #undef STRATEGY_FOR_REDUCE_SYMBOLIC
 
-std::vector<shape_t> InferShapeForReduction(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(inputs_shape.size() == 1UL || inputs_shape.size() == 3UL);
-  std::vector<int> axis;
-  bool keepdim = false;
-  if (attrs.find("axis") != attrs.end()) {
-    axis = absl::get<std::vector<int>>(attrs.at("axis"));
-  }
-
-  if (attrs.find("keepdim") != attrs.end()) {
-    keepdim = absl::get<bool>(attrs.at("keepdim"));
-  }
-
-  auto ndim = inputs_shape[0].size();
-  CHECK_LE(axis.size(), ndim)
-      << "reduce dim should no more than the input size";
-
-  if (axis.empty()) {
-    for (int i = 0; i < ndim; ++i) {
-      axis.emplace_back(i);
-    }
-  } else {
-    std::for_each(axis.begin(), axis.end(), [&ndim](int &x) {
-      if (x < 0) x += ndim;
-    });
-  }
-
-  std::vector<int> out_shapes;
-  for (size_t i = 0; i < ndim; ++i) {
-    if (std::find(axis.begin(), axis.end(), i) != axis.end()) {
-      if (keepdim) {
-        out_shapes.push_back(1);
-      }
-    } else {
-      out_shapes.push_back(inputs_shape[0][i]);
-    }
-  }
-
-  if (out_shapes.empty()) {
-    out_shapes.push_back(1);
-  }
-
-  VLOG(4) << "Reduce from input shape ["
-          << cinn::utils::Join(inputs_shape[0], ",") << "] to output shape ["
-          << cinn::utils::Join(out_shapes, ",") << "] with reduce axis ["
-          << cinn::utils::Join(axis, ",") << "] and keepdim is " << keepdim;
-
-  return {out_shapes};
-}
-
-void GenerateEquationsForReduction(cinn::adt::config::OpEquationContext *ctx) {
-  CHECK(ctx->GetInTensorsRanks().size() != 0)
-      << "The inputs is empty! Please check again.";
-  const bool keepdim = ctx->Attr<bool>("keepdim");
-  const auto &axis = ctx->Attr<std::vector<int>>("axis");
-  std::vector<int> aligned_dim{};
-  for (int d : axis) {
-    aligned_dim.push_back((d + ctx->GetInTensorsRanks().at(0)) %
-                          ctx->GetInTensorsRanks().at(0));
-  }
-
-  const auto &IsReduceAxis = [&](const int in_axis) {
-    return std::find(aligned_dim.begin(), aligned_dim.end(), in_axis) !=
-           aligned_dim.end();
-  };
-
-  std::size_t out_axis = 0;
-  for (std::size_t in_axis = 0; in_axis < ctx->GetInTensorsRanks().at(0);
-       ++in_axis) {
-    if (IsReduceAxis(in_axis)) {
-      if (keepdim) {
-        ctx->Equal(ctx->GetOutIteratorTuple(0)->at(in_axis),
-                   ctx->GetConstantIterator(ctx->GetInIndex(0), 0));
-        out_axis += 1;
-      } else {
-        // Do nothing
-      }
-    } else {
-      ctx->Equal(ctx->GetInIteratorTuple(0)->at(in_axis),
-                 ctx->GetOutIteratorTuple(0)->at(out_axis));
-      out_axis += 1;
-    }
-  }
-}
-
-std::vector<Type> InferDtypeForReduction(const std::vector<Type> &inputs_type,
-                                         const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
-  return res;
-}
-
-std::vector<Type> InferDtypeForReductionBool(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_type.size(), 1UL)
-      << "The reduce should only has one input! Please check again.";
-  CHECK(inputs_type[0].is_bool())
-      << "The input's type should be bool! Please check.";
-  return inputs_type;
-}
-
-std::vector<std::vector<std::string>> InferLayoutForReduction(
-    const std::vector<framework::shape_t> &input_shapes,
-    const std::vector<std::string> &input_layouts,
-    const framework::NodeAttr &attrs,
-    const Target &target) {
-  CHECK_EQ(input_layouts.size(), 1U)
-      << "The input's layouts size is not 1! Please check again.";
-  std::vector<std::string> new_input_layouts = input_layouts;
-  if (input_shapes[0].size() > 4) {
-    // alter input layout back
-    new_input_layouts[0] = "NCHW";
-    VLOG(3) << "alter input layout from " << input_layouts[0] << " to "
-            << new_input_layouts[0];
-  }
-
-  return {{""}, new_input_layouts};
-}
-
-std::vector<shape_t> InferShapeForBnOptimize(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  auto shapes = InferShapeForReduction(inputs_shape, attrs);
-  CHECK_GE(shapes.size(), 1) << "shapes's size less than 1, please check!";
-  return {shapes[0], shapes[0]};
-}
-
-std::vector<Type> InferDtypeForBnOptimize(const std::vector<Type> &inputs_type,
-                                          const framework::AttrMapType &attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-  return {inputs_type[0], inputs_type[0]};
-}
-
-std::vector<std::vector<std::string>> InferLayoutForBnOptimize(
-    const std::vector<framework::shape_t> &input_shapes,
-    const std::vector<std::string> &input_layouts,
-    const framework::NodeAttr &attrs,
-    const Target &target) {
-  return {{"", ""}, {"", ""}};
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(reduce_ops) {
-#define CINN_REGISTER_REDUCTION_WITH_DTYPE(op__, op_strategy__, dtype__)       \
-  CINN_REGISTER_OP(op__)                                                       \
-      .describe(#op__ " function")                                             \
-      .set_num_inputs(1)                                                       \
-      .set_num_outputs(1)                                                      \
-      .set_attr<cinn::hlir::framework::StrategyFunction>(                      \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)          \
-      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(              \
-          "CINNStrategySymbolic",                                              \
-          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)                \
-      .set_attr("infershape",                                                  \
-                MakeOpFunction(cinn::hlir::op::InferShapeForReduction))        \
-      .set_attr(                                                               \
-          "inferdtype",                                                        \
-          MakeOpFunction(cinn::hlir::op::InferDtypeForReduction##dtype__))     \
-      .set_attr("generate_equations",                                          \
-                MakeOpFunction(cinn::hlir::op::GenerateEquationsForReduction)) \
-      .set_attr("inferlayout",                                                 \
-                MakeOpFunction(cinn::hlir::op::InferLayoutForReduction))       \
-      .set_attr<cinn::hlir::framework::OpPatternKind>(                         \
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kReduction)       \
+#define CINN_REGISTER_REDUCTION_WITH_DTYPE(op__, op_strategy__, dtype__) \
+  CINN_REGISTER_OP(op__)                                                 \
+      .describe(#op__ " function")                                       \
+      .set_num_inputs(1)                                                 \
+      .set_num_outputs(1)                                                \
+      .set_attr<cinn::hlir::framework::StrategyFunction>(                \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)    \
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(        \
+          "CINNStrategySymbolic",                                        \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)          \
+      .set_attr<cinn::hlir::framework::OpPatternKind>(                   \
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kReduction) \
       .set_support_level(4);
 
 #define CINN_REGISTER_REDUCTION(op__, op_strategy__) \
