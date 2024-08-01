@@ -66,14 +66,17 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   PADDLE_ENFORCE_EQ(
       origin_program->block()->size(),
       1u,
-      phi::errors::InvalidArgument(
-          "Size of block of origin program mismatch. Expected 1."));
+      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
+                                   "Expected 1 but received %d.",
+                                   origin_program->block()->size()));
   pir::Operation& group_op = origin_program->block()->front();
   pir::Block* group_block = group_op.dyn_cast<cinn::dialect::GroupOp>().block();
-  PADDLE_ENFORCE_EQ(group_block->size(),
-                    6u,
-                    phi::errors::InvalidArgument(
-                        "Size of group block mismatch. Expected 6."));
+  PADDLE_ENFORCE_EQ(
+      group_block->size(),
+      6u,
+      phi::errors::InvalidArgument(
+          "Size of group block mismatch. Expected 6 but received %d.",
+          group_block->size()));
 
   std::vector<std::string> op_names = {
       paddle::dialect::FullOp::name(),
@@ -127,8 +130,9 @@ TEST(BuildCinnPassTest, NoOpSupportCinn) {
   PADDLE_ENFORCE_EQ(
       origin_program->block()->size(),
       3u,
-      phi::errors::InvalidArgument(
-          "Size of block of origin program mismatch. Expected 3."));
+      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
+                                   "Expected 3 but received %d.",
+                                   origin_program->block()->size()));
 
   std::vector<std::string> op_names = {paddle::dialect::OnesOp::name(),
                                        paddle::dialect::HardswishOp::name(),
@@ -183,14 +187,17 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   PADDLE_ENFORCE_EQ(
       origin_program->block()->size(),
       4u,
-      phi::errors::InvalidArgument(
-          "Size of block of origin program mismatch. Expected 4."));
+      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
+                                   "Expected 4 but received %d.",
+                                   origin_program->block()->size()));
   pir::Operation& group_op = origin_program->block()->front();
   pir::Block* group_block = group_op.dyn_cast<cinn::dialect::GroupOp>().block();
-  PADDLE_ENFORCE_EQ(group_block->size(),
-                    4u,
-                    phi::errors::InvalidArgument(
-                        "Size of group block mismatch. Expected 4."));
+  PADDLE_ENFORCE_EQ(
+      group_block->size(),
+      4u,
+      phi::errors::InvalidArgument(
+          "Size of group block mismatch. Expected 4 but received %d.",
+          group_block->size()));
 
   std::vector<std::string> op_names = {
       paddle::dialect::FullOp::name(),
@@ -251,15 +258,18 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   PADDLE_ENFORCE_EQ(
       origin_program->block()->size(),
       5u,
-      phi::errors::InvalidArgument(
-          "Size of block of origin program mismatch. Expected 5."));
+      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
+                                   "Expected 5 but received %d.",
+                                   origin_program->block()->size()));
   pir::Operation* group_op = &origin_program->block()->front();
   pir::Block* group_block =
       group_op->dyn_cast<cinn::dialect::GroupOp>().block();
-  PADDLE_ENFORCE_EQ(group_block->size(),
-                    3u,
-                    phi::errors::InvalidArgument(
-                        "Size of group block mismatch. Expected 3."));
+  PADDLE_ENFORCE_EQ(
+      group_block->size(),
+      3u,
+      phi::errors::InvalidArgument(
+          "Size of group block mismatch. Expected 3 but received %d.",
+          group_block->size()));
 
   std::vector<std::string> op_names_front = {
       paddle::dialect::FullOp::name(),
@@ -276,10 +286,12 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
 
   group_op = &origin_program->block()->back();
   group_block = group_op->dyn_cast<cinn::dialect::GroupOp>().block();
-  PADDLE_ENFORCE_EQ(group_block->size(),
-                    3u,
-                    phi::errors::InvalidArgument(
-                        "Size of group block mismatch. Expected 3."));
+  PADDLE_ENFORCE_EQ(
+      group_block->size(),
+      3u,
+      phi::errors::InvalidArgument(
+          "Size of group block mismatch. Expected 3 but received %d.",
+          group_block->size()));
 
   std::vector<std::string> op_names_back = {
       paddle::dialect::UnsqueezeOp::name(),

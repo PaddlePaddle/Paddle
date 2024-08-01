@@ -83,13 +83,15 @@ TEST(EagerUtils, AutoGradMeta) {
   PADDLE_ENFORCE_EQ(
       static_cast<int>(out_rank_info0.first),
       0UL,
-      phi::errors::InvalidArgument(
-          "The first element of out rank info mismatch. Expected 0."));
+      phi::errors::InvalidArgument("The first element of out rank info "
+                                   "mismatch. Expected 0 but received %d.",
+                                   static_cast<int>(out_rank_info0.first)));
   PADDLE_ENFORCE_EQ(
       static_cast<int>(out_rank_info0.second),
       1UL,
-      phi::errors::InvalidArgument(
-          "The second element of out rank info mismatch. Expected 1."));
+      phi::errors::InvalidArgument("The second element of out rank info "
+                                   "mismatch. Expected 1 but received %d.",
+                                   static_cast<int>(out_rank_info0.second)));
 
   // grad_node()
   std::shared_ptr<GradNodeBase> grad_node0 = EagerUtils::grad_node(et0);
@@ -110,38 +112,44 @@ TEST(EagerUtils, AutoGradMeta) {
   PADDLE_ENFORCE_EQ(
       static_cast<int>(out_rank_info1.first),
       0UL,
-      phi::errors::InvalidArgument(
-          "The first element of out rank info mismatch. Expected 0."));
+      phi::errors::InvalidArgument("The first element of out rank info "
+                                   "mismatch. Expected 0 but received %d.",
+                                   static_cast<int>(out_rank_info1.first)));
   PADDLE_ENFORCE_EQ(
       static_cast<int>(out_rank_info1.second),
       0UL,
-      phi::errors::InvalidArgument(
-          "The second element of out rank info mismatch. Expected 0."));
+      phi::errors::InvalidArgument("The second element of out rank info "
+                                   "mismatch. Expected 0 but received %d.",
+                                   static_cast<int>(out_rank_info1.second)));
 
   EagerUtils::SetOutRankWithSlot(&autograd_metas, 0);
   std::pair<size_t, size_t> out_rank_info2 = EagerUtils::OutRankInfo(et0);
   PADDLE_ENFORCE_EQ(
       static_cast<int>(out_rank_info2.first),
       0UL,
-      phi::errors::InvalidArgument(
-          "The first element of out rank info mismatch. Expected 0."));
+      phi::errors::InvalidArgument("The first element of out rank info "
+                                   "mismatch. Expected 0 but received %d.",
+                                   static_cast<int>(out_rank_info2.first)));
   PADDLE_ENFORCE_EQ(
       static_cast<int>(out_rank_info2.second),
       0UL,
-      phi::errors::InvalidArgument(
-          "The second element of out rank info mismatch. Expected 0."));
+      phi::errors::InvalidArgument("The second element of out rank info "
+                                   "mismatch. Expected 0 but received %d.",
+                                   static_cast<int>(out_rank_info2.second)));
 
   std::pair<size_t, size_t> out_rank_info3 = EagerUtils::OutRankInfo(et1);
   PADDLE_ENFORCE_EQ(
       static_cast<int>(out_rank_info3.first),
       0UL,
-      phi::errors::InvalidArgument(
-          "The first element of out rank info mismatch. Expected 0."));
+      phi::errors::InvalidArgument("The first element of out rank info "
+                                   "mismatch. Expected 0 but received %d.",
+                                   static_cast<int>(out_rank_info3.first)));
   PADDLE_ENFORCE_EQ(
       static_cast<int>(out_rank_info3.second),
       1UL,
-      phi::errors::InvalidArgument(
-          "The second element of out rank info mismatch. Expected 1."));
+      phi::errors::InvalidArgument("The second element of out rank info "
+                                   "mismatch. Expected 1 but received %d.",
+                                   static_cast<int>(out_rank_info3.second)));
 }
 
 template <typename T>
@@ -169,8 +177,9 @@ TEST(EagerUtils, ComputeRequireGrad) {
   PADDLE_ENFORCE_EQ(
       auto_grad0->NumericStopGradient(),
       -1,
-      phi::errors::InvalidArgument(
-          "The NumericStopGradient of auto grad mismatch. Expected -1."));
+      phi::errors::InvalidArgument("The NumericStopGradient of auto grad "
+                                   "mismatch. Expected -1 but received %d.",
+                                   auto_grad0->NumericStopGradient()));
   VLOG(6) << "Single Test ComputeRequireGrad";
   auto_grad0->SetStopGradient(true);
   CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get()) == false);
@@ -201,8 +210,9 @@ TEST(EagerUtils, PassStopGradient) {
   PADDLE_ENFORCE_EQ(
       auto_grad0->NumericStopGradient(),
       -1,
-      phi::errors::InvalidArgument(
-          "The NumericStopGradient of auto grad mismatch. Expected -1."));
+      phi::errors::InvalidArgument("The NumericStopGradient of auto grad "
+                                   "mismatch. Expected -1 but received %d.",
+                                   auto_grad0->NumericStopGradient()));
   VLOG(6) << "Test PassStopGradient";
   egr::EagerUtils::PassStopGradient(false, auto_grad0.get());
   CHECK(auto_grad0->StopGradient() == false);
@@ -228,18 +238,21 @@ TEST(EagerUtils, TrySyncToVar) {
 
   const float* ptr = framework_tensor.data<float>();
   VLOG(6) << "Check Value for SyncToVarsSingle";
-  PADDLE_ENFORCE_EQ(
-      framework_tensor.numel(),
-      tensor.numel(),
-      phi::errors::InvalidArgument("The numel of framework tensor and numel of "
-                                   "tensor should be the same."));
+  PADDLE_ENFORCE_EQ(framework_tensor.numel(),
+                    tensor.numel(),
+                    phi::errors::InvalidArgument(
+                        "The numel of framework tensor and numel of "
+                        "tensor should be the same, but received %d and %d.",
+                        framework_tensor.numel(),
+                        tensor.numel()));
 
   for (int i = 0; i < framework_tensor.numel(); i++) {
     PADDLE_ENFORCE_EQ(
         ptr[i],
         5.0f,
-        phi::errors::InvalidArgument(
-            "The numel of framework tensor mismatch. Expected 5.0."));
+        phi::errors::InvalidArgument("The numel of framework tensor mismatch. "
+                                     "Expected 5.0 but received %f.",
+                                     ptr[i]));
   }
 }
 
@@ -259,15 +272,19 @@ TEST(EagerUtils, TrySyncToVars) {
     PADDLE_ENFORCE_EQ(
         framework_tensor.numel(),
         tensors[0].numel(),
-        phi::errors::InvalidArgument("The numel of framework tensor and numel "
-                                     "of tensor should be the same."));
+        phi::errors::InvalidArgument(
+            "The numel of framework tensor and numel "
+            "of tensor should be the same, but received %d and %d.",
+            framework_tensor.numel(),
+            tensors[0].numel()));
 
     for (int i = 0; i < framework_tensor.numel(); i++) {
-      PADDLE_ENFORCE_EQ(
-          ptr[i],
-          1.0,
-          phi::errors::InvalidArgument(
-              "The numel of framework tensor mismatch. Expected 1.0."));
+      PADDLE_ENFORCE_EQ(ptr[i],
+                        1.0,
+                        phi::errors::InvalidArgument(
+                            "The numel of framework tensor mismatch. Expected "
+                            "1.0 but received %f.",
+                            ptr[i]));
     }
   }
 
@@ -280,15 +297,19 @@ TEST(EagerUtils, TrySyncToVars) {
     PADDLE_ENFORCE_EQ(
         framework_tensor.numel(),
         tensors[0].numel(),
-        phi::errors::InvalidArgument("The numel of framework tensor and numel "
-                                     "of tensor should be the same."));
+        phi::errors::InvalidArgument(
+            "The numel of framework tensor and numel "
+            "of tensor should be the same, but received %d and %d.",
+            framework_tensor.numel(),
+            tensors[0].numel()));
 
     for (int i = 0; i < framework_tensor.numel(); i++) {
-      PADDLE_ENFORCE_EQ(
-          ptr[i],
-          2.0,
-          phi::errors::InvalidArgument(
-              "The numel of framework tensor mismatch. Expected 2.0."));
+      PADDLE_ENFORCE_EQ(ptr[i],
+                        2.0,
+                        phi::errors::InvalidArgument(
+                            "The numel of framework tensor mismatch. Expected "
+                            "2.0 but received %f.",
+                            ptr[i]));
     }
   }
 }
@@ -300,7 +321,8 @@ TEST(EagerUtils, CreateVars) {
   PADDLE_ENFORCE_EQ(
       outs.size(),
       2UL,
-      phi::errors::InvalidArgument("Size of outs mismatch. Expected 2."));
+      phi::errors::InvalidArgument(
+          "Size of outs mismatch. Expected 2 but received %d.", outs.size()));
   CHECK(outs[0]->Var().IsInitialized() == false);
 }
 
