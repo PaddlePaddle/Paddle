@@ -154,9 +154,7 @@ class TestCollectiveAPIRunnerBase:
                     reduce_type=args['reduce_type'],
                 )
                 if args["use_comm_context"]
-                else (
-                    self.get_model(train_prog, startup_prog, rank)
-                )
+                else (self.get_model(train_prog, startup_prog, rank))
             )
             exe = base.Executor(place)
             exe.run(startup_prog)
@@ -354,7 +352,6 @@ class TestDistBase(unittest.TestCase):
             "PATH_ID": path_id,
             "DTYPE": dtype,
             "REDUCE_TYPE": str(reduce_type),
-            "FLAGS_dynamic_static_unified_comm": "true",
         }
         required_envs.update(additional_envs)
         required_envs.update(need_envs)
