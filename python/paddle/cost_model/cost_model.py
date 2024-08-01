@@ -29,7 +29,7 @@ class CostModel:
     def __init__(self):
         pass
 
-    def build_program(self):
+    def build_program(self) -> tuple[Program, Program]:
         paddle.enable_static()
 
         main_program = static.Program()
@@ -54,7 +54,7 @@ class CostModel:
         main_program: Program | CompiledProgram,
         device: str = 'gpu',
         fetch_cost_list: Sequence = ['time'],
-    ):
+    ) -> None:
         place = paddle.set_device('gpu')
         x = np.random.random(size=(10, 1)).astype('float32')
         exe = paddle.static.Executor(place)
@@ -67,7 +67,7 @@ class CostModel:
         cost_model = core.CostModel()
         cost_data = cost_model.ProfileMeasure(device)
 
-    def static_cost_data(self):
+    def static_cost_data(self) -> dict[str, str | float]:
         static_cost_data_path = os.path.join(
             os.path.dirname(__file__), "static_op_benchmark.json"
         )
@@ -79,7 +79,7 @@ class CostModel:
 
     def get_static_op_time(
         self, op_name: str, forward: bool = True, dtype: str = "float32"
-    ):
+    ) -> dict[str, str | float]:
         # if forward is True, return op forward time, otherwise return op backward time.
         if op_name is None:
             raise ValueError(
