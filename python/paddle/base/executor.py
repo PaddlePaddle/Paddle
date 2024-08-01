@@ -1017,31 +1017,31 @@ class _ExecutorCache:
 
         # standalone executor will apply buffer_shared_inplace_pass and
         # inplace_addto_op_pass to program according to build_strategy
-        enable_inplace = (
-            True
-            if build_strategy is None or build_strategy.enable_inplace
-            else False
-        )
+        # enable_inplace = (
+        #     True
+        #     if build_strategy is None or build_strategy.enable_inplace
+        #     else False
+        # )
 
-        enable_addto = (
-            True
-            if build_strategy is not None and build_strategy.enable_addto
-            else False
-        )
+        # enable_addto = (
+        #     True
+        #     if build_strategy is not None and build_strategy.enable_addto
+        #     else False
+        # )
 
-        if get_flags('FLAGS_enable_pir_in_executor')[
-            'FLAGS_enable_pir_in_executor'
-        ]:
-            # todo(phlrain), skip inplace add addto pass in new IR
-            enable_inplace = False
-            enable_addto = False
+        # if get_flags('FLAGS_enable_pir_in_executor')[
+        #     'FLAGS_enable_pir_in_executor'
+        # ]:
+        #     # todo(phlrain), skip inplace add addto pass in new IR
+        #     enable_inplace = False
+        #     enable_addto = False
 
-        if enable_inplace or enable_addto:
-            # inplace should skip feed and fetch var
-            skip_var_names = _get_feed_fetch_var_names(feed, fetch_list)
-            _apply_inplace_addto_pass(
-                program, enable_inplace, enable_addto, skip_var_names
-            )
+        # if enable_inplace or enable_addto:
+        #     # inplace should skip feed and fetch var
+        #     skip_var_names = _get_feed_fetch_var_names(feed, fetch_list)
+        #     _apply_inplace_addto_pass(
+        #         program, enable_inplace, enable_addto, skip_var_names
+        #     )
 
         new_program = program.clone()
         if (
