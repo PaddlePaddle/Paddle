@@ -79,7 +79,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
         true,
         phi::errors::InvalidArgument("The input argument of %s compute is "
                                      "empty! Please check.",
-                                     op_name))
+                                     op_name));
     CINNValuePack pack_args = args[0];
 
     PADDLE_ENFORCE_GE(
@@ -107,7 +107,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
         A_expr.as_tensor(),
         phi::errors::InvalidArgument("The pack_args[0] should be tensor!"
                                      "Please check.",
-                                     op_name))
+                                     op_name));
     ir::Tensor A = A_expr.as_tensor_ref();
     auto out = pe_func(A, tensor_name);
     std::vector<CINNValue> res;
@@ -542,7 +542,6 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
         true,
         phi::errors::InvalidArgument(
             "can't create fill_constant with the given type %s", out_type[0]));
-    << out_type[0];
     *ret = CINNValuePack{{CINNValue(out)}};
   });
 
