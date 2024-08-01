@@ -164,8 +164,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
     Expr A_expr = pack_args[0];
     PADDLE_ENFORCE(A_expr.as_tensor(),
                    phi::errors::InvalidArgument("The pack_args[0] should be "
-                                                "tensor! Please check.",
-                                                op_name));
+                                                "tensor! Please check."));
     ir::Tensor A = A_expr.as_tensor_ref();
     auto out = pe_func(A, tensor_name);
     std::vector<CINNValue> res;
