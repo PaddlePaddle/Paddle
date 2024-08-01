@@ -647,8 +647,9 @@ void BatchNormGradFunctor(const Context &ctx,
   const int block = 512;
 #endif
   int max_threads = ctx.GetMaxPhysicalThreadCount();
+  const int num_per_thread = 4;
   const int max_blocks = std::max(max_threads / block, 1);
-  int grid1 = (num + block - 1) / block;
+  int grid1 = (num + block * num_per_thread - 1) / (block * num_per_thread);
   int grid2 = std::min(C, max_blocks);
   auto stream = ctx.stream();
   InplaceHelper<T> inplace_functor;
@@ -1180,7 +1181,7 @@ void BatchNormGradFunctor(const Context &ctx,
       if (data_layout == DataLayout::kNHWC) {
         if (d_x) {
           KeBNBackwardData<T, phi::DataLayout::kNHWC>
-              <<<grid1/4, block, 0, stream>>>(
+              <<<grid1, block, 0, stream>>>(
                   d_y->data<T>(),
                   new_scale.data<BatchNormParamType<T>>(),
                   running_var_data,
@@ -1207,7 +1208,7 @@ void BatchNormGradFunctor(const Context &ctx,
       } else {
         if (d_x) {
           KeBNBackwardData<T, phi::DataLayout::kNCHW>
-              <<<grid1/4, block, 0, stream>>>(
+              <<<grid1, block, 0, stream>>>(
                   d_y->data<T>(),
                   new_scale.data<BatchNormParamType<T>>(),
                   running_var_data,
@@ -1235,7 +1236,7 @@ void BatchNormGradFunctor(const Context &ctx,
     } else {
       if (d_x) {
         KeBNBackwardData<T, phi::DataLayout::kNHWC>
-            <<<grid1/4, block, 0, stream>>>(
+            <<<grid1, block, 0, stream>>>(
                 d_y->data<T>(),
                 new_scale.data<BatchNormParamType<T>>(),
                 running_var_data,

@@ -167,7 +167,8 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   // set block and grid num
   int block = 256;
   int64_t n = slice_size * index_size;
-  dim3 grid = dim3((n + block * 4 - 1) / (block * 4));
+  const int num_per_thread = 4;
+  dim3 grid = dim3((n + block * num_per_thread - 1) / (block * num_per_thread));
   phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   // if not overwrite mode, init data
