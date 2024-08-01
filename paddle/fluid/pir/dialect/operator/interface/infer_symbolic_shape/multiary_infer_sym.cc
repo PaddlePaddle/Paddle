@@ -742,32 +742,6 @@ bool GroupNormOpInferSymbolicShape(
   return true;
 }
 
-bool HsigmoidLossOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const input_dims =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape()[0];
-  const label_dims =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape()[0];
-  PADDLE_ENFORCE_EQ(input_dims,
-                    label_dims,
-                    phi::errors::InvalidArgument(
-                        "The first dimension of "
-                        "input and label is expected to be the same. "
-                        "But received input's first dimension is %d; "
-                        "label's first dimension is %d.",
-                        input_dims,
-                        label_dims));
-
-  std::vector<symbol::DimExpr> out_shape = {input_dims, 1};
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_shape)});
-
-  return true;
-}
-
 bool LayerNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // Get the shapes of input tensors
@@ -1070,6 +1044,32 @@ bool WhereOpInferSymbolicShape(pir::Operation *op,
 bool Where_OpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   return WhereOpInferSymbolicShape(op, infer_context);
+}
+
+bool HsigmoidLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const input_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape()[0];
+  const label_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape()[0];
+  PADDLE_ENFORCE_EQ(input_dims,
+                    label_dims,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of "
+                        "input and label is expected to be the same. "
+                        "But received input's first dimension is %d; "
+                        "label's first dimension is %d.",
+                        input_dims,
+                        label_dims));
+
+  std::vector<symbol::DimExpr> out_shape = {input_dims, 1};
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  return true;
 }
 
 }  // namespace paddle::dialect
