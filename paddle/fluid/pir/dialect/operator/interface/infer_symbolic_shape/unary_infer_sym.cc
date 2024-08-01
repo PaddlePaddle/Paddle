@@ -768,7 +768,7 @@ bool FlattenOpInferSymbolicShape(
   return true;
 }
 
-bool FakeQuantizeAbsMaxOpInferSymbolicShape(
+bool FakeQuantizeDequantizeAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
