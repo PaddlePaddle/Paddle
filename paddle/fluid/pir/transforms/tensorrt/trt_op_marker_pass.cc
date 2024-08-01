@@ -63,10 +63,10 @@ DEFINE_GENERAL_PATTERN(Layer_norm, paddle::dialect::LayerNormOp)
 DEFINE_GENERAL_PATTERN(Add, paddle::dialect::AddOp)
 DEFINE_GENERAL_PATTERN(Full, paddle::dialect::FullOp)
 DEFINE_GENERAL_PATTERN(Silu, paddle::dialect::SiluOp)
-
 DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp)
 DEFINE_GENERAL_PATTERN(FusedConv2dAddAct, paddle::dialect::FusedConv2dAddActOp)
 DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
+DEFINE_GENERAL_PATTERN(Sigmoid, paddle::dialect::SigmoidOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -492,11 +492,31 @@ class UnsqueezeOpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-    pir::Value axis = op.operand_source(1);
+    paddle::dialect::FullIntArrayOp full_int_array_op =
+        pir::GetDefiningOpForInput(op, 1)
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    auto axis = full_int_array_op->attribute<pir::ArrayAttribute>("value");
+
     if (!axis) {
       VLOG(3) << "The necessary attributes of the unsuqeeze axis is missing";
       return false;
     }
+    pir::Value x = op.operand_source(0);
+    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto x_shape = x_type.dims();
+
+    std::vector<int32_t> dynamic_dims;
+    for (int i = 0; i < x_shape.size(); ++i) {
+      if (x_shape[i] == -1) {
+        dynamic_dims.push_back(i);
+      }
+    }
+    if (dynamic_dims.size() > 1) {
+      VLOG(3) << "Currently we don't support unsqueeze with more than one "
+                 "dynamic dims";
+      return false;
+    }
+
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -512,11 +532,31 @@ class Unsqueeze_OpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-    pir::Value axis = op.operand_source(1);
+    paddle::dialect::FullIntArrayOp full_int_array_op =
+        pir::GetDefiningOpForInput(op, 1)
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    auto axis = full_int_array_op->attribute<pir::ArrayAttribute>("value");
+
     if (!axis) {
       VLOG(3) << "The necessary attributes of the unsuqeeze axis is missing";
       return false;
     }
+    pir::Value x = op.operand_source(0);
+    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto x_shape = x_type.dims();
+
+    std::vector<int32_t> dynamic_dims;
+    for (int i = 0; i < x_shape.size(); ++i) {
+      if (x_shape[i] == -1) {
+        dynamic_dims.push_back(i);
+      }
+    }
+    if (dynamic_dims.size() > 1) {
+      VLOG(3) << "Currently we don't support unsqueeze with more than one "
+                 "dynamic dims";
+      return false;
+    }
+
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -704,6 +744,7 @@ class CastOpPattern : public pir::OpRewritePattern<paddle::dialect::CastOp> {
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
+
   }
 };
 
@@ -732,10 +773,6 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
                          .dyn_cast<paddle::dialect::DenseTensorType>()
                          .dims();
       auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
-      if (!out_vector_type) {
-        VLOG(3) << "Output is not a VectorType";
-        return false;
-      }
 
       paddle::dialect::FullIntArrayOp full_sections_op =
           pir::GetDefiningOpForInput(op, 1)
@@ -768,7 +805,67 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
     return true;
   }
 };
+class SplitWithNumOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::SplitWithNumOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SplitWithNumOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::SplitWithNumOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    paddle::dialect::FullOp full_op =
+        pir::GetDefiningOpForInput(op, 1)->dyn_cast<paddle::dialect::FullOp>(); 
+    if (!full_op) {
+      VLOG(3) << "Can not find full op";
+      return false;
+    } else {
+      auto axis = full_op->attribute<paddle::dialect::ScalarAttribute>("value")
+                      .data()
+                      .to<int>();
+      auto x_shape = op.operand_source(0)
+                         .type()
+                         .dyn_cast<paddle::dialect::DenseTensorType>()
+                         .dims();
+      auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
 
+      axis += (axis < 0) ? x_shape.size() : 0;
+      if (x_shape[axis] == -1) {
+        VLOG(3) << "The (" << axis << ") dim of input should not be -1";
+        return false;
+      }
+      
+      if (!op->HasAttribute("num") ) {
+        VLOG(3)<< "split_with_num op must has num attributes";
+        return false;
+      }
+      int num = op->attribute<pir::Int32Attribute>("num").data();
+      std::vector<int64_t> output_lengths;
+      if (num > 0) {
+        int64_t in_axis_dim = x_shape[axis];
+        if (in_axis_dim % num != 0) {
+              VLOG(3) << "Invalid number to split. Tensor split does not result"
+                        " in an equal division of dimensions. Axis dim = "
+                      << in_axis_dim << " num = " << num << "!= 0";
+              return false;
+        }
+        size_t out_axis_dim = in_axis_dim / num;
+        for (int i = 0; i < num; ++i) {
+          output_lengths.push_back(out_axis_dim);
+        }
+      }
+
+      if(out_vector_type.size() != output_lengths.size()){
+          VLOG(3) << "The output_length should be equal to the output size.";
+          return false;
+      }
+      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+      return true;
+    }
+                       
+  }
+};
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -798,6 +895,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(DepthwiseConv2d)
     ADD_PATTERN(Nonzero)
     ADD_PATTERN(Gelu)
+    ADD_PATTERN(Sigmoid)
 
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
@@ -820,6 +918,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<FlattenOpPattern>(context));
     ps.Add(std::make_unique<CastOpPattern>(context));
     ps.Add(std::make_unique<SplitOpPattern>(context));
+    ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
     return ps;
   }
 };

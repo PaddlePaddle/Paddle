@@ -25,7 +25,6 @@ from custom_plugin import PaddlePhiPluginCreator, GENERAL_PLUGIN_OPS_LIST
 from register import converter_registry
 from impls.core import *
 
-
 def get_cache_path():
     home_path = os.path.expanduser("~")
     cache_path = os.path.join(home_path, ".pp_trt_cache")
@@ -204,11 +203,7 @@ class PaddleToTensorRTConverter:
                         raise RuntimeError(
                             f'{source_id} not found in value_to_trt_tensor'
                         )
-                # operands.append(value_to_trt_tensor[operand.source().id])
-            # operands = [
-            #     value_to_trt_tensor[operand.source().id]
-            #     for operand in op.operands()
-            # ]
+
             layer = self.convert(network, op, operands)
 
             # _logger.info(f"start convert {op}")

@@ -36,8 +36,9 @@ from converter_utils import (
     broadcast,
     get_axes_for_reduce_op,
     get_dynamic_dims,
-    has_dynamic_shape,
+    get_positive_dim,
     get_trt_plugin,
+    has_dynamic_shape,
 )
 
 
@@ -118,10 +119,16 @@ def full_int_array_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.reshape", trt_version="8.x")
 def reshape_converter(network, paddle_op, inputs):
     input_tensor, shape_tensor = inputs
+    input_shape = paddle_op.operands()[0].source().shape
 
     output_shape = paddle_op.results()[1].shape
     if network.has_implicit_batch_dimension:
         output_shape = output_shape[1:]
+
+    if type(input_tensor) == trt.Weights:
+        input_tensor = network.add_constant(
+            input_shape, input_tensor
+        ).get_output(0)
 
     shuffle_layer = network.add_shuffle(input_tensor)
 
@@ -478,12 +485,13 @@ def flatten_converter(network, paddle_op, inputs):
 
 
 # 在converter中,pd_op.concat有三个输入,因为builtin.combine有两个输入
-@converter_registry.register("pd_op.concat",trt_version="8.x")
+@converter_registry.register("pd_op.concat", trt_version="8.x")
 def concat_converter(network, paddle_op, inputs):
     input_tensors = inputs[:-1]
     axis_tensor = inputs[-1]
     concat_layer = network.add_concatenation(inputs=input_tensors)
 
+    # 这是获取op
     full_op = paddle_op.operands()[1]
     # 这是获取value
     full_value = full_op.source()
@@ -496,23 +504,70 @@ def concat_converter(network, paddle_op, inputs):
 
     return concat_layer
 
+
 @converter_registry.register("pd_op.gelu", trt_version="8.x")
-def gelu_converter(network,paddle_op,inputs):
-    input_val =inputs[0]
-    approximate =paddle_op.attrs()["approximate"]
-    if approximate !=False:
-        raise RuntimeError("GeLU converter currently doesn't support fast gelu compute")
-    
-    plugin_name ="CustomGeluPluginDynamic"
-    type_id =trt.PluginField("type_id",np.array(0,dtype=np.int32),trt.PluginFieldType.INT32)
-    
-    filed_collection =trt.PluginFieldCollection([type_id])
-    plugin_version="1"
-    
-    plugin=get_trt_plugin(plugin_name,filed_collection,plugin_version)
-    
-    layer=network.add_plugin_v2([input_val],plugin)
+def gelu_converter(network, paddle_op, inputs):
+    input_val = inputs[0]
+    approximate = paddle_op.attrs()["approximate"]
+    if approximate:
+        raise RuntimeError(
+            "GeLU converter currently doesn't support fast gelu compute"
+        )
+
+    plugin_name = "CustomGeluPluginDynamic"
+    type_id = trt.PluginField(
+        "type_id", np.array(0, dtype=np.int32), trt.PluginFieldType.INT32
+    )
+
+    filed_collection = trt.PluginFieldCollection([type_id])
+    plugin_version = "1"
+
+    plugin = get_trt_plugin(plugin_name, filed_collection, plugin_version)
+
+    layer = network.add_plugin_v2([input_val], plugin)
     return layer
-    
-    
-    
+
+
+@converter_registry.register("pd_op.unsqueeze", trt_version="8.x")
+@converter_registry.register("pd_op.unsqueeze_", trt_version="8.x")
+def unsqueeze_converter(network, paddle_op, inputs):
+    input_val = inputs[0]
+    input_shape = paddle_op.operands()[0].source().shape
+    input_shape_size = len(input_shape)
+
+    if type(input_val) == trt.Weights:
+        input_val = network.add_constant(input_shape, input_val).get_output(0)
+    axis = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+    axis = axis[0]
+
+    axis = get_positive_dim(axis, input_shape_size + 1)
+    layer = network.add_shuffle(input_val)
+    layer.reshape_dims = (
+        tuple(input_val.shape)[:axis] + (1,) + tuple(input_val.shape)[axis:]
+    )
+    return layer
+
+
+@converter_registry.register("pd_op.squeeze", trt_version="8.x")
+@converter_registry.register("pd_op.squeeze_", trt_version="8.x")
+def squeeze_converter(network, paddle_op, inputs):
+    input_val = inputs[0]
+    input_shape = paddle_op.operands()[0].source().shape
+    input_shape_size = len(input_shape)
+
+    if type(input_val) == trt.Weights:
+        input_val = network.add_constant(input_shape, input_val).get_output(0)
+
+    axis = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+    axis = axis[0]
+
+    axis = get_positive_dim(axis, input_shape_size + 1)
+    output_shape = []
+    for i, s in enumerate(input_shape):
+        if i == axis and s == 1:
+            continue
+        output_shape.append(s)
+
+    layer = network.add_shuffle(input_val)
+    layer.reshape_dims = tuple(output_shape)
+    return layer

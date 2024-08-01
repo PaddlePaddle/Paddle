@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import numpy as np
-
+import math
 import paddle
-
+from paddle.base import ParamAttr
 try:
     import tensorrt as trt
 except Exception as e:
@@ -196,15 +196,20 @@ def get_dummy_program():
             # shape = paddle._C_ops.full_int_array(value=0)
             x = paddle.matmul(input, weight)
             x_1 = paddle.add(x, bias)
+            x_1 = paddle.unsqueeze(x_1, axis=0)
+            x_1=paddle.squeeze(x_1, axis=0)
             y = paddle.nn.functional.relu(x_1)
             y_gelu_1 = paddle.nn.functional.gelu(y)
             y_gelu_2 = paddle.nn.functional.gelu(x_1)
 
             # Concatenate the outputs of the two GELU operations
             concat_out = paddle.concat([y_gelu_1, y_gelu_2], axis=-1)
+            output =paddle.unsqueeze(concat_out, axis=0)
+            
         main_program = run_pir_pass(main_program)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(default_startup_program)
+        
 
         params = main_program.global_block().all_parameters()
         param_dict = {}
@@ -389,3 +394,4 @@ def get_idg_program():
         name = v.get_defining_op().attrs()["parameter_name"]
         param_dict.update({name: np.array(scope.var(name).get_tensor())})
     return pir_program, scope, param_dict
+

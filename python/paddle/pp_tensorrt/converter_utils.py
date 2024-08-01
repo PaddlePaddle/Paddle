@@ -124,3 +124,9 @@ def get_trt_plugin(plugin_name, field_collection, version, plugin_namespace=""):
     )
     assert plugin is not None, f"Plugin:{plugin_name} could not be fetched"
     return plugin
+
+
+def get_positive_dim(dim, dim_size):
+    if dim < 0:
+        return dim % dim_size
+    return dim
