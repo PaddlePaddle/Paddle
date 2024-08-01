@@ -231,7 +231,7 @@ limitations under the License. */
 COMMON_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
-PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
+PYBIND11_MAKE_OPAQUE(phi::TensorArray);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
@@ -1544,7 +1544,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def(
           "get_lod_tensor_array",
-          [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
+          [](Variable &self) { return self.GetMutable<phi::TensorArray>(); },
           py::return_value_policy::reference)
       .def(
           "get_fetch_list",
@@ -2484,7 +2484,7 @@ All parameter, weight, gradient are variables in Paddle.
           if (data_is_lod_tensor(var)) {  // NOLINT
             return py::cast(PADDLE_GET(phi::DenseTensor, var));
           } else {
-            return py::cast(PADDLE_GET(LoDTensorArray, var));
+            return py::cast(PADDLE_GET(phi::TensorArray, var));
           }
         });
   m.def("get_variable_tensor", framework::GetVariableTensor);
@@ -2513,7 +2513,7 @@ All parameter, weight, gradient are variables in Paddle.
         return res;
       });
 
-  py::class_<LoDTensorArray> pylodtensorarray(m, "LoDTensorArray", R"DOC(
+  py::class_<phi::TensorArray> pylodtensorarray(m, "LoDTensorArray", R"DOC(
     LoDTensorArray is array of LoDTensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
@@ -2525,14 +2525,14 @@ All parameter, weight, gradient are variables in Paddle.
   g_framework_lodtensorarray_pytype =
       reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
   pylodtensorarray
-      .def(py::init([]() { return std::make_unique<LoDTensorArray>(); }))
+      .def(py::init([]() { return std::make_unique<phi::TensorArray>(); }))
       .def(
           "__getitem__",
-          [](LoDTensorArray &self, size_t i) { return &self.at(i); },
+          [](phi::TensorArray &self, size_t i) { return &self.at(i); },
           py::return_value_policy::reference)
-      .def("__len__", [](LoDTensorArray &self) { return self.size(); })
+      .def("__len__", [](phi::TensorArray &self) { return self.size(); })
       .def("__setitem__",
-           [](LoDTensorArray &self, size_t i, const phi::DenseTensor &t) {
+           [](phi::TensorArray &self, size_t i, const phi::DenseTensor &t) {
              PADDLE_ENFORCE_LT(i,
                                self.size(),
                                common::errors::InvalidArgument(
@@ -2543,7 +2543,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def(
           "append",
-          [](LoDTensorArray &self, const phi::DenseTensor &t) {
+          [](phi::TensorArray &self, const phi::DenseTensor &t) {
             self.emplace_back();
             self.back().ShareDataWith(t);
             self.back().set_lod(t.lod());
@@ -2571,7 +2571,7 @@ All parameter, weight, gradient are variables in Paddle.
            )DOC")
       .def(
           "_move_to_list",
-          [](LoDTensorArray &self) -> py::list {
+          [](phi::TensorArray &self) -> py::list {
             py::list res(self.size());
             for (size_t i = 0; i < self.size(); ++i) {
               res[i] = py::cast(std::move(self[i]));
@@ -2596,7 +2596,7 @@ All parameter, weight, gradient are variables in Paddle.
                 auto &data = PADDLE_GET(phi::SparseCooTensor, self[i]);
                 res[i] = py::cast(std::move(data));
               } else {
-                auto &data = PADDLE_GET(LoDTensorArray, self[i]);
+                auto &data = PADDLE_GET(phi::TensorArray, self[i]);
                 py::list tmp(data.size());
                 for (size_t j = 0; j < data.size(); ++j) {
                   tmp[j] = py::cast(std::move(data[j]));
@@ -2621,9 +2621,9 @@ All parameter, weight, gradient are variables in Paddle.
 
       .def(
           "append",
-          [](FetchList &self, const LoDTensorArray &t) {
+          [](FetchList &self, const phi::TensorArray &t) {
             self.emplace_back();
-            auto &lod_tensor_array = PADDLE_GET(LoDTensorArray, self.back());
+            auto &lod_tensor_array = PADDLE_GET(phi::TensorArray, self.back());
             for (size_t i = 0; i < t.size(); ++i) {
               lod_tensor_array[i].ShareDataWith(t[i]);
               lod_tensor_array[i].set_lod(t[i].lod());
@@ -2645,7 +2645,7 @@ All parameter, weight, gradient are variables in Paddle.
                   auto &var = PADDLE_GET(phi::DenseTensor, self[i][j]);
                   tmp[j] = py::cast(std::move(var));
                 } else {
-                  auto &var = PADDLE_GET(LoDTensorArray, self[i][j]);
+                  auto &var = PADDLE_GET(phi::TensorArray, self[i][j]);
                   py::list tmp_array(var.size());
                   for (size_t k = 0; k < var.size(); ++k) {
                     tmp_array[k] = std::move(var[k]);
@@ -2909,12 +2909,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("trace_switch",
                      &paddle::platform::ProfilerOptions::trace_switch);
 
-  py::class_<platform::RecordEvent>(m, "_RecordEvent")
+  py::class_<phi::RecordEvent>(m, "_RecordEvent")
       .def(py::init([](std::string name, platform::TracerEventType type) {
-        return std::make_unique<platform::RecordEvent>(
+        return std::make_unique<phi::RecordEvent>(
             name, type, 1, phi::EventRole::kOrdinary);
       }))
-      .def("end", [](platform::RecordEvent *event) { event->End(); });
+      .def("end", [](phi::RecordEvent *event) { event->End(); });
 
   py::enum_<paddle::platform::TracerMemEventType>(m, "TracerMemEventType")
       .value("Allocate", paddle::platform::TracerMemEventType::Allocate)

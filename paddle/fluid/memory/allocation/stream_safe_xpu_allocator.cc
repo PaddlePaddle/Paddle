@@ -114,9 +114,9 @@ void StreamSafeXPUAllocator::SetDefaultStream(XPUStream stream) {
 }
 
 phi::Allocation* StreamSafeXPUAllocator::AllocateImpl(size_t size) {
-  platform::RecordEvent record("StreamSafeXPUAllocator::Allocate",
-                               platform::TracerEventType::UserDefined,
-                               9 /*level*/);
+  phi::RecordEvent record("StreamSafeXPUAllocator::Allocate",
+                          platform::TracerEventType::UserDefined,
+                          9 /*level*/);
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
@@ -146,9 +146,9 @@ phi::Allocation* StreamSafeXPUAllocator::AllocateImpl(size_t size) {
 }
 
 void StreamSafeXPUAllocator::FreeImpl(phi::Allocation* allocation) {
-  platform::RecordEvent record("StreamSafeXPUAllocator::Free",
-                               platform::TracerEventType::UserDefined,
-                               9 /*level*/);
+  phi::RecordEvent record("StreamSafeXPUAllocator::Free",
+                          platform::TracerEventType::UserDefined,
+                          9 /*level*/);
   StreamSafeXPUAllocation* stream_safe_xpu_allocation =
       static_cast<StreamSafeXPUAllocation*>(allocation);
 

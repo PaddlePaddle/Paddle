@@ -402,7 +402,7 @@ static void PerformBackwardInplace(const std::string& op_type,
 }
 
 void BasicEngine::Execute() {
-  platform::RecordEvent backward_record_event(
+  phi::RecordEvent backward_record_event(
       "backward", platform::TracerEventType::UserDefined, 1);
 
   if (init_nodes_.empty()) {
@@ -427,7 +427,7 @@ void BasicEngine::Execute() {
     auto& inplace_grad_name_map = shared_cur_node->InplaceGradNameMap();
 
     for (auto& cur_op : *shared_cur_node) {
-      platform::RecordEvent op_type_record_event(
+      phi::RecordEvent op_type_record_event(
           cur_op.Type() + " grad_node", platform::TracerEventType::Operator, 1);
 
       ++op_num;

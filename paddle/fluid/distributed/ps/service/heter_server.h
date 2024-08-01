@@ -208,9 +208,9 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
              MultiVarMsg* response,
              brpc::Controller* cntl) override {
     LOG(INFO) << "entered Handle";
-    platform::RecordEvent record_event("SendAndRecvVariableHandler->Handle",
-                                       platform::TracerEventType::Communication,
-                                       1);
+    phi::RecordEvent record_event("SendAndRecvVariableHandler->Handle",
+                                  platform::TracerEventType::Communication,
+                                  1);
     FLAGS_eager_delete_tensor_gb = -1;
 
     // get microID from request

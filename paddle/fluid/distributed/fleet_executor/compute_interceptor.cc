@@ -352,8 +352,8 @@ void ComputeInterceptor::Run() {
     for (auto var_name : vars_names) {
       if (var_name == "feed" || var_name == "fetch") continue;
       auto* var = microbatch_scopes_[cur_scope_id_]->Var(var_name);
-      if (var != nullptr && var->IsType<framework::LoDTensorArray>()) {
-        auto* lod_tensor_arr = var->GetMutable<framework::LoDTensorArray>();
+      if (var != nullptr && var->IsType<phi::TensorArray>()) {
+        auto* lod_tensor_arr = var->GetMutable<phi::TensorArray>();
         lod_tensor_arr->clear();
       }
     }
