@@ -48,7 +48,7 @@ class GPUContextAllocation : public Allocation {
   ~GPUContextAllocation() {
     PADDLE_WARN_NOT_NULL(
         dev_ctx_,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Device context is not set for GPUContextAllocation"));
 
     auto *p_allocation = underlying_allocation_.release();
@@ -103,7 +103,7 @@ class GPUContextAllocator : public Allocator {
   phi::Allocation *AllocateImpl(size_t size) override {
     PADDLE_ENFORCE_NOT_NULL(
         default_stream_,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Default stream is not set for GPUContextAllocator"));
     platform::CUDADeviceGuard guard(place_.device);
     auto allocation = new GPUContextAllocation(
@@ -147,7 +147,7 @@ class GPUContextAllocatorPool {
     PADDLE_ENFORCE_NE(
         iter,
         allocators_.end(),
-        phi::errors::NotFound("No allocator found for CUDAPlace."));
+        common::errors::NotFound("No allocator found for CUDAPlace."));
     auto &allocator = iter->second;
     AllocationPtr allocation = allocator->Allocate(size);
     static_cast<GPUContextAllocation *>(allocation.get())

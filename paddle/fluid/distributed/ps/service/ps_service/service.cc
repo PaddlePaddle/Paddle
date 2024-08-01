@@ -82,7 +82,8 @@ int PSCore::InitServer(
   _server_ptr = std::shared_ptr<::paddle::distributed::PSServer>(
       ::paddle::distributed::PSServerFactory::Create(_ps_param));
   ret = _server_ptr->Configure(_ps_param, _ps_env, index, server_sub_program);
-  CHECK(ret == 0) << "failed to configure server";
+  PADDLE_ENFORCE_EQ(
+      ret, 0UL, phi::errors::PreconditionNotMet("Failed to configure server."));
   return ret;
 }
 

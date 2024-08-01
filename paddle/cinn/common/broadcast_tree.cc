@@ -292,7 +292,7 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
     const auto& operands = broadcast.operands;
     PADDLE_ENFORCE_GE(operands->size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The operands size should be greater than 2."));
     CHECK(operands->at(0) != operands->at(1));
     ret = symbol::Broadcastable<symbol::DimExpr>{operands->at(0),

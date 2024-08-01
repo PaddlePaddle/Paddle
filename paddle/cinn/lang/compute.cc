@@ -46,7 +46,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           1,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 1, but receive %d. ",
                               axis.size()));
@@ -65,7 +65,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           2,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 2, but receive %d. ",
                               axis.size()));
@@ -84,7 +84,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           3,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 3, but receive %d. ",
                               axis.size()));
@@ -103,7 +103,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           4,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 4, but receive %d. ",
                               axis.size()));
@@ -122,7 +122,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           5,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 5, but receive %d. ",
                               axis.size()));
@@ -141,7 +141,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           6,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 6, but receive %d. ",
                               axis.size()));

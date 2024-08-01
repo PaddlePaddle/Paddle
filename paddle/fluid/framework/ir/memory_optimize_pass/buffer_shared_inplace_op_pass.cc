@@ -60,7 +60,7 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
       const framework::OpDesc *op_desc = op->Node()->Op();
       PADDLE_ENFORCE_NOT_NULL(
           op_desc,
-          phi::errors::NotFound("Op(%s) can not find opdesc.", op->Name()));
+          common::errors::NotFound("Op(%s) can not find opdesc.", op->Name()));
 
       auto &infer_inplace = OpInfoMap::Instance().Get(op_type).infer_inplace_;
       if (!infer_inplace) {
@@ -172,15 +172,15 @@ GetInplaceVars(const BlockDesc &block,
   PADDLE_ENFORCE_EQ(
       block.ID(),
       0,
-      phi::errors::Unimplemented("Inplace can only perform in block 0."));
+      common::errors::Unimplemented("Inplace can only perform in block 0."));
   // only take block 0 gc_vars
   const auto op_gc_vars = GetEagerDeletionCleanVarsForPartial(
       *block.Program(), skip_vars, for_partial_block)[0];
   const auto all_ops = block.AllOps();
-  PADDLE_ENFORCE_EQ(
-      op_gc_vars.size(),
-      all_ops.size(),
-      phi::errors::PermissionDenied("GC analysis error: op number not match."));
+  PADDLE_ENFORCE_EQ(op_gc_vars.size(),
+                    all_ops.size(),
+                    common::errors::PermissionDenied(
+                        "GC analysis error: op number not match."));
   size_t n = all_ops.size();
   std::unordered_set<std::string> visited_vars;
   std::unordered_set<std::string> reused_in_vars(skip_vars.begin(),
@@ -278,7 +278,7 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
       GetInplaceVars(*block, use_cuda, skip_vars, for_partial_block);
   PADDLE_ENFORCE_EQ(inplace_vars.size(),
                     block->OpSize(),
-                    phi::errors::PermissionDenied(
+                    common::errors::PermissionDenied(
                         "Inplace analysis error: op number not match."));
   int64_t n = static_cast<int64_t>(inplace_vars.size());
   for (int64_t i = n - 1; i >= 0; --i) {

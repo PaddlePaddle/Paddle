@@ -27,7 +27,7 @@ struct FakeException {
   void pd_exception(int a) const {
     PADDLE_ENFORCE_NE(a,
                       a,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "This is a preset error message used to verify "
                           "whether the exception meets expectations: %d, %d.",
                           a,
@@ -43,7 +43,11 @@ TEST(Status, pd_exception) {
   CHECK(!status.ok());
   CHECK(status == status);
   CHECK(!(status != status));
-  CHECK_EQ(status.code(), phi::ErrorCode::INVALID_ARGUMENT + 1);
+  PADDLE_ENFORCE_EQ(
+      status.code(),
+      phi::ErrorCode::INVALID_ARGUMENT + 1,
+      phi::errors::InvalidArgument(
+          "Required status.code() should be equal to INVALID_ARGUMENT + 1. "));
   LOG(INFO) << status.error_message();
 }
 
