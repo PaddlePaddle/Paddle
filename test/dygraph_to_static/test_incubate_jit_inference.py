@@ -102,6 +102,7 @@ class TestToStaticInfenrenceFunc(Dy2StTestBase):
         result_y0 = my_layer(y).numpy()
 
         my_layer.func = paddle.incubate.jit.inference(my_layer.func)
+        my_layer.func = paddle.incubate.jit.inference(my_layer.func)
 
         result_x1 = my_layer(x).numpy()
         result_y1 = my_layer(y).numpy()
@@ -118,6 +119,7 @@ class TestToStaticInputListModel(Dy2StTestBase):
         x = paddle.rand([batch, hidd], dtype=dtype)
         my_layer = TestLayer2(hidd)
         result0 = my_layer([x, x]).numpy()
+        my_static_layer = paddle.incubate.jit.inference(my_layer)
         my_static_layer = paddle.incubate.jit.inference(my_layer)
 
         result1 = my_layer([x, x]).numpy()

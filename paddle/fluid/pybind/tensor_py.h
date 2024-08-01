@@ -135,7 +135,7 @@ static py::array_t<T> CastNumpyArray(const py::object &array) {
   } else if (py::isinstance<py::array_t<std::complex<double>>>(array)) {
     return CastNumpyType<T>(array.cast<py::array_t<std::complex<double>>>());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Value type error. The assign numpy value allows integer, float, "
         "double, complex64, complex128, and bool, "
         "but received %s.",
@@ -263,12 +263,12 @@ class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
         arr_(arr.ptr()) {
     PADDLE_ENFORCE_NOT_NULL(
         arr_,
-        phi::errors::InvalidArgument("The underlying PyObject pointer of "
-                                     "numpy array cannot be nullptr"));
+        common::errors::InvalidArgument("The underlying PyObject pointer of "
+                                        "numpy array cannot be nullptr"));
     PADDLE_ENFORCE_NE(
         arr_,
         Py_None,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The underlying PyObject pointer of numpy array cannot be None"));
     Py_INCREF(arr_);
   }
@@ -325,7 +325,7 @@ inline std::string TensorDTypeToPyDTypeStr(
       PADDLE_ENFORCE_EQ(                                                    \
           kIsValidDType,                                                    \
           true,                                                             \
-          phi::errors::Unimplemented(                                       \
+          common::errors::Unimplemented(                                    \
               "This type [%s] of tensor cannot be expose to Python",        \
               typeid(T).name()));                                           \
       return py::format_descriptor<T>::format();                            \
@@ -334,18 +334,18 @@ inline std::string TensorDTypeToPyDTypeStr(
 
   _ForEachDataType_(TENSOR_DTYPE_TO_PY_DTYPE);
 #undef TENSOR_DTYPE_TO_PY_DTYPE
-  PADDLE_THROW(phi::errors::Unimplemented("Unsupported tensor data type: %s",
-                                          framework::DataTypeToString(type)));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Unsupported tensor data type: %s", framework::DataTypeToString(type)));
 }
 
 }  // namespace details
 
 template <typename T>
 T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
-  PADDLE_ENFORCE_LT(
-      offset,
-      self.numel(),
-      phi::errors::InvalidArgument("The offset exceeds the size of tensor."));
+  PADDLE_ENFORCE_LT(offset,
+                    self.numel(),
+                    common::errors::InvalidArgument(
+                        "The offset exceeds the size of tensor."));
 
   T b = static_cast<T>(0);
   if (phi::is_cpu_place(self.place()) ||
@@ -380,10 +380,10 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
 
 template <typename T>
 void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
-  PADDLE_ENFORCE_LT(
-      offset,
-      self->numel(),
-      phi::errors::InvalidArgument("The offset exceeds the size of tensor."));
+  PADDLE_ENFORCE_LT(offset,
+                    self->numel(),
+                    common::errors::InvalidArgument(
+                        "The offset exceeds the size of tensor."));
   VLOG(10) << "TensorSetElement, place: " << self->place()
            << ", offset: " << offset << ", element: " << elem;
   if (phi::is_cpu_place(self->place())) {
@@ -447,7 +447,7 @@ void SetTensorFromPyArrayT(
                  static_cast<const void *>(array.data()),
                  array.nbytes());
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Cannot use XPUPlace in CPU/GPU version, "
         "Please recompile or reinstall Paddle with XPU support."));
 #endif
@@ -468,7 +468,7 @@ void SetTensorFromPyArrayT(
       }
     }
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Cannot use IPUPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with IPU support."));
 #endif
@@ -486,7 +486,7 @@ void SetTensorFromPyArrayT(
     auto &ctx = *pool.Get(place);
     ctx.Wait();
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Cannot use CustomDevice in CPU/GPU/XPU version. "
         "Please recompile or reinstall Paddle with CustomDevice support."));
 #endif
@@ -509,14 +509,14 @@ void SetTensorFromPyArrayT(
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Incompatible place type: Tensor.set() supports "
           "CPUPlace, CUDAPlace "
           "and CUDAPinnedPlace, but got %s!",
           place));
     }
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Cannot use CUDAPlace or CUDAPinnedPlace in CPU only version, "
         "Please recompile or reinstall Paddle with CUDA support."));
 #endif
@@ -562,7 +562,7 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
   } else {
     // obj may be any type, obj.cast<py::array>() may be failed,
     // then the array.dtype will be string of unknown meaning,
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input object type error or incompatible array data type. "
         "tensor.set() supports array with bool, float16, float32, "
         "float64, int8, int16, int32, int64, uint8 or uint16, "
@@ -578,7 +578,7 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
       array.dtype().kind() == 'S' || array.dtype().kind() == 'U';
   PADDLE_ENFORCE_EQ(is_string_pyarray,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expect the dtype of numpy array is string or "
                         "unicode, but receive dtype %s",
                         array.dtype()));
@@ -621,7 +621,7 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
       }
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "StringTensor only support CPUPlace now, but receive %s",
         place.DebugString()));
   }
@@ -769,16 +769,16 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
   const phi::DDim &srcDDim = self.dims();
   PADDLE_ENFORCE(
       0 <= dim && dim < srcDDim.size(),
-      phi::errors::OutOfRange("The dim %d of slice is out of bounds, it "
-                              "should be in the range of [0, %d).",
-                              dim,
-                              srcDDim.size()));
+      common::errors::OutOfRange("The dim %d of slice is out of bounds, it "
+                                 "should be in the range of [0, %d).",
+                                 dim,
+                                 srcDDim.size()));
 
   if (py::isinstance<py::slice>(obj)) {
     size_t lstart, lstop, lstep, lslicelength;
     py::slice s = static_cast<py::slice>(obj);
     if (!s.compute(srcDDim[dim], &lstart, &lstop, &lstep, &lslicelength)) {
-      PADDLE_THROW(phi::errors::OutOfRange(
+      PADDLE_THROW(common::errors::OutOfRange(
           "Slice on dim: %d is error, please check the validity of tensor "
           "dims or slice item.",
           dim));
@@ -791,19 +791,19 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
     start = static_cast<int64_t>(static_cast<py::int_>(obj));
     PADDLE_ENFORCE(
         std::abs(start) < srcDDim[dim],
-        phi::errors::OutOfRange("The start %d of slice is out of bounds, "
-                                "it should be in the range of (%d, %d).",
-                                start,
-                                -srcDDim[dim],
-                                srcDDim[dim]));
+        common::errors::OutOfRange("The start %d of slice is out of bounds, "
+                                   "it should be in the range of (%d, %d).",
+                                   start,
+                                   -srcDDim[dim],
+                                   srcDDim[dim]));
     start = (start >= 0) ? start : srcDDim[dim] - start;
     stop = start + 1;
     step = 1;
     slicelength = 1;
   } else {
     PADDLE_THROW(
-        phi::errors::OutOfRange("Index object error, the index object for "
-                                "slice only supports slice(::) and int."));
+        common::errors::OutOfRange("Index object error, the index object for "
+                                   "slice only supports slice(::) and int."));
   }
 }
 
@@ -866,7 +866,7 @@ void _sliceDapper(const phi::DenseTensor *in,
       _sliceCompute<T, 9>(in, out, ctx, axes, starts);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The dim size should be 1 to 9, current is %d", size));
       break;
   }
@@ -942,9 +942,9 @@ inline phi::DenseTensor *_sliceTensor(const phi::DenseTensor &self,
     case framework::proto::VarType::UINT8:
       return _sliceAndConcat<uint8_t>(self, obj, dim);
     default:
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("Not support tensor type: %s",
-                                       framework::DataTypeToString(src_type)));
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Not support tensor type: %s",
+          framework::DataTypeToString(src_type)));
   }
 }
 
@@ -1069,7 +1069,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
     return py_arr;
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Cannot use XPUPlace in CPU/GPU version, "
         "Please recompile or reinstall Paddle with XPU support."));
 #endif
@@ -1101,7 +1101,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
     return py_arr;
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Cannot use CUDAPlace in CPU only version, "
         "Please recompile or reinstall Paddle with CUDA support."));
 #endif
@@ -1174,13 +1174,13 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
     return py_arr;
 
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Cannot use CustomPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with CustomPlace "
         "support."));
 #endif
   }
-  PADDLE_THROW(phi::errors::Unimplemented("Place is not supported"));
+  PADDLE_THROW(common::errors::Unimplemented("Place is not supported"));
   return py::array();
 }
 
