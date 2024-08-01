@@ -1529,6 +1529,14 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'interface.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/serialize_deserialize/include',
+                recursive=True,
+            )
+        )
     )
 
     jit_layer_headers = [
