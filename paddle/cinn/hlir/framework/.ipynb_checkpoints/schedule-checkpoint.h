@@ -46,7 +46,7 @@ class Schedule : public cinn::common::Object {
         it != stage_map.end(),
         true,
         phi::errors::NotFound(
-            "Cannot find Stage for operator %s in the schedule", op.name()));
+            "Cannot find Stage for operator %d in the schedule", op.name()));
     return it->second;
   }
 
