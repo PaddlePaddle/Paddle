@@ -89,13 +89,16 @@ class TestShuffleBatchOp2(TestShuffleBatchOpBase):
 
 class TestShuffleBatchAPI(unittest.TestCase):
     def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if not os.name == 'nt' and paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
         paddle.enable_static()
 
     def tearDown(self):
         paddle.disable_static()
 
     def test_seed_without_tensor(self):
-        def api_run(seed):
+        def api_run(seed, place=paddle.CPUPlace()):
             main_prog, startup_prog = (
                 paddle.static.Program(),
                 paddle.static.Program(),
@@ -103,30 +106,35 @@ class TestShuffleBatchAPI(unittest.TestCase):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
                 out = paddle.incubate.layers.shuffle_batch(x, seed=seed)
-            exe = paddle.static.Executor()
+            exe = paddle.static.Executor(place=place)
             feed = {'x': np.random.random((10, 4)).astype('float32')}
             exe.run(startup_prog)
             _ = exe.run(main_prog, feed=feed, fetch_list=[out])
 
-        api_run(seed=None)
-        api_run(seed=1)
+        for place in self.places:
+            api_run(None, place=place)
+            api_run(1, place=place)
 
     def test_seed_with_tensor(self):
-        main_prog, startup_prog = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_prog, startup_prog):
-            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
-            seed = paddle.static.data(name='seed', shape=[1], dtype='int64')
-            out = paddle.incubate.layers.shuffle_batch(x, seed=seed)
-        exe = paddle.static.Executor()
-        feed = {
-            'x': np.random.random((10, 4)).astype('float32'),
-            'seed': np.array([1]).astype('int64'),
-        }
-        exe.run(startup_prog)
-        _ = exe.run(main_prog, feed=feed, fetch_list=[out])
+        def api_run(place=paddle.CPUPlace()):
+            main_prog, startup_prog = (
+                paddle.static.Program(),
+                paddle.static.Program(),
+            )
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+                seed = paddle.static.data(name='seed', shape=[1], dtype='int64')
+                out = paddle.incubate.layers.shuffle_batch(x, seed=seed)
+            exe = paddle.static.Executor(place=place)
+            feed = {
+                'x': np.random.random((10, 4)).astype('float32'),
+                'seed': np.array([1]).astype('int64'),
+            }
+            exe.run(startup_prog)
+            _ = exe.run(main_prog, feed=feed, fetch_list=[out])
+
+        for place in self.places:
+            api_run(place=place)
 
 
 if __name__ == '__main__':
