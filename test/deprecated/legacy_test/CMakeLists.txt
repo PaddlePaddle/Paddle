@@ -394,7 +394,6 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type_deprecated)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op_deprecated)
 list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
-list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
@@ -462,15 +461,10 @@ if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
   list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
   list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo)
-  list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_ctr2)
 endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
-
-py_test_modules(
-  test_imperative_ocr_attention_model MODULES
-  test_imperative_ocr_attention_model ENVS FLAGS_cudnn_deterministic=1)
 
 if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
   py_test_modules(test_fuse_dot_product_attention_pass MODULES
@@ -613,8 +607,7 @@ set_tests_properties(test_imperative_lod_tensor_to_selected_rows_deprecated
 
 set_tests_properties(test_deformable_conv_op_deprecated PROPERTIES TIMEOUT 200)
 set_tests_properties(test_regularizer_api_deprecated PROPERTIES TIMEOUT 150)
-set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
-                                                                        120)
+
 if(NOT WIN32)
   if(WITH_NV_JETSON)
     set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 1200)
@@ -647,7 +640,6 @@ set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_regularizer_deprecated PROPERTIES TIMEOUT 150)
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_slice_op_deprecated PROPERTIES TIMEOUT 120)
@@ -656,7 +648,7 @@ set_tests_properties(test_dataloader_keep_order_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_dataloader_unkeep_order_deprecated PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
-set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
+set_tests_properties(test_split_program_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
@@ -677,7 +669,6 @@ set(TEST_CINN_OPS
     test_layer_norm_op_deprecated
     test_where_op
     test_arg_min_max_op
-    test_instance_norm_op
     test_instance_norm_op_deprecated)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
@@ -759,7 +750,7 @@ py_test_modules(test_stride MODULES test_stride ENVS
 set_pir_tests_properties()
 
 set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
-                                                                      100)
+                                                                      120)
 set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)

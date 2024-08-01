@@ -308,7 +308,7 @@ class TEST_API OperatorBase {
       PADDLE_ENFORCE_NE(
           it,
           runtime_attrs_.end(),
-          phi::errors::NotFound(
+          common::errors::NotFound(
               "(%s) is not found in AttributeMap and RuntimeAttributeMap.",
               name));
     }
@@ -318,7 +318,7 @@ class TEST_API OperatorBase {
     PADDLE_ENFORCE_EQ(
         HasAttr(name),
         true,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "The attribute %s is not found in operator %s", name, Type()));
 
     attrs_[name] = v;
@@ -337,7 +337,8 @@ class TEST_API OperatorBase {
   const OpInfo& Info() const {
     PADDLE_ENFORCE_NOT_NULL(
         info_,
-        phi::errors::NotFound("OpInfo of operator (%s) is not found.", type_));
+        common::errors::NotFound("OpInfo of operator (%s) is not found.",
+                                 type_));
     return *info_;
   }
 
@@ -463,10 +464,10 @@ class ExecutionContext : public phi::KernelContext {
       PADDLE_ENFORCE_NE(
           iter,
           op_.RuntimeAttrs().end(),
-          phi::errors::NotFound("(%s) is not found in AttributeMap and "
-                                "RuntimeAttributeMap of (%s) operator.",
-                                name,
-                                op_.Type()));
+          common::errors::NotFound("(%s) is not found in AttributeMap and "
+                                   "RuntimeAttributeMap of (%s) operator.",
+                                   name,
+                                   op_.Type()));
     }
     return iter->second;
   }
@@ -583,7 +584,7 @@ class ExecutionContext : public phi::KernelContext {
   const inline phi::GPUContext& cuda_device_context() const {
     PADDLE_ENFORCE_EQ(phi::is_gpu_place(device_context_.GetPlace()),
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Current device context place is not GPUPlace."));
     return *reinterpret_cast<const phi::GPUContext*>(&device_context_);
   }

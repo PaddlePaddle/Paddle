@@ -83,7 +83,7 @@ struct BeamSearchDecodeFunctor {
   template <typename T>
   void apply_mix() const {
     if (std::is_same<bool, T>::value) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "beam search decode op does not support bool!"));
 
     } else {

@@ -103,7 +103,7 @@ class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
 //       |/      |                      |
 //      out2    bias                out_g_all
 //       |-------|                      |
-//      add          full          c_allgather
+//      add          full          all_gather
 //       |            |                 |
 //      out3        index          out_g_assign
 //       |------------|                 |
@@ -126,7 +126,7 @@ class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
 //       |-------|-------------|
 //    matmul                out_g_all
 //       |                     |
-//      out1               c_allgather
+//      out1               all_gather
 //       |                     |
 // c_reducescatter        out_g_assign  bias_g
 //       |                     |
@@ -162,11 +162,9 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
         pat.Op(pir::SliceOp::name(), {{"index", pat.Attr("index")}});
     const auto &assign = pat.Op(paddle::dialect::AssignOp::name());
     const auto &assign1 = pat.Op(paddle::dialect::AssignOp::name());
-    const auto &c_allgather =
-        pat.Op(paddle::dialect::CAllgatherOp::name(),
-               {{"ring_id", pat.Attr("gather_ring_id")},
-                {"use_calc_stream", pat.Attr("gather_use_calc_stream")},
-                {"nranks", pat.Attr("gather_nranks")}});
+    const auto &all_gather = pat.Op(paddle::dialect::AllGatherOp::name(),
+                                    {{"ring_id", pat.Attr("gather_ring_id")},
+                                     {"nranks", pat.Attr("gather_nranks")}});
     const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name(),
                                   {{"axis", pat.Attr("axis")}});
     const auto &add_ = pat.Op(paddle::dialect::Add_Op::name());
@@ -185,7 +183,7 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
     pat.Tensor("out6") = assign(pat.Tensor("out5"));
 
     pat.Tensor("out_g_assign") = assign1(pat.Tensor("out_g"));
-    pat.Tensor("out_g_all") = c_allgather(pat.Tensor("out_g_assign"));
+    pat.Tensor("out_g_all") = all_gather(pat.Tensor("out_g_assign"));
     add_grad(
         {&pat.Tensor("out2"), &pat.Tensor("bias"), &pat.Tensor("out_g_all")},
         {&pat.Tensor("out2_g"), &pat.Tensor("bias_g")});
@@ -211,10 +209,9 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
     const auto &res_add_grad = res.Op(paddle::dialect::AddGradOp::name(),
                                       {{"axis", pat.Attr("axis")}});
     const auto &res_add_ = res.Op(paddle::dialect::Add_Op::name());
-    const auto &res_c_allgather =
-        res.Op(paddle::dialect::CAllgatherOp::name(),
+    const auto &res_all_gather =
+        res.Op(paddle::dialect::AllGatherOp::name(),
                {{"ring_id", pat.Attr("gather_ring_id")},
-                {"use_calc_stream", pat.Attr("gather_use_calc_stream")},
                 {"nranks", pat.Attr("gather_nranks")}});
     const auto &res_matmul_grad =
         res.Op(paddle::dialect::MatmulGradOp::name(),
@@ -230,7 +227,7 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
         {&res.Tensor("out_g_assign"), &res.Tensor("bias_g")});
     res.Tensor("bias_g_m2") =
         res_add_(res.Tensor("bias_g_m1"), res.Tensor("bias_g"));
-    res.Tensor("out_g_all") = res_c_allgather(res.Tensor("out_g_assign"));
+    res.Tensor("out_g_all") = res_all_gather(res.Tensor("out_g_assign"));
     res_matmul_grad(
         {&res.Tensor("input"), &res.Tensor("weight"), &res.Tensor("out_g_all")},
         {&res.Tensor("input_g"), &res.Tensor("weight_g")});

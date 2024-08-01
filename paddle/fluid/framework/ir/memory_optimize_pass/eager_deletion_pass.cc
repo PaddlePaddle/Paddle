@@ -60,10 +60,10 @@ static int64_t GetMemorySize(
   auto *var_desc = TryGetLatestVarDesc(vars.at(var_name));
   PADDLE_ENFORCE_NOT_NULL(
       var_desc,
-      phi::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
+      common::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
   PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Var(%s) must be phi::DenseTensor.", var_name));
   auto dims = var_desc->GetShape();
   return static_cast<int64_t>(

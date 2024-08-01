@@ -403,7 +403,7 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
     PADDLE_ENFORCE_GT(
         group.nodes.size(),
         0,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Group is empty"
             "Expected size of group is larger than 0, but receive %d. ",
             group.nodes.size()));

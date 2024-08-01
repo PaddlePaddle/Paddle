@@ -32,7 +32,7 @@ namespace {
 void DFSSortUtil(const GraphNode *node, std::vector<GraphNode *> *order) {}
 
 std::vector<GraphNode *> DFSSort(const std::vector<GraphNode *> &nodes) {
-  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"));
+  PADDLE_THROW(::common::errors::Unimplemented("Not Implemented"));
   return {};
 }
 
@@ -100,7 +100,7 @@ Graph::topological_order() const {
     for (auto &edge : top_node->outlinks()) {
       PADDLE_ENFORCE_EQ(edge->source(),
                         top_node,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The edge's source is not equal to the top node."));
       edge_order.push_back(edge.get());
       auto *sink = edge->sink();
@@ -112,7 +112,7 @@ Graph::topological_order() const {
 
   PADDLE_ENFORCE_EQ(node_order.size(),
                     nodes().size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The node_order size is not equal to the nodes size."));
 
   return std::make_tuple(node_order, edge_order);
