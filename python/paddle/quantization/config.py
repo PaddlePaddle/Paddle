@@ -276,7 +276,7 @@ class QuantConfig:
                 >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
                 >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
                 >>> q_config = QuantConfig(activation=None, weight=None)
-                >>> class CustomizedQuantedConv2D:
+                >>> class CustomizedQuantedConv2D(paddle.nn.Layer):
                 ...     def forward(self, x):
                 ...         pass
                 ...         # add some code for quantization simulation
