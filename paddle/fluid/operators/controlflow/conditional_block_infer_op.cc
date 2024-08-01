@@ -72,7 +72,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
       auto *scope_var = scope.FindVar(Output("Scope"));
       PADDLE_ENFORCE_NOT_NULL(
           scope_var,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "Scope must be set in ConditionalBlockInferOp."));
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
       scopes->resize(1);

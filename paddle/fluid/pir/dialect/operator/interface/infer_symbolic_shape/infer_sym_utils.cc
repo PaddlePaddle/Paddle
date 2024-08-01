@@ -111,6 +111,71 @@ symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
   return symbol::TensorShapeOrDataDimExprs(InsertZeros(x_dims));
 }
 
+ExprVec GetOrCreateExprVecFromData(
+    const ShapeOrData &shapeordata,
+    pir::InferSymbolicShapeContext *infer_context) {
+  if (!HasCompleteData(shapeordata)) {
+    LOG(WARNING) << "ShapeOrDataDimExprs with incomplete data info. Need to "
+                    "create new DimExpr symbol.";
+  }
+
+  const auto &GetTensorItemNumFromShape =
+      [](const std::vector<symbol::DimExpr> &shape) -> int64_t {
+    const auto &optional_int64_shape = VecExpr2Int64(shape);
+    PADDLE_ENFORCE_EQ(
+        optional_int64_shape.has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "The shape of tensor should be known when GetExprVecFromData."));
+    return std::accumulate(optional_int64_shape->begin(),
+                           optional_int64_shape->end(),
+                           1,
+                           std::multiplies<int64_t>());
+  };
+
+  const auto &GetNewDataDimExpr = [&]() -> symbol::DimExpr {
+    return symbol::DimExpr{infer_context->GetNextSymName()};
+  };
+
+  ExprVec result;
+  const auto &GetTensorData =
+      [&](const symbol::TensorShapeOrDataDimExprs &tensor_shape_or_data) {
+        if (tensor_shape_or_data.data().has_value()) {
+          for (const auto &expr : tensor_shape_or_data.data().value()) {
+            result.emplace_back(expr);
+          }
+        } else {
+          for (int i = 0;
+               i < GetTensorItemNumFromShape(tensor_shape_or_data.shape());
+               ++i) {
+            result.emplace_back(GetNewDataDimExpr());
+          }
+        }
+      };
+
+  shapeordata.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        GetTensorData(impl);
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        for (const auto &tensor_shape_or_data : impl) {
+          GetTensorData(tensor_shape_or_data);
+        }
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, RankedTensorArrayShapeOrDataDimExprs can not get "
+            "data"));
+        return;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, NullShapeOrDataDimExpr can not get data"));
+        return;
+      });
+  return result;
+}
+
 void BuildCstrEqForTensorListAlongAxis(
     pir::InferSymbolicShapeContext *infer_context,
     const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
