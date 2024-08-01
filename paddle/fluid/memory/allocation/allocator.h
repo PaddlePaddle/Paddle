@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/phi/common/place.h"

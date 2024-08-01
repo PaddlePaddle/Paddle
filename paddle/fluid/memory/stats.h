@@ -18,6 +18,8 @@ limitations under the License. */
 #include <map>
 #include <string>
 
+#include "glog/logging.h"
+
 #include "paddle/common/errors.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/common/place.h"
