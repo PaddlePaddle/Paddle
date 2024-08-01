@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from typing import TYPE_CHECKING
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
@@ -58,6 +59,11 @@ from paddle.base.libpaddle.pir import (
     calc_gradient_helper: for dygraph to static .
 """
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
+
+if TYPE_CHECKING:
+    from typing import Sequence
+
+    from paddle.base.libpaddle.pir import Value
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
@@ -956,7 +962,12 @@ def create_backward_prune_set(
     return outputs_set, inputs_set, no_gradvar_set
 
 
-def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
+def calc_gradient_helper(
+    outputs: Value | Sequence[Value],
+    inputs: Value | Sequence[Value],
+    grad_outputs: Value | Sequence[Value | None] = None,
+    no_grad_set: set[Value] = None,
+) -> dict[Value, list[Value]]:
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
     if all_stop_gradient_true(block):
@@ -1038,7 +1049,12 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     return input_grad_map
 
 
-def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
+def calc_gradient(
+    outputs: Value | Sequence[Value],
+    inputs: Value | Sequence[Value],
+    grad_outputs: Value | Sequence[Value | None] = None,
+    no_grad_set: set[Value] = None,
+) -> list[Value]:
     """
     calculate gradient of input
 
@@ -1084,15 +1100,15 @@ def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
 
 
 def grad(
-    outputs,
-    inputs,
-    grad_outputs=None,
-    retain_graph=None,
-    create_graph=False,
-    only_inputs=True,
-    allow_unused=False,
-    no_grad_vars=None,
-):
+    outputs: Value | Sequence[Value],
+    inputs: Value | Sequence[Value],
+    grad_outputs: Value | Sequence[Value | None] = None,
+    retain_graph: bool = None,
+    create_graph: bool = False,
+    only_inputs: bool = True,
+    allow_unused: bool = False,
+    no_grad_vars: Value | Sequence[Value] = None,
+) -> list[Value]:
     '''
     .. note::
         **This API is ONLY available in imperative mode.**
