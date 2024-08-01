@@ -217,13 +217,13 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype = platform::ToNCCLDataType(type);
 
     auto *out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensorArray>()) {
+    if (out_var->IsType<phi::TensorArray>()) {
       PADDLE_ENFORCE_EQ(
           dynamic_shape,
           false,
           common::errors::InvalidArgument("Dynamic shape for send/recv not "
                                           "support LoDTensorArray for now."));
-      auto out_array = out_var->GetMutable<framework::LoDTensorArray>();
+      auto out_array = out_var->GetMutable<phi::TensorArray>();
       for (size_t idx = 0; idx < out_array->size(); ++idx) {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto out = &out_array->at(idx);
