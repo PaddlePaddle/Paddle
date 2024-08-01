@@ -14,12 +14,15 @@
 
 import json
 import os
+from typing import Sequence
 
 import numpy as np
 
 import paddle
 from paddle import static
 from paddle.base import core
+from paddle.base.compiler import CompiledProgram
+from paddle.base.framework import Program
 
 
 class CostModel:
@@ -47,10 +50,10 @@ class CostModel:
 
     def profile_measure(
         self,
-        startup_program,
-        main_program,
-        device='gpu',
-        fetch_cost_list=['time'],
+        startup_program: Program | CompiledProgram,
+        main_program: Program | CompiledProgram,
+        device: str = 'gpu',
+        fetch_cost_list: Sequence = ['time'],
     ):
         place = paddle.set_device('gpu')
         x = np.random.random(size=(10, 1)).astype('float32')
@@ -74,7 +77,9 @@ class CostModel:
         # return all static cost data
         return load_dict
 
-    def get_static_op_time(self, op_name, forward=True, dtype="float32"):
+    def get_static_op_time(
+        self, op_name: str, forward: bool = True, dtype: str = "float32"
+    ):
         # if forward is True, return op forward time, otherwise return op backward time.
         if op_name is None:
             raise ValueError(
