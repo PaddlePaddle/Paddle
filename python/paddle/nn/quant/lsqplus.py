@@ -14,7 +14,7 @@
 
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
-from paddle.base.layer_helper import LayerHelper, in_dygraph_mode
+from paddle.base.layer_helper import LayerHelper, in_dygraph_mode, in_pir_mode
 
 
 def fake_quantize_dequantize_lsqplus(
@@ -100,22 +100,28 @@ def fake_quantize_dequantize_lsqplus(
             x, alpha, beta, g_scale, bit_length, is_sign, round_type
         )
 
+    if in_pir_mode():
+        return _C_ops.fake_quantize_dequantize_lsqplus(
+            x, alpha, beta, g_scale, bit_length, is_sign, round_type
+        )
+
     # static  branch
     helper = LayerHelper('fake_quantize_dequantize_lsqplus', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    dtype = helper.input_dtype('x')
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='fake_quantize_dequantize_lsqplus',
         inputs={
-            'x': [x],
-            'alpha': [alpha],
-            'beta': [beta],
-            'g_scale': [g_scale],
+            'x': x,
+            'alpha': alpha,
+            'beta': beta,
+            'g_scale': g_scale,
         },
         attrs={
             'bit_length': bit_length,
             'is_sign': is_sign,
             'round_type': round_type,
         },
-        outputs={'out': [out]},
+        outputs={'out': out},
     )
     return out
