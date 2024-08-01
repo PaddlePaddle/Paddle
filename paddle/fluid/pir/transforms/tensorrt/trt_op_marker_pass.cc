@@ -744,6 +744,7 @@ class CastOpPattern : public pir::OpRewritePattern<paddle::dialect::CastOp> {
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
+
   }
 };
 
@@ -772,10 +773,6 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
                          .dyn_cast<paddle::dialect::DenseTensorType>()
                          .dims();
       auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
-      if (!out_vector_type) {
-        VLOG(3) << "Output is not a VectorType";
-        return false;
-      }
 
       paddle::dialect::FullIntArrayOp full_sections_op =
           pir::GetDefiningOpForInput(op, 1)
@@ -808,7 +805,67 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
     return true;
   }
 };
+class SplitWithNumOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::SplitWithNumOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SplitWithNumOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::SplitWithNumOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    paddle::dialect::FullOp full_op =
+        pir::GetDefiningOpForInput(op, 1)->dyn_cast<paddle::dialect::FullOp>(); 
+    if (!full_op) {
+      VLOG(3) << "Can not find full op";
+      return false;
+    } else {
+      auto axis = full_op->attribute<paddle::dialect::ScalarAttribute>("value")
+                      .data()
+                      .to<int>();
+      auto x_shape = op.operand_source(0)
+                         .type()
+                         .dyn_cast<paddle::dialect::DenseTensorType>()
+                         .dims();
+      auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
 
+      axis += (axis < 0) ? x_shape.size() : 0;
+      if (x_shape[axis] == -1) {
+        VLOG(3) << "The (" << axis << ") dim of input should not be -1";
+        return false;
+      }
+      
+      if (!op->HasAttribute("num") ) {
+        VLOG(3)<< "split_with_num op must has num attributes";
+        return false;
+      }
+      int num = op->attribute<pir::Int32Attribute>("num").data();
+      std::vector<int64_t> output_lengths;
+      if (num > 0) {
+        int64_t in_axis_dim = x_shape[axis];
+        if (in_axis_dim % num != 0) {
+              VLOG(3) << "Invalid number to split. Tensor split does not result"
+                        " in an equal division of dimensions. Axis dim = "
+                      << in_axis_dim << " num = " << num << "!= 0";
+              return false;
+        }
+        size_t out_axis_dim = in_axis_dim / num;
+        for (int i = 0; i < num; ++i) {
+          output_lengths.push_back(out_axis_dim);
+        }
+      }
+
+      if(out_vector_type.size() != output_lengths.size()){
+          VLOG(3) << "The output_length should be equal to the output size.";
+          return false;
+      }
+      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+      return true;
+    }
+                       
+  }
+};
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -861,6 +918,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<FlattenOpPattern>(context));
     ps.Add(std::make_unique<CastOpPattern>(context));
     ps.Add(std::make_unique<SplitOpPattern>(context));
+    ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
     return ps;
   }
 };
