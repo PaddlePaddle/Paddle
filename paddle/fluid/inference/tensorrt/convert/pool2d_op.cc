@@ -88,16 +88,12 @@ class Pool2dOpConverter : public OpConverter {
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
     nvinfer1::ReduceOperation reduce_operation =
         nvinfer1::ReduceOperation::kMAX;
-    plugin::PoolPlugin::PoolType plugin_pool_type =
-        plugin::PoolPlugin::PoolType::max;
     if (pool_type == "max") {
       nv_pool_type = nvinfer1::PoolingType::kMAX;
       reduce_operation = nvinfer1::ReduceOperation::kMAX;
-      plugin_pool_type = plugin::PoolPlugin::PoolType::max;
     } else if (pool_type == "avg") {
       nv_pool_type = nvinfer1::PoolingType::kAVERAGE;
       reduce_operation = nvinfer1::ReduceOperation::kAVG;
-      plugin_pool_type = plugin::PoolPlugin::PoolType::avg;
     }
     if (global_pooling || adaptive) {
       std::fill(paddings.begin(), paddings.end(), 0);

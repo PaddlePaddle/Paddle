@@ -81,52 +81,36 @@ class ScaleOpConverter : public OpConverter {
       layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
     } else {
       if (bias_after_scale) {
-        layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                     Scale,
-                                     *input,
-                                     nvinfer1::ScaleMode::kUNIFORM,
-                                     shift_weights.get(),
-                                     scale_weights.get(),
-                                     power_weights.get());
-        layer->getOutput(0)->setName(
-            ("bias_after_scale_out: " + out_name).c_str());
-        layer->setName(("Scale: scale (Output: " + out_name + ")").c_str());
+        if (!is_scale_1) {
+          layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                       ElementWise,
+                                       *input,
+                                       *reshape_layer_scale->getOutput(0),
+                                       nvinfer1::ElementWiseOperation::kPROD);
+          input = layer->getOutput(0);
+        }
+        if (!is_bias_0) {
+          layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                       ElementWise,
+                                       *input,
+                                       *reshape_layer_bias->getOutput(0),
+                                       nvinfer1::ElementWiseOperation::kSUM);
+        }
       } else {
-        // add bias
-        layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                     Scale,
-                                     *(input),
-                                     nvinfer1::ScaleMode::kUNIFORM,
-                                     shift_weights.get(),
-                                     power_weights.get(),
-                                     power_weights.get());
-        layer->getOutput(0)->setName(
-            ("bias_before_scale：bias_out: " + out_name).c_str());
-        layer->setName(
-            ("Scale: scale_bias (Output: " + out_name + ")").c_str());
-        // mul scale
-        layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                     Scale,
-                                     *(layer->getOutput(0)),
-                                     nvinfer1::ScaleMode::kUNIFORM,
-                                     power_weights.get(),
-                                     scale_weights.get(),
-                                     power_weights.get());
-        layer->getOutput(0)->setName(
-            ("bias_before_scale：scale_out: " + out_name).c_str());
-        layer->setName(
-            ("Scale: scale_scale (Output: " + out_name + ")").c_str());
-      }
-
-      PADDLE_ENFORCE_EQ(layer != nullptr,
-                        true,
-                        common::errors::Fatal("Create scale layer failed."));
-
-      if (input_dim.nbDims < 3) {
-        nvinfer1::Dims squeeze_shape;
-        squeeze_shape.nbDims = input_dim.nbDims;
-        for (int i = 0; i < squeeze_shape.nbDims; i++) {
-          squeeze_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
+        if (!is_bias_0) {
+          layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                       ElementWise,
+                                       *input,
+                                       *reshape_layer_bias->getOutput(0),
+                                       nvinfer1::ElementWiseOperation::kSUM);
+          input = layer->getOutput(0);
+        }
+        if (!is_scale_1) {
+          layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                       ElementWise,
+                                       *input,
+                                       *reshape_layer_scale->getOutput(0),
+                                       nvinfer1::ElementWiseOperation::kPROD);
         }
       }
     }

@@ -67,8 +67,6 @@ class Pool3dOpConverter : public OpConverter {
     VLOG(3) << "convert a pool3d op to tensorrt pool3d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
     auto *input1 = engine_->GetITensor(op_desc.Input("X")[0]);
-    nvinfer1::Dims input_shape = input1->getDimensions();
-    int input_dims = input_shape.nbDims;
 
     bool global_pooling =
         PADDLE_GET_CONST(bool, op_desc.GetAttr("global_pooling"));
@@ -98,16 +96,12 @@ class Pool3dOpConverter : public OpConverter {
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
     nvinfer1::ReduceOperation reduce_operation =
         nvinfer1::ReduceOperation::kMAX;
-    plugin::Pool3DPlugin::Pool3DType plugin_pool_type =
-        plugin::Pool3DPlugin::Pool3DType::max;
     if (pool_type == "max") {
       nv_pool_type = nvinfer1::PoolingType::kMAX;
       reduce_operation = nvinfer1::ReduceOperation::kMAX;
-      plugin_pool_type = plugin::Pool3DPlugin::Pool3DType::max;
     } else if (pool_type == "avg") {
       nv_pool_type = nvinfer1::PoolingType::kAVERAGE;
       reduce_operation = nvinfer1::ReduceOperation::kAVG;
-      plugin_pool_type = plugin::Pool3DPlugin::Pool3DType::avg;
     }
     nvinfer1::Dims3 nv_ksize(ksize[0], ksize[1], ksize[2]);
     nvinfer1::Dims3 nv_strides(strides[0], strides[1], strides[2]);

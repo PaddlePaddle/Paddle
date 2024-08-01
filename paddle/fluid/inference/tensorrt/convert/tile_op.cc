@@ -53,39 +53,11 @@ class TileOpConverter : public OpConverter {
       repeat_tensor = Concat(repeat_tensors);
       repeat_rank = repeat_size;
     } else {
-      std::vector<int> repeat_times =
-          PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("repeat_times"));
-      auto output_dim = input_shape;
-      auto output_stride = input_shape;
-      // If input_dims.nbDims + 1 < repeat_times.size() means we
-      // should expand 1 on batchsize. trt doesn't support this behavior.
-      PADDLE_ENFORCE_GE(
-          rank + 1,
-          repeat_times.size(),
-          common::errors::InvalidArgument(
-              "Can't change batchsize, please check repeat_times"));
-      int32_t diff = rank + 1 - repeat_times.size();
-      if (diff > 0) repeat_times.insert(repeat_times.begin(), diff, 1);
-
-      // Can't expand on batchsize
-      PADDLE_ENFORCE_EQ(
-          repeat_times[0],
-          1,
-          common::errors::InvalidArgument(
-              "Can't expand on batchsize, please check repeat_times"));
-      output_stride.nbDims = rank;
-      for (int32_t i = 0; i < rank; i++) {
-        output_dim.d[i] = output_dim.d[i] * repeat_times[i + 1];
-        output_stride.d[i] = 1;
-      }
-      auto layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Slice, *input, input_shape, output_dim, output_stride);
-#if IS_TRT_VERSION_GE(8600)
-      layer->setMode(nvinfer1::SampleMode::kWRAP);
-#else
-      layer->setMode(nvinfer1::SliceMode::kWRAP);
-#endif
-      ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
+      std::vector<int32_t> repeat_times = PADDLE_GET_CONST(
+          std::vector<int32_t>, op_desc.GetAttr("repeat_times"));
+      repeat_tensor =
+          Add1DConstantLayer(repeat_times, output_name + "_shape_tensor_");
+      repeat_rank = repeat_times.size();
     }
 
     nvinfer1::ITensor* repeat_expand_tensor;
@@ -133,7 +105,6 @@ class TileOpConverter : public OpConverter {
     layer->setMode(nvinfer1::SliceMode::kWRAP);
 #endif
     ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
-
 #endif
   }
 };

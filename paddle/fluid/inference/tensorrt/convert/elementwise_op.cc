@@ -29,7 +29,6 @@ class ElementwiseTensorOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     nvinfer1::ITensor* Y = nullptr;
-    auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     Y = engine_->GetITensor(op_desc.Input("Y").front());
     bool swap_xy = false;
     // Swap X and Y

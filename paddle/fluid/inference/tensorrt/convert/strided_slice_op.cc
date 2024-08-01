@@ -42,7 +42,44 @@ class StridedSliceOpConverter : public OpConverter {
     std::vector<int> decrease_axises =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
 
-    auto input_dims = input->getDimensions();
+    nvinfer1::ILayer* layer = nullptr;
+    auto nchw_input_dims = input->getDimensions();
+    nvinfer1::Dims trt_start_dims;
+    trt_start_dims.nbDims = nchw_input_dims.nbDims;
+    memset(trt_start_dims.d, 0, sizeof(int32_t) * nchw_input_dims.nbDims);
+    nvinfer1::Dims trt_size_dims = trt_start_dims;
+    nvinfer1::Dims trt_end_dims = trt_start_dims;
+    nvinfer1::Dims trt_step_dims = trt_start_dims;
+    for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
+    // input : [N,C,H,W]
+    bool has_neg_indices = false;
+    for (size_t i = 0; i < axes.size(); i++) {
+      int trt_axis = axes[i];
+      trt_start_dims.d[trt_axis] = starts[i];
+      trt_end_dims.d[trt_axis] = ends[i];
+      trt_step_dims.d[axes[i]] = strides[i];
+      if (starts[i] < 0 || ends[i] < 0) has_neg_indices = true;
+    }
+    auto* shape_tensor = Shape(input);
+    auto* start_tensor = Add1DConstantLayer(trt_start_dims);
+    if (has_neg_indices) {
+      start_tensor = FixNegIndices(shape_tensor, start_tensor);
+    }
+
+    std::vector<nvinfer1::ITensor*> end_vec_tensor;
+    for (int i = 0; i < trt_end_dims.nbDims; i++) {
+      end_vec_tensor.push_back(GetEleTensorOfShape(shape_tensor, i));
+    }
+
+    for (size_t i = 0; i < axes.size(); i++) {
+      int trt_axis = axes[i];
+      if (ends[i] >= 0) {
+        end_vec_tensor[trt_axis] = Add1DConstantLayer(ends[i]);
+      } else {
+        end_vec_tensor[trt_axis] =
+            Sum(end_vec_tensor[trt_axis], Add1DConstantLayer(ends[i]));
+      }
+    }
 
     auto* size_tensor =
         Sub(start_tensor, Min(Concat(end_vec_tensor), shape_tensor));

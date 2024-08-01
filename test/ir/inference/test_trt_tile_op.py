@@ -43,6 +43,7 @@ class TRTTileTest(InferencePassTest):
             {'data': [4, 3, 224, 256]},
             {'data': [4, 3, 224, 256]},
             {'data': [4, 3, 224, 256]},
+            False,
         )
         self.fetch_list = [out]
 
@@ -75,6 +76,7 @@ class TRTTileExpandTest(InferencePassTest):
             {'data': [1, 1, 1, 1]},
             {'data': [1, 1, 1, 1]},
             {'data': [1, 1, 1, 1]},
+            False,
         )
         self.fetch_list = [out]
 
@@ -107,6 +109,7 @@ class TRTTileExpandStaticTest(InferencePassTest):
             {'data': [1, 1, 1, 1]},
             {'data': [1, 1, 1, 1]},
             {'data': [1, 1, 1, 1]},
+            False,
         )
         self.fetch_list = [out]
 
@@ -139,6 +142,7 @@ class TRTTileExpandHalfTest(InferencePassTest):
             {'data': [1, 1, 1, 1]},
             {'data': [1, 1, 1, 1]},
             {'data': [1, 1, 1, 1]},
+            False,
         )
         self.fetch_list = [out]
 
