@@ -17,6 +17,7 @@ import os
 import sys
 
 import numpy as np
+import tensorrt as trt
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
@@ -108,3 +109,18 @@ def get_dynamic_dims(shape):
         if s == -1:
             dynamic_dims.append(i)
     return dynamic_dims
+
+
+def get_trt_plugin(plugin_name, field_collection, version, plugin_namespace=""):
+    plugin_registry = trt.get_plugin_registry()
+    plugin_creator = plugin_registry.get_plugin_creator(
+        plugin_name, version, plugin_namespace
+    )
+    assert (
+        plugin_creator
+    ), f"Unabled to find plugin creator with name{plugin_name}"
+    plugin = plugin_creator.create_plugin(
+        name=plugin_name, field_collection=field_collection
+    )
+    assert plugin is not None, f"Plugin:{plugin_name} could not be fetched"
+    return plugin

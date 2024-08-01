@@ -15,7 +15,6 @@
 import numpy as np
 
 import paddle
-import paddle.nn.functional as F
 
 try:
     import tensorrt as trt
@@ -198,8 +197,11 @@ def get_dummy_program():
             x = paddle.matmul(input, weight)
             x_1 = paddle.add(x, bias)
             y = paddle.nn.functional.relu(x_1)
-            y = paddle.nn.functional.gelu(y)
-            y_2 = paddle.nn.functional.gelu(x_1)
+            y_gelu_1 = paddle.nn.functional.gelu(y)
+            y_gelu_2 = paddle.nn.functional.gelu(x_1)
+
+            # Concatenate the outputs of the two GELU operations
+            concat_out = paddle.concat([y_gelu_1, y_gelu_2], axis=-1)
         main_program = run_pir_pass(main_program)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(default_startup_program)
@@ -387,77 +389,3 @@ def get_idg_program():
         name = v.get_defining_op().attrs()["parameter_name"]
         param_dict.update({name: np.array(scope.var(name).get_tensor())})
     return pir_program, scope, param_dict
-
-
-class MLPLayer(nn.Layer):
-    def __init__(
-        self,
-        hidden_size=1024,
-        intermediate_size=4 * 1024,
-        dropout_ratio=0.1,
-        initializer_range=0.02,
-    ):
-        super().__init__()
-        d_model = hidden_size
-        dim_feedforward = intermediate_size
-        weight_attr = paddle.ParamAttr(
-            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range)
-        )
-        bias_attr = None
-
-        self.linear0 = nn.Linear(
-            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr
-        )
-        self.linear1 = nn.Linear(
-            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr
-        )
-        self.linear2 = nn.Linear(d_model, 1, weight_attr, bias_attr=bias_attr)
-        self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
-
-    def forward(self, input):
-        out = self.norm(input)
-        out1 = self.linear0(out)
-        out2 = F.gelu(out, approximate=True)
-        concat_out = paddle.concat([out1, out2], axis=-1)
-        # out = self.linear1(concat_out)
-        out = self.linear2(out)
-
-        return out
-
-
-def get_mlp_program():
-    paddle.enable_static()
-
-    hidden_size = 1024
-    intermediate_size = 4 * 1024
-    dropout_ratio = (0.1,)
-    initializer_range = 0.02
-
-    with paddle.pir_utils.IrGuard():
-        infer_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with static.program_guard(infer_program, startup_program):
-            scope = paddle.static.global_scope()
-            input_ids = static.data(
-                name='input',
-                shape=[-1, 512, 1024],
-                dtype='float32',
-            )
-            mlp_model = MLPLayer(
-                hidden_size, intermediate_size, dropout_ratio, initializer_range
-            )
-            mlp_model.eval()
-            output = mlp_model(input_ids)
-        place = paddle.CUDAPlace(0)
-        exe = static.Executor(place)
-        exe.run(startup_program)
-
-    # paddle.static.io.save(infer_program, "./resnet")
-
-    params = infer_program.global_block().all_parameters()
-    param_dict = {}
-    for v in params:
-        name = v.get_defining_op().attrs()["parameter_name"]
-        param_dict.update({name: np.array(scope.var(name).get_tensor())})
-
-    return infer_program, scope, param_dict
