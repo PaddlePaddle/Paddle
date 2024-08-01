@@ -56,7 +56,7 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_EQ(
       fout->good(),
       true,
-      platform::errors::Unavailable(
+      common::errors::Unavailable(
           "Can not open file %s for printing the graph.", graph_viz_path));
   std::ostream& sout = *fout;
 

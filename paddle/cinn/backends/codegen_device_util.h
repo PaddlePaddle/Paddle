@@ -232,12 +232,12 @@ struct CollectBucketStrategyHostFunctionVisitor
     PADDLE_ENFORCE_EQ(
         op->functions.size(),
         op->predicates.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of functions and predicates should be equal"));
     PADDLE_ENFORCE_EQ(
         op->functions.size(),
         op->priorities.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of functions and priorities should be equal"));
     // Sort funcitons and predicates according to the priority
     std::vector<std::pair<Expr, Expr>> func_predicate;

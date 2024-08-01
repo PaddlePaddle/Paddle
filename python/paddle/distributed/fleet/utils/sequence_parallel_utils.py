@@ -517,6 +517,7 @@ class ColumnSequenceParallelLinear(Layer):
             "mp_configs"
         ]
         self.mp_async_allreduce = mp_configs.mp_async_allreduce
+        self.sp_async_reduce_scatter = mp_configs.sp_async_reduce_scatter
         self.recompute_allgather = mp_configs.recompute_allgather
 
         self.mp_fused_linear_param_grad_add = (
@@ -526,8 +527,7 @@ class ColumnSequenceParallelLinear(Layer):
 
     def forward(self, x):
         # sequence parallel is same as tensor parallel, if sequence parallel is true, input shape is [s, b, h], else input shape is [b, s, h]
-        # reuse mp_async_allreduce to do sequence parallel overlap
-        if self.mp_async_allreduce:
+        if self.sp_async_reduce_scatter:
             output = SPInnerOverlapLinear.apply(
                 x,
                 self.weight,

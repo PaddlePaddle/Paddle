@@ -34,7 +34,7 @@ class IR_API OpBase {
   Operation *operation() const {
     PADDLE_ENFORCE_NOT_NULL(
         operation_,
-        phi::errors::InvalidArgument("Can't use operation() in a null op."));
+        common::errors::InvalidArgument("Can't use operation() in a null op."));
     return operation_;
   }
 

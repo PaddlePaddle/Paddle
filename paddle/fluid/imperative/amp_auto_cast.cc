@@ -58,7 +58,7 @@ OpSupportedInfos(const std::string& place,
   };
   PADDLE_ENFORCE_NE(is_target_place.count(query_place),
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The argument `place` should be 'GPU', 'CPU', 'XPU' or "
                         "other Custom Device, but got '%s'.",
                         place));

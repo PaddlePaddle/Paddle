@@ -68,7 +68,7 @@ class MemcpyH2DKernel {
     PADDLE_ENFORCE_EQ(
         ctx.HasOutput("Out"),
         true,
-        phi::errors::NotFound("Output(Out) of memcpy_d2h_op is not found."));
+        common::errors::NotFound("Output(Out) of memcpy_d2h_op is not found."));
     auto *out = ctx.OutputVar("Out");
     // Get dev_ctx from ExecutionContext, it's H2D stream
     auto &dev_ctx = ctx.device_context();
@@ -135,9 +135,9 @@ REGISTER_OP_IPU_KERNEL_FUNCTOR(memcpy_h2d,
                                ops::MemcpyH2DKernel,
                                phi::dtype::bfloat16,
                                ops::MemcpyH2DKernel,
-                               paddle::platform::complex<float>,
+                               phi::dtype::complex<float>,
                                ops::MemcpyH2DKernel,
-                               paddle::platform::complex<double>,
+                               phi::dtype::complex<double>,
                                ops::MemcpyH2DKernel,
                                phi::dtype::float16,
                                ops::MemcpyH2DKernel,

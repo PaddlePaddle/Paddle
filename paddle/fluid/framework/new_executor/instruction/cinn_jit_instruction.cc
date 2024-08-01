@@ -74,17 +74,32 @@ class CinnJitInstruction::FnPtrImpl {
       ::common::PerformanceStatistician& ps =
           ::common::PerformanceStatistician::Instance();
       auto data_p = static_cast<void*>(func_args_.data());
+      cudaStream_t stream;
+      cudaStreamCreate(&stream);
       cudaDeviceSynchronize();
-      ps.Start(FLAGS_cinn_kernel_execution_label);
       if (is_gpu) {
-        ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
-            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+        ps.SetGraphNodesNum(25);
+        int graph_nodes_num = ps.GetGraphNodesNum();
+        cudaGraph_t graph;
+        cudaGraphExec_t instance;
+        cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+        for (int ikrnl = 0; ikrnl < graph_nodes_num; ikrnl++) {
+          ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
+              static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+        }
+        cudaStreamEndCapture(stream, &graph);
+        cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+        ps.CudaStart(FLAGS_cinn_kernel_execution_label);
+        cudaGraphLaunch(instance, stream);
+        ps.CudaEnd(FLAGS_cinn_kernel_execution_label);
+        cudaGraphDestroy(graph);
+        cudaGraphExecDestroy(instance);
+        cudaStreamDestroy(stream);
       } else {
         ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       }
       cudaDeviceSynchronize();
-      ps.End(FLAGS_cinn_kernel_execution_label);
     } else {
       if (is_gpu) {
         ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
