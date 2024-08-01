@@ -651,7 +651,7 @@ TEST(Predictor, Streams) {
         config.external_stream_enabled(),
         true,
         phi::errors::InvalidArgument(
-            "External stream of configuration should be enabled but not."))
+            "External stream of configuration should be enabled but not."));
 
     auto predictor = CreatePredictor(config);
     gpuStream_t stream =
@@ -666,7 +666,7 @@ TEST(Predictor, Streams) {
     PADDLE_ENFORCE_NOT_NULL(
         paddle::ResourceManager::Instance().GetGPUResource(stream),
         phi::errors::NotFound(
-            "GPU resource for the given stream was not found."))
+            "GPU resource for the given stream was not found."));
     PADDLE_ENFORCE_EQ(
         paddle::ResourceManager::Instance().RefCount(stream),
         1,
@@ -728,7 +728,7 @@ TEST(Predictor, Streams) {
                           "The two streams should not be equal. This indicates "
                           "that the streams "
                           "for two predictors should be different to avoid "
-                          "potential conflicts or resource mismanagement."))
+                          "potential conflicts or resource mismanagement."));
   }
 }
 
