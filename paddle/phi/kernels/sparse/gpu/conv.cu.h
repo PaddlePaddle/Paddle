@@ -766,9 +766,10 @@ int ProductRuleBook(const Context& dev_ctx,
     while (cache_size >= MAX_CACHE_SIZE) {
       config.thread_per_block.x /= 2;
       config.block_per_grid.x *= 2;
-      PADDLE_ENFORCE_GE(config.thread_per_block.x,
-                        32,
-                        phi::errors::Fatal("the shared memory is not enough"));
+      PADDLE_ENFORCE_GE(
+          config.thread_per_block.x,
+          32,
+          common::errors::Fatal("the shared memory is not enough"));
       cache_size = kernel_size * 2 * sizeof(int) +
                    kernel_size * config.thread_per_block.x * 2 * sizeof(int);
     }
