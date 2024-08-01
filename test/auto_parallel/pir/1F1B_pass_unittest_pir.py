@@ -101,7 +101,8 @@ class TestSimpleNet1F1BPass(unittest.TestCase):
 
         cur_rank = paddle.distributed.get_rank()
         if cur_rank == 1:
-            self.assertTrue(loss_fthenb, loss_1f1b)
+            for loss1, loss2 in zip(loss_1f1b, loss_fthenb):
+                self.assertAlmostEqual(loss1, loss2)
 
     def run_pipeline(self, strategy):
         self.init()
@@ -122,7 +123,8 @@ class TestSimpleNet1F1BPass(unittest.TestCase):
         loss_list = []
         for _, (image, label) in enumerate(dist_loader):
             loss = dist_model(image, label)
-            loss_list.append(loss)
+            if loss is not None:
+                loss_list.append(np.mean(loss))
 
         return loss_list
 
