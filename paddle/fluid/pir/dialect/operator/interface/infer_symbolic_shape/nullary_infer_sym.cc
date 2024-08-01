@@ -341,7 +341,7 @@ bool RandintOpInferSymbolicShape(
     return true;
 
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Currently shape must comes from FullIntArrayOp in RandintOp's "
         "InferSymbolicShape."));
     return true;
