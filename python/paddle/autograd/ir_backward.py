@@ -965,8 +965,8 @@ def create_backward_prune_set(
 def calc_gradient_helper(
     outputs: Value | Sequence[Value],
     inputs: Value | Sequence[Value],
-    grad_outputs: Value | Sequence[Value | None] = None,
-    no_grad_set: set[Value] = None,
+    grad_outputs: Value | Sequence[Value | None] | None = None,
+    no_grad_set: set[Value] | None = None,
 ) -> dict[Value, list[Value]]:
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
@@ -1052,8 +1052,8 @@ def calc_gradient_helper(
 def calc_gradient(
     outputs: Value | Sequence[Value],
     inputs: Value | Sequence[Value],
-    grad_outputs: Value | Sequence[Value | None] = None,
-    no_grad_set: set[Value] = None,
+    grad_outputs: Value | Sequence[Value | None] | None = None,
+    no_grad_set: set[Value] | None = None,
 ) -> list[Value]:
     """
     calculate gradient of input
@@ -1102,12 +1102,12 @@ def calc_gradient(
 def grad(
     outputs: Value | Sequence[Value],
     inputs: Value | Sequence[Value],
-    grad_outputs: Value | Sequence[Value | None] = None,
-    retain_graph: bool = None,
-    create_graph: bool = False,
-    only_inputs: bool = True,
-    allow_unused: bool = False,
-    no_grad_vars: Value | Sequence[Value] = None,
+    grad_outputs: Value | Sequence[Value | None] | None = None,
+    retain_graph: bool | None = None,
+    create_graph: bool | None = False,
+    only_inputs: bool | None = True,
+    allow_unused: bool | None = False,
+    no_grad_vars: Value | Sequence[Value] | None = None,
 ) -> list[Value]:
     '''
     .. note::
