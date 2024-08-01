@@ -268,7 +268,7 @@ bool EqualAllOpInferSymbolicShape(
 
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
-      y_dime.size(),
+      y_dims.size(),
       common::errors::InvalidArgument(
           "The size of dim_y should not be greater than dim_x's."));
 
