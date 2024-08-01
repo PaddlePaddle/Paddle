@@ -176,7 +176,7 @@ struct SliceOpInferSymbolicShapeInterfaceModel
         infer_context->GetShapeOrDataForValue(op->operand_source(0));
     PADDLE_ENFORCE_EQ(input_shape.isa<symbol::TensorListShapeOrDataDimExprs>(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input shape can not be converted, please check"));
     const symbol::TensorListShapeOrDataDimExprs& data_shape_list =
         input_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();

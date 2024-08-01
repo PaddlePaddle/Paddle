@@ -16,7 +16,8 @@
 
 #define CHECK_INPUT(x)                                    \
   PADDLE_ENFORCE_EQ(x.place() == paddle::PlaceType::kCPU, \
-                    phi::errors::Fatal(#x " must be a CPU Tensor."))
+                    true,                                 \
+                    common::errors::Fatal(#x " must be a CPU Tensor."))
 
 template <typename data_t>
 void leaky_relu_cpu_forward_kernel(const data_t* x_data,

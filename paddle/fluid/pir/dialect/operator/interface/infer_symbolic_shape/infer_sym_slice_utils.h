@@ -26,7 +26,7 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     for (size_t i = 0; i < list.size(); i++) {
       PADDLE_ENFORCE_EQ(list.at(i).data().has_value(),
                         true,
-                        phi::errors::Fatal(
+                        common::errors::InvalidArgument(
                             "i-th element of list has no value, please check"));
       for (auto expr : list.at(i).data().value()) {
         result.emplace_back(expr);
@@ -34,10 +34,10 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     }
     return result;
   } else {
-    PADDLE_ENFORCE_EQ(
-        shapeordata.data().has_value(),
-        true,
-        phi::errors::Fatal("`shapeordata.data` is empty, please check"));
+    PADDLE_ENFORCE_EQ(shapeordata.data().has_value(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input `shapeordata.data` is empty, please check"));
     return shapeordata.data().value();
   }
 }

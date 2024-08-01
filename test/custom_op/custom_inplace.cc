@@ -18,9 +18,7 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_INPUT(x) \
-  PADDLE_ENFORCE_EQ(   \
-      x.is_cpu(), true, phi::errors::Fatal(#x " must be a CPU Tensor."))
+#define CHECK_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
 
 template <typename data_t>
 void add_data_pointer(const data_t* x_data, data_t* out_data, int64_t numel) {
@@ -115,10 +113,8 @@ std::vector<paddle::Tensor> AddVectorBackward(
     std::vector<paddle::Tensor>& out_grad) {  // NOLINT
   CHECK_INPUT(x[0]);
   CHECK_INPUT(y);
-  PADDLE_ENFORCE_EQ(
-      x.size(),
-      out_grad.size(),
-      phi::errors::InvalidArgument("x must have the same size as out_grad."));
+  PD_CHECK(x.size() == out_grad.size(),
+           "x must have the same size as out_grad.");
 
   paddle::Tensor y_grad = paddle::zeros(y.shape(), y.dtype(), y.place());
 

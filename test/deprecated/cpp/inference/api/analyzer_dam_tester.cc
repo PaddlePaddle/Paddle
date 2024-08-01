@@ -72,12 +72,12 @@ struct DataRecord {
                                 response_mask.begin() + batch_end);
       PADDLE_ENFORCE_EQ(!data.response.empty(),
                         true,
-                        phi::errors::Fatal(
+                        common::errors::Fatal(
                             "Variable `data` response is empty, please check"));
       PADDLE_ENFORCE_EQ(
           !data.response_mask.empty(),
           true,
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "Variable `data` response mask is empty, please check"));
       PADDLE_ENFORCE_EQ(data.response.size(),
                         data.response_mask.size(),

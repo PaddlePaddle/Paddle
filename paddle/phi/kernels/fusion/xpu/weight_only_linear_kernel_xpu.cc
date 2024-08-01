@@ -29,7 +29,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       weight_dtype,
       "int8",
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "WeightOnlyLinearKernel xpu just support int8 weight only"));
   phi::XPUPlace place(phi::backends::xpu::GetXPUCurrentDeviceId());
   auto xpu_ctx = static_cast<const phi::XPUContext*>(&dev_ctx);
@@ -58,11 +58,11 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
             false,
             weight_dtype == "int8" ? 127.f : 7.f,
             0.f);
-        PADDLE_ENFORCE_EQ(r,
-                          0,
-                          phi::errors::Fatal
-                          "scale failed, scale related variable `r` is %d",
-                          r);
+        PADDLE_ENFORCE_EQ(
+            r,
+            0,
+            common::errors::Fatal(
+                "scale failed, scale related variable `r` is %d", r));
         r = baidu::xpu::api::cast_v2<XPUType, float>(
             xpu_ctx->x_context(),
             reinterpret_cast<const XPUType*>(
@@ -71,7 +71,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
             max_value.numel());
         PADDLE_ENFORCE_EQ(r,
                           0,
-                          phi::errors::Fatal(
+                          common::errors::Fatal(
                               "cast_v2 failed, related variable `r` is %d", r));
       } else if (weight_scale.dtype() == phi::DataType::FLOAT32) {
         r = baidu::xpu::api::scale(xpu_ctx->x_context(),
@@ -81,10 +81,10 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                                    false,
                                    weight_dtype == "int8" ? 127.f : 7.f,
                                    0.f);
-        PADDLE_ENFORCE_EQ(
-            r,
-            0,
-            phi::errors::Fatal("scale failed, related variable `r` is %d", r));
+        PADDLE_ENFORCE_EQ(r,
+                          0,
+                          common::errors::Fatal(
+                              "scale failed, related variable `r` is %d", r));
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(
             "Only support that weight scale as type float32 ot float16."));
@@ -128,12 +128,12 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                 : nullptr,
             baidu::xpu::api::Activation_t::LINEAR,
             max_value.data<float>());
-        PADDLE_ENFORCE_EQ(
-            r,
-            0,
-            phi::errors::Fatal("baidu::xpu::api::gpt_fc_fusion failed, related "
-                               "variable `r` is %d",
-                               r));
+        PADDLE_ENFORCE_EQ(r,
+                          0,
+                          common::errors::Fatal(
+                              "baidu::xpu::api::gpt_fc_fusion failed, related "
+                              "variable `r` is %d",
+                              r));
       } else if (weight_dtype == "int4") {
         PD_THROW("only support int8 weight only now");
       }
