@@ -63,10 +63,10 @@ DEFINE_GENERAL_PATTERN(Layer_norm, paddle::dialect::LayerNormOp)
 DEFINE_GENERAL_PATTERN(Add, paddle::dialect::AddOp)
 DEFINE_GENERAL_PATTERN(Full, paddle::dialect::FullOp)
 DEFINE_GENERAL_PATTERN(Silu, paddle::dialect::SiluOp)
-
 DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp)
 DEFINE_GENERAL_PATTERN(FusedConv2dAddAct, paddle::dialect::FusedConv2dAddActOp)
 DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
+DEFINE_GENERAL_PATTERN(Sigmoid, paddle::dialect::SigmoidOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -492,11 +492,31 @@ class UnsqueezeOpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-    pir::Value axis = op.operand_source(1);
+    paddle::dialect::FullIntArrayOp full_int_array_op =
+        pir::GetDefiningOpForInput(op, 1)
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    auto axis = full_int_array_op->attribute<pir::ArrayAttribute>("value");
+
     if (!axis) {
       VLOG(3) << "The necessary attributes of the unsuqeeze axis is missing";
       return false;
     }
+    pir::Value x = op.operand_source(0);
+    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto x_shape = x_type.dims();
+
+    std::vector<int32_t> dynamic_dims;
+    for (int i = 0; i < x_shape.size(); ++i) {
+      if (x_shape[i] == -1) {
+        dynamic_dims.push_back(i);
+      }
+    }
+    if (dynamic_dims.size() > 1) {
+      VLOG(3) << "Currently we don't support unsqueeze with more than one "
+                 "dynamic dims";
+      return false;
+    }
+
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -512,11 +532,31 @@ class Unsqueeze_OpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-    pir::Value axis = op.operand_source(1);
+    paddle::dialect::FullIntArrayOp full_int_array_op =
+        pir::GetDefiningOpForInput(op, 1)
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+    auto axis = full_int_array_op->attribute<pir::ArrayAttribute>("value");
+
     if (!axis) {
       VLOG(3) << "The necessary attributes of the unsuqeeze axis is missing";
       return false;
     }
+    pir::Value x = op.operand_source(0);
+    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto x_shape = x_type.dims();
+
+    std::vector<int32_t> dynamic_dims;
+    for (int i = 0; i < x_shape.size(); ++i) {
+      if (x_shape[i] == -1) {
+        dynamic_dims.push_back(i);
+      }
+    }
+    if (dynamic_dims.size() > 1) {
+      VLOG(3) << "Currently we don't support unsqueeze with more than one "
+                 "dynamic dims";
+      return false;
+    }
+
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -798,6 +838,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(DepthwiseConv2d)
     ADD_PATTERN(Nonzero)
     ADD_PATTERN(Gelu)
+    ADD_PATTERN(Sigmoid)
 
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));

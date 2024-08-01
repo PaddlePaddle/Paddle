@@ -456,7 +456,9 @@ class TestUnSqueezeTRTPattern(PassTest):
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(name='x', shape=[5, 10], dtype='float32')
+                x = paddle.static.data(
+                    name='x', shape=[-1, 10], dtype='float32'
+                )
                 unsqueeze_out = paddle.unsqueeze(x, axis=[0, 2])
                 unsqueeze_out_ = paddle.unsqueeze_(unsqueeze_out, axis=0)
                 out = paddle.assign(unsqueeze_out_)
