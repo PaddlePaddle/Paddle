@@ -79,7 +79,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
         true,
         phi::errors::InvalidArgument("The input argument of %s compute is "
                                      "empty! Please check.",
-                                     op_name))
+                                     op_name));
     CINNValuePack pack_args = args[0];
 
     PADDLE_ENFORCE_GE(
@@ -140,7 +140,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
                       phi::errors::InvalidArgument(
                           "The input argument of %s compute is empty!"
                           "Please check.",
-                          op_name))
+                          op_name));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(
         pack_args.size(),
