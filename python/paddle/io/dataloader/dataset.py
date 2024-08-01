@@ -63,26 +63,32 @@ class Dataset(Generic[_T]):
 
         .. code-block:: python
 
-            >>> import numpy as np
+            >>> import paddle
             >>> from paddle.io import Dataset
 
-            >>> # define a random dataset
-            >>> class RandomDataset(Dataset):
+            >>> # define a fixed dataset
+            >>> class FixedDataset(Dataset):
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
             ...     def __getitem__(self, idx):
-            ...         image = np.random.random([784]).astype('float32')
-            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         image = paddle.full([5], 0.5, dtype='float32')
+            ...         label = paddle.full([1], idx % 9, dtype='int64')
             ...         return image, label
             ...
             ...     def __len__(self):
             ...         return self.num_samples
             ...
-            >>> dataset = RandomDataset(10)
+            >>> dataset = FixedDataset(2)
             >>> for i in range(len(dataset)):
             ...     image, label = dataset[i]
             ...     # do something
+            ...     print(image, label)
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.50000000, 0.50000000, 0.50000000, 0.50000000, 0.50000000]) Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True, [0])
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.50000000, 0.50000000, 0.50000000, 0.50000000, 0.50000000]) Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,  [1])
+
     """
 
     def __init__(self) -> None:
