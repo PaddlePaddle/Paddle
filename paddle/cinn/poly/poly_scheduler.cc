@@ -428,13 +428,13 @@ std::vector<detail::Group> PolyScheduler::PartitionGroups(
 
 void PolyScheduler::ScheduleAGroup(ScheduleGroup* group) {
   PADDLE_ENFORCE_NOT_NULL(
-      graph,
+      group,
       phi::errors::InvalidArgument(
-          "The DataFlowGraph pointer is null in ScheduleAGroup."));
+          "The ScheduleGroup pointer is null in ScheduleAGroup."));
   PADDLE_ENFORCE_NE(
-      graph->nodes().empty(),
+      group->nodes().empty(),
       true,
-      phi::errors::InvalidArgument("Graph is empty! Please check."));
+      phi::errors::InvalidArgument("Group is empty! Please check."));
 
   // create scheduler for this group.
   std::vector<Stage*> stages;
