@@ -125,6 +125,10 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
   return result;
 }
 
+ExprVec GetOrCreateExprVecFromData(
+    const ShapeOrData &shapeordata,
+    pir::InferSymbolicShapeContext *infer_context);
+
 inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {
   const auto GetShapeExprsFromList = [&]() {
     ExprVec result;

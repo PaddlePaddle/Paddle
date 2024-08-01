@@ -54,7 +54,7 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
                const phi::Place& place) const override {
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
-        var, phi::errors::InvalidArgument("Input X must be provided."));
+        var, common::errors::InvalidArgument("Input X must be provided."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
@@ -71,7 +71,7 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
         devices, nccl_id, ntrainers, train_id, rid);
 #else
     PADDLE_THROW(
-        phi::errors::Unimplemented("PaddlePaddle should compile with GPU."));
+        common::errors::Unimplemented("PaddlePaddle should compile with GPU."));
 #endif
   }
 };

@@ -142,7 +142,10 @@ bool ComputeInliner::BodyPatternAllowInline() {
   if (!inlined_store_.defined()) {
     return false;
   }
-  CHECK(inlined_store_.As<Store>());
+  PADDLE_ENFORCE_NOT_NULL(
+      inlined_store_.As<Store>(),
+      phi::errors::NotFound(
+          "Param inlined store should be Store node! Please check."));
   auto find_vars = ir::ir_utils::CollectIRNodesWithoutTensor(
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
   std::set<Var, CompVar> vars_set;
@@ -170,7 +173,10 @@ void ComputeInliner::Visit(const ir::Load* expr, Expr* op) {
 
 //! Replace the 'Load' node on the tensor to 'Load' node of its producers.
 Expr ComputeInliner::ReplaceInlinedTensor(Expr* load) {
-  CHECK(load->As<ir::Load>());
+  PADDLE_ENFORCE_NOT_NULL(
+      load->As<ir::Load>(),
+      phi::errors::NotFound(
+          "Param load should be ir::Load node! Please check."));
   SetIndexSubstitution(load->As<ir::Load>()->indices);
   Expr value_copy = ir::ir_utils::IRCopy(inlined_store_.As<Store>()->value);
   ReplaceExpr(&value_copy, idx_sub_var_, idx_sub_expr_);
@@ -200,9 +206,18 @@ bool ReverseComputeInliner::BodyPatternAllowInline() {
   if (!target_store_.defined()) {
     return false;
   }
-  CHECK(inlined_store_.As<Store>());
-  CHECK(inlined_load_.As<Load>());
-  CHECK(target_store_.As<Store>());
+  PADDLE_ENFORCE_NOT_NULL(
+      inlined_store_.As<Store>(),
+      phi::errors::NotFound(
+          "Param inlined store should be Store node! Please check."));
+  PADDLE_ENFORCE_NOT_NULL(
+      inlined_load_.As<Load>(),
+      phi::errors::NotFound(
+          "Param inlined load should be Load node! Please check."));
+  PADDLE_ENFORCE_NOT_NULL(
+      target_store_.As<Store>(),
+      phi::errors::NotFound(
+          "Param target store should be Store node! Please check."));
   auto find_vars = ir::ir_utils::CollectIRNodesWithoutTensor(
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
   std::set<Var, CompVar> vars_set;
@@ -232,7 +247,10 @@ void ReverseComputeInliner::Visit(const ir::Store* expr, Expr* op) {
 
 //! Replace the 'Load' node on the tensor to 'Load' node of its producers.
 Expr ReverseComputeInliner::ReplaceInlinedTensor(Expr* load) {
-  CHECK(load->As<ir::Load>());
+  PADDLE_ENFORCE_NOT_NULL(
+      load->As<ir::Load>(),
+      phi::errors::NotFound(
+          "Param load should be ir::Load node! Please check."));
   SetIndexSubstitution(load->As<ir::Load>()->indices);
   Expr value_copy = ir::ir_utils::IRCopy(inlined_store_.As<Store>()->value);
   return value_copy;

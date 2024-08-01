@@ -62,6 +62,7 @@ namespace py = ::pybind11;
 extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* p_string_tensor_type;  // For StringTensor
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 
 PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
@@ -79,8 +80,7 @@ void EmptyTensorInitializer(TensorObject* self,
                             const phi::Place& place,
                             bool persistable = false,
                             int stop_gradient = -1,
-                            framework::proto::VarType::Type dtype =
-                                paddle::framework::proto::VarType::FP32,
+                            paddle::DataType dtype = paddle::DataType::FLOAT32,
                             const std::vector<int>& dims = {0},
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR,
@@ -112,15 +112,12 @@ void EmptyTensorInitializer(TensorObject* self,
       if (dims.size() == 1 && dims[0] == 0) {
         std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
         dense_tensor = std::make_shared<phi::DenseTensor>(
-            allocation_ptr,
-            phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
-                                 ddims));
+            allocation_ptr, phi::DenseTensorMeta(dtype, ddims));
       } else {
         // TODO(dev): we need enhance check for ddims.
         dense_tensor = std::make_shared<phi::DenseTensor>(
             std::make_shared<phi::Allocation>(),
-            phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
-                                 ddims));
+            phi::DenseTensorMeta(dtype, ddims));
       }
       self->tensor.set_impl(dense_tensor);
     } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
@@ -781,7 +778,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * (should have at least five parameter, five parameters create DenseTensor,
  * seven parameters create DistTensor)
  * def __init__ (
- * ** dtype: paddle::framework::proto::VarType::Type,
+ * ** dtype: paddle::DataType,
  * ** dims: vector<int>,
  * ** name: std::string,
  * ** type: paddle::framework::proto::VarType::LodTensor,
@@ -962,7 +959,11 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               "right way."));
         }
       } else if (kw_dtype != nullptr &&
-                 PyObject_TypeCheck(kw_dtype, g_vartype_pytype)) {
+                 (PyObject_TypeCheck(kw_dtype, g_data_type_pytype) ||
+                  PyObject_TypeCheck(kw_dtype, g_vartype_pytype))) {
+        // TODO(jeff41404): until the default value of FLAGS_deable_ir_appi is
+        // True, can delete `PyObject_TypeCheck(kw_dtype, g_vartype_pytype)`
+        // Retain it during the transitional period.
         VLOG(6) << "Calling case2's initializer";
 
         PADDLE_ENFORCE_NOT_NULL(
@@ -993,8 +994,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                 "forbidden. Please check your code and make sure you new a "
                 "persistable before calling this constructor."));
 
-        paddle::framework::proto::VarType::Type dtype =
-            CastPyArg2ProtoType(kw_dtype, 0);
+        paddle::DataType dtype = CastPyArg2DataType(kw_dtype, "TensorInit", 0);
         std::vector<int> dims = CastPyArg2VectorOfInt(kw_dims, 0);
 
         std::string act_name = "";
@@ -1095,10 +1095,13 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   } else if (args_num == (Py_ssize_t)5) {
     if (!flag_kwargs) {
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-      if (PyObject_TypeCheck(arg0_ptr, g_vartype_pytype)) {
+      // TODO(jeff41404): until the default value of FLAGS_deable_ir_appi is
+      // True, can delete `PyObject_TypeCheck(arg0_ptr, g_vartype_pytype)`
+      // Retain it during the transitional period.
+      if (PyObject_TypeCheck(arg0_ptr, g_data_type_pytype) ||
+          PyObject_TypeCheck(arg0_ptr, g_vartype_pytype)) {
         VLOG(6) << "Calling case2's initializer.";
-        paddle::framework::proto::VarType::Type dtype =
-            CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
+        paddle::DataType dtype = CastPyArg2DataType(arg0_ptr, "TensorInit", 0);
         std::vector<int> dims =
             CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 1), 1);
         std::string act_name = "";
@@ -1168,10 +1171,13 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   } else if (args_num == (Py_ssize_t)7) {
     if (!flag_kwargs) {
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-      if (PyObject_TypeCheck(arg0_ptr, g_vartype_pytype)) {
+      // TODO(jeff41404): until the default value of FLAGS_deable_ir_appi is
+      // True, can delete `PyObject_TypeCheck(arg0_ptr, g_vartype_pytype)`
+      // Retain it during the transitional period.
+      if (PyObject_TypeCheck(arg0_ptr, g_data_type_pytype) ||
+          PyObject_TypeCheck(arg0_ptr, g_vartype_pytype)) {
         VLOG(6) << "Calling case2's initializer.";
-        paddle::framework::proto::VarType::Type dtype =
-            CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
+        paddle::DataType dtype = CastPyArg2DataType(arg0_ptr, "TensorInit", 0);
         std::vector<int> dims =
             CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 1), 1);
         std::string act_name = "";
