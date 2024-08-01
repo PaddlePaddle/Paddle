@@ -41,9 +41,9 @@ void tanh_cpu_backward_kernel(const data_t* grad_out_data,
                               const data_t* out_data,
                               data_t* grad_x_data,
                               int64_t out_numel) {
-  PDERR_NODEFAULTPRN(grad_out_data != nullptr,
-                     true,
-                     phi::errors::InvalidArgument("grad_out_data is nullptr."));
+  PADDLE_ENFORCE_EQ(grad_out_data != nullptr,
+                    true,
+                    phi::errors::InvalidArgument("grad_out_data is nullptr."));
   PADDLE_ENFORCE_EQ(out_data != nullptr,
                     true,
                     phi::errors::InvalidArgument("out_data is nullptr."));
