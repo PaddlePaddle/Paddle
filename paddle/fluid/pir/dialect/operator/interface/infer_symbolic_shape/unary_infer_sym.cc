@@ -588,15 +588,12 @@ bool ModeOpInferSymbolicShape(pir::Operation *op,
   }
 
   infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
 
   std::vector<symbol::DimExpr> indices_dims = out_dims;
   indices_dims[axis] = symbol::DimExpr(1);
   infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(indices_dims)});
+      op->result(1), symbol::TensorShapeOrDataDimExprs(indices_dims));
 
   return true;
 }
