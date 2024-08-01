@@ -1020,32 +1020,6 @@ bool TrilinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
-bool WhereOpInferSymbolicShape(pir::Operation *op,
-                               pir::InferSymbolicShapeContext *infer_context) {
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
-
-  const std::vector<pir::Value> &operands = {op->operand_source(0),
-                                             op->operand_source(1)};
-
-  size_t rank = infer_context->GetShapeOrDataForValue(op->operand_source(0))
-                    .shape()
-                    .size();
-
-  for (size_t i = 0; i < rank; ++i) {
-    paddle::dialect::details::BuildCstrEqForTensorListAlongAxis(
-        infer_context, operands, i);
-  }
-
-  return true;
-}
-
-bool Where_OpInferSymbolicShape(pir::Operation *op,
-                                pir::InferSymbolicShapeContext *infer_context) {
-  return WhereOpInferSymbolicShape(op, infer_context);
-}
-
 bool HsigmoidLossOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const input_dims =
@@ -1070,6 +1044,32 @@ bool HsigmoidLossOpInferSymbolicShape(
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
   return true;
+}
+
+bool WhereOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
+
+  const std::vector<pir::Value> &operands = {op->operand_source(0),
+                                             op->operand_source(1)};
+
+  size_t rank = infer_context->GetShapeOrDataForValue(op->operand_source(0))
+                    .shape()
+                    .size();
+
+  for (size_t i = 0; i < rank; ++i) {
+    paddle::dialect::details::BuildCstrEqForTensorListAlongAxis(
+        infer_context, operands, i);
+  }
+
+  return true;
+}
+
+bool Where_OpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  return WhereOpInferSymbolicShape(op, infer_context);
 }
 
 }  // namespace paddle::dialect
