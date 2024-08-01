@@ -3757,9 +3757,12 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
 ) {
   out->share_dims(x);
   out->share_lod(x);
+  out->set_dtype(x.dtype());
   seed_out->share_dims(seed);
   seed_out->share_lod(seed);
+  seed_out->set_dtype(x.dtype());
   shuffle_idx->set_dims(phi::make_ddim({-1}));
+  shuffle_idx->set_dtype(x.dtype());
 }
 
 void SequenceMaskInferMeta(const MetaTensor& x,

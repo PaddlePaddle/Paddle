@@ -531,7 +531,7 @@ def shuffle_batch(x: Tensor, seed: int | Tensor | None = None) -> Tensor:
     if isinstance(seed, int):
         op_attrs["startup_seed"] = seed
         if paddle.framework.in_pir_mode():
-            seed = paddle.full([], 0, "int64")
+            seed = paddle.full([0], 0, "int64")
             out, _, _ = _C_ops.shuffle_batch(x, seed, op_attrs["startup_seed"])
             return out
         else:
