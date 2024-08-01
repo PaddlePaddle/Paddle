@@ -300,11 +300,13 @@ class Engine:
             batch_sampler = dataloader.batch_sampler
         else:
             batch_sampler = dataloader._dataloader.batch_sampler
+
         if hasattr(batch_sampler, "set_epoch"):
             # Get data from DataLoader iterator directly may affect data generation randomness
             # of BatchSampler when `Shuffle=True`. It may cause difference of data feeding
             # between dynamic and to_static mode.
             batch_sampler.set_epoch(0)
+
         if isinstance(data, dict):
             data = tuple(data.values())
             if len(data) != 2:
@@ -1045,7 +1047,9 @@ class Engine:
             self._json_config,
         )
         self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
-        self._dist_contexts[mode].gradient_scale_using_allreduce_avg = (
+        self._dist_contexts[
+            mode
+        ].gradient_scale_using_allreduce_avg = (
             self._strategy.gradient_scale_using_allreduce_avg
         )
         self._fwd_main_progs[mode] = serial_main_prog.clone()
@@ -1078,9 +1082,9 @@ class Engine:
 
         if self._tuning.run_after_tuning:
             # update the strategy
-            self._dist_contexts[mode]._strategy = (
-                self._optimization_tuner.get_best_config()
-            )
+            self._dist_contexts[
+                mode
+            ]._strategy = self._optimization_tuner.get_best_config()
 
     def _plan(self, mode):
         if self._planned_mode is None:

@@ -344,12 +344,13 @@ void DependencyBuilder::AddDependencyForSequentialRun() {
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (dependence_op_idx != ULLONG_MAX) {
       if (this->GetInstructionName(op_idx) == "pd_op.full_int_array") {
-      VLOG(8) << "Skip adding dependency for sequential run: "
-              << dependence_op_idx << "->" << op_idx << " "
-              << this->GetInstructionName(dependence_op_idx) << "->"
-              << this->GetInstructionName(op_idx);
-      continue;
-    }
+        VLOG(8) << "Skip adding dependency for sequential run: "
+                << dependence_op_idx << "->" << op_idx << " "
+                << this->GetInstructionName(dependence_op_idx) << "->"
+                << this->GetInstructionName(op_idx);
+        continue;
+      }
+
       AddDownstreamOp(dependence_op_idx, op_idx);
     }
     dependence_op_idx = op_idx;
