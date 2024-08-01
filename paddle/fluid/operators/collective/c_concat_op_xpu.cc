@@ -38,8 +38,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    BKCLDataType dtype =
-        platform::ToBKCLDataType(framework::TransToProtoVarType(x->dtype()));
+    BKCLDataType dtype = phi::ToBKCLDataType(x->dtype());
 
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");
