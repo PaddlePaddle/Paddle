@@ -140,7 +140,9 @@ namespace detail {
 // @{
 bool IsDivisible(int64_t a, int64_t b) {
   PADDLE_ENFORCE_NE(
-      b, 0, phi::errors::InvalidArgument("The divisor %d should not be 0.", b));
+      b,
+      0,
+      ::common::errors::InvalidArgument("The divisor %d should not be 0.", b));
   return a % b == 0;
 }
 bool IsDivisible(const Sum* a, int b);
@@ -858,7 +860,7 @@ void CasSimplifyMutator::UnfoldBound(Expr* lower_bound,
     AddBaseAndSimplify(lower_bound, var);
     AddBaseAndSimplify(upper_bound, var);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("can't get the bound"));
+    PADDLE_THROW(::common::errors::InvalidArgument("can't get the bound"));
   }
 }
 
@@ -1489,7 +1491,7 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
   }
   PADDLE_ENFORCE_GE(right_mod->operands().size(),
                     2U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "right_mod's operands size should be greater than 2"));
   Expr mod_left = right_mod->operand(0);
   Expr mod_right = right_mod->operand(1);
@@ -1502,7 +1504,7 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
     // n2, n3's type is int)
     PADDLE_ENFORCE_GE(left_mul->operands().size(),
                       2U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "left_mul's operands size should be greater than 2"));
     Expr mul_left = left_mul->operand(0);
     Expr mul_right = left_mul->operand(1);
@@ -1522,7 +1524,7 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
     }
     PADDLE_ENFORCE_GE(div->operands().size(),
                       2U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "div's operands size should be greater than 2"));
     Expr div_left = div->operand(0);
     Expr div_right = div->operand(1);

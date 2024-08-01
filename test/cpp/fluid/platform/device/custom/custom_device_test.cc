@@ -124,7 +124,7 @@ void TestTensorUtils(const phi::Place& place) {
   memcpy(src_ptr, arr.data(), 9 * sizeof(int));
 
   // CPU Tensor to GPU Tensor
-  paddle::platform::CustomDeviceContext gpu_ctx(place);
+  phi::CustomContext gpu_ctx(place);
   paddle::framework::TensorCopy(src_tensor, place, gpu_ctx, &gpu_tensor);
 #if 0
   // GPU Tensor to CPU Tensor

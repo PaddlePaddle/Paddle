@@ -31,9 +31,8 @@ using IterSpaceType = std::vector<std::pair<std::string, std::string>>;
 struct ScheduleConfig {
   struct BaseInfo {
     std::vector<int64_t> reduce_axis;
-    std::vector<int64_t> raw_reduce_axis;
+    std::vector<int64_t> loop_transform_map;
     int64_t data_rank;
-    int64_t raw_data_rank;
     int64_t reduce_numel;
     int64_t spatial_numel;
     bool has_dynamic_spatial{false};

@@ -354,7 +354,11 @@ std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
       }
     }
   }
-  CHECK_EQ(result.size(), op_exprs.size());
+  PADDLE_ENFORCE_EQ(
+      result.size(),
+      op_exprs.size(),
+      phi::errors::InvalidArgument(
+          "Required result.size() should be equal to op_exprs.size(). "));
   std::vector<ir::Expr> sorted_result;
   for (const auto& op : result) {
     sorted_result.push_back(*op);

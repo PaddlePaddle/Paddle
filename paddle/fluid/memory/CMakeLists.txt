@@ -7,7 +7,7 @@ if(WITH_ONEDNN)
 else()
   set(ONEDNN_CTX_DEPS)
 endif()
-set(fluid_memory_deps phi enforce common allocator ${ONEDNN_CTX_DEPS})
+set(fluid_memory_deps phi common allocator ${ONEDNN_CTX_DEPS})
 
 cc_library(
   fluid_memory

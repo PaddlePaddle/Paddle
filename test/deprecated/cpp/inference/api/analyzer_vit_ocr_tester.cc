@@ -30,8 +30,10 @@ struct Record {
 Record ProcessALine(const std::string &line) {
   std::vector<std::string> columns;
   split(line, '\t', &columns);
-  CHECK_EQ(columns.size(), 2UL)
-      << "data format error, should be <data>\t<shape>";
+  PADDLE_ENFORCE_EQ(columns.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "Data format is invalid, should be <data>\t<shape>"));
 
   Record record;
   std::vector<std::string> data_strs;
@@ -103,8 +105,16 @@ TEST(Analyzer_vit_ocr, fuse_status) {
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
 
-  CHECK_EQ(fuse_statis.at("fc_onednn_pass"), 33);
-  CHECK_EQ(fuse_statis.at("fused_conv2d_gelu_onednn_fuse_pass"), 2);
+  PADDLE_ENFORCE_EQ(fuse_statis.at("fc_onednn_pass"),
+                    33,
+                    phi::errors::InvalidArgument(
+                        "Fuse status %d is illegal, expected value is 33.",
+                        fuse_statis.at("fc_onednn_pass")));
+  PADDLE_ENFORCE_EQ(fuse_statis.at("fused_conv2d_gelu_onednn_fuse_pass"),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Fuse status %d is illegal, expected value is 2.",
+                        fuse_statis.at("fused_conv2d_gelu_onednn_fuse_pass")));
 }
 #endif
 

@@ -22,32 +22,44 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
-std::set<std::string> act_ops = {{paddle::dialect::AbsOp::name()},
-                                 {paddle::dialect::GeluOp::name()},
-                                 {paddle::dialect::HardsigmoidOp::name()},
-                                 {paddle::dialect::HardswishOp::name()},
-                                 {paddle::dialect::LeakyReluOp::name()},
-                                 {paddle::dialect::MishOp::name()},
-                                 {paddle::dialect::ReluOp::name()},
-                                 {paddle::dialect::Relu6Op::name()},
-                                 {paddle::dialect::SigmoidOp::name()},
-                                 {paddle::dialect::SqrtOp::name()},
-                                 {paddle::dialect::SwishOp::name()},
-                                 {paddle::dialect::TanhOp::name()}};
+std::set<std::string> act_ops = {paddle::dialect::AbsOp::name(),          //
+                                 paddle::dialect::Abs_Op::name(),         //
+                                 paddle::dialect::GeluOp::name(),         //
+                                 paddle::dialect::HardsigmoidOp::name(),  //
+                                 paddle::dialect::HardswishOp::name(),    //
+                                 paddle::dialect::LeakyReluOp::name(),    //
+                                 paddle::dialect::LeakyRelu_Op::name(),   //
+                                 paddle::dialect::MishOp::name(),         //
+                                 paddle::dialect::ReluOp::name(),         //
+                                 paddle::dialect::Relu_Op::name(),        //
+                                 paddle::dialect::Relu6Op::name(),        //
+                                 paddle::dialect::SigmoidOp::name(),      //
+                                 paddle::dialect::Sigmoid_Op::name(),     //
+                                 paddle::dialect::SqrtOp::name(),         //
+                                 paddle::dialect::Sqrt_Op::name(),        //
+                                 paddle::dialect::SwishOp::name(),        //
+                                 paddle::dialect::TanhOp::name(),         //
+                                 paddle::dialect::Tanh_Op::name()};
 
 std::unordered_map<std::string, std::string> activation_type = {
     {paddle::dialect::AbsOp::name(), "abs"},
+    {paddle::dialect::Abs_Op::name(), "abs"},
     {paddle::dialect::GeluOp::name(), "gelu"},
     {paddle::dialect::HardsigmoidOp::name(), "hard_sigmoid"},
     {paddle::dialect::HardswishOp::name(), "hard_swish"},
     {paddle::dialect::LeakyReluOp::name(), "leaky_relu"},
+    {paddle::dialect::LeakyRelu_Op::name(), "leaky_relu"},
     {paddle::dialect::MishOp::name(), "mish"},
     {paddle::dialect::ReluOp::name(), "relu"},
+    {paddle::dialect::Relu_Op::name(), "relu"},
     {paddle::dialect::Relu6Op::name(), "relu6"},
     {paddle::dialect::SigmoidOp::name(), "sigmoid"},
+    {paddle::dialect::Sigmoid_Op::name(), "sigmoid"},
     {paddle::dialect::SqrtOp::name(), "sqrt"},
+    {paddle::dialect::Sqrt_Op::name(), "sqrt"},
     {paddle::dialect::SwishOp::name(), "swish"},
-    {paddle::dialect::TanhOp::name(), "tanh"}};
+    {paddle::dialect::TanhOp::name(), "tanh"},
+    {paddle::dialect::Tanh_Op::name(), "tanh"}};
 
 class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
  private:
@@ -81,7 +93,8 @@ class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
     if (act_type_ == paddle::dialect::HardsigmoidOp::name()) {
       act_attrs.emplace("slope", pat.Attr("fuse_alpha"));
       act_attrs.emplace("offset", pat.Attr("fuse_beta"));
-    } else if (act_type_ == paddle::dialect::LeakyReluOp::name()) {
+    } else if (act_type_ == paddle::dialect::LeakyRelu_Op::name() ||
+               act_type_ == paddle::dialect::LeakyReluOp::name()) {
       act_attrs.emplace("negative_slope", pat.Attr("fuse_alpha"));
     } else if (act_type_ == paddle::dialect::GeluOp::name()) {
       act_attrs.emplace("approximate", pat.Attr("approximate"));
@@ -126,7 +139,8 @@ class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
     } else if (act_type_ == paddle::dialect::HardsigmoidOp::name()) {
       fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
       fused_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
-    } else if (act_type_ == paddle::dialect::LeakyReluOp::name()) {
+    } else if (act_type_ == paddle::dialect::LeakyRelu_Op::name() ||
+               act_type_ == paddle::dialect::LeakyReluOp::name()) {
       fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
     } else if (act_type_ == paddle::dialect::SwishOp::name()) {
       fused_attrs.emplace("fuse_alpha", res.Float32Attr(1.0f));
@@ -218,14 +232,17 @@ class MatmulClipFusePattern : public paddle::drr::DrrPatternBase {
   std::string matmul_name_;
   std::string fused_matmul_name_;
   uint32_t benefit_;
+  bool inplace_;
 
  public:
   MatmulClipFusePattern(const std::string &matmul_name,
                         const std::string &fused_matmul_name,
-                        uint32_t benefit)
+                        uint32_t benefit,
+                        bool inplace)
       : matmul_name_(matmul_name),
         fused_matmul_name_(fused_matmul_name),
-        benefit_(benefit) {}
+        benefit_(benefit),
+        inplace_(inplace) {}
 
   std::string name() const override { return "MatmulActivationFusePattern"; }
 
@@ -247,7 +264,8 @@ class MatmulClipFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("min") = full1();
     pat.Tensor("max") = full2();
 
-    const auto &act = pat.Op(paddle::dialect::ClipOp::name());
+    const auto &act = inplace_ ? pat.Op(paddle::dialect::Clip_Op::name())
+                               : pat.Op(paddle::dialect::ClipOp::name());
     matmul({&pat.Tensor("X"), &pat.Tensor("Y")}, {&pat.Tensor("Out")});
 
     pat.Tensor("act_out") =
@@ -342,7 +360,8 @@ class FusedMatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
     if (act_type_ == paddle::dialect::HardsigmoidOp::name()) {
       act_attrs.emplace("slope", pat.Attr("fuse_alpha"));
       act_attrs.emplace("offset", pat.Attr("fuse_beta"));
-    } else if (act_type_ == paddle::dialect::LeakyReluOp::name()) {
+    } else if (act_type_ == paddle::dialect::LeakyRelu_Op::name() ||
+               act_type_ == paddle::dialect::LeakyReluOp::name()) {
       act_attrs.emplace("negative_slope", pat.Attr("fuse_alpha"));
     } else if (act_type_ == paddle::dialect::GeluOp::name()) {
       act_attrs.emplace("approximate", pat.Attr("approximate"));
@@ -394,7 +413,8 @@ class FusedMatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
     } else if (act_type_ == paddle::dialect::HardsigmoidOp::name()) {
       fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
       fused_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
-    } else if (act_type_ == paddle::dialect::LeakyReluOp::name()) {
+    } else if (act_type_ == paddle::dialect::LeakyRelu_Op::name() ||
+               act_type_ == paddle::dialect::LeakyReluOp::name()) {
       fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
     } else if (act_type_ == paddle::dialect::SwishOp::name()) {
       fused_attrs.emplace("fuse_alpha", res.Float32Attr(1.0f));
@@ -511,15 +531,17 @@ class FusedMatmulClipFusePattern : public paddle::drr::DrrPatternBase {
   std::string matmul_name_;
   std::string fused_matmul_name_;
   uint32_t benefit_;
-  std::string act_type_;
+  bool inplace_;
 
  public:
   FusedMatmulClipFusePattern(const std::string &matmul_name,
                              const std::string &fused_matmul_name,
-                             uint32_t benefit)
+                             uint32_t benefit,
+                             bool inplace)
       : matmul_name_(matmul_name),
         fused_matmul_name_(fused_matmul_name),
-        benefit_(benefit) {}
+        benefit_(benefit),
+        inplace_(inplace) {}
 
   std::string name() const override {
     return "FusedMatmulActivationFusePattern";
@@ -559,7 +581,8 @@ class FusedMatmulClipFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("min") = full1();
     pat.Tensor("max") = full2();
 
-    const auto &act = pat.Op(paddle::dialect::ClipOp::name());
+    const auto &act = inplace_ ? pat.Op(paddle::dialect::Clip_Op::name())
+                               : pat.Op(paddle::dialect::ClipOp::name());
     matmul({&pat.Tensor("X"), &pat.Tensor("Y"), &pat.Tensor("residual")},
            {&pat.Tensor("Out")});
 
@@ -637,7 +660,14 @@ class MatmulActivationFusePass : public pir::PatternRewritePass {
         context,
         paddle::dialect::MatmulOp::name(),
         paddle::onednn::dialect::FusedMatmulOp::name(),
-        benefit_idx++));
+        benefit_idx++,
+        0));
+    ps.Add(paddle::drr::Create<MatmulClipFusePattern>(
+        context,
+        paddle::dialect::MatmulOp::name(),
+        paddle::onednn::dialect::FusedMatmulOp::name(),
+        benefit_idx++,
+        1));
     for (auto act_op : act_ops) {
       ps.Add(paddle::drr::Create<FusedMatmulActivationFusePattern>(
           context,
@@ -656,7 +686,14 @@ class MatmulActivationFusePass : public pir::PatternRewritePass {
         context,
         paddle::onednn::dialect::FusedMatmulOp::name(),
         paddle::onednn::dialect::FusedMatmulOp::name(),
-        benefit_idx++));
+        benefit_idx++,
+        0));
+    ps.Add(paddle::drr::Create<FusedMatmulClipFusePattern>(
+        context,
+        paddle::onednn::dialect::FusedMatmulOp::name(),
+        paddle::onednn::dialect::FusedMatmulOp::name(),
+        benefit_idx++,
+        1));
     return ps;
   }
 };

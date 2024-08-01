@@ -35,7 +35,7 @@ VariableScope::VariableScope(Scope* scope)
   PADDLE_ENFORCE_NE(
       scope,
       nullptr,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "You have passed a nullptr to construct VariableScope."));
 }
 
@@ -102,7 +102,7 @@ void VariableScope::AddVar(const std::string& name,
     PADDLE_ENFORCE_EQ(
         var_list_.size(),
         name2id_.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of var_list and name2id map should be equal"));
   }
 }
@@ -136,7 +136,7 @@ bool VariableScope::GetVarSkipInplace(int id) const {
 void VariableScope::CheckExist(int id) const {
   PADDLE_ENFORCE_LT(id,
                     name2id_.size(),
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Required var_id < %d, but received var_id = %d.",
                         name2id_.size(),
                         id));
@@ -145,7 +145,7 @@ void VariableScope::CheckExist(int id) const {
 void VariableScope::CheckExist(const std::string& name) const {
   PADDLE_ENFORCE_EQ(HasVar(name),
                     true,
-                    phi::errors::NotFound("%s not in VariableScope.", name));
+                    common::errors::NotFound("%s not in VariableScope.", name));
 }
 
 Instruction::Instruction(size_t id,
@@ -170,7 +170,7 @@ Instruction::Instruction(size_t id,
   }
   PADDLE_ENFORCE_GE(id,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Required id >= 0, but received id = %d", id));
 }
 
@@ -226,7 +226,7 @@ OperatorBase* Instruction::OpBase() const {
   auto op_base = op_func_node_.operator_base_;
   PADDLE_ENFORCE_NOT_NULL(
       op_base,
-      phi::errors::PreconditionNotMet("op_base shall not be nullptr."));
+      common::errors::PreconditionNotMet("op_base shall not be nullptr."));
   return op_base.get();
 }
 
