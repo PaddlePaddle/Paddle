@@ -56,7 +56,13 @@ template <typename T>
 void SetupTensor(phi::DenseTensor* input,
                  phi::DDim dims,
                  const std::vector<T>& data) {
-  CHECK_EQ(common::product(dims), static_cast<int64_t>(data.size()));
+  PADDLE_ENFORCE_EQ(common::product(dims),
+                    static_cast<int64_t>(data.size()),
+                    phi::errors::InvalidArgument(
+                        "common::product(dims) and data.size() are not equal"
+                        "common::product(dims) is %d and data.size() is %d",
+                        common::product(dims),
+                        static_cast<int64_t>(data.size())));
   T* input_ptr = input->mutable_data<T>(dims, phi::CPUPlace());
   memcpy(input_ptr, data.data(), input->numel() * sizeof(T));
 }
@@ -77,7 +83,13 @@ void SetupLoDTensor(phi::DenseTensor* input,
                     const paddle::framework::LoD lod,
                     const std::vector<T>& data) {
   const size_t level = lod.size() - 1;
-  CHECK_EQ(dims[0], static_cast<int64_t>((lod[level]).back()));
+  PADDLE_ENFORCE_EQ(dims[0],
+                    static_cast<int64_t>((lod[level]).back()),
+                    phi::errors::InvalidArgument(
+                        "dims[0] is not equal with (lod[level]).back()"
+                        "while dims[0] is %d and (lod[level]).back() is %d",
+                        dims[0],
+                        static_cast<int64_t>((lod[level]).back())));
   input->set_lod(lod);
   SetupTensor<T>(input, dims, data);
 }
