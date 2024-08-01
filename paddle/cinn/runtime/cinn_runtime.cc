@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/cinn/runtime/cinn_runtime.h"
-
 #include <stdarg.h>
 #include <stdio.h>
+#include "paddle/common/enforce.h"
 
 #include <cmath>
 
@@ -41,14 +41,14 @@ int cinn_buffer_free(void* context, struct cinn_buffer_t* buf) {
 }
 
 void* cinn_buffer_slice(struct cinn_buffer_t* buf, uint32_t offset) {
-  PADDLE_ENFORCE_NOT_NULL(buf,
-                          ::common::errors::InvalidArgument(
-                              "The buffer (buf) should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      buf,
+      phi::errors::InvalidArgument("The buffer (buf) should not be null."));
   uint64_t offset_byte = offset * buf->type.bytes();
   PADDLE_ENFORCE_LT(
       offset_byte,
       buf->memory_size,
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The offset in bytes should be less than the buffer's memory size."));
   return buf->memory + offset_byte;
 }
@@ -91,16 +91,16 @@ int cinn_buffer_copy(void* context,
 }
 
 void* cinn_buffer_get_data_handle(struct cinn_buffer_t* buf) {
-  PADDLE_ENFORCE_NOT_NULL(buf,
-                          ::common::errors::InvalidArgument(
-                              "The buffer (buf) should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      buf,
+      phi::errors::InvalidArgument("The buffer (buf) should not be null."));
   return buf->memory;
 }
 
 void* cinn_buffer_get_data_const_handle(const struct cinn_buffer_t* buf) {
-  PADDLE_ENFORCE_NOT_NULL(buf,
-                          ::common::errors::InvalidArgument(
-                              "The buffer (buf) should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      buf,
+      phi::errors::InvalidArgument("The buffer (buf) should not be null."));
   return buf->memory;
 }
 
@@ -190,7 +190,7 @@ struct cinn_buffer_t* cinn_buffer_t::new_(cinn_device_kind_t device,
   PADDLE_ENFORCE_LT(
       shape.size(),
       CINN_BUFFER_MAX_DIMS,
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The shape size should be less than CINN_BUFFER_MAX_DIMS."));
   struct cinn_buffer_t* buf =
       (struct cinn_buffer_t*)malloc(sizeof(struct cinn_buffer_t));
@@ -234,7 +234,7 @@ cinn_pod_value_t::operator double() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<double>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected double type code."));
   return value_.v_float64;
 }
@@ -242,7 +242,7 @@ cinn_pod_value_t::operator float() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<float>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected float type code."));
   return value_.v_float64;
 }
@@ -250,7 +250,7 @@ cinn_pod_value_t::operator cinn::common::bfloat16() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<cinn::common::bfloat16>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected bfloat16 type code."));
   return static_cast<cinn::common::bfloat16>(value_.v_float64);
 }
@@ -258,7 +258,7 @@ cinn_pod_value_t::operator cinn::common::float16() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<cinn::common::float16>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected float16 type code."));
   return static_cast<cinn::common::float16>(value_.v_float64);
 }
@@ -267,7 +267,7 @@ cinn_pod_value_t::operator bool() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<bool>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected bool type code."));
   return value_.v_int64;
 }
@@ -276,7 +276,7 @@ cinn_pod_value_t::operator int8_t() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<int8_t>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected int8_t type code."));
   return value_.v_int64;
 }
@@ -284,7 +284,7 @@ cinn_pod_value_t::operator int16_t() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<int16_t>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected int16_t type code."));
   return value_.v_int64;
 }
@@ -292,15 +292,15 @@ cinn_pod_value_t::operator int32_t() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<int32_t>(),
-      ::common::errors::InvalidArgument("The type code (%d) does not match the "
-                                        "expected int32_t type code (%d)."));
+      phi::errors::InvalidArgument("The type code (%d) does not match the "
+                                   "expected int32_t type code (%d)."));
   return value_.v_int64;
 }
 cinn_pod_value_t::operator int64_t() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<int64_t>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected int64_t type code."));
   return value_.v_int64;
 }
@@ -309,7 +309,7 @@ cinn_pod_value_t::operator uint8_t() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<uint8_t>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected uint8_t type code."));
   return value_.v_int64;
 }
@@ -317,7 +317,7 @@ cinn_pod_value_t::operator uint16_t() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<uint16_t>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected uint16_t type code."));
   return value_.v_int64;
 }
@@ -325,7 +325,7 @@ cinn_pod_value_t::operator uint32_t() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<uint32_t>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected uint32_t type code."));
   return value_.v_int64;
 }
@@ -333,7 +333,7 @@ cinn_pod_value_t::operator uint64_t() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<uint64_t>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected uint64_t type code."));
   return value_.v_int64;
 }
@@ -342,23 +342,23 @@ cinn_pod_value_t::operator void*() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<void*>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected void* type code."));
   return value_.v_handle;
 }
 cinn_pod_value_t::operator cinn_buffer_t*() const {
-  PADDLE_ENFORCE_EQ(type_code_,
-                    ::cinn_type_code<cinn_buffer_t*>(),
-                    ::common::errors::InvalidArgument(
-                        "The type code does not match the expected "
-                        "cinn_buffer_t* type code."));
+  PADDLE_ENFORCE_EQ(
+      type_code_,
+      ::cinn_type_code<cinn_buffer_t*>(),
+      phi::errors::InvalidArgument("The type code does not match the expected "
+                                   "cinn_buffer_t* type code."));
   return static_cast<cinn_buffer_t*>(value_.v_handle);
 }
 cinn_pod_value_t::operator char*() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       ::cinn_type_code<char*>(),
-      ::common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type code does not match the expected char* type code."));
   return static_cast<char*>(value_.v_handle);
 }
@@ -564,7 +564,7 @@ void cinn_args_construct(cinn_pod_value_t* arr, int count, ...) {
   PADDLE_ENFORCE_LT(
       count,
       1000,
-      ::common::errors::InvalidArgument("The count should be less than 1000."));
+      phi::errors::InvalidArgument("The count should be less than 1000."));
 
   va_list args;
   va_start(args, count);
