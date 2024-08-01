@@ -61,6 +61,15 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
+    def get_model(self, main_prog, startup_program, rank, dtype='float32'):
+        with base.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[-1, 10, 1000], dtype=dtype
+            )
+            tindata.desc.set_need_check_feed(False)
+            paddle.distributed.broadcast(tindata, src=1)
+            return [tindata]
+
     def get_model_new(
         self, main_prog, startup_program, rank, dtype=None, reduce_type=None
     ):
@@ -70,15 +79,6 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
             )
             tindata.desc.set_need_check_feed(False)
             broadcast_new(tindata, src=1)
-            return [tindata]
-
-    def get_model(self, main_prog, startup_program, rank, dtype='float32'):
-        with base.program_guard(main_prog, startup_program):
-            tindata = paddle.static.data(
-                name="tindata", shape=[-1, 10, 1000], dtype=dtype
-            )
-            tindata.desc.set_need_check_feed(False)
-            paddle.distributed.broadcast(tindata, src=1)
             return [tindata]
 
 
