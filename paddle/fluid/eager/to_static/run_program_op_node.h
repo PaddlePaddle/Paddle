@@ -475,7 +475,6 @@ inline void PirRunProgramAPI(
     // no_need_buffers + outputs)
     std::vector<std::string> skip_names;
     // update interpretercore skip_gc_var
-    std::vector<pir::Value> kwargs_values;
     for (auto &kwarg : backward_program->block()->kwargs()) {
       skip_names.push_back(kwarg.first);
     }
