@@ -15,7 +15,7 @@
 #include <stdlib.h>
 
 #include "paddle/cinn/runtime/cinn_runtime.h"
-#include "paddle/common/enforce.h"
+
 int cinn_x86_malloc(void* context, cinn_buffer_t* buf) {
   // ASSERT_NOT_NULL(context)
   ASSERT_NOT_NULL(buf)
@@ -27,11 +27,7 @@ int cinn_x86_malloc(void* context, cinn_buffer_t* buf) {
   } else {
     memory_size = buf->num_elements() * buf->type.bytes();
   }
-  PADDLE_ENFORCE_GT(
-      memory_size,
-      0,
-      phi::errors::InvalidArgument(
-          "The memory size (%d) must be greater than 0.", memory_size));
+  CINN_CHECK(memory_size > 0);
   if (buf->memory_size < memory_size || need_malloc) {
     if (buf->memory) {
       free(buf->memory);
