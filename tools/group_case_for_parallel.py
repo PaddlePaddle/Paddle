@@ -84,13 +84,13 @@ def group_case_for_parallel(rootPath):
             )
         cases = '$|^'.join(new_cinn_cases_list)
         cases = f'^job$|^{cases}$'
-        cinn_f = open(f'{rootPath}/tools/new_${filename}', 'w')
+        cinn_f = open(f'{rootPath}/tools/new_{filename}', 'w')
         cinn_f.write(cases + '\n')
         cinn_f.close()
         print(
-            f"new_${filename} is same as ${filename}: ",
+            f"new_{filename} is same as {filename}: ",
             len(new_cinn_cases_list) == len(cinn_cases),
-            f"case num of new_${filename}is: ",
+            f"case num of new_{filename}is: ",
             len(new_cinn_cases_list),
         )
 
