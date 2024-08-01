@@ -605,7 +605,7 @@ bool SegmentPoolOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   std::vector<symbol::DimExpr> out_shape;
   out_shape.push_back(symbol::DimExpr{-1});
-  auto axis = input_shape.size();
+  int axis = input_shape.size();
   for (int i = 1; i < axis; ++i) {
     out_shape.push_back(input_shape[i]);
   }
