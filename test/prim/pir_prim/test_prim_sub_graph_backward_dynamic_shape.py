@@ -1393,8 +1393,8 @@ class TestPrimMatmulWithGrad2(TestPrimTwoWithGrad):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [30, 40, 200]
-        self.init_x_shape = [None, None, 200]
+        self.x_shape = [1, 30, 40, 200]
+        self.init_x_shape = [None, None, None, 200]
         self.y_shape = [30, 1, 200, 40]
         self.init_y_shape = [None, None, None, 40]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
@@ -1408,8 +1408,8 @@ class TestPrimMatmulWithGrad3(TestPrimTwoWithGrad):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [30, 40, 200]
-        self.init_x_shape = [None, None, 200]
+        self.x_shape = [1, 30, 40, 200]
+        self.init_x_shape = [1, None, None, 200]
         self.y_shape = [30, 1, 200, 40]
         self.init_y_shape = [None, 1, None, 40]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
@@ -1425,8 +1425,8 @@ class TestPrimMatmulWithGrad4(TestPrimTwoWithGrad):
         self.dtype = "float32"
         self.x_shape = [30, 1, 40, 200]
         self.init_x_shape = [None, None, None, 200]
-        self.y_shape = [30, 200, 40]
-        self.init_y_shape = [None, None, 40]
+        self.y_shape = [1, 30, 200, 40]
+        self.init_y_shape = [None, None, None, 40]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = matmul_net
@@ -1440,8 +1440,8 @@ class TestPrimMatmulWithGrad5(TestPrimTwoWithGrad):
         self.dtype = "float32"
         self.x_shape = [30, 1, 40, 200]
         self.init_x_shape = [None, 1, None, 200]
-        self.y_shape = [30, 200, 40]
-        self.init_y_shape = [None, None, 40]
+        self.y_shape = [1, 30, 200, 40]
+        self.init_y_shape = [1, None, None, 40]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = matmul_net
