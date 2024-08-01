@@ -143,7 +143,7 @@ pir::Attribute deserializeAttrFromJson_scalarAttr(Json* attr_json,
     scalar = phi::Scalar(data);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Invalid tensor data type `", dtype_, "`."));
   }
 
@@ -190,7 +190,7 @@ pir::Type parseType(Json* type_json) {
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s for parse builtin dialect attr", type_name));
   }
 
@@ -219,7 +219,7 @@ pir::Attribute parseAttr(Json* attr_json) {
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s for parse builtin dialect attr", attr_name));
   }
 
@@ -285,7 +285,7 @@ pir::Attribute AttrTypeReader::ReadBuiltInAttr(const std::string attr_name,
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s for parse builtin dialect attr", attr_name));
   }
   return pir::Attribute();
@@ -312,7 +312,7 @@ pir::Attribute AttrTypeReader::ReadPaddleOperatorAttr(
                                         int8_t>(attr_json, ctx);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Attr %s for parse paddleoperator dialect attr",
                        attr_name));
   }
@@ -392,7 +392,7 @@ pir::Type AttrTypeReader::ReadBuiltInType(const std::string type_name,
         type_json, ctx);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type %s for parse builtintype", type_name));
   }
   return pir::Type();
