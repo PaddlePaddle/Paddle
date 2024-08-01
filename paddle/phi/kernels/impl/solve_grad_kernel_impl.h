@@ -83,7 +83,7 @@ void SolveGradKernel(const Context& dev_ctx,
   DenseTensor tmp_y;
   if (is_vector) {
     dev_ctx.Alloc(&tmp_y, y.dtype());
-    phi::Unsqueeze<T, Context>(dev_ctx, y, {-1}, &tmp_y, nullptr);
+    phi::Unsqueeze<T, Context>(dev_ctx, y, {-1}, &tmp_y);
   } else {
     tmp_y.Resize(y.dims());
     dev_ctx.Alloc(&tmp_y, y.dtype());
@@ -137,20 +137,14 @@ void SolveGradKernel(const Context& dev_ctx,
       DenseTensor tmp_dy_;
       dev_ctx.Alloc(&tmp_dy_, y.dtype());
 
-      phi::Unsqueeze<T, Context>(dev_ctx,
-                                 tmp_dy,
-                                 paddle::experimental::IntArray({-1}),
-                                 &tmp_dy_,
-                                 nullptr);
+      phi::Unsqueeze<T, Context>(
+          dev_ctx, tmp_dy, paddle::experimental::IntArray({-1}), &tmp_dy_);
 
       DenseTensor tmp_out_;
       dev_ctx.Alloc(&tmp_out_, out.dtype());
 
-      phi::Unsqueeze<T, Context>(dev_ctx,
-                                 out,
-                                 paddle::experimental::IntArray({-1}),
-                                 &tmp_out_,
-                                 nullptr);
+      phi::Unsqueeze<T, Context>(
+          dev_ctx, out, paddle::experimental::IntArray({-1}), &tmp_out_);
 
       auto mat_dim_a1 =
           phi::funcs::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);

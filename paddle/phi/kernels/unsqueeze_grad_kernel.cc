@@ -22,11 +22,10 @@
 namespace phi {
 template <typename T, typename Context>
 void UnsqueezeGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x_shape,
+                         const DenseTensor& x,
                          const DenseTensor& dout,
                          DenseTensor* dx) {
-  auto xshape_dims = x_shape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  const auto& x_dims = x.dims();
   dev_ctx.template Alloc<T>(dx);
   phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), true, dx);
   dx->Resize(x_dims);

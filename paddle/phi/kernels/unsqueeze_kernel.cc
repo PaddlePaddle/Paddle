@@ -43,8 +43,7 @@ template <typename T, typename Context>
 void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
-                     DenseTensor* out,
-                     DenseTensor* xshape UNUSED) {
+                     DenseTensor* out) {
   UnsqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
 }
 }  // namespace phi

@@ -356,6 +356,10 @@ void KernelWithXShapeInferMeta(const MetaTensor& xshape,
                                const MetaTensor& out,
                                MetaTensor* dx);
 
+void SameWithXInferMeta(const MetaTensor& x,
+                        const MetaTensor& out,
+                        MetaTensor* dx);
+
 void ReshapeGradInferMeta(const MetaTensor& xshape,
                           const MetaTensor& out,
                           MetaTensor* dx);

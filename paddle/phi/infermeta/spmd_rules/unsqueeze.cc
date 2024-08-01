@@ -229,13 +229,12 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
           {out_dist_attr_dst, CreateUnsqueezeXshape(x_dist_attr)}};
 }
 
-SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& xshape,
+SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& out_grad,
                                 const IntArray& axis) {
-  auto shape = phi::vectorize(xshape.dims());
-  shape = std::vector<int64_t>(shape.begin() + 1, shape.end());
+  auto shape = phi::vectorize(x.dims());
   const auto& spmd = ReshapeInferSpmd(out_grad, shape);
-  return {{xshape.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
+  return {{x.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }
 
 }  // namespace phi::distributed

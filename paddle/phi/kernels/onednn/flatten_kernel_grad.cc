@@ -21,7 +21,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void FlattenGradKernel(const Context& dev_ctx,
-                       const DenseTensor& xshape,
+                       const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
   auto out_grad_vec_dims = out_grad.dims().size() != 0
@@ -29,6 +29,7 @@ void FlattenGradKernel(const Context& dev_ctx,
                                : std::vector<int64_t>{1};
 
   auto out_grad_type = funcs::ToOneDNNDataType(out_grad.dtype());
+  const auto& x_dims = x.dims();
 
   funcs::ReorderOneDNNHandler reorder_handler(
       out_grad_vec_dims, out_grad.dtype(), out_grad_type, dev_ctx.GetEngine());
@@ -46,9 +47,8 @@ void FlattenGradKernel(const Context& dev_ctx,
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 
-  auto x_grad_dims = slice_ddim(xshape.dims(), 1, xshape.dims().size());
-  x_grad->Resize(x_grad_dims);
-  reorder_dst_memory_p->get_desc().reshape(common::vectorize(x_grad_dims));
+  x_grad->Resize(x_dims);
+  reorder_dst_memory_p->get_desc().reshape(common::vectorize(x_dims));
 }
 
 }  // namespace phi

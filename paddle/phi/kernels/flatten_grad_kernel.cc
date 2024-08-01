@@ -22,12 +22,11 @@ namespace phi {
 
 template <typename T, typename Context>
 void FlattenGradKernel(const Context& dev_ctx,
-                       const DenseTensor& xshape,
+                       const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
-  auto xshape_dims = xshape.dims();
+  auto x_dims = x.dims();
   dev_ctx.Alloc(x_grad, out_grad.dtype());
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   x_grad->Resize(x_dims);
 }

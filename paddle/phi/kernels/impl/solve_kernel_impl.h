@@ -129,7 +129,7 @@ static void linalg_solve(const Context& dev_ctx,
   if (is_vector) {
     dev_ctx.Alloc(&tmp_y, y.dtype());
 
-    phi::Unsqueeze<T, Context>(dev_ctx, y, {-1}, &tmp_y, nullptr);
+    phi::Unsqueeze<T, Context>(dev_ctx, y, {-1}, &tmp_y);
   } else {
     tmp_y.Resize(y.dims());
     dev_ctx.Alloc(&tmp_y, y.dtype());

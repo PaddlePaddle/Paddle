@@ -1854,16 +1854,15 @@
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : FlattenWithXShapeInferMeta
+    func : FlattenInferMeta
     spmd_rule : FlattenInferSpmd
   kernel :
     func : flatten
     data_type : x
   inplace : (x -> out)
   view : (x -> out)
-  intermediate : xshape
   backward : flatten_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -4313,16 +4312,15 @@
 
 - op : squeeze
   args : (Tensor x, IntArray axis={})
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : SqueezeWithXShapeInferMeta
+    func : SqueezeInferMeta
     spmd_rule : SqueezeInferSpmd
   kernel :
     func : squeeze
     data_type : x
   inplace : (x -> out)
   view: (x -> out)
-  intermediate : xshape
   backward : squeeze_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
@@ -4766,16 +4764,15 @@
 
 - op : unsqueeze
   args : (Tensor x, IntArray axis = {})
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : UnsqueezeWithXShapeInferMeta
+    func : UnsqueezeInferMeta
     spmd_rule : UnsqueezeInferSpmd
   kernel :
     func : unsqueeze
     data_type : x
   inplace : (x -> out)
   view: (x -> out)
-  intermediate : xshape
   backward : unsqueeze_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 

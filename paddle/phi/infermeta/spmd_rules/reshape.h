@@ -32,10 +32,10 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
                                  const std::vector<int64_t>& shape);
 
-SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad);
 
-SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& out_grad);
 
 }  // namespace distributed
