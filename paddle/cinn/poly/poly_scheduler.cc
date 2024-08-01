@@ -432,7 +432,7 @@ void PolyScheduler::ScheduleAGroup(ScheduleGroup* group) {
       phi::errors::InvalidArgument(
           "The ScheduleGroup pointer is null in ScheduleAGroup."));
   PADDLE_ENFORCE_NE(
-      group->nodes().empty(),
+      group->nodes.empty(),
       true,
       phi::errors::InvalidArgument("Group is empty! Please check."));
 
