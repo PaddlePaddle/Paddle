@@ -733,10 +733,6 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
                          .dyn_cast<paddle::dialect::DenseTensorType>()
                          .dims();
       auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
-      if (!out_vector_type) {
-        VLOG(3) << "Output is not a VectorType";
-        return false;
-      }
 
       paddle::dialect::FullIntArrayOp full_sections_op =
           pir::GetDefiningOpForInput(op, 1)
@@ -793,24 +789,18 @@ class SplitWithNumOpPattern
                          .dyn_cast<paddle::dialect::DenseTensorType>()
                          .dims();
       auto out_vector_type = op.result(0).type().dyn_cast<pir::VectorType>();
-      if (!out_vector_type) {
-        VLOG(3) << "Output is not a VectorType";
-        return false;
-      }
+
       axis += (axis < 0) ? x_shape.size() : 0;
       if (x_shape[axis] == -1) {
         VLOG(3) << "The (" << axis << ") dim of input should not be -1";
         return false;
       }
+      
       if (!op->HasAttribute("num") ) {
         VLOG(3)<< "split_with_num op must has num attributes";
         return false;
       }
       int num = op->attribute<pir::Int32Attribute>("num").data();
-      if(num == 0){
-        VLOG(3) << "num cannot be equal to 0";
-        return false;
-      }
       std::vector<int64_t> output_lengths;
       if (num > 0) {
         int64_t in_axis_dim = x_shape[axis];
