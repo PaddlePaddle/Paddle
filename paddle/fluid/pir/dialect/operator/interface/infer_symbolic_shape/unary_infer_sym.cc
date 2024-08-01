@@ -576,7 +576,7 @@ bool L1NormOpInferSymbolicShape(pir::Operation *op,
 
 bool L1Norm_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return L1Norm_OpInferSymbolicShape(op, infer_context);
+  return L1NormOpInferSymbolicShape(op, infer_context);
 }
 
 bool LogcumsumexpOpInferSymbolicShape(
