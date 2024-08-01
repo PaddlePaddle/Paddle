@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -29,6 +28,7 @@ from paddle.nn import (
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle._typing import DataLayout2D, ParamAttrLike
 
 
 def resnet_unit(
@@ -51,7 +51,7 @@ def resnet_unit(
     groups: int,
     momentum: float,
     eps: float,
-    data_format: str,
+    data_format: DataLayout2D,
     fuse_add: bool,
     has_shortcut: bool,
     use_global_stats: bool,
@@ -175,16 +175,16 @@ class ResNetUnit(Layer):
         has_shortcut: bool = False,
         use_global_stats: bool = False,
         is_test: bool = False,
-        filter_x_attr: ParamAttr | None = None,
-        scale_x_attr: ParamAttr | None = None,
-        bias_x_attr: ParamAttr | None = None,
+        filter_x_attr: ParamAttrLike | None = None,
+        scale_x_attr: ParamAttrLike | None = None,
+        bias_x_attr: ParamAttrLike | None = None,
         moving_mean_x_name: str | None = None,
         moving_var_x_name: str | None = None,
         num_channels_z: int = 1,
         stride_z: int = 1,
-        filter_z_attr: ParamAttr | None = None,
-        scale_z_attr: ParamAttr | None = None,
-        bias_z_attr: ParamAttr | None = None,
+        filter_z_attr: ParamAttrLike | None = None,
+        scale_z_attr: ParamAttrLike | None = None,
+        bias_z_attr: ParamAttrLike | None = None,
         moving_mean_z_name: str | None = None,
         moving_var_z_name: str | None = None,
     ) -> None:
