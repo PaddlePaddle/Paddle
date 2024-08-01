@@ -362,7 +362,7 @@ void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
     default:
       std::stringstream ss;
       ss << "Unexpected ISL node type " << isl_ast_node_get_type(node.get());
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
       break;
   }
 }
@@ -374,7 +374,7 @@ void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
   CHECK(expr);
   PADDLE_ENFORCE_EQ(isl_ast_node_get_type(node.get()),
                     isl_ast_node_block,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The node type should be isl_ast_node_block"));
   isl::ast_node_list list =
       isl::manage(isl_ast_node_block_get_children(node.get()));
@@ -393,17 +393,17 @@ void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
 void EatUser(const isl::ast_node& node, ir::Expr* expr) {
   PADDLE_ENFORCE_EQ(isl_ast_node_get_type(node.get()),
                     isl_ast_node_user,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The node type should be isl_ast_node_user"));
   isl::ast_expr isl_expr = isl::manage(isl_ast_node_user_get_expr(node.get()));
   IslAstExprToCinnExpr(isl_expr, expr);
 }
 // Eat an isl `for` node.
 void EatFor(const isl::ast_node& node, ir::Expr* expr) {
-  PADDLE_ENFORCE_EQ(
-      isl_ast_node_get_type(node.get()),
-      isl_ast_node_for,
-      phi::errors::InvalidArgument("The node type should be isl_ast_node_for"));
+  PADDLE_ENFORCE_EQ(isl_ast_node_get_type(node.get()),
+                    isl_ast_node_for,
+                    ::common::errors::InvalidArgument(
+                        "The node type should be isl_ast_node_for"));
 
   // iter name
   isl::ast_expr iter = isl::manage(isl_ast_node_for_get_iterator(node.get()));
@@ -446,10 +446,10 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr) {
 }
 
 void EatIf(const isl::ast_node& node, ir::Expr* expr) {
-  PADDLE_ENFORCE_EQ(
-      isl_ast_node_get_type(node.get()),
-      isl_ast_node_if,
-      phi::errors::InvalidArgument("The node type should be isl_ast_node_if."));
+  PADDLE_ENFORCE_EQ(isl_ast_node_get_type(node.get()),
+                    isl_ast_node_if,
+                    ::common::errors::InvalidArgument(
+                        "The node type should be isl_ast_node_if."));
   isl::ast_node then_body = isl::manage(isl_ast_node_if_get_then(node.get()));
   isl::ast_expr condition = isl::manage(isl_ast_node_if_get_cond(node.get()));
 
@@ -576,7 +576,7 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
         case isl_ast_op_select:
           PADDLE_ENFORCE_EQ(ops.size(),
                             3UL,
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "In ir::Select, the ops size should be 3"));
           ops[0]->set_type(Bool());
           *expr = ir::Select::Make(ops[0], ops[1], ops[2]);
@@ -584,7 +584,7 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
         default:
           std::stringstream ss;
           ss << "unsupported op " << op_type;
-          PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+          PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
       }
     } break;
     default:

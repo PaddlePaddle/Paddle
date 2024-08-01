@@ -99,27 +99,27 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
       if (node->condition.As<ir::LE>()) {
         auto le = node->condition.As<ir::LE>();
         CHECK(le->a().As<ir::Sub>());
-        PADDLE_ENFORCE_EQ(
-            le->b().As<ir::IntImm>()->value,
-            0UL,
-            phi::errors::InvalidArgument("The value of le is incorrect."
-                                         "Expected value is 0, but receive %d.",
-                                         le->b().As<ir::IntImm>()->value));
+        PADDLE_ENFORCE_EQ(le->b().As<ir::IntImm>()->value,
+                          0UL,
+                          ::common::errors::InvalidArgument(
+                              "The value of le is incorrect."
+                              "Expected value is 0, but receive %d.",
+                              le->b().As<ir::IntImm>()->value));
         auto sub = le->a().As<ir::Sub>();
         node->condition = ir::LE::Make(sub->a(), sub->b());
       } else if (node->condition.As<ir::LT>()) {
         auto lt = node->condition.As<ir::LT>();
         CHECK(lt->a().As<ir::Sub>());
-        PADDLE_ENFORCE_EQ(
-            lt->b().As<ir::IntImm>()->value,
-            0UL,
-            phi::errors::InvalidArgument("The value of lt is incorrect."
-                                         "Expected value is 0, but receive %d.",
-                                         lt->b().As<ir::IntImm>()->value));
+        PADDLE_ENFORCE_EQ(lt->b().As<ir::IntImm>()->value,
+                          0UL,
+                          ::common::errors::InvalidArgument(
+                              "The value of lt is incorrect."
+                              "Expected value is 0, but receive %d.",
+                              lt->b().As<ir::IntImm>()->value));
         auto sub = lt->a().As<ir::Sub>();
         node->condition = ir::LT::Make(sub->a(), sub->b());
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument("Unkown Type!"));
+        PADDLE_THROW(::common::errors::InvalidArgument("Unkown Type!"));
       }
 
       lt_n = node->condition.As<ir::LT>();

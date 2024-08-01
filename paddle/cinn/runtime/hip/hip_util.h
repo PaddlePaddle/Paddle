@@ -25,13 +25,13 @@ namespace cinn {
 namespace runtime {
 namespace hip {
 
-#define HIP_CHECK(expr)                                               \
-  {                                                                   \
-    auto status = expr;                                               \
-    if (status != hipSuccess) {                                       \
-      PADDLE_THROW(phi::errors::Fatal("HIP Error in Paddle CINN: %s", \
-                                      hipGetErrorString(status)));    \
-    }                                                                 \
+#define HIP_CHECK(expr)                                                    \
+  {                                                                        \
+    auto status = expr;                                                    \
+    if (status != hipSuccess) {                                            \
+      PADDLE_THROW(::common::errors::Fatal("HIP Error in Paddle CINN: %s", \
+                                           hipGetErrorString(status)));    \
+    }                                                                      \
   }
 
 #define HIP_DRIVER_CHECK(expr)                                         \
@@ -40,20 +40,20 @@ namespace hip {
     if (status != hipSuccess) {                                        \
       const char* msg;                                                 \
       hipDrvGetErrorString(status, &msg);                              \
-      PADDLE_THROW(phi::errors::Fatal(                                 \
+      PADDLE_THROW(::common::errors::Fatal(                            \
           "HIP Driver Error in Paddle CINN: %s failed with error: %s", \
           #expr,                                                       \
           msg));                                                       \
     }                                                                  \
   }
 
-#define HIPRTC_CHECK(expr)                                               \
-  {                                                                      \
-    auto status = expr;                                                  \
-    if (status != HIPRTC_SUCCESS) {                                      \
-      PADDLE_THROW(phi::errors::Fatal("HIPRTC Error in Paddle CINN: %s", \
-                                      hiprtcGetErrorString(status)));    \
-    }                                                                    \
+#define HIPRTC_CHECK(expr)                                                    \
+  {                                                                           \
+    auto status = expr;                                                       \
+    if (status != HIPRTC_SUCCESS) {                                           \
+      PADDLE_THROW(::common::errors::Fatal("HIPRTC Error in Paddle CINN: %s", \
+                                           hiprtcGetErrorString(status)));    \
+    }                                                                         \
   }
 }  // namespace hip
 }  // namespace runtime

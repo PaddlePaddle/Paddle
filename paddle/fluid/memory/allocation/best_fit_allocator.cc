@@ -63,13 +63,13 @@ BestFitAllocator::ListIt BestFitAllocator::SplitChunk(size_t request_size,
   auto to_split_it = bin_iterator->second;
   free_chunks_[free_chunk_offset].erase(bin_iterator);
 
-  PADDLE_ENFORCE_EQ(
-      to_split_it->is_free,
-      true,
-      phi::errors::PreconditionNotMet("The memory chunk to split is not free"));
+  PADDLE_ENFORCE_EQ(to_split_it->is_free,
+                    true,
+                    common::errors::PreconditionNotMet(
+                        "The memory chunk to split is not free"));
   PADDLE_ENFORCE_GE(to_split_it->size_,
                     request_size,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The size of memory chunk to split is "
                         "not larger than size of request memory"));
 
@@ -111,7 +111,7 @@ void BestFitAllocator::EraseFreeNode(const ListIt& it) {
   PADDLE_ENFORCE_NE(
       map_it,
       free_map.end(),
-      phi::errors::NotFound("The node to erase is not found in map"));
+      common::errors::NotFound("The node to erase is not found in map"));
   free_map.erase(map_it);
 }
 size_t BestFitAllocator::NumFreeChunks() const {
@@ -126,12 +126,12 @@ void BestFitAllocator::FreeImpl(phi::Allocation* allocation) {
   auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(
       bf_allocation,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input allocation is not type of BestFitAllocation."));
   auto chunk_it = bf_allocation->ChunkIterator();
   PADDLE_ENFORCE_EQ(chunk_it->is_free,
                     false,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The chunk of allocation to free is freed already"));
   chunk_it->is_free = true;
   if (chunk_it != chunks_.begin()) {
@@ -169,7 +169,7 @@ phi::Allocation* BestFitAllocator::AllocateImpl(size_t size) {
     }
   }
   if (UNLIKELY(highest_set_bit == free_chunks_.size())) {
-    PADDLE_THROW_BAD_ALLOC(phi::errors::ResourceExhausted(
+    PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
         "Cannot allocate %d, All fragments size is %d.", size, FreeSize()));
   }
   auto chunk_it = SplitChunk(size, highest_set_bit, map_it);

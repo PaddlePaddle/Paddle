@@ -35,7 +35,7 @@ ComputationOpHandle *GetUniquePendingComputationOpHandle(
       auto *compute_op = dynamic_cast<ComputationOpHandle *>(&op);
       PADDLE_ENFORCE_NOT_NULL(
           compute_op,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The pending OpHandle should be ComputationOpHandle."));
 
       if (result_op == nullptr) {
@@ -44,14 +44,14 @@ ComputationOpHandle *GetUniquePendingComputationOpHandle(
         PADDLE_ENFORCE_EQ(
             result_op,
             compute_op,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "The pending OpHandle should be the unique one."));
       }
     }
   }
 
   PADDLE_ENFORCE_NOT_NULL(result_op,
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "The pending OpHandle should not be NULL."));
   return result_op;
 }

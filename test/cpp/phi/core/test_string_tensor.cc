@@ -61,25 +61,65 @@ TEST(string_tensor, ctor) {
   pstring* data = cpu_ctx->template Alloc<pstring>(&tensor_0);
   data[0] = plong_str;
   data[1] = pshort_str;
-  CHECK_EQ(tensor_0.data()[0], plong_str);
-  CHECK_EQ(tensor_0.data()[1], pshort_str);
+  PADDLE_ENFORCE_EQ(tensor_0.data()[0],
+                    plong_str,
+                    phi::errors::InvalidArgument(
+                        "The tensor_0 should be equal to '%s', but got '%s'.",
+                        plong_str,
+                        tensor_0.data()[0]));
+  PADDLE_ENFORCE_EQ(tensor_0.data()[1],
+                    pshort_str,
+                    phi::errors::InvalidArgument(
+                        "The tensor_0 should be equal to '%s', but got '%s'.",
+                        pshort_str,
+                        tensor_0.data()[1]));
 
   // Test Copy Constructor
   StringTensor tensor_1(tensor_0);
-  CHECK_EQ(tensor_1.data()[0], plong_str);
-  CHECK_EQ(tensor_1.data()[1], pshort_str);
+  PADDLE_ENFORCE_EQ(tensor_1.data()[0],
+                    plong_str,
+                    phi::errors::InvalidArgument(
+                        "The tensor_1 should be equal to '%s', but got '%s'.",
+                        plong_str,
+                        tensor_1.data()[0]));
+  PADDLE_ENFORCE_EQ(tensor_1.data()[1],
+                    pshort_str,
+                    phi::errors::InvalidArgument(
+                        "The tensor_1 should be equal to '%s', but got '%s'.",
+                        pshort_str,
+                        tensor_1.data()[1]));
 
   // Test Copy Assignment
   StringTensor tensor_2(alloc, meta);
   tensor_2 = tensor_1;
-  CHECK_EQ(tensor_2.data()[0], plong_str);
-  CHECK_EQ(tensor_2.data()[1], pshort_str);
+  PADDLE_ENFORCE_EQ(tensor_2.data()[0],
+                    plong_str,
+                    phi::errors::InvalidArgument(
+                        "The tensor_2 should be equal to '%s', but got '%s'.",
+                        plong_str,
+                        tensor_2.data()[0]));
+  PADDLE_ENFORCE_EQ(tensor_2.data()[1],
+                    pshort_str,
+                    phi::errors::InvalidArgument(
+                        "The tensor_2 should be equal to '%s', but got '%s'.",
+                        pshort_str,
+                        tensor_2.data()[1]));
 
   // Test Move Assignment
   StringTensor tensor_3(alloc, meta);
   tensor_3 = std::move(tensor_1);
-  CHECK_EQ(tensor_3.data()[0], plong_str);
-  CHECK_EQ(tensor_3.data()[1], pshort_str);
+  PADDLE_ENFORCE_EQ(tensor_3.data()[0],
+                    plong_str,
+                    phi::errors::InvalidArgument(
+                        "The tensor_3 should be equal to '%s', but got '%s'.",
+                        plong_str,
+                        tensor_3.data()[0]));
+  PADDLE_ENFORCE_EQ(tensor_3.data()[1],
+                    pshort_str,
+                    phi::errors::InvalidArgument(
+                        "The tensor_3 should be equal to '%s', but got '%s'.",
+                        pshort_str,
+                        tensor_3.data()[1]));
 
   tensor_3.set_meta(meta);
 }
@@ -89,95 +129,227 @@ TEST(pstring, func) {
   pstring empty_str;
   pstring nchar_str(5, 'A');
   pstring copy_nchar_str(nchar_str);
-  CHECK_EQ(empty_str, "");
-  CHECK_EQ(nchar_str, "AAAAA");
-  CHECK_EQ(copy_nchar_str, "AAAAA");
+  PADDLE_ENFORCE_EQ(
+      empty_str,
+      "",
+      phi::errors::InvalidArgument(
+          "The empty_str should be empty, but got '%s'.", empty_str));
+  PADDLE_ENFORCE_EQ(
+      nchar_str,
+      "AAAAA",
+      phi::errors::InvalidArgument(
+          "The nchar_str should be 'AAAAA', but got '%s'.", nchar_str));
+  PADDLE_ENFORCE_EQ(copy_nchar_str,
+                    "AAAAA",
+                    phi::errors::InvalidArgument(
+                        "The copy_nchar_str should be 'AAAAA', but got '%s'.",
+                        copy_nchar_str));
 
   // Test Move Ctor
   pstring move_nchar_str(nchar_str);
-  CHECK_EQ(move_nchar_str, "AAAAA");
+  PADDLE_ENFORCE_EQ(move_nchar_str,
+                    "AAAAA",
+                    phi::errors::InvalidArgument(
+                        "The move_nchar_str should be 'AAAAA', but got '%s'.",
+                        move_nchar_str));
   pstring std_str(std::string("BBBB"));
-  CHECK_EQ(std_str, "BBBB");
+  PADDLE_ENFORCE_EQ(
+      std_str,
+      "BBBB",
+      phi::errors::InvalidArgument(
+          "The std_str should be 'BBBB', but got '%s'.", std_str));
 
   pstring long_str = "A large pstring whose length is longer than 22.";
   pstring short_str = "A short pstring.";
 
   // Test operator+
   pstring plus_str = move_nchar_str + std_str;
-  CHECK_EQ(plus_str, "AAAAABBBB");
+  PADDLE_ENFORCE_EQ(
+      plus_str,
+      "AAAAABBBB",
+      phi::errors::InvalidArgument(
+          "The plus_str should be 'AAAAABBBB', but got '%s'.", plus_str));
 
   // Test insert
   plus_str.insert(5, 1, 'C');
-  CHECK_EQ(plus_str, "AAAAACBBBB");
+  PADDLE_ENFORCE_EQ(
+      plus_str,
+      "AAAAACBBBB",
+      phi::errors::InvalidArgument(
+          "The plus_str should be 'AAAAABBBB', but got '%s'.", plus_str));
   plus_str.insert(5, "DDD", 0, 2);
-  CHECK_EQ(plus_str, "AAAAADDCBBBB");
+  PADDLE_ENFORCE_EQ(
+      plus_str,
+      "AAAAADDCBBBB",
+      phi::errors::InvalidArgument(
+          "The plus_str should be 'AAAAABBBB', but got '%s'.", plus_str));
 
   // Test pushback
   plus_str.push_back('E');
-  CHECK_EQ(plus_str, "AAAAADDCBBBBE");
+  PADDLE_ENFORCE_EQ(
+      plus_str,
+      "AAAAADDCBBBBE",
+      phi::errors::InvalidArgument(
+          "The plus_str should be 'AAAAADDCBBBBE', but got '%s'.", plus_str));
 
   // Test append
   plus_str.append("FF");
-  CHECK_EQ(plus_str, "AAAAADDCBBBBEFF");
+  PADDLE_ENFORCE_EQ(
+      plus_str,
+      "AAAAADDCBBBBEFF",
+      phi::errors::InvalidArgument(
+          "The plus_str should be 'AAAAADDCBBBBEFF', but got '%s'.", plus_str));
   plus_str.append(2, 'G');
-  CHECK_EQ(plus_str, "AAAAADDCBBBBEFFGG");
+  PADDLE_ENFORCE_EQ(
+      plus_str,
+      "AAAAADDCBBBBEFFGG",
+      phi::errors::InvalidArgument(
+          "The plus_str should be 'AAAAADDCBBBBEFFGG', but got '%s'.",
+          plus_str));
 
   // Test operator[]
-  CHECK_EQ(long_str[0], 'A');
-  CHECK_EQ(short_str[0], 'A');
+  PADDLE_ENFORCE_EQ(
+      long_str[0],
+      'A',
+      phi::errors::InvalidArgument(
+          "The long_str[0] should be 'A', but got '%s'.", long_str[0]));
+  PADDLE_ENFORCE_EQ(
+      short_str[0],
+      'A',
+      phi::errors::InvalidArgument(
+          "The short_str[0] should be 'A', but got '%s'.", short_str[0]));
 
   // Test capacity
-  CHECK_EQ(short_str.capacity(), 22UL);
+  PADDLE_ENFORCE_EQ(short_str.capacity(),
+                    22UL,
+                    phi::errors::InvalidArgument(
+                        "The short_str's capacity should be 22, but got %d.",
+                        short_str.capacity()));
 
   // Test reserve
   pstring reserve_str;
-  CHECK_EQ(reserve_str.capacity(), 22UL);
+  PADDLE_ENFORCE_EQ(reserve_str.capacity(),
+                    22UL,
+                    phi::errors::InvalidArgument(
+                        "The reserve_str's capacity should be 22, but got %d.",
+                        reserve_str.capacity()));
   // small -> large
   reserve_str.reserve(100);
-  CHECK_EQ(reserve_str.capacity(), 111UL);  // align(100) - 1 = 111
+  PADDLE_ENFORCE_EQ(reserve_str.capacity(),
+                    111UL,
+                    phi::errors::InvalidArgument(
+                        "The reserve_str's capacity should be 111, but got %d.",
+                        reserve_str.capacity()));  // align(100) - 1 = 111
   // reserve more memory
   reserve_str.reserve(200);
-  CHECK_EQ(reserve_str.capacity(), 207UL);  // align(200) - 1 = 207
+  PADDLE_ENFORCE_EQ(reserve_str.capacity(),
+                    207UL,
+                    phi::errors::InvalidArgument(
+                        "The reserve_str's capacity should be 207, but got %d.",
+                        reserve_str.capacity()));  // align(200) - 1 = 207
 
   // Test operator<<
   std::ostringstream oss1, oss2;
   oss1 << long_str;
-  CHECK_EQ(oss1.str(), long_str);
+  PADDLE_ENFORCE_EQ(
+      oss1.str(),
+      long_str,
+      phi::errors::InvalidArgument(
+          "The oss1 should be '%s', but got '%s'.", long_str, oss1.str()));
 
   // Test iterator
   for (auto str_item : long_str) {
     oss2 << str_item;
   }
-  CHECK_EQ(oss2.str(), long_str);
+  PADDLE_ENFORCE_EQ(
+      oss2.str(),
+      long_str,
+      phi::errors::InvalidArgument(
+          "The oss2 should be '%s', but got '%s'.", long_str, oss2.str()));
 
   // Test comparision operators
-  CHECK_EQ((long_str < short_str), true);
-  CHECK_EQ((long_str > short_str), false);
-  CHECK_EQ((long_str == short_str), false);
-  CHECK_EQ((long_str != short_str), true);
-  CHECK_EQ((short_str < long_str), false);
-  CHECK_EQ((short_str > long_str), true);
-  CHECK_EQ((move_nchar_str < plus_str), true);
-  CHECK_EQ((plus_str > move_nchar_str), true);
+  PADDLE_ENFORCE_EQ((long_str < short_str),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The long_str should be less than short_str."));
+
+  PADDLE_ENFORCE_EQ((long_str > short_str),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "The long_str should not be greater than short_str."));
+  PADDLE_ENFORCE_EQ((long_str == short_str),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "The long_str should not be equal to short_str."));
+  PADDLE_ENFORCE_EQ((long_str != short_str),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The long_str should not be equal to short_str."));
+  PADDLE_ENFORCE_EQ((short_str < long_str),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "The short_str should not be less than long_str."));
+  PADDLE_ENFORCE_EQ((short_str > long_str),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The short_str should be greater than long_str."));
+  PADDLE_ENFORCE_EQ((move_nchar_str < plus_str),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The move_nchar_str should be less than plus_str."));
+  PADDLE_ENFORCE_EQ((plus_str > move_nchar_str),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The plus_str should be greater than move_nchar_str."));
 
   // Test empty
-  CHECK_EQ(empty_str.empty(), true);
-  CHECK_EQ(nchar_str.empty(), false);
-  CHECK_EQ(empty_str.length(), 0UL);
+  PADDLE_ENFORCE_EQ(
+      empty_str.empty(),
+      true,
+      phi::errors::InvalidArgument("The empty_str should be empty."));
+  PADDLE_ENFORCE_EQ(
+      nchar_str.empty(),
+      false,
+      phi::errors::InvalidArgument("The nchar_str should not be empty."));
+  PADDLE_ENFORCE_EQ(empty_str.length(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The empty_str's length should be 0, but got %d.",
+                        empty_str.length()));
 
   // Test Resize
   nchar_str.resize(6, 'B');
-  CHECK_EQ(nchar_str, "AAAAAB");
+  PADDLE_ENFORCE_EQ(
+      nchar_str,
+      "AAAAAB",
+      phi::errors::InvalidArgument(
+          "The nchar_str should be 'AAAAAB', but got '%s'.", nchar_str));
 
   // Test operator =
   long_str = std::move(nchar_str);
-  CHECK_EQ(long_str, "AAAAAB");
+  PADDLE_ENFORCE_EQ(
+      long_str,
+      "AAAAAB",
+      phi::errors::InvalidArgument(
+          "The long_str should be 'AAAAAB', but got '%s'.", long_str));
   long_str = short_str;
-  CHECK_EQ(short_str, long_str);
+  PADDLE_ENFORCE_EQ(
+      short_str,
+      long_str,
+      phi::errors::InvalidArgument(
+          "The short_str should be '%s', but got '%s'.", long_str, short_str));
   short_str = 'A';
-  CHECK_EQ(short_str, "A");
+  PADDLE_ENFORCE_EQ(
+      short_str,
+      "A",
+      phi::errors::InvalidArgument("The short_str should be 'A', but got '%s'.",
+                                   short_str));
   short_str = std::move(copy_nchar_str);
-  CHECK_EQ(short_str, "AAAAA");
+  PADDLE_ENFORCE_EQ(
+      short_str,
+      "AAAAA",
+      phi::errors::InvalidArgument(
+          "The short_str should be 'AAAAA', but got '%s'.", short_str));
 }
 
 }  // namespace tests

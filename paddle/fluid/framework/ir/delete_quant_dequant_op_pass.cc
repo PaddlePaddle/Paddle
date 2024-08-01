@@ -53,7 +53,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
     PADDLE_ENFORCE_EQ(
         subgraph.count(input_node),
         true,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Input act node(%s) not found in QuantDequantFuse pass.",
             input_node->name()));
     Node* input = subgraph.at(input_node);
@@ -66,13 +66,13 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
         quant_dequant_op->Op()->Input("InScale").front();
     PADDLE_ENFORCE_NOT_NULL(
         scope,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Scope in DeleteQuantDequantOpPass should not be null."));
     const phi::DenseTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
     float input_scale = input_scale_data[0];

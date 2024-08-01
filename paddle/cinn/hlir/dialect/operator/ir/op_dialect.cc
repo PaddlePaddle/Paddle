@@ -82,7 +82,7 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
     os << "(" << cinn_kernel_info.data().fn_ptr;
     os << ')';
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(::common::errors::Unimplemented(
         "cinn dialect only support GroupInfo and CINNKernelInfo"));
   }
 }
