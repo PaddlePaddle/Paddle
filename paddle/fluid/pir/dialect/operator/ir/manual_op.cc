@@ -28,6 +28,7 @@ paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/multiary_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
@@ -3317,9 +3318,13 @@ bool ExpandOp::InferSymbolicShape(
       infer_context->GetShapeOrDataForValue(shape());
 
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> expand_shape =
+      details::GetOrCreateExprVecFromData(expand_shape_shape_or_data,
+                                          infer_context);
 
   const auto &DealWithMinusOneAndSetOutput =
-      [&](std::vector<symbol::DimExpr> &expand_shape) {
+      [&](const std::vector<symbol::DimExpr> &expand_shape) {
+        std::vector<symbol::DimExpr> result_shape(expand_shape);
         for (size_t i = 0; i < expand_shape.size(); i++) {
           if (expand_shape[i] == symbol::DimExpr{-1}) {  // copy the dim from x
             // the shape is right aligned
@@ -3332,62 +3337,17 @@ bool ExpandOp::InferSymbolicShape(
                                              "but got %d",
                                              index));
 
-            expand_shape[i] = x_dims[index];
+            result_shape[i] = x_dims[index];
           }
         }
 
         infer_context->SetShapeOrDataForValue(
             out(),
             symbol::ShapeOrDataDimExprs{
-                symbol::TensorShapeOrDataDimExprs(expand_shape)});
+                symbol::TensorShapeOrDataDimExprs(result_shape)});
       };
 
-  const auto &InferWithTensorShapeOrDataDimExprs =
-      [&](const symbol::TensorShapeOrDataDimExprs &shape_or_data) {
-        if (shape_or_data.data()) {
-          std::vector<symbol::DimExpr> expand_shape =
-              shape_or_data.data().value();
-          DealWithMinusOneAndSetOutput(expand_shape);
-        } else {
-          infer_context->SetSymbolForValueByStaticShape(out());
-        }
-      };
-
-  const auto &InferWithTensorListShapeOrDataDimExprs =
-      [&](const symbol::TensorListShapeOrDataDimExprs &shape_or_data_list) {
-        if (shape_or_data_list.size() == 1) {
-          InferWithTensorShapeOrDataDimExprs(shape_or_data_list.at(0));
-        } else {
-          std::vector<symbol::DimExpr> expand_shape;
-          for (const auto &shape_data : shape_or_data_list) {
-            if (shape_data.data()) {
-              expand_shape.emplace_back(shape_data.data()->at(0));
-            } else {
-              expand_shape.emplace_back(
-                  symbol::DimExpr{infer_context->GetNextSymName()});
-            }
-          }
-          DealWithMinusOneAndSetOutput(expand_shape);
-        }
-      };
-
-  expand_shape_shape_or_data.Match(
-      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
-        InferWithTensorShapeOrDataDimExprs(impl);
-      },
-      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
-        InferWithTensorListShapeOrDataDimExprs(impl);
-      },
-      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
-        PADDLE_THROW(
-            phi::errors::Fatal("Dead code, TensorArray should not be "
-                               "shape value for expand."));
-      },
-      [&](const symbol::NullShapeOrDataDimExpr &impl) {
-        PADDLE_THROW(
-            phi::errors::Fatal("Dead code, null value should not be "
-                               "shape value for expand."));
-      });
+  DealWithMinusOneAndSetOutput(expand_shape);
   return true;
 }
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <cmath>
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 #include "xpu/runtime.h"
@@ -86,7 +87,15 @@ TEST(resnet50_xpu, basic) {
   experimental::InternalUtils::RunWithRuntimeConfig(predictor##idx_.get(), \
                                                     &config_);             \
   CompareOutput(predictor##idx_);                                          \
-  CHECK_EQ(predictor##idx_->GetExecStream(), config_.stream);
+  PADDLE_ENFORCE_EQ(                                                       \
+      predictor##idx_->GetExecStream(),                                    \
+      config_.stream,                                                      \
+      phi::errors::InvalidArgument(                                        \
+          "predictor##idx_->GetExecStream() is not equal with"             \
+          "config_.stream while predictor##idx_->GetExecStream()"          \
+          "is %d and config_.stream is %d",                                \
+          predictor##idx_->GetExecStream(),                                \
+          config_.stream));
 
 TEST(runtime_stream, null_stream) {
   experimental::XpuRuntimeConfig xpu_runtime_config;
@@ -199,7 +208,11 @@ void RunPredictorWithRuntimeConfig(
   experimental::InternalUtils::RunWithRuntimeConfig(predictor.get(),
                                                     &runtime_config);
   CompareOutput(predictor);
-  CHECK_EQ(predictor->GetExecStream(), runtime_config.stream);
+  PADDLE_ENFORCE_EQ(predictor->GetExecStream(),
+                    runtime_config.stream,
+                    phi::errors::InvalidArgument(
+                        "predictor->GetExecStream() is not equal with"
+                        "runtime_config.stream"));
 }
 
 TEST(runtime_stream, 2_thread) {

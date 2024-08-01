@@ -1915,9 +1915,17 @@ std::future<int32_t> BrpcPsClient::PushDense(const Region *regions,
   uint32_t pos = 0;
   for (size_t i = 0; i < region_num; ++i) {
     uint32_t data_num = regions[i].size / sizeof(float);
-    CHECK(pos + data_num <= data_size)
-        << "invalid dense size, cur pos[" << pos << "]"
-        << " data_num[" << data_num << "] size[" << data_size << "]";
+    PADDLE_ENFORCE_LE((pos + data_num),
+                      data_size,
+                      phi::errors::InvalidArgument(
+                          "Invalid dense size."
+                          "Expect the sum of current position and data number "
+                          "to be equal to or smaller than the size."
+                          "But recieved current position = %lu, data number = "
+                          "%lu, size = %lu.",
+                          pos,
+                          data_num,
+                          data_size));
     const float *region_data = (const float *)(regions[i].data);
     memcpy(data + pos, region_data, regions[i].size);
     pos += data_num;

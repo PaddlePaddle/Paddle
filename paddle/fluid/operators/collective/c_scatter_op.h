@@ -48,7 +48,7 @@ class CScatterOpCPUKernel : public framework::OpKernel<T> {
                           "has ring_id attr."));
     comm_ctx->Scatter(out, *in, root_id);
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
 #endif
   }
