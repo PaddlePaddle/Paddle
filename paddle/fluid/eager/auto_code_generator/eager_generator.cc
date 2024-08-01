@@ -1372,7 +1372,7 @@ static std::string GenerateGradNodeCreationContent(
       "%s\n"
       "%s"
       "  {\n"
-      "    paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
+      "    phi::RecordEvent node_creation_record_event(\"%s\", "
       "paddle::platform::TracerEventType::OperatorInner, 1);\n"
       "%s"
       "    if(require_any_grad) {\n"
@@ -2096,7 +2096,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   }
 
   const char* DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE =
-      "  paddle::platform::RecordEvent dygraph_entrance_record_event(\"%s\", "
+      "  phi::RecordEvent dygraph_entrance_record_event(\"%s\", "
       "paddle::platform::TracerEventType::Operator, 1);";
   std::string event_name = op_type + " dygraph";
   std::string fwd_record_event_str = paddle::string::Sprintf(
