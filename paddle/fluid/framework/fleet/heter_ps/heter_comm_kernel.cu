@@ -504,7 +504,13 @@ void HeterCommKernel::dy_mf_fill_shard_grads(KeyType* d_shard_keys,
   fill_shard_key_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_keys, d_keys, idx, c_len);
 
-  CHECK_EQ(grad_value_size % sizeof(float), 0);
+  PADDLE_ENFORCE_EQ(grad_value_size % sizeof(float),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The size of 'grad_value_size' must be a multiple of "
+                        "sizeof(float), but received size %d.",
+                        grad_value_size));
+
   size_t N = len * grad_value_size_float;
   grid_size = (N - 1) / block_size_ + 1;
   gather_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
@@ -561,7 +567,13 @@ void HeterCommKernel::dy_mf_fill_dvals(float* d_shard_vals,
                                        size_t val_size,
                                        const StreamType& stream) {
   const size_t val_size_float = val_size / sizeof(float);
-  CHECK_EQ(val_size % sizeof(float), 0);
+  PADDLE_ENFORCE_EQ(
+      val_size % sizeof(float),
+      0,
+      phi::errors::InvalidArgument("The size of 'val_size' must be a multiple "
+                                   "of sizeof(float), but received size %d.",
+                                   val_size));
+
   size_t N = len * val_size_float;
   const int grid_size = (N - 1) / block_size_ + 1;
   // fill by float, d_shard_vals to d_vals
@@ -765,7 +777,13 @@ void HeterCommKernel::scatter_vals(const ValType* d_shard_vals,
                                    size_t value_bytes,
                                    const StreamType& stream) {
   const size_t val_size_unit = size_t(value_bytes / sizeof(ValType));
-  CHECK_EQ(value_bytes % sizeof(ValType), 0);
+  PADDLE_ENFORCE_EQ(value_bytes % sizeof(ValType),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The size of 'value_bytes' must be a multiple of "
+                        "sizeof(ValType), but received size %d.",
+                        value_bytes));
+
   size_t N = len * val_size_unit;
   const int grid_size = (N - 1) / block_size_ + 1;
   // fill by float, d_shard_vals to d_vals
@@ -899,7 +917,13 @@ void HeterCommKernel::check_valid_values(const int& type,
                                          const size_t& value_bytes,
                                          const StreamType& stream,
                                          bool debug) {
-  CHECK_EQ(value_bytes % sizeof(float), 0);
+  PADDLE_ENFORCE_EQ(value_bytes % sizeof(float),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The size of 'value_bytes' must be a multiple of "
+                        "sizeof(float), but received size %d.",
+                        value_bytes));
+
   const int grid_size = (N - 1) / block_size_ + 1;
   const int num = static_cast<int>(value_bytes / sizeof(float));
   check_valid_values_kernel<<<grid_size, block_size_, 0, stream>>>(
