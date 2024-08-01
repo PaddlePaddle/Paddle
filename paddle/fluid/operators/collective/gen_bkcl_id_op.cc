@@ -34,10 +34,10 @@ namespace operators {
 static void GenBKCLID(std::vector<BKCLUniqueId>* bkcl_ids) {
   for (size_t i = 0; i < bkcl_ids->size(); ++i) {
     BKCLResult_t ret = bkcl_get_unique_id(&(*bkcl_ids)[i]);
-    PADDLE_ENFORCE_EQ(
-        BKCL_SUCCESS,
-        ret,
-        phi::errors::PreconditionNotMet("bkcl get unique id failed [%d]", ret));
+    PADDLE_ENFORCE_EQ(BKCL_SUCCESS,
+                      ret,
+                      common::errors::PreconditionNotMet(
+                          "bkcl get unique id failed [%d]", ret));
   }
 }
 
@@ -49,8 +49,8 @@ static void CopyBKCLIDToVar(const std::vector<BKCLUniqueId>& bkcl_ids,
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::NotFound("Variable with name %s is not found",
-                              var_name.c_str()));
+        common::errors::NotFound("Variable with name %s is not found",
+                                 var_name.c_str()));
     auto bkcl_id = var->GetMutable<BKCLUniqueId>();
     memcpy(bkcl_id, &bkcl_ids[i], sizeof(BKCLUniqueId));
   }
@@ -74,14 +74,14 @@ class GenBKCLIdOp : public framework::OperatorBase {
     PADDLE_ENFORCE_GE(
         trainer_id,
         0,
-        phi::errors::InvalidArgument("trainer_id %d is less than 0. Its "
-                                     "valid range is [0, trainer_size)"));
+        common::errors::InvalidArgument("trainer_id %d is less than 0. Its "
+                                        "valid range is [0, trainer_size)"));
     PADDLE_ENFORCE_LT(
         trainer_id,
         static_cast<int>(trainers.size()),
-        phi::errors::OutOfRange("trainer_id %d is out of range. Its valid "
-                                "range is [0, trainer_size)",
-                                trainer_id));
+        common::errors::OutOfRange("trainer_id %d is out of range. Its valid "
+                                   "range is [0, trainer_size)",
+                                   trainer_id));
 
     int bkcl_comm_num = Attr<int>("bkcl_comm_num");
     int use_hierarchical_allreduce = Attr<bool>("use_hierarchical_allreduce");
@@ -93,18 +93,18 @@ class GenBKCLIdOp : public framework::OperatorBase {
       PADDLE_ENFORCE_GT(
           trainers.size(),
           1,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The number of collective trainers %llu <= 1", trainers.size()));
       PADDLE_ENFORCE_GT(
           inter_nranks,
           1,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "inter_nranks %d <= 1 while in hierarchical allreduce mode",
               inter_nranks));
       PADDLE_ENFORCE_EQ(
           trainers.size() % inter_nranks,
           0,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "The number of trainers %llu mod inter_nranks %d is not equal 0",
               trainers.size(),
               inter_nranks));

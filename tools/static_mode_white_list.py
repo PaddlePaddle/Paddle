@@ -477,7 +477,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_unpool_op',
     'test_unstack_op',
     'test_update_loss_scaling_op',
-    'test_var_info',
+    'test_var_info_deprecated',
     'test_variable',
     'test_weight_normalization',
     'test_where_index',
