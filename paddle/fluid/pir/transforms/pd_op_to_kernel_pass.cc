@@ -2418,8 +2418,10 @@ std::vector<pir::Type> BuildOutputs(
         op_item->num_results(),
         output_defs.size(),
         phi::errors::PreconditionNotMet(
-            "op [%s] kernel output args defs should equal op outputs",
-            op_item->name()));
+            "op [%s] kernel output args (%d) defs should equal op outputs (%d)",
+            op_item->name(),
+            output_defs.size(),
+            op_item->num_results()));
   }
 
   bool is_input_type_changed = false;

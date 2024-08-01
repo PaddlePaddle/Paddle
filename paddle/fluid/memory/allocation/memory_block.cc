@@ -48,7 +48,7 @@ void MemoryBlock::Split(MetadataCache* cache,
   // make sure the split fits
   PADDLE_ENFORCE_GE(desc->total_size,
                     size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of memory block (%d) to split is "
                         "not larger than size of request memory (%d)",
                         desc->total_size,
@@ -99,12 +99,12 @@ void MemoryBlock::Merge(MetadataCache* cache, MemoryBlock* right_buddy) {
   auto rb_desc = cache->LoadDesc(right_buddy);
   PADDLE_ENFORCE_EQ(desc->type,
                     FREE_CHUNK,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The destination chunk to merge is not free"));
-  PADDLE_ENFORCE_EQ(
-      rb_desc->type,
-      FREE_CHUNK,
-      phi::errors::PreconditionNotMet("The source chunk to merge is not free"));
+  PADDLE_ENFORCE_EQ(rb_desc->type,
+                    FREE_CHUNK,
+                    common::errors::PreconditionNotMet(
+                        "The source chunk to merge is not free"));
 
   // link this->buddy's buddy
   desc->right_buddy = rb_desc->right_buddy;
@@ -131,12 +131,12 @@ void MemoryBlock::MarkAsFree(MetadataCache* cache) {
   auto desc = cache->LoadDesc(this);
   PADDLE_ENFORCE_NE(desc->type,
                     FREE_CHUNK,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The chunk to mark as free is free already"));
-  PADDLE_ENFORCE_NE(
-      desc->type,
-      INVALID_CHUNK,
-      phi::errors::PreconditionNotMet("The chunk to mark as free is invalid"));
+  PADDLE_ENFORCE_NE(desc->type,
+                    INVALID_CHUNK,
+                    common::errors::PreconditionNotMet(
+                        "The chunk to mark as free is invalid"));
   desc->type = FREE_CHUNK;
   desc->UpdateGuards();
 }

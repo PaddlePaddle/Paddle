@@ -105,7 +105,7 @@ bool HasDynamicShape(const ::pir::Value& tensor) {
       PADDLE_ENFORCE_EQ(
           dim,
           -1UL,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The dynamic shape dim should be -1, but got %d.", dim));
       return true;
     }
@@ -249,7 +249,7 @@ std::shared_ptr<KGroup> GenerateKGroups(
   PADDLE_ENFORCE_EQ(
       igroups.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of igroups should be 1, but got %d.", igroups.size()));
   return std::make_shared<KGroup>(group, igroups);
 }
@@ -326,7 +326,7 @@ LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
   PADDLE_ENFORCE_EQ(
       loop_iters->size(),
       sd->size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of loop iterators and loop descriptors should be equal, "
           "but got loop iterators size = %d, loop descriptors size = %d.",
           loop_iters->size(),
@@ -363,8 +363,8 @@ MapStmt<Stmt> MakeMapStmt(const MapIrList& map_irs) {
   PADDLE_ENFORCE_EQ(
       stmts->size(),
       1UL,
-      phi::errors::InvalidArgument("The size of stmts should be 1, but got %d.",
-                                   stmts->size()));
+      ::common::errors::InvalidArgument(
+          "The size of stmts should be 1, but got %d.", stmts->size()));
   CHECK(stmts->at(0).Has<MapStmt<Stmt>>());
   return stmts->at(0).Get<MapStmt<Stmt>>();
 }

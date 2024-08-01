@@ -30,21 +30,21 @@ TEST(FcLstmFusePass, basic) {
   int num_fusion_lstm_nodes_after = GetNumOpNodes(graph, "fusion_lstm");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(
-      num_nodes_before,
-      num_nodes_after - 6,
-      phi::errors::PreconditionNotMet("The number of nodes before and after "
-                                      "the fuse does not meet expectations"));
+  PADDLE_ENFORCE_EQ(num_nodes_before,
+                    num_nodes_after - 6,
+                    common::errors::PreconditionNotMet(
+                        "The number of nodes before and after "
+                        "the fuse does not meet expectations"));
   PADDLE_ENFORCE_EQ(
       num_fusion_lstm_nodes_after,
       2,
-      phi::errors::PreconditionNotMet("The number of lstm nodes before the "
-                                      "fuse does not meet expectations"));
+      common::errors::PreconditionNotMet("The number of lstm nodes before the "
+                                         "fuse does not meet expectations"));
   PADDLE_ENFORCE_EQ(
       num_lstm_nodes_before,
       num_fusion_lstm_nodes_after,
-      phi::errors::PreconditionNotMet("The number of fusion_gru nodes does "
-                                      "not meet expectations after fuse"));
+      common::errors::PreconditionNotMet("The number of fusion_gru nodes does "
+                                         "not meet expectations after fuse"));
 }
 }  // namespace paddle::framework::ir::fc_lstm_test
 
