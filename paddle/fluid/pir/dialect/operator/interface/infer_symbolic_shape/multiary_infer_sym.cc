@@ -928,6 +928,11 @@ bool MovingAverageAbsMaxScaleOpInferSymbolicShape(
   return true;
 }
 
+bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return MovingAverageAbsMaxScaleOpInferSymbolicShape(op, infer_context);
+}
+
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
