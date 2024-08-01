@@ -364,25 +364,15 @@ bool BicubicInterpOpInferSymbolicShape(
         common::errors::InvalidArgument(
             "The size_tensor of Interpolation should be type of "
             "TensorListShapeOrDataDimExprs"));
-    const auto &size_tensor_list_shape =
-        size_tensor_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-    std::vector<symbol::DimExpr> result;
-    result.reserve(size_tensor_list_shape.size());
-    for (const auto &tensor_shape : size_tensor_list_shape) {
-      result.push_back(tensor_shape.data()->front());
-    }
-    return result;
+    return details::GetOrCreateExprVecFromData(size_tensor_shape,
+                                               infer_context);
   };
   auto GetOutSizeDataExpr =
       [&](pir::Value value) -> std::vector<symbol::DimExpr> {
     const symbol::ShapeOrDataDimExprs &out_size_tensor_shape =
         infer_context->GetShapeOrDataForValue(value);
-    PADDLE_ENFORCE_EQ(
-        out_size_tensor_shape.data().has_value(),
-        true,
-        common::errors::InvalidArgument(
-            "The output size of Interpolation should have data value."));
-    return out_size_tensor_shape.data().value();
+    return details::GetOrCreateExprVecFromData(out_size_tensor_shape,
+                                               infer_context);
   };
   auto GetOutDimByScale = [&](const symbol::DimExpr &in_dim,
                               float scale) -> symbol::DimExpr {
