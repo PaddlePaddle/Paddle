@@ -45,7 +45,12 @@ Expr Optimize(Expr e,
               Target target,
               bool runtime_debug_info,
               bool remove_gpu_for_loops) {
-  CHECK(e.defined());
+  PADDLE_ENFORCE_EQ(
+      e.defined(),
+      true,
+      phi::errors::InvalidArgument(
+          "Expected expression 'e' to be defined, but it is undefined."));
+
   auto copied = ir::ir_utils::IRCopy(e);
 
   FoldCINNCallArguments(&copied);

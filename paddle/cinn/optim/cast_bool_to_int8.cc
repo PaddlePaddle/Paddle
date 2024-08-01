@@ -27,7 +27,11 @@ struct Mutator : public ir::IRMutator<> {
 
   void Visit(const ir::Store* op, Expr* expr) override {
     auto* node = expr->As<ir::Store>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        node,
+        phi::errors::InvalidArgument(
+            "Expected 'node' to be non-null, but got null."));
+
     auto value = node->value;
     if (op->type().is_bool() && op->value->type().is_bool()) {
       value = ir::Cast::Make(Int(8), value);
