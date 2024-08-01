@@ -898,6 +898,36 @@ bool MeshgridOpInferSymbolicShape(
   return true;
 }
 
+bool MovingAverageAbsMaxScaleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &in_state_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const symbol::ShapeOrDataDimExprs &in_accum_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  if (op->num_results() > 0 && op->result(0) != nullptr) {
+    infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+  }
+
+  if (op->num_results() > 1 && op->result(1) != nullptr) {
+    symbol::TensorShapeOrDataDimExprs scalar_shape(
+        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
+    infer_context->SetShapeOrDataForValue(op->result(1), scalar_shape);
+  }
+
+  if (op->num_results() > 2 && op->result(2) != nullptr) {
+    infer_context->SetShapeOrDataForValue(op->result(2), in_state_shape);
+  }
+
+  if (op->num_results() > 3 && op->result(3) != nullptr) {
+    infer_context->SetShapeOrDataForValue(op->result(3), in_accum_shape);
+  }
+
+  return true;
+}
+
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
