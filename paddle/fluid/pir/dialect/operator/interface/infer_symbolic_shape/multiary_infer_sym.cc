@@ -989,6 +989,46 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
   return true;
 }
 
+bool QuantizeLinearOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &scale_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &in_accum_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
+  const auto &in_state_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4)).shape();
+
+  int quant_axis = op->attribute<pir::Int32Attribute>("quant_axis").data();
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(x_shape));
+
+  if (op->result(1)) {
+    if (quant_axis < 0) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(1), symbol::TensorShapeOrDataDimExprs(scale_shape));
+    } else {
+      infer_context->SetShapeOrDataForValue(
+          op->result(1),
+          symbol::TensorShapeOrDataDimExprs(
+              std::vector<symbol::DimExpr>{x_shape[quant_axis]}));
+    }
+  }
+
+  if (op->result(2)) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(2), symbol::TensorShapeOrDataDimExprs(in_accum_shape));
+  }
+
+  if (op->result(3)) {  // out_state
+    infer_context->SetShapeOrDataForValue(
+        op->result(3), symbol::TensorShapeOrDataDimExprs(in_state_shape));
+  }
+
+  return true;
+}
+
 bool RoiAlignOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x = op->operand_source(0);
