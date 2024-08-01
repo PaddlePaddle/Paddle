@@ -176,7 +176,6 @@ def get_local_load_files(rank_to_files):
         f"rank_to_read_files:{rank_to_read_files}, rank_to_not_read_files:{rank_to_not_read_files}"
     )
 
-    # 得到目前读文件最少的rank
     def get_least_read_files_ranks(rank_to_read_files):
         nums = [
             (rank, len(files)) for rank, files in rank_to_read_files.items()
@@ -487,7 +486,21 @@ def load_state_dict(
         for file in local_load_files:
             source_state_dict[file] = paddle.load(os.path.join(path, file))
 
+        state_dict_in_cpu = []
+        for k, v in flat_state_dict.items():
+            if v.place.is_cpu_place():
+                state_dict_in_cpu.append(k)
+                flat_state_dict[k] = v.cuda()
+
         _load_state_dict(flat_state_dict, source_state_dict, metadata)
+
+
+        for k, v in flat_state_dict.items():
+            if k in state_dict_in_cpu:
+                value = state_dict
+                for key in mapping[k]:
+                    value = value[key]
+                paddle.assign(v.cpu(), value)
 
 
 def _load_state_dict(
@@ -509,12 +522,6 @@ def _load_state_dict(
         read_items = get_read_items(
             metadata, target_state_dict, process_group, use_dist
         )
-
-        state_dict_in_cpu = []
-        for k, v in target_state_dict.items():
-            if v.place.is_cpu_place():
-                state_dict_in_cpu.append(k)
-                target_state_dict[k] = v.cuda()
 
         for item in read_items:
             assert (
@@ -609,6 +616,4 @@ def _load_state_dict(
                     )
                     paddle.assign(tmp_tensor, cur_chunk_tensor)
 
-            for k, v in target_state_dict.items():
-                if k in state_dict_in_cpu:
-                    target_state_dict[k] = v.cpu()
+            
