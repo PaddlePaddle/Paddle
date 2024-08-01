@@ -742,26 +742,28 @@ bool GroupNormOpInferSymbolicShape(
   return true;
 }
 
-bool HuberLossOpInferSymbolicShape(
+bool HsigmoidLossOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto input_dims =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  const auto label_dims =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
-  PADDLE_ENFORCE_EQ(input_dims.size(),
-                    label_dims.size(),
+  const input_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape()[0];
+  const label_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape()[0];
+  PADDLE_ENFORCE_EQ(input_dims,
+                    label_dims,
                     phi::errors::InvalidArgument(
-                        "Input(input) rank and Input(label) rank should be "
-                        "same, but received input rank(%d) != label rank(%d)",
-                        input_dims.size(),
-                        label_dims.size()));
+                        "The first dimension of "
+                        "input and label is expected to be the same. "
+                        "But received input's first dimension is %d; "
+                        "label's first dimension is %d.",
+                        input_dims,
+                        label_dims));
 
-  for (int i = 0; i < input_dims.size(); ++i) {
-    infer_context->AddEqualCstr(input_dims[i], label_dims[i]);
-  }
+  std::vector<symbol::DimExpr> out_shape = {input_dims, 1};
 
-  infer_context->SetShapeOrDataForValue(op->result(1), label_dims);
-  infer_context->SetShapeOrDataForValue(op->result(0), label_dims);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
 
   return true;
 }
