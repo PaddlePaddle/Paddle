@@ -155,11 +155,7 @@ class TestCollectiveAPIRunnerBase:
                 )
                 if args["use_comm_context"]
                 else (
-                    self.get_model(
-                        train_prog, startup_prog, rank, dtype=args['dtype']
-                    )
-                    if args["dynamic_static_unified_comm"]
-                    else self.get_model(train_prog, startup_prog, rank)
+                    self.get_model(train_prog, startup_prog, rank)
                 )
             )
             exe = base.Executor(place)
