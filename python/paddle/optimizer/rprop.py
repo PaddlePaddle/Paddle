@@ -152,7 +152,7 @@ class Rprop(Optimizer):
         self._sign = True
 
     def _to_tensor(self, block, dtype):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         self._learning_rate_range = to_tensor(
             self._learning_rate_range, dtype=dtype
         )

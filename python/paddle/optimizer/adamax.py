@@ -241,8 +241,7 @@ class Adamax(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        if not isinstance(block, (framework.Block, pir.Block)):
-            raise TypeError("block is not instance of Block.")
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
