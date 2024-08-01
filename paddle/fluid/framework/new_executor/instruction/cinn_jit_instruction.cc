@@ -80,7 +80,6 @@ class CinnJitInstruction::FnPtrImpl {
       phi::InitStream(&stream);
       phi::GpuDeviceSync();
 #endif
-      ps.Start(FLAGS_cinn_kernel_execution_label);
       if (is_gpu) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         ps.SetGraphNodesNum(25);
