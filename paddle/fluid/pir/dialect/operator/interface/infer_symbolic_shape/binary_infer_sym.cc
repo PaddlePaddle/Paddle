@@ -15,6 +15,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/binary_infer_sym.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 
 namespace {
 
@@ -261,11 +262,13 @@ bool LUUnpackOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
   int x_rank = x_dims.size();
 
-  bool unpack_ludata = op->attribute<pir::BoolAttribute>("unpack_ludata").data();
-  bool unpack_pivots = op->attribute<pir::BoolAttribute>("unpack_pivots").data();
+  bool unpack_ludata =
+      op->attribute<pir::BoolAttribute>("unpack_ludata").data();
+  bool unpack_pivots =
+      op->attribute<pir::BoolAttribute>("unpack_pivots").data();
 
   PADDLE_ENFORCE_GE(
       x_rank,
@@ -273,14 +276,15 @@ bool LUUnpackOpInferSymbolicShape(
       phi::errors::InvalidArgument(
           "The rank of input must be greater than or equal to 2."));
 
-  int m = static_cast<int>(x_dims[x_rank - 1]);
-  int n = static_cast<int>(x_dims[x_rank - 2]);
-  symbol::DimExpr min_mn = symbol::min(m, n);
+  auto m = x_dims[x_rank - 1];
+  auto n = x_dims[x_rank - 2];
+  symbol::DimExprBuilder builder;
+  symbol::DimExpr min_mn = builder.Min(m, n);
 
   if (unpack_ludata) {
     std::vector<symbol::DimExpr> ldims = x_dims;
     std::vector<symbol::DimExpr> udims = x_dims;
-    if (m >= n) {
+    if (min_mn == n) {
       udims[x_rank - 2] = min_mn;
     } else {
       ldims[x_rank - 1] = min_mn;
