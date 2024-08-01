@@ -47,30 +47,30 @@ def fake_quantize_dequantize_lsqplus(
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float16'],
+            ['float16', 'float32', 'float64'],
             'lsqplus',
-            extra_message="The dtype of the input must a float16, float32",
+            extra_message="The dtype of the input must a float16, float32, float64",
         )
         check_variable_and_dtype(
             alpha,
             'alpha',
-            ['float32', 'float16'],
+            ['float16', 'float32', 'float64'],
             'lsqplus',
-            extra_message="The dtype of the alpha must a float16, float32",
+            extra_message="The dtype of the alpha must a float16, float32, float64",
         )
         check_variable_and_dtype(
             beta,
             'beta',
-            ['float32', 'float16'],
+            ['float16', 'float32', 'float64'],
             'lsqplus',
-            extra_message="The dtype of the beta must a float16, float32",
+            extra_message="The dtype of the beta must a float16, float32, float64",
         )
         check_variable_and_dtype(
             g_scale,
             'g_scale',
-            ['float32', 'float16'],
+            ['float16', 'float32', 'float64'],
             'lsqplus',
-            extra_message="The dtype of the g must a float16, float32",
+            extra_message="The dtype of the g must a float16, float32, float64",
         )
 
         # check shape

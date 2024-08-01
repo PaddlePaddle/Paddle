@@ -207,7 +207,7 @@ class TestFakeQuantizeDequantizeLsqplusOp(OpTest):
             np.random.random,
             np.random.random,
         ]
-        dtype_options = [np.float32, np.float16]
+        dtype_options = [np.float32, np.float16, np.float64]
         input_shape_options = [
             (20, 15, 6, 6),
             (20, 15, 6, 6),

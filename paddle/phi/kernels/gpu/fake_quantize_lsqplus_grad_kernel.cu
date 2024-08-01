@@ -21,4 +21,5 @@ PD_REGISTER_KERNEL(fake_quantize_dequantize_lsqplus_grad,
                    ALL_LAYOUT,
                    phi::FakeQuantizeDequantizeLsqplusGradKernel,
                    float,
+                   double,
                    phi::dtype::float16) {}

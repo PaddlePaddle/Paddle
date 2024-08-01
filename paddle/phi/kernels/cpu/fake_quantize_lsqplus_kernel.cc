@@ -12,16 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fake_quantize_lsqplus_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/impl/fake_quantize_lsq_grad_kernel_impl.h"
-
-// for lsqplus
-PD_REGISTER_KERNEL(fake_quantize_dequantize_lsqplus_grad,
+#include "paddle/phi/kernels/impl/fake_quantize_lsq_kernel_impl.h"
+PD_REGISTER_KERNEL(fake_quantize_dequantize_lsqplus,
                    CPU,
                    ALL_LAYOUT,
-                   phi::FakeQuantizeDequantizeLsqplusGradKernel,
+                   phi::FakeQuantizeDequantizeLsqplusKernel,
                    float,
                    double) {}
-//    kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);

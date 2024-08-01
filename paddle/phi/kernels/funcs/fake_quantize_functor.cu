@@ -791,6 +791,7 @@ template class ClipAndFakeQuantDequantFunctor<GPUContext, float>;
 
 // for lsqplus
 template class LsqplusFakeQuantDequantFunctor<GPUContext, float>;
+template class LsqplusFakeQuantDequantFunctor<GPUContext, double>;
 template class LsqplusFakeQuantDequantFunctor<GPUContext, float16>;
 }  // namespace funcs
 }  // namespace phi

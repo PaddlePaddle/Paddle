@@ -396,6 +396,7 @@ template class ChannelClipFakeQuantDequantFunctor<CPUContext, float>;
 template class FindRangeAbsMaxFunctor<CPUContext, float>;
 template class ClipAndFakeQuantDequantFunctor<CPUContext, float>;
 template class LsqplusFakeQuantDequantFunctor<CPUContext, float>;
+template class LsqplusFakeQuantDequantFunctor<CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi
