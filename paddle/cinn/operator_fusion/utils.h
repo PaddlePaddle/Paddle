@@ -70,8 +70,21 @@ static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
     if (axis < 0) {
       axis += input_rank;
     }
-    CHECK_GE(axis, 0);
-    CHECK_LT(axis, input_rank);
+    PADDLE_ENFORCE_GE(
+        axis,
+        0,
+        phi::errors::InvalidArgument(
+            "The 'axis' must be greater than or equal to 0, but received %d.",
+            axis));
+
+    PADDLE_ENFORCE_LT(axis,
+                      input_rank,
+                      phi::errors::InvalidArgument(
+                          "The 'axis' must be less than 'input_rank', but "
+                          "received axis = %d and input_rank = %d.",
+                          axis,
+                          input_rank));
+
     reduce_axis_idx.push_back(axis);
   }
   VLOG(4) << "GetReduceAxisIdx: " << utils::Join(reduce_axis_idx, ",");

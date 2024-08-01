@@ -318,13 +318,8 @@ bool IfOp::InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context) {
   auto GetSymExprForBlockResult =
       [infer_context](const pir::Operation &op,
                       uint32_t idx) -> const std::vector<symbol::DimExpr> & {
-    const auto &shape_or_data =
-        infer_context->GetShapeOrDataForValue(op.operand_source(idx));
-    if (shape_or_data.data().has_value()) {
-      return shape_or_data.data().value();
-    } else {
-      return shape_or_data.shape();
-    }
+    return infer_context->GetShapeOrDataForValue(op.operand_source(idx))
+        .shape();
   };
 
   // TODO(lanxianghit): for llama, `if` op's result num always > 0, but
@@ -1142,18 +1137,10 @@ void SelectInputOp::VerifySig() {
 
 bool SelectInputOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
-  auto GetSymExprForValue =
-      [infer_context](pir::Value val) -> const std::vector<symbol::DimExpr> & {
-    const auto &shape_or_data = infer_context->GetShapeOrDataForValue(val);
-    if (shape_or_data.data().has_value()) {
-      return shape_or_data.data().value();
-    } else {
-      return shape_or_data.shape();
-    }
-  };
-
-  const auto &input1_dims = GetSymExprForValue(operand_source(0));
-  const auto &input2_dims = GetSymExprForValue(operand_source(1));
+  const auto &input1_dims =
+      infer_context->GetShapeOrDataForValue(operand_source(1)).shape();
+  const auto &input2_dims =
+      infer_context->GetShapeOrDataForValue(operand_source(2)).shape();
 
   // for compatibility, we just return second_shape.
   if (input1_dims.size() != input2_dims.size()) {

@@ -30,6 +30,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/expect.h"
 
 namespace paddle {
@@ -67,7 +68,12 @@ class ChannelObject {
   }
 
   void SetBlockSize(size_t x) {
-    CHECK(x >= 1) << "block size must be >= 1";
+    PADDLE_ENFORCE_GE(
+        x,
+        1,
+        phi::errors::InvalidArgument(
+            "The block size must be greater than or equal to 1, but got %d.",
+            x));
     std::lock_guard<std::mutex> lock(mutex_);
     block_size_ = x;
   }
@@ -260,7 +266,13 @@ class ChannelObject {
               std::unique_lock<std::mutex>& lock,  // NOLINT
               bool once = false) {                 // NOLINT
     size_t finished = 0;
-    CHECK(n <= MaxCapacity() - reading_count_);
+    PADDLE_ENFORCE_LE(
+        n,
+        MaxCapacity() - reading_count_,
+        phi::errors::InvalidArgument(
+            "Param n should be less than or equal to %d, but got %d.",
+            MaxCapacity() - reading_count_,
+            n));
     reading_count_ += n;
     while (finished < n && WaitForRead(lock)) {
       size_t m = (std::min)(n - finished, data_.size());
@@ -316,7 +328,10 @@ Channel<T> MakeChannel(size_t capacity = (std::numeric_limits<size_t>::max)()) {
 
 template <class T, class U>
 Channel<T> MakeChannel(const Channel<U>& other) {
-  CHECK(other != nullptr) << "channel can not be NULL";
+  PADDLE_ENFORCE_NE(
+      other,
+      nullptr,
+      phi::errors::InvalidArgument("The channel can not be NULL!"));
   Channel<T> chan = std::make_shared<ChannelObject<T>>();
   chan->InheritFrom(other);
   return chan;
@@ -338,7 +353,10 @@ class ChannelReader {
   ChannelObject<T>* channel() { return channel_; }
 
   void Reset(ChannelObject<T>* channel) {
-    CHECK(channel != nullptr) << "Channel can not be nullptr";
+    PADDLE_ENFORCE_NE(
+        channel,
+        nullptr,
+        phi::errors::InvalidArgument("Channel can not be nullptr"));
     channel_ = channel;
     cursor_ = 0;
     failed_ = !channel;
@@ -390,8 +408,10 @@ class ChannelWriter {
   ChannelObject<T>* channel() { return channel_; }
 
   void Reset(ChannelObject<T>* channel) {
-    CHECK(buffer_.empty()) << "Forgot to flush";
-    //    CHECK(channel != nullptr) << "Channel can not be nullptr";
+    PADDLE_ENFORCE_EQ(buffer_.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The buffer should be empty! Forgot to flush."));
     channel_ = channel;
     buffer_.clear();
     failed_ = !channel;
@@ -446,7 +466,10 @@ struct ChannelIterator {
   T data_;
 
   void operator++() {
-    CHECK(reader_ != nullptr) << "reader can not be NULL";
+    PADDLE_ENFORCE_NE(
+        reader_,
+        nullptr,
+        phi::errors::InvalidArgument("The reader can not be NULL."));
     if (!(*reader_ >> data_)) {
       reader_ = nullptr;
     }

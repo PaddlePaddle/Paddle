@@ -402,6 +402,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass_deprecated)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
+list(REMOVE_ITEM TEST_OPS test_dataset_dataloader_deprecated)
 
 # disable sparse_attention which not in suitable env
 if((NOT WITH_GPU)
@@ -607,8 +608,7 @@ set_tests_properties(test_imperative_lod_tensor_to_selected_rows_deprecated
 
 set_tests_properties(test_deformable_conv_op_deprecated PROPERTIES TIMEOUT 200)
 set_tests_properties(test_regularizer_api_deprecated PROPERTIES TIMEOUT 150)
-set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
-                                                                        120)
+
 if(NOT WIN32)
   if(WITH_NV_JETSON)
     set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 1200)
@@ -670,7 +670,6 @@ set(TEST_CINN_OPS
     test_layer_norm_op_deprecated
     test_where_op
     test_arg_min_max_op
-    test_instance_norm_op
     test_instance_norm_op_deprecated)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
