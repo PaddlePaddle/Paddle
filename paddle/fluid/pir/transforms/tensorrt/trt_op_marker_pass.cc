@@ -797,12 +797,13 @@ class SplitWithNumOpPattern
         VLOG(3) << "Output is not a VectorType";
         return false;
       }
+      axis += (axis < 0) ? x_shape.size() : 0;
       if (x_shape[axis] == -1) {
         VLOG(3) << "The (" << axis << ") dim of input should not be -1";
         return false;
       }
       if (!op->HasAttribute("num") ) {
-        VLOG(3)<< "split op must has num attributes";
+        VLOG(3)<< "split_with_num op must has num attributes";
         return false;
       }
       int num = op->attribute<pir::Int32Attribute>("num").data();
