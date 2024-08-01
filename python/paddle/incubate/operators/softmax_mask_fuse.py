@@ -60,7 +60,7 @@ def softmax_mask_fuse(
             >>> x = paddle.rand([2, 8, 8, 32])
             >>> mask = paddle.rand([2, 1, 8, 32])
 
-            >>> rst = incubate.softmax_mask_fuse(x, mask)
+            >>> rst = incubate.softmax_mask_fuse(x, mask) # type: ignore[operator]
             >>> rst.shape
             [2, 8, 8, 32]
     """
