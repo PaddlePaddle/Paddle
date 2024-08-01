@@ -391,7 +391,7 @@ BEFORE_LOG_PRINT_TEMPLATE = """
 
 STRIDED_FLAGS_CHECK_TEMPLATE = """
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(phi::errors::Fatal(\"FLAGS_use_stride_kernel is closed. Inplace strided API should not be called!\"));
+    PADDLE_THROW(common::errors::Fatal(\"FLAGS_use_stride_kernel is closed. Inplace strided API should not be called!\"));
   }
 """
 
@@ -2249,7 +2249,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     next_grad_node_creation_str = f"""
   if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() || need_skip) {{
     if (trace_backward) {{
-       PADDLE_THROW(phi::errors::Unavailable(
+       PADDLE_THROW(common::errors::Unavailable(
        \"The Op {self.backward_api_name} doesn't have any grad\"
        \"op. If you don't intend calculating higher order\"
        \"derivatives, please set `create_graph`to False.\"));
@@ -2269,7 +2269,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # TODO(Ruting):Integrate invoke and composite as composite so the rest branch canbe covered
         elif not is_invoke_forward_api and not is_composite_grad_api:
             next_grad_node_creation_str = f"""  if (trace_backward) {{
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
     \"The Op {self.backward_api_name} doesn't have any grad\"
     \"op. If you don't intend calculating higher order\"
     \"derivatives, please set `create_graph`to False.\"));
@@ -2765,7 +2765,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
                             code
                             + f"""
 }} else {{
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
   \"The grad op of {self.backward_api_name} doesn't implemented yet.\"));
 }}
 """
