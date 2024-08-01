@@ -542,7 +542,6 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
         true,
         phi::errors::InvalidArgument(
             "can't create fill_constant with the given type %s", out_type[0]));
-    << out_type[0];
     *ret = CINNValuePack{{CINNValue(out)}};
   });
 
