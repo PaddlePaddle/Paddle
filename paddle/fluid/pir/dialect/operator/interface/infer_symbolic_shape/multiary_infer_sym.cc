@@ -730,6 +730,64 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  // Validate the bit_length attribute
+  int bit_length = op->attribute<pir::Int32Attribute>("bit_length").data();
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+
+  // Set the symbolic shape for the output tensors
+  // Set the shape for the output tensor 'out', same as input tensor 'x'
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+
+  // Set the shape for the output tensor 'out_scale'
+  if (op->num_results() > 1 && op->result(1) != nullptr) {
+    symbol::TensorShapeOrDataDimExprs scalar_shape(
+        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
+    infer_context->SetShapeOrDataForValue(op->result(1), scalar_shape);
+  }
+
+  // Set the shape for the output tensor 'out_state'
+  if (op->num_results() > 2 && op->result(2) != nullptr) {
+    symbol::TensorShapeOrDataDimExprs scalar_shape(
+        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
+    infer_context->SetShapeOrDataForValue(op->result(2), scalar_shape);
+  }
+
+  // Set the shape for the output tensor 'out_accum'
+  if (op->num_results() > 3 && op->result(3) != nullptr) {
+    symbol::TensorShapeOrDataDimExprs scalar_shape(
+        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
+    infer_context->SetShapeOrDataForValue(op->result(3), scalar_shape);
+  }
+
+  return true;
+}
+
+bool FakeQuantizeMovingAverageAbsMax_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(op, infer_context);
+}
+
+bool FakeQuantizeDequantizeMovingAverageAbsMaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // share the same infermeta FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta
+  return FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(op, infer_context);
+}
+
+bool FakeQuantizeDequantizeMovingAverageAbsMax_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(op, infer_context);
+}
+
 bool FullWithTensorOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(1);
