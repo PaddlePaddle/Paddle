@@ -37,6 +37,11 @@ class TestAmpAttrs(unittest.TestCase):
             amp_attrs._amp_dtype = 'float32'
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "only support device's compute capability is at least 8.0",
+)
 class TestPirAMPProgram(unittest.TestCase):
     def test_linear_amp_o1(self):
         if not core.is_compiled_with_cuda():
