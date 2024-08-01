@@ -58,11 +58,11 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
             false,
             weight_dtype == "int8" ? 127.f : 7.f,
             0.f);
-        PADDLE_ENFORCE_EQ(r,
-                          0,
-                          phi::errors::Fatal
-                          "scale failed, scale related variable `r` is %d",
-                          r);
+        PADDLE_ENFORCE_EQ(
+            r,
+            0,
+            phi::errors::Fatal("scale failed, scale related variable `r` is %d",
+                               r));
         r = baidu::xpu::api::cast_v2<XPUType, float>(
             xpu_ctx->x_context(),
             reinterpret_cast<const XPUType*>(

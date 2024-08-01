@@ -43,7 +43,7 @@ struct DataReader {
         tensor.data.data(),
         nullptr,
         phi::errors::Fatal("Variable `tensor.data.data()` is nullptr"));
-    PADDLE_ENFORCE_EQ(data.data(),
+    PADDLE_ENFORCE_NE(data.data(),
                       nullptr,
                       phi::errors::Fatal("Variable `data.data()` is nullptr"));
     memcpy(tensor.data.data(), data.data(), data.size() * sizeof(int64_t));
