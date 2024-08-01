@@ -768,6 +768,55 @@ bool HsigmoidLossOpInferSymbolicShape(
   return true;
 }
 
+bool LayerNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Get the shapes of input tensors
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &scale_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+  int begin_norm_axis =
+      op->attribute<pir::Int32Attribute>("begin_norm_axis").data();
+
+  // Flatten x_dims to 2D and get dim[1]
+  symbol::DimExpr matrix_dim_1 = x_dims[begin_norm_axis];
+  for (std::size_t i = begin_norm_axis + 1; i < x_dims.size(); ++i) {
+    matrix_dim_1 = matrix_dim_1 * x_dims[i];
+  }
+
+  if (!scale_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    std::vector<symbol::DimExpr> scale_dims = scale_shape_or_data.shape();
+    infer_context->AddEqualCstr(scale_dims[0], matrix_dim_1);
+  }
+  if (!bias_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    std::vector<symbol::DimExpr> bias_dims = bias_shape_or_data.shape();
+    infer_context->AddEqualCstr(bias_dims[0], matrix_dim_1);
+  }
+
+  // Set output shapes
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+
+  // Set mean and variance shapes
+  std::vector<symbol::DimExpr> before_norm_dims(
+      x_dims.begin(), x_dims.begin() + begin_norm_axis);
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(before_norm_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(before_norm_dims)});
+
+  return true;
+}
+
 bool LinspaceOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &num_shape_or_data =
