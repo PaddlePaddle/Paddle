@@ -188,7 +188,6 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &y_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  int axis = op->attribute<pir::Int32Attribute>("axis").data();
 
   size_t x_dim = x_shape.shape().size();
   size_t y_dim = y_shape.shape().size();
@@ -207,12 +206,12 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
     infer_context->AddEqualCstr(x_shape.shape()[i], y_shape.shape()[i]);
   }
 
-  int dim = axis;
-  if (dim < 0) {
-    dim += x_dim;
+  const int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  if (axis != common::DDim::kMaxRank) {
+    const int dim = axis < 0 ? axis + x_dim : axis;
+    infer_context->AddEqualCstr(x_shape.shape()[dim], symbol::DimExpr{3});
+    infer_context->AddEqualCstr(y_shape.shape()[dim], symbol::DimExpr{3});
   }
-  infer_context->AddEqualCstr(x_shape.shape()[dim], 3);
-  infer_context->AddEqualCstr(y_shape.shape()[dim], 3);
 
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
 
