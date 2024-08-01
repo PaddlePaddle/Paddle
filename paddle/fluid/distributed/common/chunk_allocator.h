@@ -24,7 +24,15 @@ template <class T>
 class ChunkAllocator {
  public:
   explicit ChunkAllocator(size_t chunk_size = 64) {
-    CHECK(sizeof(Node) == std::max(sizeof(void*), sizeof(T)));
+    PADDLE_ENFORCE_EQ(
+        sizeof(Node),
+        std::max(sizeof(void*), sizeof(T)),
+        phi::errors::InvalidArgument(
+            "The size of Node is invalid. Expected sizeof(Node) == "
+            "max(sizeof(void*), sizeif(T)).\nBut recieved sizeof(Node) = %u "
+            "and max(sizeof(void*), sizeif(T)) = %u.",
+            sizeof(Node),
+            std::max(sizeof(void*), sizeof(T))));
     _chunk_size = chunk_size;
     _chunks = NULL;
     _free_nodes = NULL;

@@ -383,8 +383,10 @@ class FleetWrapper {
   void Revert();
 
   std::string GetDistDesc() const {
-    CHECK(is_initialized_ == true)
-        << "fleetwrapper should be initialized first!!!";
+    PADDLE_ENFORCE_EQ(is_initialized_,
+                      true,
+                      phi::errors::PermissionDenied(
+                          "FleetWrapper should be initialized first!!!"));
     return dist_desc_;
   }
 

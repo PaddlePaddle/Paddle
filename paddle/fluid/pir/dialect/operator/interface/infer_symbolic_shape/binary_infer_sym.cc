@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/binary_infer_sym.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
+
+COMMON_DECLARE_bool(manually_trans_conv_filter);
 
 namespace {
 
@@ -88,6 +91,29 @@ bool AllcloseOpInferSymbolicShape(
   return true;
 }
 
+bool Atan2OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    y_shape.size(),
+                    common::errors::PreconditionNotMet(
+                        "Input(X) and Input(Y) must have the same "
+                        "dimension size. but got %d vs %d",
+                        x_shape.size(),
+                        y_shape.size()));
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  return true;
+}
+
 bool BceLossOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
@@ -152,8 +178,7 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                                   in_s_or_d.shape().end());
 
   const std::vector<symbol::DimExpr> filter_data_dims = [&]() {
-    if (filter_s_or_d.shape().size() == 4 &&
-        filter_s_or_d.shape().at(1) == filter_s_or_d.shape().at(2)) {  // NHWC
+    if (channel_last && FLAGS_manually_trans_conv_filter) {  // NHWC
       return std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 1,
                                           filter_s_or_d.shape().end() - 1);
     } else {
@@ -246,9 +271,10 @@ bool ExpandAsOpInferSymbolicShape(
   std::vector<int> target_shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
   const std::vector<symbol::DimExpr> &output_dims = [&] {
-    if (op->operand_source(0)) {
-      return infer_context->GetShapeOrDataForValue(op->operand_source(1))
-          .shape();
+    const auto &input_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    if (!input_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+      return input_shape_or_data.shape();
     }
     std::vector<symbol::DimExpr> output_dims;
     output_dims.reserve(target_shape.size());

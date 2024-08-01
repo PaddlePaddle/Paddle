@@ -169,9 +169,10 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
     return OpFuncType::kCpuSync;
   }
 
-  PADDLE_ENFORCE_EQ(interpreter::IsSupportedHeterPlace(place),
-                    true,
-                    phi::errors::Fatal("Unsupported current place %s", place));
+  PADDLE_ENFORCE_EQ(
+      interpreter::IsSupportedHeterPlace(place),
+      true,
+      common::errors::Fatal("Unsupported current place %s", place));
 
   auto& op_attributes = op->attributes();
 
@@ -224,7 +225,7 @@ void GetInputIds(pir::Operation* op,
       PADDLE_ENFORCE_EQ(
           value_exec_info.HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
@@ -314,7 +315,7 @@ std::vector<pir::Value> GetExternalInputs(
     if (value && (!inner_outputs.count(value))) {
       PADDLE_ENFORCE_EQ(value_exec_info.HasValue(value),
                         true,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "input %s should be in name map", value.impl()));
       input_ids->emplace(value, GetValueIds(value, value_exec_info));
       outside_op_inputs.push_back(value);
@@ -418,7 +419,7 @@ bool GetCondData(const phi::DenseTensor& cond) {
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
 #else
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/XPU but got "
       "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
       "WITH_XPU option."));
@@ -465,11 +466,11 @@ void HandleForInplaceOp(pir::Operation* op,
       std::string output_var_name = value_exe_info->GetVarName(value);
       PADDLE_ENFORCE_NE(input_var_name,
                         "",
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The input var name of inplace op is empty."));
       PADDLE_ENFORCE_NE(output_var_name,
                         "",
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The output var name of inplace op is empty."));
       VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
               << " (var: " << input_var_name << ")";
@@ -485,11 +486,11 @@ void HandleForInplaceOp(pir::Operation* op,
 
       PADDLE_ENFORCE_NE(input_var_name,
                         "",
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The input var name of view op is empty."));
       PADDLE_ENFORCE_NE(output_var_name,
                         "",
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The output var name of view op is empty."));
       VLOG(4) << "view: " << value_name << " -> " << view_name
               << " (var: " << input_var_name << ")";
@@ -521,7 +522,7 @@ void ShareVarBuffer(const Variable* src_var, Variable* dst_var) {
     }
     return;
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Output only support DenseTensorType "
         "or SelectedRowsType or VariableRefArray"));
   }

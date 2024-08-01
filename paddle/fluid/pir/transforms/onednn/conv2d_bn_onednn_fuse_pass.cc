@@ -192,8 +192,33 @@ class Conv2dBiasBnOneDNNFusePattern
     pir::Value bn_bias = op.bias();
 
     auto add_y_shape = pir::GetShapeFromValue(add_y);
-    // bias currently only support per_tensor add
-    if (add_y_shape.size() != 1 || add_y_shape[0] != 1) return false;
+    auto bn_bias_shape = pir::GetShapeFromValue(bn_bias);
+    std::vector<int64_t> add_y_new_shape{add_y_shape[0]};
+    // Support both per_tensor & per_channel addition
+    if (add_y_shape.size() != 1) {
+      size_t idx;
+      if (data_format == "NHWC") {
+        idx = add_y_shape.size() - 1;
+      } else {
+        idx = 1;
+      }
+      if (add_y_shape[idx] != bn_bias_shape[0]) return false;
+      bool is_ok = true;
+      for (size_t i = 0; i < add_y_shape.size(); i++) {
+        if (i == idx) continue;
+        if (add_y_shape[i] != 1) {
+          is_ok = false;
+          break;
+        }
+      }
+      if (!is_ok) return false;
+      // reshape add_y from [1, X, 1, 1] (NCHW) to [X]
+      add_y_new_shape[0] = add_y_shape[idx];
+    } else if (add_y_shape[0] != 1) {
+      return false;
+    }
+    paddle::dialect::ReshapeOp reshape_add_y_op =
+        rewriter.Build<paddle::dialect::ReshapeOp>(add_op.y(), add_y_new_shape);
 
     // --- deal with filter ---
     auto bn_variance_shape = pir::GetShapeFromValue(bn_variance);
@@ -240,9 +265,10 @@ class Conv2dBiasBnOneDNNFusePattern
         conv2d_filter, reshape_scale_op.out());
 
     // --- deal with bias ---
-    // (add_op.y() - bn_mean)*scale + bn_bias
+    // (add_op.y()(reshaped) - bn_mean)*scale + bn_bias
     paddle::dialect::SubtractOp sub_op_1 =
-        rewriter.Build<paddle::dialect::SubtractOp>(add_op.y(), bn_mean);
+        rewriter.Build<paddle::dialect::SubtractOp>(reshape_add_y_op.out(),
+                                                    bn_mean);
     paddle::dialect::MultiplyOp mul_bias_op =
         rewriter.Build<paddle::dialect::MultiplyOp>(sub_op_1.out(),
                                                     div_op.out());

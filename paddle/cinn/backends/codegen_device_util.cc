@@ -216,7 +216,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
 #endif
       },
       [&](common::HygonDCUArchHIP) {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(::common::errors::Unimplemented(
             "CINN todo: new hardware HygonDCUArchHIP"));
       });
 
@@ -237,7 +237,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
         call_kernel = runtime::intrinsic::call_cuda_kernel;
       },
       [&](common::HygonDCUArchHIP) {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(::common::errors::Unimplemented(
             "CINN todo: new hardware HygonDCUArchHIP"));
       });
   ir::Expr call_extern_api =

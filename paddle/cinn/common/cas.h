@@ -37,10 +37,10 @@ Expr ReplaceMaxToConstant(Expr expr);
 struct CasInterval {
   template <typename T>
   CasInterval(T l, T r) : l(l), r(r) {
-    PADDLE_ENFORCE_LE(
-        l,
-        r,
-        phi::errors::InvalidArgument("left should not be larger than right"));
+    PADDLE_ENFORCE_LE(l,
+                      r,
+                      ::common::errors::InvalidArgument(
+                          "left should not be larger than right"));
   }
 
   /**

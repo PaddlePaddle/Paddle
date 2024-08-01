@@ -91,7 +91,7 @@ static size_t GpuAllocSize(bool realloc) {
   PADDLE_ENFORCE_GT(
       available_to_alloc,
       0,
-      phi::errors::ResourceExhausted("Not enough available GPU memory."));
+      common::errors::ResourceExhausted("Not enough available GPU memory."));
   // If FLAGS_initial_gpu_memory_in_mb is 0, then initial memory will be
   // allocated by fraction
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
@@ -103,7 +103,7 @@ static size_t GpuAllocSize(bool realloc) {
   PADDLE_ENFORCE_GE(
       available_to_alloc,
       alloc_bytes,
-      phi::errors::ResourceExhausted("Not enough available GPU memory."));
+      common::errors::ResourceExhausted("Not enough available GPU memory."));
   VLOG(10) << "Alloc size is " << (alloc_bytes >> 20)
            << " MiB, is it Re-alloc: " << realloc;
   return alloc_bytes;
@@ -188,14 +188,14 @@ class RecordedGpuMallocHelper {
     PADDLE_ENFORCE_GE(
         dev_id,
         0,
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "Device id must be not less than 0, but got %d.", dev_id));
     PADDLE_ENFORCE_LT(
         dev_id,
         instances_.size(),
-        phi::errors::OutOfRange("Device id %d exceeds gpu card number %d.",
-                                dev_id,
-                                instances_.size()));
+        common::errors::OutOfRange("Device id %d exceeds gpu card number %d.",
+                                   dev_id,
+                                   instances_.size()));
     return instances_[dev_id].get();
   }
 
@@ -321,7 +321,7 @@ class RecordedGpuMallocHelper {
       return gpuErrorOutOfMemory;
     }
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "MallocAsync is not supported in this version of CUDA."));
 #endif
   }
@@ -400,7 +400,7 @@ class RecordedGpuMallocHelper {
 #endif
 
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "FreeAsync is not supported in this version of CUDA."));
 #endif
   }
@@ -413,7 +413,7 @@ class RecordedGpuMallocHelper {
     }
     return *(--it);
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The RecordedGpuMallocHelper::GetBasePtr is only implemented with "
         "testing, should not use for release."));
     return nullptr;
