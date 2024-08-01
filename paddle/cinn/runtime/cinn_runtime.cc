@@ -15,7 +15,6 @@
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include <stdarg.h>
 #include <stdio.h>
-#include "paddle/common/enforce.h"
 
 #include <cmath>
 
