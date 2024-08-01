@@ -67,105 +67,20 @@ class SliceOpConverter : public OpConverter {
         starts_tensor[axes[i]] = GetEleTensorOfShape(
             engine_->GetITensor(op_desc.Input("StartsTensor")[0]), i);
       }
-      auto slice_inputs = op_desc.Inputs();
-      if (slice_inputs.find("StartsTensor") != slice_inputs.end() &&
-          !op_desc.Input("StartsTensor").empty()) {  // has StartsTensor input
-        for (size_t i = 0; i < axes.size(); ++i) {
-          starts_tensor[axes[i]] = GetEleTensorOfShape(
-              engine_->GetITensor(op_desc.Input("StartsTensor")[0]), i);
-        }
-      } else if (slice_inputs.find("StartsTensorList") != slice_inputs.end() &&
-                 !op_desc.Input("StartsTensorList").empty()) {
-        for (size_t i = 0; i < axes.size(); ++i) {
-          starts_tensor[axes[i]] =
-              engine_->GetITensor(op_desc.Input("StartsTensorList")[i]);
-        }
-      } else {
-        PADDLE_ENFORCE_EQ(starts.size(),
-                          axes.size(),
-                          common::errors::InvalidArgument(
-                              "The size of this starts: %d must be "
-                              "equal to the axes: %d.",
-                              starts.size(),
-                              axes.size()));
-        for (size_t i = 0; i < axes.size(); i++) {  // same as starts.size()
-          if (starts[i] < 0) {
-            starts_tensor[axes[i]] =
-                Max(Sum(Add1DConstantLayer(starts[i]),
-                        GetEleTensorOfShape(shape_tensor, axes[i])),
-                    Add1DConstantLayer(0));
-          } else {
-            starts_tensor[axes[i]] =
-                Min(Add1DConstantLayer(starts[i]),
-                    GetEleTensorOfShape(shape_tensor, axes[i]));
-          }
-        }
-      }
-      start_tensor = Concat(starts_tensor);
-
-      if (slice_inputs.find("EndsTensor") != slice_inputs.end() &&
-          !op_desc.Input("EndsTensor").empty()) {  // has EndsTensor input
-        for (size_t i = 0; i < axes.size(); ++i) {
-          ends_tensor[axes[i]] = GetEleTensorOfShape(
-              engine_->GetITensor(op_desc.Input("EndsTensor")[0]), i);
-        }
-      } else if (slice_inputs.find("EndsTensorList") != slice_inputs.end() &&
-                 !op_desc.Input("EndsTensorList").empty()) {
-        for (size_t i = 0; i < axes.size(); ++i) {
-          ends_tensor[axes[i]] =
-              engine_->GetITensor(op_desc.Input("EndsTensorList")[i]);
-        }
-      } else {
-        PADDLE_ENFORCE_EQ(
-            ends.size(),
-            axes.size(),
-            common::errors::InvalidArgument("The size of this ends: %d must be "
-                                            "equal to the axes: %d.",
-                                            ends.size(),
-                                            axes.size()));
-        for (size_t i = 0; i < axes.size(); i++) {  // same as ends.size()
-          if (ends[i] < 0) {
-            ends_tensor[axes[i]] =
-                Max(Sum(Add1DConstantLayer(ends[i]),
-                        GetEleTensorOfShape(shape_tensor, axes[i])),
-                    Add1DConstantLayer(0));
-          } else {
-            ends_tensor[axes[i]] =
-                Min(Add1DConstantLayer(ends[i]),
-                    GetEleTensorOfShape(shape_tensor, axes[i]));
-          }
-        }
-      }
-      end_tensor = Concat(ends_tensor);
-      auto* size_tensor = Sub(end_tensor, start_tensor);
-
-      layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
-      layer->setInput(1, *start_tensor);
-      layer->setInput(2, *size_tensor);
-
-      if (!decrease_axises.empty()) {
-        std::vector<int32_t> gather_indices;
-        for (int i = 0; i < trt_size_dims.nbDims; i++) {
-          if (decrease_axises.end() !=
-              std::find(decrease_axises.begin(), decrease_axises.end(), i))
-            continue;
-          gather_indices.push_back(i);
-        }
-        if (gather_indices.empty())
-          gather_indices.push_back(decrease_axises[0]);
-        auto real_size_tensor = Gather(size_tensor, gather_indices);
-        layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
-        layer->setInput(1, *real_size_tensor);
+    } else if (slice_inputs.find("StartsTensorList") != slice_inputs.end() &&
+               !op_desc.Input("StartsTensorList").empty()) {
+      for (size_t i = 0; i < axes.size(); ++i) {
+        starts_tensor[axes[i]] =
+            engine_->GetITensor(op_desc.Input("StartsTensorList")[i]);
       }
     } else {
       PADDLE_ENFORCE_EQ(
           starts.size(),
           axes.size(),
-          phi::errors::InvalidArgument("The size of this starts: %d must be "
-                                       "equal to the axes: %d.",
-                                       starts.size(),
-                                       axes.size()));
+          common::errors::InvalidArgument("The size of this starts: %d must be "
+                                          "equal to the axes: %d.",
+                                          starts.size(),
+                                          axes.size()));
       for (size_t i = 0; i < axes.size(); i++) {  // same as starts.size()
         if (starts[i] < 0) {
           starts_tensor[axes[i]] =
@@ -197,10 +112,10 @@ class SliceOpConverter : public OpConverter {
       PADDLE_ENFORCE_EQ(
           ends.size(),
           axes.size(),
-          phi::errors::InvalidArgument("The size of this ends: %d must be "
-                                       "equal to the axes: %d.",
-                                       ends.size(),
-                                       axes.size()));
+          common::errors::InvalidArgument("The size of this ends: %d must be "
+                                          "equal to the axes: %d.",
+                                          ends.size(),
+                                          axes.size()));
       for (size_t i = 0; i < axes.size(); i++) {  // same as ends.size()
         if (ends[i] < 0) {
           ends_tensor[axes[i]] =
@@ -212,15 +127,6 @@ class SliceOpConverter : public OpConverter {
               Min(Add1DConstantLayer(ends[i]),
                   GetEleTensorOfShape(shape_tensor, axes[i]));
         }
-        ends[i] = std::min(ends[i], static_cast<int>(input_dims.d[axes[i]]));
-        PADDLE_ENFORCE_GT(
-            ends[i],
-            starts[i],
-            common::errors::InvalidArgument(
-                "Attr(ends) should be greater than attr(starts) in "
-                "slice op. But received ends = %d, starts = %d.",
-                ends[i],
-                starts[i]));
       }
     }
     end_tensor = Concat(ends_tensor);
