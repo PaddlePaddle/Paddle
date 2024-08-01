@@ -1233,6 +1233,7 @@
     param : [x]
   kernel:
     func: depend
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : depthwise_conv2d
   args : (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
@@ -1396,6 +1397,7 @@
     func: check_model_nan_inf
     data_type: x
   backward: disable_check_model_nan_inf_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dist
   args : (Tensor x, Tensor y, float p = 2.0)
@@ -1496,6 +1498,7 @@
     func : elu
   inplace : (x -> out)
   backward : elu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -2620,6 +2623,7 @@
     data_type : label
   optional : prior_dist
   backward : label_smooth_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : lamb_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1=0.9, float beta2=0.999, float epsilon=1.0e-6f, bool always_adapt=false, bool multi_precision=false)
@@ -3177,6 +3181,7 @@
   kernel :
     func : mish
   backward : mish_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mode
   args : (Tensor x,  int axis = -1,  bool keepdim = false)
