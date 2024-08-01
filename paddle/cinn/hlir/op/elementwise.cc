@@ -100,14 +100,14 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
                       phi::errors::InvalidArgument(
                           "the type of pack_args[1] should be string!"
                           "Please check.",
-                          pack_args[1]))
+                          pack_args[1]));
     std::string tensor_name = pack_args[1].operator std::string();
     Expr A_expr = pack_args[0];
     PADDLE_ENFORCE(
         A_expr.as_tensor(),
         phi::errors::InvalidArgument("The pack_args[0] should be tensor!"
                                      "Please check.",
-                                     op_name))
+                                     op_name));
     ir::Tensor A = A_expr.as_tensor_ref();
     auto out = pe_func(A, tensor_name);
     std::vector<CINNValue> res;
