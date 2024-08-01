@@ -585,7 +585,7 @@ void DispatchKeMatrixTopPBeamTopK(const Context& dev_ctx,
                                   const bool need_batch_random,
                                   const std::string& mode) {
   int BlockSize = GetBlockSize(vocab_size);
-  if (mode == "truncate") {
+  if (mode == "truncated") {
     switch (BlockSize) {
       FIXED_BLOCK_DIM(
           KeMatrixTopPBeamTopKFt<T, TopKMaxLength, TopPBeamTopK, kBlockDim>
@@ -972,7 +972,7 @@ void DispatchTopPSampling(const Context& dev_ctx,
                           int* count_iter_begin,
                           const std::string& mode) {
   int BlockSize = GetBlockSize(vocab_size);
-  if (mode == "truncate") {
+  if (mode == "truncated") {
     switch (BlockSize) {
       FIXED_BLOCK_DIM(
           topp_sampling_ft<T, kBlockDim>
