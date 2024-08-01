@@ -23,8 +23,8 @@ limitations under the License. */
 #include <thread>  //NOLINT
 
 #include "gflags/gflags.h"
+#include "paddle/common/enforce.h"
 #include "utils.h"  // NOLINT
-
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
 

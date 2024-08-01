@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <random>
 #include <vector>
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
 
