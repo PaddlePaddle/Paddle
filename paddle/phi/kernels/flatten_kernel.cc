@@ -42,8 +42,7 @@ void FlattenKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    int start_axis,
                    int stop_axis,
-                   DenseTensor* out,
-                   DenseTensor* xshape UNUSED) {
+                   DenseTensor* out) {
   FlattenInferKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
 }
 

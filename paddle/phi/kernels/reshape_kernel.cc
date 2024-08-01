@@ -78,8 +78,7 @@ template <typename Context>
 void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
-                   DenseTensor* out,
-                   DenseTensor* xshape UNUSED) {
+                   DenseTensor* out) {
   ReshapeInferKernel(dev_ctx, x, shape, out);
 }
 

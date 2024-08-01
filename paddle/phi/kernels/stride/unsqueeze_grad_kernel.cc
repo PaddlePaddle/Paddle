@@ -33,7 +33,7 @@ void UnsqueezeGradStridedKernel(const Context& dev_ctx,
   }
   const auto& x_dims = x.dims();
   ReshapeStridedKernel<Context>(
-      dev_ctx, dout, IntArray(common::vectorize<int64_t>(x_dims)), dx, nullptr);
+      dev_ctx, dout, IntArray(common::vectorize<int64_t>(x_dims)), dx);
 }
 
 }  // namespace phi

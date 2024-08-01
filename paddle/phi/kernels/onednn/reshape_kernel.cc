@@ -154,7 +154,7 @@ void ReshapeInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const IntArray& shape,
                         DenseTensor* out) {
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   ExecuteReshape<T, Context>(dev_ctx, x, shape, x_dims, out);
 }
 
@@ -162,9 +162,8 @@ template <typename T, typename Context>
 void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
-                   DenseTensor* out,
-                   DenseTensor* xshape) {
-  auto x_dims = slice_ddim(xshape->dims(), 1, xshape->dims().size());
+                   DenseTensor* out) {
+  const auto& x_dims = x.dims();
   ExecuteReshape<T, Context>(dev_ctx, x, shape, x_dims, out);
 }
 

@@ -35,8 +35,7 @@ void ReshapeGradStridedKernel(const Context& dev_ctx,
       dev_ctx,
       out_grad,
       IntArray(common::vectorize<int64_t>(x_grad->dims())),
-      x_grad,
-      nullptr);
+      x_grad);
 }
 
 template <typename Context>

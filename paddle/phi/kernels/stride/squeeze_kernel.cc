@@ -126,8 +126,7 @@ template <typename Context>
 void SqueezeStridedKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const IntArray& axes,
-                          DenseTensor* out,
-                          DenseTensor* xshape UNUSED) {
+                          DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(
         phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "

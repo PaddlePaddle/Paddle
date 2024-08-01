@@ -90,15 +90,8 @@ template <typename T, typename Context>
 void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& axes,
-                   DenseTensor* out,
-                   DenseTensor* xshape) {
-  if (xshape == nullptr) {
-    SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
-  } else {
-    auto x_dims = slice_ddim(xshape->dims(), 1, xshape->dims().size());
-    auto out_dims = out->dims();
-    ExecuteSqueeze<T, Context>(dev_ctx, x, x_dims, out_dims, out);
-  }
+                   DenseTensor* out) {
+  SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
 }
 }  // namespace phi
 

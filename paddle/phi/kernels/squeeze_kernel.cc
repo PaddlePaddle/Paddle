@@ -38,8 +38,7 @@ template <typename T, typename Context>
 void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& axes,
-                   DenseTensor* out,
-                   DenseTensor* xshape UNUSED) {
+                   DenseTensor* out) {
   SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
 }
 
