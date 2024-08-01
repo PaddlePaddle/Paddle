@@ -539,7 +539,6 @@ if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
   list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
   list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo)
-  list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_ctr2)
 endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
@@ -771,9 +770,6 @@ if(NOT WIN32 AND NOT APPLE)
 endif()
 
 if(WITH_DISTRIBUTE)
-  if(NOT WITH_COVERAGE)
-    set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 200)
-  endif()
   set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
                                                                        200)
   set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
@@ -1024,6 +1020,7 @@ set(TEST_CINN_OPS
     test_metrics
     test_meshgrid_op
     test_index_select_op
+    test_instance_norm_op
     test_mean_op
     test_clip_op
     test_gather_op
@@ -1250,3 +1247,5 @@ py_test_modules(test_install_check_pir MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
 set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
+set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
+                                                                        120)

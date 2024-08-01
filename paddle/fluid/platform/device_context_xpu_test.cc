@@ -18,13 +18,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 TEST(Device, Init) {
-  using paddle::platform::XPUDeviceContext;
   using phi::DeviceContext;
+  using phi::XPUContext;
   using phi::XPUPlace;
 
   int count = paddle::platform::GetXPUDeviceCount();
   for (int i = 0; i < count; i++) {
-    XPUDeviceContext* device_context = new XPUDeviceContext(XPUPlace(i));
+    XPUContext* device_context = new XPUContext(XPUPlace(i));
     xpu::Context* ctx = device_context->x_context();
     ASSERT_NE(nullptr, ctx);
     delete device_context;
@@ -32,10 +32,10 @@ TEST(Device, Init) {
 }
 
 TEST(Device, DeviceContextPool) {
-  using paddle::platform::XPUDeviceContext;
   using phi::CPUPlace;
   using phi::DeviceContextPool;
   using phi::Place;
+  using phi::XPUContext;
   using phi::XPUPlace;
 
   DeviceContextPool& pool = DeviceContextPool::Instance();

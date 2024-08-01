@@ -68,18 +68,18 @@ class OpInfo {
   const proto::OpProto& Proto() const {
     PADDLE_ENFORCE_NOT_NULL(
         proto_,
-        phi::errors::NotFound("Operator's Proto has not been registered"));
+        common::errors::NotFound("Operator's Proto has not been registered"));
     PADDLE_ENFORCE_EQ(proto_->IsInitialized(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Operator's Proto in op info is not initialized."));
     return *proto_;
   }
 
   const OpCreator& Creator() const {
-    PADDLE_ENFORCE_NOT_NULL(
-        creator_,
-        phi::errors::NotFound("Operator's Creator has not been registered."));
+    PADDLE_ENFORCE_NOT_NULL(creator_,
+                            common::errors::NotFound(
+                                "Operator's Creator has not been registered."));
     return creator_;
   }
 
@@ -106,7 +106,7 @@ class OpInfo {
     std::string type = proto_ ? proto_->type() : "unknown";
     PADDLE_ENFORCE_NOT_NULL(
         dygraph_grad_op_maker_,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Operator %s's DygraphGradOpMaker has not been "
             "registered.\nPlease check whether (%s) operator has "
             "gradient operator.\nIf not, please set stop_gradient to be True "
@@ -138,10 +138,10 @@ class TEST_API OpInfoMap {
   }
 
   void Insert(const std::string& type, const OpInfo& info) {
-    PADDLE_ENFORCE_NE(
-        Has(type),
-        true,
-        phi::errors::AlreadyExists("Operator (%s) has been registered.", type));
+    PADDLE_ENFORCE_NE(Has(type),
+                      true,
+                      common::errors::AlreadyExists(
+                          "Operator (%s) has been registered.", type));
     map_.insert({type, info});
   }
 
@@ -149,7 +149,7 @@ class TEST_API OpInfoMap {
     auto op_info_ptr = GetNullable(type);
     PADDLE_ENFORCE_NOT_NULL(
         op_info_ptr,
-        phi::errors::NotFound("Operator (%s) is not registered.", type));
+        common::errors::NotFound("Operator (%s) is not registered.", type));
     return *op_info_ptr;
   }
 

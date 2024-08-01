@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import unittest
 
 import numpy as np
-from test_to_static_pir_program import DemoNet, create_data_loader
+from test_to_static_pir_program import (
+    DemoNet,
+    create_data_loader,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -137,6 +141,11 @@ class TestMLPReplicated(unittest.TestCase):
 
 
 class TestMLPPipelineParallel(unittest.TestCase):
+    def init_env(self):
+        paddle.seed(1024)
+        np.random.seed(1024)
+        random.seed(1024)
+
     def test_to_static_program(self):
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
         mesh1 = dist.ProcessMesh([0], dim_names=["x"])
@@ -154,6 +163,65 @@ class TestMLPPipelineParallel(unittest.TestCase):
 
         for batch_id, (image, label) in enumerate(dist_loader()):
             loss = dist_model(image, label)
+
+    def _pipeline_schedule(
+        self, enable_schedule=False, schedule_mode="FThenB", accumulate_steps=1
+    ):
+        self.init_env()
+        paddle.set_flags({'FLAGS_enable_pir_api': 1})
+        mesh1 = dist.ProcessMesh([0], dim_names=["x"])
+        mesh2 = dist.ProcessMesh([1], dim_names=["y"])
+        pp_layer = PPDemoNet(mesh1, mesh2)
+        opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=pp_layer.parameters()
+        )
+        loss_fn = nn.MSELoss()
+        loader = create_data_loader(
+            BATCH_SIZE, BATCH_NUM, IMAGE_SIZE, CLASS_NUM
+        )
+        strategy = dist.Strategy()
+        strategy.pipeline.enable = enable_schedule
+        strategy.pipeline.schedule_mode = schedule_mode
+        strategy.pipeline.accumulate_steps = accumulate_steps
+        dist_loader = dist.shard_dataloader(loader, meshes=[mesh1, mesh2])
+        dist_model = dist.to_static(
+            pp_layer, dist_loader, loss_fn, opt, strategy
+        )
+        dist_model.train()
+
+        loss0 = None
+        for batch_id, (image, label) in enumerate(dist_loader()):
+            loss = dist_model(image, label)
+            if loss0 is None:
+                loss0 = loss
+        if accumulate_steps > 1 and loss0 is not None:
+            loss0 = np.mean(loss0)
+        return loss0
+
+    def test_pp_pass(self):
+        self.init_env()
+        ref_loss = self._pipeline_schedule()
+        # only split_program
+        loss_split_prog_acc1 = self._pipeline_schedule(
+            enable_schedule=False, schedule_mode="FThenB", accumulate_steps=1
+        )
+        self.assertEqual(ref_loss, loss_split_prog_acc1)
+
+        # accumulate_steps > 1, but no gradient merge
+        loss_split_prog_acc4 = self._pipeline_schedule(
+            enable_schedule=True, schedule_mode="FThenB", accumulate_steps=4
+        )
+        if ref_loss is None:
+            self.assertEqual(ref_loss, loss_split_prog_acc4)
+        else:
+            ret_1 = np.allclose(
+                ref_loss,
+                loss_split_prog_acc4,
+                rtol=1e-5,
+                atol=1e-4,
+                equal_nan=True,
+            )
+            self.assertEqual(ret_1, True)
 
 
 if __name__ == "__main__":
