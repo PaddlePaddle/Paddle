@@ -186,7 +186,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       }
       if (BufferSizeContainsSymbolic(size)) {
         VLOG(6) << "Local buffer size contains symbolic: " << size;
-        return false;
+        return true;
       }
       VLOG(6) << "Total buffer size: " << size;
       common::cas_intervals_t var_intervals;
