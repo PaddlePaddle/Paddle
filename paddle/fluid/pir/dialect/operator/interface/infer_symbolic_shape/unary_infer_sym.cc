@@ -887,6 +887,11 @@ bool LuOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool Lu_OpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  return LuOpInferSymbolicShape(op, infer_context);
+}
+
 bool MaxOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
@@ -911,11 +916,6 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
   bool reduce_all = axis.size() == 0 ? true : false;
 
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
-}
-
-bool Lu_OpInferSymbolicShape(pir::Operation *op,
-                             pir::InferSymbolicShapeContext *infer_context) {
-  return LuOpInferSymbolicShape(op, infer_context);
 }
 
 bool MaxoutOpInferSymbolicShape(pir::Operation *op,
