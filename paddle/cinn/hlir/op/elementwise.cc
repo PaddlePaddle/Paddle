@@ -99,8 +99,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
                       true,
                       phi::errors::InvalidArgument(
                           "the type of pack_args[1] should be string!"
-                          "Please check.",
-                          pack_args[1]));
+                          "Please check."));
     std::string tensor_name = pack_args[1].operator std::string();
     Expr A_expr = pack_args[0];
     PADDLE_ENFORCE(
@@ -158,8 +157,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
                       true,
                       phi::errors::InvalidArgument(
                           "the type of pack_args[1] should be string!"
-                          "Please check.",
-                          pack_args[1]));
+                          "Please check."));
     std::string tensor_name = pack_args[1].operator std::string();
     Expr A_expr = pack_args[0];
     PADDLE_ENFORCE(A_expr.as_tensor(),
