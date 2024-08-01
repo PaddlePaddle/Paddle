@@ -669,7 +669,7 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
   bool IsDenseTensorVectorInput(const std::string& name) const override {
     auto vars = ctx_.MultiInputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
-      return var->IsType<framework::LoDTensorArray>();
+      return var->IsType<phi::TensorArray>();
     });
   }
 
