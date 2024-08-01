@@ -2779,11 +2779,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "argsort") {
-      if (!with_dynamic_shape) {
-        VLOG(3) << "the argsort does not support "
-                   "static shape yet";
-        return false;
-      }
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "

@@ -34,7 +34,7 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
             elif self.dims == 3:
                 return np.random.random([1, 3, 24]).astype(np.int32)
             elif self.dims == 2:
-                return np.random.random([1, 24]).astype(np.float16)
+                return np.random.random([1, 24]).astype(np.float32)
             else:
                 return np.random.random([24]).astype(np.float32)
 
@@ -122,18 +122,12 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        # self.trt_param.max_batch_size = 9
         self.trt_param.workspace_size = 1073741824
-        # for static_shape
-        clear_dynamic_shape()
-
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), (1, 3), 1e-3
 
     def test(self):
