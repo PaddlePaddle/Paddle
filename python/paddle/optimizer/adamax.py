@@ -316,7 +316,7 @@ class Adamax(Optimizer):
 
     def _finish_update(self, block, parameters_and_grads):
         """Update Beta1 Power accumulator"""
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(parameters_and_grads, list):
             for param, grad in parameters_and_grads:
                 if grad is None or param.stop_gradient is True:
