@@ -34,7 +34,7 @@ void UnfoldKernel(const Context& ctx,
   bool is_nchw = data_format == "NCHW";
   PADDLE_ENFORCE_EQ(is_nchw,
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Unfold op only supports datalayout == NCHW"));
   auto x_dims = x.dims();
   int n = static_cast<int>(x_dims[0]);
