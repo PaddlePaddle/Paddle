@@ -58,6 +58,7 @@ from .parallelizer_v2 import Parallelizer
 from .pir_pass import (
     apply_partition_pass,
     apply_reshard_pass,
+    complete_chunk_id,
     complete_op_role,
     pipeline_pass,
     remove_other_rank_input_output_pass,
@@ -668,6 +669,12 @@ class Engine:
         # TODO(JZ-LIANG) regulization pass with pass management.
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
+
+        if (
+            self._strategy.pipeline.enable
+            and self._strategy.pipeline.schedule_mode == "VPP"
+        ):
+            complete_chunk_id(dist_program, self._strategy.pipeline)
 
         # Step 1.2: pir backward
         last_forward_op = dist_program.global_block().ops[-1]

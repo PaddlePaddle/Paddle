@@ -414,3 +414,26 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     )
     plan = pass_context.get_attr("plan")
     return plan
+
+
+def complete_chunk_id(dist_program, pipeline_strategy):
+    if not pipeline_strategy.enable:
+        return
+
+    pp_degree = pipeline_strategy.pp_degree
+    vpp_degree = pipeline_strategy.vpp_degree
+    seg_method = pipeline_strategy.vpp_segment_method
+    schedule_mode = pipeline_strategy.schedule_mode
+
+    if pp_degree < 2 and vpp_degree > 1:
+        raise ValueError("VPP schedule mode only can be set in pipeline mode.")
+    if vpp_degree > 1 and (not seg_method or schedule_mode != "VPP"):
+        raise ValueError(
+            "Please set right schedule_mode and vpp_seg_method for VPP."
+        )
+    if vpp_degree < 2:
+        return
+
+    ops = dist_program.global_block().ops
+
+    # Step1: search seg_method in op's
