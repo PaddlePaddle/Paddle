@@ -91,7 +91,8 @@ std::string IterSpaceTypeToDir(const common::Target target,
     filename += i.first + i.second;
     filename += "_";
   }
-  dirname = dirname.substr(0, dirname.size() - 1);
+  const std::string kDirSuffix = "_EREBE";
+  dirname = dirname.substr(0, dirname.size() - 1) + kDirSuffix;
   filename = filename.substr(0, filename.size() - 1);
 
   auto checkexist = [](std::string test_path) {
