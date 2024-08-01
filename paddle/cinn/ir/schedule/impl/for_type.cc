@@ -165,20 +165,10 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
 #ifdef CINN_WITH_HIP
         using cinn::runtime::BackendAPI;
         auto HipBackendAPI = BackendAPI::get_backend(common::HygonDCUArchHIP{});
-        std::array<int, 3> kMaxBlockDims;
-        kMaxBlockDims[0] = HipBackendAPI->get_device_property(
-            BackendAPI::DeviceProperty::MaxBlockDimX);
-        kMaxBlockDims[1] = HipBackendAPI->get_device_property(
-            BackendAPI::DeviceProperty::MaxBlockDimY);
-        kMaxBlockDims[2] = HipBackendAPI->get_device_property(
-            BackendAPI::DeviceProperty::MaxBlockDimZ);
-        std::array<int, 3> kMaxGridDims;
-        kMaxGridDims[0] = HipBackendAPI->get_device_property(
-            BackendAPI::DeviceProperty::MaxGridDimX);
-        kMaxGridDims[1] = HipBackendAPI->get_device_property(
-            BackendAPI::DeviceProperty::MaxGridDimY);
-        kMaxGridDims[2] = HipBackendAPI->get_device_property(
-            BackendAPI::DeviceProperty::MaxGridDimZ);
+        const std::array<int, 3> kMaxGridDims =
+            HipBackendAPI->get_max_grid_dims();
+        const std::array<int, 3> kMaxBlockDims =
+            HipBackendAPI->get_max_block_dims();
         bindNvHygon(kMaxBlockDims, kMaxGridDims);
 #endif
       });

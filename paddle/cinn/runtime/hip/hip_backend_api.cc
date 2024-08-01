@@ -163,6 +163,27 @@ void HIPBackendAPI::stream_sync(void* stream) {
   HIP_CHECK(hipStreamSynchronize(static_cast<hipStream_t>(stream)));
 }
 
+std::array<int, 3> HIPBackendAPI::get_max_grid_dims(
+    std::optional<int> device_id) {
+  std::array<int, 3> kMaxGridDims;
+  kMaxGridDims[0] = get_device_property(DeviceProperty::MaxGridDimX, device_id);
+  kMaxGridDims[1] = get_device_property(DeviceProperty::MaxGridDimY, device_id);
+  kMaxGridDims[2] = get_device_property(DeviceProperty::MaxGridDimZ, device_id);
+  return kMaxGridDims;
+}
+
+std::array<int, 3> HIPBackendAPI::get_max_block_dims(
+    std::optional<int> device_id) {
+  std::array<int, 3> kMaxBlockDims;
+  kMaxBlockDims[0] =
+      get_device_property(DeviceProperty::MaxBlockDimX, device_id);
+  kMaxBlockDims[1] =
+      get_device_property(DeviceProperty::MaxBlockDimY, device_id);
+  kMaxBlockDims[2] =
+      get_device_property(DeviceProperty::MaxBlockDimZ, device_id);
+  return kMaxBlockDims;
+}
+
 }  // namespace hip
 }  // namespace runtime
 }  // namespace cinn
