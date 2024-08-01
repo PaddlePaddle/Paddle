@@ -15,11 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
