@@ -28,6 +28,7 @@ paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/multiary_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
@@ -3317,50 +3318,36 @@ bool ExpandOp::InferSymbolicShape(
       infer_context->GetShapeOrDataForValue(shape());
 
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> expand_shape =
+      details::GetOrCreateExprVecFromData(expand_shape_shape_or_data,
+                                          infer_context);
 
-  const std::vector<symbol::DimExpr> &expand_shape = [&] {
-    std::vector<symbol::DimExpr> dims;
+  const auto &DealWithMinusOneAndSetOutput =
+      [&](const std::vector<symbol::DimExpr> &expand_shape) {
+        std::vector<symbol::DimExpr> result_shape(expand_shape);
+        for (size_t i = 0; i < expand_shape.size(); i++) {
+          if (expand_shape[i] == symbol::DimExpr{-1}) {  // copy the dim from x
+            // the shape is right aligned
+            int index = i - (expand_shape.size() - x_dims.size());
+            PADDLE_ENFORCE_GE(
+                index,
+                0,
+                phi::errors::InvalidArgument("in ExpandOpInferSymbolicShape, "
+                                             "the dim to copy must >= 0, "
+                                             "but got %d",
+                                             index));
 
-    if (expand_shape_shape_or_data
-            .isa<symbol::TensorListShapeOrDataDimExprs>()) {
-      const auto &dims_list =
-          expand_shape_shape_or_data
-              .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-      if (dims_list.size() == 1) {
-        dims = dims_list.at(0).data().value();
-      } else {
-        for (const auto &shape_data : dims_list) {
-          dims.emplace_back(shape_data.data()->at(0));
+            result_shape[i] = x_dims[index];
+          }
         }
-      }
-    } else {
-      dims = expand_shape_shape_or_data.data().value();
-    }
-    return dims;
-  }();
 
-  std::vector<symbol::DimExpr> out_shape = expand_shape;
-  for (size_t i = 0; i < expand_shape.size(); i++) {
-    if (expand_shape[i] == -1) {  // copy the dim from x
-      // the shape is right aligned
-      int index = i - (expand_shape.size() - x_dims.size());
-      PADDLE_ENFORCE_GE(
-          index,
-          0,
-          phi::errors::InvalidArgument(
-              "in ExpandOpInferSymbolicShape, the dim to copy must >= 0, "
-              "but got %d",
-              index));
+        infer_context->SetShapeOrDataForValue(
+            out(),
+            symbol::ShapeOrDataDimExprs{
+                symbol::TensorShapeOrDataDimExprs(result_shape)});
+      };
 
-      out_shape[i] = x_dims[index];
-    }
-  }
-
-  infer_context->SetShapeOrDataForValue(
-      out(),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_shape)});
-
+  DealWithMinusOneAndSetOutput(expand_shape);
   return true;
 }
 

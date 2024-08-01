@@ -141,17 +141,17 @@ TEST(Analyzer_Pyramid_DNN, profile) {
     PADDLE_ENFORCE_GT(
         outputs.size(),
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     auto output = outputs.back();
     PADDLE_ENFORCE_EQ(
         output.size(),
         1UL,
-        phi::errors::Fatal("The size of output should be equal to 1."));
+        common::errors::Fatal("The size of output should be equal to 1."));
     size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(
         size,
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
     // output is probability, which is in (0, 1).
     for (size_t i = 0; i < size; i++) {

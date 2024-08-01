@@ -49,6 +49,7 @@ class BackendResource final {
     return backend_compiler_;
   }
   pir::CINNKernelInfo GenerateKernelInfo() const;
+  const std::string& GetHostFuncName() const { return host_fn_name_; }
 
  private:
   std::string host_fn_name_;
@@ -67,6 +68,14 @@ class CompilationResult final {
 
   void SetBackendResource(const std::shared_ptr<BackendResource>& other) {
     backend_resource_ = other;
+  }
+
+  const std::string& GetHostFuncName() const {
+    PADDLE_ENFORCE_NOT_NULL(GetBackendResource(),
+                            ::common::errors::PreconditionNotMet(
+                                "Found backend_resource_ is nullptr, please "
+                                "call SetBackendResource first."));
+    return GetBackendResource()->GetHostFuncName();
   }
 
   pir::CINNKernelInfo GetKernelInfo() {

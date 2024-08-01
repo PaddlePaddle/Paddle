@@ -37,7 +37,7 @@ struct ScheduleBlockRemover : public ir::IRMutator<Expr*> {
     Expr body = schedule_block->body;
     PADDLE_ENFORCE_EQ(iter_vars.size(),
                       iter_values.size(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of iter vars and iter values is not equal,"
                           "where iter vars:%d but iter values:%d.",
                           iter_vars.size(),

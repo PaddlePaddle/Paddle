@@ -28,7 +28,7 @@ namespace operators {
 inline int GetBranchNumber(const phi::DenseTensor &mask) {
   PADDLE_ENFORCE_EQ(mask.numel(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The numel of Input(Mask) in SelectInputOp or "
                         "SelectOutputOp must be 1. "
                         "But received %d, and it's shape is [%s].",
@@ -43,7 +43,7 @@ inline int GetBranchNumber(const phi::DenseTensor &mask) {
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   framework::TensorCopySync(mask, phi::CPUPlace(), cpu_mask.get());
 #else
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU, "
       "but got GPU tensor 'Mask' in SelectInputOp or SelectOutputOp. "
       "Please compile PaddlePaddle WITH_GPU first."));

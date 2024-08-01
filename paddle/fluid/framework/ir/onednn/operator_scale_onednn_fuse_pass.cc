@@ -44,7 +44,7 @@ void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
 void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
                                             const std::string &op_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(op_type + "_scale_onednn_fuse_pass", graph);
 
   GraphPatternDetector gpd;

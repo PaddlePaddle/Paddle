@@ -27,8 +27,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "glog/logging.h"
-
 #include "paddle/common/errors.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/context_pool.h"
@@ -65,7 +63,6 @@ class CUDAGraphContextManager {
 
   DeviceContext *Get(int64_t pool_id, const Place &place, int stream_priority) {
     std::lock_guard<std::mutex> lk(ctx_mtx_);
-    VLOG(6) << "Get cuda graph device context for " << place;
 
     DeviceContextMap &ctxs = cuda_graph_ctx_pool_[pool_id];
     if (ctxs.find(place) == ctxs.end()) {
