@@ -15,7 +15,6 @@
 #include <iostream>
 #include <vector>
 
-#include "paddle/common/enforce.h"
 #include "paddle/extension.h"
 
 #define CHECK_CPU_INPUT(x) \

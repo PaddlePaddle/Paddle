@@ -15,9 +15,9 @@
 #include <iostream>
 #include <vector>
 
-#include "paddle/common/enforce.h"
 #include "paddle/extension.h"
 
+#define CHECK_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
 #define CHECK_INPUT(x) \
   PADDLE_ENFORCE_EQ(   \
       x.is_cpu(), true, phi::errors::Fatal(#x " must be a CPU Tensor."))
@@ -32,16 +32,16 @@ std::vector<std::vector<int64_t>> SimpleSliceInferShape(
     const std::vector<int64_t>& x_shape,
     int64_t begin_index,
     int64_t end_index) {
-  PADDLE_ENFORCE_GT(
-      begin_index,
-      0,
+  PADDLE_ENFORCE_EQ(
+      begin_index > 0,
+      true,
       phi::errors::InvalidArgument("The begin index is out of bound."));
-  PADDLE_ENFORCE_GT(
-      end_index,
-      0,
+  PADDLE_ENFORCE_EQ(
+      end_index > 0,
+      true,
       phi::errors::InvalidArgument("The end index must is out of bound."));
-  PADDLE_ENFORCE_LT(begin_index,
-                    end_index,
+  PADDLE_ENFORCE_EQ(begin_index < end_index,
+                    true,
                     phi::errors::InvalidArgument(
                         "The begin index is greater than end index."));
   auto out_shape = x_shape;
