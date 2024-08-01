@@ -33,7 +33,8 @@ void MemoryDenseTable::CreateInitializer(const std::string &attr,
   } else if (slices[0] == "truncated_gaussian_random") {
     initializers_[name] = new TruncatedGaussianInitializer(slices);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("%s can not be supported", name));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("%s can not be supported", name));
   }
 }
 
@@ -156,7 +157,7 @@ int32_t MemoryDenseTable::PushDenseParam(const float *values, size_t num) {
   PADDLE_ENFORCE_GE(
       num,
       param_dim_,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "update dense param numel expected %d, but got %d", param_dim_, num));
   std::copy_n(values, param_dim_, values_[param_idx_].begin());
   return 0;
@@ -187,7 +188,7 @@ int32_t MemoryDenseTable::_PushDense(const float *values, size_t num) {
   PADDLE_ENFORCE_GE(
       num,
       param_dim_,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "update dense numel expected %d, but got %d", param_dim_, num));
 
   std::vector<int> buckets = bucket(param_dim_, task_pool_size_);
