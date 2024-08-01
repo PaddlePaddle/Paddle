@@ -40,7 +40,7 @@ class SliceOp : public framework::OperatorWithKernel {
     if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
       PADDLE_ENFORCE_EQ(axes.size(),
                         1,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The size of axes must be 1 when the Input of "
                             "SliceOp is LoDTensorArray, "
                             "but received %d.",
@@ -63,7 +63,7 @@ class SliceOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(in_dims.size(),
                       7,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The rank of input should be less than 7."));
     phi::DDim out_dims(in_dims);
 
@@ -83,31 +83,31 @@ class SliceOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInputs("StartsTensorList")) {
       starts_size = ctx->Inputs("StartsTensorList").size();
-      PADDLE_ENFORCE_GT(
-          starts_size,
-          0,
-          phi::errors::InvalidArgument("StartsTensorList size can't be zero"));
+      PADDLE_ENFORCE_GT(starts_size,
+                        0,
+                        common::errors::InvalidArgument(
+                            "StartsTensorList size can't be zero"));
     }
     if (ctx->HasInputs("EndsTensorList")) {
       ends_size = ctx->Inputs("EndsTensorList").size();
       PADDLE_ENFORCE_GT(
           ends_size,
           0,
-          phi::errors::InvalidArgument("EndsTensorList size can't be zero"));
+          common::errors::InvalidArgument("EndsTensorList size can't be zero"));
     }
 
     if (!ctx->HasInput("StartsTensor")) {
       PADDLE_ENFORCE_EQ(
           starts_size,
           axes.size(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The size of starts must be equal to the size of axes."));
     }
     if (!ctx->HasInput("EndsTensor")) {
       PADDLE_ENFORCE_EQ(
           ends_size,
           axes.size(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The size of ends must be equal to the size of axes."));
     }
     for (auto &axis : axes) {
@@ -143,7 +143,7 @@ class SliceOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           in_tensor.IsInitialized(),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The tensor Input (Input) of Slice op is not initialized."));
       // NOTE: cuda pinned tensor need to copy its data to target place
       if (in_tensor.place().GetType() == phi::AllocationType::GPUPINNED) {
@@ -304,13 +304,14 @@ class SliceOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"),
-                      true,
-                      phi::errors::InvalidArgument("Input should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Input"),
+        true,
+        common::errors::InvalidArgument("Input should not be null"));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")),
         true,
-        phi::errors::InvalidArgument("Input(Out@GRAD) should not be null"));
+        common::errors::InvalidArgument("Input(Out@GRAD) should not be null"));
     auto x_var_type = ctx->GetInputsVarType("Input")[0];
     if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
       // If the var type of input is LOD_TENSOR_ARRAY,

@@ -84,7 +84,10 @@ void ElseContextNode::ExitWithContext() {
 }
 
 Expr IRBuilderNode::GetResult() const {
-  CHECK(result.defined()) << "No result generated in IRBuilder";
+  PADDLE_ENFORCE_EQ(
+      result.defined(),
+      true,
+      phi::errors::InvalidArgument("No result generated in IRBuilder."));
   return result;
 }
 
@@ -100,9 +103,13 @@ IRBuilder::IRBuilder() {
 }
 
 void IRBuilder::EnterWithContext() {
-  CHECK(data_->contexts.empty())
-      << "There are still Contexts in IRBuilder that has not been fully "
-         "converted. Please build a new IR with the new IRbuilder";
+  PADDLE_ENFORCE_EQ(
+      data_->contexts.empty(),
+      true,
+      phi::errors::InvalidArgument(
+          "There are still contexts in IRBuilder that have not been fully "
+          "converted. Please build a new IR with the new IRBuilder."));
+
   data_->result.Reset();
   std::vector<IRBuilder>* st = IRBuilderStack();
   st->push_back(*this);
@@ -110,12 +117,18 @@ void IRBuilder::EnterWithContext() {
 
 void IRBuilder::ExitWithContext() {
   std::vector<IRBuilder>* st = IRBuilderStack();
-  CHECK(!st->empty());
+  PADDLE_ENFORCE_EQ(
+      !st->empty(),
+      true,
+      phi::errors::InvalidArgument("The IRBuilder stack must not be empty."));
   st->pop_back();
 }
 IRBuilder IRBuilder::CurrentIRBuilder() {
   std::vector<IRBuilder>* st = IRBuilderStack();
-  CHECK(!st->empty()) << "No IRBuilder Found";
+  PADDLE_ENFORCE_EQ(
+      !st->empty(),
+      true,
+      phi::errors::InvalidArgument("No IRBuilder found in the stack."));
   return st->back();
 }
 std::vector<IRBuilder>* IRBuilderStack() {
