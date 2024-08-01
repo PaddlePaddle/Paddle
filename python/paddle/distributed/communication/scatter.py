@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -35,7 +35,7 @@ from .serialization_utils import (
 
 def scatter(
     tensor: Tensor,
-    tensor_list: list[Tensor] | tuple[Tensor] | None = None,
+    tensor_list: Sequence[Tensor] | None = None,
     src: int = 0,
     group: Group | None = None,
     sync_op: bool = True,
@@ -86,8 +86,8 @@ def scatter(
 
 
 def scatter_object_list(
-    out_object_list: list[Any],
-    in_object_list: list[Any] | None = None,
+    out_object_list: list[object],
+    in_object_list: list[object] | None = None,
     src: int = 0,
     group: Group | None = None,
 ) -> None:

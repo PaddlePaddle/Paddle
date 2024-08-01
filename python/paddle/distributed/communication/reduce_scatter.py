@@ -27,12 +27,13 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.base.core import task
     from paddle.distributed.communication.group import Group
+    from paddle.distributed.communication.reduce import _ReduceOp
 
 
 def reduce_scatter(
     tensor: Tensor,
     tensor_list: list[Tensor],
-    op: ReduceOp = ReduceOp.SUM,
+    op: _ReduceOp = ReduceOp.SUM,
     group: Group | None = None,
     sync_op: bool = True,
 ) -> task:
@@ -114,7 +115,7 @@ def reduce_scatter(
 def _reduce_scatter_base(
     output: Tensor,
     input: Tensor,
-    op: ReduceOp = ReduceOp.SUM,
+    op: _ReduceOp = ReduceOp.SUM,
     group: Group | None = None,
     sync_op: bool = True,
 ) -> task | None:
