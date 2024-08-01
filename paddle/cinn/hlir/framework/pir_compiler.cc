@@ -104,17 +104,12 @@ pir::CINNKernelInfo PirCompiler::BuildBroadcastTree(
   if (CompilationCache::Instance().Has(fusion_info)) {
     return CompilationCache::Instance().GetKernelInfo(fusion_info);
   }
-  CompilationContextMapper ctx_mapper(target_, leaf_groups);
-  auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
-  auto& compilation_results = ctx_mapper.MutableCompilationResult();
 
+  std::vector<GroupCompilationContext> group_compilation_contexts;
+  for (const auto& group : leaf_groups) {
+    group_compilation_contexts.emplace_back(target_, group);
+  }
   const size_t task_size = group_compilation_contexts.size();
-  PADDLE_ENFORCE_EQ(task_size,
-                    leaf_groups.size(),
-                    ::common::errors::InvalidArgument(
-                        "While compiling broadcast tree, the size of "
-                        "group_compilation_contexts and groups should be "
-                        "the same."));
 
   const auto& ParallelLowering = [&]() {
     cinn::ir::InitScheduleConfig();
@@ -161,7 +156,7 @@ void CompilationContextMapper::Construct(
 
   for (size_t i = 0; i < groups.size(); ++i) {
     fusion_infos_.emplace_back(*groups[i]);
-    VLOG(5) << "Construct FusionInfo: " << fusion_infos_[i]
+    VLOG(4) << "Construct FusionInfo: " << fusion_infos_[i]
             << " for group: " << *groups[i];
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
     // effects.
@@ -211,8 +206,10 @@ void CompilationContextMapper::UpdateGlobalCache() {
                       ::common::errors::PreconditionNotMet(
                           "Required mapper_index < fusion_infos_.size()."));
     const auto& fusion_info = fusion_infos_[mapper_index_[i]];
-    VLOG(5) << "Insert new compiled result into cache, fusion_info: "
-            << fusion_info;
+    VLOG(4) << "============== Insert new compiled result into cache, "
+               "fusion_info: ==============\n"
+            << fusion_info << ", host func name: "
+            << compilation_results_[i]->GetHostFuncName();
     CompilationCache::Instance().Insert(fusion_info, compilation_results_[i]);
   }
 }
