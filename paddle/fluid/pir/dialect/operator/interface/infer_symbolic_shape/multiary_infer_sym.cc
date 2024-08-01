@@ -641,10 +641,6 @@ bool FakeQuantizeRangeAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &in_scale_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const auto &iter_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2));
 
   int window_size = op->attribute<pir::Int32Attribute>("window_size").data();
   int bit_length = op->attribute<pir::Int32Attribute>("bit_length").data();
