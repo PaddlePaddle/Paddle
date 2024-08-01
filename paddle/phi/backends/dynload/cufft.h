@@ -40,9 +40,9 @@ extern void EnforceCUFFTLoaded(const char* fn_name);
         cufft_dso_handle = phi::dynload::GetCUFFTDsoHandle();        \
       });                                                            \
       EnforceCUFFTLoaded(#__name);                                   \
-      std::string mcname = #__name;                                  \
-      mcname =  mcname.replace(0,2,"mc");          \
-      static void* p_##__name = dlsym(cufft_dso_handle, mcname.c_str());    \
+      std::string replaced_name = #__name;                                  \
+      replaced_name =  replaced_name.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(cufft_dso_handle, replaced_name.c_str());    \
       return reinterpret_cast<cufft_func>(p_##__name)(args...);      \
     }                                                                \
   };                                                                 \

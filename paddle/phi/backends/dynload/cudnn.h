@@ -38,9 +38,9 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
         cudnn_dso_handle = phi::dynload::GetCUDNNDsoHandle();        \
       });                                                            \
       EnforceCUDNNLoaded(#__name);                                   \
-      std::string mcname = #__name;                                  \
-      mcname =  mcname.replace(0,2,"mc");          \
-      static void* p_##__name = dlsym(cudnn_dso_handle, mcname.c_str());    \
+      std::string replaced_name = #__name;                                  \
+      replaced_name =  replaced_name.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(cudnn_dso_handle, replaced_name.c_str());    \
       return reinterpret_cast<cudnn_func>(p_##__name)(args...);      \
     }                                                                \
   };                                                                 \

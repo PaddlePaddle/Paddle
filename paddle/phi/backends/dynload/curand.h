@@ -33,9 +33,9 @@ extern void *curand_dso_handle;
       std::call_once(curand_dso_flag, []() {                       \
         curand_dso_handle = phi::dynload::GetCurandDsoHandle();    \
       });                                                          \
-      std::string mcname = #__name;                                  \
-      mcname =  mcname.replace(0,2,"mc");          \
-      static void* p_##__name = dlsym(curand_dso_handle, mcname.c_str());    \
+      std::string replaced_name = #__name;                                  \
+      replaced_name =  replaced_name.replace(0,2,"mc");          \
+      static void* p_##__name = dlsym(curand_dso_handle, replaced_name.c_str());    \
       return reinterpret_cast<curandFunc>(p_##__name)(args...);    \
     }                                                              \
   };                                                               \
