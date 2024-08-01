@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "paddle/common/enforce.h"
 #ifdef __cplusplus
 #include <functional>
 #include <vector>
