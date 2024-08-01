@@ -599,6 +599,31 @@ bool SearchsortedOpInferSymbolicShape(
   return true;
 }
 
+bool SegmentPoolOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  std::vector<symbol::DimExpr> out_shape;
+  out_shape.push_back(symbol::DimExpr{-1});
+  auto axis = input_shape.size();
+  for (int i = 1; i < axis; ++i) {
+    out_shape.push_back(input_shape[i]);
+  }
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+
+  const auto pooltype = op->attribute<pir::StrAttribute>("pooltype").AsString();
+  if (pooltype == "MEAN") {
+    std::vector<symbol::DimExpr> out_shape = {-1, 1};
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_shape)});
+  }
+  return true;
+}
+
 bool IscloseOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // The shape of output is the same as input `values` (op->operand_source(1))

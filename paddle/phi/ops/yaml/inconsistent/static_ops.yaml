@@ -809,6 +809,7 @@
   kernel :
     func : set_value
   backward: set_value_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shadow_feed
   args : (Tensor x)

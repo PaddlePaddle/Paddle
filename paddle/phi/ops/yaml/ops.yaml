@@ -3647,6 +3647,7 @@
     data_type : dtype
     backend : place
   traits : pir::SideEffectTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rank_attention
   args : (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0)
@@ -3961,6 +3962,7 @@
     data_type : x
   intermediate : summed_ids
   backward : segment_pool_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : selu
   args : (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717)

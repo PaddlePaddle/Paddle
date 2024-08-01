@@ -322,6 +322,18 @@ bool GaussianOpInferSymbolicShape(
   }
 }
 
+bool RandpermOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  int n = op->attribute<pir::Int32Attribute>("n").data();
+  std::vector<symbol::DimExpr> out_shape = {n};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  return true;
+}
+
 bool RandintOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &shape_gen_op = op->operand_source(0).defining_op();
