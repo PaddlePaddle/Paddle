@@ -89,8 +89,12 @@ class TestEighOp(OpTest):
         self.x_type = np.float64
         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
 
-    # def test_check_output(self):
-    #     self.check_output(no_check_set=['Eigenvectors'])
+    def test_check_output(self):
+        self.check_output(
+            no_check_set=['Eigenvectors'],
+            check_symbol_infer=True,
+            check_pir=True,
+        )
 
     def test_grad(self):
         self.check_grad(["X"], ["Eigenvalues"], check_pir=True)
@@ -99,6 +103,11 @@ class TestEighOp(OpTest):
 class TestEighUPLOCase(TestEighOp):
     def init_config(self):
         self.UPLO = 'U'
+
+    def init_input(self):
+        self.x_shape = (20, 10, 10)
+        self.x_type = np.float64
+        self.x_np = np.random.random(self.x_shape).astype(self.x_type)
 
 
 class TestEighGPUCase(unittest.TestCase):

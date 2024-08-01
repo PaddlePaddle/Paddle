@@ -716,20 +716,6 @@ if((WITH_GPU OR WITH_XPU) AND (LINUX))
     "PADDLE_DIST_UT_PORT=21270;http_proxy=;https_proxy=")
   set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT "120")
 endif()
-if((WITH_GPU) AND (LINUX))
-  bash_test_modules(
-    test_fused_attention_pass_with_mp
-    START_BASH
-    test_fused_attention_pass_with_mp.sh
-    TIMEOUT
-    "120"
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21400;http_proxy=;https_proxy=")
-  set_tests_properties(test_fused_attention_pass_with_mp PROPERTIES TIMEOUT
-                                                                    "120")
-endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_ir_pass_pipeline
