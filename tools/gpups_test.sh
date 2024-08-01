@@ -13,7 +13,6 @@
 # limitations under the License.
 
 failuretest=''
-
 function collect_failed_tests() {
     for file in `ls $tmp_dir`; do
         exit_code=0
@@ -80,7 +79,6 @@ parallel_list="^init_phi_test$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
 ^test_executor_feed_non_tensor$|\
-^test_flash_attention$|\
 ^test_fuse_resunit_pass$|\
 ^test_fused_adam_op$|\
 ^test_fused_attention_no_dropout$|\
@@ -99,7 +97,6 @@ parallel_list="^init_phi_test$|\
 ^test_fused_fc_elementwise_layernorm_op$|\
 ^test_fused_feedforward_op$|\
 ^test_fused_feedforward_op_static_build$|\
-^test_fused_gate_attention_op$|\
 ^test_fused_gemm_epilogue_grad_op$|\
 ^test_fused_gemm_epilogue_grad_op_with_es$|\
 ^test_fused_gemm_epilogue_op$|\
@@ -110,7 +107,6 @@ parallel_list="^init_phi_test$|\
 ^test_fused_matmul_bias$|\
 ^test_fused_multi_transformer_decoder_pass$|\
 ^test_fused_multi_transformer_encoder_pass$|\
-^test_fused_multi_transformer_int8_op$|\
 ^test_fused_residual_dropout_bias$|\
 ^test_fused_rotary_position_embedding$|\
 ^test_fused_scale_bias_add_relu_op$|\

@@ -2793,6 +2793,29 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "p_norm") {
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      if (!(desc.HasAttr("asvector") && desc.HasAttr("axis") &&
+            desc.HasAttr("porder") && desc.HasAttr("keepdim"))) {
+        VLOG(3) << op_type << " op need attrs asvector, porder, axis, keepdim.";
+        return false;
+      }
+      bool asvector = PADDLE_GET_CONST(bool, desc.GetAttr("asvector"));
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
+      float porder = PADDLE_GET_CONST(float, desc.GetAttr("porder"));
+      if (asvector || porder != 2.0f || axis != -1) {
+        VLOG(3) << op_type
+                << " op only support asvector=False, porder=2, axis = -1.";
+        return false;
+      }
+    }
+
     if (op_type == "temporal_shift") {
 #if !IS_TRT_VERSION_GE(8200)
       VLOG(3) << "temporal_shift is not supported when TensorRT < 8.2";
@@ -3054,6 +3077,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "grid_sampler",
       "cumsum",
       "unbind",
+      "p_norm",
       "assign",
       "flip",
       "quantize_linear",
@@ -3226,6 +3250,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "grid_sampler",
       "cumsum",
       "unbind",
+      "p_norm",
       "assign",
       "flip",
       "quantize_linear",

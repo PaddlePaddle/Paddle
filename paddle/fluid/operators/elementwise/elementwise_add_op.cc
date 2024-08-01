@@ -70,7 +70,7 @@ class ElementwiseAddCompositeGradOpMaker
     PADDLE_ENFORCE_EQ(
         axis,
         -1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "We only support axis = -1 in composite add_grad but we got: ",
             axis));
     VLOG(6) << "Running add_grad composite func";
@@ -118,12 +118,12 @@ class ElementwiseAddCompositeDoubleGradOpMaker
 
     // get attr
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    PADDLE_ENFORCE_EQ(
-        axis,
-        -1,
-        phi::errors::InvalidArgument("We only support axis = -1 in composite "
-                                     "add_double_grad but we got: ",
-                                     axis));
+    PADDLE_ENFORCE_EQ(axis,
+                      -1,
+                      common::errors::InvalidArgument(
+                          "We only support axis = -1 in composite "
+                          "add_double_grad but we got: ",
+                          axis));
 
     paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
     std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
@@ -172,12 +172,12 @@ class ElementwiseAddCompositeTripleGradOpMaker
         this->GetSingleInputGrad(framework::GradVarName("DDY"));
     // get attr
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    PADDLE_ENFORCE_EQ(
-        axis,
-        -1,
-        phi::errors::InvalidArgument("We only support axis = -1 in composite "
-                                     "add_triple_grad but we got: ",
-                                     axis));
+    PADDLE_ENFORCE_EQ(axis,
+                      -1,
+                      common::errors::InvalidArgument(
+                          "We only support axis = -1 in composite "
+                          "add_triple_grad but we got: ",
+                          axis));
 
     paddle::Tensor* grad_grad_x = this->GetOutputPtr(&grad_grad_x_t);
     std::string grad_grad_x_name = this->GetOutputName(grad_grad_x_t);

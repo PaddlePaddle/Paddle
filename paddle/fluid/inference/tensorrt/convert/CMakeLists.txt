@@ -112,6 +112,7 @@ list(
   einsum_op.cc
   unbind_op.cc
   assign_op.cc
+  p_norm_op.cc
   flip_op.cc
   quantize_linear_op.cc
   dequantize_linear_op.cc
