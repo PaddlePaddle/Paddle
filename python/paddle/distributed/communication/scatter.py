@@ -86,8 +86,8 @@ def scatter(
 
 
 def scatter_object_list(
-    out_object_list: list[Any],
-    in_object_list: list[Any] | None = None,
+    out_object_list: list[object],
+    in_object_list: list[object] | None = None,
     src: int = 0,
     group: Group | None = None,
 ) -> None:
