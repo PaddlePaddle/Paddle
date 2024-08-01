@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING, Any, Sequence
 
 import paddle
@@ -90,11 +91,11 @@ class NumpyArrayInitializer(Initializer):
                 persistable=False,
             )
         elif var.dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
-            out_var = var
+            out_var = copy.deepcopy(var)
             out_dtype = core.DataType.FLOAT32
             np_value = self._value.astype("float32")
         else:
-            out_var = var
+            out_var = copy.deepcopy(var)
             out_dtype = var.dtype
             np_value = self._value
 
@@ -134,6 +135,8 @@ class NumpyArrayInitializer(Initializer):
             if var.dtype in [
                 core.VarDesc.VarType.FP16,
                 core.VarDesc.VarType.BF16,
+                core.DataType.FLOAT16,
+                core.DataType.BFLOAT16,
             ]:
                 var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
