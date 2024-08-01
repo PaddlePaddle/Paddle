@@ -15,7 +15,7 @@
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 COMMON_DECLARE_string(allocator_strategy);
 

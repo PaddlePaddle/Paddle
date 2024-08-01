@@ -20,9 +20,9 @@ limitations under the License. */
 
 #include "paddle/common/errors.h"
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/thread_data_registry.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle {

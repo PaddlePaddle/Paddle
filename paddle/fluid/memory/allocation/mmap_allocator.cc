@@ -26,7 +26,7 @@
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 COMMON_DECLARE_bool(use_shm_cache);
 
