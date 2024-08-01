@@ -3845,6 +3845,43 @@ void LogspaceInferMeta(const MetaTensor& start,
   out->set_dtype(dtype);
 }
 
+void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
+                                 const MetaTensor& tol,
+                                 const MetaTensor& atol,
+                                 const MetaTensor& rtol,
+                                 bool use_default_tol,
+                                 bool hermitian,
+                                 MetaTensor* out) {
+  if (tol) {
+    MatrixRankTolInferMeta(x, tol, use_default_tol, hermitian, out);
+  } else {
+    auto atol_dims = atol.dims();
+    auto rtol_dims = rtol.dims();
+    PADDLE_ENFORCE_EQ(
+        atol_dims.size(),
+        rtol_dims.size(),
+        phi::errors::InvalidArgument(
+            "The size of Input(atol) and Input(rtol) should be the same,"
+            "but received Input(atol) size %s != Input(rtol) size %s.",
+            atol_dims.size(),
+            rtol_dims.size()));
+    for (int i = 0; i < atol_dims.size(); ++i) {
+      PADDLE_ENFORCE_EQ(
+          atol_dims[i],
+          rtol_dims[i],
+          phi::errors::InvalidArgument("The dimensions of Input(atol) and "
+                                       "Input(rtol) should be the same,"
+                                       "but received Input(atol) dim[%d](%s) "
+                                       "!= Input(rtol) dim[%d](%s).",
+                                       i,
+                                       atol_dims[i],
+                                       i,
+                                       rtol_dims[i]));
+    }
+    MatrixRankTolInferMeta(x, atol, use_default_tol, hermitian, out);
+  }
+}
+
 void MergedAdamInferMeta(
     const std::vector<const MetaTensor*>& param,
     const std::vector<const MetaTensor*>& grad,

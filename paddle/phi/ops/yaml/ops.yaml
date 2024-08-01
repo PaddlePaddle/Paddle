@@ -3133,6 +3133,15 @@
   kernel :
     func : matrix_rank
 
+- op : matrix_rank_atol_rtol
+  args : (Tensor x, Tensor tol, Tensor atol, Tensor rtol, bool use_default_tol=true, bool hermitian=false)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankAtolRtolInferMeta
+  kernel :
+    func : matrix_rank_atol_rtol
+  optional : tol, atol, rtol
+
 - op : matrix_rank_tol
   args : (Tensor x, Tensor atol_tensor, bool use_default_tol=true, bool hermitian=false)
   output : Tensor(out)

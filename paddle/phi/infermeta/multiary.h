@@ -704,6 +704,14 @@ void LogspaceInferMeta(const MetaTensor& start,
                        DataType dtype,
                        MetaTensor* out);
 
+void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
+                                 const MetaTensor& tol,
+                                 const MetaTensor& atol,
+                                 const MetaTensor& rtol,
+                                 bool use_default_tol,
+                                 bool hermitian,
+                                 MetaTensor* out);
+
 void MergedAdamInferMeta(
     const std::vector<const MetaTensor*>& param,
     const std::vector<const MetaTensor*>& grad,
