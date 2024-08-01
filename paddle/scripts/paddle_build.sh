@@ -3475,6 +3475,12 @@ EOF
 }
 
 function distribute_test() {
+    python ${PADDLE_ROOT}/tools/get_pr_title.py skip_distribute_test || NOT_CINN_OR_BUAA_PR=1
+    if [[ "${NOT_CINN_OR_BUAA_PR}" = "1" ]];then
+        echo "PR's title with 'CINN' or 'BUAA', skip the run distribute ci test !"
+        exit 0
+    fi
+    echo "This PR belongs to the CINN direction, skip the coverage check in the PR-CI-Coverage pipeline."
     echo "Start gpups tests"
     parallel_test_base_gpups
     echo "End gpups tests"
