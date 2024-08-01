@@ -918,8 +918,7 @@ bool MultiplexOpInferSymbolicShape(
   in_dim[0] = ids_dims[0];
 
   infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(in_dim)});
+      op->result(0), symbol::TensorShapeOrDataDimExprs(in_dim));
 
   return true;
 }
