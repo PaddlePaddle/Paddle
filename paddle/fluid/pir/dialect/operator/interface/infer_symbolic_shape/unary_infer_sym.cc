@@ -837,7 +837,7 @@ bool LogsumexpOpInferSymbolicShape(
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
-bool LUOpInferSymbolicShape(pir::Operation *op,
+bool LuOpInferSymbolicShape(pir::Operation *op,
                             pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
@@ -913,6 +913,11 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
+bool Lu_OpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  return LuOpInferSymbolicShape(op, infer_context);
+}
+
 bool MaxoutOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -939,6 +944,32 @@ bool MaxoutOpInferSymbolicShape(pir::Operation *op,
 bool MinOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   return MaxOpInferSymbolicShape(op, infer_context);
+}
+
+bool MeanOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  bool keepdim = GetBoolAttr(op, "keepdim");
+
+  const std::vector<int64_t> axis = [&] {
+    pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
+    std::vector<int64_t> axis_vec;
+    if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
+      axis_vec = details::GetVectorAttr(
+          axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+    } else {
+      // TODO(lanxianghit): there's other source: pir::VectorType,
+      // paddle::dialect::DenseTensorType, but after PRIM, maybe always
+      // FullIntArrayOp, to be confirmed
+      PADDLE_THROW(
+          phi::errors::Unimplemented("MeanOpInferSymbolicShape: 'axis' only "
+                                     "support FullIntArrayOp's result now."));
+    }
+    return axis_vec;
+  }();
+
+  bool reduce_all = axis.size() == 0 ? true : false;
+
+  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
 bool MeanAllOpInferSymbolicShape(
@@ -1143,19 +1174,6 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
   }
 
   return true;
-}
-
-bool ReduceIntArrayAxisOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  std::vector<int64_t> axis = details::GetVectorAttr<int64_t>(op, "axis");
-  bool keep_dim = op->attribute<pir::BoolAttribute>("keep_dim").data();
-  bool reduce_all = false;
-  if (axis.size() == 0) {
-    reduce_all = true;
-  }
-  return details::ReduceInferDim(op, infer_context, axis, keep_dim, reduce_all);
 }
 
 bool RepeatInterleaveOpInferSymbolicShape(
