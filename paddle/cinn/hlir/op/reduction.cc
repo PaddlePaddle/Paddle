@@ -102,7 +102,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         phi::errors::InvalidArgument(
             "The reduce axes size %d should be less than or equal "
             "to the input tensor's dimension %d.",
-            educe_axes.size(),
+            reduce_axes.size(),
             ndim));
     PADDLE_ENFORCE_LE(
         reduce_axes.back(),
