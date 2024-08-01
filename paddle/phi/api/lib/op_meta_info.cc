@@ -43,7 +43,7 @@ std::vector<std::string> ParseAttrStr(const std::string& attr) {
   auto split_pos = attr.find_first_of(':');
   PADDLE_ENFORCE_NE(split_pos,
                     std::string::npos,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Invalid attribute string format. Attribute string "
                         "format is `<name>:<type>`."));
 
@@ -68,16 +68,16 @@ PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
       ((src.is_dense_tensor() && dst->is_dense_tensor()) ||
        (src.is_dist_tensor() && dst->is_dist_tensor())),
       true,
-      phi::errors::Unavailable(
+      common::errors::Unavailable(
           "Now only supported DenseTensor and DistTensor in Custom Operator."));
   PADDLE_ENFORCE_EQ(
       src.initialized(),
       true,
-      phi::errors::Unavailable(
+      common::errors::Unavailable(
           "The Custom OpKernel calculate output is not initialized."));
   PADDLE_ENFORCE_EQ(dst->defined(),
                     true,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "The Custom OpKernel origin output is not defined."));
   if (src.is_dense_tensor()) {
     auto& dense_src = static_cast<const phi::DenseTensor&>(*src.impl());
@@ -247,13 +247,13 @@ void CustomOpKernelContext::ConstructInplaceIndex(
       continue;
     }
     auto out_iter = find(outputs.begin(), outputs.end(), inplace_map.at(input));
-    PADDLE_ENFORCE_NE(
-        out_iter,
-        outputs.end(),
-        phi::errors::NotFound("Can't find the mapped value of %s, please check "
-                              "the input of `Inplace` again and make "
-                              "sure you registered your op accurately. ",
-                              input));
+    PADDLE_ENFORCE_NE(out_iter,
+                      outputs.end(),
+                      common::errors::NotFound(
+                          "Can't find the mapped value of %s, please check "
+                          "the input of `Inplace` again and make "
+                          "sure you registered your op accurately. ",
+                          input));
     size_t out_idx = distance(outputs.begin(), out_iter);
     inplace_idx_map_[in_idx] = out_idx;
     inplace_reverse_idx_map_[out_idx] = in_idx;
@@ -293,13 +293,13 @@ void CustomOpKernelContext::AssignInplaceOutputs() {
     size_t out_start_idx = output_range_[pair.second].first;
     size_t out_end_idx = output_range_[pair.second].second;
     size_t assign_tensor_size = in_end_idx - in_start_idx;
-    PADDLE_ENFORCE_EQ(
-        assign_tensor_size,
-        out_end_idx - out_start_idx,
-        phi::errors::OutOfRange("When assigning inplaced tensor, Input vector "
-                                "size %d mismatch output vector size %d",
-                                in_end_idx - in_start_idx,
-                                out_end_idx - out_start_idx));
+    PADDLE_ENFORCE_EQ(assign_tensor_size,
+                      out_end_idx - out_start_idx,
+                      common::errors::OutOfRange(
+                          "When assigning inplaced tensor, Input vector "
+                          "size %d mismatch output vector size %d",
+                          in_end_idx - in_start_idx,
+                          out_end_idx - out_start_idx));
     for (size_t i = 0; i < assign_tensor_size; ++i) {
       AssignTensorImpl(inputs_[in_start_idx + i], &outputs_[out_start_idx + i]);
     }
@@ -471,7 +471,7 @@ OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name, size_t index) {
   PADDLE_ENFORCE_EQ(
       info_vector.size(),
       index_,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The operator %s's meta info register failed. "
           "Please make sure you call marcos as order `PD_BUILD_OP`, "
           "`PD_BUILD_GRAD_OP`, `PD_BUILD_DOUBLE_GRAD_OP`.",
@@ -486,7 +486,7 @@ OpMetaInfoBuilder::OpMetaInfoBuilder(std::string&& name, size_t index) {
       name_ = name_ + "_grad_grad";
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Not support index `%d` when construct OpMetaInfoBuilder, "
           "now only support `0, 1, 2`.",
           index_));
@@ -523,7 +523,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
   for (const auto& attr : attrs) {
     auto attr_type_str = ParseAttrStr(attr)[1];
     if (custom_attrs_type.find(attr_type_str) == custom_attrs_type.end()) {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -548,7 +548,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInplaceMap(
     PADDLE_ENFORCE_NE(
         std::find(inputs.begin(), inputs.end(), pair.first),
         inputs.cend(),
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The register of operator %s's `SetInplaceMap` failed. "
             "Please make sure: 1. Call `Inputs` and `Outputs` before "
             "`SetInplaceMap`; 2. The keys of inplace_map are inside `Inputs`",
@@ -556,7 +556,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInplaceMap(
     PADDLE_ENFORCE_NE(
         std::find(outputs.begin(), outputs.end(), pair.second),
         outputs.cend(),
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The register of operator %s's `SetInplaceMap` failed. "
             "Please make sure: 1. Call `Inputs` and `Outputs` "
             "before `SetInplaceMap`; 2. The values of inplace_map "
