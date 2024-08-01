@@ -68,14 +68,6 @@ class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program, rank):
-        with base.program_guard(main_prog, startup_program):
-            tindata = paddle.static.data(
-                name="tindata", shape=[10, 1000], dtype='float32'
-            )
-            paddle.distributed.all_reduce(tindata)
-            return [tindata]
-
     def get_model_new(
         self,
         main_prog,
@@ -91,7 +83,7 @@ class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
             all_reduce_new(tindata, reduce_type)
             return [tindata]
 
-    def get_model_new_comm(
+    def get_model(
         self,
         main_prog,
         startup_program,

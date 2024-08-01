@@ -155,7 +155,7 @@ class TestCollectiveAPIRunnerBase:
                 )
                 if args["use_comm_context"]
                 else (
-                    self.get_model_new_comm(
+                    self.get_model(
                         train_prog, startup_prog, rank, dtype=args['dtype']
                     )
                     if args["dynamic_static_unified_comm"]
