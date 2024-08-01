@@ -27,12 +27,12 @@ class SendOpV2 : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         peer,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The peer (%d) for send_v2 op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for send_v2 op must be non-negative.", ring_id));
   }
 
