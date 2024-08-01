@@ -132,7 +132,7 @@ class add_layer(paddle.nn.Layer):
         super().__init__()
         self.fn = paddle.nn.Linear(hidd, hidd, bias_attr=False)
 
-    @paddle.jit.to_static(backend="paddle_inference")
+    @paddle.incubate.jit.inference()
     def forward(self, x, y):
         for i in range(1000):
             x = add(x, y)
