@@ -581,18 +581,14 @@ bool MarginCrossEntropyOpInferSymbolicShape(
     auto axis = logits_dims.size() - 1;
     softmax_dims[axis] = 1;
     infer_context->SetShapeOrDataForValue(
-        op->result(0),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(softmax_dims)});
+        op->result(0), symbol::TensorShapeOrDataDimExprs(softmax_dims));
   }
 
   std::vector<symbol::DimExpr> loss_dims = logits_dims;
   auto loss_axis = loss_dims.size() - 1;
   loss_dims[loss_axis] = 1;
   infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(loss_dims)});
+      op->result(1), symbol::TensorShapeOrDataDimExprs(loss_dims));
 
   return true;
 }
