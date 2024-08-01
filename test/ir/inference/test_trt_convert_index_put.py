@@ -32,30 +32,43 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
             return np.random.random([1, 80, 2]).astype(np.float32)
 
         def generate_input2():
-            return np.random.random([1, 80]).astype(np.float32) < 0.5
+            return np.random.randint(0, 2, (1, 80)).astype(np.float32)
 
         def generate_input3():
-            if self.flag:
+            if self.value_num == 2:
                 return np.random.random([2]).astype(np.float32)
-            return np.random.random([1]).astype(np.float32)
+            else:
+                return np.random.random([1]).astype(np.float32)
 
-        for flag in [False, True]:
-            self.flag = flag
+        for v_num in [1, 2]:
+            self.value_num = v_num
             ops_config = [
+                {
+                    "op_type": "cast",
+                    "op_inputs": {
+                        "X": ["input_data2"],
+                    },
+                    "op_outputs": {
+                        "Out": [
+                            "cast_output_data",
+                        ]
+                    },
+                    "op_attrs": {'in_dtype': 5, 'out_dtype': 0},
+                },
                 {
                     "op_type": "index_put",
                     "op_inputs": {
                         "x": ["input_data1"],
-                        "indices": ["input_data2"],
+                        "indices": ["cast_output_data"],
                         "value": ["input_data3"],
                     },
                     "op_outputs": {
                         "out": [
-                            "output_data0",
+                            "output_data",
                         ]
                     },
                     "op_attrs": {'accumulate': False},
-                }
+                },
             ]
             ops = self.generate_op_config(ops_config)
 
@@ -73,7 +86,7 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
                         data_gen=partial(generate_input3)
                     ),
                 },
-                outputs=["output_data0"],
+                outputs=["output_data"],
             )
 
             yield program_config
@@ -81,27 +94,22 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
-        def generate_trt_nodes_num(attrs, dynamic_shape):
-            if not dynamic_shape or self.flag:
-                return 0, 5
-            return 1, 4
-
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_dynamic_shape(attrs):
-            if self.flag:
+            if self.value_num == 2:
                 self.dynamic_shape.min_input_shape = {
                     "input_data1": [1, 80, 2],
                     "input_data2": [1, 80],
-                    "input_data3": [1],
+                    "input_data3": [2],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input_data1": [1, 81, 2],
                     "input_data2": [1, 81],
-                    "input_data3": [3],
+                    "input_data3": [2],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data1": [1, 80, 2],
@@ -125,6 +133,13 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
                     "input_data3": [1],
                 }
 
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            if not dynamic_shape:
+                return 0, 6
+            if self.value_num == 2:
+                return 1, 5
+            return 1, 4
+
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
@@ -143,12 +158,10 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3

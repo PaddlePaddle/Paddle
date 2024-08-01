@@ -2836,6 +2836,7 @@ struct SimpleOpTypeSetTeller : public Teller {
           value_shape.begin(), value_shape.end(), 1, std::multiplies<int>());
       if (value_num != 1) {
         VLOG(3) << op_type << " op only support value_num = 1 in tensorrt.";
+        return false;
       }
       auto indices_var_name = desc.Input("indices")[0];
       auto* indices_var_desc = block->FindVarRecursive(indices_var_name);
