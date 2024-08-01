@@ -130,9 +130,8 @@ void OpLoweringGroup::SetShapeOrDataExprs(
 }
 
 std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
-    const int& group_idx) const {
-  const auto new_fn_name =
-      this->fn_name_ + "_cloned" + std::to_string(group_idx);
+    const std::string name_suffix) const {
+  const auto new_fn_name = this->fn_name_ + "_cloned_" + name_suffix;
   // Construct Base information for new Group
   auto new_group = std::make_shared<OpLoweringGroup>(this->ops_, new_fn_name);
 

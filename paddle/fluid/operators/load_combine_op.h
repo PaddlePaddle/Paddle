@@ -40,7 +40,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GT(out_var_names.size(),
                       0UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The number of variables to be loaded is %d, expect "
                           "it to be greater than 0.",
                           out_var_names.size()));
@@ -49,7 +49,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           static_cast<bool>(fin),
           true,
-          phi::errors::Unavailable(
+          common::errors::Unavailable(
               "LoadCombine operator fails to open file %s, please check "
               "whether the model file is complete or damaged.",
               filename));
@@ -58,7 +58,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NE(
           filename.empty(),
           true,
-          phi::errors::Unavailable(
+          common::errors::Unavailable(
               "LoadCombine operator fails to open file %s, please check "
               "whether the model file is complete or damaged.",
               filename));
@@ -81,14 +81,14 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       VLOG(4) << "loading tensor: " << out_var_names[i];
       PADDLE_ENFORCE_NOT_NULL(
           out_vars[i],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The variable %s to be loaded cannot be found.",
               out_var_names[i]));
       // Error checking
       PADDLE_ENFORCE_EQ(
           static_cast<bool>(*buffer),
           true,
-          phi::errors::Unavailable(
+          common::errors::Unavailable(
               "An error occurred while loading model parameters. "
               "Please check whether the model file is complete or damaged."));
       if (out_vars[i]->IsType<framework::Vocab>()) {
@@ -142,7 +142,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
     buffer->peek();
     PADDLE_ENFORCE_EQ(buffer->eof(),
                       true,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "Not allowed to load partial data via "
                           "load_combine_op, please use load_op instead."));
   }

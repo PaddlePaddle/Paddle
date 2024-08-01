@@ -165,17 +165,24 @@ class TestQuantileAndNanquantile(unittest.TestCase):
                     opt.minimize(loss)
                     exe = paddle.static.Executor()
                     exe.run(paddle.static.default_startup_program())
-                    o = exe.run(
-                        paddle.static.default_main_program(),
-                        feed={"x": x, "q": np.array(q, dtype="float32")},
-                        fetch_list=["x@GRAD"],
-                    )[0]
-                    np.testing.assert_allclose(
-                        o,
-                        np.array(target_gard, dtype="float32"),
-                        rtol=1e-05,
-                        equal_nan=True,
-                    )
+                    if paddle.framework.use_pir_api():
+                        o = exe.run(
+                            paddle.static.default_main_program(),
+                            feed={"x": x, "q": np.array(q, dtype="float32")},
+                            fetch_list=[],
+                        )
+                    else:
+                        o = exe.run(
+                            paddle.static.default_main_program(),
+                            feed={"x": x, "q": np.array(q, dtype="float32")},
+                            fetch_list=["x@GRAD"],
+                        )[0]
+                        np.testing.assert_allclose(
+                            o,
+                            np.array(target_gard, dtype="float32"),
+                            rtol=1e-05,
+                            equal_nan=True,
+                        )
             paddle.disable_static()
 
         check_grad([1, 2, 3], 0.5, 0, [0, 1, 0])

@@ -34,15 +34,16 @@ class ArrayOp : public framework::OperatorBase {
   size_t GetOffset(const framework::Scope &scope,
                    const phi::Place &place) const {
     auto *i = scope.FindVar(Input("I"));
-    PADDLE_ENFORCE_NOT_NULL(i, phi::errors::NotFound("Input(I) is not found."));
+    PADDLE_ENFORCE_NOT_NULL(i,
+                            common::errors::NotFound("Input(I) is not found."));
     auto &i_tensor = i->Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(
-        i_tensor.numel(),
-        1,
-        phi::errors::InvalidArgument("Input(I) must have numel 1. "
-                                     "But received %d, and it's shape is [%s].",
-                                     i_tensor.numel(),
-                                     i_tensor.dims()));
+    PADDLE_ENFORCE_EQ(i_tensor.numel(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "Input(I) must have numel 1. "
+                          "But received %d, and it's shape is [%s].",
+                          i_tensor.numel(),
+                          i_tensor.dims()));
 
     // get device context from pool
     phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
