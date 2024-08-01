@@ -14,6 +14,7 @@
 
 #include <iostream>
 
+#include "paddle/common/enforce.h"
 #include "paddle/extension.h"
 #include "paddle/phi/backends/context_pool.h"
 
