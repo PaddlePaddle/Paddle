@@ -17,7 +17,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Sequence
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.tensor.creation import to_tensor
 
 from ..base import framework
@@ -159,7 +159,8 @@ class Rprop(Optimizer):
         self._etas = to_tensor(self._etas, dtype=dtype)
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
