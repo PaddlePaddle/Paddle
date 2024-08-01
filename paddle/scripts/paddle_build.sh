@@ -3485,8 +3485,8 @@ function distribute_test() {
 
     echo "Dowloading ...."
     cd ${work_dir}
-    wget https://paddlenlp.bj.bcebos.com/wheels/PaddleNLP_stable_paddle.tar.gz --no-proxy
-    tar -zvxf PaddleNLP_stable_paddle.tar.gz
+    wget -q https://paddlenlp.bj.bcebos.com/wheels/PaddleNLP_stable_paddle.tar.gz --no-proxy
+    tar -zxf PaddleNLP_stable_paddle.tar.gz
     cd PaddleNLP
     sed -i '/lac/d' scripts/regression/requirements_ci.txt
 

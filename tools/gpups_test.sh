@@ -76,8 +76,6 @@ parallel_list="^init_phi_test$|\
 ^test_cpu_cuda_to_tensor$|\
 ^test_cudnn_placement_pass$|\
 ^test_custom_kernel$|\
-^test_dist_fleet_ps11$|\
-^test_dist_fleet_ps12$|\
 ^test_executor_feed_non_tensor$|\
 ^test_fuse_resunit_pass$|\
 ^test_fused_adam_op$|\
