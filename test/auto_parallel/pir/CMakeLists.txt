@@ -41,3 +41,5 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_moe_api MODULES test_moe_api ENVS FLAGS_enable_pir_api=1)
 endif()
+py_test_modules(test_pir_1f1b_plan MODULES test_pir_1f1b_plan ENVS
+                FLAGS_enable_pir_api=1)
