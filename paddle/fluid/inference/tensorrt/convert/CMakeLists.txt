@@ -92,6 +92,7 @@ list(
   fill_constant_op.cc
   fused_token_prune_op.cc
   celu_op.cc
+  index_put_op.cc
   layernorm_shift_partition_op.cc
   reverse_roll_op.cc
   tanhshrink_op.cc
@@ -116,7 +117,6 @@ list(
   flip_op.cc
   quantize_linear_op.cc
   dequantize_linear_op.cc
-  index_put_op.cc
   share_data_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
