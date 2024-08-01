@@ -406,6 +406,8 @@ Expr Store::Make(Expr tensor,
                  Expr value,
                  const std::vector<Expr> &indices,
                  Expr offset,
+                 const std::vector<Expr> &loop_vars,
+                 const std::vector<Expr> &stride_info,
                  const std::vector<Expr> &view_shape) {
   CHECK(tensor.As<_Tensor_>()) << "tensor should be _Tensor_ type";
   auto node = make_shared<Store>();
@@ -426,8 +428,17 @@ Expr Store::Make(Expr tensor,
   }
 
   if (view_shape.size() == 0) {
+    node->loop_vars = node->indices;
     node->view_shape = tensor.as_tensor_ref()->shape;
+    Expr base = Expr(1);
+    for (int i = node->loop_vars.size() - 1; i >= 0; --i) {
+      node->stride_info.insert(node->stride_info.begin(), base);
+
+      base = ir::Mul::Make(base, (node->view_shape[i]));
+    }
   } else {
+    node->loop_vars = loop_vars;
+    node->stride_info = stride_info;
     node->view_shape = view_shape;
   }
 

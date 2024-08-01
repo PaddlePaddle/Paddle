@@ -134,7 +134,13 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     std::vector<Expr> indices;
     for (auto& idx : op->indices) indices.push_back(Visit(&idx));
 
-    return Store::Make(tensor, value, indices, op->offset, op->view_shape);
+    return Store::Make(tensor,
+                       value,
+                       indices,
+                       op->offset,
+                       op->loop_vars,
+                       op->stride_info,
+                       op->view_shape);
   }
 
   Expr Visit(const Alloc* op) override {

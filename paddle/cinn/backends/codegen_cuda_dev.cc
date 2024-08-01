@@ -507,7 +507,7 @@ void CodeGenCUDA_Dev::Visit(const ir::Store *op) {
 
   std::cerr << "code gen " << op->index() << std::endl;
   std::cerr << "code gen offset " << op->offset << std::endl;
-  if (PrintBuiltinVectorAccess(op, op->index(), true)) {
+  if (PrintBuiltinVectorAccess(op, op->offset, true)) {
     str_ += " = ";
     IrPrinter::Visit(op->value);
   } else {

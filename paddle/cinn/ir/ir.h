@@ -574,12 +574,16 @@ struct Store : public ExprNode<Store>, public LoadStoreAddrMnger {
   std::vector<Expr> indices;
   Expr offset;
 
+  std::vector<Expr> loop_vars;
+  std::vector<Expr> stride_info;
   std::vector<Expr> view_shape;
 
   static Expr Make(Expr tensor,
                    Expr value,
                    const std::vector<Expr>& indices,
                    Expr offset = Expr(0),
+                   const std::vector<Expr>& loop_vars = {},
+                   const std::vector<Expr>& stride_info = {},
                    const std::vector<Expr>& view_shape = {});
 
   std::vector<Expr*> expr_fields() override;

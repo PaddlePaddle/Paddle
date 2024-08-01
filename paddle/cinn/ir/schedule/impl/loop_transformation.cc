@@ -121,8 +121,9 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
 
     this->Replace(loop, new_node);
 
-    this->UpdateSplitOffset(loop.As<For>()->loop_var,
-                            cinn::common::AutoSimplify(substitute_value));
+    // new_loop_var, processed_factors
+    this->UpdateSplitOffset(
+        loop.As<For>()->loop_var, new_loop_vars, processed_factors);
     VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
     return splited_loops;
   }
@@ -465,7 +466,8 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
   auto consumer = ir::ir_utils::CollectIRNodesInOrder(
       test_block, [&](const Expr* x) { return x->As<ir::Store>(); });
 
-  this->UpdateMergeOffset(loops_index, new_indices);
+  std::cerr << "before update !!!!\n";
+  this->UpdateMergeOffset(loops_index, fused_expr);
 
   for (auto j = 0; j < consumer.size(); ++j) {
     std::cerr << "consumer jj " << consumer[j] << std::endl;
@@ -529,6 +531,13 @@ Expr DyScheduleImpl::Reorder(const std::vector<Expr>& loops) {
   std::vector<Expr> if_nodes = GetIfThenElseInRange(top, bottom);
   Expr new_loop = ConstructNewLoopChain(chain, loops, loop_set, if_nodes);
   this->Replace(top, new_loop);
+
+  std::vector<Var> reorder_var_list;
+  for (size_t i = 0; i < loops.size(); ++i) {
+    reorder_var_list.push_back(loops[i].As<ir::For>()->loop_var);
+  }
+
+  this->UpdateReorderOffset(reorder_var_list);
 
   VLOG(4) << "After Reorder, ir is:\n" << new_loop;
   return new_loop;
