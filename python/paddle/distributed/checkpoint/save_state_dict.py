@@ -29,10 +29,6 @@ from .utils import (
 async_save_queue = []
 
 
-def _save_func(obj, path):
-    paddle.save(obj, path)
-
-
 def check_exitcode(task):
     exitcode = task.exitcode
     if exitcode != 0:
@@ -287,7 +283,7 @@ def save_state_dict(
                 nonlocal attempt
                 try:
                     p = ctx.Process(
-                        target=_save_func,
+                        target=paddle.save,
                         args=(cpu_state_dict, os.path.join(path, file_name)),
                     )
                     p.start()
