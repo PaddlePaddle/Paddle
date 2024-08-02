@@ -1859,16 +1859,15 @@ SplitedResult SplitForwardBackward(
           if (v.impl() == nullptr) {
             return;
           }
-          const pir::Value &new_value = value_map.at(v);
           std::string shadow_output_name =
-              name_analysis::TryGetValueFirstName(new_value).value_or(
+              name_analysis::TryGetValueFirstName(v).value_or(
                   prefix + std::to_string(counter));
           auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
           pir::AttributeMap attribute_map = {
               {"output_name", StrAttribute::get(ctx, shadow_output_name)},
           };
-          pir::Operation *operation =
-              pir::Operation::Create({new_value}, attribute_map, {}, op_info);
+          pir::Operation *operation = pir::Operation::Create(
+              {value_map.at(v)}, attribute_map, {}, op_info);
           program->block()->push_back(operation);
           counter += 1;
         };
