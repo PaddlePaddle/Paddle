@@ -34,7 +34,7 @@ void CudaModuleTester::Compile(const ir::Module& m,
   CHECK(!host_module.functions().empty());
   CHECK(!device_module.functions().empty());
 
-  backends::CodeGenCUDA_Dev codegen(DefaultHostTarget());
+  backends::CodeGenCudaDev codegen(DefaultHostTarget());
   auto source_code = codegen.Compile(device_module);
 
   // compile CUDA kernel.

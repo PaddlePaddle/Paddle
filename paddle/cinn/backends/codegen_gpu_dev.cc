@@ -31,16 +31,16 @@
 namespace cinn {
 namespace backends {
 
-CodeGenGPU_Dev::CodeGenGPU_Dev(Target target) : CodeGenC(target) {}
+CodeGenGpuDev::CodeGenGpuDev(Target target) : CodeGenC(target) {}
 
-std::string CodeGenGPU_Dev::Compile(const ir::Module &module, bool use_rtc) {
+std::string CodeGenGpuDev::Compile(const ir::Module &module, bool use_rtc) {
   use_rtc_ = use_rtc;
   auto source = Compile(module, OutputKind::CImpl);
 
   return source;
 }
 
-void CodeGenGPU_Dev::Compile(const ir::Module &module, const Outputs &outputs) {
+void CodeGenGpuDev::Compile(const ir::Module &module, const Outputs &outputs) {
   ir::ir_utils::IrVerify(Expr(module));
 
   CodeGenC::inline_builtin_codes_ = false;
@@ -71,12 +71,12 @@ void CodeGenGPU_Dev::Compile(const ir::Module &module, const Outputs &outputs) {
   }
 }
 
-void CodeGenGPU_Dev::Compile(const ir::LoweredFunc &func) {
+void CodeGenGpuDev::Compile(const ir::LoweredFunc &func) {
   dyn_shared_mem_offset_ = Expr(-1);
   IrPrinter::Visit(Expr(func));
 }
 
-std::vector<Expr> CodeGenGPU_Dev::GenerateBufferAliasExprs(
+std::vector<Expr> CodeGenGpuDev::GenerateBufferAliasExprs(
     const ir::_LoweredFunc_ *op, const std::vector<ir::Buffer> &temp_buffers) {
   std::set<ir::Buffer> temp_buffer_set(temp_buffers.begin(),
                                        temp_buffers.end());
@@ -136,7 +136,7 @@ std::vector<Expr> FilterDeallocTempBuffers(const std::vector<Expr> &frees) {
   return filtered;
 }
 
-void CodeGenGPU_Dev::Visit(const ir::_LoweredFunc_ *op) {
+void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
   // clear names valid within scope when enter a new function
   vectorized_tensor_names_.clear();
   str_ += "__global__\n";
@@ -173,13 +173,13 @@ void CodeGenGPU_Dev::Visit(const ir::_LoweredFunc_ *op) {
   IrPrinter::Visit(func_body);
 }
 
-void CodeGenGPU_Dev::Visit(const ir::Free *op) {
+void CodeGenGpuDev::Visit(const ir::Free *op) {
   str_ += "delete [] ";
   str_ += op->destination.As<ir::_Buffer_>()->name;
   str_ += ";\n";
 }
 
-void CodeGenGPU_Dev::Visit(const ir::_Var_ *op) {
+void CodeGenGpuDev::Visit(const ir::_Var_ *op) {
   if (utils::StartsWith(op->name, "threadIdx") ||
       utils::StartsWith(op->name, "blockIdx")) {
     str_ += "(int)";
@@ -189,7 +189,7 @@ void CodeGenGPU_Dev::Visit(const ir::_Var_ *op) {
   }
 }
 
-void CodeGenGPU_Dev::Visit(const ir::Alloc *op) {
+void CodeGenGpuDev::Visit(const ir::Alloc *op) {
   PADDLE_ENFORCE_NE(op->destination.as_buffer(),
                     nullptr,
                     ::common::errors::PreconditionNotMet(
@@ -197,7 +197,7 @@ void CodeGenGPU_Dev::Visit(const ir::Alloc *op) {
   PrintTempBufferCreation(op->destination.as_buffer_ref());
 }
 
-void CodeGenGPU_Dev::Visit(const ir::Min *op) {
+void CodeGenGpuDev::Visit(const ir::Min *op) {
   str_ += "min(";
   IrPrinter::Visit(op->a());
   str_ += ", ";
@@ -205,7 +205,7 @@ void CodeGenGPU_Dev::Visit(const ir::Min *op) {
   str_ += ")";
 }
 
-void CodeGenGPU_Dev::Visit(const ir::Max *op) {
+void CodeGenGpuDev::Visit(const ir::Max *op) {
   str_ += "max(";
   IrPrinter::Visit(op->a());
   str_ += ", ";
@@ -213,7 +213,7 @@ void CodeGenGPU_Dev::Visit(const ir::Max *op) {
   str_ += ")";
 }
 
-void CodeGenGPU_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
+void CodeGenGpuDev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
   str_ += "void ";
   if (op->cuda_axis_info.valid()) {
     bool has_symbol_in_thread_num = false;
@@ -247,7 +247,7 @@ void CodeGenGPU_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
   str_ += ")";
 }
 
-void CodeGenGPU_Dev::PrintFuncArg(const ir::Argument &arg) {
+void CodeGenGpuDev::PrintFuncArg(const ir::Argument &arg) {
   if (arg.is_buffer()) {
     // In CUDA/HIP kernel, only primitive type is supported, so we replace the
     // buffer with T*j
@@ -269,10 +269,10 @@ void CodeGenGPU_Dev::PrintFuncArg(const ir::Argument &arg) {
   }
 }
 
-void CodeGenGPU_Dev::PrintBuiltinCodes() {}
+void CodeGenGpuDev::PrintBuiltinCodes() {}
 
-std::string CodeGenGPU_Dev::Compile(const ir::Module &module,
-                                    CodeGenC::OutputKind output_kind) {
+std::string CodeGenGpuDev::Compile(const ir::Module &module,
+                                   CodeGenC::OutputKind output_kind) {
   if (output_kind == OutputKind::CHeader) {
     GenerateHeaderFile(module);
   } else if (output_kind == OutputKind::CImpl) {
@@ -295,7 +295,7 @@ std::string CodeGenGPU_Dev::Compile(const ir::Module &module,
   return str_;
 }
 
-void CodeGenGPU_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
+void CodeGenGpuDev::PrintTempBufferCreation(const ir::Buffer &buffer) {
   PADDLE_ENFORCE_NE(
       buffer->type(),
       Void(),
@@ -377,7 +377,7 @@ void CodeGenGPU_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
   }
 }
 
-void CodeGenGPU_Dev::Visit(const ir::Call *op) {
+void CodeGenGpuDev::Visit(const ir::Call *op) {
   str_ += op->name;
   str_ += "(";
 
@@ -421,7 +421,7 @@ void CodeGenGPU_Dev::Visit(const ir::Call *op) {
   str_ += ")";
 }
 
-void CodeGenGPU_Dev::Visit(const ir::Let *op) {
+void CodeGenGpuDev::Visit(const ir::Let *op) {
   PADDLE_ENFORCE_EQ(
       op->type().valid(),
       true,
@@ -452,9 +452,9 @@ void CodeGenGPU_Dev::Visit(const ir::Let *op) {
   }
 }
 
-bool CodeGenGPU_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
-                                              ir::Expr index_expr,
-                                              bool is_store) {
+bool CodeGenGpuDev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
+                                             ir::Expr index_expr,
+                                             bool is_store) {
   static constexpr char index2suffix[8] = {
       'x', 'y', 'z', 'w', 'v', 'u', 't', 's'};
 
@@ -492,7 +492,7 @@ bool CodeGenGPU_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
   return true;
 }
 
-void CodeGenGPU_Dev::Visit(const ir::Load *op) {
+void CodeGenGpuDev::Visit(const ir::Load *op) {
   // overload this visit function to especially deal with the case when it
   // accesses element at a cuda/hip built-in vector, others still resolve to
   // CodeGenC
@@ -501,7 +501,7 @@ void CodeGenGPU_Dev::Visit(const ir::Load *op) {
   }
 }
 
-void CodeGenGPU_Dev::Visit(const ir::Store *op) {
+void CodeGenGpuDev::Visit(const ir::Store *op) {
   // overload this visit function to especially deal with the case when it
   // accesses element at a cuda/hip built-in vector, others still resolve to
   // CodeGenC

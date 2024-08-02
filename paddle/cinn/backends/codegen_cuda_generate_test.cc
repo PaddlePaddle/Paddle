@@ -58,7 +58,7 @@ void __launch_bounds__(200) elementwise_mul(const float* __restrict__ A, const f
   )ROC";
   std::ofstream file(cuda_source_name);
   CHECK(file.is_open()) << "failed to open file " << cuda_source_name;
-  file << CodeGenCUDA_Dev::GetSourceHeader();
+  file << CodeGenCudaDev::GetSourceHeader();
   file << cuda_source_code;
   file.close();
   LOG(WARNING) << "Output C source to file " << cuda_source_name;
