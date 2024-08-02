@@ -292,16 +292,19 @@ bool LuUnpackOpInferSymbolicShape(
       ldims[x_rank - 1] = min_mn;
     }
     infer_context->SetShapeOrDataForValue(
-        op->result(1), symbol::TensorShapeOrDataDimExprs(ldims));
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(udims)});
     infer_context->SetShapeOrDataForValue(
-        op->result(2), symbol::TensorShapeOrDataDimExprs(udims));
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(ldims)});
   }
 
   if (unpack_pivots) {
     std::vector<symbol::DimExpr> pdims = x_dims;
-    pdims[x_rank - 1] = m;
+    pdims[x_rank - 1] = n;
     infer_context->SetShapeOrDataForValue(
-        op->result(0), symbol::TensorShapeOrDataDimExprs(pdims));
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(pdims)});
   }
 
   return true;
