@@ -402,7 +402,7 @@ bool ChannelShuffleOpInferSymbolicShape(
     channels = input_dims[3];
   }
 
-  if (channels.is_known()) {
+  if (channels.is_constant()) {
     symbol::DimExpr groups_expr = symbol::DimExpr(groups);
     symbol::DimExpr expected_channels = groups_expr * (channels / groups_expr);
     PADDLE_ENFORCE_EQ(
