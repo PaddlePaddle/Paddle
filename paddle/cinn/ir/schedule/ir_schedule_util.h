@@ -482,10 +482,10 @@ struct RfMutator : public ir::IRMutator<> {
         ::common::errors::NotFound(
             "The expression could not be cast to a Load node."));
     auto* tensor = node->tensor.As<_Tensor_>();
-    PADDLE_ENFORCE_NOT_NULL(
-        tensor,
-        ::common::errors::NotFound("The tensor in the Load node could not be cast "
-                              "to the expected _Tensor_ type."));
+    PADDLE_ENFORCE_NOT_NULL(tensor,
+                            ::common::errors::NotFound(
+                                "The tensor in the Load node could not be cast "
+                                "to the expected _Tensor_ type."));
     if (tensor->name == "rf_" + old_output_name_) {
       int size = node->indices.size();
       PADDLE_ENFORCE_LE(rf_axis_,
@@ -497,13 +497,13 @@ struct RfMutator : public ir::IRMutator<> {
           true,
           ::common::errors::InvalidArgument(
               "The new rfactor iteration variable must be defined."));
-      PADDLE_ENFORCE_EQ(
-          !ContainVar(node->indices, new_rf_itervar_->name),
-          true,
-          ::common::errors::InvalidArgument("Original output tensor %s should not "
-                                       "have the new rfactor index %s.",
-                                       old_output_name_.c_str(),
-                                       new_rf_itervar_->name.c_str()));
+      PADDLE_ENFORCE_EQ(!ContainVar(node->indices, new_rf_itervar_->name),
+                        true,
+                        ::common::errors::InvalidArgument(
+                            "Original output tensor %s should not "
+                            "have the new rfactor index %s.",
+                            old_output_name_.c_str(),
+                            new_rf_itervar_->name.c_str()));
       node->indices.insert(node->indices.begin() + rf_axis_, new_rf_itervar_);
     }
   }
@@ -518,8 +518,9 @@ struct RfMutator : public ir::IRMutator<> {
     auto* tensor = node->tensor.As<_Tensor_>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        ::common::errors::NotFound("The tensor in the Store node could not be cast "
-                              "to the expected _Tensor_ type."));
+        ::common::errors::NotFound(
+            "The tensor in the Store node could not be cast "
+            "to the expected _Tensor_ type."));
     if (tensor->name == old_output_name_) {
       find_tensor_ = true;
       tensor->name = "rf_" + tensor->name;
@@ -528,13 +529,13 @@ struct RfMutator : public ir::IRMutator<> {
                         size,
                         ::common::errors::InvalidArgument(
                             "rf_axis should not be greater than indice size"));
-      PADDLE_ENFORCE_EQ(
-          !ContainVar(node->indices, new_rf_itervar_->name),
-          true,
-          ::common::errors::InvalidArgument("Original output tensor %s should not "
-                                       "have the new rfactor index %s.",
-                                       old_output_name_.c_str(),
-                                       new_rf_itervar_->name.c_str()));
+      PADDLE_ENFORCE_EQ(!ContainVar(node->indices, new_rf_itervar_->name),
+                        true,
+                        ::common::errors::InvalidArgument(
+                            "Original output tensor %s should not "
+                            "have the new rfactor index %s.",
+                            old_output_name_.c_str(),
+                            new_rf_itervar_->name.c_str()));
       node->indices.insert(node->indices.begin() + rf_axis_, new_rf_itervar_);
       auto* rf_for = rf_loop_.As<For>();
       PADDLE_ENFORCE_NOT_NULL(
@@ -757,11 +758,12 @@ struct FinalMutator : public ir::IRMutator<> {
     auto* node = expr->As<ScheduleBlockRealize>();
     PADDLE_ENFORCE_NOT_NULL(
         node,
-        ::common::errors::NotFound("The ScheduleBlockRealize node cannot be null."));
+        ::common::errors::NotFound(
+            "The ScheduleBlockRealize node cannot be null."));
     auto* schedule_block = node->schedule_block.As<ScheduleBlock>();
-    PADDLE_ENFORCE_NOT_NULL(
-        schedule_block,
-        ::common::errors::NotFound("The ScheduleBlock pointer cannot be null."));
+    PADDLE_ENFORCE_NOT_NULL(schedule_block,
+                            ::common::errors::NotFound(
+                                "The ScheduleBlock pointer cannot be null."));
     auto& iter_vars = schedule_block->iter_vars;
     auto& iter_values = node->iter_values;
     output_name_ = schedule_block->name;
@@ -788,8 +790,8 @@ struct FinalMutator : public ir::IRMutator<> {
         if (ContainVar({*it}, erase_var)) {
           PADDLE_ENFORCE_NOT_NULL(
               (*it).As<_Var_>(),
-              ::common::errors::NotFound("Not support complex reduce bindings: %s",
-                                    *it));
+              ::common::errors::NotFound(
+                  "Not support complex reduce bindings: %s", *it));
           iter_vars.erase(it - iter_values.begin() + iter_vars.begin());
           iter_values.erase(it);
           --it;
@@ -850,8 +852,9 @@ struct FinalMutator : public ir::IRMutator<> {
     auto* tensor = node->tensor.As<_Tensor_>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        ::common::errors::NotFound("The tensor in the Store node could not be cast "
-                              "to the expected _Tensor_ type."));
+        ::common::errors::NotFound(
+            "The tensor in the Store node could not be cast "
+            "to the expected _Tensor_ type."));
     PADDLE_ENFORCE_EQ(
         tensor->name,
         output_name_,
@@ -1321,7 +1324,8 @@ struct RfCreater : public ir::IRMutator<> {
     auto root_realize = root_.As<ScheduleBlockRealize>();
     PADDLE_ENFORCE_NOT_NULL(
         root_realize,
-        ::common::errors::NotFound("The ScheduleBlockRealize node cannot be null."));
+        ::common::errors::NotFound(
+            "The ScheduleBlockRealize node cannot be null."));
     auto root_block = root_realize->schedule_block.As<ScheduleBlock>();
     PADDLE_ENFORCE_NOT_NULL(
         root_block,
