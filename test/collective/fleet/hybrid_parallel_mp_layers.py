@@ -302,7 +302,7 @@ class TestDistTraining(unittest.TestCase):
         random.seed(seed)
         np.random.seed(seed)
 
-        for _ in range(5):
+        for idx in range(5):
             np_label = np.random.randint(
                 0, vocab_size, (batch_size, seq_length)
             )
@@ -324,7 +324,9 @@ class TestDistTraining(unittest.TestCase):
             integral_data = integral_data.detach().clone()
             integral_data.stop_gradient = False
 
-            loss_a = model_a(data, label).sum() / batch_size
+            loss_a = (
+                model_a(data, label, inplace=(idx % 2 == 0)).sum() / batch_size
+            )
             loss_b = model_b(integral_data, label).sum() / batch_size
             print("loss_a: ", loss_a.numpy(), "loss_b: ", loss_b.numpy())
 

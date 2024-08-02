@@ -761,7 +761,9 @@ class ParallelCrossEntropy(paddle.nn.Layer):
 
     """
 
-    def __init__(self, mp_group=None, name=None, ignore_index=-100):
+    def __init__(
+        self, mp_group=None, name=None, ignore_index=-100, inplace=False
+    ):
         super().__init__()
         self.name = name
         self.model_parallel_group = (
@@ -780,9 +782,18 @@ class ParallelCrossEntropy(paddle.nn.Layer):
             else mp_group.rank
         )
         self.ignore_index = ignore_index
+        self.inplace = inplace
 
     def forward(self, input, label):
-        loss = mp_ops._c_softmax_with_cross_entropy(
+        # Determine the appropriate function to use based on the 'inplace' flag.
+        func = (
+            mp_ops._c_softmax_with_cross_entropy_
+            if self.inplace
+            else mp_ops._c_softmax_with_cross_entropy
+        )
+
+        # Call the selected function with the common arguments.
+        loss = func(
             input,
             label,
             group=self.model_parallel_group,
