@@ -1647,9 +1647,8 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
-                          MetaTensor* out,
-                          MetaConfig config) {
-  return ElementwiseRawInferMeta(x, y, -1, out, config);
+                          MetaTensor* out) {
+  return ElementwiseRawInferMeta(x, y, -1, out);
 }
 
 void BitwiseShiftInferMeta(const MetaTensor& x,
