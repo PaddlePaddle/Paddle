@@ -344,14 +344,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 convert_numpy_array(sync_bn_val),
                 rtol=1e-04,
                 atol=self.atol,
-                err_msg='Output ('
-                + fetch_names[i]
-                + ') has diff. \n'
-                + '\nBN     '
-                + str(bn_val)
-                + '\n'
-                + 'Sync BN '
-                + str(sync_bn_val),
+                err_msg=f"Output ({fetch_names[i]}) has diff. \n\nBN     {bn_val}\nSync BN {sync_bn_val}",
             )
 
     # @test_with_pir_api
