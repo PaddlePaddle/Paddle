@@ -130,7 +130,7 @@ class GradOpBaseMakerBase {
     PADDLE_ENFORCE_EQ(
         it != attrs_.end(),
         true,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Cannot find attribute [%s] in operator [%s]", name, type_));
     return it->second;
   }

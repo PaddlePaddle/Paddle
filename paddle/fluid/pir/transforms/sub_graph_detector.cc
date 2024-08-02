@@ -94,10 +94,10 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
   PADDLE_ENFORCE_EQ(
       block->size(),
       sort_ops.size(),
-      phi::errors::InvalidArgument("sort_ops.size() must be equal to "
-                                   "block.size(), but received %d != %d",
-                                   block->size(),
-                                   sort_ops.size()));
+      common::errors::InvalidArgument("sort_ops.size() must be equal to "
+                                      "block.size(), but received %d != %d",
+                                      block->size(),
+                                      sort_ops.size()));
 
   return sort_ops;
 }
@@ -118,7 +118,7 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
       producers.insert(source_op);
       PADDLE_ENFORCE(
           op2id.count(source_op),
-          phi::errors::PreconditionNotMet("source op MUST in op2id map"));
+          common::errors::PreconditionNotMet("source op MUST in op2id map"));
       vec_res.emplace_back(source_op);
     }
   }

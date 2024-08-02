@@ -39,7 +39,7 @@ static Backend TransToBackend(phi::Place place) {
   auto it = type_backend.find(type);
   PADDLE_ENFORCE_EQ(it != type_backend.end(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Place type (%s) is not supported. ", place));
   return it->second;
 }
@@ -52,7 +52,7 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
   PADDLE_ENFORCE_EQ(
       tensors.size(),
       is_sparse_gradient.size(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "tensors len must be equal to is_sparse_gradient len, but "
           "[%lu] != [%lu]",
           tensors.size(),
@@ -71,7 +71,7 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 
   PADDLE_ENFORCE_EQ(true,
                     check_perm(tensor_indices),
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "tensor_indices must be a permutation from 0 to %lu",
                         tensor_indices.size()));
   // the return vector
@@ -144,7 +144,7 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
     PADDLE_ENFORCE_NE(
         group_index.empty(),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "AssignGroupBySize construct empty group, please check."));
   }
   if (tensor_indices.empty()) {
@@ -278,7 +278,7 @@ static void ConcatTensorsWithType(
           context, dense_tensors_, p_dense_contents);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
           "allreduce.",
           type));
@@ -309,7 +309,7 @@ static void SplitTensorsWithType(const DeviceContext &context,
           context, p_dense_contents, p_dense_tensors);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
           "allreduce.",
           type));
@@ -338,7 +338,7 @@ void ConcatTensorsWithType<phi::XPUContext>(
           context, dense_tensors_, p_dense_contents);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
           "allreduce.",
           type));
@@ -366,7 +366,7 @@ void SplitTensorsWithType<phi::XPUContext>(
           context, p_dense_contents, p_dense_tensors);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
           "allreduce.",
           type));
@@ -385,7 +385,7 @@ void EagerGroup::ConcatTensors(const phi::Place &place) {
     ConcatTensorsWithType(
         *default_ctx, dense_tensors_, &dense_contents_, dtype_);
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
@@ -396,7 +396,7 @@ void EagerGroup::ConcatTensors(const phi::Place &place) {
     ConcatTensorsWithType(
         *default_ctx, dense_tensors_, &dense_contents_, dtype_);
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with "
         "CUSTOM_DEVICE,"
         "Please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
@@ -408,7 +408,7 @@ void EagerGroup::ConcatTensors(const phi::Place &place) {
     ConcatTensorsWithType(
         *default_ctx, dense_tensors_, &dense_contents_, dtype_);
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
@@ -418,7 +418,7 @@ void EagerGroup::ConcatTensors(const phi::Place &place) {
     ConcatTensorsWithType(
         *default_ctx, dense_tensors_, &dense_contents_, dtype_);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Concat grad tensor not supported on place (%s)", place));
   }
 }
@@ -438,7 +438,7 @@ void EagerGroup::SplitTensors(const phi::DeviceContext &context) {
       dense_contents_.reset();
     }
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't split grad tensor since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
@@ -449,7 +449,7 @@ void EagerGroup::SplitTensors(const phi::DeviceContext &context) {
                          &dense_tensors_,
                          dtype_);
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't split grad tensor since it's not compiled with "
         "CUSTOM_DEVICE,"
         "Please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
@@ -461,7 +461,7 @@ void EagerGroup::SplitTensors(const phi::DeviceContext &context) {
     SplitTensorsWithType(
         *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't split grad tensor since it's not compiled with BKCL,"
         "Please recompile or reinstall Paddle with BKCL support."));
 #endif
@@ -471,7 +471,7 @@ void EagerGroup::SplitTensors(const phi::DeviceContext &context) {
                          &dense_tensors_,
                          dtype_);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Split grad tensor not supported on place (%s)", place));
   }
 }
@@ -509,10 +509,11 @@ EagerReducer::EagerReducer(
 
     const auto &grad_node = GetGradNodeFromTensor(&tensor);
 
-    PADDLE_ENFORCE(grad_node.get() != nullptr,
-                   phi::errors::Fatal("Detected NULL grad_node,"
-                                      "Leaf tensor should have had grad_node "
-                                      "with type: GradNodeAccumulation"));
+    PADDLE_ENFORCE(
+        grad_node.get() != nullptr,
+        common::errors::Fatal("Detected NULL grad_node,"
+                              "Leaf tensor should have had grad_node "
+                              "with type: GradNodeAccumulation"));
     const auto &accumulation_grad_node =
         std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
     accumulation_grad_node->RegisterReduceHook(
@@ -557,7 +558,7 @@ void EagerReducer::InitializeGroups(
     PADDLE_ENFORCE_GT(
         tensor_indices_.size(),
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The number of group[%d]'s elements is 0.", group_index));
 
     EagerGroup group;
@@ -600,20 +601,20 @@ void EagerReducer::InitializeDenseGroups(
 
     PADDLE_ENFORCE_EQ(is_sparse_gradient_[tensor_index],
                       false,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Tensor %s's GRAD must be Tensor, but received "
                           "GRAD is SelectedRows",
                           tensor_name));
 
     PADDLE_ENFORCE_EQ(tensor.initialized(),
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Tensor %s is not initialized.", tensor_name));
     const auto size = tensor.numel();
     PADDLE_ENFORCE_GT(
         size,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The number of tensor %s's elements is 0.", tensor_name));
     all_length += size;
 
@@ -628,7 +629,7 @@ void EagerReducer::InitializeDenseGroups(
     if (index > 0) {
       PADDLE_ENFORCE_EQ(dtype,
                         p_group->dtype_,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Tensor %s has unexpected dtype.", tensor_name));
     } else {
       p_group->dtype_ = dtype;
@@ -704,7 +705,7 @@ void EagerReducer::PrepareForBackward(const std::vector<Tensor> &outputs) {
   PADDLE_ENFORCE_EQ(
       groups_need_finalize_,
       false,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "A serious error has occurred here. Please "
           "set find_unused_parameters=True to traverse backward graph "
           "in each step to prepare reduce in advance. If you have "
@@ -752,10 +753,10 @@ void EagerReducer::AddDistHook(size_t var_index) {
   PADDLE_ENFORCE_LT(
       var_index,
       variable_locators_.size(),
-      phi::errors::OutOfRange("Out of bounds variable index. it must be less"
-                              "than %d, but it is %d",
-                              variable_locators_.size(),
-                              var_index));
+      common::errors::OutOfRange("Out of bounds variable index. it must be less"
+                                 "than %d, but it is %d",
+                                 variable_locators_.size(),
+                                 var_index));
 
   // gradient synchronization is not required when grad_need_hooks_ is false.
   if (!grad_need_hooks_) {
@@ -810,7 +811,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
 
     PADDLE_ENFORCE_EQ(has_marked_unused_vars_,
                       false,
-                      phi::errors::PreconditionNotMet(error_info));
+                      common::errors::PreconditionNotMet(error_info));
 
     error_info +=
         "3) Unused parameters retrieval is incorrect. "
@@ -826,7 +827,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
 
     PADDLE_ENFORCE_EQ(has_marked_unused_vars_,
                       true,
-                      phi::errors::PreconditionNotMet(error_info));
+                      common::errors::PreconditionNotMet(error_info));
   } else {
     vars_marked_ready_[var_index] = true;
   }
@@ -909,7 +910,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
     PADDLE_ENFORCE_EQ(
         HasGrad(var_index),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The sparse parameter[%d][%s] should have gradient. "
             "Currently, DataParallel does not support sparse "
             "parameters without generating gradients during training. "
@@ -923,7 +924,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
     PADDLE_ENFORCE_EQ(
         grad_tensor.is_selected_rows(),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The sparse parameter[%d][%s] must have a selected rows gradient. "
             "Before forward pass, the parameter type is inferred to be "
             "SelectedRows, but after backward pass, its actual type becomes "
@@ -954,7 +955,7 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
   PADDLE_ENFORCE_GE(
       group_index,
       next_group_,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The index of the incoming group must be greater "
           "than or equal to the previously synchronized group index, "
           "expect it to greater than or equal to %d, but got %d.",
@@ -1134,7 +1135,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     dev_ctx = static_cast<phi::GPUContext *>(
         phi::DeviceContextPool::Instance().Get(inner_place_));
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
@@ -1143,7 +1144,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     dev_ctx = static_cast<phi::XPUContext *>(
         phi::DeviceContextPool::Instance().Get(inner_place_));
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with XCCL,"
         "Please recompile or reinstall Paddle with XCCL support."));
 #endif
@@ -1152,7 +1153,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     dev_ctx = static_cast<phi::CustomContext *>(
         phi::DeviceContextPool::Instance().Get(inner_place_));
 #else
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with "
         "CUSTOM_DEVICE,"
         "Please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
@@ -1161,7 +1162,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     dev_ctx = static_cast<phi::CPUContext *>(
         phi::DeviceContextPool::Instance().Get(inner_place_));
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Split grad tensor not supported on place (%s)", inner_place_));
   }
 

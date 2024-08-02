@@ -170,7 +170,7 @@ void KthvalueKernel(const Context& dev_ctx,
   if (in_dims.size() == 0) {
     PADDLE_ENFORCE_EQ(k,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "the k in the kthvalue must less equal than the "
                           "elemenents number of the input X, but received %d .",
                           k));
@@ -198,7 +198,7 @@ void KthvalueKernel(const Context& dev_ctx,
         SortKthvalue<T>(
             dev_ctx, &x, input_width, input_height, k, output, indices),
         true,
-        phi::errors::External("KthvalueOP: Error when use cub sorting"));
+        common::errors::External("KthvalueOP: Error when use cub sorting"));
 #endif
 
     return;
@@ -265,7 +265,7 @@ void KthvalueKernel(const Context& dev_ctx,
                         &trans_out,
                         &trans_ind),
         true,
-        phi::errors::External("KthvalueOP: Error when use cub sorting"));
+        common::errors::External("KthvalueOP: Error when use cub sorting"));
 #endif
     funcs::TransCompute<phi::GPUContext, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans);

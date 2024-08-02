@@ -58,8 +58,8 @@ void RoiPoolKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         boxes_batch_size,
         batch_size,
-        phi::errors::InvalidArgument("The boxes_batch_size and imgs "
-                                     "batch_size must be the same."));
+        common::errors::InvalidArgument("The boxes_batch_size and imgs "
+                                        "batch_size must be the same."));
     auto* boxes_num_data = boxes_num->data<int>();
     int start = 0;
     for (int n = 0; n < boxes_batch_size; ++n) {
@@ -74,14 +74,14 @@ void RoiPoolKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         boxes_batch_size,
         batch_size,
-        phi::errors::InvalidArgument("The boxes_batch_size and imgs "
-                                     "batch_size must be the same."));
+        common::errors::InvalidArgument("The boxes_batch_size and imgs "
+                                        "batch_size must be the same."));
     int rois_num_with_lod = static_cast<int>(boxes_lod[boxes_batch_size]);
     PADDLE_ENFORCE_EQ(
         rois_num,
         rois_num_with_lod,
-        phi::errors::InvalidArgument("The rois_num from input "
-                                     "and lod must be the same."));
+        common::errors::InvalidArgument("The rois_num from input "
+                                        "and lod must be the same."));
     for (int n = 0; n < boxes_batch_size; ++n) {
       for (size_t i = boxes_lod[n]; i < boxes_lod[n + 1]; ++i) {
         box_batch_id_data[i] = n;

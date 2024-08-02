@@ -38,7 +38,7 @@ void ReverseArrayKernel(const Context& dev_ctx,
         x_tensor.memory_size(),
         0,
         phi::errors::PreconditionNotMet(
-            "The input LoDTensorArray X[%d] holds no memory.", offset));
+            "The input phi::TensorArray X[%d] holds no memory.", offset));
     auto out_offset = x.size() - offset - 1;
     auto& out_tensor = out->at(out_offset);
 

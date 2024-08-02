@@ -260,6 +260,7 @@ void FleetWrapper::HeterPushSparseVars(
     show_index = 1;
     click_index = 2;
   }
+
   PADDLE_ENFORCE_GE(grad_dim,
                     0,
                     phi::errors::InvalidArgument(

@@ -54,7 +54,7 @@ void ConcatKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_EQ(
             x[i]->lod().size(),
             lod_size_0,
-            phi::errors::Unimplemented(
+            common::errors::Unimplemented(
                 "The lod level of all input LoDTensors should be same. "
                 "Maybe different lod level of input LoDTensors can concat,"
                 "it is not supported currently. The lod level of %dth input "
