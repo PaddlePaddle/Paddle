@@ -17,8 +17,9 @@ import importlib
 import json
 import os
 import socket
+import types
 from enum import Enum
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import Any, Callable, Iterable, Optional, Type, Union
 from warnings import warn
 
 import paddle
@@ -205,7 +206,7 @@ def make_scheduler(
     return getScheduleState
 
 
-def _default_state_scheduler(step: int):
+def _default_state_scheduler(step: int) -> ProfilerState:
     r"""
     A default state scheduler, keep recording from the beginning of the profiler until ending.
     """
@@ -485,7 +486,7 @@ class Profiler:
         emit_nvtx: Optional[bool] = False,
         custom_device_types: Optional[list] = [],
         with_flops: Optional[bool] = False,
-    ):
+    ) -> None:
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
@@ -548,14 +549,19 @@ class Profiler:
         self.with_flops = with_flops
         self.emit_nvtx = emit_nvtx
 
-    def __enter__(self):
+    def __enter__(self) -> 'Profiler':
         self.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[types.TracebackType],
+    ) -> None:
         self.stop()
 
-    def start(self):
+    def start(self) -> None:
         r'''
         Start profiler and enter the first profiler step(0).
         State transformed from CLOSED to self.current_state and trigger corresponding action.
@@ -604,7 +610,7 @@ class Profiler:
         )
         self.record_event.begin()
 
-    def stop(self):
+    def stop(self) -> None:
         r'''
         Stop profiler and State transformed from self.current_state to CLOSED.
         Trigger corresponding action and post-process profiler result using self.on_trace_ready if result exists.
@@ -654,7 +660,7 @@ class Profiler:
                 self.on_trace_ready(self)
         utils._is_profiler_used = False
 
-    def step(self, num_samples: Optional[int] = None):
+    def step(self, num_samples: Optional[int] = None) -> None:
         r"""
         Signals the profiler that the next profiling step has started.
         Get the new ProfilerState and trigger corresponding action.
@@ -698,7 +704,7 @@ class Profiler:
         )
         self.record_event.begin()
 
-    def step_info(self, unit=None):
+    def step_info(self, unit: Optional[str] = None) -> str:
         r"""
         Get statistics for current step. If the function is called at certain iteration
         intervals, the result is the average of all steps between the previous call and
@@ -745,7 +751,7 @@ class Profiler:
             unit = 'samples'
         return benchmark().step_info(unit)
 
-    def _trigger_action(self):
+    def _trigger_action(self) -> None:
         if self.previous_state == ProfilerState.CLOSED:
             if self.current_state == ProfilerState.READY:  # CLOSED -> READY
                 self.profiler.prepare()
@@ -816,7 +822,7 @@ class Profiler:
             if self.on_trace_ready:
                 self.on_trace_ready(self)
 
-    def export(self, path="", format="json"):
+    def export(self, path: str = "", format: Optional[str] = "json") -> None:
         r"""
         Exports the tracing data to file.
 
@@ -904,7 +910,7 @@ class Profiler:
         if self.with_flops:
             self._print_flops()
 
-    def _print_flops(self, repeat=1):
+    def _print_flops(self, repeat: int = 1) -> None:
         if not self.with_flops:
             print('ERROR: with_flops disabled.')
             return
@@ -914,7 +920,7 @@ class Profiler:
         print("- Flops Profiler End -".center(100, "-"))
 
 
-def get_profiler(config_path):
+def get_profiler(config_path: str) -> Profiler:
     try:
         with open(config_path, 'r') as filehandle:
             config_dict = json.load(filehandle)
