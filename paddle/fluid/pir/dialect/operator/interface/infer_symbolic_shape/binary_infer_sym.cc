@@ -266,7 +266,7 @@ bool EqualAllOpInferSymbolicShape(
   const auto &y_dims =
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_GE(
       x_dims.size(),
       y_dims.size(),
       common::errors::InvalidArgument(
