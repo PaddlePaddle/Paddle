@@ -941,6 +941,10 @@ def monkey_patch_tensor():
         assert (
             numel == 1
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
+        # resolve the error issue in scenario of pipeline parallel
+        # where some devices do not have this data
+        if self.is_dist() and not self._is_initialized():
+            return True
         assert self._is_initialized(), "tensor not initialized"
         return bool(np.array(self) > 0)
 
