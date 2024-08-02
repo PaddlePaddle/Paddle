@@ -613,13 +613,13 @@ bool SegmentPoolOpInferSymbolicShape(
       symbol::TensorShapeOrDataDimExprs(out_shape)};
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
 
-  const auto pooltype = op->attribute<pir::StrAttribute>("pooltype").AsString();
+  string pooltype = op->attribute<pir::StrAttribute>("pooltype").AsString();
   if (pooltype == "MEAN") {
-    std::vector<symbol::DimExpr> out_shape = {-1, 1};
+    std::vector<symbol::DimExpr> summed_shape = {-1, 1};
     infer_context->SetShapeOrDataForValue(
-        op->result(0),
+        op->result(1),
         symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(out_shape)});
+            symbol::TensorShapeOrDataDimExprs(summed_shape)});
   }
   return true;
 }
