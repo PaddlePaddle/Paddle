@@ -1173,9 +1173,6 @@ void LayerNormGradInferMeta(const MetaTensor& x,
   if (dx) {
     dx->share_meta(x);
   }
-  VLOG(1) << "LayerNormGradInferMeta: dx = " << x;
-  VLOG(1) << "LayerNormGradInferMeta: dy = " << y;
-  VLOG(1) << "LayerNormGradInferMeta: dz = " << dz;
   if (dy && y) {
     dy->share_meta(y);
   }

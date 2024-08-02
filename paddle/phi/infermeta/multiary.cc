@@ -4697,14 +4697,6 @@ void RmsNormInferMeta(const MetaTensor& x,
                       MetaTensor* out,
                       MetaTensor* residual_out,
                       MetaTensor* inv_var) {
-  VLOG(1) << "RmsNormInferMeta: x_dims: " << x.dims();
-  VLOG(1) << "RmsNormInferMeta: x: " << x;
-  VLOG(1) << "RmsNormInferMeta: bias: " << bias;
-  VLOG(1) << "RmsNormInferMeta: residual: " << residual;
-  VLOG(1) << "RmsNormInferMeta: norm_weight: " << norm_weight;
-  VLOG(1) << "RmsNormInferMeta: norm_bias: " << norm_bias;
-  VLOG(1) << "RmsNormInferMeta: epsilon: " << epsilon;
-  VLOG(1) << "RmsNormInferMeta: begin_norm_axis: " << begin_norm_axis;
   std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
   auto x_dims_size = x_dims_vec.size();
 
@@ -4754,43 +4746,6 @@ void RmsNormInferMeta(const MetaTensor& x,
     residual_out->set_dtype(x.dtype());
     residual_out->set_layout(x.layout());
     residual_out->share_lod(x);
-  }
-}
-
-void RmsNormGradInferMeta(const MetaTensor& x,
-                          const MetaTensor& norm_weight,
-                          const MetaTensor& norm_bias,
-                          MetaTensor* x_grad,
-                          MetaTensor* norm_weight_grad,
-                          MetaTensor* norm_bias_grad) {
-  // x_grad->set_dtype(x.dtype());
-  // x_grad->set_layout(x.layout());
-  // x_grad->share_lod(x);
-  // x_grad->set_dims(x.dims());
-  // norm_weight_grad->set_dtype(norm_weight.dtype());
-  // norm_weight_grad->set_layout(norm_weight.layout());
-  // norm_weight_grad->share_lod(norm_weight);
-  // norm_weight_grad->set_dims(norm_weight.dims());
-
-  // if (norm_bias_grad != nullptr) {
-  //   norm_bias_grad->set_dtype(norm_bias.dtype());
-  //   norm_bias_grad->set_layout(norm_bias.layout());
-  //   norm_bias_grad->share_lod(norm_bias);
-  //   norm_bias_grad->set_dims(norm_bias.dims());
-  // }
-  VLOG(1) << "RmsNormGradInferMeta: x: " << x;
-  VLOG(1) << "RmsNormGradInferMeta: norm_weight: " << norm_weight;
-  VLOG(1) << "RmsNormGradInferMeta: norm_bias: " << norm_bias;
-  VLOG(1) << "RmsNormGradInferMeta: norm_weight_grad: " << norm_weight_grad;
-  VLOG(1) << "RmsNormGradInferMeta: norm_bias_grad: " << norm_bias_grad;
-  if (x_grad) {
-    x_grad->share_meta(x);
-  }
-  if (norm_weight && norm_weight_grad) {
-    norm_weight_grad->share_meta(norm_weight);
-  }
-  if (norm_bias && norm_bias_grad) {
-    norm_bias_grad->share_meta(norm_bias);
   }
 }
 
