@@ -468,10 +468,10 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         vec_ast.emplace_back(temp);
       }
     }
-    PADDLE_ENFORCE_NE(
-        vec_ast.empty(),
-        true,
-        common::PreconditionNotMet("The vector vec_ast must not be empty."));
+    PADDLE_ENFORCE_NE(vec_ast.empty(),
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "The vector vec_ast must not be empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
