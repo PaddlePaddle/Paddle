@@ -38,12 +38,23 @@ void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
 
 void CollectTensorIndexIteratorsImpl(const Undefined& tensor_index_expr,
                                      std::unordered_set<Iterator>* ret) {
-  PADDLE_THROW(:: ::common::errors::Unimplemented("Not Implemented"));
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "CollectTensorIndexIteratorsImpl for Undefined tensor_index_expr is not "
+      "implemented. "
+      "This functionality has not been defined yet. Ensure that you are not "
+      "passing Undefined "
+      "tensor_index_expr to this function, as it is currently unsupported."));
 }
 
 void CollectTensorIndexIteratorsImpl(const Ok& ok,
                                      std::unordered_set<Iterator>* ret) {
-  PADDLE_THROW(:: ::common::errors::Unimplemented("Not Implemented"));
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "The function CollectTensorIndexIteratorsImpl for the Ok type is not "
+      "implemented. "
+      "This functionality has not been defined yet. Please ensure that the Ok "
+      "type is handled "
+      "appropriately in your code or consider implementing this function to "
+      "support Ok type."));
 }
 
 void CollectTensorIndexIteratorsImpl(const Iterator& iterator,
@@ -134,7 +145,12 @@ LoopIterators GetAnchorTensorLoopIterators(
 namespace {
 
 Tensor GetTensorImpl(const OpStmt& op_stmt, const Undefined& undefined) {
-  PADDLE_THROW(:: ::common::errors::Fatal("position not found"));
+  PADDLE_THROW(::common::errors::Fatal(
+      "Position not found while trying to retrieve a tensor from the OpStmt. "
+      "This likely indicates an invalid or uninitialized position was passed "
+      "to GetTensorImpl. "
+      "Please ensure that the position is correctly defined and initialized "
+      "before calling this function."));
 }
 
 Tensor GetTensorImpl(const OpStmt& op_stmt, const tIn<std::size_t>& pos) {
