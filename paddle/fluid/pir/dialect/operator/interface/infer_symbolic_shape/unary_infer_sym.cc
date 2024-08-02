@@ -480,11 +480,7 @@ bool ChannelShuffleOpInferSymbolicShape(
   symbol::DimExpr groups_expr = symbol::DimExpr(groups);
   symbol::DimExpr expected_channels = groups_expr * (channels / groups_expr);
 
-  PADDLE_ENFORCE_EQ(
-      channels,
-      expected_channels,
-      phi::errors::InvalidArgument(
-          "The number of channels must be divisible by groups. "));
+  infer_context->AddEqualCstr(channels, expected_channels);
 
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
 
