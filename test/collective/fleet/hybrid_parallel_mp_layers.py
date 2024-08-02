@@ -295,6 +295,7 @@ class TestDistTraining(unittest.TestCase):
 
         # model_a
         model_a = fleet.meta_parallel.ParallelCrossEntropy()
+        model_a_inplace = fleet.meta_parallel.ParallelCrossEntropy(inplace=True)
 
         model_b = paddle.nn.CrossEntropyLoss(reduction="none")
 
@@ -324,9 +325,9 @@ class TestDistTraining(unittest.TestCase):
             integral_data = integral_data.detach().clone()
             integral_data.stop_gradient = False
 
-            loss_a = (
-                model_a(data, label, inplace=(idx % 2 == 0)).sum() / batch_size
-            )
+            func = model_a if idx % 2 == 0 else model_a_inplace
+            loss_a = func(data, label).sum() / batch_size
+
             loss_b = model_b(integral_data, label).sum() / batch_size
             print("loss_a: ", loss_a.numpy(), "loss_b: ", loss_b.numpy())
 
