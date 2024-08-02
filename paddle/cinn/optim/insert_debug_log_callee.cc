@@ -131,7 +131,10 @@ struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
   void Visit(const ir::_LoweredFunc_ *op, Expr *expr) {
     auto *node = expr->As<ir::_LoweredFunc_>();
     auto *body_block = node->body.As<ir::Block>();
-    CHECK(body_block);
+    PADDLE_ENFORCE_NOT_NULL(
+        body_block,
+        phi::errors::InvalidArgument(
+            "Expected 'body_block' to be non-null, but got null."));
 
     auto msg = StringFormat("running : %s", GetDebugString(*expr).c_str());
     auto debug_node = CreateDebugStatement(msg);

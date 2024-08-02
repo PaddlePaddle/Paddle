@@ -114,7 +114,12 @@ class Pool3dOpConverter : public OpConverter {
     nvinfer1::Dims3 nv_paddings(paddings[0], paddings[1], paddings[2]);
     nvinfer1::ILayer *layer = nullptr;
     if (op_desc.HasAttr("enable_int8")) {
-      CHECK(op_desc.HasAttr("Input_scale"));
+      PADDLE_ENFORCE_EQ(
+          op_desc.HasAttr("Input_scale"),
+          true,
+          phi::errors::InvalidArgument("Expected attribute 'Input_scale' to be "
+                                       "present when 'enable_int8' is set."));
+
       float input_scale =
           PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input1, input_scale);

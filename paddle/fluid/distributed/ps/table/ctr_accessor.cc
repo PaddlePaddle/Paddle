@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle::distributed {
@@ -336,7 +337,11 @@ int CtrCommonAccessor::ParseFromString(const std::string& str, float* value) {
   _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                               value + common_feature_value.EmbedxG2SumIndex());
   auto ret = paddle::string::str_to_float(str.data(), value);
-  CHECK(ret >= 6) << "expect more than 6 real:" << ret;
+  PADDLE_ENFORCE_GE(
+      ret,
+      6UL,
+      phi::errors::InvalidArgument(
+          "Invalid return value. Expect more than 6. But recieved %d.", ret));
   return ret;
 }
 

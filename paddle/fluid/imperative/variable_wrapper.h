@@ -109,7 +109,7 @@ class VariableWrapper {
       } else if (var_.IsType<phi::SelectedRows>()) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
-        PADDLE_THROW(phi::errors::PermissionDenied(
+        PADDLE_THROW(common::errors::PermissionDenied(
             "Only support LoDTensor and SelectedRows for gradient var"));
       }
       if (tensor && tensor->IsInitialized()) {
@@ -286,7 +286,7 @@ class VariableWrapper {
       PADDLE_ENFORCE_EQ(
           shared_var,
           nullptr,
-          phi::errors::PermissionDenied(
+          common::errors::PermissionDenied(
               "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
     }
@@ -305,7 +305,7 @@ class VariableWrapper {
         PADDLE_ENFORCE_EQ(
             shared_node,
             nullptr,
-            phi::errors::PermissionDenied(
+            common::errors::PermissionDenied(
                 "Cannot set gradient op twice unless using Inplace Strategy."));
       } else if (shared_node) {
         VLOG(3) << "The gradient op of Var (" << Name()

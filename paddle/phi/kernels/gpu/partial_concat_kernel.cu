@@ -56,13 +56,13 @@ void PartialConcatOpCUDAKernel(const Context &dev_ctx,
   auto in_vars = x;
   PADDLE_ENFORCE_EQ(in_vars[0] != nullptr,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input of partial concat should not be null."));
 
   auto input_dim = in_vars[0]->dims();
   PADDLE_ENFORCE_EQ(input_dim.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Only supports 2-D array with batch size in the 1st "
                         "dimension and data in the 2nd."));
   auto in_size = input_dim[1];

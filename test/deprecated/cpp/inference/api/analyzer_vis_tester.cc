@@ -33,8 +33,10 @@ Record ProcessALine(const std::string &line) {
   VLOG(3) << "process a line";
   std::vector<std::string> columns;
   split(line, '\t', &columns);
-  CHECK_EQ(columns.size(), 2UL)
-      << "data format error, should be <data>\t<shape>";
+  PADDLE_ENFORCE_EQ(columns.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "data format error, should be <data>\t<shape>"));
 
   Record record;
   std::vector<std::string> data_strs;
@@ -111,7 +113,13 @@ void profile(bool use_mkldnn = false) {
                           "The size of output should be greater than 0."));
     auto &output = outputs.back().front();
     size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
-    CHECK_EQ(numel, refer.data.size());
+    PADDLE_ENFORCE_EQ(
+        numel,
+        refer.data.size(),
+        phi::errors::InvalidArgument(
+            "value of numel is wrong, expected %d but received %d",
+            refer.data.size(),
+            numel));
     for (size_t i = 0; i < numel; ++i) {
       EXPECT_NEAR(
           static_cast<float *>(output.data.data())[i], refer.data[i], 1e-5);

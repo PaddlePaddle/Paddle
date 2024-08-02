@@ -25,7 +25,7 @@ void PruneGateByCapacityKernel(const Context& dev_ctx,
                                int64_t n_expert,
                                int64_t n_worker,
                                DenseTensor* new_gate_idx) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "prune_gate_by_capacity is not supported on CPU."));
 }
 
