@@ -21,9 +21,9 @@ namespace utils {
 int SampleUniformInt(int min,
                      int max,
                      LinearRandomEngine::StateType* rand_seed) {
-  PADDLE_ENFORCE_LT(
-      min,
-      max,
+  PADDLE_ENFORCE_EQ(
+      min < max,
+      true,
       ::common::errors::InvalidArgument(
           "Input value error: min(%d) must be less than max(%d)", min, max));
   if (min + 1 == max) {
@@ -39,9 +39,9 @@ int SampleUniformInt(int min,
 double SampleUniformDouble(double min,
                            double max,
                            LinearRandomEngine::StateType* rand_seed) {
-  PADDLE_ENFORCE_LT(
-      min,
-      max,
+  PADDLE_ENFORCE_EQ(
+      min < max,
+      true,
       ::common::errors::InvalidArgument(
           "Input value error: min(%f) must be less than max(%f)", min, max));
   LinearRandomEngine engine(rand_seed);
