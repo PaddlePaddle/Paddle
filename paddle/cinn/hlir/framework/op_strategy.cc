@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 
-#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 
 namespace {
 
@@ -77,10 +77,9 @@ std::shared_ptr<OpImpl> OpStrategy::SelectImpl(
       }
     }
   }
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE(
       res,
-      true,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "There is no available strategy implementation! SelectImpl failed!"));
   return res;
 }
