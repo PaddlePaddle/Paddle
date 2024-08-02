@@ -36,7 +36,7 @@ void CodeGenCX86::Visit(const ir::Load *op) {
     PADDLE_ENFORCE_EQ(
         op->type().is_vector(),
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The operation type is expected to be a vector, but it is not. "
             "Please check the operation type and ensure it is correctly set to "
             "a vector."));

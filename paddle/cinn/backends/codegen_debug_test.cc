@@ -45,7 +45,7 @@ template <typename T>
 CUdeviceptr CreateCudaMemory(const std::vector<int>& shape, const T* data) {
   PADDLE_ENFORCE_EQ(!shape.empty(),
                     true,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Couldn't create CUDA memory for empty shape. Please "
                         "ensure the shape is not empty."));
   CUDA_CALL(cudaDeviceSynchronize());

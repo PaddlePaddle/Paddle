@@ -60,7 +60,7 @@ void __launch_bounds__(200) elementwise_mul(const float* __restrict__ A, const f
   std::ofstream file(cuda_source_name);
   PADDLE_ENFORCE_EQ(file.is_open(),
                     true,
-                    common::errors::Unavailable(
+                    ::common::errors::Unavailable(
                         "Failed to open file: %s. Please check if the file "
                         "path is correct and the file is accessible.",
                         cuda_source_name));

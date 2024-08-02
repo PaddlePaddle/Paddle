@@ -196,7 +196,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   ir::_LoweredFunc_ *func_node = func.as_lowered_func();
   PADDLE_ENFORCE_NOT_NULL(
       func_node,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The provided function could not be cast to a lowered function. "
           "Please ensure the function is valid."));
   if (!func_node->cuda_axis_info.valid()) {

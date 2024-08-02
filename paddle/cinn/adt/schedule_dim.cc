@@ -55,7 +55,7 @@ std::shared_ptr<IndexExprInferContext> InitIndexExprInferContext(
     PADDLE_ENFORCE_EQ(
         init_var2value.emplace(iterator, iterator).second,
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Insertion failed in init_var2value map. The key already exists."));
   }
 

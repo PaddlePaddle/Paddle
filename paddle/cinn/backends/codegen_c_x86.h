@@ -100,7 +100,7 @@ class CodeGenCX86 : public CodeGenC {
       PADDLE_ENFORCE_EQ(
           !ramp_n->base.template As<ir::Ramp>(),
           true,
-          common::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The base of a Ramp node should not be of Ramp type. "
               "Please ensure that the base is correctly set to a non-Ramp "
               "type."));
