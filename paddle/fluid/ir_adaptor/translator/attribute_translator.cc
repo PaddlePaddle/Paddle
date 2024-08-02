@@ -70,9 +70,9 @@ class AttributeVisitor {
   virtual pir::Attribute operator()(
       const paddle::experimental::Scalar& scalar) {
     VLOG(10) << "translating scalar";
-    PADDLE_THROW(
-        phi::errors::Unimplemented("not support "
-                                   "translating paddle::experimental::Scalar"));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "not support "
+        "translating paddle::experimental::Scalar"));
   }
 
   virtual pir::Attribute operator()(const std::vector<std::string>& strs) {

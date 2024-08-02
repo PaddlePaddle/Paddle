@@ -64,10 +64,10 @@ template <typename T>
 class BlockingQueue {
  public:
   explicit BlockingQueue(size_t capacity) : capacity_(capacity) {
-    PADDLE_ENFORCE_GT(
-        capacity_,
-        0,
-        phi::errors::InvalidArgument("The capacity must be greater than 0."));
+    PADDLE_ENFORCE_GT(capacity_,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The capacity must be greater than 0."));
   }
 
   bool Push(const T &elem) {
@@ -163,7 +163,7 @@ inline void MergeVars(const std::string &var_name,
                       bool merge_add = true) {
   PADDLE_ENFORCE_NE(vars.empty(),
                     true,
-                    phi::errors::InvalidArgument("vector vars are empty."));
+                    common::errors::InvalidArgument("vector vars are empty."));
   auto cpu_place = phi::CPUPlace();
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
@@ -181,7 +181,7 @@ inline void MergeVars(const std::string &var_name,
       PADDLE_ENFORCE_EQ(
           var_t.dims(),
           dims,
-          phi::errors::InvalidArgument("vars should have the same dims."));
+          common::errors::InvalidArgument("vars should have the same dims."));
     }
 
     // set output tensor to 0.
@@ -221,8 +221,8 @@ inline void MergeVars(const std::string &var_name,
     VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
             << " dims: " << slr0.value().dims() << "; merge add: " << merge_add;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("unsupported var type: %s!",
-                                              var0->Type()));
+    PADDLE_THROW(common::errors::InvalidArgument("unsupported var type: %s!",
+                                                 var0->Type()));
   }
 }
 
@@ -322,7 +322,7 @@ class Communicator {
     int status = rets.get();
     PADDLE_ENFORCE_EQ(status,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The ret status must be 0 when barrier with table"));
   }
 

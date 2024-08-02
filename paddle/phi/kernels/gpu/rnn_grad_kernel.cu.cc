@@ -117,7 +117,7 @@ void RnnGradKernel(const Context &dev_ctx,
     rnn_mode = CUDNN_RNN_TANH;
 #endif
   else
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "rnn_mode should be LSTM, GRU, RNN_RELU or RNN_TANH, but received: "
         "%s.",
         mode));
@@ -215,10 +215,10 @@ void RnnGradKernel(const Context &dev_ctx,
 
   bool has_seq_length = sequence_length.is_initialized();
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_EQ(
-      has_seq_length,
-      false,
-      phi::errors::InvalidArgument("ROCm do not support SequenceLength yet."));
+  PADDLE_ENFORCE_EQ(has_seq_length,
+                    false,
+                    common::errors::InvalidArgument(
+                        "ROCm do not support SequenceLength yet."));
 #endif
   std::vector<int> SequenceLength;
   if (has_seq_length) {
@@ -464,7 +464,7 @@ void RnnGradKernel(const Context &dev_ctx,
           reserve_size));
     }
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "The padded input of rnn is supported by cudnnRNNBackwardDataEx, "
         "cudnnRNNBackwardWeightsEx, but it only works when the version "
         "of cudnn is larger than 7.2.1"));
