@@ -167,7 +167,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 enable=True, level="O2", dtype="float16", use_promote=True
             ):
                 cost = model(net)
-                sum_cost = paddle.mean(cost)
+                sum_cost = paddle.sum(cost)
             value_map = paddle.pir.IrMapping()
             test_program = train_program.clone(value_map)
             fetch_list = [value_map.look_up(sum_cost)]
