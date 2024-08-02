@@ -45,7 +45,7 @@ void ThreadSafeNameSet::Remove(const std::string& name) {
   PADDLE_ENFORCE_EQ(
       iter != set_.end(),
       true,
-      phi::errors::NotFound("Variable name %s does not exist", name));
+      common::errors::NotFound("Variable name %s does not exist", name));
   set_.erase(iter);
 }
 
@@ -285,7 +285,7 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const phi::Place& dst_place,
       Var().IsInitialized() && (Var().IsType<phi::DenseTensor>() ||
                                 Var().IsType<phi::SelectedRows>()),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Variable is not initialized or Variable's type is not "
           "LoDTensor or SelectedRows when getting numpy tensor"));
 
@@ -346,14 +346,14 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
   if (Var().IsInitialized()) {
     PADDLE_ENFORCE_EQ(DataType(),
                       src.DataType(),
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s, "
                           "Tensor Copy cannot be performed!",
                           Name(),
                           src.Name()));
     PADDLE_ENFORCE_EQ(Type(),
                       src.Type(),
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Tensor %s has different type with Tensor %s, Tensor "
                           "Copy cannot be performed!",
                           Name(),
@@ -372,14 +372,14 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
     if (dst_tensor && dst_tensor->IsInitialized()) {
       PADDLE_ENFORCE_EQ(dst_tensor->dims(),
                         src_tensor.dims(),
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Tensor %s has different dims with Tensor %s, "
                             "Tensor Copy cannot be performed!",
                             Name(),
                             src.Name()));
       PADDLE_ENFORCE_EQ(dst_tensor->lod(),
                         src_tensor.lod(),
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Tensor %s has different dims with Tensor %s, "
                             "Tensor Copy cannot be performed!",
                             Name(),
@@ -401,7 +401,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
     if (dst_tensor && dst_tensor->IsInitialized()) {
       PADDLE_ENFORCE_EQ(dst_tensor->dims(),
                         src_tensor.dims(),
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Tensor %s has different dims with Tensor %s, "
                             "Tensor Copy cannot be performed!",
                             Name(),
@@ -421,7 +421,7 @@ void VarBase::BumpInplaceVersion() {
   PADDLE_ENFORCE_EQ(
       Var().IsInitialized(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Tensor %s has not been initialized, please check if it has no data.",
           Name()));
   MutableVar()->BumpInplaceVersion();
@@ -434,13 +434,13 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
   if (Var().IsInitialized()) {
     PADDLE_ENFORCE_EQ(DataType(),
                       src.DataType(),
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s",
                           Name(),
                           src.Name()));
     PADDLE_ENFORCE_EQ(Type(),
                       src.Type(),
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Tensor %s has different type with Tensor %s, Tensor "
                           "ShareGradientDataWith cannot be performed!",
                           Name(),
@@ -451,7 +451,7 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
     auto& src_tensor = src.Var().Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Tensor %s has not been initialized", src.Name()));
     auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
     auto* var_ = MutableVar()->GetMutable<phi::DenseTensor>();
@@ -479,7 +479,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   auto* op_kernel = static_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
       op_kernel,
-      phi::errors::PermissionDenied(
+      common::errors::PermissionDenied(
           "Only support operator with kernel in Dygraph mode."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
@@ -576,7 +576,7 @@ void ClearNoNeedBufferInputs(OpBase* op) {
     PADDLE_ENFORCE_EQ(
         iter->second.IsGrad(),
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Only forward variable buffers can be clear, this may be a bug"));
 
     for (auto& each_var : *(iter->second.MutableVarList())) {
@@ -585,7 +585,7 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       auto& var = each_var->Var();
       PADDLE_ENFORCE_EQ(var.IsType<phi::DenseTensor>(),
                         true,
-                        phi::errors::PermissionDenied(
+                        common::errors::PermissionDenied(
                             "NoNeedBufferVars only support LoDTensor"));
       auto new_var = new VariableWrapper(each_var->Name());
       auto* new_tensor = new_var->MutableVar()->GetMutable<phi::DenseTensor>();

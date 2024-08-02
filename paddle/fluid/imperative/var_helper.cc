@@ -70,7 +70,7 @@ void InitializeVariable(paddle::framework::Variable *var,
   } else if (var_type == paddle::framework::proto::VarType::RAW) {
     // GetMutable will be called in operator
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "paddle::framework::Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
         "LOD_RANK_TABLE, PLACE_LIST, READER, RAW].",
@@ -87,7 +87,7 @@ const phi::Place &GetPlace(const std::shared_ptr<VarType> &var) {
   } else if (variable.IsType<phi::SelectedRows>()) {
     return variable.Get<phi::SelectedRows>().place();
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Variable type is %s, expect LoDTensor or SelectedRows.",
         paddle::framework::ToTypeName(var->Var().Type())));
   }
@@ -133,7 +133,7 @@ void SetType<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
       break;
     }
     default: {
-      PADDLE_THROW(phi::errors::NotFound(
+      PADDLE_THROW(common::errors::NotFound(
           "Cannot found var type: %s while running runtime InferVarType",
           paddle::framework::ToTypeName(type)));
     }
@@ -178,7 +178,7 @@ framework::proto::VarType::Type GetDataType<egr::EagerVariable>(
     return framework::TransToProtoVarType(
         var->Var().Get<phi::DenseTensor>().type());
   } else {
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "We only support phi::SelectedRows and phi::DenseTensor in "
         "eager mode, but we got %s here, please checkout your var type of "
         "tensor: %s",
@@ -202,7 +202,7 @@ phi::DataLayout GetDataLayout<egr::EagerVariable>(
   if (var->Var().IsType<phi::DenseTensor>()) {
     return var->Var().Get<phi::DenseTensor>().layout();
   } else {
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Only support phi::DenseTensor, but got %s here, please checkout "
         "var type of "
         "tensor: %s",
@@ -225,7 +225,7 @@ void SetDataLayout<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
   if (var->Var().IsType<phi::DenseTensor>()) {
     var->MutableVar()->GetMutable<phi::DenseTensor>()->set_layout(layout);
   } else {
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Only support phi::DenseTensor, but got %s here, please checkout "
         "var type of "
         "tensor: %s",
@@ -266,7 +266,7 @@ template <>
 std::shared_ptr<VariableWrapper> GetCachedValue(
     std::shared_ptr<egr::EagerVariable> var, const phi::KernelKey &key) {
   // TODO(jiabin): Support this later
-  //   PADDLE_THROW(phi::errors::Fatal("In eager mode program should not
+  //   PADDLE_THROW(common::errors::Fatal("In eager mode program should not
   //   reach this, support cache and remove this error check later, or this
   //   should not be supported."));
   //   VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key
@@ -290,7 +290,7 @@ void SetCachedValue<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> tensor,
     const phi::KernelKey &key,
     std::shared_ptr<egr::EagerVariable> res) {
-  //   PADDLE_THROW(phi::errors::Fatal("In eager mode program should not
+  //   PADDLE_THROW(common::errors::Fatal("In eager mode program should not
   //   reach this, support cache and remove this error check later, or this
   //   should not be supported."));
   //   VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key

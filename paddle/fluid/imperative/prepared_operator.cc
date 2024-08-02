@@ -368,7 +368,7 @@ PreparedOp PrepareImpl(
   PADDLE_ENFORCE_NE(
       kernels_iter,
       all_op_kernels.end(),
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "There are no kernels which are registered in the %s operator.",
           op.Type()));
 
@@ -435,9 +435,9 @@ PreparedOp PrepareImpl(
   PADDLE_ENFORCE_NE(
       kernel_iter,
       kernels.end(),
-      phi::errors::NotFound("Operator %s does not have kernel for %s.",
-                            op.Type(),
-                            KernelTypeToString(fluid_kernel_type)));
+      common::errors::NotFound("Operator %s does not have kernel for %s.",
+                               op.Type(),
+                               KernelTypeToString(fluid_kernel_type)));
 
   if (!phi::places_are_same_class(fluid_kernel_type.place_,
                                   dev_ctx->GetPlace())) {

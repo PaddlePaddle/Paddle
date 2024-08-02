@@ -30,7 +30,7 @@ int GetMicroId(const phi::DeviceContext& ctx, const framework::Scope* scope) {
   framework::Variable* var = scope->FindVar("microbatch_id");
   PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "the type of micro id should be LoDTensor."));
   auto micro_id = -1;
   auto* tensor = var->GetMutable<phi::DenseTensor>();
@@ -133,7 +133,7 @@ void HeterClient::SendAndRecvAsync(
     PADDLE_ENFORCE_NE(
         closure->cntl.Failed(),
         true,
-        phi::errors::Unimplemented(
+        common::errors::Unimplemented(
             "HeterClient::SendAndRecv meets brpc error, error message is %s",
             closure->cntl.ErrorText()));
     VLOG(4) << "call heter_worker success";
@@ -225,7 +225,7 @@ int HeterClient::Send(const phi::DeviceContext& ctx,
       PADDLE_ENFORCE_NE(
           closure->cntl.Failed(),
           true,
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "HeterClient::SendToSwitch meets brpc error, error message is %s",
               closure->cntl.ErrorText()));
     }

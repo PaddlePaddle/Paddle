@@ -92,10 +92,14 @@ llvm::Type *CinnTypeToLLVMType(cinn::common::Type type,
   } else if (type.is_string()) {
     ir_type = arr;
   } else if (type.is_customized_type()) {
-    CHECK(!type.customized_type().empty());
+    PADDLE_ENFORCE_EQ(!type.customized_type().empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Customized type name should not be empty."));
     ir_type = m->getTypeByName("struct." + type.customized_type());
   }
-  CHECK(ir_type) << "LLVM can't convert type: " << type;
+  PADDLE_ENFORCE_NOT_NULL(
+      ir_type, phi::errors::InvalidArgument("LLVM can't convert type."));
 
   // C array / vector.
   if (type.lanes() > 1) {

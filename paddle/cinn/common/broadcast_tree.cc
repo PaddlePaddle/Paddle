@@ -93,7 +93,11 @@ bool SearchBroadcastImpl(const symbol::Broadcast<symbol::DimExpr>& variadic,
                          const DoEachT& DoEach) {
   const auto& operands = *(variadic.operands);
   for (const auto& operand : operands) {
-    CHECK(!operand.isa<int64_t>());
+    PADDLE_ENFORCE_EQ(
+        !operand.isa<int64_t>(),
+        true,
+        phi::errors::InvalidArgument("Invalid operand type. Expected operand "
+                                     "not to be of type int64_t."));
     if (SearchBroadcast(operand, DoEach)) return true;
   }
   return DoEach(variadic);
@@ -255,8 +259,13 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
       }
     }
     if (lhs_symbol.has_value() && rhs_symbol.has_value()) {
-      CHECK(lhs_symbol != rhs_symbol)
-          << lhs_symbol.value() << " != " << rhs_symbol.value();
+      PADDLE_ENFORCE_NE(lhs_symbol,
+                        rhs_symbol,
+                        phi::errors::InvalidArgument(
+                            "Symbols should not be equal. "
+                            "Received lhs_symbol = %s, rhs_symbol = %s.",
+                            lhs_symbol.value(),
+                            rhs_symbol.value()));
       ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
                                                    rhs_symbol.value()};
       return true;
@@ -294,7 +303,10 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
                       2,
                       ::common::errors::InvalidArgument(
                           "The operands size should be greater than 2."));
-    CHECK(operands->at(0) != operands->at(1));
+    PADDLE_ENFORCE_NE(
+        operands->at(0),
+        operands->at(1),
+        phi::errors::InvalidArgument("Operands should not be equal. "));
     ret = symbol::Broadcastable<symbol::DimExpr>{operands->at(0),
                                                  operands->at(1)};
     return true;

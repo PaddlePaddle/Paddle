@@ -24,7 +24,7 @@ void RandomRoutingKernel(const Context& dev_ctx,
                          const DenseTensor& topk_value,
                          const DenseTensor& topk_idx,
                          DenseTensor* out) {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "Do not support expert count op for cpu kernel now."));
 }
 
