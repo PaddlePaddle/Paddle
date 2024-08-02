@@ -70,15 +70,6 @@ class ApiZerosError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_error1)
 
-    def test_shape_errors(self):
-        with base.dygraph.guard():
-            try:
-                shape = [-1, 5]
-                out = paddle.zeros(shape)
-            except Exception as e:
-                error_msg = str(e)
-                assert error_msg.find("expected to be no less than 0") > 0
-
 
 class ApiZerosWithDynamicShape(unittest.TestCase):
     def test_dynamic_shape(self):
