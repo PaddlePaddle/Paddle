@@ -27,8 +27,9 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/common/errors.h"
 #include "paddle/include/paddle_inference_api.h"
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace test {
