@@ -125,11 +125,10 @@ class FetchOp : public framework::OperatorBase {
       auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
       fetch_list->at(col) = src_item;
     } else {
-      auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
-      framework::LoDTensorArray tmp(src_item.size());
+      auto &src_item = fetch_var->Get<phi::TensorArray>();
+      phi::TensorArray tmp(src_item.size());
       fetch_list->at(col) = tmp;
-      auto &dst_item =
-          PADDLE_GET(framework::LoDTensorArray, fetch_list->at(col));
+      auto &dst_item = PADDLE_GET(phi::TensorArray, fetch_list->at(col));
       for (size_t i = 0; i < src_item.size(); ++i) {
         DataCopy(src_item[i], fetch_var_name, &dst_item[i]);
       }

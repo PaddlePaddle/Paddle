@@ -22,6 +22,7 @@
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace backends {
@@ -42,7 +43,11 @@ using runtime::cuda::CUDAModule;
  */
 template <typename T>
 CUdeviceptr CreateCudaMemory(const std::vector<int>& shape, const T* data) {
-  CHECK(!shape.empty()) << "Couldn't create CUDA memory for empty shape";
+  PADDLE_ENFORCE_EQ(!shape.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Couldn't create CUDA memory for empty shape. Please "
+                        "ensure the shape is not empty."));
   CUDA_CALL(cudaDeviceSynchronize());
 
   int numel = 1;

@@ -197,7 +197,8 @@ Json writeType(const pir::Type& type) {
     return AttrTypeWriter::WritePaddleOperatorType(type);
   } else {
     PADDLE_ENFORCE(
-        false, phi::errors::InvalidArgument("Unknown Type %s when write type"));
+        false,
+        common::errors::InvalidArgument("Unknown Type %s when write type"));
   }
   VLOG(8) << "Finish write Type ... ";
 
@@ -216,7 +217,8 @@ Json writeAttr(const pir::Attribute& attr) {
     return AttrTypeWriter::WritePaddleOperatorAttr(attr);
   } else {
     PADDLE_ENFORCE(
-        false, phi::errors::InvalidArgument("Unknown Attr %s when write attr"));
+        false,
+        common::errors::InvalidArgument("Unknown Attr %s when write attr"));
   }
 
   VLOG(8) << "Finish write attr ... ";
@@ -282,7 +284,7 @@ Json AttrTypeWriter::WriteBuiltInAttr(const pir::Attribute& attr) {
         attr.dyn_cast<pir::StrAttribute>());
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Attr %s when write Buitin dialect attr"));
   }
   return attr_json;
@@ -306,6 +308,94 @@ Json serializeTypeToJsonIncludeWriteType(const T& type) {
   content.push_back(type.lod());
 
   content.push_back(type.offset());
+  json_obj[DATA] = content;
+  return json_obj;
+}
+template <>
+Json serializeTypeToJsonIncludeWriteType<>(const pir::VectorType& type) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(type) + "." + type.name();
+  Json content = Json::array();
+  for (auto type_x : type.data()) {
+    content.push_back(writeType(type_x));
+  }
+  json_obj[DATA] = content;
+  return json_obj;
+}
+
+template <>
+Json serializeTypeToJsonIncludeWriteType<paddle::dialect::SparseCooTensorType>(
+    const paddle::dialect::SparseCooTensorType& type) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(type) + "." + type.name();
+  Json content = Json::array();
+  content.push_back(writeType(type.dtype()));
+
+  std::vector<int64_t> dims_;
+  for (auto i = 0; i < type.dims().size(); i++) {
+    dims_.push_back(type.dims().at(i));
+  }
+  content.push_back(dims_);
+
+  std::vector<int64_t> non_zero_dims_;
+  for (auto i = 0; i < type.non_zero_dims().size(); i++) {
+    non_zero_dims_.push_back(type.non_zero_dims().at(i));
+  }
+  content.push_back(non_zero_dims_);
+
+  content.push_back(DataLayoutToString(type.data_layout()));
+
+  content.push_back(serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
+      type.non_zero_indices()));
+
+  content.push_back(serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
+      type.non_zero_elements()));
+  json_obj[DATA] = content;
+  return json_obj;
+}
+
+template <>
+Json serializeTypeToJsonIncludeWriteType<paddle::dialect::SparseCsrTensorType>(
+    const paddle::dialect::SparseCsrTensorType& type) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(type) + "." + type.name();
+  Json content = Json::array();
+  content.push_back(writeType(type.dtype()));
+
+  std::vector<int64_t> dims_;
+  for (auto i = 0; i < type.dims().size(); i++) {
+    dims_.push_back(type.dims().at(i));
+  }
+  content.push_back(dims_);
+
+  content.push_back(DataLayoutToString(type.data_layout()));
+
+  content.push_back(serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
+      type.non_zero_crows()));
+  content.push_back(serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
+      type.non_zero_cols()));
+  content.push_back(serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
+      type.non_zero_elements()));
+  json_obj[DATA] = content;
+  return json_obj;
+}
+
+template <>
+Json serializeTypeToJsonIncludeWriteType<paddle::dialect::DenseTensorArrayType>(
+    const paddle::dialect::DenseTensorArrayType& type) {
+  Json json_obj = Json::object();
+  json_obj[ID] = COMPRESS_DIALECT_NAME(type) + "." + type.name();
+  Json content = Json::array();
+  content.push_back(writeType(type.dtype()));
+
+  std::vector<int64_t> dims_;
+  for (auto i = 0; i < type.dims().size(); i++) {
+    dims_.push_back(type.dims().at(i));
+  }
+  content.push_back(dims_);
+
+  content.push_back(DataLayoutToString(type.data_layout()));
+
   json_obj[DATA] = content;
   return json_obj;
 }
@@ -368,21 +458,15 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
     //  when use template func serializeTypeToJson
   } else if (type.isa<pir::VectorType>()) {
     VLOG(8) << "Write VectorType ... ";
-    auto type_ = type.dyn_cast<pir::VectorType>();
-    type_json[ID] = COMPRESS_DIALECT_NAME(type_) + "." + type_.name();
-    Json content = Json::array();
-    for (auto type_x : type_.data()) {
-      content.push_back(writeType(type_x));
-    }
-    type_json[DATA] = content;
-    return type_json;
+    return pir::serializeTypeToJsonIncludeWriteType<pir::VectorType>(
+        type.dyn_cast<pir::VectorType>());
   } else if (type.isa<pir::DenseTensorType>()) {
     VLOG(8) << "Write DenseTensorType ... ";
     return pir::serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
         type.dyn_cast<pir::DenseTensorType>());
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type when write builtin dialect type"));
   }
   return type_json;
@@ -412,7 +496,7 @@ Json AttrTypeWriter::WritePaddleOperatorAttr(const pir::Attribute& attr) {
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s when write paddle.operatordialect attr"));
   }
   return Json::object();
@@ -422,41 +506,28 @@ Json AttrTypeWriter::WritePaddleOperatorType(const pir::Type& type) {
   Json type_json = Json::object();
   if (type.isa<paddle::dialect::DenseTensorArrayType>()) {
     VLOG(8) << "Write DenseTensorArrayType ... ";
-    auto type_ = type.dyn_cast<paddle::dialect::DenseTensorArrayType>();
-
-    type_json[ID] = COMPRESS_DIALECT_NAME(type_) + "." + type_.name();
-    Json content = Json::array();
-    content.push_back(writeType(type_.dtype()));
-
-    std::vector<int64_t> dims_;
-    for (auto i = 0; i < type_.dims().size(); i++) {
-      dims_.push_back(type_.dims().at(i));
-    }
-    content.push_back(dims_);
-
-    content.push_back(DataLayoutToString(type_.data_layout()));
-
-    type_json[DATA] = content;
-    return type_json;
+    return pir::serializeTypeToJsonIncludeWriteType<
+        paddle::dialect::DenseTensorArrayType>(
+        type.dyn_cast<paddle::dialect::DenseTensorArrayType>());
   } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
     VLOG(8) << "Write SelectedRowsType ... ";
     return pir::serializeTypeToJsonIncludeWriteType<
         paddle::dialect::SelectedRowsType>(
         type.dyn_cast<paddle::dialect::SelectedRowsType>());
+  } else if (type.isa<paddle::dialect::SparseCooTensorType>()) {
+    VLOG(8) << "Write SparseCooTensorType ... ";
+    return pir::serializeTypeToJsonIncludeWriteType<
+        paddle::dialect::SparseCooTensorType>(
+        type.dyn_cast<paddle::dialect::SparseCooTensorType>());
+  } else if (type.isa<paddle::dialect::SparseCsrTensorType>()) {
+    VLOG(8) << "Write SparseCsrTensorType ... ";
+    return pir::serializeTypeToJsonIncludeWriteType<
+        paddle::dialect::SparseCsrTensorType>(
+        type.dyn_cast<paddle::dialect::SparseCsrTensorType>());
   } else {
-    // }else if (type.isa<paddle::dialect::SparseCooTensorType>()) {
-    //   VLOG(8) << "Write SparseCooTensorType ... ";
-    //   return pir::serializeTypeToJson<paddle::dialect::SparseCooTensorType>(
-    //       type.dyn_cast<paddle::dialect::SparseCooTensorType>());
-    // }else if(type.isa<paddle::dialect::SparseCsrTensorType>()){
-    //     VLOG(8) << "Write SparseCsrTensorType ... ";
-    //   return pir::serializeTypeToJson<paddle::dialect::SparseCsrTensorType>(
-    //       type.dyn_cast<paddle::dialect::SparseCsrTensorType>());
-    // }
     PADDLE_ENFORCE(false,
                    phi::errors::InvalidArgument(
                        "Unknown Type when write paddle.operatordialect type"));
-
     return Json::object();
   }
 }

@@ -227,7 +227,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver geqrf is not zero. [%d]", i, info_h));
   }
 }
@@ -281,7 +281,7 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver geqrf is not zero. [%d]", i, info_h));
   }
 }
@@ -337,7 +337,7 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver QR is not zero. [%d]", i, info_h));
   }
 }
@@ -393,7 +393,7 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver QR is not zero. [%d]", i, info_h));
   }
 }
