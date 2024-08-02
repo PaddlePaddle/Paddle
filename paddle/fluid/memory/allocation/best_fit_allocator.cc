@@ -18,7 +18,7 @@
 #include <mutex>
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 REGISTER_FILE_SYMBOLS(best_fit_allocator);
 

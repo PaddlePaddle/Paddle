@@ -45,7 +45,7 @@ static const phi::Place &GetVarPlace(const framework::Variable &src) {
     return src.Get<phi::SelectedRows>().value().place();
 #endif
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Cannot get unsupported variable type %s for imperative allreduce, "
         "only "
         "LoDTensor and SelectedRows are supported.",
@@ -61,7 +61,7 @@ static void AllReduce(const phi::DenseTensor &src,
   PADDLE_ENFORCE_EQ(
       phi::is_gpu_place(place),
       true,
-      phi::errors::Unimplemented(
+      common::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
   const void *src_ptr = src.data();
@@ -90,7 +90,7 @@ static void AllReduce(const phi::SelectedRows &src,
   PADDLE_ENFORCE_EQ(
       phi::is_gpu_place(place),
       true,
-      phi::errors::Unimplemented(
+      common::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
   auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
@@ -259,7 +259,7 @@ void AllReduce(const framework::Variable &src,
     }
 #endif
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
         "LoDTensor and SelectedRows are supported.",
         platform::demangle(framework::ToTypeName(src.Type()))));
