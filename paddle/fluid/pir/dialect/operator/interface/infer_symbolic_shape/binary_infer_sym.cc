@@ -565,30 +565,28 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
 
 bool MarginCrossEntropyOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &logits_shape =
+  const auto &logits_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  bool return_softmax =
-      op->attribute<pir::BoolAttribute>("return_softmax").data();
 
-  auto logits_dims = logits_shape.shape();
-  PADDLE_ENFORCE_GE(logits_dims.size(),
-                    1,
-                    common::errors::InvalidArgument(
-                        "The Input(logits)'s dimension must be at least 1."));
+  std::vector<symbol::DimExpr> logits_dims = logits_shape_or_data.shape();
 
-  if (return_softmax) {
-    std::vector<symbol::DimExpr> softmax_dims = logits_dims;
-    auto axis = logits_dims.size() - 1;
-    softmax_dims[axis] = 1;
-    infer_context->SetShapeOrDataForValue(
-        op->result(0), symbol::TensorShapeOrDataDimExprs(softmax_dims));
-  }
+  size_t logits_rank = logits_dims.size();
+  PADDLE_ENFORCE_GT(logits_rank,
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The Input(logits) dims size must be greater than 0, "
+                        "but received dims size is 0."));
+  auto axis = logits_rank - 1;
 
-  std::vector<symbol::DimExpr> loss_dims = logits_dims;
-  auto loss_axis = loss_dims.size() - 1;
-  loss_dims[loss_axis] = 1;
   infer_context->SetShapeOrDataForValue(
-      op->result(1), symbol::TensorShapeOrDataDimExprs(loss_dims));
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(logits_dims)});
+  logits_dims[axis] = symbol::DimExpr(1);
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(logits_dims)});
 
   return true;
 }
