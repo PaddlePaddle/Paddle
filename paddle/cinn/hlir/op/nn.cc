@@ -471,7 +471,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     PADDLE_ENFORCE_NE(
         vec_ast.empty(),
         true,
-        common::PreconditionNotMet("The vector 'vec_ast' must not be empty."));
+        common::PreconditionNotMet("The vector vec_ast must not be empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -675,46 +675,46 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule depthwise_conv2d_schedule(
-      [=](lang::Args args, lang::RetValue *ret) {
-        PADDLE_ENFORCE_EQ(args.empty(),
-                          false,
-                          ::common::errors::InvalidArgument(
-                              "The input argument of InjectiveSchedule is "
-                              "empty! Please check.\n"));
-        cinn::common::CINNValuePack arg_pack = args[0];
-        std::vector<Expr> vec_ast;
-        std::vector<Expr> vec_tensor;
-        for (int i = 0; i < arg_pack.size(); i++) {
-          if (arg_pack[i].is_expr()) {
-            Expr temp = arg_pack[i];
-            vec_ast.emplace_back(temp);
-          } else if (arg_pack[i].is_tensor()) {
-            Expr temp = arg_pack[i];
-            vec_tensor.emplace_back(temp);
-          }
-        }
-        PADDLE_ENFORCE_NE(vec_ast.empty(),
-                          true,
-                          ::common::errors::PreconditionNotMet(
-                              "The 'vec_ast' must not be empty."));
-        ir::ModuleExpr mod_expr(vec_ast);
-        ir::IRSchedule ir_sch(mod_expr);
-        ir_sch.MergeExprs();
-        target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                          [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-                          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                          [&](common::NVGPUArch) {
-                            pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
-                          },
-                          [&](common::HygonDCUArchHIP) {
-                            PADDLE_THROW(::common::errors::Unimplemented(
-                                "CINN old obsolete code!"));
-                          });
-        std::vector<cinn::common::CINNValue> res{
-            cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-        *ret = cinn::common::CINNValuePack{res};
-      });
+  framework::CINNSchedule depthwise_conv2d_schedule([=](lang::Args args,
+                                                        lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(args.empty(),
+                      false,
+                      ::common::errors::InvalidArgument(
+                          "The input argument of InjectiveSchedule is "
+                          "empty! Please check.\n"));
+    cinn::common::CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    std::vector<Expr> vec_tensor;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
+      } else if (arg_pack[i].is_tensor()) {
+        Expr temp = arg_pack[i];
+        vec_tensor.emplace_back(temp);
+      }
+    }
+    PADDLE_ENFORCE_NE(
+        vec_ast.empty(),
+        true,
+        ::common::errors::PreconditionNotMet("The vec_ast must not be empty."));
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::NVGPUArch) {
+                        pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
+                      },
+                      [&](common::HygonDCUArchHIP) {
+                        PADDLE_THROW(::common::errors::Unimplemented(
+                            "CINN old obsolete code!"));
+                      });
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   PADDLE_ENFORCE_GT(
@@ -1234,7 +1234,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
         vec_ast.empty(),
         true,
         ::common::errors::InvalidArgument(
-            "The vector 'vec_ast' is empty. A non-empty vector is expected."));
+            "The vector vec_ast is empty. A non-empty vector is expected."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -1325,7 +1325,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     PADDLE_ENFORCE_GT(vec_ast.size(),
                       0,
                       ::common::errors::InvalidArgument(
-                          "The vector 'vec_ast' is unexpectedly empty."));
+                          "The vector vec_ast is unexpectedly empty."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -1530,7 +1530,7 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
         vec_ast.empty(),
         true,
         ::common::errors::InvalidArgument(
-            "The vector 'vec_ast' is empty, which is not allowed."));
+            "The vector vec_ast is empty, which is not allowed."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
