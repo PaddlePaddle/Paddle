@@ -358,7 +358,7 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           ctx.Attr<int>("head_number"),
           1,
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "oneDNN matmul doesn't support multiple heads. Expected "
               "head_number=1. But received `head_number` is %d",
               ctx.Attr<int>("head_number")));
@@ -457,7 +457,7 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
             (*x_bd_dims)[i] == (*y_bd_dims)[i] || (*x_bd_dims)[i] == 1 ||
                 (*y_bd_dims)[i] == 1,
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "phi::DenseTensor dimensions are incorrect for broadcasting."
                 "Dimensions in X and Y must be same or equal to 1, but "
                 "received x_dim[%d]=%d and y_dims[%d]= %d",
@@ -480,7 +480,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           ctx.Attr<int>("head_number"),
           1,
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "oneDNN matmul doesn't support multiple heads. Expected "
               "head_number=1. But received `head_number` is %d",
               ctx.Attr<int>("head_number")));

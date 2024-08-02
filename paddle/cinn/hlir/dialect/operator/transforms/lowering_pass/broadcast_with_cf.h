@@ -13,33 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/common/broadcast_tree.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
-#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include <optional>
+#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
+using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
+using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 namespace cinn::dialect::ir::details {
-using cinn::common::BroadcastTree;
-
-class BroadcastTreeInfo;
-
-struct GroupDimExprInfo {
-  common::BroadcastLeaf all_value_dim_exprs;
-  std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
-};
-
-std::shared_ptr<BroadcastTree> ConstructBroadcastTree(
-    const common::BroadcastLeaf& leaves);
-
-bool NeedBroadcastWithCF(const OpLoweringGroupPtr& group);
-bool NeedBroadcastWithCF(const common::BroadcastLeaf& leaves);
-GroupDimExprInfo GetGroupDimExprInfo(const OpLoweringGroupPtr& group);
-
-pir::Operation* CompileBroadcastTreeToConditionBlock(
-    const OpLoweringGroupPtr& group,
-    const BroadcastTree& broadcast_tree,
-    const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
-    const std::vector<pir::Value>& group_inputs,
-    const std::vector<pir::Type>& output_types,
-    pir::PatternRewriter& rewriter  // NOLINT
-);
+std::optional<std::vector<OpLoweringGroupPtr>> GetBroadcastGroupListForOptimize(
+    const OpLoweringGroupPtr& group);
 }  // namespace cinn::dialect::ir::details

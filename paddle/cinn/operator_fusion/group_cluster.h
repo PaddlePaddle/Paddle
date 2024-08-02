@@ -32,7 +32,10 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
   std::function<pir::Operation*(fusion::PatternContent<T>)> func =
       [](const fusion::PatternContent<T>& content) { return content.op; };
   const auto& origin_ops = fusion::MapVector(contents, func);
-  CHECK_GT(origin_ops.size(), 0);
+  PADDLE_ENFORCE_GT(origin_ops.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The size of origin_ops should be greater than 0. "));
   VLOG(4) << "Start Cluster Ops!";
   VLOG(4) << "Input Group with size " << origin_ops.size() << " :\n"
           << fusion::OpsDebugStr(origin_ops);

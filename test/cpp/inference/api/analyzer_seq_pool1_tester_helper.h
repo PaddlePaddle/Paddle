@@ -65,18 +65,19 @@ struct DataRecord {
       PADDLE_ENFORCE_EQ(
           slot_data.size() % 11,
           0UL,
-          ::phi::errors::Fatal(
+          ::common::errors::Fatal(
               "line %d, %s should be divisible", num_lines, name));
       datasets[name].emplace_back(std::move(slot_data));
     }
     num_samples = num_lines / num_slots;
-    PADDLE_ENFORCE_EQ(num_samples * num_slots,
-                      static_cast<size_t>(num_lines),
-                      ::phi::errors::Fatal("num samples should be divisible"));
-    PADDLE_ENFORCE_GT(
-        num_samples,
-        0UL,
-        ::phi::errors::Fatal("The num of samples should be greater than 0."));
+    PADDLE_ENFORCE_EQ(
+        num_samples * num_slots,
+        static_cast<size_t>(num_lines),
+        ::common::errors::Fatal("num samples should be divisible"));
+    PADDLE_ENFORCE_GT(num_samples,
+                      0UL,
+                      ::common::errors::Fatal(
+                          "The num of samples should be greater than 0."));
   }
 
   void Prepare(int bs) {
@@ -84,7 +85,7 @@ struct DataRecord {
       PADDLE_ENFORCE_EQ(
           it->second.size(),
           num_samples,
-          ::phi::errors::Fatal("size of each slot should be equal"));
+          ::common::errors::Fatal("size of each slot should be equal"));
     }
     size_t num_batches = num_samples / bs;
     EXPECT_GT(num_batches, 0UL);
@@ -109,7 +110,7 @@ struct DataRecord {
           PADDLE_ENFORCE_EQ(
               len * 11,
               datas[id].size(),
-              ::phi::errors::Fatal(
+              ::common::errors::Fatal(
                   "%s %d size should be divisible", slot.name, id));
           lod[k + 1] = lod[k] + len;
         }

@@ -40,10 +40,10 @@ static PyMethodDef OpsAPI[] = {{
 
 void BindOpsAPI(pybind11::module *module) {{
   if (PyModule_AddFunctions(module->ptr(), OpsAPI) < 0) {{
-    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
+    PADDLE_THROW(common::errors::Fatal("Add C++ api to core.ops failed!"));
   }}
   if (PyModule_AddFunctions(module->ptr(), ManualOpsAPI) < 0) {{
-    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
+    PADDLE_THROW(common::errors::Fatal("Add C++ api to core.ops failed!"));
   }}
 }}
 """
@@ -93,6 +93,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'c_allreduce_avg_',
     'c_reduce_avg',
     'c_reduce_avg_',
+    'c_allreduce_avg',
+    'c_allreduce_max',
     'c_reducescatter',
     'c_allreduce_min_',
     'c_allreduce_prod_',
@@ -129,7 +131,6 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'self_dp_attention',
     'get_tensor_from_selected_rows',
     'print',
-    'number_count',
     'assign_value',
     'share_data_',
     'onednn_to_paddle_layout',
@@ -158,11 +159,9 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'all_reduce',
     'all_reduce_',
-    'assign_pos',
+    'anchor_generator',
     'batch_fc',
     'barrier',
-    'c_allreduce_avg',
-    'c_allreduce_max',
     'c_allreduce_min',
     'c_allreduce_prod',
     'c_embedding',
@@ -239,7 +238,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'nop_',
     'gemm_epilogue',
     'push_dense',
-    'limit_by_capacity',
     'global_scatter',
     'global_gather',
     'pull_box_sparse',

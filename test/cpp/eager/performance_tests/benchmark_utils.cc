@@ -183,7 +183,7 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
   VLOG(6) << "Tensor Value: " << t_ptr[0] << ", Expected Value: " << value;
   PADDLE_ENFORCE(
       t_ptr[0] == value,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "Detected numerical Error, Expected %f but got %f", value, t_ptr[0]));
 }
 
@@ -214,7 +214,7 @@ static void FluidCheckGradTensorValue(
   VLOG(6) << "Tensor Value: " << g_ptr[0] << ", Expected Value: " << value;
   PADDLE_ENFORCE(
       g_ptr[0] == value,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "Detected numerical Error, Expected %f but got %f", value, g_ptr[0]));
 }
 

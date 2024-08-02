@@ -17,7 +17,7 @@
 #include <utility>
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 REGISTER_FILE_SYMBOLS(aligned_allocator);
 namespace paddle::memory::allocation {
@@ -44,10 +44,10 @@ AlignedAllocator::AlignedAllocator(
   PADDLE_ENFORCE_GT(
       alignment_,
       0,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Alignment should be larger than 0, but got %d", alignment_));
   if (alignment_ & (alignment_ - 1)) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Alignment should be power of 2 (2^N), but got %d", alignment_));
   }
 }

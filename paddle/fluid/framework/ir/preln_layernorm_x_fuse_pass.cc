@@ -91,7 +91,7 @@ void PrelnLayerNormX::operator()(PDNode *x,
 int PrelnLayerNormXFusePass::ApplyLayerNormShiftPattern(
     ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_layernorm_x_fuse", graph);
 
   int found_subgraph_count = 0;
@@ -171,7 +171,7 @@ int PrelnLayerNormXFusePass::ApplyLayerNormShiftPattern(
 int PrelnLayerNormXFusePass::ApplyMergeLayerNormPattern(
     ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_layernorm_x_fuse", graph);
 
   int found_subgraph_count = 0;

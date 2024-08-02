@@ -94,23 +94,23 @@ int InstanceNormPlugin::enqueue(int batch_size,
                     cudaMemcpyHostToDevice,
                     stream);
   }
-  platform::dynload::cudnnSetTensor4dDescriptor(
+  phi::dynload::cudnnSetTensor4dDescriptor(
       b_desc_, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, n * c, 1, 1);
 
   cudnnDataType_t cudnn_dtype;
   nvinfer1::DataType data_type = getDataType();
   convert_trt2cudnn_dtype(data_type, &cudnn_dtype);
-  platform::dynload::cudnnSetTensor4dDescriptor(
+  phi::dynload::cudnnSetTensor4dDescriptor(
       x_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
-  platform::dynload::cudnnSetTensor4dDescriptor(
+  phi::dynload::cudnnSetTensor4dDescriptor(
       y_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
   float alpha = 1;
   float beta = 0;
-  platform::dynload::cudnnSetStream(handle_, stream);
+  phi::dynload::cudnnSetStream(handle_, stream);
 
   void const *x_ptr = inputs[0];
   void *y_ptr = outputs[0];
-  platform::dynload::cudnnBatchNormalizationForwardTraining(
+  phi::dynload::cudnnBatchNormalizationForwardTraining(
       handle_,
       CUDNN_BATCHNORM_SPATIAL_PERSISTENT,
       &alpha,
@@ -189,23 +189,23 @@ int InstanceNormPluginDynamic::enqueue(
                     cudaMemcpyHostToDevice,
                     stream);
   }
-  platform::dynload::cudnnSetTensor4dDescriptor(
+  phi::dynload::cudnnSetTensor4dDescriptor(
       b_desc_, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, n * c, 1, 1);
 
   cudnnDataType_t cudnn_dtype;
   auto data_type = inputDesc[0].type;
   convert_trt2cudnn_dtype(data_type, &cudnn_dtype);
-  platform::dynload::cudnnSetTensor4dDescriptor(
+  phi::dynload::cudnnSetTensor4dDescriptor(
       x_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
-  platform::dynload::cudnnSetTensor4dDescriptor(
+  phi::dynload::cudnnSetTensor4dDescriptor(
       y_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
   float alpha = 1;
   float beta = 0;
-  platform::dynload::cudnnSetStream(handle_, stream);
+  phi::dynload::cudnnSetStream(handle_, stream);
 
   void const *x_ptr = inputs[0];
   void *y_ptr = outputs[0];
-  platform::dynload::cudnnBatchNormalizationForwardTraining(
+  phi::dynload::cudnnBatchNormalizationForwardTraining(
       handle_,
       CUDNN_BATCHNORM_SPATIAL_PERSISTENT,
       &alpha,

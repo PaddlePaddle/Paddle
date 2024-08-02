@@ -32,8 +32,12 @@ Record ProcessALine(const std::string &line) {
   VLOG(3) << "process a line";
   std::vector<std::string> columns;
   split(line, '\t', &columns);
-  CHECK_EQ(columns.size(), 2UL)
-      << "data format error, should be <data>\t<shape>";
+  PADDLE_ENFORCE_EQ(columns.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "Data format error, should be <data>\\t<shape>. "
+                        "Received columns size: %d.",
+                        columns.size()));
 
   Record record;
   std::vector<std::string> data_strs;
