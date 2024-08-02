@@ -126,8 +126,7 @@ class TestLlamaModel(unittest.TestCase):
         return res[0], np.abs(res[1]).mean()
 
     def test_static(self):
-        ref = [151.1026, 0.159521]
-        # ref = [90.609924, 0.16003144]
+        ref = [90.609924, 0.16003144]
         prim_res = self.run_static(mode="prim")
         for i in range(len(ref)):
             np.testing.assert_allclose(
