@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -135,7 +135,7 @@ class TestAnyFallBack(TestFallBackBase):
         # the framework will check the argument type before decomposition.
         self.axis = [0]
 
-    def testFallback(self):
+    def test_fallback(self):
         static_func = paddle.jit.to_static(self.func_api, full_graph=True)
         dynamic_func = self.func_api
 
