@@ -40,8 +40,8 @@ class SendOpV2 : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const framework::Variable* var = ctx.InputVar("X");
-    if (var->IsType<framework::LoDTensorArray>()) {
-      auto t_arr = var->Get<framework::LoDTensorArray>();
+    if (var->IsType<phi::TensorArray>()) {
+      auto t_arr = var->Get<phi::TensorArray>();
       // NOTE(sandyhouse): Support an empty tensor array as Input.
       // And set the kernel type is float.
       if (t_arr.empty()) {

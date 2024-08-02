@@ -40,10 +40,10 @@ static PyMethodDef OpsAPI[] = {{
 
 void BindOpsAPI(pybind11::module *module) {{
   if (PyModule_AddFunctions(module->ptr(), OpsAPI) < 0) {{
-    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
+    PADDLE_THROW(common::errors::Fatal("Add C++ api to core.ops failed!"));
   }}
   if (PyModule_AddFunctions(module->ptr(), ManualOpsAPI) < 0) {{
-    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
+    PADDLE_THROW(common::errors::Fatal("Add C++ api to core.ops failed!"));
   }}
 }}
 """

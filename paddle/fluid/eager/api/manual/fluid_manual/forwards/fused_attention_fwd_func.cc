@@ -53,7 +53,7 @@ fused_attention_dygraph_function(
     const paddle::Tensor& Ln2Scale,
     const paddle::Tensor& Ln2Bias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "fused_attention dygraph",
       paddle::platform::TracerEventType::Operator,
       1);
@@ -323,7 +323,7 @@ fused_attention_dygraph_function(
   egr::EagerUtils::GetOutput(outs["Y"][0], &Y);
 
   {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "fused_attention node_creation",
         paddle::platform::TracerEventType::Operator,
         1);

@@ -51,7 +51,7 @@ void ComputeInterceptor::DecodeMsgVars(const InterceptorMessage& msg) {
   int64_t scope_id = msg.scope_idx();
   PADDLE_ENFORCE_LT(scope_id,
                     microbatch_scopes_.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Step out of range. There are %ld "
                         "microbatch_scopes, but receive scope index %ld",
                         microbatch_scopes_.size(),
@@ -75,7 +75,7 @@ void ComputeInterceptor::DecodeMsgVars(const InterceptorMessage& msg) {
 InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
   PADDLE_ENFORCE_LT(cur_scope_id_,
                     microbatch_scopes_.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Step out of range. There are %ld "
                         "microbatch_scopes, but receive scope index %ld",
                         microbatch_scopes_.size(),
@@ -95,7 +95,7 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
     auto* var = scope->FindVar(var_name);
     PADDLE_ENFORCE(
         var,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Variable %s not exists in scope %ld", var_name, cur_scope_id_));
     const auto& tensor = var->Get<phi::DenseTensor>();
     framework::SerializeToStream(ss, tensor, dev_ctx);
@@ -108,10 +108,10 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
 
 void ComputeInterceptor::IncreaseReady(int64_t up_id, int64_t scope_id) {
   auto it = in_readies_.find(up_id);
-  PADDLE_ENFORCE_NE(
-      it,
-      in_readies_.end(),
-      phi::errors::NotFound("Cannot find upstream=%lld in in_readies.", up_id));
+  PADDLE_ENFORCE_NE(it,
+                    in_readies_.end(),
+                    common::errors::NotFound(
+                        "Cannot find upstream=%lld in in_readies.", up_id));
 
   auto max_ready_size = it->second.first;
   const auto& ready_scope_map = it->second.second;
@@ -123,7 +123,7 @@ void ComputeInterceptor::IncreaseReady(int64_t up_id, int64_t scope_id) {
     PADDLE_ENFORCE_LE(
         ready_size,
         max_ready_size,
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "upstream=%lld ready_size must <= max_ready_size, but "
             "now ready_size=%lld, max_ready_size=%lld",
             up_id,
@@ -133,7 +133,7 @@ void ComputeInterceptor::IncreaseReady(int64_t up_id, int64_t scope_id) {
   PADDLE_ENFORCE_NE(
       it->second.second.find(scope_id),
       it->second.second.end(),
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "Interceptor %lld can not find scope %lld in upstream ready map",
           interceptor_id_,
           scope_id));
@@ -144,14 +144,14 @@ void ComputeInterceptor::DecreaseBuff(int64_t down_id) {
   auto it = out_buffs_.find(down_id);
   PADDLE_ENFORCE_NE(it,
                     out_buffs_.end(),
-                    phi::errors::NotFound(
+                    common::errors::NotFound(
                         "Cannot find downstream=%lld in out_buffs.", down_id));
   auto used_size = it->second.second;
   used_size -= 1;
   PADDLE_ENFORCE_GE(
       used_size,
       0,
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "downstream=%lld used buff size must >= 0, but now equal %lld",
           down_id,
           used_size));
@@ -245,12 +245,12 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
       PADDLE_ENFORCE_LE(
           used_size,
           max_buff_size,
-          phi::errors::OutOfRange("downstream=%lld used buff size must <= "
-                                  "max_buff_size, but now used_size=%lld, "
-                                  "max_buff_size=%lld",
-                                  down_id,
-                                  used_size,
-                                  max_buff_size));
+          common::errors::OutOfRange("downstream=%lld used buff size must <= "
+                                     "max_buff_size, but now used_size=%lld, "
+                                     "max_buff_size=%lld",
+                                     down_id,
+                                     used_size,
+                                     max_buff_size));
     }
     outs.second.second = used_size;
 
@@ -276,7 +276,7 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
     PADDLE_ENFORCE_GE(
         ready_size,
         0,
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "upstream=%lld ready_size must >= 0, but now got %lld",
             up_id,
             ready_size));
@@ -297,7 +297,7 @@ void ComputeInterceptor::RunOps() {
   if (!cores_.empty() || !node_->ops().empty()) {
     PADDLE_ENFORCE_LT(cur_scope_id_,
                       microbatch_scopes_.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Step out of range. There are %ld "
                           "microbatch_scopes, but receive scope index %ld",
                           microbatch_scopes_.size(),
@@ -335,8 +335,8 @@ void ComputeInterceptor::Run() {
       PADDLE_ENFORCE_NE(
           scope_id_to_finish_flag.find(cur_scope_id_),
           scope_id_to_finish_flag.end(),
-          phi::errors::NotFound("Can not find scope %ld in scope_id_to_finish",
-                                cur_scope_id_));
+          common::errors::NotFound(
+              "Can not find scope %ld in scope_id_to_finish", cur_scope_id_));
       scope_id_to_finish_flag.erase(cur_scope_id_);
       if (scope_id_to_finish_flag.empty()) {
         gen_step_to_scope_id_to_finish_flag_.erase(iter);

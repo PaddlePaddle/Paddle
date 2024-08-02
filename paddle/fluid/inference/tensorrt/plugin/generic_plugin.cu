@@ -611,6 +611,9 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
   phi_kernel_contexts_[data_type]->ClearInputOutput();
 
+  auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));
+  phi_kernel_contexts_[data_type]->SetDeviceContext(dev_ctx);
+
   for (int i = 0; i < getNbInputs(); i++) {
     if (inputs_data_type_[i] == GeneratePluginDataType::PLUGIN_OPTIONAL) {
       phi_kernel_contexts_[data_type]->EmplaceBackInput(nullptr);
