@@ -20,8 +20,7 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/tensor.h"
-
-#include "paddle/common/errors.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace cinn {
 namespace hlir {
