@@ -169,7 +169,7 @@ class ResNetUnit(Layer):
         stride: int = 1,
         momentum: float = 0.9,
         eps: float = 1e-5,
-        data_format: str = 'NHWC',
+        data_format: DataLayout2D = 'NHWC',
         act: str = 'relu',
         fuse_add: bool = False,
         has_shortcut: bool = False,
