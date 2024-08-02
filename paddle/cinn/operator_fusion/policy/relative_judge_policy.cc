@@ -190,7 +190,12 @@ pir::Operation* FindUserOp(const std::vector<pir::Operation*>& candidates,
       results.emplace_back(*iter);
     }
   }
-  CHECK(results.size() == 1) << "Zero Or Multi User Op Found In Candidates!";
+  PADDLE_ENFORCE_EQ(results.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Zero or multiple user operations found in candidates! "
+                        "Expected exactly one, but found %d.",
+                        results.size()));
   return results.front();
 }
 
@@ -298,8 +303,6 @@ std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
       GetValueUsage(downstream->sink_op()->result(0), 0),
       upstream_non_reduce_dims);
 
-  // CHECK(upstream_reduce_dims.size() == trivial_reorder_dims.size() ||
-  // trivial_reorder_dims.size() == 0);
   std::unordered_set<DimUsage, DimUsageHash> visited_dims;
   std::vector<size_t> result;
   for (auto& reduce_dim : upstream_reduce_dims) {
