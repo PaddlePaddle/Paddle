@@ -21,6 +21,7 @@
 #include "paddle/common/performance_statistician.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_resources.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #endif
@@ -78,7 +79,7 @@ class CinnJitInstruction::FnPtrImpl {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::gpuStream_t stream;
       phi::InitStream(&stream);
-      phi::GpuDeviceSync();
+      phi::backends::gpu::GpuDeviceSync();
 #endif
       if (is_gpu) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -108,7 +109,7 @@ class CinnJitInstruction::FnPtrImpl {
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      phi::GpuDeviceSync();
+      phi::backends::gpu::GpuDeviceSync();
 #endif
     } else {
       if (is_gpu) {
