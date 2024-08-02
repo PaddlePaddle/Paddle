@@ -136,8 +136,12 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
 
   framework::CINNCompute gather_nd_compute([=](lang::Args args,
                                                lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input arguments of " << op_name
-                         << " compute is empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of %s compute is empty! Please check.",
+            op_name));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(
         pack_args.size(),
@@ -145,9 +149,18 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
         phi::errors::InvalidArgument("2 input tensors for compute\n"));
     Expr x = pack_args[0];
     Expr index = pack_args[1];
-    CHECK(x.as_tensor());
-    CHECK(index.as_tensor());
-    CHECK(!output_shapes.empty());
+    PADDLE_ENFORCE_NOT_NULL(x.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "Required x must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        index.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required index must be a tensor. Please check."));
+    PADDLE_ENFORCE_NE(
+        output_shapes.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The output shape of gather_nd is empty! Please check."));
     auto tensor_x = x.as_tensor_ref();
     auto tensor_index = index.as_tensor_ref();
     VLOG(3) << "x shape: " << utils::Join(tensor_x->shape, ", ")
@@ -161,8 +174,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
     ir::Tensor out = GatherNd(tensor_x, tensor_index, tensor_name);
     std::vector<CINNValue> res;
     res.push_back(CINNValue(out));
-    CHECK(!out_type.empty())
-        << "Output type of " << op_name << " is empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        out_type.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The output type of gather_nd is empty! Please check."));
     *ret = CINNValuePack{res};
   });
 
@@ -229,8 +245,12 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
 
   framework::CINNCompute gather_nd_compute([=](lang::Args args,
                                                lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input arguments of " << op_name
-                         << " compute is empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of %s compute is empty! Please check.",
+            op_name));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(
         pack_args.size(),
@@ -238,9 +258,18 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
         phi::errors::InvalidArgument("2 input tensors for compute\n"));
     Expr x = pack_args[0];
     Expr index = pack_args[1];
-    CHECK(x.as_tensor());
-    CHECK(index.as_tensor());
-    CHECK(!output_shapes.empty());
+    PADDLE_ENFORCE_NOT_NULL(x.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "Required x must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        index.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required index must be a tensor. Please check."));
+    PADDLE_ENFORCE_NE(
+        output_shapes.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The output shape of gather_nd is empty! Please check."));
     auto tensor_x = x.as_tensor_ref();
     auto tensor_index = index.as_tensor_ref();
     VLOG(3) << "x shape: " << utils::Join(tensor_x->shape, ", ")
@@ -254,8 +283,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
     ir::Tensor out = GatherNdSymbolic(tensor_x, tensor_index, tensor_name);
     std::vector<CINNValue> res;
     res.push_back(CINNValue(out));
-    CHECK(!out_type.empty())
-        << "Output type of " << op_name << " is empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        out_type.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The output type of gather_nd is empty! Please check."));
     *ret = CINNValuePack{res};
   });
 
