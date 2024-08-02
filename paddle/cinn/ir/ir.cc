@@ -422,6 +422,7 @@ Expr Store::Make(Expr tensor,
   }
 
   if (offset == Expr(0)) {
+    std::cerr << "call new offset cal \n";
     node->offset = node->index();
   } else {
     node->offset = offset;
@@ -688,7 +689,12 @@ Var &Var::operator=(const _Var_ *x) {
   return *this;
 }
 
-Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
+Expr Load::Make(Expr tensor,
+                const std::vector<Expr> &origin_indices,
+                Expr offset,
+                const std::vector<Expr> &loop_vars,
+                const std::vector<Expr> &stride_info,
+                const std::vector<Expr> &view_shape) {
   CHECK(tensor->type().valid());
   const auto indices = utils::GetCompitableStoreLoadIndices(
       tensor.as_tensor_ref(), origin_indices);
@@ -702,6 +708,32 @@ Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
   node->tensor = tensor;
   node->indices = indices;
   node->set_type(node->type());
+
+  if (offset == Expr(0)) {
+    std::cerr << "call init \n";
+    node->offset = node->index();
+  } else {
+    node->offset = offset;
+  }
+
+  if (view_shape.size() == 0) {
+    node->loop_vars = node->indices;
+
+    if (tensor.as_tensor()) {
+      node->view_shape = tensor.as_tensor_ref()->shape;
+      Expr base = Expr(1);
+      for (int i = node->loop_vars.size() - 1; i >= 0; --i) {
+        node->stride_info.insert(node->stride_info.begin(), base);
+
+        base = ir::Mul::Make(base, (node->view_shape[i]));
+      }
+    }
+  } else {
+    node->loop_vars = loop_vars;
+    node->stride_info = stride_info;
+    node->view_shape = view_shape;
+  }
+
   return Expr(node);
 }
 

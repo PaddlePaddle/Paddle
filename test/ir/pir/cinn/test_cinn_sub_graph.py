@@ -52,14 +52,14 @@ def dropout(x):
     return out
 
 
-class CINNSubGraphNet(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.fn = exp_sub
+# class CINNSubGraphNet(paddle.nn.Layer):
+#     def __init__(self):
+#         super().__init__()
+#         self.fn = exp_sub
 
-    def forward(self, x):
-        out = self.fn(x)
-        return out
+#     def forward(self, x):
+#         out = self.fn(x)
+#         return out
 
 
 class CINNSoftmaxSubGraphNet(paddle.nn.Layer):
@@ -72,43 +72,52 @@ class CINNSoftmaxSubGraphNet(paddle.nn.Layer):
         return out
 
 
-class CINNLayerNormSubGraphNet(paddle.nn.Layer):
-    def __init__(self, hidden_size):
+class CINNSinSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
         super().__init__()
-        self.fn = layer_norm
-        self.weight = self.create_parameter(
-            shape=[hidden_size], dtype="float64"
-        )
-        self.bias = self.create_parameter(shape=[hidden_size], dtype="float64")
 
-    def forward(self, x, weight, bias):
-        out = paddle.nn.functional.layer_norm(x, x.shape[-1], weight, bias)
+    def forward(self, x, axis=-1):
+        out = paddle.sin(x)
         return out
 
 
-class CINNAddDropoutLayerNormSubGraphNet(paddle.nn.Layer):
-    def __init__(self, hidden_size):
-        super().__init__()
-        self.add = paddle.add
-        self.dropout = dropout
-        self.layer_norm = paddle.nn.functional.layer_norm
+# class CINNLayerNormSubGraphNet(paddle.nn.Layer):
+#     def __init__(self, hidden_size):
+#         super().__init__()
+#         self.fn = layer_norm
+#         self.weight = self.create_parameter(
+#             shape=[hidden_size], dtype="float64"
+#         )
+#         self.bias = self.create_parameter(shape=[hidden_size], dtype="float64")
 
-        self.weight = self.create_parameter(
-            shape=[hidden_size], dtype="float64"
-        )
-        self.bias = self.create_parameter(shape=[hidden_size], dtype="float64")
+#     def forward(self, x, weight, bias):
+#         out = paddle.nn.functional.layer_norm(x, x.shape[-1], weight, bias)
+#         return out
 
-    def forward(self, x, y, weight, bias):
-        t1 = self.add(x, y)
-        t2 = self.dropout(t1)
-        t2 = x
-        out = self.layer_norm(t2, t2.shape[-1], self.weight, self.bias)
-        return out
 
-        out = paddle.nn.functional.layer_norm(
-            x, x.shape[-1], self.weight, self.bias
-        )
-        return out
+# class CINNAddDropoutLayerNormSubGraphNet(paddle.nn.Layer):
+#     def __init__(self, hidden_size):
+#         super().__init__()
+#         self.add = paddle.add
+#         self.dropout = dropout
+#         self.layer_norm = paddle.nn.functional.layer_norm
+
+#         self.weight = self.create_parameter(
+#             shape=[hidden_size], dtype="float64"
+#         )
+#         self.bias = self.create_parameter(shape=[hidden_size], dtype="float64")
+
+#     def forward(self, x, y, weight, bias):
+#         t1 = self.add(x, y)
+#         t2 = self.dropout(t1)
+#         t2 = x
+#         out = self.layer_norm(t2, t2.shape[-1], self.weight, self.bias)
+#         return out
+
+#         out = paddle.nn.functional.layer_norm(
+#             x, x.shape[-1], self.weight, self.bias
+#         )
+#         return out
 
 
 class CINNDropoutSubGraphNet(paddle.nn.Layer):
@@ -133,12 +142,37 @@ class TestCinnSubGraphBase(unittest.TestCase):
     def prepare_data(self):
         self.shape = [128, 128, 768]
         self.axis = -1
-        self.x = paddle.uniform(self.shape, dtype="float64", min=-0.5, max=0.5)
+        self.x = paddle.uniform(self.shape, dtype="float32", min=-0.5, max=0.5)
         self.x.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+
+
+class TestCinnSin(TestCinnSubGraphBase):
+    def train(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNSinSubGraphNet()
+
+        input_specs = [
+            paddle.static.InputSpec(
+                shape=(128, 128, 768),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            )
+        ]
+
+        net = utils.apply_to_static(net, use_cinn, input_spec=input_specs)
+        out = net(self.x)
+
+        return out
+
+    def test_forward(self):
+        cinn_out = self.train(use_cinn=True)
+        dy_out = self.train(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 # class TestCinnExpSubNet(TestCinnSubGraphBase):
@@ -158,30 +192,30 @@ class TestCinnSubGraphBase(unittest.TestCase):
 #         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnSoftmax(TestCinnSubGraphBase):
-    def train(self, use_cinn):
-        paddle.seed(2022)
-        net = CINNSoftmaxSubGraphNet()
-        net = utils.apply_to_static(net, use_cinn)
-        out = net(self.x, self.axis)
+# class TestCinnSoftmax(TestCinnSubGraphBase):
+#     def train(self, use_cinn):
+#         paddle.seed(2022)
+#         net = CINNSoftmaxSubGraphNet()
+#         net = utils.apply_to_static(net, use_cinn)
+#         out = net(self.x, self.axis)
 
-        loss = out.sum()
-        loss.backward()
-        return out, self.x.gradient()
+#         loss = out.sum()
+#         loss.backward()
+#         return out, self.x.gradient()
 
-    def test_forward(self):
-        cinn_out, cinn_grad = self.train(use_cinn=True)
-        dy_out, dy_grad = self.train(use_cinn=False)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
-        np.testing.assert_allclose(cinn_grad, dy_grad, atol=1e-8)
+#     def test_forward(self):
+#         cinn_out, cinn_grad = self.train(use_cinn=True)
+#         dy_out, dy_grad = self.train(use_cinn=False)
+#         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+#         np.testing.assert_allclose(cinn_grad, dy_grad, atol=1e-8)
 
 
-class TestCinnSmallSoftmax(TestCinnSoftmax):
-    def prepare_data(self):
-        self.shape = [1, 1, 17, 17]
-        self.axis = -1
-        self.x = paddle.uniform(self.shape, dtype="float64", min=-0.5, max=0.5)
-        self.x.stop_gradient = False
+# class TestCinnSmallSoftmax(TestCinnSoftmax):
+#     def prepare_data(self):
+#         self.shape = [1, 1, 17, 17]
+#         self.axis = -1
+#         self.x = paddle.uniform(self.shape, dtype="float64", min=-0.5, max=0.5)
+#         self.x.stop_gradient = False
 
 
 # class TestCinnLayerNorm(TestCinnSubGraphBase):

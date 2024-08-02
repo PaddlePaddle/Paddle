@@ -495,7 +495,7 @@ void CodeGenCUDA_Dev::Visit(const ir::Load *op) {
   // overload this visit function to especially deal with the case when it
   // accesses element at a cuda built-in vector, others still resolve to
   // CodeGenC
-  if (!PrintBuiltinVectorAccess(op, op->index(), false)) {
+  if (!PrintBuiltinVectorAccess(op, op->offset, false)) {
     CodeGenC::Visit(op);
   }
 }

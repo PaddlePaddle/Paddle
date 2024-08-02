@@ -94,13 +94,10 @@ void ScheduleBase::UpdateMergeOffset(const std::vector<int>& merge_index,
     void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 
    private:
-    void Visit(const ir::Store* op, Expr* expr) override {
-      auto* node = expr->As<ir::Store>();
-      auto* tensor = node->tensor.as_tensor();
-
-      auto& view_shape = node->view_shape;
-
-      if (!IsContigous(merge_index_, node->stride_info, node->view_shape)) {
+    void UpdateInnerInfo(std::vector<Expr>* loop_vars,
+                         std::vector<Expr>* view_shape,
+                         std::vector<Expr>* stride_info) {
+      if (!IsContigous(merge_index_, *stride_info, *view_shape)) {
         PADDLE_THROW(::common::errors::Unimplemented(
             "Only support contigous merge yet"));
       }
@@ -108,21 +105,21 @@ void ScheduleBase::UpdateMergeOffset(const std::vector<int>& merge_index,
       std::set<int> merge_set(merge_index_.begin(), merge_index_.end());
 
       Expr new_dim = Expr(1);
-      for (int i = 0; i < view_shape.size(); ++i) {
+      for (int i = 0; i < view_shape->size(); ++i) {
         if (merge_set.count(i)) {
-          new_dim = new_dim * view_shape[i];
+          new_dim = new_dim * (*view_shape)[i];
         }
       }
       new_dim = cinn::common::AutoSimplify(new_dim);
 
       // update loop_var, stride_info, view_shape
-      Expr update_stride = node->stride_info[merge_index_.back()];
+      Expr update_stride = (*stride_info)[merge_index_.back()];
 
       bool insert_flags = false;
       std::vector<Expr> new_shape;
       std::vector<Expr> new_loop_var;
       std::vector<Expr> new_stride_info;
-      for (int i = 0; i < view_shape.size(); ++i) {
+      for (int i = 0; i < view_shape->size(); ++i) {
         if (merge_set.count(i)) {
           if (!insert_flags) {
             new_shape.push_back(new_dim);
@@ -131,24 +128,48 @@ void ScheduleBase::UpdateMergeOffset(const std::vector<int>& merge_index,
           }
           insert_flags = true;
         } else {
-          new_shape.push_back(view_shape[i]);
-          new_loop_var.push_back(node->loop_vars[i]);
-          new_stride_info.push_back(node->stride_info[i]);
+          new_shape.push_back((*view_shape)[i]);
+          new_loop_var.push_back((*loop_vars)[i]);
+          new_stride_info.push_back((*stride_info)[i]);
         }
       }
 
-      auto new_offset =
-          cinn::common::IndiceToAbsOffset(new_shape, new_loop_var);
+      view_shape->swap(new_shape);
+      loop_vars->swap(new_loop_var);
+      stride_info->swap(new_stride_info);
+    }
 
-      std::cerr << "new offset \t" << new_offset << std::endl;
-      // cinn::ir::ReplaceExpr( &(node->offset), {base_expr_}, {new_offset_});
-      //  node->offset = new_offset_;
-      std::cerr << "update offset !!! " << node->offset << std::endl;
+    void Visit(const ir::Store* op, Expr* expr) override {
+      auto* node = expr->As<ir::Store>();
+      auto* tensor = node->tensor.as_tensor();
 
-      node->view_shape = new_shape;
-      node->loop_vars = new_loop_var;
-      node->stride_info = new_stride_info;
-      node->offset = new_offset;
+      UpdateInnerInfo(
+          &(node->loop_vars), &(node->view_shape), &(node->stride_info));
+
+      std::cerr << "before merge info !! " << node->offset << std::endl;
+
+      node->offset =
+          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
+
+      std::cerr << "after merge info !! " << node->offset << std::endl;
+
+      ir::IRMutator<>::Visit(op, expr);
+    }
+
+    void Visit(const ir::Load* op, Expr* expr) override {
+      auto* node = expr->As<ir::Load>();
+      auto* tensor = node->tensor.as_tensor();
+
+      std::cerr << "before merge load info !! " << node->offset << std::endl;
+      UpdateInnerInfo(
+          &(node->loop_vars), &(node->view_shape), &(node->stride_info));
+
+      node->offset =
+          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
+
+      std::cerr << "after merge load info !! " << node->offset << std::endl;
+
+      ir::IRMutator<>::Visit(op, expr);
     }
 
    private:
@@ -179,18 +200,16 @@ void ScheduleBase::UpdateSplitOffset(const Var& base_loop_var,
     void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 
    private:
-    void Visit(const ir::Store* op, Expr* expr) override {
-      auto* node = expr->As<ir::Store>();
-      auto* tensor = node->tensor.as_tensor();
-
-      std::cerr << "before replace " << node->offset << std::endl;
+    void UpdateInnerInfo(std::vector<Expr>* loop_vars,
+                         std::vector<Expr>* view_shape,
+                         std::vector<Expr>* stride_info) {
       Expr update_loop_var = Expr(0);
 
       std::cerr << "base loop var name " << base_loop_var_->name << std::endl;
 
       int split_index = -1;
-      for (int i = 0; i < node->loop_vars.size(); ++i) {
-        if (node->loop_vars[i].As<ir::_Var_>()->name == base_loop_var_->name) {
+      for (int i = 0; i < loop_vars->size(); ++i) {
+        if ((*loop_vars)[i].As<ir::_Var_>()->name == base_loop_var_->name) {
           split_index = i;
           break;
         }
@@ -206,7 +225,7 @@ void ScheduleBase::UpdateSplitOffset(const Var& base_loop_var,
       std::vector<Expr> new_stride_info;
 
       std::vector<Expr> split_stride;
-      Expr base = node->stride_info[split_index];
+      Expr base = (*stride_info)[split_index];
 
       for (int i = split_factors_.size() - 1; i >= 0; --i) {
         split_stride.insert(split_stride.begin(), base);
@@ -214,7 +233,7 @@ void ScheduleBase::UpdateSplitOffset(const Var& base_loop_var,
         base = base * Expr(split_factors_[i]);
       }
 
-      for (int i = 0; i < node->view_shape.size(); ++i) {
+      for (int i = 0; i < view_shape->size(); ++i) {
         if (i == split_index) {
           for (size_t j = 0; j < new_loop_vars_.size(); ++j) {
             new_shape.push_back(Expr(split_factors_[j]));
@@ -223,25 +242,49 @@ void ScheduleBase::UpdateSplitOffset(const Var& base_loop_var,
             new_stride_info.push_back(split_stride[j]);
           }
         } else {
-          new_shape.push_back(node->view_shape[i]);
-          new_loop_var.push_back(node->loop_vars[i]);
-          new_stride_info.push_back(node->stride_info[i]);
+          new_shape.push_back((*view_shape)[i]);
+          new_loop_var.push_back((*loop_vars)[i]);
+          new_stride_info.push_back((*stride_info)[i]);
         }
       }
 
-      auto new_offset =
-          cinn::common::IndiceToAbsOffset(new_shape, new_loop_var);
+      view_shape->swap(new_shape);
+      loop_vars->swap(new_loop_var);
+      stride_info->swap(new_stride_info);
+    }
 
-      std::cerr << "new cal offset " << new_offset << std::endl;
+    void Visit(const ir::Store* op, Expr* expr) override {
+      auto* node = expr->As<ir::Store>();
+      auto* tensor = node->tensor.as_tensor();
 
-      node->offset = new_offset;
+      UpdateInnerInfo(
+          &(node->loop_vars), &(node->view_shape), &(node->stride_info));
 
-      node->view_shape = new_shape;
-      node->loop_vars = new_loop_var;
-      node->stride_info = new_stride_info;
-      std::cerr << "after replace " << node->offset << std::endl;
+      node->offset =
+          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
 
-      std::cerr << "node " << node->index() << std::endl;
+      std::cerr << "after split schedule !!!!!!!!  " << node->offset
+                << std::endl;
+
+      ir::IRMutator<>::Visit(op, expr);
+    }
+
+    void Visit(const ir::Load* op, Expr* expr) override {
+      auto* node = expr->As<ir::Load>();
+      auto* tensor = node->tensor.as_tensor();
+
+      UpdateInnerInfo(
+          &(node->loop_vars), &(node->view_shape), &(node->stride_info));
+
+      std::cerr << "before load split schedule !!!!!!!!  " << node->offset
+                << std::endl;
+      node->offset =
+          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
+
+      std::cerr << "after load split schedule !!!!!!!!" << node->offset
+                << std::endl;
+
+      ir::IRMutator<>::Visit(op, expr);
     }
 
    private:
@@ -269,10 +312,9 @@ void ScheduleBase::UpdateReorderOffset(
     void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 
    private:
-    void Visit(const ir::Store* op, Expr* expr) override {
-      auto* node = expr->As<ir::Store>();
-      auto* tensor = node->tensor.as_tensor();
-
+    void UpdateInnerInfo(std::vector<Expr>* loop_vars,
+                         std::vector<Expr>* view_shape,
+                         std::vector<Expr>* stride_info) {
       std::map<std::string, int> reorder_map;
 
       std::set<std::string> var_set;
@@ -282,9 +324,9 @@ void ScheduleBase::UpdateReorderOffset(
 
       int split_index = -1;
       std::vector<int> pos_idx;
-      for (int i = 0; i < node->loop_vars.size(); ++i) {
-        if (var_set.count(node->loop_vars[i].As<ir::_Var_>()->name)) {
-          reorder_map[node->loop_vars[i].As<ir::_Var_>()->name] = i;
+      for (int i = 0; i < loop_vars->size(); ++i) {
+        if (var_set.count((*loop_vars)[i].As<ir::_Var_>()->name)) {
+          reorder_map[(*loop_vars)[i].As<ir::_Var_>()->name] = i;
           pos_idx.push_back(i);
         }
       }
@@ -294,15 +336,15 @@ void ScheduleBase::UpdateReorderOffset(
                         ::common::errors::PreconditionNotMet(
                             "all reorder var MUST in loop vars"));
 
-      std::vector<Expr> new_shape = node->view_shape;
-      std::vector<Expr> new_loop_var = node->loop_vars;
-      std::vector<Expr> new_stride_info = node->stride_info;
+      std::vector<Expr> new_shape = *view_shape;
+      std::vector<Expr> new_loop_var = *loop_vars;
+      std::vector<Expr> new_stride_info = *stride_info;
 
       for (size_t i = 0; i < reorder_var_list_.size(); ++i) {
         int val_idx = reorder_map.at(reorder_var_list_[i]->name);
-        new_loop_var[pos_idx[i]] = node->loop_vars[val_idx];
-        new_shape[pos_idx[i]] = node->view_shape[val_idx];
-        new_stride_info[pos_idx[i]] = node->stride_info[val_idx];
+        new_loop_var[pos_idx[i]] = (*loop_vars)[val_idx];
+        new_shape[pos_idx[i]] = (*view_shape)[val_idx];
+        new_stride_info[pos_idx[i]] = (*stride_info)[val_idx];
       }
 
       auto new_offset =
@@ -310,14 +352,43 @@ void ScheduleBase::UpdateReorderOffset(
 
       std::cerr << "new cal offset " << new_offset << std::endl;
 
-      node->offset = new_offset;
+      view_shape->swap(new_shape);
+      loop_vars->swap(new_loop_var);
+      stride_info->swap(new_stride_info);
+    }
 
-      node->view_shape = new_shape;
-      node->loop_vars = new_loop_var;
-      node->stride_info = new_stride_info;
+    void Visit(const ir::Store* op, Expr* expr) override {
+      auto* node = expr->As<ir::Store>();
+      auto* tensor = node->tensor.as_tensor();
+
+      UpdateInnerInfo(
+          &(node->loop_vars), &(node->view_shape), &(node->stride_info));
+
       std::cerr << "after replace " << node->offset << std::endl;
 
+      node->offset =
+          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
+
+      ir::IRMutator<>::Visit(op, expr);
+
       std::cerr << "node " << node->index() << std::endl;
+    }
+
+    void Visit(const ir::Load* op, Expr* expr) override {
+      auto* node = expr->As<ir::Load>();
+      auto* tensor = node->tensor.as_tensor();
+
+      UpdateInnerInfo(
+          &(node->loop_vars), &(node->view_shape), &(node->stride_info));
+
+      std::cerr << "after replace " << node->offset << std::endl;
+
+      node->offset =
+          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
+
+      std::cerr << "node " << node->index() << std::endl;
+
+      ir::IRMutator<>::Visit(op, expr);
     }
 
    private:

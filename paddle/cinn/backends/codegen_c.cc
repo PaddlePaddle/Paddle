@@ -451,7 +451,8 @@ void CodeGenC::Visit(const ir::_Var_ *op) { str_ += op->name; }
 void CodeGenC::Visit(const ir::Load *op) {
   ir::Expr offset = [&] {
     if (load_to_offset_.count(op) == 0) {
-      load_to_offset_[op] = op->index();
+      // load_to_offset_[op] = op->index();
+      load_to_offset_[op] = op->offset;
     }
     return load_to_offset_.at(op);
   }();
@@ -490,7 +491,8 @@ void CodeGenC::Visit(const ir::Store *op) {
   CHECK(op->is_addr_tensor());
   ir::Expr offset = [&] {
     if (store_to_offset_.count(op) == 0) {
-      store_to_offset_[op] = op->index();
+      // store_to_offset_[op] = op->index();
+      store_to_offset_[op] = op->offset;
     }
     return store_to_offset_.at(op);
   }();

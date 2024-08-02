@@ -484,7 +484,12 @@ class Vectorizer : public IRMutator<Expr *> {
     for (auto &idx : node->indices) {
       new_indices.push_back(Widen(idx, lanes));
     }
-    *expr = Load::Make(node->tensor, new_indices);
+    *expr = Load::Make(node->tensor,
+                       new_indices,
+                       node->offset,
+                       node->loop_vars,
+                       node->stride_info,
+                       node->view_shape);
   }
 
   void Visit(const Store *op, Expr *expr) override {
@@ -516,7 +521,13 @@ class Vectorizer : public IRMutator<Expr *> {
     for (auto &idx : node->indices) {
       new_indices.push_back(Widen(idx, lanes));
     }
-    *expr = Store::Make(node->tensor, node->value, new_indices);
+    *expr = Store::Make(node->tensor,
+                        node->value,
+                        new_indices,
+                        node->offset,
+                        node->loop_vars,
+                        node->stride_info,
+                        node->view_shape);
   }
 
   void Visit(const Call *op, Expr *expr) override {
@@ -697,7 +708,12 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     }
     if (!is_changed) return;
 
-    *expr = Load::Make(node->tensor, node->indices);
+    *expr = Load::Make(node->tensor,
+                       node->indices,
+                       node->offset,
+                       node->loop_vars,
+                       node->stride_info,
+                       node->view_shape);
   }
 
   void Visit(const Store *op, Expr *expr) override {
@@ -718,7 +734,13 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     }
     if (!is_changed) return;
 
-    *expr = Store::Make(node->tensor, node->value, node->indices);
+    *expr = Store::Make(node->tensor,
+                        node->value,
+                        node->indices,
+                        node->offset,
+                        node->loop_vars,
+                        node->stride_info,
+                        node->view_shape);
   }
 
   void Visit(const Call *op, Expr *expr) override {

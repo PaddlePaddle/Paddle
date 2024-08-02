@@ -101,6 +101,8 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
     for (auto& idx : node->indices) ir::IRMutator<>::Visit(&idx, &idx);
     do_replace_ = false;
     ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
+
+    ir::IRMutator<>::Visit(&node->offset, &node->offset);
   }
 
  private:
