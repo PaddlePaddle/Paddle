@@ -67,7 +67,7 @@ def main(args):
     pr_id = os.getenv('GIT_PR_ID')
     if not pr_id:
         print('PREC No PR ID')
-        sys.exit(0)
+        sys.exit(1)
     response = requests.get(
         f'https://api.github.com/repos/PaddlePaddle/Paddle/pulls/{pr_id}',
         headers={'Accept': 'application/vnd.github.v3+json'},
