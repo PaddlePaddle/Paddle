@@ -17,15 +17,23 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import nn
+from paddle import Tensor, nn
+from paddle.base.framework import Variable
 from paddle.jit.dy2static.program_translator import unwrap_decorators
+from paddle.nn.layer import Layer
+from paddle.static import Program
 
 from .static_flops import Table, static_flops
 
 __all__ = []
 
 
-def flops(net, input_size, custom_ops=None, print_detail=False):
+def flops(
+    net: Layer | Program,
+    input_size: list[int],
+    custom_ops: dict[type[Layer] : callable] | None = None,
+    print_detail=False,
+) -> int:
     """Print a table about the FLOPs of network.
 
     Args:
@@ -124,7 +132,7 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
         return -1
 
 
-def count_convNd(m, x, y):
+def count_convNd(m: Tensor, x: Tensor, y: Tensor) -> None:
     x = x[0]
     kernel_ops = np.prod(m.weight.shape[2:])
     bias_ops = 1 if m.bias is not None else 0
@@ -134,13 +142,13 @@ def count_convNd(m, x, y):
     m.total_ops += abs(int(total_ops))
 
 
-def count_leaky_relu(m, x, y):
+def count_leaky_relu(m: Tensor, x: Tensor, y: Tensor) -> None:
     x = x[0]
     nelements = x.numel()
     m.total_ops += int(nelements)
 
 
-def count_bn(m, x, y):
+def count_bn(m: Tensor, x: Tensor, y: Tensor) -> None:
     x = x[0]
     nelements = x.numel()
     if not m.training:
@@ -148,14 +156,14 @@ def count_bn(m, x, y):
     m.total_ops += abs(int(total_ops))
 
 
-def count_linear(m, x, y):
+def count_linear(m: Tensor, x: Tensor, y: Tensor) -> None:
     total_mul = m.weight.shape[0]
     num_elements = y.numel()
     total_ops = total_mul * num_elements
     m.total_ops += abs(int(total_ops))
 
 
-def count_avgpool(m, x, y):
+def count_avgpool(m: Tensor, x: Tensor, y: Tensor) -> None:
     kernel_ops = 1
     num_elements = y.numel()
     total_ops = kernel_ops * num_elements
@@ -163,7 +171,7 @@ def count_avgpool(m, x, y):
     m.total_ops += int(total_ops)
 
 
-def count_adap_avgpool(m, x, y):
+def count_adap_avgpool(m: Tensor, x: Tensor, y: Tensor) -> None:
     kernel = np.array(x[0].shape[2:]) // np.array(y.shape[2:])
     total_add = np.prod(kernel)
     total_div = 1
@@ -173,18 +181,18 @@ def count_adap_avgpool(m, x, y):
     m.total_ops += abs(int(total_ops))
 
 
-def count_zero_ops(m, x, y):
+def count_zero_ops(m: Tensor, x: Tensor, y: Tensor) -> None:
     m.total_ops += 0
 
 
-def count_parameters(m, x, y):
+def count_parameters(m: Tensor, x: Tensor, y: Tensor) -> None:
     total_params = 0
     for p in m.parameters():
         total_params += p.numel()
     m.total_params[0] = abs(int(total_params))
 
 
-def count_io_info(m, x, y):
+def count_io_info(m: Tensor, x: Tensor, y: Tensor) -> None:
     m.register_buffer('input_shape', paddle.to_tensor(x[0].shape))
     if isinstance(y, (list, tuple)):
         m.register_buffer('output_shape', paddle.to_tensor(y[0].shape))
@@ -215,7 +223,12 @@ register_hooks = {
 }
 
 
-def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
+def dynamic_flops(
+    model: Layer,
+    inputs: Variable,
+    custom_ops: dict[type, callable] = None,
+    print_detail: bool = False,
+) -> int:
     handler_collection = []
     types_collection = set()
     if custom_ops is None:

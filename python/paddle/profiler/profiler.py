@@ -214,7 +214,7 @@ def _default_state_scheduler(step: int) -> ProfilerState:
 
 
 def export_chrome_tracing(
-    dir_name: str, worker_name: Optional[str] = None
+    dir_name: str, worker_name: str | None = None
 ) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to chrome tracing format file.
@@ -266,9 +266,7 @@ def export_chrome_tracing(
     return handle_fn
 
 
-def export_protobuf(
-    dir_name: str, worker_name: Optional[str] = None
-) -> Callable:
+def export_protobuf(dir_name: str, worker_name: str | None = None) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to protobuf file.
     The output file will be saved in directory ``dir_name``, and file name will be set as ``worker_name``.
@@ -477,9 +475,9 @@ class Profiler:
     def __init__(
         self,
         *,
-        targets: Optional[Iterable[ProfilerTarget]] = None,
+        targets: Iterable[ProfilerTarget] | None = None,
         scheduler: Union[Callable[[int], ProfilerState], tuple, None] = None,
-        on_trace_ready: Optional[Callable[..., Any]] = None,
+        on_trace_ready: Callable[..., Any] | None = None,
         record_shapes: Optional[bool] = False,
         profile_memory: Optional[bool] = False,
         timer_only: Optional[bool] = False,
@@ -660,7 +658,7 @@ class Profiler:
                 self.on_trace_ready(self)
         utils._is_profiler_used = False
 
-    def step(self, num_samples: Optional[int] = None) -> None:
+    def step(self, num_samples: int | None = None) -> None:
         r"""
         Signals the profiler that the next profiling step has started.
         Get the new ProfilerState and trigger corresponding action.
@@ -704,7 +702,7 @@ class Profiler:
         )
         self.record_event.begin()
 
-    def step_info(self, unit: Optional[str] = None) -> str:
+    def step_info(self, unit: str | None = None) -> str:
         r"""
         Get statistics for current step. If the function is called at certain iteration
         intervals, the result is the average of all steps between the previous call and
