@@ -4234,6 +4234,7 @@
   kernel :
     func : softplus
   backward : softplus_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softshrink
   args : (Tensor x, float threshold = 0.5)
@@ -4244,6 +4245,7 @@
   kernel :
     func : softshrink
   backward : softshrink_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softsign
   args : (Tensor x)
@@ -4254,6 +4256,7 @@
   kernel :
     func : softsign
   backward : softsign_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : solve
   args : (Tensor x, Tensor y)
