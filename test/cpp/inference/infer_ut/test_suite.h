@@ -29,8 +29,6 @@
 #include "gtest/gtest.h"
 #include "paddle/include/paddle_inference_api.h"
 
-#include "paddle/fluid/platform/enforce.h"
-
 namespace paddle {
 namespace test {
 
