@@ -132,9 +132,24 @@ static int shell_popen_fork_internal(const char* real_cmd,
   close(parent_end);
 
   if (child_end != child_std_end) {
-    PCHECK(dup2(child_end, child_std_end) == child_std_end);
+    PADDLE_ENFORCE_EQ(
+        dup2(child_end, child_std_end),
+        child_std_end,
+        phi::errors::External("Failed to duplicate file descriptor. Expected "
+                              "child_end = %d, but received %d. Error: %s",
+                              child_std_end,
+                              dup2(child_end, child_std_end),
+                              strerror(errno)));
+
     if (redirect_stderr && do_read) {
-      PCHECK(dup2(child_end, 2) == 2);
+      PADDLE_ENFORCE_EQ(
+          dup2(child_end, 2),
+          2,
+          phi::errors::External(
+              "Failed to duplicate file descriptor to stderr (2). Expected "
+              "result = 2, but received %d. Error: %s",
+              dup2(child_end, 2),
+              strerror(errno)));
     }
     close(child_end);
   }
@@ -142,9 +157,17 @@ static int shell_popen_fork_internal(const char* real_cmd,
   close_open_fds_internal();
 
 #if defined(PADDLE_WITH_MUSL)
-  PCHECK(execl("/bin/sh", "sh", "-c", real_cmd, nullptr) >= 0);
+  PADDLE_ENFORCE_GE(
+      execl("/bin/sh", "sh", "-c", real_cmd, nullptr),
+      0,
+      phi::errors::External("Failed to execute command '%s' using /bin/sh.",
+                            real_cmd));
 #else
-  PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, nullptr) >= 0);
+  PADDLE_ENFORCE_GE(
+      execl("/bin/bash", "bash", "-c", real_cmd, nullptr),
+      0,
+      phi::errors::External("Failed to execute command '%s' using /bin/bash.",
+                            real_cmd));
 #endif
   // Note: just for compilation. the child don't run this line.
   _exit(0);
@@ -327,13 +350,21 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
         int wstatus, ret;
 
         do {
-          PCHECK((ret = waitpid(child_pid, &wstatus, 0)) >= 0 ||
-                 (ret == -1 && errno == EINTR));
+          PADDLE_ENFORCE(
+              (ret = waitpid(child_pid, &wstatus, 0)) >= 0 ||
+                  (ret == -1 && errno == EINTR),
+              phi::errors::External(
+                  "Failed to wait for child process with PID %d. Error: %s",
+                  child_pid,
+                  strerror(errno)));
         } while (ret == -1 && errno == EINTR);
 
-        PCHECK(wstatus == 0 || wstatus == (128 + SIGPIPE) * 256 ||
-               (wstatus == -1 && errno == ECHILD))
-            << "status[" << wstatus << "], cmd[" << cmd << "]";
+        PADDLE_ENFORCE(
+            wstatus == 0 || wstatus == (128 + SIGPIPE) * 256 ||
+                (wstatus == -1 && errno == ECHILD),
+            phi::errors::External("Unexpected status[%d] for command [%s].",
+                                  wstatus,
+                                  cmd.c_str()));
 
         if (wstatus == -1 && errno == ECHILD) {
           // temporarily remove this warning
@@ -342,11 +373,28 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
       }};
 
   FILE* in_fp;
-  PCHECK((in_fp = fdopen(pipein_fds[0], "r")) != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(
+      (in_fp = fdopen(pipein_fds[0], "r")),
+      phi::errors::External("Failed to open file descriptor %d with fdopen.",
+                            pipein_fds[0]));
   FILE* out_fp;
-  PCHECK((out_fp = fdopen(pipeout_fds[1], "w")) != nullptr);
-  return {{in_fp, [child_life](FILE* fp) { PCHECK(fclose(fp) == 0); }},
-          {out_fp, [child_life](FILE* fp) { PCHECK(fclose(fp) == 0); }}};
+  PADDLE_ENFORCE_NOT_NULL(
+      (out_fp = fdopen(pipeout_fds[1], "w")),
+      phi::errors::External("Failed to open file descriptor %d with fdopen.",
+                            pipeout_fds[1]));
+  return {{in_fp,
+           [child_life](FILE* fp) {
+             PADDLE_ENFORCE_EQ(
+                 fclose(fp),
+                 0,
+                 phi::errors::External("Failed to close input file pointer."));
+           }},
+          {out_fp, [child_life](FILE* fp) {
+             PADDLE_ENFORCE_EQ(
+                 fclose(fp),
+                 0,
+                 phi::errors::External("Failed to close output file pointer."));
+           }}};
 #endif
 }
 
