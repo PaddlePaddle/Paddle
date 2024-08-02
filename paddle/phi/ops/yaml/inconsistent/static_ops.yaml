@@ -820,6 +820,7 @@
   kernel:
     func: shadow_feed
     param: [x]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shadow_feed_tensors
   args : (Tensor[] x)
@@ -842,6 +843,7 @@
     param: [x]
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : soft_relu
   args : (Tensor x, float threshold = 20.0f)

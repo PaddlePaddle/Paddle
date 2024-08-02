@@ -625,6 +625,39 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool MvOpInferSymbolicShape(pir::Operation *op,
+                            pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &vec_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  PADDLE_ENFORCE_EQ(
+      input_shape.shape().size(),
+      2,
+      phi::errors::InvalidArgument("The rank of input X should be 2, but is %d",
+                                   input_shape.shape().size()));
+  PADDLE_ENFORCE_EQ(vec_shape.shape().size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The rank of input Vec should be 1, but is %d",
+                        vec_shape.shape().size()));
+  PADDLE_ENFORCE_EQ(input_shape.shape()[1],
+                    vec_shape.shape()[0],
+                    phi::errors::InvalidArgument(
+                        "X's second dimension is expected to be equal to "
+                        "Vec's first dimension"
+                        "but received X'shape = [%d], Vec's shape = [%d]",
+                        input_shape.shape()[1],
+                        vec_shape.shape()[0]));
+
+  std::vector<symbol::DimExpr> out_shape = {input_shape.shape()[0]};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+}
+
 bool SearchsortedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // The shape of output is the same as input `values` (op->operand_source(1))
