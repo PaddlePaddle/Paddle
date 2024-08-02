@@ -113,7 +113,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
   }
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -194,7 +194,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
   }
   PADDLE_ENFORCE_GPU_SUCCESS(

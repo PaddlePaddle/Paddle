@@ -30,22 +30,22 @@ class PartialSendOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         peer,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The peer (%d) for partial_send op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for partial_send op must be non-negative.",
             ring_id));
     PADDLE_ENFORCE_GE(num,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The num (%d) for partial_send op must >=1", num));
     PADDLE_ENFORCE_EQ(
         (id >= 0 && id < num),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The id (%d) for partial_send op must >=0 and <num (%d)", id, num));
   }
 

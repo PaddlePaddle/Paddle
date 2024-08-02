@@ -1159,7 +1159,6 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
     const OpLoweringGroupPtr& group,
     const std::vector<ir::Tensor> group_func_arg_tensors,
     const std::vector<ir::Argument> group_func_args) {
-  // CHECK_EQ(group_func_arg_tensors.size(), group_func_args.size());
   std::vector<ir::Expr> ir_bodys;
   int output_tensor_idx = 0;
   for (int tensor_arg_idx = 0; tensor_arg_idx < group_func_arg_tensors.size();

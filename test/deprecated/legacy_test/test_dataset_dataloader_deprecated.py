@@ -213,12 +213,14 @@ class DatasetLoaderTestBase(unittest.TestCase):
     def test_batch_number_with_same_length_files(self):
         for p in self.get_all_places():
             with base.scope_guard(base.Scope()):
-                self.check_batch_number(place=p, randomize_batch_num=False)
+                with paddle.pir_utils.OldIrGuard():  # if you need to test in pir mode ,delete this line
+                    self.check_batch_number(place=p, randomize_batch_num=False)
 
     def test_batch_number_with_different_length_files(self):
         for p in self.get_all_places():
             with base.scope_guard(base.Scope()):
-                self.check_batch_number(place=p, randomize_batch_num=True)
+                with paddle.pir_utils.OldIrGuard():  # if you need to test in pir mode ,delete this line
+                    self.check_batch_number(place=p, randomize_batch_num=True)
 
 
 class QueueDatasetTestWithoutDropLast(DatasetLoaderTestBase):

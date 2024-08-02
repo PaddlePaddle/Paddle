@@ -581,6 +581,24 @@ void DispatchWithDtype(
           /*causual*/ false,
           pre_cache_length,
           &qktv_out);
+#elif defined(PADDLE_WITH_HIP)
+      const bool is_precache_infer = true;
+      phi::FlashAttnKernel<T>(
+          dev_ctx,
+          q_trans,
+          k_trans,
+          v_trans,
+          paddle::none /*fixed_seed_offset*/,
+          paddle::none /*mask*/,
+          0.0,
+          is_precache_infer ? true : causual /*precache_infer_casual*/,
+          false,
+          is_precache_infer /*is_test*/,
+          "" /*rng_name*/,
+          &qktv_out,
+          &softmax_out,
+          &softmax_lse,
+          &seed_offset);
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
           "Not supports MultiHeadAttentionVariableForwardKernel."));
@@ -716,8 +734,13 @@ void DispatchWithDtype(
   if (out_scale > 0) {
     int m = fmha_out->dims()[0];
     int n = fmha_out->dims()[1];
+#ifdef PADDLE_WITH_HIP
+    dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
+    dim3 block(64, 8);
+#else
     dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
     dim3 block(32, 32);
+#endif
     if (out_shift && out_smooth) {
       QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
           fmha_buf.data<T>(),

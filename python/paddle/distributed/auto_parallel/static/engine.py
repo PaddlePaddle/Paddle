@@ -26,6 +26,7 @@ import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
+from paddle.distributed.passes.pass_base import new_pass
 from paddle.framework import (
     IrGraph,
     _current_expected_place_ as _get_device,
@@ -807,12 +808,17 @@ class Engine:
         #     'after remove_other_rank_input_output_pass', dist_program, flush=1
         # )
 
-        remove_other_rank_op_pass(dist_program)
+        remove_other_rank_op_pass(dist_program, params_grads)
 
         # print('after remove_other_rank_op_pass', dist_program, flush=1)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
+        gradient_sync_after_accumulate = (
+            self._strategy.dp_optimization.gradient_sync_after_accumulate
+        )
+        if gradient_sync_after_accumulate:
+            global_params_grads = params_grads
 
         # TODO(xxxx) Step 4.1 DP Optimization Pass
         if self._strategy.dp_optimization.enable:
@@ -828,6 +834,24 @@ class Engine:
             # if self._strategy.sharding_optimization.enable:
             # dist_program = apply_sharding_optimization_pass(dist_program)
             pass
+
+        if mode == "train" and self._strategy.gradient_merge.enable:
+            config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
+            config[
+                "gradient_sync_after_accumulate"
+            ] = gradient_sync_after_accumulate
+            config["params_grads"] = (
+                global_params_grads
+                if gradient_sync_after_accumulate
+                else params_grads
+            )
+
+            auto_parallel_gradient_merge_pass = new_pass(
+                "auto_parallel_gradient_merge_pass", config
+            )
+            auto_parallel_gradient_merge_pass.apply(
+                [dist_program], [startup_program]
+            )
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.

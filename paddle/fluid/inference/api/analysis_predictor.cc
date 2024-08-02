@@ -344,8 +344,8 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto custom_place = place;
-    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
-        pool.Get(custom_place));
+    auto *dev_ctx =
+        static_cast<const phi::CustomContext *>(pool.Get(custom_place));
     memory::Copy(custom_place,
                  static_cast<void *>(input_ptr),
                  phi::CPUPlace(),
@@ -3615,6 +3615,7 @@ USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
 USE_TRT_CONVERTER(cumsum)
 USE_TRT_CONVERTER(assign)
+USE_TRT_CONVERTER(p_norm)
 USE_TRT_CONVERTER(unbind)
 USE_TRT_CONVERTER(flip)
 USE_TRT_CONVERTER(share_data)

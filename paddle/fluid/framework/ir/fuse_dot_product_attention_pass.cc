@@ -50,7 +50,7 @@ ir::Graph *FuseDotProductAttentionPass::FuseDotProductAttentionFwd(
     OutputCache *output_cache,
     std::unordered_set<const Node *> *nodes_to_remove) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("dot_product_attention");
   FusePassBase::Init(scope_name, graph);
 
@@ -264,7 +264,7 @@ ir::Graph *FuseDotProductAttentionPass::FuseDotProductAttentionBwd(
     OutputCache *output_cache,
     std::unordered_set<const Node *> *nodes_to_remove) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("dot_product_attention");
   FusePassBase::Init(scope_name, graph);
 

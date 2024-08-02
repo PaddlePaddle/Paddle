@@ -43,8 +43,8 @@ def _number_count(numbers, upper_range):
             Tensor(shape=[6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             [2, 0, 2, 0, 0, 0])
     """
-    if in_dynamic_mode():
-        return _legacy_C_ops.number_count(numbers, 'upper_range', upper_range)
+    if in_dynamic_or_pir_mode():
+        return _C_ops.number_count(numbers, upper_range)
     else:
         op_type = 'number_count'
 

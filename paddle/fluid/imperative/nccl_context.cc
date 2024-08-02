@@ -133,7 +133,7 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
   PADDLE_ENFORCE_EQ(
       phi::is_gpu_place(place_),
       true,
-      phi::errors::Unimplemented(
+      common::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
   AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
 }
@@ -163,14 +163,14 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
   PADDLE_ENFORCE_GE(
       ring_id,
       0,
-      phi::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(
-      ring_id,
-      compute_events_.size(),
-      phi::errors::OutOfRange("ring id must < compute events size,"
-                              "but got ring id = %d, compute events size = %d",
-                              ring_id,
-                              compute_events_.size()));
+      common::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(ring_id,
+                    compute_events_.size(),
+                    common::errors::OutOfRange(
+                        "ring id must < compute events size,"
+                        "but got ring id = %d, compute events size = %d",
+                        ring_id,
+                        compute_events_.size()));
 
   auto compute_stream = static_cast<phi::GPUContext *>(
                             phi::DeviceContextPool::Instance().Get(place_))
@@ -193,14 +193,14 @@ void NCCLParallelContext::WaitComm(int ring_id) {
   PADDLE_ENFORCE_GE(
       ring_id,
       0,
-      phi::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
+      common::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
   PADDLE_ENFORCE_LT(
       ring_id,
       comm_events_.size(),
-      phi::errors::OutOfRange("ring id must < comm events size,"
-                              "but got ring id = %d, comm events size = %d",
-                              ring_id,
-                              comm_events_.size()));
+      common::errors::OutOfRange("ring id must < comm events size,"
+                                 "but got ring id = %d, comm events size = %d",
+                                 ring_id,
+                                 comm_events_.size()));
 
   auto compute_stream = static_cast<phi::GPUContext *>(
                             phi::DeviceContextPool::Instance().Get(place_))

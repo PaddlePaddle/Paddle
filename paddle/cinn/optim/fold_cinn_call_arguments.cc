@@ -82,8 +82,12 @@ struct FoldCINNCallArgumentsMutator : public ir::IRMutator<> {
     std::vector<Expr> write_args;
     for (auto& arg : call->read_args) {
       if (arg.as_tensor()) {
-        CHECK(arg.as_tensor()->buffer.defined())
-            << "arg tensor [" << arg.as_tensor()->name << "] not has buffer";
+        PADDLE_ENFORCE_EQ(arg.as_tensor()->buffer.defined(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "Expected tensor [%s] to have a defined buffer, "
+                              "but the buffer is not defined.",
+                              arg.as_tensor()->name.c_str()));
         read_args.push_back(arg.as_tensor()->buffer);
       } else {
         read_args.push_back(arg);

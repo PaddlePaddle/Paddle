@@ -146,6 +146,8 @@ class TestArgMinMaxTypeCheck(unittest.TestCase):
 
     def test_bfp16(self):
         # in static mode
+        if not paddle.is_compiled_with_cuda():
+            return
         with program_guard(Program(), Program()):
             x = paddle.zeros(name='x', shape=[100, 10], dtype='uint16')
             t1 = paddle.argmin(x)

@@ -16,9 +16,11 @@ import os
 import unittest
 
 import numpy as np
+import parameterized as param
+from utils import static_guard
 
 import paddle
-from paddle import base
+from paddle import base, nn
 from paddle.base import Program, core, program_guard
 
 
@@ -274,6 +276,530 @@ class TestInstanceNormOpErrorCase1(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[3], dtype="float32")
             self.assertRaises(ValueError, paddle.static.nn.instance_norm, x)
         paddle.disable_static()
+
+
+class PrimGroupNorm(paddle.nn.Layer):
+    def __init__(self, num_channels, scale, bias):
+        super().__init__()
+        self.func = nn.InstanceNorm2D(num_channels)
+        paddle.assign(scale, self.func.scale)
+        paddle.assign(bias, self.func.bias)
+
+    def forward(self, x):
+        out = self.func(x)
+        return out
+
+
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=False, full_graph=True)
+
+
+places = [paddle.CPUPlace()]
+if paddle.is_compiled_with_cuda():
+    places.append(paddle.CUDAPlace(0))
+
+
+@param.parameterized_class(
+    (
+        'name',
+        'shape',
+        'epsilon',
+        'data_format',
+        'places',
+        'dtype',
+        'threshold_list',
+        'special_threshold',
+    ),
+    (
+        (
+            'test0',
+            (2, 100, 3, 5),
+            1e-5,
+            'NCHW',
+            places,
+            'float32',
+            [
+                [1e-5, 1e-5, 1e-5],  # cpu thresholds for static
+                [1e-5, 1e-5, 1e-5],  # gpu thresholds for static
+            ],
+            None,
+        ),
+        (
+            'test1',
+            (2, 100, 3, 5),
+            1e-5,
+            'NCHW',
+            places,
+            'float32',
+            [
+                [1e-5, 1e-5, 1e-5],  # cpu thresholds for static
+                [1e-5, 1e-5, 1e-5],  # gpu thresholds for static
+            ],
+            None,
+        ),
+        (
+            'testbigdata_fp32',
+            (8, 32, 32, 64),
+            1e-5,
+            'NCHW',
+            places,
+            'float32',
+            [
+                [1e-5, 1e-5, 1e-5],  # cpu thresholds for static
+                [1e-5, 1e-5, 1e-5],  # gpu thresholds for static
+            ],  # gpu thresholds
+            [2e-2, 2e-2, 2e-2],  # special grad threshold for scale
+        ),
+        (
+            'test0_fp64',
+            (2, 100, 3, 5),
+            1e-5,
+            'NCHW',
+            places,
+            'float64',
+            [
+                [1e-14, 1e-14, 1e-14],  # cpu thresholds for static
+                [1e-14, 1e-14, 1e-14],  # gpu thresholds for static
+            ],
+            [1e-13, 1e-13, 1e-13],
+        ),
+        (
+            'test1_fp64',
+            (2, 100, 3, 5),
+            1e-5,
+            'NCHW',
+            places,
+            'float64',
+            [
+                [1e-14, 1e-14, 1e-14],  # cpu thresholds for static
+                [1e-14, 1e-14, 1e-14],  # gpu thresholds for static
+            ],
+            [1e-13, 1e-13, 1e-13],
+        ),
+        (
+            'testbigdata_fp64',
+            (8, 32, 32, 64),
+            1e-5,
+            'NCHW',
+            places,
+            'float64',
+            [
+                [1e-14, 1e-14, 1e-14],  # cpu thresholds
+                [1e-14, 1e-14, 1e-14],
+            ],  # gpu thresholds
+            [5e-11, 5e-11, 5e-11],  # for X_grad
+        ),
+    ),
+)
+class TestCompositeInstanceNormNorm(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        core._set_prim_all_enabled(True)
+
+    @classmethod
+    def tearDownClass(cls):
+        core._set_prim_all_enabled(False)
+
+    def setUp(self):
+        np.random.seed(1234)
+        self.fwd_desire = []
+        self.rev_desire = []
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.scale = np.random.random([self.shape[1]]).astype(self.dtype)
+        self.bias = np.random.random([self.shape[1]]).astype(self.dtype)
+        self.num_channels = self.shape[1]
+
+        self.static_fwd_desire = []
+        self.static_rev_desire = []
+        for place in self.places:
+            fwd_desire, rev_desire = self.get_eager_desire(place)
+            self.fwd_desire.append(fwd_desire.numpy())
+            self.rev_desire.append(rev_desire.numpy())
+            self.static_fwd_desire.append([])
+            self.static_rev_desire.append([])
+            fwd, rev = self.get_static_desire(place)
+            self.static_fwd_desire[-1].append(fwd[0])
+            self.static_fwd_desire[-1].append(fwd[1])
+            self.static_fwd_desire[-1].append(fwd[2])
+            self.static_rev_desire[-1].append(rev[0])
+            self.static_rev_desire[-1].append(rev[1])
+            self.static_rev_desire[-1].append(rev[2])
+
+    def get_eager_desire(self, place):
+        if isinstance(place, base.CPUPlace):
+            paddle.set_device("cpu")
+        if isinstance(place, base.CUDAPlace):
+            paddle.set_device("gpu")
+        core.set_prim_eager_enabled(False)
+        paddle.disable_static()
+        input_ = paddle.to_tensor(
+            data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+        )
+        scale_ = paddle.to_tensor(
+            data=self.scale, dtype=self.dtype, place=place, stop_gradient=False
+        )
+        bias_ = paddle.to_tensor(
+            data=self.bias, dtype=self.dtype, place=place, stop_gradient=False
+        )
+        output = paddle.nn.functional.instance_norm(
+            input_, None, None, scale_, bias_, True, 0.9, self.epsilon
+        )
+        grad = paddle.grad(output, input_)
+
+        return output, grad[0]
+
+    def get_static_desire(self, place):
+        core._set_prim_all_enabled(False)
+        paddle.enable_static()
+        if isinstance(place, base.CPUPlace):
+            paddle.set_device("cpu")
+        if isinstance(place, base.CUDAPlace):
+            paddle.set_device("gpu")
+
+        mp, sp = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(mp, sp):
+            input_ = paddle.static.data(
+                'x', shape=self.x.shape, dtype=self.x.dtype
+            )
+            input_.stop_gradient = False
+
+            scale_ = paddle.static.data(
+                'scale_', shape=self.scale.shape, dtype=self.scale.dtype
+            )
+            scale_.stop_gradient = False
+
+            bias_ = paddle.static.data(
+                'bias_', shape=self.bias.shape, dtype=self.bias.dtype
+            )
+            bias_.stop_gradient = False
+
+            output = paddle.nn.functional.instance_norm(
+                input_, None, None, scale_, bias_, True, 0.9, self.epsilon
+            )
+
+            blocks = mp.blocks
+            names = dict(
+                zip(
+                    blocks[0].ops[0].output_names,
+                    blocks[0].ops[0].output_arg_names,
+                )
+            )
+            vars_list = [
+                names[key]
+                for key in [
+                    "Y",
+                    "SavedMean",
+                    "SavedVariance",
+                ]
+            ]
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that instance_norm in original block
+            assert 'instance_norm' in fwd_ops
+
+            if core._is_fwd_prim_enabled():
+                paddle.incubate.autograd.primapi.to_prim(mp.blocks)
+                fwd_ops_new = [op.type for op in blocks[0].ops]
+                # Ensure that instance_norm is splitted into small ops
+                assert 'instance_norm' not in fwd_ops_new
+
+            grads = paddle.static.gradients([output], [input_, scale_, bias_])
+
+        exe = paddle.static.Executor(place)
+        exe.run(sp)
+        out_list = exe.run(
+            mp,
+            feed={
+                input_.name: self.x,
+                scale_.name: self.scale,
+                bias_.name: self.bias,
+            },
+            fetch_list=vars_list + [grads],
+        )
+        paddle.disable_static()
+        core._set_prim_all_enabled(True)
+
+        return out_list[:3], out_list[3:]
+
+    def test_static_comp(self):
+        paddle.enable_static()
+        mps = []
+        fwd_actual = []
+        rev_actual = []
+        if len(self.places) < 1:
+            return
+
+        with static_guard():
+            for place in self.places:
+                fwd_actual.append([])
+                rev_actual.append([])
+                mp, sp = paddle.static.Program(), paddle.static.Program()
+                with paddle.static.program_guard(mp, sp):
+                    input_ = paddle.static.data(
+                        'x', shape=self.x.shape, dtype=self.x.dtype
+                    )
+                    input_.stop_gradient = False
+
+                    scale_ = paddle.static.data(
+                        'scale_', shape=self.scale.shape, dtype=self.scale.dtype
+                    )
+                    scale_.stop_gradient = False
+
+                    bias_ = paddle.static.data(
+                        'bias_', shape=self.bias.shape, dtype=self.bias.dtype
+                    )
+                    bias_.stop_gradient = False
+
+                    output = paddle.nn.functional.instance_norm(
+                        input_,
+                        None,
+                        None,
+                        scale_,
+                        bias_,
+                        True,
+                        0.9,
+                        self.epsilon,
+                    )
+
+                    blocks = mp.blocks
+                    names = dict(
+                        zip(
+                            blocks[0].ops[0].output_names,
+                            blocks[0].ops[0].output_arg_names,
+                        )
+                    )
+                    vars_list = [
+                        names[key]
+                        for key in [
+                            "Y",
+                            "SavedMean",
+                            "SavedVariance",
+                        ]
+                    ]
+
+                    fwd_ops = [op.type for op in blocks[0].ops]
+                    # Ensure that instance_norm in original block
+                    assert 'instance_norm' in fwd_ops
+
+                    if core._is_fwd_prim_enabled():
+                        paddle.incubate.autograd.primapi.to_prim(mp.blocks)
+                        fwd_ops_new = [op.type for op in blocks[0].ops]
+                        # Ensure that instance_norm is splitted into small ops
+                        assert 'instance_norm' not in fwd_ops_new
+
+                    grads = paddle.static.gradients(
+                        output, [input_, scale_, bias_]
+                    )
+                exe = paddle.static.Executor(place)
+                exe.run(sp)
+                out_list = exe.run(
+                    mp,
+                    feed={
+                        input_.name: self.x,
+                        scale_.name: self.scale,
+                        bias_.name: self.bias,
+                    },
+                    fetch_list=vars_list + [grads],
+                )
+                fwd_actual[-1].append(out_list[0])
+                fwd_actual[-1].append(out_list[1])
+                fwd_actual[-1].append(out_list[2])
+                rev_actual[-1].append(out_list[3])
+                rev_actual[-1].append(out_list[4])
+                rev_actual[-1].append(out_list[5])
+                mps.append(mp)
+
+        vars_name = [
+            "Y",
+            "SavedMean",
+            "SavedVariance",
+            "X_grad",
+            "Scale_grad",
+            "Bias_grad",
+        ]
+
+        for i in range(len(self.places)):
+            self.assertTrue(
+                'instance_norm' not in [op.type for op in mps[i].block(0).ops]
+            )
+            atol = self.threshold_list[i][0]
+            rtol = self.threshold_list[i][0]
+            for j in range(len(self.static_fwd_desire[i])):
+                # in float16 type, Y is float16, mean and var are float16
+                # so check mean and var with float32 gpu threshold
+                if self.dtype == 'float16' and j > 0:
+                    atol = 1e-5
+                    rtol = 1e-5
+
+                np.testing.assert_allclose(
+                    self.static_fwd_desire[i][j],
+                    fwd_actual[i][j],
+                    rtol=rtol,
+                    atol=atol,
+                    err_msg=f"Check diff failed of place:{self.places[i]}, output: {vars_name[j]}",
+                )
+                max_abs_diff = np.max(
+                    np.abs(self.static_fwd_desire[i][j] - fwd_actual[i][j])
+                )
+                print(
+                    self.shape,
+                    self.dtype,
+                    self.places[i],
+                    vars_name[j],
+                    max_abs_diff,
+                )
+            # compare with eager_desire
+            np.testing.assert_allclose(
+                self.fwd_desire[i],
+                fwd_actual[i][0],
+                rtol=rtol,
+                atol=atol,
+                err_msg=f"Check diff failed with fwd_eager:{self.places[i]}",
+            )
+
+            for j in range(len(self.static_rev_desire[i])):
+                if self.special_threshold is not None and j <= 1:
+                    atol = self.special_threshold[i]
+                    rtol = self.special_threshold[i]
+                else:
+                    atol = self.threshold_list[i][0]
+                    rtol = self.threshold_list[i][0]
+
+                max_abs_diff = np.max(
+                    np.abs(self.static_rev_desire[i][j] - rev_actual[i][j])
+                )
+
+                print(
+                    self.shape,
+                    self.dtype,
+                    self.places[i],
+                    vars_name[j + 3],
+                    max_abs_diff,
+                )
+
+                np.testing.assert_allclose(
+                    self.static_rev_desire[i][j],
+                    rev_actual[i][j],
+                    rtol=rtol,
+                    atol=atol,
+                    err_msg=f"Check diff failed of place:{self.places[i]}, output: {vars_name[j + 3]}",
+                )
+
+            # now use larger threshold when testing cpu grads to bypass cpu grad test
+            if self.special_threshold is not None and i == 0:
+                atol = self.special_threshold[i]
+                rtol = self.special_threshold[i]
+            # compare with eager_desire
+            np.testing.assert_allclose(
+                self.rev_desire[i],
+                rev_actual[i][0],
+                rtol=rtol,
+                atol=atol,
+                err_msg=f"Check diff failed with rev_eager:{self.places[i]}",
+            )
+
+        paddle.disable_static()
+
+    def test_jit_comp(self):
+        fwd_actual = []
+        rev_actual = []
+        for place in self.places:
+            input_ = paddle.to_tensor(
+                data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+            )
+            scale_ = paddle.to_tensor(
+                data=self.scale,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            bias_ = paddle.to_tensor(
+                data=self.bias,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            net = PrimGroupNorm(self.num_channels, scale_, bias_)
+            net = apply_to_static(net, False)
+            output = net(input_)
+
+            grad = paddle.grad(output, input_)
+            fwd_actual.append(output.numpy())
+            rev_actual.append(grad[0].numpy())
+
+        for i in range(len(self.places)):
+            atol = self.threshold_list[i][1]
+            rtol = self.threshold_list[i][1]
+            np.testing.assert_allclose(
+                self.fwd_desire[i],
+                fwd_actual[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=f'{self.places[i]} jit fwd',
+            )
+
+            # now use larger threshold when testing cpu grads to bypass cpu grad test
+            if self.special_threshold is not None:
+                atol = self.special_threshold[i]
+                rtol = self.special_threshold[i]
+
+            np.testing.assert_allclose(
+                self.rev_desire[i],
+                rev_actual[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=f'{self.places[i]} jit rev',
+            )
+
+    def test_jit_comp_with_cinn(self):
+        fwd_actual = []
+        rev_actual = []
+        for place in self.places:
+            input_ = paddle.to_tensor(
+                data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+            )
+            scale_ = paddle.to_tensor(
+                data=self.scale,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            bias_ = paddle.to_tensor(
+                data=self.bias,
+                dtype=self.dtype,
+                place=place,
+                stop_gradient=False,
+            )
+            net = PrimGroupNorm(self.num_channels, scale_, bias_)
+            net = apply_to_static(net, True)
+            output = net(input_)
+            grad = paddle.grad(output, input_)
+            fwd_actual.append(output.numpy())
+            rev_actual.append(grad[0].numpy())
+
+        for i in range(len(self.places)):
+            atol = self.threshold_list[i][2]
+            rtol = self.threshold_list[i][2]
+            np.testing.assert_allclose(
+                self.fwd_desire[i],
+                fwd_actual[i],
+                rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
+                atol=atol,
+                err_msg=f'{self.places[i]} jit_cinn fwd',
+            )
+            # now use larger threshold when testing cpu grads to bypass cpu grad test
+            if self.special_threshold is not None:
+                atol = self.special_threshold[i]
+                rtol = self.special_threshold[i]
+            np.testing.assert_allclose(
+                self.rev_desire[i],
+                rev_actual[i],
+                rtol=rtol,  # mean of uniform distribution, scale for avoid random failed
+                atol=atol,
+                err_msg=f'{self.places[i]} jit_cinn rev',
+            )
 
 
 if __name__ == '__main__':
