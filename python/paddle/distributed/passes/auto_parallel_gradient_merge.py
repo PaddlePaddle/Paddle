@@ -434,11 +434,21 @@ def _remove_cast_for_master_grad(main_program, dist_context):
     main_block._sync_with_cpp()
 
 
-def _pir_remove_cast_for_master_grad(main_program):
-    main_block = main_program.global_block()
-    for op in main_block.ops:
-        if _is_master_grad_cast_op(main_block, op):
-            main_program.remove_op(op)
+def _pir_remove_cast_for_master_grad(main_program, params_grads):
+    def is_cast_to_float32(op):
+        return (
+            op.name() == "pd_op.cast"
+            and op.results()[0].dtype == paddle.float32
+        )
+
+    for _, grad in params_grads:
+        if grad.dtype == paddle.float32:
+            continue
+
+        for op in grad.all_used_ops():
+            if is_cast_to_float32(op):
+                op.results()[0].replace_all_uses_with(grad)
+                op.erase()
 
 
 def _create_cond_block_and_update_optimizer(
