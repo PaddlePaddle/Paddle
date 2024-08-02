@@ -11,15 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import datetime
 import importlib
 import json
 import os
 import socket
-import types
 from enum import Enum
-from typing import Any, Callable, Iterable, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Iterable
 from warnings import warn
 
 import paddle
@@ -42,6 +42,11 @@ from .profiler_statistic import (
 )
 from .timer import benchmark
 from .utils import RecordEvent, wrap_optimizers
+
+if TYPE_CHECKING:
+    import types
+
+    from typing_extensions import Self
 
 
 class SummaryView(Enum):
@@ -476,14 +481,14 @@ class Profiler:
         self,
         *,
         targets: Iterable[ProfilerTarget] | None = None,
-        scheduler: Union[Callable[[int], ProfilerState], tuple, None] = None,
+        scheduler: Callable[[int], ProfilerState] | tuple | None = None,
         on_trace_ready: Callable[..., Any] | None = None,
-        record_shapes: Optional[bool] = False,
-        profile_memory: Optional[bool] = False,
-        timer_only: Optional[bool] = False,
-        emit_nvtx: Optional[bool] = False,
-        custom_device_types: Optional[list] = [],
-        with_flops: Optional[bool] = False,
+        record_shapes: bool | None = False,
+        profile_memory: bool | None = False,
+        timer_only: bool | None = False,
+        emit_nvtx: bool | None = False,
+        custom_device_types: list | None = [],
+        with_flops: bool | None = False,
     ) -> None:
         supported_targets = _get_supported_targets()
         if targets:
@@ -547,15 +552,15 @@ class Profiler:
         self.with_flops = with_flops
         self.emit_nvtx = emit_nvtx
 
-    def __enter__(self) -> 'Profiler':
+    def __enter__(self) -> Self:
         self.start()
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[types.TracebackType],
+        exc_type: type[BaseException] | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: types.TracebackType | None = None,
     ) -> None:
         self.stop()
 
@@ -820,7 +825,7 @@ class Profiler:
             if self.on_trace_ready:
                 self.on_trace_ready(self)
 
-    def export(self, path: str = "", format: Optional[str] = "json") -> None:
+    def export(self, path: str = "", format: str | None = "json") -> None:
         r"""
         Exports the tracing data to file.
 
