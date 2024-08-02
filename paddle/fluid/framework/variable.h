@@ -31,11 +31,11 @@ class Variable {
         IsRegisteredVarType<T>(),
         "Not registered type. Please register T inside var_type_traits.h");
     PADDLE_ENFORCE_NOT_NULL(
-        holder_, phi::errors::NotFound("Variable is not initialized."));
+        holder_, common::errors::NotFound("Variable is not initialized."));
     PADDLE_ENFORCE_EQ(
         holder_->Type(),
         VarTypeTrait<T>::kId,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The Variable type must be %s, but the type it holds is %s.",
             ToTypeName(VarTypeTrait<T>::kId),
             ToTypeName(holder_->Type())));
@@ -52,7 +52,7 @@ class Variable {
       PADDLE_ENFORCE_EQ(
           holder_->Type(),
           VarTypeTrait<T>::kId,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The Variable type must be %s, but the type it holds is %s.",
               ToTypeName(VarTypeTrait<T>::kId),
               ToTypeName(holder_->Type())));
@@ -69,7 +69,7 @@ class Variable {
 
   int Type() const {
     PADDLE_ENFORCE_NOT_NULL(
-        holder_, phi::errors::NotFound("Variable is not initialized."));
+        holder_, common::errors::NotFound("Variable is not initialized."));
     return holder_->Type();
   }
 

@@ -107,7 +107,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       scales.push_back(1.f);
     } else {
       PADDLE_THROW(
-          phi::errors::InvalidArgument("Data layout must be NCHW or NHWC."));
+          common::errors::InvalidArgument("Data layout must be NCHW or NHWC."));
     }
 
     if (engine_->with_dynamic_shape()) {

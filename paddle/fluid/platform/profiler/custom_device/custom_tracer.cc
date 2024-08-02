@@ -62,7 +62,7 @@ void CustomTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::UNINITED || state_ == TracerState::STOPED,
       true,
-      phi::errors::PreconditionNotMet("CustomTracer must be UNINITED"));
+      common::errors::PreconditionNotMet("CustomTracer must be UNINITED"));
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   phi::DeviceManager::ProfilerPrepareTracing(dev_type_, &collector_, context_);
 #endif
@@ -73,7 +73,7 @@ void CustomTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::READY,
       true,
-      phi::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
+      common::errors::PreconditionNotMet("Tracer must be READY or STOPPED"));
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   phi::DeviceManager::ProfilerStartTracing(dev_type_, &collector_, context_);
 #endif
@@ -82,9 +82,10 @@ void CustomTracer::StartTracing() {
 }
 
 void CustomTracer::StopTracing() {
-  PADDLE_ENFORCE_EQ(state_,
-                    TracerState::STARTED,
-                    phi::errors::PreconditionNotMet("Tracer must be STARTED"));
+  PADDLE_ENFORCE_EQ(
+      state_,
+      TracerState::STARTED,
+      common::errors::PreconditionNotMet("Tracer must be STARTED"));
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   phi::DeviceManager::ProfilerStopTracing(dev_type_, &collector_, context_);
 #endif
@@ -92,9 +93,10 @@ void CustomTracer::StopTracing() {
 }
 
 void CustomTracer::CollectTraceData(TraceEventCollector* collector) {
-  PADDLE_ENFORCE_EQ(state_,
-                    TracerState::STOPED,
-                    phi::errors::PreconditionNotMet("Tracer must be STOPED"));
+  PADDLE_ENFORCE_EQ(
+      state_,
+      TracerState::STOPED,
+      common::errors::PreconditionNotMet("Tracer must be STOPED"));
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   phi::DeviceManager::ProfilerCollectTraceData(
       dev_type_, &collector_, tracing_start_ns_, context_);

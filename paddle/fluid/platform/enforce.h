@@ -135,7 +135,7 @@ using ::common::enforce::EnforceNotMet;
     PADDLE_ENFORCE_EQ(                                                       \
         __EXPR,                                                              \
         true,                                                                \
-        phi::errors::NotFound(                                               \
+        common::errors::NotFound(                                            \
             "No %s(%s) found for %s operator.", __ROLE, __NAME, __OP_TYPE)); \
   } while (0)
 

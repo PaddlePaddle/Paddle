@@ -31,7 +31,7 @@ void StackGradKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       split_dim,
       x_grad.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Output x_grad's size should be equal to the split_dim, but"
           " received split_dim is:%d x_grad's size is:%d.",
           split_dim,

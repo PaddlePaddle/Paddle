@@ -77,8 +77,8 @@ std::string GetParameterNameFromValue(const pir::Value& value) {
     name = op.tensor_name();
   } else {
     PADDLE_THROW(
-        phi::errors::Unimplemented("Value must be a weight from a Parameter "
-                                   "or a ConstantTensorOp op."));
+        common::errors::Unimplemented("Value must be a weight from a Parameter "
+                                      "or a ConstantTensorOp op."));
   }
   return name;
 }
@@ -91,17 +91,17 @@ std::vector<int64_t> GetShapeFromValue(const pir::Value& value) {
     return phi::vectorize(
         value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dims());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only get shape for dense_tensor or selected_rows."));
   }
 }
 
 pir::Type GetDataTypeFromValue(const pir::Value& value) {
   // TODO(dev): Support other types like DenseTensor.
-  PADDLE_ENFORCE_EQ(
-      value.type().isa<paddle::dialect::DenseTensorType>(),
-      true,
-      phi::errors::InvalidArgument("Value's type must be a DenseTensorType."));
+  PADDLE_ENFORCE_EQ(value.type().isa<paddle::dialect::DenseTensorType>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Value's type must be a DenseTensorType."));
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
 }
 
@@ -109,16 +109,16 @@ Operation* GetDefiningOpForInput(const Operation* op, uint32_t index) {
   PADDLE_ENFORCE_EQ(
       index < op->num_operands() && op->operand_source(index),
       true,
-      phi::errors::InvalidArgument("Intput operand's index must be valid."));
+      common::errors::InvalidArgument("Intput operand's index must be valid."));
   return op->operand_source(index).defining_op();
 }
 
 std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
     const Operation* op, uint32_t index) {
-  PADDLE_ENFORCE_EQ(
-      index < op->num_results(),
-      true,
-      phi::errors::InvalidArgument("Output op result's index must be valid."));
+  PADDLE_ENFORCE_EQ(index < op->num_results(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Output op result's index must be valid."));
   auto result = op->result(index);
   std::vector<std::pair<Operation*, int32_t>> use_ops;
   for (auto it = result.use_begin(); it != result.use_end(); ++it) {

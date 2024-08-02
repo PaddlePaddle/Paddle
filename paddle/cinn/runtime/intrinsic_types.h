@@ -38,7 +38,7 @@ struct BufferType {
       : primitive_type(primitive_type) {
     PADDLE_ENFORCE_EQ(primitive_type.valid() && primitive_type.is_primitive(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "primitive type should be valid and primitive."));
   }
 
@@ -50,7 +50,7 @@ struct BufferType {
 static Type make_intrinsic_buffer_type(Type primitive_type) {
   PADDLE_ENFORCE_EQ(primitive_type.valid() && primitive_type.is_primitive(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "primitive type should be valid and primitive."));
   Type res = BufferType::cinn_type();
   return res;

@@ -101,7 +101,7 @@ void BindCommunicator(py::module* m) {
               send_ctx, recv_ctx, param_scope, envs);
         } else {
           PADDLE_THROW(
-              phi::errors::InvalidArgument("unsupported communicator MODE"));
+              common::errors::InvalidArgument("unsupported communicator MODE"));
         }
 
         return Communicator::GetInstancePtr();

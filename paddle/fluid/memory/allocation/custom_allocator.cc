@@ -15,9 +15,9 @@
 #include "paddle/fluid/memory/allocation/custom_allocator.h"
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/core/enforce.h"
 
 COMMON_DECLARE_bool(custom_device_mem_record);
 
@@ -27,11 +27,12 @@ namespace allocation {
 
 bool CustomAllocator::IsAllocThreadSafe() const { return true; }
 void CustomAllocator::FreeImpl(phi::Allocation* allocation) {
-  PADDLE_ENFORCE_EQ(allocation->place(),
-                    place_,
-                    phi::errors::PermissionDenied("CustomDevice memory is "
-                                                  "freed in incorrect device. "
-                                                  "This may be a bug"));
+  PADDLE_ENFORCE_EQ(
+      allocation->place(),
+      place_,
+      common::errors::PermissionDenied("CustomDevice memory is "
+                                       "freed in incorrect device. "
+                                       "This may be a bug"));
   if (phi::DeviceManager::HasDeviceType(place_.GetDeviceType())) {
     phi::DeviceManager::GetDeviceWithPlace(place_)->MemoryDeallocate(
         allocation->ptr(), allocation->size());
@@ -67,7 +68,7 @@ phi::Allocation* CustomAllocator::AllocateImpl(size_t size) {
   auto dev_type = phi::PlaceHelper::GetDeviceType(place_);
   auto dev_id = phi::PlaceHelper::GetDeviceId(place_);
 
-  PADDLE_THROW_BAD_ALLOC(phi::errors::ResourceExhausted(
+  PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
       "\n\nOut of memory error on %s:%d. "
       "Cannot allocate %s memory on %s:%d, "
       "available memory is only %s.\n\n"

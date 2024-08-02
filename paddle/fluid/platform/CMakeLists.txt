@@ -6,22 +6,13 @@ cc_library(
 cc_test(
   errors_test
   SRCS errors_test.cc
-  DEPS phi common enforce)
+  DEPS phi common)
 
-set(enforce_deps phi)
-if(WITH_GPU)
-  set(enforce_deps ${enforce_deps} external_error_proto)
-endif()
-
-cc_library(
-  enforce INTERFACE
-  SRCS enforce.cc
-  DEPS ${enforce_deps})
 cc_library(monitor SRCS monitor.cc)
 cc_test(
   enforce_test
   SRCS enforce_test.cc
-  DEPS enforce common)
+  DEPS phi common)
 
 cc_test(
   cpu_info_test
@@ -48,7 +39,7 @@ add_subdirectory(device)
 cc_library(
   cpu_helper
   SRCS cpu_helper.cc
-  DEPS cblas enforce common)
+  DEPS cblas phi common)
 cc_test(
   cpu_helper_test
   SRCS cpu_helper_test.cc
@@ -77,13 +68,13 @@ if(WITH_GPU)
   nv_library(
     stream_callback_manager
     SRCS stream_callback_manager.cc
-    DEPS simple_threadpool enforce common)
+    DEPS simple_threadpool phi common)
 endif()
 if(WITH_ROCM)
   hip_library(
     stream_callback_manager
     SRCS stream_callback_manager.cc
-    DEPS simple_threadpool enforce common)
+    DEPS simple_threadpool phi common)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -96,7 +87,7 @@ if(WITH_GLOO)
   cc_library(
     gloo_context
     SRCS gloo_context.cc
-    DEPS framework_proto gloo_wrapper enforce common)
+    DEPS framework_proto gloo_wrapper phi common)
 endif()
 
 # separate init from device_context to avoid cycle dependencies
@@ -130,7 +121,7 @@ cc_library(
 cc_library(
   collective_helper
   SRCS collective_helper.cc gen_comm_id_helper.cc
-  DEPS framework_proto device_context enforce common)
+  DEPS framework_proto device_context phi common)
 
 if(WITH_GPU OR WITH_ROCM)
   target_link_libraries(device_context gpu_resource_pool)
@@ -154,7 +145,7 @@ set(DEVICE_EVENT_LIBS)
 cc_library(
   device_event_base
   SRCS device_event_base.cc
-  DEPS enforce device_context op_registry phi common)
+  DEPS device_context op_registry phi common)
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
@@ -257,22 +248,22 @@ if(WITH_GPU)
   nv_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS phi common gpu_info enforce op_proto_maker shape_inference)
+    DEPS phi common gpu_info op_proto_maker shape_inference)
 elseif(WITH_ROCM)
   hip_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS phi common gpu_info enforce op_proto_maker shape_inference)
+    DEPS phi common gpu_info op_proto_maker shape_inference)
 elseif(WITH_XPU)
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS phi common enforce op_proto_maker shape_inference)
+    DEPS phi common op_proto_maker shape_inference)
 else()
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS phi common enforce op_proto_maker shape_inference)
+    DEPS phi common op_proto_maker shape_inference)
 endif()
 
 cc_test(

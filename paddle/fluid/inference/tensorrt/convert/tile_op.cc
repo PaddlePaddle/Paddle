@@ -118,7 +118,7 @@ class TileOpConverter : public OpConverter {
       PADDLE_ENFORCE_GE(
           rank + 1,
           repeat_times.size(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Can't change batchsize, please check repeat_times"));
       int32_t diff = rank + 1 - repeat_times.size();
       if (diff > 0) repeat_times.insert(repeat_times.begin(), diff, 1);
@@ -127,7 +127,7 @@ class TileOpConverter : public OpConverter {
       PADDLE_ENFORCE_EQ(
           repeat_times[0],
           1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Can't expand on batchsize, please check repeat_times"));
       output_stride.nbDims = rank;
       for (int32_t i = 0; i < rank; i++) {
