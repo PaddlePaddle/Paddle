@@ -42,8 +42,16 @@ std::vector<std::vector<int64_t>> LinearInferShape(
   auto dims_y = weight_shape;
   auto ndims_x = x_shape.size();
   auto ndims_y = weight_shape.size();
-  PADDLE_ENFORCE_EQ(ndims_x > 0, true, common::errors::InvalidArgument("The Input(x) dims size must be greater than 0, but received dims size is 0. "));
-  PADDLE_ENFORCE_EQ(ndims_y > 0, true, "The Input(y) dims size must be greater than 0, but received dims size is 0. "));
+  PADDLE_ENFORCE_EQ(
+      ndims_x > 0,
+      true,
+      common::errors::InvalidArgument("The Input(x) dims size must be greater "
+                                      "than 0, but received dims size is 0. "));
+  PADDLE_ENFORCE_EQ(
+      ndims_y > 0,
+      true,
+      common::errors::InvalidArgument("The Input(y) dims size must be greater "
+                                      "than 0, but received dims size is 0. "));
 
   bool x_broadcasted = false, y_broadcasted = false;
   if (ndims_x == 1) {

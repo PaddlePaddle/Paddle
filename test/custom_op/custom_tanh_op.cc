@@ -18,9 +18,9 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_CPU_INPUT(x)      \
-  PADDLE_ENFORCE_EQ(x.is_cpu(), \
-                    common::errors::Fatal(#x " must be a CPU Tensor."))
+#define CHECK_CPU_INPUT(x) \
+  PADDLE_ENFORCE_EQ(       \
+      x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
 
 template <typename data_t>
 void tanh_cpu_forward_kernel(const data_t* x_data,
