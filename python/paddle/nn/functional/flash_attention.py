@@ -1145,26 +1145,29 @@ def flashmask_attention(
 
     if window_size is not None:
         sq = query.shape[1]
+        bsz = query.shape[0]
         assert (
             startend_row_indices is None
         ), "can't use window_size with startend_row_indices"
         if causal:
             startend_row_indices = paddle.arange(
-                window_size, sq + window_size, dtype="int32"
+                window_size + 1, sq + window_size + 1, dtype="int32"
             ).reshape((1, 1, sq, 1))
-            startend_row_indices = paddle.clip(startend_row_indices, max=sq)
+            startend_row_indices = paddle.clip(
+                startend_row_indices, max=sq
+            ).repeat_interleave(bsz, 0)
 
         else:
             startend_row_indices = paddle.empty((1, 1, sq, 2), dtype="int32")
             startend_row_indices[0, 0, :, 0] = paddle.arange(
-                window_size, sq + window_size, dtype="int32"
+                window_size[0] + 1, sq + window_size[0] + 1, dtype="int32"
             )
             startend_row_indices[0, 0, :, 1] = paddle.arange(
-                -window_size, sq - window_size, dtype="int32"
+                -window_size[1], sq - window_size[1], dtype="int32"
             )
             startend_row_indices = paddle.clip(
                 startend_row_indices, min=0, max=sq
-            )
+            ).repeat_interleave(bsz, 0)
 
     assert (
         startend_row_indices is not None
