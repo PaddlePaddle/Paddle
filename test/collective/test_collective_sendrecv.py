@@ -30,12 +30,16 @@ class TestSendRecvOp(TestDistBase):
 
     def test_sendrecv_dynamic_shape(self):
         self.check_with_place(
-            "collective_sendrecv_op_dynamic_shape.py", "sendrecv_dynamic_shape"
+            "collective_sendrecv_op_dynamic_shape.py",
+            "sendrecv_dynamic_shape",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "0"},
         )
 
     def test_sendrecv_array(self):
         self.check_with_place(
-            "collective_sendrecv_op_array.py", "sendrecv_array"
+            "collective_sendrecv_op_array.py",
+            "sendrecv_array",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "0"},
         )
 
 
