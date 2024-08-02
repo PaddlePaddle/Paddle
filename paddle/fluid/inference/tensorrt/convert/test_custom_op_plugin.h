@@ -141,21 +141,21 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     PADDLE_ENFORCE_EQ(
         fc->nbFields,
         7,
-        phi::errors::InvalidArgument("Expected 7 fields, but got %d fields.",
-                                     fc->nbFields));
+        common::errors::InvalidArgument("Expected 7 fields, but got %d fields.",
+                                        fc->nbFields));
     // float_attr
     auto attr_field = (fc->fields)[0];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kFLOAT32);
     PADDLE_ENFORCE_EQ(attr_field.length,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected length of float_attr to be 1, but got %d.",
                           attr_field.length));
     float float_value = (reinterpret_cast<const float*>(attr_field.data))[0];
     PADDLE_ENFORCE_EQ(
         float_value,
         1.0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected float_attr to be 1.0, but got %f.", float_value));
 
     // int_attr
@@ -163,13 +163,13 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
     PADDLE_ENFORCE_EQ(attr_field.length,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected length of int_attr to be 1, but got %d.",
                           attr_field.length));
     int int_value = (reinterpret_cast<const int*>(attr_field.data))[0];
     PADDLE_ENFORCE_EQ(int_value,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected int_attr to be 1, but got %d.", int_value));
 
     // bool_attr
@@ -177,15 +177,15 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
     PADDLE_ENFORCE_EQ(attr_field.length,
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected length of bool_attr to be 1, but got %d.",
                           attr_field.length));
     int bool_value = (reinterpret_cast<const int*>(attr_field.data))[0];
     PADDLE_ENFORCE_EQ(
         bool_value,
         1,
-        phi::errors::InvalidArgument("Expected bool_attr to be 1, but got %d.",
-                                     bool_value));
+        common::errors::InvalidArgument(
+            "Expected bool_attr to be 1, but got %d.", bool_value));
 
     // string_attr
     attr_field = (fc->fields)[3];
@@ -194,7 +194,7 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     PADDLE_ENFORCE_EQ(
         (size_t)attr_field.length,
         expect_string_attr.size() + 1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected length of string_attr to be %d, but got %d.",
             expect_string_attr.size() + 1,
             attr_field.length));
@@ -207,24 +207,24 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
     PADDLE_ENFORCE_EQ(attr_field.length,
                       3,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected length of ints_attr to be 3, but got %d.",
                           attr_field.length));
     const int* ints_value = reinterpret_cast<const int*>(attr_field.data);
     PADDLE_ENFORCE_EQ(
         ints_value[0],
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected ints_value[0] to be 1, but got %d.", ints_value[0]));
     PADDLE_ENFORCE_EQ(
         ints_value[1],
         2,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected ints_value[1] to be 2, but got %d.", ints_value[1]));
     PADDLE_ENFORCE_EQ(
         ints_value[2],
         3,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected ints_value[2] to be 3, but got %d.", ints_value[2]));
 
     // floats_attr
@@ -232,23 +232,23 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kFLOAT32);
     PADDLE_ENFORCE_EQ(attr_field.length,
                       3,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected length of floats_attr to be 3, but got %d.",
                           attr_field.length));
     const float* floats_value = reinterpret_cast<const float*>(attr_field.data);
     PADDLE_ENFORCE_EQ(floats_value[0],
                       1.0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected floats_value[0] to be 1.0, but got %f.",
                           floats_value[0]));
     PADDLE_ENFORCE_EQ(floats_value[1],
                       2.0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected floats_value[1] to be 2.0, but got %f.",
                           floats_value[1]));
     PADDLE_ENFORCE_EQ(floats_value[2],
                       3.0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected floats_value[2] to be 3.0, but got %f.",
                           floats_value[2]));
 
@@ -257,24 +257,24 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
     PADDLE_ENFORCE_EQ(attr_field.length,
                       3,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expected length of bools_attr to be 3, but got %d.",
                           attr_field.length));
     ints_value = reinterpret_cast<const int*>(attr_field.data);
     PADDLE_ENFORCE_EQ(
         ints_value[0],
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected bools_attr[0] to be true, but got %d.", ints_value[0]));
     PADDLE_ENFORCE_EQ(
         ints_value[1],
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected bools_attr[1] to be false, but got %d.", ints_value[1]));
     PADDLE_ENFORCE_EQ(
         ints_value[2],
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected bools_attr[2] to be true, but got %d.", ints_value[2]));
 
     return new custom_op_plugin(float_value);
