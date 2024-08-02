@@ -86,7 +86,12 @@ class GraphWrapper:
                         The value is the name of Variable.
     """
 
-    def __init__(self, program=None, in_nodes=[], out_nodes=[]):
+    def __init__(
+        self,
+        program: Program = None,
+        in_nodes: dict[str, Variable] = [],
+        out_nodes: dict[str, Variable] = [],
+    ):
         """ """
         super().__init__()
         self.program = Program() if program is None else program

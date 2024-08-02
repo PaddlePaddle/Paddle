@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import warnings
+from typing import Type
 
 import numpy as np
 
@@ -31,7 +32,7 @@ __all__ = []
 def flops(
     net: Layer | Program,
     input_size: list[int],
-    custom_ops: dict[type[Layer] : callable] | None = None,
+    custom_ops: dict[Type[Layer] : callable] | None = None,
     print_detail=False,
 ) -> int:
     """Print a table about the FLOPs of network.
