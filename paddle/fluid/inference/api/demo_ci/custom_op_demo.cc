@@ -16,7 +16,7 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <numeric>
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/common/errors.h"
 
 #include "paddle_inference_api.h"  //NOLINT
 
@@ -38,7 +38,7 @@ void run(Predictor *predictor,
   PADDLE_ENFORCE_EQ(
       predictor->Run(),
       true,
-      phi::errors::PermissionDenied("Predictor is not running!!!"));
+      common::errors::PermissionDenied("Predictor is not running!!!"));
 
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputHandle(output_names[0]);
