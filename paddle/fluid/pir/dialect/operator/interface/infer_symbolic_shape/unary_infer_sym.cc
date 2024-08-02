@@ -403,6 +403,11 @@ bool ClipByNormOpInferSymbolicShape(
   return true;
 }
 
+bool ClipByNormSrOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return ClipByNormOpInferSymbolicShape(op, infer_context);
+}
+
 bool CummaxOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
