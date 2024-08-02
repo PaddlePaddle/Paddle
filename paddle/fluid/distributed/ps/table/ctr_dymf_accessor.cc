@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle::distributed {
@@ -389,7 +390,11 @@ int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
   common_feature_value.UnseenDays(value) = (uint16_t)(unseen_day);
   common_feature_value.PassId(value) = 0;
 #endif
-  CHECK(ret >= 7) << "expect more than 7 real:" << ret;
+  PADDLE_ENFORCE_GE(
+      ret,
+      7UL,
+      phi::errors::InvalidArgument(
+          "Invalid return value. Expect more than 7. But recieved %d.", ret));
   return ret;
 }
 

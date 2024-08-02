@@ -109,8 +109,8 @@ static void check_valid_type(const DataType& dtype) {
     case DataType::FLOAT64:
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type: %s",
-                                                phi::DataTypeToString(dtype)));
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Unsupported data type: %s", phi::DataTypeToString(dtype)));
   }
 }
 
@@ -286,13 +286,13 @@ Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
   std::size_t x_ndims = x.dims().size();
   std::size_t y_ndims = y.dims().size();
   if (x_ndims != 3) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
         "but received X's shape: [%s].",
         x_ndims));
   }
   if (y_ndims != 3) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
         "but received Y's shape: [%s].",
         y_ndims));
@@ -302,7 +302,7 @@ Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
   auto y_shape = phi::vectorize(y.dims());
 
   if (x_shape[0] != y_shape[0]) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input(X) and Input(Y) must have the same batch size in BmmOp, "
         "but received X's batch size: [%s],"
         "Y's batch size [%s].",
@@ -311,7 +311,7 @@ Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
   }
 
   if (x_shape[2] != y_shape[1]) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
         "but receive X's width: [%s],"
         "Y's height: [%s].",
@@ -352,8 +352,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   } else if (data_layout_ == DataLayout::kNHWC) {
     feature_axis = rank - 1;
   } else {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("Unknown storage order: %s", data_layout));
+    PADDLE_THROW(common::errors::InvalidArgument("Unknown storage order: %s",
+                                                 data_layout));
   }
   std::vector<int64_t> reduce_axes;
   for (int i = 0; i < rank; ++i) {
@@ -653,7 +653,8 @@ std::vector<Tensor> unbind_decomp(const Tensor x, int axis) {
     axis = x.shape().size() + axis;
   }
   if (x.shape()[axis] == -1) {
-    PADDLE_THROW(phi::errors::Unimplemented("unbind axis must not be dynamic"));
+    PADDLE_THROW(
+        common::errors::Unimplemented("unbind axis must not be dynamic"));
   }
   size_t num = x.shape()[axis];
   std::vector<Tensor> tmp = backend::split_with_num<T>(x, num, axis);
@@ -1080,7 +1081,7 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
     end_axis = 0;
   }
   if (end_axis < start_axis) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "end_axis must be greater than or equal to start_axis."));
   }
 
@@ -1201,11 +1202,11 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     c_axis = {1, 3};
   } else {
     PADDLE_THROW(
-        phi::errors::Unimplemented("Only support NCHW and NHWC format."));
+        common::errors::Unimplemented("Only support NCHW and NHWC format."));
   }
   size_t rank = x.shape().size();
   if (rank < 3 || rank > 5) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Only support NCHW and NHWC format in rank {3, 4, 5}."));
   }
 
@@ -1407,7 +1408,8 @@ Tensor embedding_decomp(const Tensor& x,
                         const int64_t padding_idx,
                         const bool sparse) {
   if (weight.dims().size() != 2) {
-    PADDLE_THROW(phi::errors::Unimplemented("Only support weight with 2-D."));
+    PADDLE_THROW(
+        common::errors::Unimplemented("Only support weight with 2-D."));
   }
 
   const int64_t NoPadding = -1;
