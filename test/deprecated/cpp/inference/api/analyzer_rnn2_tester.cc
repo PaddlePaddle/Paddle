@@ -48,7 +48,7 @@ struct DataRecord {
       PADDLE_ENFORCE_EQ(
           !data.link_step_data_all.empty(),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "`data.link_step_data_all` is empty, please check"));
       for (size_t j = 0; j < data.link_step_data_all.size(); j++) {
         for (const auto &d : data.link_step_data_all[j]) {

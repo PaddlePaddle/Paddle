@@ -43,7 +43,7 @@ struct CacheAllocator {
     CHECK(iter != busy_allocation_.end());
     PADDLE_ENFORCE_NE(iter,
                       busy_allocation_.end(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Deallocate failed, can not find right position"));
     busy_allocation_.erase(iter);
   }

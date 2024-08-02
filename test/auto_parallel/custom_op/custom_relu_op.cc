@@ -21,13 +21,14 @@
 
 #define CHECK_CPU_INPUT(x) \
   PADDLE_ENFORCE_EQ(       \
-      x.is_cpu(), true, phi::errors::Fatal(#x " must be a CPU Tensor."))
+      x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
 
 template <typename data_t>
 void relu_cpu_forward_kernel(const data_t* x_data,
                              data_t* out_data,
                              int64_t x_numel) {
-  PADDLE_ENFORCE_NE(x_data, nullptr, phi::errors::Fatal("x_data is nullptr."));
+  PADDLE_ENFORCE_NE(
+      x_data, nullptr, common::errors::Fatal("x_data is nullptr."));
   PADDLE_ENFORCE_NE(
       out_data, nullptr, phi::errors::Fatal("out_data is nullptr."));
   for (int64_t i = 0; i < x_numel; ++i) {
