@@ -456,10 +456,12 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
 
   framework::CINNSchedule conv2d_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    PADDLE_ENFORCE_NOT_NULL(
+    PADDLE_ENFORCE_EQ(
         !args.empty(),
+        true,
         ::common::errors::InvalidArgument(
             "The input argument of conv2d schedule is empty! Please check.\n"));
+
     CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
