@@ -992,6 +992,10 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       if (stat_var_name_map_.find(name) != stat_var_name_map_.end()) {
         Variable *root_var = root_scope_->FindVar(name);
         CHECK(root_var != nullptr);
+        PADDLE_ENFORCE_EQ(
+            root_var != nullptr,
+            true,
+            common::errors::NotFound("Root scope should contain variable."));
         auto root_tensor = root_var->Get<phi::DenseTensor>();
         if (root_tensor.place() == place_) {
           continue;
@@ -1060,12 +1064,18 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
                            holder->ptr(),
                            holder->size(),
                            stream);
-              CHECK(phi::is_gpu_place(root_tensor->place()));
+              PADDLE_ENFORCE_EQ(phi::is_gpu_place(root_tensor->place()),
+                                true,
+                                common::errors::InvalidArgument(
+                                    "The place of root tensor should be GPU."));
               ++persist_reset;
             }
           } else {
             auto *ptr = thread_scope_->Var(name);
-            CHECK(proto::VarType::LOD_TENSOR == var->GetType());
+            PADDLE_ENFORCE_EQ(proto::VarType::LOD_TENSOR == var->GetType(),
+                              true,
+                              common::errors::InvalidArgument(
+                                  "The type of var should be LOD_TENSOR."));
             InitializeVariable(ptr, var->GetType());
             phi::DenseTensor *thread_tensor =
                 ptr->GetMutable<phi::DenseTensor>();
