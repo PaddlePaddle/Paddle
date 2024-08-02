@@ -271,6 +271,7 @@ class QuantConfig:
         Examples:
             .. code-block:: python
 
+                >>> import paddle
                 >>> from paddle.nn import Conv2D
                 >>> from paddle.quantization import QuantConfig
                 >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
