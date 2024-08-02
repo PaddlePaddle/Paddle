@@ -538,10 +538,9 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
         ReplaceSplitSplitBySlice(
             op, downstream_op->dyn_cast<::pir::SplitOp>(), rewriter);
       } else {
-        PADDLE_ENFORCE_EQ(
+        PADDLE_ENFORCE(
             false,
-            true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Currently only support pir::slice/split as downstream "
                 "op, but got: %s",
                 downstream_op->name()));
