@@ -136,8 +136,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
-    BKCLDataType dtype =
-        platform::ToBKCLDataType(framework::TransToProtoVarType(in->dtype()));
+    BKCLDataType dtype = phi::ToBKCLDataType(in->dtype());
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
