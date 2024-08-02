@@ -44,8 +44,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssertTrue(
     const Target &target) {
   framework::CINNCompute assert_true_compute([=](lang::Args args,
                                                  lang::RetValue *ret) {
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         !args.empty(),
+        true,
         common::errors::InvalidArgument("The input argument of assert_true is "
                                         "empty! Please check."));
     CINNValuePack pack_args = args[0];
