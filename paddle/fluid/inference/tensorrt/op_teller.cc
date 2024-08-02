@@ -2792,6 +2792,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "isnan_v2") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the isnan_v2 does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+    }
+
     if (op_type == "p_norm") {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -3076,6 +3091,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "grid_sampler",
       "cumsum",
       "unbind",
+      "isnan_v2",
       "p_norm",
       "assign",
       "flip",
@@ -3249,6 +3265,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "grid_sampler",
       "cumsum",
       "unbind",
+      "isnan_v2",
       "p_norm",
       "assign",
       "flip",
