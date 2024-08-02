@@ -712,7 +712,7 @@ bool EditDistanceOpInferSymbolicShape(
                                      "the 2nd dimension equal to 1."));
 
     pir::DimExpr one_dim_expr = pir::DimExpr::CreateConstant(1);
-    infer_context->AddEqualCstr(hyps_dims[1], one_dim_expr);
+    infer_context->AddEqualCstr(refs_dims[1], one_dim_expr);
   }
 
   infer_context->SetShapeOrDataForValue(op->result(0), refs_shape_or_data);
