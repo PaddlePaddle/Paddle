@@ -902,26 +902,32 @@ bool MultiplexOpInferSymbolicShape(
   const auto &ids_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const std::vector<symbol::DimExpr> &ids_dims = ids_shape_or_data.shape();
-  std::vector<std::vector<symbol::DimExpr>> ins_dims;
-  for (size_t i = 0; i < op->num_operands() - 1; ++i) {
-    const auto &in_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(i));
-    ins_dims.push_back(in_shape_or_data.shape());
-  }
 
   PADDLE_ENFORCE_EQ(
-      ins_dims.size() > 0,
-      true,
-      phi::errors::InvalidArgument("The input tensors must not be empty."));
-  std::vector<symbol::DimExpr> in_dim = ins_dims[0];
+      ids_dims.size(),
+      1UL,
+      common::errors::InvalidArgument(
+          "The Input(ids) should be a 1-D tensor, but received rank is %d.",
+          ids_dims.size()));
 
-  in_dim[0] = ids_dims[0];
+  const auto &ins_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> in_dims = ins_shape_or_data.shape();
+
+  PADDLE_ENFORCE_GT(in_dims.size(),
+                    0UL,
+                    common::errors::InvalidArgument(
+                        "The Input(ins) dims size must be greater than 0, but "
+                        "received dims size is 0."));
+
+  in_dims[0] = ids_dims[0];
 
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs(in_dim));
+      op->result(0), symbol::TensorShapeOrDataDimExprs(in_dims));
 
   return true;
 }
+
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
