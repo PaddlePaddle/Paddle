@@ -63,7 +63,7 @@ class CudaMem {
   void* data() const {
     PADDLE_ENFORCE_NOT_NULL(
         ptr,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Attempted to access data, but the pointer is null."));
     return ptr;
   }

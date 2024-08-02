@@ -174,10 +174,9 @@ std::unordered_map<Index, LoopIterators> GenerateAnchorIndex2LoopIterators(
     PADDLE_ENFORCE_EQ(
         anchor_index2loop_iters.emplace(anchor_index, anchor_loop_iters).second,
         true,
-        phi::errors::InvalidArgument(
-            "Failed to insert anchor index %s into map. "
-            "This may be due to a duplicate index.",
-            anchor_index));
+        common::errors::InvalidArgument(
+            "Failed to insert anchor index into map. "
+            "This may be due to a duplicate index.", ));
   }
   return anchor_index2loop_iters;
 }

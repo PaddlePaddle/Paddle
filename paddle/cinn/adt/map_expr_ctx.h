@@ -44,7 +44,7 @@ class MapExprCtx final {
     PADDLE_ENFORCE_EQ(
         map->emplace(node, ir::ir_utils::IRCopy(lowered_funcs)).second,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Failed to insert node into node2lowered_funcs_ map. "
             "This may be due to a duplicate node."));
   }

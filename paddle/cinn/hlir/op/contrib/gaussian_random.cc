@@ -59,7 +59,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGaussianRandom(
     PADDLE_ENFORCE_GT(
         attrs.attr_store.count("shape"),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Attribute 'shape' is required in attrs, but it is not found."));
     ir::Tensor shape_tensor;
     std::string tensor_name = "gaussian_random_out";
