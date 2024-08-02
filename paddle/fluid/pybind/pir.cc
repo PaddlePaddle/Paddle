@@ -1848,16 +1848,14 @@ SplitedResult SplitForwardBackward(
   // Step1. insert data op for inputs_values and middle_values
   pir::IrMapping backward_mapper;
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
-  int counter;
 
-  auto create_output_fn = [&ctx, &counter](
-                              std::unordered_map<Value, Value> value_map,
-                              std::shared_ptr<Program> program,
-                              const std::string &prefix) {
-    return [&ctx, &counter, &value_map, &program, &prefix](
-               const pir::Value &v) {
+  auto create_output_fn = [&ctx](std::unordered_map<Value, Value> value_map,
+                                 std::shared_ptr<Program> program,
+                                 const std::string &prefix) {
+    auto counter = std::make_shared<size_t>(0);
+    return [&ctx, value_map, program, counter, prefix](const pir::Value &v) {
       // NOTE(SigureMo): Ensure counter++ executed in each iteration.
-      auto default_name = prefix + std::to_string(counter++);
+      auto default_name = prefix + std::to_string((*counter)++);
       if (v.impl() == nullptr) {
         return;
       }
@@ -1875,12 +1873,10 @@ SplitedResult SplitForwardBackward(
   };
 
   VLOG(4) << "start create forward outputs, inserting shadow_output ops.";
-  counter = 0;
   std::for_each(
       middle_values.begin(),
       middle_values.end(),
       create_output_fn(forward_value_map, forward_program, "middle_"));
-  counter = 0;
   std::for_each(
       forward_outputs.begin(),
       forward_outputs.end(),
@@ -1889,16 +1885,16 @@ SplitedResult SplitForwardBackward(
   auto create_kwarg_fn = [&backward_block,
                           &backward_inputs,
                           &backward_value_map,
-                          &forward_value_map,
-                          &counter](const std::string &prefix) {
+                          &forward_value_map](const std::string &prefix) {
+    auto counter = std::make_shared<size_t>(0);
     return [&backward_block,
             &backward_inputs,
             &backward_value_map,
             &forward_value_map,
-            &counter,
-            &prefix](const pir::Value &v) {
+            counter,
+            prefix](const pir::Value &v) {
       // NOTE(SigureMo): Ensure counter++ executed in each iteration.
-      auto default_name = prefix + std::to_string(counter++);
+      auto default_name = prefix + std::to_string((*counter)++);
       if (v && !backward_value_map.count(v) && (backward_inputs.count(v))) {
         backward_value_map[v] = backward_block.AddKwarg(
             name_analysis::TryGetValueFirstName(forward_value_map[v])
@@ -1911,26 +1907,21 @@ SplitedResult SplitForwardBackward(
   if (has_backward) {
     VLOG(4) << "start create backward inputs, creating keyword argument.";
     VLOG(4) << "Create keyword argument for backward program: fo";
-    counter = 0;
     std::for_each(forward_outputs.begin(),
                   forward_outputs.end(),
                   create_kwarg_fn("output_"));
     VLOG(4) << "Create keyword argument for backward program: fx";
-    counter = 0;
     std::for_each(forward_inputs.begin(),
                   forward_inputs.end(),
                   create_kwarg_fn("input_"));
     VLOG(4) << "Create keyword argument for backward program: fp";
-    counter = 0;
     std::for_each(forward_params.begin(),
                   forward_params.end(),
                   create_kwarg_fn("param_"));
     VLOG(4) << "Create keyword argument for backward program: fm";
-    counter = 0;
     std::for_each(
         middle_values.begin(), middle_values.end(), create_kwarg_fn("middle_"));
     VLOG(4) << "Create keyword argument for backward program: fo_g";
-    counter = 0;
     std::for_each(forward_outputs_grads.begin(),
                   forward_outputs_grads.end(),
                   create_kwarg_fn("output_grad_"));
@@ -1950,12 +1941,10 @@ SplitedResult SplitForwardBackward(
       /*skip_fn=*/[](Operation *op) { return op->isa<pir::ShadowOutputOp>(); });
   VLOG(4) << "start create backward outputs, inserting shadow_output ops.";
   if (has_backward) {
-    counter = 0;
     std::for_each(
         forward_inputs_grads.begin(),
         forward_inputs_grads.end(),
         create_output_fn(backward_value_map, backward_program, "input_grad_"));
-    counter = 0;
     std::for_each(
         forward_params_grads.begin(),
         forward_params_grads.end(),
