@@ -1849,11 +1849,12 @@ SplitedResult SplitForwardBackward(
   pir::IrMapping backward_mapper;
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
 
-  auto create_output_fn = [&ctx](std::unordered_map<Value, Value> value_map,
-                                 std::shared_ptr<Program> program,
-                                 const std::string &prefix) {
+  auto create_output_fn = [&ctx](
+                              const std::unordered_map<Value, Value> &value_map,
+                              const std::shared_ptr<Program> &program,
+                              const std::string &prefix) {
     auto counter = std::make_shared<size_t>(0);
-    return [&ctx, value_map, program, counter, prefix](const pir::Value &v) {
+    return [&ctx, &value_map, &program, &prefix, counter](const pir::Value &v) {
       // NOTE(SigureMo): Ensure counter++ executed in each iteration.
       auto default_name = prefix + std::to_string((*counter)++);
       if (v.impl() == nullptr) {
@@ -1891,8 +1892,8 @@ SplitedResult SplitForwardBackward(
             &backward_inputs,
             &backward_value_map,
             &forward_value_map,
-            counter,
-            prefix](const pir::Value &v) {
+            &prefix,
+            counter](const pir::Value &v) {
       // NOTE(SigureMo): Ensure counter++ executed in each iteration.
       auto default_name = prefix + std::to_string((*counter)++);
       if (v && !backward_value_map.count(v) && (backward_inputs.count(v))) {
