@@ -772,11 +772,11 @@ struct FinalMutator : public ir::IRMutator<> {
       for (int i = 0; i < iter_values.size(); ++i) {
         if (ContainVar({iter_values[i]}, old_rf_loop_var_->name)) {
           // record the rfactor loop var's block var
-          PADDLE_ENFORCE_NOT_NULL(
-              iter_values[i].As<_Var_>(),
-              ::common::errors::NotFound(
-                  "Can not support complex reduce bindings: %s",
-                  iter_values[i].c_str()));
+          PADDLE_ENFORCE_NOT_NULL(iter_values[i].As<_Var_>(),
+                                  ::common::errors::NotFound(
+                                      "Can not support complex reduce bindings "
+                                      "of iteration values at position %d.",
+                                      i));
           old_rf_iter_var_ = iter_vars[i];
           break;
         }
