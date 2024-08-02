@@ -828,6 +828,11 @@ bool IdentityLossOpInferSymbolicShape(
   return true;
 }
 
+bool IdentityLoss_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return IdentityLossOpInferSymbolicShape(op, infer_context);
+}
+
 bool KthvalueOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
