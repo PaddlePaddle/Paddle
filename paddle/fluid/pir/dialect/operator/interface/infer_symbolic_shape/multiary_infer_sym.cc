@@ -659,14 +659,6 @@ bool EditDistanceOpInferSymbolicShape(
       phi::errors::InvalidArgument(
           "Input(Refs) must be a 2-D Tensor, but received rank %u.",
           refs_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      hyps_dims[0],
-      refs_dims[0],
-      phi::errors::InvalidArgument("The first dimension of Input(Hyps) and "
-                                   "Input(Refs) must be the same, "
-                                   "but received: %d vs %d.",
-                                   hyps_dims[0],
-                                   refs_dims[0]));
 
   infer_context->AddEqualCstr(hyps_dims[0], refs_dims[0]);
 
@@ -677,39 +669,15 @@ bool EditDistanceOpInferSymbolicShape(
     const auto &refslength_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(3));
 
-    PADDLE_ENFORCE_EQ(
-        hypslength_shape_or_data.shape()[0],
-        hyps_dims[0],
-        phi::errors::InvalidArgument("Input(HypsLength) and Input(Hyps) should "
-                                     "have identical first dimension."));
-
     infer_context->AddEqualCstr(hypslength_shape_or_data.shape()[0],
                                 hyps_dims[0]);
-
-    PADDLE_ENFORCE_EQ(
-        refslength_shape_or_data.shape()[0],
-        refs_dims[0],
-        phi::errors::InvalidArgument("Input(RefsLength) and Input(Refs) should "
-                                     "have identical first dimension."));
 
     infer_context->AddEqualCstr(refslength_shape_or_data.shape()[0],
                                 refs_dims[0]);
 
   } else {
-    PADDLE_ENFORCE_EQ(
-        hyps_dims[1],
-        1,
-        phi::errors::InvalidArgument("Input(Hyps) must be a 2-D Tensor with "
-                                     "the 2nd dimension equal to 1."));
-
     pir::DimExpr one_dim_expr = pir::DimExpr::CreateConstant(1);
     infer_context->AddEqualCstr(hyps_dims[1], one_dim_expr);
-
-    PADDLE_ENFORCE_EQ(
-        refs_dims[1],
-        1,
-        phi::errors::InvalidArgument("Input(Refs) must be a 2-D Tensor with "
-                                     "the 2nd dimension equal to 1."));
 
     pir::DimExpr one_dim_expr = pir::DimExpr::CreateConstant(1);
     infer_context->AddEqualCstr(refs_dims[1], one_dim_expr);
