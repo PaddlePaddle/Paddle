@@ -17,7 +17,9 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_INPUT(x) PADDLE_ENFORCE_EQ(x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
+#define CHECK_INPUT(x) \
+  PADDLE_ENFORCE_EQ(   \
+      x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
 
 std::vector<paddle::Tensor> SimpleSliceFunction(const paddle::Tensor& x,
                                                 int64_t begin_index,
@@ -29,9 +31,18 @@ std::vector<std::vector<int64_t>> SimpleSliceInferShape(
     const std::vector<int64_t>& x_shape,
     int64_t begin_index,
     int64_t end_index) {
-  PADDLE_ENFORCE_EQ(begin_index > 0, true, common::errors::InvalidArgument("The begin index is out of bound."));
-  PADDLE_ENFORCE_EQ(end_index > 0, true, common::errors::InvalidArgument("The end index must is out of bound."));
-  PADDLE_ENFORCE_EQ(begin_index < end_index, true, common::errors::InvalidArgument("The begin index is greater than end index."));
+  PADDLE_ENFORCE_EQ(
+      begin_index > 0,
+      true,
+      common::errors::InvalidArgument("The begin index is out of bound."));
+  PADDLE_ENFORCE_EQ(
+      end_index > 0,
+      true,
+      common::errors::InvalidArgument("The end index must is out of bound."));
+  PADDLE_ENFORCE_EQ(begin_index < end_index,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The begin index is greater than end index."));
   auto out_shape = x_shape;
   out_shape[0] = end_index - begin_index;
   return {out_shape};

@@ -18,15 +18,25 @@
 #include "paddle/extension.h"
 #include "paddle/phi/backends/context_pool.h"
 
-#define CHECK_CPU_INPUT(x) PADDLE_ENFORCE_EQ(x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
-#define CHECK_CUSTOM_INPUT(x) PADDLE_ENFORCE_EQ(x.is_custom_device(), true, common::errors::Fatal( #x " must be a custom Tensor."))
+#define CHECK_CPU_INPUT(x) \
+  PADDLE_ENFORCE_EQ(       \
+      x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
+#define CHECK_CUSTOM_INPUT(x)             \
+  PADDLE_ENFORCE_EQ(x.is_custom_device(), \
+                    true,                 \
+                    common::errors::Fatal(#x " must be a custom Tensor."))
 
 template <typename data_t>
 void relu_cpu_forward_kernel(const data_t* x_data,
                              data_t* out_data,
                              int64_t x_numel) {
-  PADDLE_ENFORCE_EQ(x_data != nullptr, true, common::errors::InvalidArgument("x_data is nullptr."));
-  PADDLE_ENFORCE_EQ(out_data != nullptr, true, common::errors::InvalidArgument("" "out_data is nullptr."));
+  PADDLE_ENFORCE_EQ(x_data != nullptr,
+                    true,
+                    common::errors::InvalidArgument("x_data is nullptr."));
+  PADDLE_ENFORCE_EQ(out_data != nullptr,
+                    true,
+                    common::errors::InvalidArgument(""
+                                                    "out_data is nullptr."));
   for (int64_t i = 0; i < x_numel; ++i) {
     out_data[i] = std::max(static_cast<data_t>(0.), x_data[i]);
   }
@@ -200,7 +210,9 @@ std::vector<paddle::Tensor> StreamForward(const paddle::Tensor& x) {
   auto custom_ctx = static_cast<const phi::CustomContext*>(dev_ctx);
   std::shared_ptr<phi::stream::Stream> stream = custom_ctx->GetStream();
 
-  PADDLE_ENFORCE_EQ(stream != nullptr, true, common::errors::Fatal("`stream` is nullptr, please check"));
+  PADDLE_ENFORCE_EQ(stream != nullptr,
+                    true,
+                    common::errors::Fatal("`stream` is nullptr, please check"));
   std::cout << "Check stream != nullptr successfully" << std::endl;
   custom_ctx->Wait();
   std::cout << "Check Wait successfully" << std::endl;

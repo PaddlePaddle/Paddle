@@ -17,11 +17,22 @@
 #include "concat_and_split.h"  // NOLINT
 #include "paddle/extension.h"
 
-#define CHECK_INPUT(x) PADDLE_ENFORCE_EQ(x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
+#define CHECK_INPUT(x) \
+  PADDLE_ENFORCE_EQ(   \
+      x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
 
 int64_t ComputeAxis(int64_t axis, int64_t rank) {
-  PD_CHECK(axis >= -rank && axis < rank, "The axis is excepted to be in range of [", -rank, ", ", rank, "].");
-  PADDLE_ENFORCE_EQ(axis >= -rank && axis < rank, true, common::errors::InvalidArgument("The axis is excepted to be in range of [ %d , %d ].", -rank, rank));
+  PD_CHECK(axis >= -rank && axis < rank,
+           "The axis is excepted to be in range of [",
+           -rank,
+           ", ",
+           rank,
+           "].");
+  PADDLE_ENFORCE_EQ(
+      axis >= -rank && axis < rank,
+      true,
+      common::errors::InvalidArgument(
+          "The axis is excepted to be in range of [ %d , %d ].", -rank, rank));
   if (axis < 0) {
     axis = axis + rank;
   }
@@ -34,12 +45,19 @@ std::vector<int64_t> ComputeOutShape(
   auto out_shape = in_shapes[0];
   size_t zero_dim_size = out_shape.size();
   for (size_t i = 1; i < n; ++i) {
-    PADDLE_ENFORCE_EQ(in_shapes[i].size() == out_shape.size(), true, common::errors::InvalidArgument("Input dimension must be same."));
+    PADDLE_ENFORCE_EQ(
+        in_shapes[i].size() == out_shape.size(),
+        true,
+        common::errors::InvalidArgument("Input dimension must be same."));
     for (size_t j = 0; j < zero_dim_size; ++j) {
       if (j == axis) {
         out_shape[axis] += in_shapes[i][j];
       } else {
-        PADDLE_ENFORCE_EQ(in_shapes[0][j] == in_shapes[i][j], true, common::errors::InvalidArgument("The %d-th dimension of input must be same.", j)); }
+        PADDLE_ENFORCE_EQ(in_shapes[0][j] == in_shapes[i][j],
+                          true,
+                          common::errors::InvalidArgument(
+                              "The %d-th dimension of input must be same.", j));
+      }
     }
   }
   return out_shape;
@@ -48,7 +66,10 @@ std::vector<int64_t> ComputeOutShape(
 std::vector<paddle::Tensor> ConcatForwardDynamicAxis(
     const std::vector<paddle::Tensor>& inputs, const paddle::Tensor& axis_t) {
   // check inputs
-  PADDLE_ENFORCE_EQ(inputs.size() >= 1, true,common::errors::InvalidArgument("No Tensor need to be concat."));
+  PADDLE_ENFORCE_EQ(
+      inputs.size() >= 1,
+      true,
+      common::errors::InvalidArgument("No Tensor need to be concat."));
   for (auto& t : inputs) {
     CHECK_INPUT(t);
   }
@@ -81,7 +102,10 @@ std::vector<paddle::Tensor> ConcatBackwardDynamicAxis(
     const paddle::Tensor& grad_out,
     const paddle::Tensor& axis_t) {
   // check input
-  PADDLE_ENFORCE_EQ(inputs.size() >= 1, true, common::errors::InvalidArgument("No Tensor need to be concat."));
+  PADDLE_ENFORCE_EQ(
+      inputs.size() >= 1,
+      true,
+      common::errors::InvalidArgument("No Tensor need to be concat."));
   for (auto& t : inputs) {
     CHECK_INPUT(t);
   }
@@ -136,7 +160,10 @@ PD_BUILD_GRAD_OP(custom_concat)
 std::vector<paddle::Tensor> ConcatForwardStaticAxis(
     const std::vector<paddle::Tensor>& inputs, const int64_t& axis) {
   // check inputs
-  PADDLE_ENFORCE_EQ(inputs.size() >= 1, true, common::errors::InvalidArgument("No Tensor need to be concat."));
+  PADDLE_ENFORCE_EQ(
+      inputs.size() >= 1,
+      true,
+      common::errors::InvalidArgument("No Tensor need to be concat."));
   for (auto& t : inputs) {
     CHECK_INPUT(t);
   }
@@ -167,7 +194,10 @@ std::vector<paddle::Tensor> ConcatBackwardStaticAxis(
     const paddle::Tensor& grad_out,
     const int64_t& axis) {
   // check input
-  PADDLE_ENFORCE_EQ(inputs.size() >= 1, true, common::errors::InvalidArgument("No Tensor need to be concat."));
+  PADDLE_ENFORCE_EQ(
+      inputs.size() >= 1,
+      true,
+      common::errors::InvalidArgument("No Tensor need to be concat."));
   for (auto& t : inputs) {
     CHECK_INPUT(t);
   }
