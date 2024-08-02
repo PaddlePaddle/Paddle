@@ -903,7 +903,7 @@ bool MultiplexOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const std::vector<symbol::DimExpr> &ids_dims = ids_shape_or_data.shape();
 
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_GE(
       ids_dims.size(),
       1UL,
       common::errors::InvalidArgument(
