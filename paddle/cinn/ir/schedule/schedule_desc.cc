@@ -98,7 +98,11 @@ class PackedStepContext {
                       input_range_.size(),
                       ::common::errors::InvalidArgument("idx overranges"));
     const auto& range = input_range_.at(idx);
-    CHECK(range.second - range.first == 1) << "not single param";
+
+    PADDLE_ENFORCE_EQ(range.second - range.first,
+                      1,
+                      ::common::errors::InvalidArgument(
+                          "Input is not single param, idx: %d.", idx));
     return inputs_[range.first];
   }
 
@@ -136,7 +140,11 @@ class PackedStepContext {
     size_t input_idx = 0;
     for (auto&& param_name : step_kind->inputs_) {
       auto arg_it = desc.inputs.find(param_name);
-      CHECK(arg_it != desc.inputs.end()) << "Can't find param:" << param_name;
+      PADDLE_ENFORCE_NE(
+          arg_it,
+          desc.inputs.end(),
+          ::common::errors::InvalidArgument(
+              "Can't find param: %s while building inputs", param_name));
       auto&& args = arg_it->second;
       inputs_.insert(inputs_.end(),
                      std::make_move_iterator(args.begin()),
@@ -149,8 +157,10 @@ class PackedStepContext {
     size_t attr_idx = 0;
     for (auto&& attr_name : step_kind->attrs_) {
       auto attr_it = desc.attrs.find(attr_name);
-      CHECK(attr_it != desc.attrs.end())
-          << "Can't find attribute:" << attr_name;
+      PADDLE_ENFORCE_NE(attr_it,
+                        desc.attrs.end(),
+                        ::common::errors::InvalidArgument(
+                            "Can't find attribute: %s", attr_name));
       attrs_.emplace_back(attr_it->second);
       ++attr_idx;
     }
@@ -694,8 +704,10 @@ proto::ScheduleDesc ScheduleDesc::ToProto() const {
       expr_desc->set_parameter(param_name);
       for (auto&& expr : param2exprs.second) {
         auto expr_it = expr2name.find(expr);
-        CHECK(expr_it != expr2name.end())
-            << "Can't find expr of param_name: " << param_name;
+        PADDLE_ENFORCE_NE(expr_it,
+                          expr2name.end(),
+                          ::common::errors::InvalidArgument(
+                              "Can't find expr of param_name: %s", param_name));
         expr_desc->add_arguments(expr_it->second);
       }
     }
@@ -738,17 +750,26 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
     VLOG(4) << "Replay step:\n" << step_proto.DebugString();
     ScheduleDesc::Step step;
     step.type = step_proto.type();
-    CHECK(!step.type.empty()) << "Name of StepKind is empty";
+    PADDLE_ENFORCE_NE(
+        step.type.empty(),
+        true,
+        ::common::errors::InvalidArgument("Name of StepKind is empty"));
     if (without_post_schedule && step.type == "TagPostSchedule") {
       break;
     }
     const StepKindInfo* step_kind = StepKindRegistry::Global()->Find(step.type);
-    CHECK(step_kind) << "Can't find StepKind:" << step.type;
+    PADDLE_ENFORCE_NE(step_kind,
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "Can't find StepKind: %s", step.type));
 
     for (auto&& param2args : step_proto.inputs()) {
       for (auto&& arg : param2args.arguments()) {
         auto arg_it = name2expr.find(arg);
-        CHECK(arg_it != name2expr.end()) << "Cant't find argument:" << arg;
+        PADDLE_ENFORCE_NE(
+            arg_it,
+            name2expr.end(),
+            ::common::errors::InvalidArgument("Cant't find argument: %s", arg));
         step.inputs[param2args.parameter()].emplace_back(arg_it->second);
       }
     }

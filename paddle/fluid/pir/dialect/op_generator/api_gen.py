@@ -126,7 +126,7 @@ OP_DISPATCH_TEMPLATE = """
     }}"""
 
 OP_DISPATCH_ERROR_TEMPLATE = """
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The kernel of ({op_name}) for input Value is unimplemented, please check the type of input Value."));"""
 
 

@@ -48,7 +48,11 @@ template <typename T>
 void TestCopyTensor() {
   auto t1 = InitCPUTensorForTest<T>();
   auto t1_cpu_cp = t1.copy_to(phi::CPUPlace(), /*blocking=*/false);
-  CHECK((phi::CPUPlace() == t1_cpu_cp.place()));
+  PADDLE_ENFORCE_EQ(t1_cpu_cp.place(),
+                    phi::CPUPlace(),
+                    phi::errors::InvalidArgument("t1_cpu_cp should copy to "
+                                                 "CPUPlace, but got %s",
+                                                 t1_cpu_cp.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
     PADDLE_ENFORCE_EQ(
         t1_cpu_cp.template data<T>()[i],
@@ -59,12 +63,25 @@ void TestCopyTensor() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   VLOG(2) << "Do GPU copy test";
   auto t1_gpu_cp = t1_cpu_cp.copy_to(phi::GPUPlace(), /*blocking=*/false);
-  CHECK((phi::GPUPlace() == t1_gpu_cp.place()));
+  PADDLE_ENFORCE_EQ(t1_gpu_cp.place(),
+                    phi::GPUPlace(),
+                    phi::errors::InvalidArgument("t1_gpu_cp should copy to "
+                                                 "GPUPlace, but got %s",
+                                                 t1_gpu_cp.place()));
   auto t1_gpu_cp_cp = t1_gpu_cp.copy_to(phi::GPUPlace(), /*blocking=*/false);
-  CHECK((phi::GPUPlace() == t1_gpu_cp_cp.place()));
+  PADDLE_ENFORCE_EQ(t1_gpu_cp_cp.place(),
+                    phi::GPUPlace(),
+                    phi::errors::InvalidArgument("t1_gpu_cp_cp should copy to "
+                                                 "GPUPlace, but got %s",
+                                                 t1_gpu_cp_cp.place()));
   auto t1_gpu_cp_cp_cpu =
       t1_gpu_cp_cp.copy_to(phi::CPUPlace(), /*blocking=*/false);
-  CHECK((phi::CPUPlace() == t1_gpu_cp_cp_cpu.place()));
+  PADDLE_ENFORCE_EQ(
+      t1_gpu_cp_cp_cpu.place(),
+      phi::CPUPlace(),
+      phi::errors::InvalidArgument("t1_gpu_cp_cp_cpu should copy to "
+                                   "CPUPlace, but got %s",
+                                   t1_gpu_cp_cp_cpu.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
     PADDLE_ENFORCE_EQ(
         t1_gpu_cp_cp_cpu.template data<T>()[i],
@@ -81,11 +98,17 @@ void TestAPIPlace() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto t1 = paddle::experimental::empty(
       tensor_shape, DataType::FLOAT32, phi::GPUPlace());
-  CHECK((phi::GPUPlace() == t1.place()));
+  PADDLE_ENFORCE_EQ(t1.place(),
+                    phi::GPUPlace(),
+                    phi::errors::InvalidArgument(
+                        "t1 should copy to GPUPlace, but got %s", t1.place()));
 #endif
   auto t2 = paddle::experimental::empty(
       tensor_shape, DataType::FLOAT32, phi::CPUPlace());
-  CHECK((phi::CPUPlace() == t2.place()));
+  PADDLE_ENFORCE_EQ(t2.place(),
+                    phi::CPUPlace(),
+                    phi::errors::InvalidArgument(
+                        "t2 should copy to CPUPlace, but got %s", t2.place()));
 }
 
 void TestAPISizeAndShape() {
@@ -94,8 +117,13 @@ void TestAPISizeAndShape() {
   PADDLE_ENFORCE_EQ(
       t1.size(),
       25,
-      phi::errors::InvalidArgument("t1.size should be equal to 25 "));
-  CHECK(t1.shape() == tensor_shape);
+      phi::errors::InvalidArgument("t1.size should be equal to 25, "
+                                   "but got %d",
+                                   t1.size()));
+  PADDLE_ENFORCE_EQ(t1.shape(),
+                    tensor_shape,
+                    phi::errors::InvalidArgument(
+                        "t1.shape should be equal to tensor_shape, "));
 }
 
 void TestAPISlice() {
@@ -106,19 +134,43 @@ void TestAPISlice() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto t1 = paddle::experimental::empty(
       tensor_shape_origin1, DataType::FLOAT32, phi::GPUPlace());
-  CHECK(t1.slice(0, 5).shape() == tensor_shape_origin1);
-  CHECK(t1.slice(0, 3).shape() == tensor_shape_sub1);
+  PADDLE_ENFORCE_EQ(
+      t1.slice(0, 5).shape(),
+      tensor_shape_origin1,
+      phi::errors::InvalidArgument("t1.slice(0, 5).shape should be equal to "
+                                   "{5, 5}"));
+  PADDLE_ENFORCE_EQ(
+      t1.slice(0, 3).shape(),
+      tensor_shape_sub1,
+      phi::errors::InvalidArgument("t1.slice(0, 3).shape should be equal to "
+                                   "{3, 5}"));
   auto t2 = paddle::experimental::empty(
       tensor_shape_origin2, DataType::FLOAT32, phi::GPUPlace());
-  CHECK(t2.slice(4, 5).shape() == tensor_shape_sub2);
+  PADDLE_ENFORCE_EQ(
+      t2.slice(4, 5).shape(),
+      tensor_shape_sub2,
+      phi::errors::InvalidArgument("t2.slice(4, 5).shape should be equal to "
+                                   "{1, 5, 5}"));
 #endif
   auto t3 = paddle::experimental::empty(
       tensor_shape_origin1, DataType::FLOAT32, phi::CPUPlace());
-  CHECK(t3.slice(0, 5).shape() == tensor_shape_origin1);
-  CHECK(t3.slice(0, 3).shape() == tensor_shape_sub1);
+  PADDLE_ENFORCE_EQ(
+      t3.slice(0, 5).shape(),
+      tensor_shape_origin1,
+      phi::errors::InvalidArgument("t3.slice(0, 5).shape should be equal to "
+                                   "{5, 5}"));
+  PADDLE_ENFORCE_EQ(
+      t3.slice(0, 3).shape(),
+      tensor_shape_sub1,
+      phi::errors::InvalidArgument("t3.slice(0, 3).shape should be equal to "
+                                   "{3, 5}"));
   auto t4 = paddle::experimental::empty(
       tensor_shape_origin2, DataType::FLOAT32, phi::CPUPlace());
-  CHECK(t4.slice(4, 5).shape() == tensor_shape_sub2);
+  PADDLE_ENFORCE_EQ(
+      t4.slice(4, 5).shape(),
+      tensor_shape_sub2,
+      phi::errors::InvalidArgument("t4.slice(4, 5).shape should be equal to "
+                                   "{1, 5, 5}"));
 
   // Test writing function for sliced tensor
   auto t = InitCPUTensorForTest<float>();
@@ -152,11 +204,21 @@ void TestCast(paddle::DataType data_type) {
   DataType dtype = phi::CppTypeToDataType<T>::Type();
   auto t1 = paddle::experimental::empty(tensor_shape, dtype, phi::CPUPlace());
   auto t2 = t1.cast(data_type);
-  CHECK(t2.type() == data_type);
+  PADDLE_ENFORCE_EQ(
+      t2.type(),
+      data_type,
+      phi::errors::InvalidArgument("t2.type() should be equal to data_type, "
+                                   "but got %s",
+                                   t2.type()));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto tg1 = paddle::experimental::empty(tensor_shape, dtype, phi::GPUPlace());
   auto tg2 = tg1.cast(data_type);
-  CHECK(tg2.type() == data_type);
+  PADDLE_ENFORCE_EQ(
+      tg2.type(),
+      data_type,
+      phi::errors::InvalidArgument("tg2.type() should be equal to data_type, "
+                                   "but got %s",
+                                   tg2.type()));
 #endif
 }
 
@@ -207,39 +269,117 @@ void GroupTestCast() {
 }
 
 void GroupTestDtype() {
-  CHECK(TestDtype<bool>() == paddle::DataType::BOOL);
-  CHECK(TestDtype<int8_t>() == paddle::DataType::INT8);
-  CHECK(TestDtype<uint8_t>() == paddle::DataType::UINT8);
-  CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
-  CHECK(TestDtype<int32_t>() == paddle::DataType::INT32);
-  CHECK(TestDtype<int64_t>() == paddle::DataType::INT64);
-  CHECK(TestDtype<paddle::float16>() == paddle::DataType::FLOAT16);
-  CHECK(TestDtype<float>() == paddle::DataType::FLOAT32);
-  CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);
-  CHECK(TestDtype<paddle::complex64>() == paddle::DataType::COMPLEX64);
-  CHECK(TestDtype<paddle::complex128>() == paddle::DataType::COMPLEX128);
+  PADDLE_ENFORCE_EQ(
+      TestDtype<bool>(),
+      paddle::DataType::BOOL,
+      phi::errors::InvalidArgument("TestDtype<bool>() should be equal to "
+                                   "paddle::DataType::BOOL, but got %s",
+                                   TestDtype<bool>()));
+  PADDLE_ENFORCE_EQ(
+      TestDtype<int8_t>(),
+      paddle::DataType::INT8,
+      phi::errors::InvalidArgument("TestDtype<int8_t>() should be equal to "
+                                   "paddle::DataType::INT8, but got %s",
+                                   TestDtype<int8_t>()));
+  PADDLE_ENFORCE_EQ(
+      TestDtype<uint8_t>(),
+      paddle::DataType::UINT8,
+      phi::errors::InvalidArgument("TestDtype<uint8_t>() should be equal to "
+                                   "paddle::DataType::UINT8, but got %s",
+                                   TestDtype<uint8_t>()));
+  PADDLE_ENFORCE_EQ(
+      TestDtype<int16_t>(),
+      paddle::DataType::INT16,
+      phi::errors::InvalidArgument("TestDtype<int16_t>() should be equal to "
+                                   "paddle::DataType::INT16, but got %s",
+                                   TestDtype<int16_t>()));
+  PADDLE_ENFORCE_EQ(
+      TestDtype<int32_t>(),
+      paddle::DataType::INT32,
+      phi::errors::InvalidArgument("TestDtype<int32_t>() should be equal to "
+                                   "paddle::DataType::INT32, but got %s",
+                                   TestDtype<int32_t>()));
+  PADDLE_ENFORCE_EQ(
+      TestDtype<int64_t>(),
+      paddle::DataType::INT64,
+      phi::errors::InvalidArgument("TestDtype<int64_t>() should be equal to "
+                                   "paddle::DataType::INT64, but got %s",
+                                   TestDtype<int64_t>()));
+  PADDLE_ENFORCE_EQ(TestDtype<paddle::float16>(),
+                    paddle::DataType::FLOAT16,
+                    phi::errors::InvalidArgument(
+                        "TestDtype<paddle::float16>() should be equal to "
+                        "paddle::DataType::FLOAT16, but got %s",
+                        TestDtype<paddle::float16>()));
+  PADDLE_ENFORCE_EQ(
+      TestDtype<float>(),
+      paddle::DataType::FLOAT32,
+      phi::errors::InvalidArgument("TestDtype<float>() should be equal to "
+                                   "paddle::DataType::FLOAT32, but got %s",
+                                   TestDtype<float>()));
+  PADDLE_ENFORCE_EQ(
+      TestDtype<double>(),
+      paddle::DataType::FLOAT64,
+      phi::errors::InvalidArgument("TestDtype<double>() should be equal to "
+                                   "paddle::DataType::FLOAT64, but got %s",
+                                   TestDtype<double>()));
+  PADDLE_ENFORCE_EQ(TestDtype<paddle::complex64>(),
+                    paddle::DataType::COMPLEX64,
+                    phi::errors::InvalidArgument(
+                        "TestDtype<paddle::complex64>() should be equal to "
+                        "paddle::DataType::COMPLEX64, but got %s",
+                        TestDtype<paddle::complex64>()));
+  PADDLE_ENFORCE_EQ(TestDtype<paddle::complex128>(),
+                    paddle::DataType::COMPLEX128,
+                    phi::errors::InvalidArgument(
+                        "TestDtype<paddle::complex128>() should be equal to "
+                        "paddle::DataType::COMPLEX128, but got %s",
+                        TestDtype<paddle::complex128>()));
 }
 
 void TestInitialized() {
   auto test_tensor = paddle::experimental::empty({1, 1});
-  CHECK(test_tensor.is_initialized() == true);
+  PADDLE_ENFORCE_EQ(test_tensor.is_initialized(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "test_tensor should be initialized, but got %s",
+                        test_tensor.is_initialized()));
   float* tensor_data = test_tensor.data<float>();
   for (int i = 0; i < test_tensor.size(); i++) {
     tensor_data[i] = 0.5;
   }
   for (int i = 0; i < test_tensor.size(); i++) {
-    CHECK(tensor_data[i] == 0.5);
+    PADDLE_ENFORCE_EQ(
+        tensor_data[i],
+        0.5,
+        phi::errors::InvalidArgument("tensor_data[%d] should be equal to 0.5, "
+                                     "but got %f",
+                                     i,
+                                     tensor_data[i]));
   }
 }
 
 void TestDataInterface() {
   // Test DenseTensor
   auto test_tensor = paddle::experimental::empty({1, 1});
-  CHECK(test_tensor.is_initialized() == true);
+  PADDLE_ENFORCE_EQ(test_tensor.is_initialized(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "test_tensor should be initialized, but got %s",
+                        test_tensor.is_initialized()));
   void* tensor_ptr = test_tensor.data();
-  CHECK(tensor_ptr != nullptr);
+  PADDLE_ENFORCE_NE(
+      tensor_ptr,
+      nullptr,
+      phi::errors::InvalidArgument("test_tensor should not be NULL, but got %p",
+                                   tensor_ptr));
   const void* const_tensor_ptr = test_tensor.data();
-  CHECK(const_tensor_ptr != nullptr);
+  PADDLE_ENFORCE_NE(
+      const_tensor_ptr,
+      nullptr,
+      phi::errors::InvalidArgument("const_tensor should not be NULL, "
+                                   "but got %p",
+                                   const_tensor_ptr));
   // Test SelectedRows
   std::vector<int64_t> rows = {0};
   std::shared_ptr<phi::SelectedRows> selected_rows =
@@ -248,16 +388,33 @@ void TestDataInterface() {
   selected_rows->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
       static_cast<float>(10.0f);
   paddle::Tensor sr_tensor = paddle::Tensor(selected_rows);
-  CHECK(sr_tensor.is_initialized() == true);
+  PADDLE_ENFORCE_EQ(sr_tensor.is_initialized(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "sr_tensor should be initialized, but got %s",
+                        sr_tensor.is_initialized()));
   tensor_ptr = sr_tensor.data();
-  CHECK(tensor_ptr != nullptr);
+  PADDLE_ENFORCE_NE(tensor_ptr,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "tensor should not be NULL, but got %p", tensor_ptr));
   const_tensor_ptr = sr_tensor.data();
-  CHECK(const_tensor_ptr != nullptr);
+  PADDLE_ENFORCE_NE(
+      const_tensor_ptr,
+      nullptr,
+      phi::errors::InvalidArgument("const_tensor should not be NULL, "
+                                   "but got %p",
+                                   const_tensor_ptr));
 }
 
 void TestJudgeTensorType() {
   Tensor test_tensor(phi::CPUPlace(), {1, 1});
-  CHECK(test_tensor.is_dense_tensor() == true);
+  PADDLE_ENFORCE_EQ(
+      test_tensor.is_dense_tensor(),
+      true,
+      phi::errors::InvalidArgument("test_tensor should be a dense tensor, "
+                                   "but got %s",
+                                   test_tensor.is_dense_tensor()));
 }
 
 TEST(PhiTensor, All) {

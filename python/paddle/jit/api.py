@@ -88,11 +88,12 @@ from .translated_layer import (
 )
 
 if TYPE_CHECKING:
+    from paddle import Tensor
     from paddle._typing import NestedStructure
     from paddle.static import InputSpec
 
     class _SaveOptions(TypedDict):
-        output_spec: NotRequired[Sequence[InputSpec]]
+        output_spec: NotRequired[Sequence[Tensor | int]]
         with_hook: NotRequired[bool]
         combine_params: NotRequired[bool]
         clip_extra: NotRequired[bool]
@@ -880,7 +881,7 @@ class _SaveFunction(Protocol):
         self,
         layer: Layer | Callable[..., Any],
         path: str,
-        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = ...,
+        input_spec: Sequence[InputSpec | Tensor | object] | None = ...,
         **configs: Unpack[_SaveOptions],
     ) -> None:
         ...
@@ -891,7 +892,7 @@ def _run_save_pre_hooks(func: _SaveFunction) -> _SaveFunction:
     def wrapper(
         layer: Layer | Callable[..., Any],
         path: str,
-        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+        input_spec: Sequence[InputSpec | Tensor | object] | None = None,
         **configs: Unpack[_SaveOptions],
     ) -> None:
         global _save_pre_hooks
@@ -953,7 +954,7 @@ def _get_function_names_from_layer(layer: Layer) -> list[str]:
 def save(
     layer: Layer | Callable[..., Any],
     path: str,
-    input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+    input_spec: Sequence[InputSpec | Tensor | object] | None = None,
     **configs: Unpack[_SaveOptions],
 ) -> None:
     """

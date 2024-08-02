@@ -150,7 +150,7 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}
       phi::backends::gpu::SetDeviceId(place.device);
       VLOG(4) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
     }}
@@ -159,7 +159,7 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}
       phi::DeviceManager::SetDevice(place);
       VLOG(4) <<"CurrentDeviceId: " << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from " << (int)place.device;
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
 #endif
     }}
@@ -168,7 +168,7 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}
       phi::backends::xpu::SetXPUDeviceId(place.device);
       VLOG(4) <<"CurrentDeviceId: " << phi::backends::xpu::GetXPUCurrentDeviceId() << " from " << (int)place.device;
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     }}
@@ -205,11 +205,11 @@ static PyMethodDef EagerFinalStateMethods[] = {{
 
 void BindFinalStateEagerOpFunctions(pybind11::module *module) {{
   if (PyModule_AddFunctions(module->ptr(), EagerFinalStateMethods) < 0) {{
-    PADDLE_THROW(phi::errors::Fatal ("Add functions to core.eager.ops failed!"));
+    PADDLE_THROW(common::errors::Fatal ("Add functions to core.eager.ops failed!"));
   }}
 
   if (PyModule_AddFunctions(module->ptr(), CustomEagerFinalStateMethods) < 0) {{
-    PADDLE_THROW(phi::errors::Fatal ("Add functions to core.eager.ops failed!"));
+    PADDLE_THROW(common::errors::Fatal ("Add functions to core.eager.ops failed!"));
   }}
 }}
 

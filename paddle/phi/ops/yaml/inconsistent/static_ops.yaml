@@ -92,6 +92,7 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
   optional : scale, bias, reserve_space
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : beam_search_decode
   args: (Tensor ids, Tensor scores, int beam_size, int end_id)
@@ -718,15 +719,14 @@
 
 - op : reshape
   args : (Tensor x, IntArray shape)
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : ReshapeWithXShapeInferMeta
+    func : ReshapeInferMeta
     spmd_rule : ReshapeInferSpmdDynamic
   kernel :
-    func : reshape
+    func : reshape_infer
   inplace : (x -> out)
   view: (x -> out)
-  intermediate : xshape
   backward: reshape_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
