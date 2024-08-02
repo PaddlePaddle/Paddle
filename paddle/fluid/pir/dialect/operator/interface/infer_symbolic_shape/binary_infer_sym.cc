@@ -271,9 +271,10 @@ bool ExpandAsOpInferSymbolicShape(
   std::vector<int> target_shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
   const std::vector<symbol::DimExpr> &output_dims = [&] {
-    if (op->operand_source(0)) {
-      return infer_context->GetShapeOrDataForValue(op->operand_source(1))
-          .shape();
+    const auto &input_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    if (!input_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+      return input_shape_or_data.shape();
     }
     std::vector<symbol::DimExpr> output_dims;
     output_dims.reserve(target_shape.size());
@@ -690,7 +691,59 @@ bool TopPSamplingOpInferSymbolicShape(
   return true;
 }
 
-}  // namespace paddle::dialect
+bool IndexSelectOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &index_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> index_dims = index_shape_or_data.shape();
+
+  int dim = op->attribute<pir::Int32Attribute>("dim").data();
+
+  auto input_rank = x_dims.size();
+  auto index_rank = index_dims.size();
+  PADDLE_ENFORCE_EQ(
+      dim < input_rank && dim >= (0 - input_rank),
+      true,
+      common::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          input_rank,
+          input_rank - 1,
+          dim));
+
+  PADDLE_ENFORCE_EQ(index_rank == 1 || (index_rank == 2 && index_dims[1] == 1),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The 'shape' of Input(Index) must be 1-D tensor or 2-D "
+                        "tensor where second dimension is 1. "
+                        "But received: the 'shape' of Input(Index) is [%s], "
+                        "the dimension of Input(Index) is [%d].",
+                        index_dims,
+                        index_dims.size()));
+
+  PADDLE_ENFORCE_EQ(index_dims[0] != 0,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The length of Input(Index) can't be 0."));
+
+  if (dim < 0) {
+    dim += input_rank;
+  }
+
+  std::vector<symbol::DimExpr> output_dims = x_dims;
+  output_dims[dim] = index_dims[0];
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+
+  return true;
+}
 
 namespace cinn::dialect {
 using paddle::dialect::IscloseOpInferSymbolicShape;
