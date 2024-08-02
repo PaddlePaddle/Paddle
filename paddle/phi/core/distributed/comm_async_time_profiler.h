@@ -13,10 +13,7 @@
 // limitations under the License.
 #pragma once
 
-#include <ThreadPool.h>
-
 #include <atomic>
-#include <condition_variable>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -27,44 +24,43 @@
 namespace phi {
 namespace distributed {
 
-class NCCLAsyncRecorder;
+class CommAsyncRecorder;
 
-class NCCLAsyncTimeProfiler {
+class CommAsyncTimeProfiler {
  public:
-  struct NCCLGroupTimeInfo {
+  struct ProfilingInfo {
     int gid;
     float time_sum;
   };
 
-  NCCLAsyncTimeProfiler();
+  CommAsyncTimeProfiler();
 
-  ~NCCLAsyncTimeProfiler();
+  ~CommAsyncTimeProfiler();
 
-  static NCCLAsyncTimeProfiler& GetInstance() {
-    static NCCLAsyncTimeProfiler instance;
+  static CommAsyncTimeProfiler& GetInstance() {
+    static CommAsyncTimeProfiler instance;
     return instance;
   }
 
   void Stop();
-  std::unordered_map<int, float> GetProfiles() const;
-
-  void AddRecorder(std::shared_ptr<NCCLAsyncRecorder> recorder);
-  void RegisterGroupInfo(int gid);
+  void AddRecorder(std::shared_ptr<CommAsyncRecorder> recorder);
+  std::unordered_map<int, float> GetProfiles();
 
  private:
   void RecordTimeLoop();
+  void UpdateProfilingInfos();
+  void RegisterGroupInfo(int gid);
 
  private:
   std::atomic<bool> terminated_;
-  ::ThreadPool pool_;
-  std::future<void> add_record_task_;
 
   std::mutex recoders_list_mutex_;
-  std::condition_variable recorders_cv_;
+  std::mutex buffers_list_mutex_;
   std::thread loop_thread_;
 
-  std::list<std::shared_ptr<NCCLAsyncRecorder>> recorders_list_;
-  std::unordered_map<int, NCCLGroupTimeInfo> time_infos_;
+  std::list<std::shared_ptr<CommAsyncRecorder>> recorders_list_;
+  std::list<std::shared_ptr<CommAsyncRecorder>> buffers_list_;
+  std::unordered_map<int, ProfilingInfo> profiling_infos_;
 };
 
 }  // namespace distributed

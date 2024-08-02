@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/distributed/nccl_async_recorder.h"
+#include <glog/logging.h>
+
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/distributed/comm_async_recorder.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
 
 namespace phi {
 namespace distributed {
 
-NCCLAsyncRecorder::NCCLAsyncRecorder(const phi::Place& place,
+CommAsyncRecorder::CommAsyncRecorder(const phi::Place& place,
                                      int gid,
                                      gpuStream_t stream)
     : place_(place), gid_(gid), nccl_stream_(stream), is_start_(false) {
@@ -34,7 +36,7 @@ NCCLAsyncRecorder::NCCLAsyncRecorder(const phi::Place& place,
 #endif
 }
 
-void NCCLAsyncRecorder::EventDestroy() {
+void CommAsyncRecorder::EventDestroy() {
   backends::gpu::GPUDeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaEventDestroy(nccl_start_event_));
@@ -45,7 +47,7 @@ void NCCLAsyncRecorder::EventDestroy() {
 #endif
 }
 
-void NCCLAsyncRecorder::StartRecord() {
+void CommAsyncRecorder::StartRecord() {
   backends::gpu::GPUDeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaEventRecord(nccl_start_event_, nccl_stream_));
@@ -54,7 +56,7 @@ void NCCLAsyncRecorder::StartRecord() {
 #endif
 }
 
-void NCCLAsyncRecorder::EndRecord() {
+void CommAsyncRecorder::EndRecord() {
   backends::gpu::GPUDeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaEventRecord(nccl_end_event_, nccl_stream_));
@@ -63,20 +65,20 @@ void NCCLAsyncRecorder::EndRecord() {
 #endif
 }
 
-bool NCCLAsyncRecorder::QueryEnd() const { return EventQuery(nccl_end_event_); }
+bool CommAsyncRecorder::QueryEnd() const { return EventQuery(nccl_end_event_); }
 
-bool NCCLAsyncRecorder::QueryStart() const {
+bool CommAsyncRecorder::QueryStart() const {
   return EventQuery(nccl_start_event_);
 }
 
-void NCCLAsyncRecorder::Start() {
+void CommAsyncRecorder::Start() {
   if (IsStart()) {
     return;
   }
   is_start_ = true;
 }
 
-float NCCLAsyncRecorder::RecordTime() const {
+float CommAsyncRecorder::RecordTime() const {
   float elapsedTime = 0.f;
 #ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(
@@ -88,7 +90,7 @@ float NCCLAsyncRecorder::RecordTime() const {
   return elapsedTime;
 }
 
-bool NCCLAsyncRecorder::EventQuery(gpuEvent_t event) const {
+bool CommAsyncRecorder::EventQuery(gpuEvent_t event) const {
 #ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaGetLastError());
   cudaError_t ret = cudaEventQuery(event);
@@ -115,5 +117,12 @@ bool NCCLAsyncRecorder::EventQuery(gpuEvent_t event) const {
   return false;
 }
 
+void CommAsyncRecorder::SynchronizeAllRecorders() {
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#else  // PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
+}
 }  // namespace distributed
 }  // namespace phi

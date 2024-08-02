@@ -13,7 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/core/distributed/collective/process_group.h"
-#include "paddle/phi/core/distributed/nccl_async_time_profiler.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
+#include "paddle/phi/core/distributed/comm_async_time_profiler.h"
+
+COMMON_DECLARE_bool(enable_async_time_profiler);
+#endif
 
 namespace phi::distributed {
 
@@ -23,7 +28,12 @@ bool ProcessGroup::Task::IsCompleted() {
 }
 
 std::unordered_map<int, float> ProcessGroup::GetProfiles() {
-  return NCCLAsyncTimeProfiler::GetInstance().GetProfiles();
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  if (FLAGS_enable_async_time_profiler) {
+    return CommAsyncTimeProfiler::GetInstance().GetProfiles();
+  }
+#endif
+  return {};
 }
 
 ProcessGroup::ProcessGroup(int rank, int size, int gid)

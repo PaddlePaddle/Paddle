@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -29,10 +30,10 @@
 namespace phi {
 namespace distributed {
 
-class NCCLAsyncRecorder {
+class CommAsyncRecorder {
  public:
-  NCCLAsyncRecorder(const phi::Place& place, int gid, gpuStream_t stream);
-  ~NCCLAsyncRecorder() = default;
+  CommAsyncRecorder(const phi::Place& place, int gid, gpuStream_t stream);
+  ~CommAsyncRecorder() = default;
 
   float GetTime() const;
   void StartRecord();
@@ -48,6 +49,8 @@ class NCCLAsyncRecorder {
   bool EventQuery(gpuEvent_t event) const;
   void EventDestroy();
 
+  static void SynchronizeAllRecorders();
+
  private:
   phi::Place place_;
   int gid_;
@@ -59,7 +62,7 @@ class NCCLAsyncRecorder {
   bool is_start_;
 
  private:
-  DISABLE_COPY_AND_ASSIGN(NCCLAsyncRecorder);
+  DISABLE_COPY_AND_ASSIGN(CommAsyncRecorder);
 };
 
 }  // namespace distributed
