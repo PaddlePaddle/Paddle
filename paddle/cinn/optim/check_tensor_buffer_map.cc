@@ -288,7 +288,9 @@ void TensorBufferMapChecker::Visit(const ir::Let *x) {
 }
 void TensorBufferMapChecker::Visit(const ir::Reduce *x) {
   if (x->init.defined()) TensorBufferMapChecker::Visit(x->init);
-  CHECK(x->body.defined());
+  PADDLE_ENFORCE_EQ(x->body.defined(),
+                    true,
+                    phi::errors::InvalidArgument("The x->body is not defined"));
   TensorBufferMapChecker::Visit(x->body);
 }
 
@@ -349,7 +351,8 @@ void TensorBufferMapChecker::Visit(const ir::IntrinsicOp *x) {
 }
 
 void TensorBufferMapChecker::Visit(const ir::_BufferRange_ *x) {
-  CHECK(x);
+  PADDLE_ENFORCE_NOT_NULL(
+      x, phi::errors::InvalidArgument("Check that _BufferRange_ is null"));
   TensorBufferMapChecker::Visit(x->buffer);
   for (auto &var : x->ranges) {
     if (var->lower_bound.defined()) {
@@ -362,7 +365,8 @@ void TensorBufferMapChecker::Visit(const ir::_BufferRange_ *x) {
 }
 
 void TensorBufferMapChecker::Visit(const ir::ScheduleBlock *x) {
-  CHECK(x);
+  PADDLE_ENFORCE_NOT_NULL(
+      x, phi::errors::InvalidArgument("ScheduleBlock is null"));
   for (auto &var : x->iter_vars) {
     if (var->lower_bound.defined()) {
       TensorBufferMapChecker::Visit(&var->lower_bound);
@@ -381,7 +385,8 @@ void TensorBufferMapChecker::Visit(const ir::ScheduleBlock *x) {
 }
 
 void TensorBufferMapChecker::Visit(const ir::ScheduleBlockRealize *x) {
-  CHECK(x);
+  PADDLE_ENFORCE_NOT_NULL(
+      x, phi::errors::InvalidArgument("ScheduleBlockRealize is null"));
   for (auto &value : x->iter_values) {
     TensorBufferMapChecker::Visit(&value);
   }

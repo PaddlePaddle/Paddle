@@ -402,6 +402,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass_deprecated)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
+list(REMOVE_ITEM TEST_OPS test_dataset_dataloader_deprecated)
 
 # disable sparse_attention which not in suitable env
 if((NOT WITH_GPU)

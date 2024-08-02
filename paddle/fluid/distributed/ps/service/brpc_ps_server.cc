@@ -140,7 +140,7 @@ std::future<int32_t> BrpcPsServer::SendPServer2PServerMsg(
     std::stringstream ss;
     ss << "to_pserver_id is out of range pservers, which size is "
        << _pserver_channels.size();
-    PADDLE_THROW(phi::errors::Fatal(ss.str()));
+    PADDLE_THROW(common::errors::Fatal(ss.str()));
     promise->set_value(-1);
     return fut;
   }

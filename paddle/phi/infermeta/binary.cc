@@ -1647,8 +1647,9 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
-                          MetaTensor* out) {
-  return ElementwiseRawInferMeta(x, y, -1, out);
+                          MetaTensor* out,
+                          MetaConfig config) {
+  return ElementwiseRawInferMeta(x, y, -1, out, config);
 }
 
 void BitwiseShiftInferMeta(const MetaTensor& x,
@@ -1691,6 +1692,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
+
 #ifdef PADDLE_WITH_DNNL
     bool should_rotate =
         config.is_run_mkldnn_kernel &&
@@ -1699,7 +1701,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
         (x_dims.size() >= 3 || y_dims.size() >= 3);
     if (should_rotate) {
       // Pick bigger shape and rotate this one
-      bool x_over_y = (x_dims.size() > y_dims.size());
+      bool x_over_y = (common::product(x_dims) > common::product(y_dims));
       auto vdims = x_over_y ? common::vectorize<int>(x_dims)
                             : common::vectorize<int>(y_dims);
       std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
