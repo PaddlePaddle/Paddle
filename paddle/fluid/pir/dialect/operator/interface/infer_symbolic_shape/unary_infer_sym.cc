@@ -572,28 +572,37 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
 }
 bool ModeOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &x_shape =
+  const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  std::vector<symbol::DimExpr> input_dims = x_shape.shape();
+  const auto &x_shape = x_shape_or_data.shape();
 
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
-  if (axis < 0) {
-    axis += input_dims.size();
-  }
   bool keepdim = op->attribute<pir::BoolAttribute>("keepdim").data();
 
-  std::vector<symbol::DimExpr> out_dims = input_dims;
-  if (!keepdim) {
-    out_dims.erase(out_dims.begin() + axis);
+  int dim_size = x_shape.size();
+
+  if (axis < 0) {
+    axis += dim_size;
   }
 
-  infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
+  std::vector<symbol::DimExpr> out_dims;
+  for (int i = 0; i < axis; i++) {
+    out_dims.emplace_back(x_shape[i]);
+  }
+  if (keepdim && dim_size > 0) {
+    out_dims.emplace_back(symbol::DimExpr(1));
+  }
+  for (int i = axis + 1; i < dim_size; i++) {
+    out_dims.emplace_back(x_shape[i]);
+  }
 
-  std::vector<symbol::DimExpr> indices_dims = out_dims;
-  indices_dims[axis] = symbol::DimExpr(1);
-  infer_context->SetShapeOrDataForValue(
-      op->result(1), symbol::TensorShapeOrDataDimExprs(indices_dims));
+  symbol::TensorShapeOrDataDimExprs out_shape(out_dims);
+
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        symbol::ShapeOrDataDimExprs{out_shape});
+
+  infer_context->SetShapeOrDataForValue(op->result(1),
+                                        symbol::ShapeOrDataDimExprs{out_shape});
 
   return true;
 }
