@@ -832,6 +832,7 @@
   kernel :
     func : channel_shuffle
   backward : channel_shuffle_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : check_finite_and_unscale_
   args : (Tensor[] x, Tensor scale)
