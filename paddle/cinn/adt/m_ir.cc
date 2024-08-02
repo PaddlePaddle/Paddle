@@ -38,12 +38,12 @@ void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
 
 void CollectTensorIndexIteratorsImpl(const Undefined& tensor_index_expr,
                                      std::unordered_set<Iterator>* ret) {
-  PADDLE_THROW(::common::errors::Unimplemented("Not Implemented"));
+  PADDLE_THROW(:: ::common::errors::Unimplemented("Not Implemented"));
 }
 
 void CollectTensorIndexIteratorsImpl(const Ok& ok,
                                      std::unordered_set<Iterator>* ret) {
-  PADDLE_THROW(::common::errors::Unimplemented("Not Implemented"));
+  PADDLE_THROW(:: ::common::errors::Unimplemented("Not Implemented"));
 }
 
 void CollectTensorIndexIteratorsImpl(const Iterator& iterator,
@@ -134,7 +134,7 @@ LoopIterators GetAnchorTensorLoopIterators(
 namespace {
 
 Tensor GetTensorImpl(const OpStmt& op_stmt, const Undefined& undefined) {
-  PADDLE_THROW(::common::errors::Fatal("position not found"));
+  PADDLE_THROW(:: ::common::errors::Fatal("position not found"));
 }
 
 Tensor GetTensorImpl(const OpStmt& op_stmt, const tIn<std::size_t>& pos) {
@@ -174,7 +174,7 @@ std::unordered_map<Index, LoopIterators> GenerateAnchorIndex2LoopIterators(
     PADDLE_ENFORCE_EQ(
         anchor_index2loop_iters.emplace(anchor_index, anchor_loop_iters).second,
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Failed to insert anchor index into map. "
             "This may be due to a duplicate index.", ));
   }
