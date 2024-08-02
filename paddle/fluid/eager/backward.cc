@@ -286,7 +286,7 @@ std::vector<paddle::Tensor> RunBackward(
     //    'Local_XXXGradNode'.
     // * 'Local_XXXGradNode' will only cover execution time of GradNode
     // function.
-    paddle::platform::RecordEvent grad_node_record_event(
+    phi::RecordEvent grad_node_record_event(
         "Global_" + std::string((*node).name()),
         paddle::platform::TracerEventType::Operator,
         1);
@@ -440,7 +440,7 @@ void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               const std::vector<paddle::Tensor>& grad_tensors,
               bool retain_graph) {
   VLOG(3) << "Run in Backward";
-  paddle::platform::RecordEvent backward_record_event(
+  phi::RecordEvent backward_record_event(
       "backward", paddle::platform::TracerEventType::UserDefined, 1);
   RunBackward(tensors, grad_tensors, retain_graph);
   egr::Controller::Instance().ClearForceSequentialNodes();

@@ -349,9 +349,8 @@ static void GcScope(paddle::framework::Scope *scope) {
                                    ->mutable_value()
                                    ->MoveMemoryHolder());
       }
-      if (var->IsType<paddle::framework::LoDTensorArray>()) {
-        auto *lod_tensor_arr =
-            var->GetMutable<paddle::framework::LoDTensorArray>();
+      if (var->IsType<phi::TensorArray>()) {
+        auto *lod_tensor_arr = var->GetMutable<phi::TensorArray>();
         for (auto &t : *lod_tensor_arr) {
           garbages->emplace_back(t.MoveMemoryHolder());
         }
@@ -444,7 +443,7 @@ inline void PirRunProgramAPI(
                  place_hash_key,
                  /*is_grad=*/false,
                  /*in_pir_mode=*/true)) {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -501,7 +500,7 @@ inline void PirRunProgramAPI(
     // cache.UpdateSkipEagerDeleteVars(
     // program_id, global_inner_scope, false, skip_eager_delete_vars);
   } else {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "get_interpretercore_cache",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -529,7 +528,7 @@ inline void PirRunProgramAPI(
   paddle::framework::RunFeedHooks(*forward_program, *global_inner_scope);
   // interpretercore run
   if (!forward_program->block()->empty()) {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "interpreter_core_run",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -537,7 +536,7 @@ inline void PirRunProgramAPI(
   }
 
   {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Get Output, and Middle Outputs
     details::ShareTensorsFromScopeByValue(
@@ -649,7 +648,7 @@ inline void RunProgramAPI(
                  place_hash_key,
                  /*is_grad=*/false,
                  /*in_pir_mode=*/in_pir_pt_mode)) {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -723,7 +722,7 @@ inline void RunProgramAPI(
                                     skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "get_interpretercore_cache",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -748,7 +747,7 @@ inline void RunProgramAPI(
 
   // interpretercore run
   if (forward_global_block->OpSize() > 0) {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "interpreter_core_run",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -756,7 +755,7 @@ inline void RunProgramAPI(
   }
   VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
   {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Get Output
     details::ShareTensorsFromScopeWithPartialBlock(
@@ -825,7 +824,7 @@ inline void RunProgramGradAPI(
                  place_hash_key,
                  /*is_grad=*/true,
                  /*in_pir_mode=*/in_pir_pt_mode)) {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -906,7 +905,7 @@ inline void RunProgramGradAPI(
                                     skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "get_interpretercore_cache",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -929,7 +928,7 @@ inline void RunProgramGradAPI(
   }
 
   if (backward_global_block->OpSize() > 0) {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "interpreter_core_run",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -939,7 +938,7 @@ inline void RunProgramGradAPI(
   }
 
   {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Step 4. get outputs
     details::ShareTensorsFromScopeWithPartialBlock(x_grad,
@@ -1012,7 +1011,7 @@ inline void PirRunProgramGradAPI(
                  place_hash_key,
                  /*is_grad=*/true,
                  /*in_pir_mode=*/true)) {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -1074,7 +1073,7 @@ inline void PirRunProgramGradAPI(
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
     details::print_collection(skip_eager_delete_vars);
   } else {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "get_interpretercore_cache",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -1097,7 +1096,7 @@ inline void PirRunProgramGradAPI(
 
   paddle::framework::RunFeedHooks(*backward_program, *global_inner_scope);
   if (!backward_program->block()->empty()) {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "interpreter_core_run",
         paddle::platform::TracerEventType::UserDefined,
         1);
@@ -1107,7 +1106,7 @@ inline void PirRunProgramGradAPI(
   }
 
   {
-    paddle::platform::RecordEvent record_event(
+    phi::RecordEvent record_event(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Step 4. get outputs
     details::ShareTensorsFromScopeByValue(
@@ -1161,7 +1160,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     std::vector<paddle::Tensor *> x_grad_ptr;
     std::vector<paddle::Tensor *> params_grad_ptr;
     {
-      paddle::platform::RecordEvent record_event(
+      phi::RecordEvent record_event(
           "construct_grad_tensor",
           paddle::platform::TracerEventType::UserDefined,
           1);
@@ -1346,7 +1345,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
     std::vector<paddle::Tensor *> x_grad_ptr;
     std::vector<paddle::Tensor *> params_grad_ptr;
     {
-      paddle::platform::RecordEvent record_event(
+      phi::RecordEvent record_event(
           "construct_grad_tensor",
           paddle::platform::TracerEventType::UserDefined,
           1);
