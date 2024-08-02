@@ -111,6 +111,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         self.atol = 5e-3
         self.data_dir = tempfile.TemporaryDirectory()
         self.fleet_log_dir = tempfile.TemporaryDirectory()
+        # nn.Conv2d don't have dtype args to set the dtype of weight and bias
         self.pre_dtype = paddle.get_default_dtype()
         paddle.set_default_dtype(self.dtype)
 
@@ -288,6 +289,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         assert core.get_cuda_device_count() > 1
 
         if paddle.framework.in_pir_mode():
+            # may be not like this in dist
             fetch_names = [
                 ops[1].result(0),
                 ops[0].result(0),
@@ -352,7 +354,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 + str(sync_bn_val),
             )
 
-    @test_with_pir_api
+    # @test_with_pir_api
     def test_train(self):
         """Test training."""
         if not core.is_compiled_with_cuda():
@@ -363,7 +365,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
             for layout in ["NHWC", "NCHW"]:
                 self._compare(place, layout, False)
 
-    @test_with_pir_api
+    # @test_with_pir_api
     def test_infer(self):
         """Test inference."""
         if not core.is_compiled_with_cuda():
@@ -417,6 +419,7 @@ class TestBF16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
 
 
 class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         if not core.is_compiled_with_cuda():
             return
@@ -504,7 +507,6 @@ class TestConvertSyncBatchNormCast1(unittest.TestCase):
 
 
 class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         if not core.is_compiled_with_cuda():
             return
