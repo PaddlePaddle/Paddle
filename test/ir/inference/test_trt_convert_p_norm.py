@@ -17,7 +17,6 @@ from __future__ import annotations
 import unittest
 from functools import partial
 
-# from typing import Any, Dict, List
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
