@@ -28,7 +28,12 @@ class TestCollectiveReduceAPI(TestDistBase):
 
     def test_reduce_nccl(self):
         if paddle.base.core.is_compiled_with_cuda():
-            self.check_with_place("collective_reduce_api.py", "reduce", "nccl")
+            self.check_with_place(
+                "collective_reduce_api.py",
+                "reduce",
+                "nccl",
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
+            )
 
     def test_reduce_nccl_with_comm_context(self):
         dtypes_to_test = [
@@ -86,7 +91,13 @@ class TestCollectiveReduceAPI(TestDistBase):
             self.check_with_place("collective_reduce_api.py", "reduce", "bkcl")
 
     def test_reduce_gloo(self):
-        self.check_with_place("collective_reduce_api.py", "reduce", "gloo", "1")
+        self.check_with_place(
+            "collective_reduce_api.py",
+            "reduce",
+            "gloo",
+            "1",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
+        )
 
     def test_reduce_gloo_with_comm_context(self):
         dtypes_to_test = [

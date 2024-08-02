@@ -64,11 +64,12 @@ def _reduce_in_static_mode(
 
     helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
-        type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
+        type="reduce",
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
         attrs={
             'ring_id': ring_id,
+            'reduce_type': op,
             'use_calc_stream': sync_op,
             'root_id': dst_rank_in_group,
         },

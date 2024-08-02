@@ -29,7 +29,10 @@ class TestCollectiveAllreduceAPI(TestDistBase):
     def test_allreduce_nccl(self):
         if paddle.base.core.is_compiled_with_cuda():
             self.check_with_place(
-                "collective_allreduce_api.py", "allreduce", "nccl"
+                "collective_allreduce_api.py",
+                "allreduce",
+                "nccl",
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     def test_allreduce_nccl_with_comm_context(self):
@@ -86,12 +89,19 @@ class TestCollectiveAllreduceAPI(TestDistBase):
     def test_allreduce_bkcl(self):
         if paddle.base.core.is_compiled_with_xpu():
             self.check_with_place(
-                "collective_allreduce_api.py", "allreduce", "bkcl"
+                "collective_allreduce_api.py",
+                "allreduce",
+                "bkcl",
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     def test_allreduce_gloo(self):
         self.check_with_place(
-            "collective_allreduce_api.py", "allreduce", "gloo", "2"
+            "collective_allreduce_api.py",
+            "allreduce",
+            "gloo",
+            "2",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
     def test_allreduce_gloo_with_comm_context(self):

@@ -30,6 +30,7 @@ class TestCollectiveBroadcastAPI(TestDistBase):
             "collective_broadcast_api.py",
             "broadcast",
             "nccl",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
     def test_broadcast_nccl_with_comm_context(self):
@@ -59,6 +60,7 @@ class TestCollectiveBroadcastAPI(TestDistBase):
             "collective_broadcast_api.py",
             "broadcast",
             "gloo",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
     def test_broadcast_gloo_with_comm_context(self):

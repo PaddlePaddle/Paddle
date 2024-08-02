@@ -27,7 +27,10 @@ class TestRowParallelLinearAPI(TestDistBase):
 
     def test_row_parallel_linear(self):
         self.check_with_place(
-            "row_parallel_linear_api.py", "row_parallel_linear", "nccl"
+            "row_parallel_linear_api.py",
+            "row_parallel_linear",
+            "nccl",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
 

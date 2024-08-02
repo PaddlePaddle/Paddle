@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_collective_api_base import TestDistBase
+from legacy_test.test_collective_api_base import TestDistBase
 
 import paddle
 
@@ -42,6 +42,7 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                 "allgather",
                 "nccl",
                 dtype=dtype,
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     def test_allgather_nccl_with_comm_context(self):
@@ -127,6 +128,7 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                 "gloo",
                 "3",
                 dtype=dtype,
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     def test_allgather_gloo_with_comm_context(self):

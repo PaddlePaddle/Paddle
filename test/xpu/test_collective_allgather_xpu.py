@@ -40,7 +40,10 @@ class TestCollectiveAllgatherAPI(TestDistBase):
             if dtype in ["float64", "bool"]:
                 continue
             self.check_with_place(
-                "collective_allgather_api.py", "allgather", dtype=dtype
+                "collective_allgather_api.py",
+                "allgather",
+                dtype=dtype,
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     @unittest.skipIf(

@@ -65,6 +65,44 @@ class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
 
             return [linear_out]
 
+    def get_model_new_comm(
+        self, main_prog, startup_program, rank, dtype='float32'
+    ):
+        with base.program_guard(main_prog, startup_program):
+            fleet.init(is_collective=True)
+            np.random.seed(2020)
+            np_array = np.random.rand(1000, 16)
+
+            data = paddle.static.data(
+                name='tindata', shape=[10, 1000], dtype=dtype
+            )
+            paddle.distributed.broadcast(data, src=0)
+            data = paddle.split(data, 2, axis=1)[rank]
+            if rank == 0:
+                param_attr = paddle.base.ParamAttr(
+                    initializer=paddle.nn.initializer.Assign(
+                        np_array[0:500, :]
+                    ),
+                )
+            else:
+                param_attr = paddle.base.ParamAttr(
+                    initializer=paddle.nn.initializer.Assign(
+                        np_array[500:1000, :]
+                    ),
+                )
+
+            linear_out = paddle.distributed.split(
+                data,
+                size=(1000, 16),
+                operation='linear',
+                axis=0,
+                num_partitions=2,
+                weight_attr=param_attr,
+                bias_attr=True,
+            )
+
+            return [linear_out]
+
 
 if __name__ == "__main__":
     runtime_main(TestRowParallelLinearAPI, "row_parallel_linear")

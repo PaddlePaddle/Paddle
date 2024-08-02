@@ -39,6 +39,8 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                 "collective_allreduce_api.py",
                 "allreduce",
                 dtype=dtype,
+                reduce_type=dist.ReduceOp.SUM,
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     def test_allreduce_max(self):
@@ -49,6 +51,7 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                 "allreduce",
                 dtype=dtype,
                 reduce_type=dist.ReduceOp.MAX,
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     @unittest.skipIf(
