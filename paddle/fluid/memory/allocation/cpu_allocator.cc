@@ -17,7 +17,7 @@
 #include <cstdlib>
 
 #include "paddle/fluid/memory/stats.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle::memory::allocation {
 

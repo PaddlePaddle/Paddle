@@ -926,6 +926,27 @@ Tensor hardswish_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor heaviside_decomp(const Tensor& x, const Tensor& y) {
+  Tensor zero, one;
+  if (has_dynamic_shape(x.shape())) {
+    Tensor zero_x = backend::full_with_tensor<T>(shape<T>(x), 0.0, x.dtype());
+    Tensor zero_y = backend::full_with_tensor<T>(shape<T>(y), 0.0, x.dtype());
+    zero = zero_x + zero_y;
+    one = backend::full_with_tensor<T>(shape<T>(zero), 1.0, x.dtype());
+  } else {
+    auto out_dims = phi::funcs::BroadcastTwoDims(x.dims(), y.dims());
+    zero = full<T>(phi::vectorize(out_dims), 0.0, x.dtype());
+    one = full<T>(phi::vectorize(out_dims), 1.0, x.dtype());
+  }
+  Tensor broadcast_x = x + zero;
+  Tensor broadcast_y = y + zero;
+  Tensor res = where<T>(broadcast_x > zero, one, broadcast_x);
+  res = where<T>(broadcast_x == zero, broadcast_y, res);
+  res = where<T>(broadcast_x < zero, zero, res);
+  return res;
+}
+
+template <typename T>
 Tensor leaky_relu_decomp(const Tensor& x, float negative_slope) {
   auto multiply_tmp = full_scalar<T>(negative_slope, x.dtype()) * x;
   if (negative_slope < 1.0) {
