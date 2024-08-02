@@ -2197,6 +2197,7 @@
   kernel :
     func : gelu
   backward : gelu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : generate_proposals
   args : (Tensor scores, Tensor bbox_deltas, Tensor im_shape, Tensor anchors, Tensor variances, int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size, float eta, bool pixel_offset=true)
