@@ -40,7 +40,7 @@ class TestPass(unittest.TestCase):
         pm.run(ir_program)
         self.assertEqual(ir_program.global_block().num_ops(), 6)
         self.assertEqual(
-            ir_program.global_block().ops[-2].name(), "pd_op.c_reducescatter"
+            ir_program.global_block().ops[-2].name(), "pd_op.reduce_scatter"
         )
 
 

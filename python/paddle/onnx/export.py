@@ -11,15 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING, Sequence
 
 from paddle.utils import try_import
+
+if TYPE_CHECKING:
+    from typing_extensions import Unpack
+
+    from paddle import Tensor
+    from paddle.jit.api import _SaveOptions
+    from paddle.nn import Layer
+    from paddle.static import InputSpec
+
 
 __all__ = []
 
 
-def export(layer, path, input_spec=None, opset_version=9, **configs):
+def export(
+    layer: Layer,
+    path: str,
+    input_spec: Sequence[InputSpec | Tensor | object] | None = None,
+    opset_version: int = 9,
+    **configs: Unpack[_SaveOptions],
+) -> None:
     """
     Export Layer to ONNX format, which can use for inference via onnxruntime or other backends.
     For more details, Please refer to `paddle2onnx <https://github.com/PaddlePaddle/paddle2onnx>`_ .
@@ -28,7 +45,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         layer (Layer): The Layer to be exported.
         path (str): The path prefix to export model. The format is ``dirname/file_prefix`` or ``file_prefix`` ,
             and the exported ONNX file suffix is ``.onnx`` .
-        input_spec (list[InputSpec|Tensor], optional): Describes the input of the exported model's forward
+        input_spec (list[InputSpec|Tensor]|None, optional): Describes the input of the exported model's forward
             method, which can be described by InputSpec or example Tensor. If None, all input variables of
             the original Layer's forward method would be the inputs of the exported ``ONNX`` model. Default: None.
         opset_version(int, optional): Opset version of exported ONNX model.
@@ -62,7 +79,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
             ...     x_spec = paddle.static.InputSpec(shape=[None, 128], dtype='float32')
             ...     paddle.onnx.export(model, 'linear_net', input_spec=[x_spec])
             ...
-            >>> # doctest: +SKIP('raise ImportError')
+            >>> # doctest: +SKIP('Need install Paddle2ONNX')
             >>> export_linear_net()
 
             >>> class Logic(paddle.nn.Layer):
@@ -83,7 +100,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
             ...     # Static and run model.
             ...     paddle.jit.to_static(model)
             ...     out = model(x, y, z=True)
-            ...     paddle.onnx.export(model, 'pruned', input_spec=[x, y, True], output_spec=[out], input_names_after_prune=[x])
+            ...     paddle.onnx.export(model, 'pruned', input_spec=[x, y, True], output_spec=[out], input_names_after_prune=[x.name])
             ...
             >>> export_logic()
     """

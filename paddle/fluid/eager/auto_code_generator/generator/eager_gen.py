@@ -277,7 +277,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
    // * 'Local_XXXGradNode' will only cover execution time of this function.
    // * 'Global_XXXGradNode' will not only cover execution time of this function, but also include gradient
    //    accumulation when the output(s) of corresponding forward OP are shared by other OP(s), which may have extra accumulation overhead than 'Local_XXXGradNode'.
-  paddle::platform::RecordEvent grad_node_record_event_inner(\"Local_{}\", paddle::platform::TracerEventType::OperatorInner, 1);
+  phi::RecordEvent grad_node_record_event_inner(\"Local_{}\", paddle::platform::TracerEventType::OperatorInner, 1);
 
   // Fill Zero For GradIn Tensors
 {}
@@ -391,7 +391,7 @@ BEFORE_LOG_PRINT_TEMPLATE = """
 
 STRIDED_FLAGS_CHECK_TEMPLATE = """
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(phi::errors::Fatal(\"FLAGS_use_stride_kernel is closed. Inplace strided API should not be called!\"));
+    PADDLE_THROW(common::errors::Fatal(\"FLAGS_use_stride_kernel is closed. Inplace strided API should not be called!\"));
   }
 """
 
@@ -1308,7 +1308,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_grad_in_meta_str = "\n".join(set_grad_in_meta_list)
 
         node_event_name = forward_api_name + " node_creation"
-        node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
+        node_creation_event_str = f"{indent}phi::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
         self.node_creation_str = ""
         if not for_backward:
             self.node_creation_before_call_str = (
@@ -1887,7 +1887,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 inputs_call_args_str_tmp = ", ".join(self.inputs_call_list_tmp)
                 forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str_tmp});"
 
-        dygraph_event_str = f"{indent}paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);\n"
+        dygraph_event_str = f"{indent}phi::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);\n"
         log_memory_info_str = f"{indent}paddle::memory::LogDeviceMemoryStats(egr::Controller::Instance().GetExpectedPlace(), \"{forward_api_name}\");"
         forward_ad_function_name = GetDygraphForwardFunctionName(
             forward_api_name
@@ -2249,7 +2249,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     next_grad_node_creation_str = f"""
   if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() || need_skip) {{
     if (trace_backward) {{
-       PADDLE_THROW(phi::errors::Unavailable(
+       PADDLE_THROW(common::errors::Unavailable(
        \"The Op {self.backward_api_name} doesn't have any grad\"
        \"op. If you don't intend calculating higher order\"
        \"derivatives, please set `create_graph`to False.\"));
@@ -2269,7 +2269,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # TODO(Ruting):Integrate invoke and composite as composite so the rest branch canbe covered
         elif not is_invoke_forward_api and not is_composite_grad_api:
             next_grad_node_creation_str = f"""  if (trace_backward) {{
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
     \"The Op {self.backward_api_name} doesn't have any grad\"
     \"op. If you don't intend calculating higher order\"
     \"derivatives, please set `create_graph`to False.\"));
@@ -2765,7 +2765,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
                             code
                             + f"""
 }} else {{
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
   \"The grad op of {self.backward_api_name} doesn't implemented yet.\"));
 }}
 """
