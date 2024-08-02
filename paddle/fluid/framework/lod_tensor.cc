@@ -216,7 +216,7 @@ void SerializeToStream(std::ostream &os,
     // uint64_t lod_level_1 size in byte.
     // int*     lod_level_1 data
     // ...
-    auto lod = tensor.lod();
+    const auto& lod = tensor.lod();
     uint64_t size = lod.size();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
 

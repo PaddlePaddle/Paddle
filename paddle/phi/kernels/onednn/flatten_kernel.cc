@@ -58,7 +58,7 @@ void FlattenInferKernel(const Context& dev_ctx,
                         int start_axis,
                         int stop_axis,
                         DenseTensor* out) {
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   auto out_dims = out->dims();
   ExecuteFlatten<T, Context>(dev_ctx, x, x_dims, out_dims, out);
 }

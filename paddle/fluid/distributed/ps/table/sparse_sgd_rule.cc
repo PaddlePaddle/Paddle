@@ -25,7 +25,7 @@ namespace paddle::distributed {
 void SparseNaiveSGDRule::LoadConfig(const SparseCommonSGDRuleParameter &param,
                                     size_t emb_dim) {
   _embedding_dim = emb_dim;
-  auto naive_param = param.naive();
+  const auto& naive_param = param.naive();
   learning_rate_ = naive_param.learning_rate();
   _initial_range = naive_param.initial_range();
   if (naive_param.weight_bounds_size() == 0) {
@@ -70,7 +70,7 @@ void SparseNaiveSGDRule::InitValueWork(float *value,
 void SparseAdaGradSGDRule::LoadConfig(const SparseCommonSGDRuleParameter &param,
                                       size_t emb_dim) {
   _embedding_dim = emb_dim;
-  auto adagrad_param = param.adagrad();
+  const auto& adagrad_param = param.adagrad();
   learning_rate_ = adagrad_param.learning_rate();
   _initial_g2sum = adagrad_param.initial_g2sum();
   _initial_range = adagrad_param.initial_range();
@@ -127,7 +127,7 @@ void SparseAdaGradSGDRule::InitValueWork(float *value,
 void StdAdaGradSGDRule::LoadConfig(const SparseCommonSGDRuleParameter &param,
                                    size_t emb_dim) {
   _embedding_dim = emb_dim;
-  auto adagrad_param = param.adagrad();
+  const auto& adagrad_param = param.adagrad();
   learning_rate_ = adagrad_param.learning_rate();
   _initial_g2sum = adagrad_param.initial_g2sum();
   _initial_range = adagrad_param.initial_range();
@@ -180,7 +180,7 @@ void StdAdaGradSGDRule::InitValueWork(float *value,
 void SparseAdamSGDRule::LoadConfig(const SparseCommonSGDRuleParameter &param,
                                    size_t emb_dim) {
   _embedding_dim = emb_dim;
-  auto adam_param = param.adam();
+  const auto& adam_param = param.adam();
   learning_rate_ = adam_param.learning_rate();
   _initial_range = adam_param.initial_range();
   _beta1_decay_rate = adam_param.beta1_decay_rate();
@@ -254,7 +254,7 @@ void SparseAdamSGDRule::InitValueWork(float *value,
 void SparseSharedAdamSGDRule::LoadConfig(
     const SparseCommonSGDRuleParameter &param, size_t emb_dim) {
   _embedding_dim = emb_dim;
-  auto adam_param = param.adam();
+  const auto& adam_param = param.adam();
   learning_rate_ = adam_param.learning_rate();
   _initial_range = adam_param.initial_range();
   _beta1_decay_rate = adam_param.beta1_decay_rate();
@@ -337,7 +337,7 @@ void SparseSharedAdamSGDRule::InitValueWork(float *value,
 void SparseAdaGradV2SGDRule::LoadConfig(
     const SparseCommonSGDRuleParameter &param, size_t emb_dim) {
   _embedding_dim = emb_dim;
-  auto adagrad_param = param.adagrad();
+  const auto& adagrad_param = param.adagrad();
   learning_rate_ = adagrad_param.learning_rate();
   _initial_g2sum = adagrad_param.initial_g2sum();
   _initial_range = adagrad_param.initial_range();

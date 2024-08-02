@@ -26,12 +26,16 @@ void FlattenGradStridedKernel(const Context& dev_ctx,
                               const DenseTensor& xshape,
                               const DenseTensor& out_grad,
                               DenseTensor* x_grad) {
+<<<<<<< HEAD
+  const auto& xshape_dims = xshape.dims();
+=======
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(
         phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
                            "be called, something wrong has happened!"));
   }
   auto xshape_dims = xshape.dims();
+>>>>>>> 8b808f1ca1f3b066d25661279d07b83806836d58
   auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   ReshapeStridedKernel<Context>(dev_ctx,
                                 out_grad,
