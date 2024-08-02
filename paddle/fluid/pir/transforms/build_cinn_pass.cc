@@ -110,7 +110,6 @@ void VerifyOperationOrder(const pir::Block& block) {
           << current_op->id() << " " << order_info.at(current_op) << ")";
     }
   };
-
   const auto& CheckGroupOpOrder = [&](pir::Operation* op) -> void {
     auto group_op = op->dyn_cast<cinn::dialect::GroupOp>();
     for (auto& inner_op : *group_op.block()) {
