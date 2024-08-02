@@ -17,9 +17,9 @@
 namespace paddle::distributed {
 
 int32_t MemorySparseGeoTable::Pull(TableContext& context) {
-  PADDLE_ENFORCE_EQ(context.value_type,
-                    Sparse,
-                    phi::errors::InvalidArgument(
+  PADDLE_ENFORCE_EQ(context.value_type == Sparse,
+                    true,
+                    common::errors::InvalidArgument(
                         "The value_type of context must be Sparse."));
   if (context.pull_context.geo_pull_keys != nullptr) {
     return PullGeoParam(context.trainer_id,
@@ -32,9 +32,9 @@ int32_t MemorySparseGeoTable::Pull(TableContext& context) {
 }
 
 int32_t MemorySparseGeoTable::Push(TableContext& context) {
-  PADDLE_ENFORCE_EQ(context.value_type,
-                    Sparse,
-                    phi::errors::InvalidArgument(
+  PADDLE_ENFORCE_EQ(context.value_type == Sparse,
+                    true,
+                    common::errors::InvalidArgument(
                         "The value_type of context must be Sparse."));
   if (!context.push_context.is_param) {
     return PushSparse(

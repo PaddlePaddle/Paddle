@@ -60,7 +60,7 @@ void Main(bool use_gpu) {
     std::vector<PaddleTensor> outputs;
     PADDLE_ENFORCE_EQ(predictor->Run(slots, &outputs),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Failed to run the predictor. Please check the input "
                           "data and model configuration."));
 
@@ -110,7 +110,7 @@ void MainThreads(int num_threads, bool use_gpu) {
         // 3. Run
         PADDLE_ENFORCE_EQ(predictor->Run(slots, &outputs),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Failed to run the predictor. Please check the "
                               "input data and model configuration."));
 

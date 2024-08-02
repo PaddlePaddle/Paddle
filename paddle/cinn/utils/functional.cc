@@ -26,7 +26,7 @@ std::vector<int> GetPositiveAxes(const std::vector<int>& axes, int rank) {
     PADDLE_ENFORCE_EQ(
         axis >= 0 && (rank == 0 || axis < rank),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The axis should be in [%d, %d), but axes[%d]=%d is not.",
             -rank,
             rank,
@@ -42,7 +42,7 @@ int GetPositiveAxes(int axis, int rank) {
   PADDLE_ENFORCE_EQ(
       dim >= 0 && dim < rank,
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The axis should be in [0, %d), but axis=%d is not.", rank, axis));
   return dim;
 }

@@ -94,7 +94,7 @@ void MemoryOptimizePass::CollectLifeCycle(
           for (auto i : in_shape) {
             PADDLE_ENFORCE_GE(i,
                               0,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "The shape of node shouldn't be negative. "));
           }
           auto var_bytes = std::accumulate(in_shape.begin(),
@@ -143,7 +143,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
     for (auto* tmp : node->inputs) {
       PADDLE_ENFORCE_EQ(tmp->IsOp(),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Expected a node to be an operation, but the given "
                             "node is not an operation."));
       std::string op_type = tmp->Op()->Type();
@@ -155,7 +155,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
     for (auto* tmp : node->outputs) {
       PADDLE_ENFORCE_EQ(tmp->IsOp(),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Expected a node to be an operation, but the given "
                             "node is not an operation."));
       std::string op_type = tmp->Op()->Type();

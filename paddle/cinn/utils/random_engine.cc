@@ -24,7 +24,7 @@ int SampleUniformInt(int min,
   PADDLE_ENFORCE_LT(
       min,
       max,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Input value error: min(%d) must be less than max(%d)", min, max));
   if (min + 1 == max) {
     return min;
@@ -42,7 +42,7 @@ double SampleUniformDouble(double min,
   PADDLE_ENFORCE_LT(
       min,
       max,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Input value error: min(%f) must be less than max(%f)", min, max));
   LinearRandomEngine engine(rand_seed);
   std::uniform_real_distribution<> dist(min, max);

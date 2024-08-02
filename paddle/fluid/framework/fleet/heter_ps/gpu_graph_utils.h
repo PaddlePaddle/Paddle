@@ -67,15 +67,16 @@ inline std::vector<int> shuffle_int_vector(int n) {
   return ret;
 }
 
-#define CUDA_CHECK(cmd)                                                       \
-  do {                                                                        \
-    cudaError_t e = cmd;                                                      \
-    PADDLE_ENFORCE_EQ(e,                                                      \
-                      cudaSuccess,                                            \
-                      phi::errors::InvalidArgument("CUDA error at %s:%s: %s", \
-                                                   __FILE__,                  \
-                                                   __LINE__,                  \
-                                                   cudaGetErrorString(e)));   \
+#define CUDA_CHECK(cmd)                                            \
+  do {                                                             \
+    cudaError_t e = cmd;                                           \
+    PADDLE_ENFORCE_EQ(                                             \
+        e,                                                         \
+        cudaSuccess,                                               \
+        common::errors::InvalidArgument("CUDA error at %s:%s: %s", \
+                                        __FILE__,                  \
+                                        __LINE__,                  \
+                                        cudaGetErrorString(e)));   \
   } while (0)
 
 class CudaDeviceRestorer {
