@@ -96,7 +96,7 @@ std::vector<FusionOp> ReduceTransformRecursive(
     const ReduceTreePattern<BackendStage>& reduce_tree_pattern,
     const std::vector<size_t>& fake_reduce_iter_idx = {}) {
   FusionOp root_op = reduce_op;
-  VLOG(4) << "ReduceTransformRecursive: " << *_GetFuncBodyPointer(root_op);
+  VLOG(4) << "ReduceTransformRecursive: " << _GetRootExpr(root_op);
   std::vector<FusionOp> result;
   for (const auto& child_tree : reduce_tree_pattern.childs()) {
     const auto& child_reduce_op = child_tree.GetRootPattern().reduce_op;
@@ -118,11 +118,8 @@ std::vector<FusionOp> ReduceTreeTrivialTransformRecursive(
     TrivialOp trivial_op,
     const ReduceTreePlusTrivialPattern<BackendStage>& rt_pattern) {
   FusionOp root_op = trivial_op;
-  VLOG(4) << "ReduceTrivialTransformRecursive: "
-          << *_GetFuncBodyPointer(root_op);
+  VLOG(4) << "ReduceTrivialTransformRecursive: " << _GetRootExpr(root_op);
   std::vector<FusionOp> result;
-  // for (const auto& child_tree : ) {
-  //
   const auto& child_tree = rt_pattern.tree;
   const auto& child_reduce_op = child_tree.GetRootPattern().reduce_op;
   auto transformed_nodes = cinn::hlir::framework::pir::trivial_fusion_detail::

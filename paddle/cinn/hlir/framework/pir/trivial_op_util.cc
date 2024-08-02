@@ -42,6 +42,11 @@ namespace ComposeUtils {
 std::vector<ir::Var> ExprVec2VarVec(const std::vector<ir::Expr>& in) {
   std::vector<ir::Var> out;
   for (auto& expr : in) {
+    PADDLE_ENFORCE_EQ(
+        expr.is_var(),
+        true,
+        ::common::errors::PreconditionNotMet(
+            "Requried element expr is var while calling as_var_ref()."));
     out.push_back(expr.as_var_ref());
   }
   return out;
@@ -60,8 +65,11 @@ std::vector<ir::Expr> GetEachTensorLoadExpr(const ir::Expr& body,
                expr->As<ir::Load>()->tensor.as_tensor_ref()->name ==
                    tensor->name;
       });
-  for (auto& t : load_exprs) {
-    VLOG(4) << "GetEachTensorLoadExpr Found: " << t << " " << t.ptr();
+
+  if (VLOG_IS_ON(4)) {
+    for (auto& t : load_exprs) {
+      VLOG(4) << "GetEachTensorLoadExpr Found: " << t << " " << t.ptr();
+    }
   }
   return load_exprs;
 }
@@ -113,7 +121,7 @@ bool CheckIterEq(const std::vector<ir::Var>& up_iter,
                  const std::vector<ir::Var>& down_iter) {
   if (up_iter.size() != down_iter.size()) return false;
 
-  for (int i = 0; i < up_iter.size(); ++i) {
+  for (size_t i = 0; i < up_iter.size(); ++i) {
     const ir::Var& up_iter_var = up_iter[i];
     const ir::Var& down_iter_var = down_iter[i];
 
@@ -145,7 +153,7 @@ ir::Expr CopyedReplaceExpr(const Expr& source,
   auto copyed_source = ir::ir_utils::IRCopy(source);
   if (replaced.empty()) return copyed_source;
   std::map<Var, Expr, ir::CompVar> replacing_map;
-  for (int i = 0; i < replaced.size(); ++i) {
+  for (size_t i = 0; i < replaced.size(); ++i) {
     // If the Var to be replaced is equal to the candidate, we skip it.
     if (candidates[i].is_var() && candidates[i].as_var_ref() == replaced[i])
       continue;
@@ -180,10 +188,8 @@ namespace ExprSetFinderUtils {
 
 using ExprSet = std::vector<ir::Expr>;
 using Expr2ExprSet = std::function<ExprSet(const ir::Expr& x)>;
-ExprSetFinder::ExprSetFinder(Expr2ExprSet f, std::string s) {
-  f_ = f;
-  name = s;
-}
+ExprSetFinder::ExprSetFinder(Expr2ExprSet f, const std::string& s)
+    : f_(f), name(s) {}
 ExprSet ExprSetFinder::operator()(const ir::Expr& x) const { return f_(x); }
 ir::Expr ExprSetFinder::GetSingle(const ir::Expr& x) const {
   ExprSetFinder call = (*this) * ExprSetFinder::GetIdentity();
@@ -194,22 +200,24 @@ ir::Expr ExprSetFinder::GetSingle(const ir::Expr& x) const {
   return *o.begin();
 }
 
-ExprSetFinder ExprSetFinder::operator*(ExprSetFinder x) const {
-  auto new_f = [self = *this, x = x](const ir::Expr& e) -> ExprSet {
+ExprSetFinder ExprSetFinder::operator*(const ExprSetFinder& other) const {
+  auto new_f = [self = *this, other](const ir::Expr& e) -> ExprSet {
     const auto& rs = self.f_(e);
-    VLOG(6) << "ExprSetFinder Info : " << self.name;
-    VLOG(6) << "        Inputs  :" << e;
-    for (const auto& r : rs) {
-      VLOG(6) << "      Outputs : \n" << r;
+    if (VLOG_IS_ON(6)) {
+      VLOG(6) << "ExprSetFinder Info : " << self.name;
+      VLOG(6) << "        Inputs  :" << e;
+      for (const auto& r : rs) {
+        VLOG(6) << "      Outputs : \n" << r;
+      }
     }
     std::vector<ir::Expr> res;
     for (const auto& r : rs) {
-      const auto& x_res = x.f_(r);
-      res.insert(res.end(), x_res.begin(), x_res.end());
+      const auto& other_res = other.f_(r);
+      res.insert(res.end(), other_res.begin(), other_res.end());
     }
     return res;
   };
-  return ExprSetFinder(std::function(new_f), x.name + "*" + this->name);
+  return ExprSetFinder(std::function(new_f), other.name + "*" + this->name);
 }
 
 ExprSetFinder ExprSetFinder::GetIdentity() {
@@ -312,7 +320,7 @@ ExprSetFinder ChildRootScheduleBlockRealizes =
 
 ExprSetFinder IsForIterVar(const ir::Var& var) {
   return FilterMaker(
-      [var = var](const ir::Expr& e) -> bool {
+      [var](const ir::Expr& e) -> bool {
         return e.As<ir::For>() && e.As<ir::For>()->loop_var == var;
       },
       "IsForIterVar");
@@ -343,7 +351,7 @@ ExprSetFinder ChildTensorStores = Collector(
 
 ExprSetFinder FilterLoadByTensor(const ir::Tensor& tensor) {
   return FilterMaker(
-      [tensor = tensor](const ir::Expr& e) -> bool {
+      [tensor](const ir::Expr& e) -> bool {
         return e.As<ir::Load>() &&
                e.As<ir::Load>()->tensor.as_tensor_ref()->name == tensor->name;
       },
@@ -356,11 +364,10 @@ ExprSetFinder ChildFors =
 ExprSetFinder FindFather(const ir::Expr& root) {
   const auto& f = [&](const auto& child) -> ExprSet {
     ExprSetFinder find_child =
-        Collector([child](const ir::Expr* e) { return *e == child; });
-    const auto& father_collector = Collector([&](const ir::Expr* current) {
-      auto res = (*current != child) && !find_child(*current).empty();
-      return res;
-    });
+        Collector([child](const ir::Expr* e) { return *e == child; }, "");
+    const auto& father_collector = Collector(
+        [&](const ir::Expr* current) { return !find_child(*current).empty(); },
+        "");
     return father_collector(root);
   };
   return ExprSetFinder(f, "FindFather");
@@ -372,10 +379,9 @@ using ExprTransformFunc = std::function<ir::Expr(ir::Expr)>;
 
 ExprTransformer::ExprTransformer(ExprTransformFunc f) { f_ = f; }
 ir::Expr ExprTransformer::operator()(const ir::Expr& x) const { return f_(x); }
-ExprTransformer ExprTransformer::operator*(const ExprTransformer& x) const {
-  auto new_f = [self = *this, x = x](const ir::Expr& e) -> ir::Expr {
-    const auto& rs = self.f_(e);
-    return x.f_(rs);
+ExprTransformer ExprTransformer::operator*(const ExprTransformer& other) const {
+  auto new_f = [self = *this, other](const ir::Expr& e) -> ir::Expr {
+    return other.f_(self.f_(e));
   };
   return ExprTransformer(std::function(new_f));
 }
@@ -596,7 +602,10 @@ void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
   VLOG(4) << "      op_patterns.size() = " << op_compute_bodies.size();
   VLOG(4) << "op_compute_bodies.size() = " << op_patterns.size();
   PADDLE_ENFORCE_EQ(
-      op_patterns.size(), op_compute_bodies.size(), "ops and  size not equal");
+      op_patterns.size(),
+      op_compute_bodies.size(),
+      ::common::errors::PreconditionNotMet(
+          "op_compute_bodies and op_patterns should have same size."));
 }
 
 }  // namespace trivial_fusion_detail

@@ -53,8 +53,6 @@ TrivialOp::TrivialOp(const TrivialOp& trivial_op) {
 
 void TrivialOp::_SetFuncBody(ir::Expr new_body) { func_body = new_body; }
 
-ir::Expr* TrivialOp::_GetFuncBodyPointer() { return &func_body; }
-
 ir::Expr TrivialOp::GetFuncBody() const { return func_body; }
 
 ReduceOp::ReduceOp(const ir::Expr& origin_func_body) {
@@ -68,8 +66,6 @@ ReduceOp::ReduceOp(const ReduceOp& reduce_op) {
 void ReduceOp::_SetFuncBody(ir::Expr new_body) { func_body = new_body; }
 
 ir::Expr ReduceOp::GetFuncBody() const { return func_body; }
-
-ir::Expr* ReduceOp::_GetFuncBodyPointer() { return &func_body; }
 
 using FusibleOp = std::variant<ReduceOp, TrivialOp>;
 
@@ -227,10 +223,6 @@ ir::Expr GetInitExpr(const ReduceOp& op) {
           .GetSingle(op.GetFuncBody());
   VLOG(4) << "GetInitExpr: " << result;
   return result;
-}
-
-ir::Expr* _GetFuncBodyPointer(FusibleOp op) {
-  return std::visit([&](auto&& arg) { return arg._GetFuncBodyPointer(); }, op);
 }
 
 ir::Expr CopyReduceBody(const FusibleOp& downstream, const ReduceOp& upstream) {

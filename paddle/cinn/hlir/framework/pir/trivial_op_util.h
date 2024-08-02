@@ -119,16 +119,16 @@ using Expr2ExprSet = std::function<ExprSet(const ir::Expr& x)>;
 struct ExprSetFinder {
   Expr2ExprSet f_;
   std::string name;
-  explicit ExprSetFinder(Expr2ExprSet f, std::string s = "");
+  explicit ExprSetFinder(Expr2ExprSet f, const std::string& s);
 
   ExprSet operator()(const ir::Expr& x) const;
   ir::Expr GetSingle(const ir::Expr& x) const;
-  ExprSetFinder operator*(ExprSetFinder x) const;
+  ExprSetFinder operator*(const ExprSetFinder& other) const;
   static ExprSetFinder GetIdentity();
 };
 
 template <typename Teller>
-ExprSetFinder Collector(Teller t, std::string name = "") {
+ExprSetFinder Collector(Teller t, const std::string& name) {
   return ExprSetFinder(
       [=](const ir::Expr& x) -> ExprSet {
         const auto& rs = cinn::ir::ir_utils::CollectIRNodesInOrder(x, t);
@@ -138,13 +138,10 @@ ExprSetFinder Collector(Teller t, std::string name = "") {
 }
 
 template <typename FilterFunc>
-ExprSetFinder FilterMaker(FilterFunc t, std::string name) {
+ExprSetFinder FilterMaker(FilterFunc func, const std::string& name) {
   return ExprSetFinder(
       [=](const ir::Expr& x) -> ExprSet {
-        if (t(x)) {
-          return {x};
-        }
-        return {};
+        return func(x) ? ExprSet{x} : ExprSet();
       },
       name);
 }
@@ -207,7 +204,7 @@ struct ExprTransformer {
   ExprTransformFunc f_;
   explicit ExprTransformer(ExprTransformFunc f);
   ir::Expr operator()(const ir::Expr& x) const;
-  ExprTransformer operator*(const ExprTransformer& x) const;
+  ExprTransformer operator*(const ExprTransformer& other) const;
 };
 
 extern ExprTransformer Identity;
@@ -253,7 +250,7 @@ std::vector<OpPatternKind> GetOpPatternKindVector(
 template <class A, class C, class Func>
 void SequenceMutator(const std::vector<A>& as, C* acc, const Func& mutator) {
   VLOG(4) << "SequenceTransform Init: " << acc;
-  for (int i = 0; i < as.size(); ++i) {
+  for (size_t i = 0; i < as.size(); ++i) {
     mutator(as[i], acc);
     VLOG(4) << "SequenceTransform Iter: " << acc;
   }

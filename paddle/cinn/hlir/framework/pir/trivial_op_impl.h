@@ -43,12 +43,9 @@ namespace trivial_fusion_detail {
 struct TrivialOp {
  public:
   explicit TrivialOp(const ir::Expr& origin_func_body);
-
   TrivialOp(const TrivialOp& trivial_op);
 
   void _SetFuncBody(ir::Expr new_body);
-  ir::Expr* _GetFuncBodyPointer();
-
   ir::Expr GetFuncBody() const;
 
  private:
@@ -61,10 +58,7 @@ struct ReduceOp {
   ReduceOp(const ReduceOp& reduce_op);
 
   void _SetFuncBody(ir::Expr new_body);
-
   ir::Expr GetFuncBody() const;
-
-  ir::Expr* _GetFuncBodyPointer();
 
  private:
   ir::Expr func_body;
@@ -88,8 +82,6 @@ std::vector<ir::Var> GetReduceIters(const ReduceOp& op);
 
 ir::Expr GetInitExpr(const ReduceOp& op);
 
-ir::Expr* _GetFuncBodyPointer(FusibleOp op);
-
 ir::Expr CopyReduceBody(const FusibleOp& downstream, const ReduceOp& upstream);
 
 int GetTensorCounter();
@@ -112,7 +104,8 @@ ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
 FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
 
 template <class DownStreamOp>
-DownStreamOp TrivalxOther_Fusion(TrivialOp upstream, DownStreamOp downstream) {
+DownStreamOp TrivalxOther_Fusion(const TrivialOp& upstream,
+                                 const DownStreamOp& downstream) {
   VLOG(4) << "Trivial x OtherFusion begin.";
 
   const auto& replaced_tensor = GetOutputTensor(upstream);
@@ -124,6 +117,8 @@ DownStreamOp TrivalxOther_Fusion(TrivialOp upstream, DownStreamOp downstream) {
       ComposeUtils::GetEachTensorLoadExpr(modified_body, replaced_tensor),
       &modified_body,
       [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
+        // NOTE(Aurelius84): Can we avoid inner duplicate IRCopy for upstream
+        // ComputeBody for every time replacing load expr?
         ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
             upstream, downstream_load_expr, downstream_body);
       });
