@@ -105,11 +105,11 @@ struct ArgsBuilder {
   }
 
   std::vector<cinn_pod_value_t> Build() {
-    PADDLE_ENFORCE_EQ(
-        !data_.empty(),
-        true,
-        common::errors::InvalidArgument("The data_ container is empty. Please "
-                                        "ensure it contains valid data."));
+    PADDLE_ENFORCE_EQ(!data_.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The data_ container is empty. Please "
+                          "ensure it contains valid data."));
     return data_;
   }
 

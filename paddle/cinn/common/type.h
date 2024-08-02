@@ -185,7 +185,7 @@ inline Type Float(int bits,
     PADDLE_ENFORCE_EQ((st == Type::specific_type_t::FP16 ||
                        st == Type::specific_type_t::BF16),
                       true,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "When creating a 16-bit Float, the specific_type_t "
                           "must be FP16 or BF16."));
   }

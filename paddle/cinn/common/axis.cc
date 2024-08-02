@@ -71,7 +71,7 @@ std::vector<ir::Var> GenDefaultAxis(int naxis) {
     axis.emplace_back(cinn::common::axis_name(i));
     PADDLE_ENFORCE_EQ(axis.back()->type().valid(),
                       true,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The type of axis at index %d is invalid. Please "
                           "ensure each axis has a valid type.",
                           i));

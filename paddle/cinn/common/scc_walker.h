@@ -83,7 +83,7 @@ class SccWalker final {
       for (NodeType node : scc) {
         PADDLE_ENFORCE_EQ(node2root.emplace(node, root).second,
                           true,
-                          common::errors::AlreadyExists(
+                          ::common::errors::AlreadyExists(
                               "Failed to insert the node into node2root. The "
                               "node may already exist."));
       }
