@@ -51,7 +51,7 @@ void OpTester::Init(const OpTesterConfig &config) {
     CreateInputVarDesc();
     CreateOutputVarDesc();
   } else {
-    PADDLE_THROW(phi::errors::NotFound(
+    PADDLE_THROW(common::errors::NotFound(
         "Operator '%s' is not registered in OpTester.", config_.op_type));
   }
 
@@ -85,7 +85,7 @@ void OpTester::Run() {
       platform::EnableProfiler(platform::ProfilerState::kAll);
       platform::SetDeviceId(config_.device_id);
 #else
-      PADDLE_THROW(phi::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "'GPUPlace' is not supported in CPU only device."));
 #endif
     }
@@ -168,8 +168,8 @@ framework::proto::VarType::Type OpTester::TransToVarType(std::string str) {
   } else if (str == "fp64") {
     return framework::proto::VarType::FP64;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("Unsupported dtype %s in OpTester.",
-                                            str.c_str()));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Unsupported dtype %s in OpTester.", str.c_str()));
   }
 }
 
@@ -179,7 +179,7 @@ void OpTester::CreateInputVarDesc() {
     const OpInputConfig *input = config_.GetInput(name);
     PADDLE_ENFORCE_NOT_NULL(
         input,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "The input %s of operator %s is not correctly provided.",
             name,
             config_.op_type));
@@ -220,7 +220,7 @@ void OpTester::CreateOpDesc() {
     PADDLE_ENFORCE_NE(
         attr_types.find(name),
         attr_types.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Operator %s does not have attribute %d.", type_, name));
 
     const std::string &value_str = item.second;
@@ -243,7 +243,7 @@ void OpTester::CreateOpDesc() {
       case framework::proto::AttrType::INTS:
       case framework::proto::AttrType::FLOATS:
       case framework::proto::AttrType::STRINGS:
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported STRINGS type in OpTester yet."));
         break;
       case framework::proto::AttrType::LONG: {
@@ -252,7 +252,7 @@ void OpTester::CreateOpDesc() {
       } break;
       case framework::proto::AttrType::LONGS:
       default:
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupport attr type %d in OpTester.", type));
     }
   }
@@ -312,7 +312,7 @@ void OpTester::SetupTensor(phi::DenseTensor *tensor,
     }
     is.close();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported initializer %s in OpTester.", initializer.c_str()));
   }
 
@@ -371,7 +371,7 @@ void OpTester::CreateVariables(framework::Scope *scope) {
                           item.second.initializer,
                           item.second.filename);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported dtype %d in OpTester.", data_type));
     }
 
@@ -495,7 +495,7 @@ std::string OpTester::DebugString() {
            << "\n";
       } break;
       default:
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupport attr type %d in OpTester.", attr_type));
     }
     ss << GenSpaces(--count) << "}\n";
@@ -510,8 +510,8 @@ TEST(op_tester, base) {
     PADDLE_ENFORCE_EQ(
         static_cast<bool>(fin),
         true,
-        phi::errors::InvalidArgument("OpTester cannot open file %s",
-                                     FLAGS_op_config_list.c_str()));
+        common::errors::InvalidArgument("OpTester cannot open file %s",
+                                        FLAGS_op_config_list.c_str()));
     std::vector<OpTesterConfig> op_configs;
     while (!fin.eof()) {
       VLOG(4) << "Reading config " << op_configs.size() << "...";

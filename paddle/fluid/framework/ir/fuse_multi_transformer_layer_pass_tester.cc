@@ -108,7 +108,7 @@ TEST(FuseMultiTransformerLayerPass, encoder_fp) {
   PADDLE_ENFORCE_EQ(
       num_nodes_after,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "After the fuse_multi_transformer_layer_pass, "
           "The node num in graph should be 1, but the result is %d",
           num_nodes_after));
@@ -162,7 +162,7 @@ TEST(FuseMultiTransformerLayerPass, decoder_fp) {
   PADDLE_ENFORCE_EQ(
       num_nodes_after,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "After the fuse_multi_transformer_layer_pass, "
           "The node num in graph should be 1, but the result is %d",
           num_nodes_after));

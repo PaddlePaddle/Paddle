@@ -30,7 +30,7 @@ if(WITH_GPU OR WITH_ROCM)
     pinned_allocator.cc
     stream_safe_cuda_allocator.cc
     thread_local_allocator.cc)
-  list(APPEND ALLOCATOR_DEPS cuda_device_guard gpu_info dynload_cuda)
+  list(APPEND ALLOCATOR_DEPS gpu_info phi common)
 endif()
 
 if(WITH_ROCM)

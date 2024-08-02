@@ -27,7 +27,7 @@ LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
   PADDLE_ENFORCE_EQ(
       sched_dims->size(),
       loop_types->size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of sched_dims and loop_types should be equal, but got "
           "sched_dims size = %d, loop_types size = %d.",
           sched_dims->size(),

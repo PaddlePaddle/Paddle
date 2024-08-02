@@ -50,7 +50,8 @@ using phi::distributed::ProcessGroupMapFromGid;
 
 static void CheckTensorContiguous(const phi::DenseTensor& tensor) {
   if (!tensor.meta().is_contiguous()) {
-    PADDLE_THROW(phi::errors::InvalidArgument("The tensor must be contiguous"));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The tensor must be contiguous"));
   }
 }
 
@@ -58,7 +59,7 @@ static void CheckTensorContiguous(const std::vector<phi::DenseTensor>& inputs) {
   for (const auto& tensor : inputs) {
     if (!tensor.meta().is_contiguous()) {
       PADDLE_THROW(
-          phi::errors::InvalidArgument("The tensor must be contiguous"));
+          common::errors::InvalidArgument("The tensor must be contiguous"));
     }
   }
 }

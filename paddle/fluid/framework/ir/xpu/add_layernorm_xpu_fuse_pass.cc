@@ -153,7 +153,7 @@ class AddLayernormXPUFusePass : public FusePassBase {
 
 void AddLayernormXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   FuseAddLayernorm(graph);
@@ -183,7 +183,7 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     auto* block = l_norm->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
     auto x_shape = add_x->Var()->GetShape();
     auto x_rank = x_shape.size();
     auto y_shape = add_y->Var()->GetShape();

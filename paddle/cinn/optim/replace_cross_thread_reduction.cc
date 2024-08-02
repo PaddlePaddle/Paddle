@@ -50,7 +50,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
 
     PADDLE_ENFORCE_NOT_NULL(
         schedule_block,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The schedule block pointer in CanReplace must not be null."));
 
     if (block_realize->schedule_block.As<ir::ScheduleBlock>()->name.substr(
@@ -207,7 +207,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
         expr->schedule_block.As<ir::ScheduleBlock>();
     PADDLE_ENFORCE_NOT_NULL(
         schedule_block,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The schedule block pointer in Visit must not be null."));
     ir::Expr original_update_body = schedule_block->body;
     ir::Expr original_update_stmt;
@@ -217,7 +217,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
       PADDLE_ENFORCE_EQ(
           original_update_body.As<ir::Block>()->stmts.size(),
           1,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The size of stmts is incorrect."
               "Expected size is 1, but receive %d.",
               original_update_body.As<ir::Block>()->stmts.size()));

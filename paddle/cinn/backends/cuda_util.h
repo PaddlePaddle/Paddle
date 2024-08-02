@@ -36,7 +36,7 @@
       cuGetErrorString(status, &msg);                                  \
       std::stringstream ss;                                            \
       ss << "CUDA Driver Error: " #func " failed with error: " << msg; \
-      PADDLE_THROW(phi::errors::Fatal(ss.str()));                      \
+      PADDLE_THROW(::common::errors::Fatal(ss.str()));                 \
     }                                                                  \
   }
 
@@ -46,36 +46,36 @@
     if (status != cudaSuccess) {                           \
       std::stringstream ss;                                \
       ss << "CUDA Error : " << cudaGetErrorString(status); \
-      PADDLE_THROW(phi::errors::Fatal(ss.str()));          \
+      PADDLE_THROW(::common::errors::Fatal(ss.str()));     \
     }                                                      \
   }
 
-#define CURAND_CALL(func)                         \
-  {                                               \
-    auto status = func;                           \
-    if (status != CURAND_STATUS_SUCCESS) {        \
-      std::stringstream ss;                       \
-      ss << "CURAND Error : " << status;          \
-      PADDLE_THROW(phi::errors::Fatal(ss.str())); \
-    }                                             \
+#define CURAND_CALL(func)                              \
+  {                                                    \
+    auto status = func;                                \
+    if (status != CURAND_STATUS_SUCCESS) {             \
+      std::stringstream ss;                            \
+      ss << "CURAND Error : " << status;               \
+      PADDLE_THROW(::common::errors::Fatal(ss.str())); \
+    }                                                  \
   }
 
-#define CUSOLVER_CALL(func)                       \
-  {                                               \
-    auto status = func;                           \
-    if (status != CUSOLVER_STATUS_SUCCESS) {      \
-      std::stringstream ss;                       \
-      ss << "CUSOLVER Error: " << status;         \
-      PADDLE_THROW(phi::errors::Fatal(ss.str())); \
-    }                                             \
+#define CUSOLVER_CALL(func)                            \
+  {                                                    \
+    auto status = func;                                \
+    if (status != CUSOLVER_STATUS_SUCCESS) {           \
+      std::stringstream ss;                            \
+      ss << "CUSOLVER Error: " << status;              \
+      PADDLE_THROW(::common::errors::Fatal(ss.str())); \
+    }                                                  \
   }
 
-#define CUBLAS_CALL(func)                                \
-  {                                                      \
-    auto status = func;                                  \
-    if (status != CUBLAS_STATUS_SUCCESS) {               \
-      PADDLE_THROW(phi::errors::Fatal("CUBLAS Error!")); \
-    }                                                    \
+#define CUBLAS_CALL(func)                                     \
+  {                                                           \
+    auto status = func;                                       \
+    if (status != CUBLAS_STATUS_SUCCESS) {                    \
+      PADDLE_THROW(::common::errors::Fatal("CUBLAS Error!")); \
+    }                                                         \
   }
 
 #define CUDNN_CALL(func)                                     \
@@ -84,7 +84,7 @@
     if (status != CUDNN_STATUS_SUCCESS) {                    \
       std::stringstream ss;                                  \
       ss << "CUDNN Error : " << cudnnGetErrorString(status); \
-      PADDLE_THROW(phi::errors::Fatal(ss.str()));            \
+      PADDLE_THROW(::common::errors::Fatal(ss.str()));       \
     }                                                        \
   }
 
@@ -94,7 +94,7 @@
     if (status != NVRTC_SUCCESS) {                           \
       std::stringstream ss;                                  \
       ss << "NVRTC Error : " << nvrtcGetErrorString(status); \
-      PADDLE_THROW(phi::errors::Fatal(ss.str()));            \
+      PADDLE_THROW(::common::errors::Fatal(ss.str()));       \
     }                                                        \
   }
 

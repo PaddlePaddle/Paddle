@@ -45,7 +45,7 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "In dims rank should be 2, but received in dims size is [%d].",
           in_dims.size()));
 
@@ -72,7 +72,7 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
       phi::TransposeKernel<int8_t>(*cpu_ctx, *in, axis, out_ptr);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support fp16/fp32/int16/int8, but received dtype is %s.",
           phi::DataTypeToString(in->dtype())));
       break;
@@ -105,7 +105,7 @@ void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out) {
       }
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support int64 and int32, but received dtype is %s.",
           phi::DataTypeToString(in->dtype())));
       break;
@@ -121,7 +121,7 @@ void CastTo(phi::DenseTensor* in, phi::DenseTensor* out, DataType out_dtype) {
 
   if (in->dtype() != phi::DataType::FLOAT16 &&
       in->dtype() != phi::DataType::FLOAT32) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Only support fp16 and fp32, but received dtype is %s.",
         phi::DataTypeToString(in->dtype())));
   }
@@ -248,7 +248,7 @@ static void QuantFP32ToIntX(const float* src_ptr,
                             T* dst_ptr,
                             float max_val,
                             int numel) {
-  PADDLE_THROW(phi::errors::Unimplemented("Not support."));
+  PADDLE_THROW(common::errors::Unimplemented("Not support."));
 }
 
 template <>
@@ -292,7 +292,7 @@ void ConvertWithQuant(phi::DenseTensor* weight,
                       bool per_channel_quant) {
   std::stringstream ss;
   ss << "Not support for Tcpu is " << phi::CppTypeToDataType<Tcpu>::Type();
-  PADDLE_THROW(phi::errors::Fatal(ss.str()));
+  PADDLE_THROW(common::errors::Fatal(ss.str()));
 }
 
 template <
@@ -389,7 +389,7 @@ void ConvertWithoutQuant(phi::DenseTensor* weight,
     PADDLE_ENFORCE_EQ(
         weight_scales.empty(),
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ConvertWithoutQuant is not allowed weight scales is empty!"));
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
@@ -441,7 +441,7 @@ void ConvertWithoutQuant(phi::DenseTensor* weight,
     QuantFP32ToIntX<float>(
         weight_data, cpu_ctx->Alloc<float>(weight), max_val, size);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Only support float<->int31, int8<->int8 and int16<->int16 convert."));
   }
 }
@@ -477,7 +477,7 @@ bool IsPerTensorQuant(const std::vector<float>& weight_max) {
   PADDLE_ENFORCE_GT(
       weight_max.size(),
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Op's channel size: [%d] should great than zero", weight_max.size()));
   auto first = weight_max[0];
   for (size_t i = 1; i < weight_max.size(); ++i) {

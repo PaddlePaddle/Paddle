@@ -34,7 +34,7 @@ class RnnNativeOpConverter : public OpConverter {
 
     PADDLE_ENFORCE_EQ(input->getDimensions().nbDims,
                       3,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "RNN(LSTM)'s input must be 3 dimensions, i.e. "
                           "[seq_len, batch, input_size],"
                           "but now is %d  dimensions.",
@@ -42,7 +42,7 @@ class RnnNativeOpConverter : public OpConverter {
 
     PADDLE_ENFORCE_EQ(prev_h->getDimensions().nbDims,
                       3,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "RNN(LSTM)'s PreState(Hidden) must be 3 dimensions, "
                           "i.e. [num_layers, batch, hidden_size],"
                           "but now is %d  dimensions.",
@@ -50,7 +50,7 @@ class RnnNativeOpConverter : public OpConverter {
 
     PADDLE_ENFORCE_EQ(prev_c->getDimensions().nbDims,
                       3,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "RNN(LSTM)'s PreState(Cell) must be 3 dimensions, "
                           "i.e. [num_layers, batch, hidden_size],"
                           "but now is %d  dimensions.",

@@ -22,6 +22,7 @@
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
@@ -39,7 +40,11 @@ class IRVisitorRequireReImpl {
   //! Visit a expression.
   // @{
   virtual RetTy Visit(const ir::Expr* expr, Args... args) {
-    CHECK(expr->defined());
+    PADDLE_ENFORCE_EQ(
+        expr->defined(),
+        true,
+        ::common::errors::Unavailable("The expression is not defined. Please "
+                                      "provide a valid expression."));
     switch (expr->node_type()) {
 #define __(op__)           \
   case ir::IrNodeTy::op__: \
@@ -51,7 +56,7 @@ class IRVisitorRequireReImpl {
         std::stringstream ss;
         ss << "not supported NodeTy, the expr->node_type() = "
            << expr->node_type();
-        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+        PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 #undef __
     }
     return RetTy();

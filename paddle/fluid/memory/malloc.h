@@ -85,7 +85,12 @@ struct ThrustAllocator {
   void deallocate(char* ptr, size_t) {
     VLOG(2) << "deallocate ";
     allocation_map_type::iterator iter = busy_allocation_.find(ptr);
-    CHECK(iter != busy_allocation_.end());
+    PADDLE_ENFORCE_NE(
+        iter,
+        busy_allocation_.end(),
+        phi::errors::InvalidArgument("Attempting to deallocate a pointer not "
+                                     "found in busy_allocation_ map."));
+
     busy_allocation_.erase(iter);
   }
 
