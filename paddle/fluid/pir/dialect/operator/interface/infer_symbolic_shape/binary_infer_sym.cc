@@ -238,6 +238,42 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
 
+bool CrossOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  size_t x_dim = x_shape.shape().size();
+  size_t y_dim = y_shape.shape().size();
+
+  PADDLE_ENFORCE_EQ(x_dim,
+                    y_dim,
+                    common::errors::InvalidArgument(
+                        "The 'shape' of Input(X) should be equal to "
+                        "the 'shape' of Input(Y). But received "
+                        "Input(X).dimensions = [%d], "
+                        "Input(Y).dimensions = [%d]",
+                        x_dim,
+                        y_dim));
+
+  for (size_t i = 0; i < x_dim; i++) {
+    infer_context->AddEqualCstr(x_shape.shape()[i], y_shape.shape()[i]);
+  }
+
+  const int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  if (axis != common::DDim::kMaxRank) {
+    const int dim = axis < 0 ? axis + x_dim : axis;
+    infer_context->AddEqualCstr(x_shape.shape()[dim], symbol::DimExpr{3});
+    infer_context->AddEqualCstr(y_shape.shape()[dim], symbol::DimExpr{3});
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+
+  return true;
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<symbol::DimExpr> &x_dims =
@@ -271,9 +307,10 @@ bool ExpandAsOpInferSymbolicShape(
   std::vector<int> target_shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
   const std::vector<symbol::DimExpr> &output_dims = [&] {
-    if (op->operand_source(0)) {
-      return infer_context->GetShapeOrDataForValue(op->operand_source(1))
-          .shape();
+    const auto &input_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    if (!input_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+      return input_shape_or_data.shape();
     }
     std::vector<symbol::DimExpr> output_dims;
     output_dims.reserve(target_shape.size());

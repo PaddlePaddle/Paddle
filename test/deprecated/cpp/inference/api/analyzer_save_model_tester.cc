@@ -62,7 +62,15 @@ TEST(Analyzer, save_model) {
   pass_builder3->DeletePass("constant_folding_pass");
   cfg3.SetModel(optimModelPath + "/model", optimModelPath + "/params");
   int fused_num_ops = GetNumOps(cfg3);
-  CHECK_LE(fused_num_ops, origin_num_ops);
+  PADDLE_ENFORCE_LE(
+      fused_num_ops,
+      origin_num_ops,
+      phi::errors::InvalidArgument(
+          "The number of fused operations (fused_num_ops) should be less than "
+          "or equal to the original number of operations (origin_num_ops). "
+          "Received fused_num_ops = %d, origin_num_ops = %d.",
+          fused_num_ops,
+          origin_num_ops));
 }
 
 }  // namespace inference

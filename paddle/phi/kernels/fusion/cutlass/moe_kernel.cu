@@ -31,9 +31,11 @@
 #include "cutlass/gemm/kernel/default_gemm_grouped.h"
 #include "cutlass/numeric_conversion.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_extensions/gemm/kernel/gemm_moe_problem_visitor.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_extensions/gemm/kernel/moe_problem_visitor.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/moe_gemm/fused_moe_cutlass_kernel.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe/default_moe_fc_traits.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe/linear_combination_ft_gelu.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe/moe_cutlass_kernel.h"
 #pragma GCC diagnostic pop
 
 namespace phi {
@@ -394,6 +396,8 @@ void GenericMoeGemmKernelLauncher(const T* A,
       cutlass::gemm::kernel::MoeFCGemm<typename GemmKernel_::Mma,
                                        typename GemmKernel_::Epilogue,
                                        typename GemmKernel_::ThreadblockSwizzle,
+                                       arch,  // Ensure top level arch is used
+                                              // for dispatch
                                        GemmKernel_::kGroupScheduleMode>;
   using GemmGrouped = cutlass::gemm::device::GemmGrouped<GemmKernel>;
 

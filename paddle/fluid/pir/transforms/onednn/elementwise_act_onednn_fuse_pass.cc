@@ -32,7 +32,8 @@ std::string GetFusedElement(const std::string &elementwise_type) {
   if (it != fused_ops.end()) {
     return it->second;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("The op type is not supported."));
+    PADDLE_THROW(
+        common::errors::Unimplemented("The op type is not supported."));
   }
 }
 class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
