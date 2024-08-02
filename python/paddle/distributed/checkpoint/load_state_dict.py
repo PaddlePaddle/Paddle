@@ -194,8 +194,8 @@ def get_local_load_files(rank_to_files):
             for rank, files in rank_to_not_read_files.items()
             if rank in ranks
         ]
-        # 'ranks' refer to the ranks that have read the fewest number of files so far. However, the files containing the weights required 
-        #. by these ranks may have already been completely read. In this case, they will not read any more files.
+        # 'ranks' refer to the ranks that have read the fewest number of files so far. However, the files containing the weights required
+        # . by these ranks may have already been completely read. In this case, they will not read any more files.
         if len(nums) == 0:
             nums = [
                 (rank, len(files))
