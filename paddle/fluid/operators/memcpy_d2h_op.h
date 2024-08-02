@@ -41,8 +41,8 @@ class MemcpyD2HFunctor {
     CopyLoDTensor(lod_tensor, out_tensor);
   }
 
-  void operator()(const framework::LoDTensorArray &array) const {
-    auto &out_array = *out_->GetMutable<framework::LoDTensorArray>();
+  void operator()(const phi::TensorArray &array) const {
+    auto &out_array = *out_->GetMutable<phi::TensorArray>();
     out_array.clear();
     out_array.resize(array.size());
 
