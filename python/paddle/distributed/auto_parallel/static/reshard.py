@@ -2992,6 +2992,10 @@ class Resharder:
                 idx += 1
 
     def reshard(self):
+        self.reshard_input_output()
+        self.remove_no_need()
+
+    def reshard_input_output(self):
         self._remove_global_process_mesh()
         for block_idx, block in enumerate(self.auto_parallel_main_prog.blocks):
             # change the var_name before resharding sub block
@@ -3005,6 +3009,7 @@ class Resharder:
             # NOTE: Only support that insert send and recv op if output process mesh is different from tensor process mesh
             self._reshard_output(block)
 
+    def remove_no_need(self):
         # remove no need vars and ops in the main program
         Remover.remove_no_need_in_main(
             self.auto_parallel_main_prog,

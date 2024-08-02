@@ -126,6 +126,9 @@ class Parallelizer:
             self._logger.debug(
                 f"within parallel optimizer time: {time.time() - time0}, mode {self._mode}"
             )
+            self._apply_optimization_before_reshard(
+                dist_main_prog, dist_startup_prog, rank, dist_params_grads
+            )
 
             resharder = Resharder(
                 dist_main_prog,
@@ -134,7 +137,13 @@ class Parallelizer:
                 self._dist_context,
                 dist_params_grads,
             )
-            resharder.reshard()
+            resharder.reshard_input_output()
+
+            self._apply_optimization_after_reshard(
+                dist_main_prog, dist_startup_prog, rank, dist_params_grads
+            )
+            resharder.remove_no_need()
+
             self._logger.debug(
                 f"within parallel reshard time: {time.time() - time0}, mode {self._mode}"
             )
@@ -250,6 +259,39 @@ class Parallelizer:
                 optimizer_ops = new_optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
+
+    def _apply_optimization_before_reshard(
+        self, main_program, startup_program, rank, dist_params_grads
+    ):
+        if self._strategy is None:
+            return
+        if self.is_train and self._strategy.pipeline.enable:
+            config = {"dist_context": self._dist_context, "global_rank": rank}
+            auto_parallel_sync_shared_params_pass = new_pass(
+                "auto_parallel_sync_shared_params", config
+            )
+
+            auto_parallel_sync_shared_params_pass.pre_analysis(
+                main_program, startup_program, dist_params_grads
+            )
+            self.auto_parallel_sync_shared_params_pass = (
+                auto_parallel_sync_shared_params_pass
+            )
+
+    def _apply_optimization_after_reshard(
+        self, main_program, startup_program, rank, dist_params_grads
+    ):
+        if self._strategy is None:
+            return
+        if (
+            self.is_train
+            and self._strategy.pipeline.enable
+            and self.auto_parallel_sync_shared_params_pass
+        ):
+            self.auto_parallel_sync_shared_params_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
+            return
 
     def _apply_pre_optimization(
         self, main_program, startup_program, loss, optimizer, params_grads

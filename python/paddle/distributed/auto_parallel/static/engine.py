@@ -139,6 +139,7 @@ class Engine:
         cluster=None,
         strategy=None,
     ):
+        self.concrete_program = None
         if (
             model
             and not isinstance(model, paddle.nn.Layer)
@@ -1058,6 +1059,7 @@ class Engine:
             self._cluster,
             self._strategy,
             self._json_config,
+            self.concrete_program,
         )
         self._fwd_dist_contexts[mode] = DistributedContext(
             serial_main_prog,

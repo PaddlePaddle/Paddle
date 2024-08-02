@@ -65,6 +65,7 @@ class DistributedContext:
         cluster=None,
         strategy=None,
         json_config=None,
+        concrete_program=None,
     ):
         # Data members related to original programs (unchanged)
         self._original_serial_main_program = serial_main_prog
@@ -141,6 +142,8 @@ class DistributedContext:
         # record vpp chunk size
         self._num_model_chunks = 0
 
+        self._concrete_program = concrete_program
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -148,6 +151,10 @@ class DistributedContext:
     @property
     def serial_startup_program(self):
         return self._serial_startup_program
+
+    @property
+    def concrete_program(self):
+        return self._concrete_program
 
     @property
     def serial_loss(self):
