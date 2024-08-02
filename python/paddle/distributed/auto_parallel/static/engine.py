@@ -301,11 +301,13 @@ class Engine:
             batch_sampler = dataloader.batch_sampler
         else:
             batch_sampler = dataloader._dataloader.batch_sampler
-        if isinstance(batch_sampler, paddle.io.DistributedBatchSampler):
+
+        if hasattr(batch_sampler, "set_epoch"):
             # Get data from DataLoader iterator directly may affect data generation randomness
             # of BatchSampler when `Shuffle=True`. It may cause difference of data feeding
             # between dynamic and to_static mode.
-            batch_sampler.epoch -= 1
+            batch_sampler.set_epoch(0)
+
         if isinstance(data, dict):
             data = tuple(data.values())
             if len(data) != 2:
@@ -1529,9 +1531,9 @@ class Engine:
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=1
-            if self._strategy.pipeline.enable
-            else self._acc_steps,  # lr update once every local batch
+            acc_step=(
+                1 if self._strategy.pipeline.enable else self._acc_steps
+            ),  # lr update once every local batch
         )
 
         cbks.on_begin('train')
@@ -2212,9 +2214,9 @@ class Engine:
                 split_data=self._strategy.split_data,
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks,
-                acc_steps=1
-                if not self._strategy.pipeline.enable
-                else self._acc_steps,
+                acc_steps=(
+                    1 if not self._strategy.pipeline.enable else self._acc_steps
+                ),
             )
         self._prepare_reader(feed_list)
         return dataloader
