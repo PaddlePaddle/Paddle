@@ -1634,6 +1634,7 @@
     param : [num_rows, num_columns, dtype]
     data_type : dtype
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_channel_wise_dequantize_max_abs
   args : (Tensor x, Tensor[] scales, int[] quant_bits = {8}, int quant_axis = 0, int x_num_col_dims = 1)
