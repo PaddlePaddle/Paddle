@@ -182,6 +182,12 @@ def OpNameNormalizerInitialization(
     op_arg_name_mappings['push_gpups_sparse'].update(
         {"out_grad": "Out@GRAD", "out_grad_grad": "Out@GRAD"}
     )
+    op_name_mappings["lookup_table"] = "embedding"
+    op_arg_name_mappings["lookup_table"] = {
+        "x": "Ids",
+        "weight": "W",
+        "out": "Out",
+    }
 
     sparse_op_yaml_files = sparse_op_yaml_file.split(",")
     for yaml_file in sparse_op_yaml_files:

@@ -3676,6 +3676,7 @@ OpTranslator::OpTranslator() {
       FakeQuantizeOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
+  special_handlers["lookup_table"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
