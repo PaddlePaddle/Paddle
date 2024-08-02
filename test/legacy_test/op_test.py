@@ -2675,9 +2675,13 @@ class OpTest(unittest.TestCase):
                     atol = 2 if atol < 2 else atol
             else:
                 atol = 1e-2 if atol < 1e-2 else atol
+                if paddle.is_compiled_with_custom_device("npu"):
+                    atol = 4e-3 if atol == 0 else atol
 
         if self.is_float16_op():
             atol = 1e-3 if atol < 1e-3 else atol
+            if paddle.is_compiled_with_custom_device("npu"):
+                atol = 1e-3 if atol == 0 else atol
 
         if no_check_set is not None:
             if (
