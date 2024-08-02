@@ -2795,8 +2795,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (axis < 0) {
         axis += shape.size();
       }
-      if (shape[axis] > 3840) {
-        VLOG(3) << op_type << " op shape[axis] = " << shape[axis] << " > 3840.";
+      if (shape[axis] > 3840 || shape[axis] < 0) {
+        VLOG(3) << op_type << " shape[" << axis << "] = " << shape[axis]
+                << " is invalid, it should less than 3840 and greater than "
+                   "zero in TensorRT.";
         return false;
       }
     }

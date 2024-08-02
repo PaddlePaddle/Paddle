@@ -59,7 +59,7 @@ class ArgsortOpConverter : public OpConverter {
     }
 
     auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, TopK, *input_tensor, operation, 0, 1 << axis);
+        engine_, TopK, *input_tensor, operation, 1, 1 << axis);
     auto* shape = Shape(input_tensor);
     auto* k_tensor = GetEleTensorOfShape(shape, axis, true);
     layer->setInput(1, *k_tensor);
