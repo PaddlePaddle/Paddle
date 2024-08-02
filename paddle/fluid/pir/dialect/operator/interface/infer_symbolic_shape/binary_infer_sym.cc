@@ -297,7 +297,7 @@ bool EmbeddingOpInferSymbolicShape(
 
 bool SparseWeightEmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
@@ -367,7 +367,7 @@ bool GatherOpInferSymbolicShape(pir::Operation *op,
     PADDLE_ENFORCE_EQ(
         op->num_operands() == 3,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "in GatherOpInferSymbolicShape: The number of operands should be "
             "3 when the axis is not set."));
     const auto &axis_shape_or_data =
@@ -447,7 +447,7 @@ bool GatherNdOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       index_sym_shape[index_dims_size - 1].Has<std::int64_t>(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "in GatherNdOpInferSymbolicShape: index[-1] should be unknown"));
 
   for (int i = static_cast<int>(
