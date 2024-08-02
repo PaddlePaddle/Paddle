@@ -406,10 +406,8 @@ void reshape_grad(const Tensor& xshape,
                   const Tensor& grad_out,
                   Tensor* grad_x) {
   if (grad_x) {
-    // xshape: [0] + x.shape
     auto xshape_dims = xshape.dims();
-    auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    auto grad_x_tmp = reshape<T>(grad_out, common::vectorize(x_dims));
+    auto grad_x_tmp = reshape<T>(grad_out, common::vectorize(xshape_dims));
     set_output<T>(grad_x_tmp, grad_x);
   }
 }
@@ -1882,8 +1880,8 @@ void batch_norm_grad(const Tensor& x,
     }
 
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
-                                                data_layout));
+      PADDLE_THROW(common::errors::InvalidArgument("Unknown storage order: %s",
+                                                   data_layout));
   }
 }
 
@@ -2083,7 +2081,7 @@ void group_norm_grad(const Tensor& x,
   std::vector<int64_t> x_dims = x.shape();
   int rank = x_dims.size();
   if (rank < 3 || rank > 5) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Only support NCHW and NHWC format in rank {3, 4, 5}."));
   }
   int N = x_dims[0];
@@ -2104,8 +2102,8 @@ void group_norm_grad(const Tensor& x,
       reduce_axis.push_back(i);
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
-                                              data_layout));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unsupported storage order: %s", data_layout));
   }
 
   int g_num = C / groups;
@@ -2249,6 +2247,18 @@ void swiglu_grad(const Tensor& x,
     x_grad = concat<T>({x0_grad, x1_grad}, c_axis);
   }
   set_output<T>(x_grad, dx);
+}
+
+template <typename T>
+void softsign_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  // x_grad = out_grad / ((1 + abs(x))^2)
+
+  if (x_grad) {
+    Tensor x_abs = abs<T>(x);
+    Tensor x_abs_plusone = x_abs + full_scalar<T>(1.0, x.dtype());
+    Tensor x_grad_tmp = out_grad / (x_abs_plusone * x_abs_plusone);
+    set_output<T>(x_grad_tmp, x_grad);
+  }
 }
 
 }  // namespace details

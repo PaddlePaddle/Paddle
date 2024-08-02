@@ -224,7 +224,7 @@ class ReplaceIndexToBindExpr : public ir::IRMutator<> {
 
     PADDLE_ENFORCE_EQ(iter_values.size(),
                       iter_vars.size(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of iter values and iter vars is not equal,"
                           "where iter values:%d but iter vars:%d.",
                           iter_values.size(),
@@ -267,7 +267,7 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(&for_ir->body, &for_ir->body);
   }
   void Visit(const ir::PolyFor *op, Expr *expr) override {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unkown PolyFor!"));
+    PADDLE_THROW(::common::errors::InvalidArgument("Unkown PolyFor!"));
   }
 };
 

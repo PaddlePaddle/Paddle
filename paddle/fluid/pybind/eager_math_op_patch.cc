@@ -85,7 +85,7 @@ void InitTensorWithNumpyValue(const py::object& array,
   PADDLE_ENFORCE_EQ(
       self->defined(),
       true,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "Calling InitTensorWithNumpyValue of Eager Tensor without "
           "EmptyTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
@@ -104,7 +104,7 @@ void InitTensorWithNumpyValue(const py::object& array,
   } else if (phi::is_custom_place(place)) {
     SetTensorFromPyArray<phi::CustomPlace>(impl_ptr, array, place, zero_copy);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Place should be one of "
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
   }
@@ -141,7 +141,7 @@ void SetDevice(phi::Place place) {
     VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
             << " from " << static_cast<int>(place.device);
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
   }
@@ -153,7 +153,7 @@ void SetDevice(phi::Place place) {
             << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from "
             << static_cast<int>(place.device);
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use "
         "CustomPlace."));
 #endif

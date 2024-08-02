@@ -16,6 +16,8 @@ import os
 import unittest
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import paddle
 from paddle.distributed.fleet.base import role_maker
 

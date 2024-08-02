@@ -247,16 +247,14 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
                 name='label', shape=[1, 1], dtype='int64'
             )
             label_shape = paddle.reshape(self.label, shape=[1, 1, 1])
-            conv_out = paddle.static.nn.conv2d_transpose(
-                input=data_reshape,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
-                groups=self.conv_groups,
+            conv_out = paddle.nn.Conv2DTranspose(
+                in_channels=4,
+                out_channels=self.conv_num_filters,
+                kernel_size=self.conv_filter_size,
                 padding=self.conv_padding,
+                groups=self.conv_groups,
                 bias_attr=False,
-                use_cudnn=self.use_cudnn,
-                act=None,
-            )
+            )(data_reshape)
             if self.conv_padding == [1, 1]:
                 cout = paddle.reshape(conv_out, shape=[1, 1, 14400])
             elif self.conv_padding == 'VALID':

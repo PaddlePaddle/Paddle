@@ -17,9 +17,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
@@ -50,7 +50,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -61,7 +61,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "BKCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -115,7 +115,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
     out->Resize(x->dims());
     out->set_lod(x->lod());
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU and BKCL."));
 #endif
   }
