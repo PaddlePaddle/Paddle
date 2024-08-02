@@ -822,6 +822,7 @@
   kernel :
     func : celu
   backward : celu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : channel_shuffle
   args : (Tensor x, int groups, str data_format="NCHW")
@@ -861,6 +862,7 @@
   kernel :
     func : cholesky
   backward : cholesky_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cholesky_solve
   args : (Tensor x, Tensor y, bool upper=false)
@@ -1013,6 +1015,7 @@
   args : (Tensor x, Place place, bool blocking)
   output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : copysign
   args : (Tensor x, Tensor y)
@@ -1023,6 +1026,7 @@
     func : copysign
   inplace: (x -> out)
   backward : copysign_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : correlation
   args : (Tensor input1, Tensor input2, int pad_size, int kernel_size, int max_displacement, int stride1, int stride2, int corr_type_multiply=1)
@@ -1086,6 +1090,7 @@
     func : cross
     data_type : x
   backward : cross_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 # Part of python API paddle.nn.functional.cross_entropy
 - op : cross_entropy_with_softmax
@@ -1521,6 +1526,7 @@
     param : [x, dtype]
     data_type : dtype > x
     backend : place > x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : enable_check_model_nan_inf
   args: (Tensor x, int flag = 1)
@@ -1532,6 +1538,7 @@
     func: check_model_nan_inf
     data_type: x
   backward: enable_check_model_nan_inf_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : equal_all
   args : (Tensor x, Tensor y)
@@ -2660,6 +2667,7 @@
     func : leaky_relu
   inplace: (x -> out)
   backward : leaky_relu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : lerp
   args : (Tensor x, Tensor y, Tensor weight)
@@ -3477,6 +3485,7 @@
     func : polygamma
   inplace: (x -> out)
   backward : polygamma_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -3707,6 +3716,16 @@
     data_type : x
   backward : reduce_as_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : reduce_scatter
+  args : (Tensor x, int ring_id = 0, int nranks = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceScatterInferMeta
+    param: [x, nranks]
+  kernel :
+    func : reduce_scatter
+    param: [x, nranks]
 
 - op : reindex_graph
   args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
@@ -4312,6 +4331,7 @@
     func : square {dense -> dense},
            square_sr {selected_rows -> selected_rows}
   backward : square_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : squared_l2_norm
   args : (Tensor x)
@@ -4535,6 +4555,7 @@
     func : thresholded_relu
   inplace: (x -> out)
   backward : thresholded_relu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : top_p_sampling
   args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int seed=-1, int k=0, str mode="truncate")

@@ -223,8 +223,8 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     }
     PADDLE_ENFORCE_NOT_NULL(
         transposer,
-        phi::errors::Unimplemented("%s 's LayoutTransformer is unimplemented.",
-                                   op_type));
+        common::errors::Unimplemented(
+            "%s 's LayoutTransformer is unimplemented.", op_type));
     return transposer->Apply(ins, outs, attrs, tracer);
   }
 }

@@ -24,7 +24,7 @@ void AssignPosKernel(const Context& dev_ctx,
                      const DenseTensor& cum_count,
                      const DenseTensor& eff_num_len,
                      DenseTensor* out) {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "Do not support assign pos op for cpu kernel now."));
 }
 

@@ -26,6 +26,7 @@ import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
+from paddle.distributed.passes.pass_base import new_pass
 from paddle.framework import (
     IrGraph,
     _current_expected_place_ as _get_device,
@@ -300,11 +301,13 @@ class Engine:
             batch_sampler = dataloader.batch_sampler
         else:
             batch_sampler = dataloader._dataloader.batch_sampler
-        if isinstance(batch_sampler, paddle.io.DistributedBatchSampler):
+
+        if hasattr(batch_sampler, "set_epoch"):
             # Get data from DataLoader iterator directly may affect data generation randomness
             # of BatchSampler when `Shuffle=True`. It may cause difference of data feeding
             # between dynamic and to_static mode.
-            batch_sampler.epoch -= 1
+            batch_sampler.set_epoch(0)
+
         if isinstance(data, dict):
             data = tuple(data.values())
             if len(data) != 2:
@@ -807,12 +810,17 @@ class Engine:
         #     'after remove_other_rank_input_output_pass', dist_program, flush=1
         # )
 
-        remove_other_rank_op_pass(dist_program)
+        remove_other_rank_op_pass(dist_program, params_grads)
 
         # print('after remove_other_rank_op_pass', dist_program, flush=1)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
+        gradient_sync_after_accumulate = (
+            self._strategy.dp_optimization.gradient_sync_after_accumulate
+        )
+        if gradient_sync_after_accumulate:
+            global_params_grads = params_grads
 
         # TODO(xxxx) Step 4.1 DP Optimization Pass
         if self._strategy.dp_optimization.enable:
@@ -828,6 +836,24 @@ class Engine:
             # if self._strategy.sharding_optimization.enable:
             # dist_program = apply_sharding_optimization_pass(dist_program)
             pass
+
+        if mode == "train" and self._strategy.gradient_merge.enable:
+            config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
+            config[
+                "gradient_sync_after_accumulate"
+            ] = gradient_sync_after_accumulate
+            config["params_grads"] = (
+                global_params_grads
+                if gradient_sync_after_accumulate
+                else params_grads
+            )
+
+            auto_parallel_gradient_merge_pass = new_pass(
+                "auto_parallel_gradient_merge_pass", config
+            )
+            auto_parallel_gradient_merge_pass.apply(
+                [dist_program], [startup_program]
+            )
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
@@ -1505,9 +1531,9 @@ class Engine:
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=1
-            if self._strategy.pipeline.enable
-            else self._acc_steps,  # lr update once every local batch
+            acc_step=(
+                1 if self._strategy.pipeline.enable else self._acc_steps
+            ),  # lr update once every local batch
         )
 
         cbks.on_begin('train')
@@ -2188,9 +2214,9 @@ class Engine:
                 split_data=self._strategy.split_data,
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks,
-                acc_steps=1
-                if not self._strategy.pipeline.enable
-                else self._acc_steps,
+                acc_steps=(
+                    1 if not self._strategy.pipeline.enable else self._acc_steps
+                ),
             )
         self._prepare_reader(feed_list)
         return dataloader
