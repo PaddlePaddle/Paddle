@@ -210,6 +210,7 @@ class DepthwiseConv2dTransposeOpPattern
         return false;
       }
     }
+    
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -795,7 +796,7 @@ class SplitWithNumOpPattern
         VLOG(3) << "The (" << axis << ") dim of input should not be -1";
         return false;
       }
-      
+
       if (!op->HasAttribute("num") ) {
         VLOG(3)<< "split_with_num op must has num attributes";
         return false;
@@ -826,6 +827,56 @@ class SplitWithNumOpPattern
                        
   }
 };
+class GreaterEqualOpPattern : public pir::OpRewritePattern<paddle::dialect::GreaterEqualOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::GreaterEqualOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::GreaterEqualOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+#if IS_TRT_VERSION_LT(8400)
+  VLOG(3) << "GreaterEqualOp is not supported when TensorRT < 8.4";
+  return false;
+#else
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if(x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()){
+      VLOG(3)<< "ElementWiseOperation::kLESS/ElementWiseOperation::kGREATER "
+         "do not support boolean datatype.";
+      return false;
+    }
+#endif
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+class MultiplyOpPattern : public pir::OpRewritePattern<paddle::dialect::MultiplyOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MultiplyOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::MultiplyOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if(x_dtype.isa<pir::BoolType>()){
+      VLOG(3) << "elementwise_mul do not support boolean datatype.";
+      return false;
+    }
+    
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -878,6 +929,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<CastOpPattern>(context));
     ps.Add(std::make_unique<SplitOpPattern>(context));
     ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
+    ps.Add(std::make_unique<GreaterEqualOpPattern>(context));
+    ps.Add(std::make_unique<MultiplyOpPattern>(context));
     return ps;
   }
 };
