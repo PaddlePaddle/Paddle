@@ -46,12 +46,14 @@ void Pool2dKernel(const Context& ctx,
                         "The Pool2d XPU OP only support 2 dimension pooling!"));
 
   // old model's data_format maybe AnyLayout
-  PADDLE_ENFORCE_NE(
-      data_format,
-      "NHWC",
-      phi::errors::InvalidArgument("The Pool2d XPU OP does not support "
-                                   "data_format is 'NHWC', but received %s",
-                                   data_format));
+  PADDLE_ENFORCE_EQ(
+      data_format == "NCHW" || data_format == "NHWC",
+      true,
+      phi::errors::InvalidArgument(
+          "The Pool2d XPU OP does not support "
+          "data_format other than 'NCHW' or 'NHWC', but received %s",
+          data_format));
+  bool is_nchw = data_format == "NCHW" ? true : false;
 
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size.size(); ++i) {
@@ -110,7 +112,7 @@ void Pool2dKernel(const Context& ctx,
           kernel_size,
           strides,
           paddings,
-          true);
+          is_nchw);
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool2d<XPUType>(
           ctx.x_context(),
@@ -124,7 +126,7 @@ void Pool2dKernel(const Context& ctx,
           strides,
           paddings,
           !exclusive,
-          true);
+          is_nchw);
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
@@ -142,7 +144,7 @@ void Pool2dKernel(const Context& ctx,
           in_w,
           out_h,
           out_w,
-          true);
+          is_nchw);
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool2d<XPUType>(
           ctx.x_context(),
@@ -154,7 +156,7 @@ void Pool2dKernel(const Context& ctx,
           in_w,
           out_h,
           out_w,
-          true);
+          is_nchw);
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));

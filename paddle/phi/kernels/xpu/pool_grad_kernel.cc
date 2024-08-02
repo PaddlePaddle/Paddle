@@ -42,17 +42,20 @@ void Pool2dGradKernel(const Context& ctx,
                                kernel_size_t.GetData().end());
   std::vector<int> strides(strides_t);
 
+  // old model's data_format maybe AnyLayout
   PADDLE_ENFORCE_EQ(
-      data_format,
-      "NCHW",
-      phi::errors::InvalidArgument("The Pool2d_grad XPU OP only support"
-                                   "data_format is 'NCHW', but received %s",
-                                   data_format));
+      data_format == "NCHW" || data_format == "NHWC",
+      true,
+      phi::errors::InvalidArgument(
+          "The pool2d_grad XPU OP does not support "
+          "data_format other than 'NCHW' or 'NHWC', but received %s",
+          data_format));
+  bool is_nchw = data_format == "NCHW" ? true : false;
 
   PADDLE_ENFORCE_EQ(
       kernel_size.size(),
       2,
-      phi::errors::InvalidArgument("The Pool2d XPU OP only support 2 "
+      phi::errors::InvalidArgument("The pool2d_grad XPU OP only support 2 "
                                    "dimension pooling!, but received "
                                    "%d-dimension pool kernel size",
                                    kernel_size.size()));
@@ -109,7 +112,7 @@ void Pool2dGradKernel(const Context& ctx,
           in_w,
           out_h,
           out_w,
-          true);
+          is_nchw);
 
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool2d_grad<XPUType>(
@@ -122,7 +125,7 @@ void Pool2dGradKernel(const Context& ctx,
           in_w,
           out_h,
           out_w,
-          true);
+          is_nchw);
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
@@ -152,7 +155,7 @@ void Pool2dGradKernel(const Context& ctx,
           kernel_size,
           strides,
           paddings,
-          true);
+          is_nchw);
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool2d_grad<XPUType>(
           ctx.x_context(),
@@ -168,7 +171,7 @@ void Pool2dGradKernel(const Context& ctx,
           strides,
           paddings,
           !exclusive,
-          true);
+          is_nchw);
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
@@ -399,13 +402,13 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
 
   PADDLE_ENFORCE_NOT_NULL(index_data,
                           errors::NotFound("index data should not be nullptr"));
-  PADDLE_ENFORCE_EQ(
-      ksize.size(),
-      2,
-      phi::errors::InvalidArgument("The Pool2d XPU OP only support 2 "
-                                   "dimension pooling!, but received "
-                                   "%d-dimension pool kernel size",
-                                   ksize.size()));
+  PADDLE_ENFORCE_EQ(ksize.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The max_pool2d_with_index_grad XPU OP only support 2 "
+                        "dimension pooling!, but received "
+                        "%d-dimension pool kernel size",
+                        ksize.size()));
   global_pooling = global_pooling || (adaptive && (ksize[0] * ksize[1] == 1));
   if (global_pooling) {
     for (size_t i = 0; i < ksize.size(); ++i) {
