@@ -441,6 +441,55 @@ bool Cumsum_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return CumsumOpInferSymbolicShape(op, infer_context);
 }
+bool ChannelShuffleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &input_dims = x_shape_or_data.shape();
+
+  int groups = op->attribute<pir::Int32Attribute>("groups").data();
+  std::string data_format =
+      op->attribute<pir::StrAttribute>("data_format").AsString();
+
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input should be a 4-D tensor of format [N, "
+                                   "C, H, W] or [N, H, W, C], but got %u.",
+                                   input_dims.size()));
+  PADDLE_ENFORCE_GE(
+      groups,
+      1,
+      phi::errors::InvalidArgument("groups should be larger than 0."));
+  PADDLE_ENFORCE_EQ(
+      data_format == "NCHW" || data_format == "NHWC",
+      true,
+      phi::errors::InvalidArgument("data_format must be one of NCHW and NHWC. "
+                                   "But received data_format: %s",
+                                   data_format));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  symbol::DimExpr channels;
+  if (!channel_last) {
+    channels = input_dims[1];
+  } else {
+    channels = input_dims[3];
+  }
+
+  symbol::DimExpr groups_expr = symbol::DimExpr(groups);
+  symbol::DimExpr expected_channels = groups_expr * (channels / groups_expr);
+
+  PADDLE_ENFORCE_EQ(
+      channels,
+      expected_channels,
+      phi::errors::InvalidArgument(
+          "The number of channels must be divisible by groups. "));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  return true;
+}
 
 bool DiagEmbedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
