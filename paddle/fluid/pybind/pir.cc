@@ -1946,9 +1946,7 @@ SplitedResult SplitForwardBackward(
       [&backward_mapper, &backward_program, &clone_options](Operation *op) {
         auto *cloned_op = op->Clone(backward_mapper, clone_options);
         backward_program->block()->push_back(cloned_op);
-      },
-      // Skip the ShadowOutputOp.
-      /*skip_fn=*/[](Operation *op) { return op->isa<pir::ShadowOutputOp>(); });
+      });
   VLOG(4) << "start create backward outputs, inserting shadow_output ops.";
   if (has_backward) {
     std::for_each(
