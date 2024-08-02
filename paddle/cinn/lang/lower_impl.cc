@@ -487,13 +487,15 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
           int_shape.push_back(static_cast<int>(expr.get_constant()));
         }
         for (auto& var : tensor->reduce_axis) {
-          PADDLE_ENFORCE_NOT_NULL(
+          PADDLE_ENFORCE_EQ(
               var->lower_bound.defined(),
-              ::common::errors::NotFound(
+              true,
+              ::common::errors::InvalidArgument(
                   "Lower bound of reduce axis variable is not defined."));
-          PADDLE_ENFORCE_NOT_NULL(
+          PADDLE_ENFORCE_EQ(
               var->upper_bound.defined(),
-              ::common::errors::NotFound(
+              true,
+              ::common::errors::InvalidArgument(
                   "Upper bound of reduce axis variable is not defined."));
           PADDLE_ENFORCE_EQ(cinn::common::is_zero(var->lower_bound),
                             true,
