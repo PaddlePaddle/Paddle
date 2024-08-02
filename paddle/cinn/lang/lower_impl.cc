@@ -29,6 +29,7 @@
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(cinn_runtime_display_debug_info);
 
