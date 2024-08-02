@@ -275,7 +275,7 @@ bool LuUnpackOpInferSymbolicShape(
   PADDLE_ENFORCE_GE(
       x_rank,
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The rank of input must be greater than or equal to 2."));
 
   auto m = x_dims[x_rank - 1];
@@ -292,19 +292,16 @@ bool LuUnpackOpInferSymbolicShape(
       ldims[x_rank - 1] = min_mn;
     }
     infer_context->SetShapeOrDataForValue(
-        op->result(1),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(ldims)});
+        op->result(1), symbol::TensorShapeOrDataDimExprs(ldims));
     infer_context->SetShapeOrDataForValue(
-        op->result(2),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(udims)});
+        op->result(2), symbol::TensorShapeOrDataDimExprs(udims));
   }
 
   if (unpack_pivots) {
     std::vector<symbol::DimExpr> pdims = x_dims;
     pdims[x_rank - 1] = m;
     infer_context->SetShapeOrDataForValue(
-        op->result(0),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(pdims)});
+        op->result(0), symbol::TensorShapeOrDataDimExprs(pdims));
   }
 
   return true;

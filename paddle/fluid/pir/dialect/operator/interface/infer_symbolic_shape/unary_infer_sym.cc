@@ -847,7 +847,7 @@ bool LuOpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_GE(
       x_rank,
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The rank of input must be greater than or equal to 2."));
 
   infer_context->SetShapeOrDataForValue(
