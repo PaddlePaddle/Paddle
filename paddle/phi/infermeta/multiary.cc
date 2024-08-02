@@ -3855,29 +3855,6 @@ void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
   if (tol) {
     MatrixRankTolInferMeta(x, tol, use_default_tol, hermitian, out);
   } else {
-    auto atol_dims = atol.dims();
-    auto rtol_dims = rtol.dims();
-    PADDLE_ENFORCE_EQ(
-        atol_dims.size(),
-        rtol_dims.size(),
-        phi::errors::InvalidArgument(
-            "The size of Input(atol) and Input(rtol) should be the same,"
-            "but received Input(atol) size %s != Input(rtol) size %s.",
-            atol_dims.size(),
-            rtol_dims.size()));
-    for (int i = 0; i < atol_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(
-          atol_dims[i],
-          rtol_dims[i],
-          phi::errors::InvalidArgument("The dimensions of Input(atol) and "
-                                       "Input(rtol) should be the same,"
-                                       "but received Input(atol) dim[%d](%s) "
-                                       "!= Input(rtol) dim[%d](%s).",
-                                       i,
-                                       atol_dims[i],
-                                       i,
-                                       rtol_dims[i]));
-    }
     MatrixRankTolInferMeta(x, atol, use_default_tol, hermitian, out);
   }
 }
