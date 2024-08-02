@@ -63,7 +63,7 @@ void Module::Builder::AddBuffer(ir::Buffer buffer) {
   PADDLE_ENFORCE_EQ(
       buffer->target.defined(),
       true,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The target of buffer [%s] is undefined. Please define the target.",
           buffer->name));
   if (std::find_if(

@@ -159,7 +159,7 @@ Expr intrinsics::BuiltinIntrin::Make(const std::string& name,
   n->arg_nums = arg_nums;
   PADDLE_ENFORCE_EQ(!type.is_unk(),
                     true,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The type is unknown. Please provide a valid type."));
   n->type_ = type;
 

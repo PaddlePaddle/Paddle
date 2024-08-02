@@ -43,8 +43,8 @@ class IRVisitorRequireReImpl {
     PADDLE_ENFORCE_EQ(
         expr->defined(),
         true,
-        common::errors::Unavailable("The expression is not defined. Please "
-                                    "provide a valid expression."));
+        ::common::errors::Unavailable("The expression is not defined. Please "
+                                      "provide a valid expression."));
     switch (expr->node_type()) {
 #define __(op__)           \
   case ir::IrNodeTy::op__: \

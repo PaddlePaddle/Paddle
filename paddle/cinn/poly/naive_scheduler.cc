@@ -23,7 +23,7 @@ std::unique_ptr<Schedule> NaiveScheduler::BuildSchedule() {
   PartitionGroups();
   PADDLE_ENFORCE_EQ(!groups_.empty(),
                     true,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The groups are empty. Please provide valid groups."));
 
   for (auto &group : groups_) {

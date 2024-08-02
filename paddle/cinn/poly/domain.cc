@@ -34,7 +34,7 @@ std::string Domain::__str__() const {
   PADDLE_ENFORCE_EQ(
       !id.empty(),
       true,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The domain's ID is empty. Please provide a valid ID."));
   std::vector<std::string> range_fields;
   std::transform(dims.begin(),

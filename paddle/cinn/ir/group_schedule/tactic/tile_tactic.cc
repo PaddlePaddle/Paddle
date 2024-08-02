@@ -121,12 +121,12 @@ void TileTactic::Init(ScheduleContext* context) {
 void TileTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
   std::vector<ir::Expr> loops = sch->GetLoops(block_id);
-  PADDLE_ENFORCE_EQ(
-      (loops.size() == 1 || loops.size() == 2),
-      true,
-      common::errors::InvalidArgument("All loops must be unified as sp_loop or "
-                                      "rb_loop. Current loop size: %d.",
-                                      loops.size()));
+  PADDLE_ENFORCE_EQ((loops.size() == 1 || loops.size() == 2),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "All loops must be unified as sp_loop or "
+                        "rb_loop. Current loop size: %d.",
+                        loops.size()));
   if (loops.size() == 2) {
     std::vector<ir::Expr> rb_factors;
     for (const auto& axis : context_->iter_space_info.rb_space) {

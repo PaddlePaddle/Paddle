@@ -54,7 +54,7 @@ Registry::Registry(const std::string &name) : name_(name) {}
     PADDLE_ENFORCE_EQ(
         can_override,
         true,
-        common::errors::AlreadyExists(
+        ::common::errors::AlreadyExists(
             "Global PackedFunc[%s] already exists and cannot be overridden.",
             name));
   }

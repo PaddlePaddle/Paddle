@@ -93,7 +93,7 @@ ir::Tensor AssignValue(
     const std::string& output_name = "T_assign_value_out") {
   PADDLE_ENFORCE_EQ(!values.empty(),
                     true,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The input of pe::AssignValue should not be empty. "
                         "Please provide valid values."));
 

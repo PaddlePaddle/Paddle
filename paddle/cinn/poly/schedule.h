@@ -50,7 +50,7 @@ struct TimeDim {
     PADDLE_ENFORCE_EQ(
         !dim.empty(),
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The dimension is empty. Please provide a valid dimension."));
   }
 };

@@ -60,8 +60,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForUniformRandom(
         PADDLE_ENFORCE_GE(
             attrs.attr_store.count("shape"),
             1,
-            common::errors::NotFound("The attribute 'shape' is not found in "
-                                     "attr_store. Please ensure it is set."));
+            ::common::errors::NotFound("The attribute 'shape' is not found in "
+                                       "attr_store. Please ensure it is set."));
         ir::Tensor shape_tensor;
         std::string tensor_name = "uniform_random_out";
         auto out = pe::Identity(shape_tensor, tensor_name).front();

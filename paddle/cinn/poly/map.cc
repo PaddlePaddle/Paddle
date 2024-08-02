@@ -25,7 +25,7 @@ std::string Map::__str__() const {
   PADDLE_ENFORCE_EQ(
       !domain_iterators_.empty(),
       true,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The domain iterators are empty. Please provide valid iterators."));
 
   auto get_ids_repr = [](const std::vector<Iterator>& ids) {

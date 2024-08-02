@@ -45,7 +45,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForTriangularSolve(
       [=](lang::Args args, lang::RetValue *ret) {
         PADDLE_ENFORCE_EQ(!args.empty(),
                           true,
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The input argument of triangular_solve is "
                               "empty. Please check the arguments."));
         CINNValuePack pack_args = args[0];

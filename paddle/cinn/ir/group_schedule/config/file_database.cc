@@ -184,7 +184,7 @@ void JsonStringToMessageOfTileConfig(
     PADDLE_ENFORCE_EQ(
         status.ok(),
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Failed to parse JSON: %s. Please check the JSON content.",
             json_lines[index]));
     (*tile_database)[index] = tile_data;

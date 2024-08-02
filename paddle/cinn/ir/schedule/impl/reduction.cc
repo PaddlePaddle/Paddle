@@ -91,7 +91,7 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   PADDLE_ENFORCE_EQ(
       (original_update_body.As<Block>() || original_update_body.As<Store>()),
       true,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The original update body must be either Block or Store. Current "
           "type is invalid."));
   if (original_update_body.As<Block>()) {
