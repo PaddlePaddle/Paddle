@@ -33,7 +33,7 @@ bool AccuracyOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       label_shape.shape().size(),
       2UL,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "ShapeError: label's dimensions of AccuracyOp must be 2. "
           "But received label's dimensions = %d",
           label_shape.shape().size()));
@@ -69,14 +69,14 @@ bool AddNOpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_EQ(
       input_list_shape.isa<symbol::TensorListShapeOrDataDimExprs>(),
       true,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of inputs shape should be TensorListShapeOrDataDimExprs"));
   const auto &inputs_shape =
       input_list_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
   PADDLE_ENFORCE_GT(
       inputs_shape.size(),
       0,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The input tensor X's dimensions of AddNOp "
           "should be larger than 0. But received X's dimensions %d.",
           inputs_shape.size()));
@@ -116,19 +116,19 @@ bool AddmmOpInferSymbolicShape(pir::Operation *op,
 
   PADDLE_ENFORCE_EQ(ndim_input == 2 || ndim_input == 1,
                     true,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The input tensor input's dimension must be 2 or 1. "
                         "But received input's dimension = [%d].",
                         ndim_input));
   PADDLE_ENFORCE_EQ(ndim_x,
                     2,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The input tensor x's dimension must be 2. "
                         "But received x's dimension = [%d].",
                         ndim_x));
   PADDLE_ENFORCE_EQ(ndim_y,
                     2,
-                    common::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The input tensor y's dimension must be 2. "
                         "But received y's dimension = [%d].",
                         ndim_y));
@@ -172,7 +172,7 @@ bool AucOpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_GE(
       predict_shape.shape().size(),
       2,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The Input(Predict) has not been initialized properly. The "
           "shape of Input(Predict) = [%s], the shape size must be "
           "greater_equal 2.",
@@ -192,11 +192,11 @@ bool AucOpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_GE(
       num_pred_buckets,
       1,
-      common::errors::InvalidArgument("num_thresholds must larger than 1"));
+      ::common::errors::InvalidArgument("num_thresholds must larger than 1"));
   PADDLE_ENFORCE_GE(
       slide_steps,
       0,
-      common::errors::InvalidArgument("slide_steps must be natural number"));
+      ::common::errors::InvalidArgument("slide_steps must be natural number"));
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
@@ -258,7 +258,7 @@ bool BicubicInterpOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         size_tensor_shape.isa<symbol::TensorListShapeOrDataDimExprs>(),
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size_tensor of Interpolation should be type of "
             "TensorListShapeOrDataDimExprs"));
     const auto &size_tensor_list_shape =
@@ -277,7 +277,7 @@ bool BicubicInterpOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         out_size_tensor_shape.data().has_value(),
         true,
-        common::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The output size of Interpolation should have data value."));
     return out_size_tensor_shape.data().value();
   };
@@ -285,7 +285,7 @@ bool BicubicInterpOpInferSymbolicShape(
                               float scale) -> symbol::DimExpr {
     PADDLE_ENFORCE_GT(scale,
                       0,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The scale in Attr(scale) of Operator(interpolate) "
                           "should be greater than 0, but received value is %d.",
                           scale));
@@ -348,7 +348,7 @@ bool BicubicInterpOpInferSymbolicShape(
             GetSizeTensorDataExpr(op->operand_source(2));
         PADDLE_ENFORCE_EQ(size_tensor_list_shape.size(),
                           2,
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of size_tensor list should be 2."));
         return std::make_tuple(size_tensor_list_shape.at(0),
                                size_tensor_list_shape.at(1));
@@ -399,7 +399,7 @@ bool BicubicInterpOpInferSymbolicShape(
             GetSizeTensorDataExpr(op->operand_source(2));
         PADDLE_ENFORCE_EQ(size_tensor_list_shape.size(),
                           3,
-                          common::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of size_tensor list should be 3."));
         return std::make_tuple(size_tensor_list_shape.at(0),
                                size_tensor_list_shape.at(1),
@@ -467,15 +467,15 @@ bool BilinearOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       x_shape.shape().size(),
       2UL,
-      common::errors::InvalidArgument("The input(X) must be a 2D Tensor."));
+      ::common::errors::InvalidArgument("The input(X) must be a 2D Tensor."));
   PADDLE_ENFORCE_EQ(
       y_shape.shape().size(),
       2UL,
-      common::errors::InvalidArgument("The input(Y) must be a 2D Tensor."));
+      ::common::errors::InvalidArgument("The input(Y) must be a 2D Tensor."));
   PADDLE_ENFORCE_EQ(
       weight_shape.shape().size(),
       3UL,
-      common::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Expected the input(Weight) is a 3D tensor. But received %dD tensor.",
           weight_shape.shape().size()));
 
@@ -489,7 +489,7 @@ bool BilinearOpInferSymbolicShape(
         infer_context->GetShapeOrDataForValue(op->operand_source(3));
     PADDLE_ENFORCE_EQ(bias_shape.shape().size(),
                       2UL,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The Input(Bias) must be a 2-D tensor with "
                           "the 2nd dimension fixed to 1 (a row vector)."));
     infer_context->AddEqualCstr(bias_shape.shape()[0], symbol::DimExpr{1});
