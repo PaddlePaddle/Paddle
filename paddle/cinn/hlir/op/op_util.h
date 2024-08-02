@@ -32,13 +32,13 @@ T GetAttr(const cinn::utils::AttributeMap &attr_map,
           const std::string &attr_name) {
   PADDLE_ENFORCE_EQ(attr_map.count(attr_name),
                     true,
-                    common::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Sorry, cannot found attribute %s", attr_name));
   const auto &attr = attr_map.at(attr_name);
   PADDLE_ENFORCE_EQ(
       absl::holds_alternative<T>(attr),
       true,
-      common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type of attribute %s isn't %s", attr_name, typeid(T).name()));
   return absl::get<T>(attr_map.at(attr_name));
 }

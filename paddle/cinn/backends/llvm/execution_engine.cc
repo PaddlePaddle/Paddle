@@ -177,10 +177,9 @@ void ExecutionEngine::Link(const ir::Module &module) {
   VLOG(3) << "ir_emitter->Compile(module) Begin";
   ir_emitter->Compile(module);
   VLOG(3) << "ir_emitter->Compile(module) Succeed!";
-  PADDLE_ENFORCE_EQ(
-      !llvm::verifyModule(*m, &llvm::errs()),
-      true,
-      common::errors::InvalidArgument("Sorry,Invalid module found"));
+  PADDLE_ENFORCE_EQ(!llvm::verifyModule(*m, &llvm::errs()),
+                    true,
+                    phi::errors::InvalidArgument("Sorry,Invalid module found"));
   auto machine = std::move(llvm::cantFail(
       llvm::cantFail(llvm::orc::JITTargetMachineBuilder::detectHost())
           .createTargetMachine()));
@@ -189,7 +188,7 @@ void ExecutionEngine::Link(const ir::Module &module) {
   PADDLE_ENFORCE_EQ(
       !llvm::verifyModule(*m, &llvm::errs()),
       true,
-      common::errors::InvalidArgument("Invalid optimized module detected"));
+      phi::errors::InvalidArgument("Invalid optimized module detected"));
   for (auto &f : *m) {
     VLOG(5) << "function: " << DumpToString(f);
   }

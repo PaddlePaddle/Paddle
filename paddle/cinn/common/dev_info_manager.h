@@ -57,14 +57,14 @@ class DevInfoMgr final {
     PADDLE_ENFORCE_EQ(
         !std::is_void<RetType>(),
         true,
-        common::errors::InvalidArgument("Current device can't be recognized!"));
+        phi::errors::InvalidArgument("Current device can't be recognized!"));
     return dynamic_cast<const RetType*>(impl_.get());
   }
   RetType* operator->() {
     PADDLE_ENFORCE_EQ(
         !std::is_void<RetType>(),
         true,
-        common::errors::InvalidArgument("Current device can't be recognized!"));
+        phi::errors::InvalidArgument("Current device can't be recognized!"));
     return dynamic_cast<RetType*>(impl_.get());
   }
 };
