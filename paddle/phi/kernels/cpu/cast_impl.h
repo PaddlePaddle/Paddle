@@ -51,14 +51,14 @@ void CastInplaceKernelImpl(const CPUContext& dev_ctx,
                            const DenseTensor& x,
                            DataType out_dtype,
                            DenseTensor* out) {
-  auto numel = x.numel();
-  auto* in_begin = new InT[numel];
+  auto x_origin = x;
+  auto* in_begin = x_origin.data<InT>();
+  auto numel = x_origin.numel();
   auto* in_end = in_begin + numel;
-  auto* data_origin = x.data<InT>();
-  memcpy(in_begin, data_origin, sizeof(InT) * numel);
 
-  auto* out_begin = dev_ctx.Alloc<OutT>(out);
+  out->clear();
   out->set_type(out_dtype);
+  auto* out_begin = dev_ctx.Alloc<OutT>(out);
 
   phi::Transform<CPUContext> trans;
   trans(dev_ctx,
@@ -66,7 +66,6 @@ void CastInplaceKernelImpl(const CPUContext& dev_ctx,
         in_end,
         out_begin,
         CastOpTransformFunctor<InT, OutT>());
-  delete[] in_begin;
 }
 
 }  // namespace phi

@@ -35,8 +35,9 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
-  dev_ctx.Alloc<OutT>(out);
   out->set_type(out_dtype);
+  out->clear();
+  dev_ctx.Alloc<OutT>(out);
   phi::funcs::ElementwiseKernel<OutT>(
       dev_ctx, inputs, &outputs, CastFunctor<InT, OutT>());
 }

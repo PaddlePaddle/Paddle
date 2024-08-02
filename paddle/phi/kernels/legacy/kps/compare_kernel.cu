@@ -38,8 +38,9 @@ inline void CompareRawKernelImpl(const Context& ctx,
                                  const DenseTensor& y,
                                  int axis,
                                  DenseTensor* out) {
-  ctx.template Alloc<bool>(out);
   out->set_type(phi::DataType::BOOL);
+  if (out->IsSharedWith(x)) out->clear();  // inplace case x -> out
+  ctx.template Alloc<bool>(out);
   std::vector<const DenseTensor*> ins{&x, &y};
   std::vector<DenseTensor*> outs{out};
   funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
