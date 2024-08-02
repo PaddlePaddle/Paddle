@@ -2482,6 +2482,7 @@
   backward : index_select_grad
   data_transform :
     skip_transform : index
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_select_strided
   args : (Tensor x, int64_t index, int axis = 0)
