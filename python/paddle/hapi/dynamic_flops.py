@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
-from typing import Type
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.framework import Variable
+    from paddle.nn.layer import Layer
+    from paddle.static import Program
 
 import numpy as np
 
 import paddle
-from paddle import Tensor, nn
-from paddle.base.framework import Variable
+from paddle import nn
 from paddle.jit.dy2static.program_translator import unwrap_decorators
-from paddle.nn.layer import Layer
-from paddle.static import Program
 
 from .static_flops import Table, static_flops
 
@@ -32,8 +37,8 @@ __all__ = []
 def flops(
     net: Layer | Program,
     input_size: list[int],
-    custom_ops: dict[Type[Layer] : callable] | None = None,
-    print_detail=False,
+    custom_ops: dict[type[Layer] : callable] | None = None,
+    print_detail: bool = False,
 ) -> int:
     """Print a table about the FLOPs of network.
 
