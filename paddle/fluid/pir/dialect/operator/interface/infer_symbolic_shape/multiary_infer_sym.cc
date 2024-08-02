@@ -316,7 +316,8 @@ bool BatchNormOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(param_dims)});
   }
   if (op->result(5) && op->result(5).type()) {
-    std::vector<symbol::DimExpr> reserve_space_dims = {symbol::DimExpr{-1}};
+    std::vector<symbol::DimExpr> reserve_space_dims{
+        symbol::DimExpr{infer_context->GetNextSymName()}};
     infer_context->SetShapeOrDataForValue(
         op->result(5),
         symbol::ShapeOrDataDimExprs{
