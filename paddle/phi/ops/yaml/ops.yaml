@@ -1521,6 +1521,7 @@
     param : [x, dtype]
     data_type : dtype > x
     backend : place > x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : enable_check_model_nan_inf
   args: (Tensor x, int flag = 1)
