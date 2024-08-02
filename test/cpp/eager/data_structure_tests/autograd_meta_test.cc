@@ -80,7 +80,7 @@ TEST(AutogradMeta, MemberFunction) {
   PADDLE_ENFORCE_EQ(
       tmp_auto->IsInitialized(),
       false,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "egr::AutogradMeta variable tmp_auto should not be initialized now"));
   VLOG(6) << "Test GradNodeSetter Getter";
   auto grad_node = std::make_shared<eager_test::GradTestNode>();
@@ -88,7 +88,7 @@ TEST(AutogradMeta, MemberFunction) {
   PADDLE_ENFORCE_EQ(
       tmp_auto->IsInitialized(),
       true,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "egr::AutogradMeta variable tmp_auto should be initialized now"));
   auto tmp_grad_node = tmp_auto->GetMutableGradNode();
   std::dynamic_pointer_cast<eager_test::GradTestNode>(tmp_grad_node)->val_ =
@@ -136,16 +136,16 @@ TEST(AutogradMeta, MemberFunction) {
   PADDLE_ENFORCE_EQ(
       tmp_auto->StopGradient(),
       true,
-      phi::errors::Fatal("tmp_auto->StopGradient() should be true now"));
+      common::errors::Fatal("tmp_auto->StopGradient() should be true now"));
   VLOG(6) << "Test Persistable Setter Getter";
   PADDLE_ENFORCE_EQ(
       tmp_auto->Persistable(),
       false,
-      phi::errors::Fatal("tmp_auto->Persistable() should be false now"));
+      common::errors::Fatal("tmp_auto->Persistable() should be false now"));
   tmp_auto->SetPersistable(true);
   PADDLE_ENFORCE_EQ(
       tmp_auto->Persistable(),
       true,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "tmp_auto->Persistable() should be true now after SetPersistable()"));
 }

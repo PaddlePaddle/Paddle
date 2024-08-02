@@ -39,11 +39,11 @@ TEST(default_ctor, span) {
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end());
 #else
-    PADDLE_ENFORCE_EQ(
-        s.begin(),
-        s.end(),
-        phi::errors::Fatal("constexpr `span`'s begin() is not equal, but "
-                           "`span` should be empty, please check constructor"));
+    PADDLE_ENFORCE_EQ(s.begin(),
+                      s.end(),
+                      common::errors::Fatal(
+                          "constexpr `span`'s begin() is not equal, but "
+                          "`span` should be empty, please check constructor"));
 #endif
   }
 
@@ -55,11 +55,11 @@ TEST(default_ctor, span) {
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end());
 #else
-    PADDLE_ENFORCE_EQ(
-        s.begin(),
-        s.end(),
-        phi::errors::Fatal("constexpr `span`'s begin() is not equal, but "
-                           "`span` should be empty, please check constructor"));
+    PADDLE_ENFORCE_EQ(s.begin(),
+                      s.end(),
+                      common::errors::Fatal(
+                          "constexpr `span`'s begin() is not equal, but "
+                          "`span` should be empty, please check constructor"));
 #endif
   }
 }
@@ -752,11 +752,11 @@ TEST(ctor_from_spans, span) {
 #ifndef _MSC_VER
   static_assert(d.begin() == d.end());
 #else
-  PADDLE_ENFORCE_EQ(
-      d.begin(),
-      d.end(),
-      phi::errors::Fatal("Variable `d`'s begin() should be the same to end(), "
-                         "please check related function"));
+  PADDLE_ENFORCE_EQ(d.begin(),
+                    d.end(),
+                    common::errors::Fatal(
+                        "Variable `d`'s begin() should be the same to end(), "
+                        "please check related function"));
 #endif
 }
 
@@ -996,7 +996,7 @@ TEST(iterator, span) {
     PADDLE_ENFORCE_EQ(
         std::is_sorted(vec.cbegin(), vec.cend()),
         true,
-        phi::errors::Fatal("Varible `vec` should be sorted, please check"));
+        common::errors::Fatal("Varible `vec` should be sorted, please check"));
   }
 
   {
@@ -1005,7 +1005,7 @@ TEST(iterator, span) {
     PADDLE_ENFORCE_EQ(
         std::equal(s.rbegin(), s.rend(), vec.crbegin()),
         true,
-        phi::errors::Fatal(
+        common::errors::Fatal(
             "Varible `s` is not equal to its self by using rbegin(), rend() "
             "and crbegin() with std::equal, please check related function"));
   }

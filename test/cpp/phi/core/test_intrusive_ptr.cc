@@ -89,7 +89,7 @@ TEST(intrusive_ptr, reset_with_ptr) {
   PADDLE_ENFORCE_EQ(
       p == nullptr,
       true,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "p is not a nullptr, something wrong with intrusive_ptr<T>.reset"));
 }
 TEST(intrusive_ptr, op_comp) {
@@ -97,60 +97,60 @@ TEST(intrusive_ptr, op_comp) {
   auto copy = copy_intrusive<SharedObject>(p);
   auto null = intrusive_ptr<SharedObject>();
   auto p1 = make_intrusive<SharedObject>();
-  PADDLE_ENFORCE_EQ(
-      p == copy,
-      true,
-      phi::errors::Fatal("intrusive_ptr p is not euqal to its copy, something "
-                         "wrong with copy constructor "));
+  PADDLE_ENFORCE_EQ(p == copy,
+                    true,
+                    common::errors::Fatal(
+                        "intrusive_ptr p is not euqal to its copy, something "
+                        "wrong with copy constructor "));
   PADDLE_ENFORCE_EQ(
       p != p1,
       true,
-      phi::errors::Fatal("intrusive_ptr p is equal to another pointer, "
-                         "something wrong with constructor"));
+      common::errors::Fatal("intrusive_ptr p is equal to another pointer, "
+                            "something wrong with constructor"));
   PADDLE_ENFORCE_EQ(
       p == copy.get(),
       true,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "blank intrusive_ptr p's content is not equal to its copy, something "
           "wrong with constructor or get funtion"));
   PADDLE_ENFORCE_EQ(
       p != p1.get(),
       true,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "intrusive_ptr p's content is equal to another blank pointer, "
           "something wrong with constructor or get function"));
   PADDLE_ENFORCE_EQ(
       p.get() == copy,
       true,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "blank intrusive_ptr p's content is not equal to its copy, something "
           "wrong with constructor or get funtion"));
   PADDLE_ENFORCE_EQ(
       p.get() != p1,
       true,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "intrusive_ptr p's content is equal to another blank pointer, "
           "something wrong with constructor or get function"));
   PADDLE_ENFORCE_EQ(
       null == nullptr,
       true,
-      phi::errors::Fatal("variable or constant whose name is null is not a "
-                         "nullptr, something wrong with operator=="));
+      common::errors::Fatal("variable or constant whose name is null is not a "
+                            "nullptr, something wrong with operator=="));
   PADDLE_ENFORCE_EQ(
       nullptr == null,
       true,
-      phi::errors::Fatal("variable or constant whose name is null is not a "
-                         "nullptr, something wrong with operator=="));
-  PADDLE_ENFORCE_EQ(
-      p != nullptr,
-      true,
-      phi::errors::Fatal("intrusive_ptr p is not not_equal to null, something "
-                         "wrong with constructor or operator!= "));
-  PADDLE_ENFORCE_EQ(
-      nullptr != p,
-      true,
-      phi::errors::Fatal("intrusive_ptr p is not not_equal to null, something "
-                         "wrong with constructor or operator!= "));
+      common::errors::Fatal("variable or constant whose name is null is not a "
+                            "nullptr, something wrong with operator=="));
+  PADDLE_ENFORCE_EQ(p != nullptr,
+                    true,
+                    common::errors::Fatal(
+                        "intrusive_ptr p is not not_equal to null, something "
+                        "wrong with constructor or operator!= "));
+  PADDLE_ENFORCE_EQ(nullptr != p,
+                    true,
+                    common::errors::Fatal(
+                        "intrusive_ptr p is not not_equal to null, something "
+                        "wrong with constructor or operator!= "));
 }
 }  // namespace tests
 }  // namespace phi

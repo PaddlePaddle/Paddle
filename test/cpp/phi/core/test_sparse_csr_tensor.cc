@@ -109,16 +109,16 @@ TEST(sparse_csr_tensor, other_function) {
   PADDLE_ENFORCE_EQ(
       csr.dims(),
       csr2.dims(),
-      phi::errors::Fatal("`csr.dims()` should be equal to `csr2.dims()`, "
-                         "something wrong with shallow copy"));
+      common::errors::Fatal("`csr.dims()` should be equal to `csr2.dims()`, "
+                            "something wrong with shallow copy"));
 
   // Test shallow_copy_assignment
   SparseCsrTensor csr3 = csr2;
   PADDLE_ENFORCE_EQ(
       csr3.dims(),
       csr2.dims(),
-      phi::errors::Fatal("``csr3.dims()` should be equal to `csr2.dims()`, "
-                         "something wrong with shallow copy assignment"));
+      common::errors::Fatal("``csr3.dims()` should be equal to `csr2.dims()`, "
+                            "something wrong with shallow copy assignment"));
 }
 
 }  // namespace tests

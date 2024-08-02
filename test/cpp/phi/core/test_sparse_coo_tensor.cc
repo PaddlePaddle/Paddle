@@ -97,8 +97,8 @@ TEST(sparse_coo_tensor, other_function) {
   PADDLE_ENFORCE_EQ(
       coo.dims(),
       coo2.dims(),
-      phi::errors::Fatal("`coo.dims()` is not equal to `coo2.dims()`, "
-                         "something wrong with shallow copy assignment"));
+      common::errors::Fatal("`coo.dims()` is not equal to `coo2.dims()`, "
+                            "something wrong with shallow copy assignment"));
 
   // Test shallow_copy_assignment
   SparseCooTensor coo3 = coo2;
@@ -106,8 +106,8 @@ TEST(sparse_coo_tensor, other_function) {
   PADDLE_ENFORCE_EQ(
       coo3.dims(),
       coo2.dims(),
-      phi::errors::Fatal("`coo3.dims()` is not equal to `coo2.dims()`, "
-                         "something wrong with shallow copy assignment"));
+      common::errors::Fatal("`coo3.dims()` is not equal to `coo2.dims()`, "
+                            "something wrong with shallow copy assignment"));
 }
 
 }  // namespace tests
