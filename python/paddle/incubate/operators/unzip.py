@@ -50,7 +50,7 @@ def unzip(input: Tensor, lod: Tensor, len: int) -> Tensor:
             >>> len = 4
             >>> input = paddle.to_tensor(input_np, "int64")
             >>> lod = paddle.to_tensor(lod_np, "int64")
-            >>> unzipped_input = paddle.incubate.operators.unzip(input, lod, len)
+            >>> unzipped_input = paddle.incubate.operators.unzip(input, lod, len) # type: ignore[operator]
             >>> print(unzipped_input)
             Tensor(shape=[5, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[1, 2, 3, 0],
