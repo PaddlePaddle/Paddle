@@ -195,16 +195,13 @@ bool EmptyOpInferSymbolicShape(pir::Operation *op,
 
 bool EyeOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
-  int64_t num_rows = op->attribute<pir::Int32Attribute>("num_rows").data();
-  int64_t num_columns =
+  auto num_rows = op->attribute<pir::Int32Attribute>("num_rows").data();
+  auto num_columns =
       op->attribute<pir::Int32Attribute>("num_columns").data();
 
-  int64_t rows, columns;
-  rows = num_rows;
-  columns = num_columns;
-  if (columns == -1) columns = rows;
+  if (num_columns == -1) num_columns = num_rows;
 
-  std::vector<symbol::DimExpr> out_dims = {rows, columns};
+  std::vector<symbol::DimExpr> out_dims = {num_rows, num_columns};
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
 
