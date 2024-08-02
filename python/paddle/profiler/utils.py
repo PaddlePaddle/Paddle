@@ -95,7 +95,7 @@ class RecordEvent(ContextDecorator):
     ):
         self.end()
 
-    def begin(self):
+    def begin(self) -> None:
         r"""
         Record the time of beginning.
 
@@ -127,7 +127,7 @@ class RecordEvent(ContextDecorator):
         else:
             self.event = _RecordEvent(self.name, self.event_type)
 
-    def end(self):
+    def end(self) -> None:
         r"""
         Record the time of ending.
 
@@ -150,7 +150,7 @@ class RecordEvent(ContextDecorator):
             self.event.end()
 
 
-def load_profiler_result(filename: str):
+def load_profiler_result(filename: str) -> core.ProfilerResult:
     r"""
     Load dumped profiler data back to memory.
 
