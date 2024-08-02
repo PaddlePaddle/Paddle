@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <list>
 #include <ostream>
 #include <string>
@@ -113,7 +114,8 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
       s_val.replace(found, search.length(), replacement);
       found = s_val.find(search, found + replacement.length());
     }
-    os << "\"" << s_val << "\"";
+    auto end_size = std::min(100uz, s_val.size());
+    os << "\"" << s_val.substr(0, end_size) << "\"";
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
     if (b.data()) {
       os << "true";

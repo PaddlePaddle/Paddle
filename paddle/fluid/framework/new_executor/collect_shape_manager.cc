@@ -46,7 +46,11 @@ void CollectShapeManager::CollectShapeInfo(
 #endif
 #endif
 
+<<<<<<< HEAD
     phi::DDim dim = tensor.dims();
+=======
+    framework::DDim dim = tensor.dims();
+>>>>>>> vivien/add_trt
     std::vector<int32_t> shape(dim.size());
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
@@ -56,7 +60,11 @@ void CollectShapeManager::CollectShapeInfo(
       // This must be a zero dimension tensor.
       PADDLE_ENFORCE_EQ(tensor.numel(),
                         1UL,
+<<<<<<< HEAD
                         common::errors::PreconditionNotMet(
+=======
+                        platform::errors::PreconditionNotMet(
+>>>>>>> vivien/add_trt
                             "This tensor must have one element, but got %ld.",
                             tensor.numel()));
       std::vector<int32_t> zero_shape(1, 1);
@@ -74,21 +82,37 @@ void CollectShapeManager::CollectShapeInfo(
         is_shape_tensor) {
       std::vector<int> int32_host(tensor.numel());
 
+<<<<<<< HEAD
       if (phi::is_cpu_place(tensor.place())) {
         auto &int32_tensor = tensor;
         if (tensor.dtype() == phi::DataType::INT64) {
           auto *cpu_ctx = pool.Get(phi::CPUPlace());
+=======
+      if (platform::is_cpu_place(tensor.place())) {
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          auto *cpu_ctx = pool.Get(platform::CPUPlace());
+>>>>>>> vivien/add_trt
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
               tensor,
               DataType::INT32);
         }
+<<<<<<< HEAD
         paddle::memory::Copy(phi::CPUPlace(),
                              int32_host.data(),
                              phi::CPUPlace(),
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
       } else if (phi::is_gpu_place(tensor.place())) {
+=======
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int32_host.data(),
+                             platform::CPUPlace(),
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int));
+      } else if (platform::is_gpu_place(tensor.place())) {
+>>>>>>> vivien/add_trt
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         auto *dev_ctx = pool.Get(tensor.place());
         auto &int32_tensor = tensor;
@@ -98,7 +122,11 @@ void CollectShapeManager::CollectShapeInfo(
               tensor,
               DataType::INT32);
         }
+<<<<<<< HEAD
         paddle::memory::Copy(phi::CPUPlace(),
+=======
+        paddle::memory::Copy(platform::CPUPlace(),
+>>>>>>> vivien/add_trt
                              int32_host.data(),
                              int32_tensor.place(),
                              int32_tensor.data<int>(),
@@ -123,6 +151,10 @@ void CollectShapeManager::StatisticShapeRangeInfo() {
         for (auto const &it : shape_data) {
           auto val = it.first;
           auto shapes = it.second;
+<<<<<<< HEAD
+=======
+
+>>>>>>> vivien/add_trt
           std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
           std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
           std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());
@@ -172,8 +204,12 @@ std::vector<int32_t> CollectShapeManager::GetValueShapeRangeInfo(
                     op_value2kernel_value_.end(),
                     ::common::errors::NotFound(
                         "Can't find kernel_value that corresponding to "
+<<<<<<< HEAD
                         "op_value, maybe origin program has changed or not "
                         "open FLAGS_enable_collect_shape."));
+=======
+                        "op_value, maybe origin program has changed."));
+>>>>>>> vivien/add_trt
   auto kernel_val = op_value2kernel_value_[op_val];
   if (shape_mode == ShapeMode::kMIN) {
     if (is_shape_tensor) {
@@ -224,7 +260,11 @@ std::vector<int32_t> CollectShapeManager::GetValueShapeRangeInfo(
       return opt_shapes_[kernel_val];
     }
   } else {
+<<<<<<< HEAD
     PADDLE_THROW(common::errors::Unimplemented(
+=======
+    PADDLE_THROW(phi::errors::Unimplemented(
+>>>>>>> vivien/add_trt
         "We only support ShapeMode::kMIN, ShapeMode::kMax and ShapeMode::kOpt "
         "when GetValueShapeRangeInfo"));
   }
