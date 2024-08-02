@@ -720,16 +720,6 @@
     func : reduce
     param: [x, root_id, reduce_type]
 
-- op : reduce_scatter
-  args : (Tensor x, int ring_id = 0, int nranks = 1)
-  output : Tensor(out)
-  infer_meta :
-    func : ReduceScatterInferMeta
-    param: [x, nranks]
-  kernel :
-    func : reduce_scatter
-    param: [x, nranks]
-
 - op : remainder
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor (out)
