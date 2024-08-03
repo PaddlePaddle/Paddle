@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/eigvals_kernel.h"
+#include <cinttypes>
 
 #include "glog/logging.h"
 

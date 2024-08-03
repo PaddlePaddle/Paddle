@@ -28,7 +28,9 @@ limitations under the License. */
 #undef LOG_IF
 #define LOG_IF(severity, condition) \
   static_cast<void>(0),             \
-      !(condition) ? (void)0 : google::LogMessageVoidify() & LOG(severity)
+      !(condition)                  \
+          ? (void)0                 \
+          : google::logging::internal::LogMessageVoidify() & LOG(severity)
 
 #undef VLOG
 #define VLOG(verboselevel) LOG_IF(INFO, VLOG_IS_ON(verboselevel))
