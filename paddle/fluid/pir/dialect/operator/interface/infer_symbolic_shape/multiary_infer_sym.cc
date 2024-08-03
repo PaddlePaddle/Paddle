@@ -316,7 +316,8 @@ bool BatchNormOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(param_dims)});
   }
   if (op->result(5) && op->result(5).type()) {
-    std::vector<symbol::DimExpr> reserve_space_dims = {symbol::DimExpr{-1}};
+    std::vector<symbol::DimExpr> reserve_space_dims{
+        symbol::DimExpr{infer_context->GetNextSymName()}};
     infer_context->SetShapeOrDataForValue(
         op->result(5),
         symbol::ShapeOrDataDimExprs{
@@ -448,6 +449,15 @@ bool BicubicInterpOpInferSymbolicShape(
       }
       // has out_size tensor
       if (op->operand_source(1)) {
+        const auto &out_size_shape_or_data =
+            infer_context->GetShapeOrDataForValue(op->operand_source(1));
+        PADDLE_ENFORCE_EQ(
+            out_size_shape_or_data.shape().size(),
+            1,
+            common::errors::InvalidArgument(
+                "The rank of input out_size tensor should be 1."));
+        infer_context->AddEqualCstr(out_size_shape_or_data.shape()[0],
+                                    symbol::DimExpr{2});
         const auto &out_size_data = GetOutSizeDataExpr(op->operand_source(1));
         return std::make_tuple(symbol::DimExpr{out_size_data[0]},
                                symbol::DimExpr{out_size_data[1]});
