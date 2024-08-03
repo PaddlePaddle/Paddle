@@ -159,7 +159,6 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
         self.assertTrue(len(missing_keys) == 1)
         self.assertTrue("w3" in missing_keys)
 
-
         new_state_dict = {
             "w3": paddle.to_tensor([3, 4]),
             "w4": paddle.to_tensor([5, 6]),
