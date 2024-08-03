@@ -3818,7 +3818,7 @@ function clang-tidy_check() {
     startTime_s=`date +%s`
     cd ${PADDLE_ROOT}
     pwd
-    python ./tools/codestyle/clang-tidy.py -p=build -j=20 \
+    python ./tools/codestyle/run-clang-tidy.py -p=build -j=20 \
     -clang-tidy-binary=clang-tidy \
     -extra-arg=-Wno-unknown-warning-option \
     -extra-arg=-Wno-pessimizing-move \
@@ -3843,7 +3843,7 @@ function clang-tidy_check() {
     -extra-arg=-Wno-defaulted-function-deleted  \
     -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
     -extra-arg=-Wno-return-type-c-linkage  \
-    -extra-arg=-fopenmp=libomp  \
+    -extra-arg=-fopenmp=libomp -files ${diff_files}\
     check_error=$?
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
