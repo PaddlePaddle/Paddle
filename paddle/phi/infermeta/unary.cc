@@ -795,7 +795,27 @@ void CropInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+void CScatterInferMeta(const MetaTensor& x,
+                       int ring_id,
+                       int root_id,
+                       int nranks,
+                       MetaTensor* out) {
+  PADDLE_ENFORCE_GE(nranks,
+                    2,
+                    common::errors::InvalidArgument(
+                        "The number of ranks (%d) must be greater than 1 "
+                        "to use collective op (c_scatter op).",
+                        nranks));
+  PADDLE_ENFORCE_GE(
+      root_id,
+      0,
+      common::errors::InvalidArgument(
+          "The root_id (%d) for c_scatter_op must be non-negative.", root_id));
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      common::errors::InvalidArgument(
+          "The ring_id (%d) for c_scatter_op must be non-negative.", ring_id));
   auto dim = x.dims();
   dim[0] = dim[0] / nranks;
   if (dim[0] < 0) dim[0] = -1;
