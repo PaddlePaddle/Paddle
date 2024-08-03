@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import copyreg
 import os
@@ -20,6 +22,7 @@ import sys
 import threading
 import warnings
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -50,11 +53,35 @@ from .io_utils import (
     _unpack_saved_dict,
 )
 
+if TYPE_CHECKING:
+    from io import BytesIO
+    from typing import Any, Literal, TypedDict
+
+    from typing_extensions import NotRequired, Unpack
+
+    from paddle import Tensor
+    from paddle._typing import NestedStructure
+    from paddle.nn.layer.layers import _StateDict
+
+    class _EmptyDict(TypedDict):
+        pass
+
+    class _LoadOptions(TypedDict):
+        model_filename: NotRequired[str]
+        params_filename: NotRequired[str]
+        keep_name_table: NotRequired[bool]
+        return_numpy: NotRequired[bool]
+
+    class _SaveOptions(TypedDict):
+        use_binary_format: NotRequired[bool]
+        pickle_protocol: NotRequired[Literal[2, 3, 4]]
+
+
 __all__ = []
 async_save_queue = []
 
 
-def clear_async_save_task_queue():
+def clear_async_save_task_queue() -> None:
     '''
     wait until all async save task to be done.
     '''
@@ -64,7 +91,13 @@ def clear_async_save_task_queue():
             task.join()
 
 
-def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
+def async_save(
+    obj: object,
+    path: str | BytesIO,
+    protocol: Literal[2, 3, 4] = 4,
+    sync_other_task: bool = False,
+    **configs: Unpack[_EmptyDict],
+) -> None:
     '''
     async version of paddle.save.
     Note:
@@ -198,10 +231,9 @@ def _load_state_dict_from_save_inference_model(model_path, config):
                 structured_name = extra_var_info[var_name].get(
                     'structured_name', None
                 )
-                assert structured_name is not None, (
-                    "Cannot find saved variable (%s)'s structured name in saved model."
-                    % var_name
-                )
+                assert (
+                    structured_name is not None
+                ), f"Cannot find saved variable ({var_name})'s structured name in saved model."
                 structured_para_dict[structured_name] = load_param_dict[
                     var_name
                 ]
@@ -339,8 +371,7 @@ def _parse_load_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.load` is not supported."
-                % key
+                f"The additional config ({key}) of `paddle.load` is not supported."
             )
 
     # construct inner config
@@ -364,8 +395,7 @@ def _parse_save_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.save` is not supported."
-                % key
+                f"The additional config ({key}) of `paddle.save` is not supported."
             )
 
     # construct inner config
@@ -740,7 +770,12 @@ def _save_binary_var(obj, path):
         )
 
 
-def save(obj, path, protocol=4, **configs):
+def save(
+    obj: _StateDict | NestedStructure[Tensor] | Program,
+    path: str | BytesIO,
+    protocol: Literal[2, 3, 4] = 4,
+    **configs: Unpack[_SaveOptions],
+) -> None:
     '''
     Save an object to the specified path.
 
@@ -932,7 +967,7 @@ def _legacy_save(obj, path, protocol=2):
     if not isinstance(obj, dict):
         raise NotImplementedError(
             "Now only supports save state_dict of Layer or Optimizer, "
-            "expect dict, but received %s." % type(obj)
+            f"expect dict, but received {type(obj)}."
         )
 
     if len(obj) == 0:
@@ -982,7 +1017,7 @@ def _legacy_save(obj, path, protocol=2):
             pickle.dump(saved_obj, f, protocol=protocol)
 
 
-def load(path, **configs):
+def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
     '''
     Load an object can be used in paddle from specified path.
 
@@ -1229,6 +1264,32 @@ def load(path, **configs):
                             program = Program.parse_from_string(
                                 program_desc_str
                             )
+                            if paddle.framework.in_pir_executor_mode():
+                                with paddle.pir_utils.IrGuard():
+                                    program = paddle.pir.translate_to_pir(
+                                        program.desc
+                                    )
+                                    block = program.global_block()
+                                    remove_op_list = []
+                                    for op in block.ops:
+                                        if op.name() == "pd_op.feed":
+                                            var_name = op.attrs()["name"]
+                                            org_value = op.result(0)
+                                            with block:
+                                                value = paddle.static.data(
+                                                    name=var_name,
+                                                    shape=org_value.shape,
+                                                    dtype=org_value.dtype,
+                                                )
+                                                org_value.replace_all_uses_with(
+                                                    value
+                                                )
+                                                value.get_defining_op().move_before(
+                                                    op
+                                                )
+                                            remove_op_list.append(op)
+                                    for op in remove_op_list:
+                                        block.remove_op(op)
                             return program
                     except:
                         raise ValueError(

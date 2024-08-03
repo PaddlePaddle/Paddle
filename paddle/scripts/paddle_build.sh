@@ -18,6 +18,7 @@
 #                   Utils
 #=================================================
 
+# nothing to modify
 set -ex
 
 if [ -z ${BRANCH} ]; then
@@ -2369,6 +2370,7 @@ set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -3473,6 +3475,11 @@ EOF
 }
 
 function distribute_test() {
+    python ${PADDLE_ROOT}/tools/get_pr_title.py skip_distribute_test && CINN_OR_BUAA_PR=1
+    if [[ "${CINN_OR_BUAA_PR}" = "1" ]];then
+        echo "PR's title with 'CINN' or 'BUAA', skip the run distribute ci test !"
+        exit 0
+    fi
     echo "Start gpups tests"
     parallel_test_base_gpups
     echo "End gpups tests"
@@ -3503,7 +3510,6 @@ function distribute_test() {
     rm -rf ./paddlenlp/models/bigscience/*
 
     # Already disable unittests of llama2 model in current CI pipeline
-    sed -i -e 's/case_list=(\$(awk/case_list=(auto_unit_test dygraph_unit_test) # /g' ./tools/auto_parallel/ci_auto_parallel.sh
     export FLAGS_dynamic_static_unified_comm=True
 
     echo "Start LLM Test"
@@ -3515,7 +3521,7 @@ function distribute_test() {
 
     echo "Start auto_parallel Test"
     cd ${work_dir}
-    timeout 50m bash tools/auto_parallel/ci_auto_parallel.sh
+    timeout 50m bash tools/auto_parallel/ci_distributed_stable.sh
     EXIT_CODE=$?
     echo "End auto_parallel Test"
 

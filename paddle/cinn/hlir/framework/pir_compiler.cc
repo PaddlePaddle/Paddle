@@ -97,6 +97,53 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   return ctx_mapper.RecoverKernelInfos();
 }
 
+pir::CINNKernelInfo PirCompiler::BuildBroadcastTree(
+    const std::vector<pir::OpLoweringGroupPtr>& leaf_groups,
+    pir::OpLoweringGroupPtr origin_group) {
+  const auto& fusion_info = pir::FusionInfo(*origin_group);
+  if (CompilationCache::Instance().Has(fusion_info)) {
+    return CompilationCache::Instance().GetKernelInfo(fusion_info);
+  }
+
+  std::vector<GroupCompilationContext> group_compilation_contexts;
+  for (const auto& group : leaf_groups) {
+    group_compilation_contexts.emplace_back(target_, group);
+  }
+  const size_t task_size = group_compilation_contexts.size();
+
+  const auto& ParallelLowering = [&]() {
+    cinn::ir::InitScheduleConfig();
+    auto worker_fn = [&](int index) {
+      CompilationTask task(&group_compilation_contexts[index]);
+      task.Lowering();
+    };
+    const size_t thread_size = GetThreadNum(task_size);
+    utils::parallel_run(worker_fn,
+                        utils::SequenceDispatcher(0, task_size),
+                        /*thread_num=*/thread_size);
+  };
+
+  const auto& SerialBackendCompile =
+      [&](const std::unordered_map<int, ir::Var>& shape_idx)
+      -> pir::CINNKernelInfo {
+    GroupCompilationContext origin_group_ctx(target_, origin_group);
+    CompilationTask compilation_task(&origin_group_ctx);
+    const auto device_id = runtime::GetArchDevice(target_);
+    runtime::SetArchDevice(target_, device_id);
+    auto result = compilation_task.CompileBroadcastModules(
+        &group_compilation_contexts, shape_idx);
+    const auto kernel_info = result->GetKernelInfo();
+    CompilationCache::Instance().Insert(fusion_info, result);
+    return kernel_info;
+  };
+
+  ParallelLowering();
+  std::unordered_map<int, ir::Var> symbolic_shape_var_index;
+  UnifyBroadcastGroupFuncArgs(
+      &group_compilation_contexts, origin_group, &symbolic_shape_var_index);
+  return SerialBackendCompile(symbolic_shape_var_index);
+}
+
 void CompilationContextMapper::Construct(
     const Target& target, const std::vector<pir::OpLoweringGroupPtr>& groups) {
   std::unordered_set<size_t> unique_infos;
@@ -109,7 +156,7 @@ void CompilationContextMapper::Construct(
 
   for (size_t i = 0; i < groups.size(); ++i) {
     fusion_infos_.emplace_back(*groups[i]);
-    VLOG(5) << "Construct FusionInfo: " << fusion_infos_[i]
+    VLOG(4) << "Construct FusionInfo: " << fusion_infos_[i]
             << " for group: " << *groups[i];
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
     // effects.
@@ -159,8 +206,10 @@ void CompilationContextMapper::UpdateGlobalCache() {
                       ::common::errors::PreconditionNotMet(
                           "Required mapper_index < fusion_infos_.size()."));
     const auto& fusion_info = fusion_infos_[mapper_index_[i]];
-    VLOG(5) << "Insert new compiled result into cache, fusion_info: "
-            << fusion_info;
+    VLOG(4) << "============== Insert new compiled result into cache, "
+               "fusion_info: ==============\n"
+            << fusion_info << ", host func name: "
+            << compilation_results_[i]->GetHostFuncName();
     CompilationCache::Instance().Insert(fusion_info, compilation_results_[i]);
   }
 }

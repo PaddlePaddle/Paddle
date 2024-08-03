@@ -264,7 +264,7 @@ class Adamax(Optimizer):
         beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
         )
-        if framework.in_dygraph_mode():
+        if framework.in_dynamic_or_pir_mode():
             _C_ops.adamax_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -329,6 +329,12 @@ class Adamax(Optimizer):
                             beta1_pow_acc, self._beta1, 0.0, True
                         )
                         beta1_pow_acc.copy_(tmp, False)
+                elif framework.in_pir_mode():
+                    with param.block.program._optimized_guard([param, grad]):
+                        beta1_pow_acc = self._get_accumulator_master(
+                            self._beta1_pow_acc_str, param
+                        )
+                        _C_ops.scale_(beta1_pow_acc, self._beta1, 0.0, True)
                 else:
                     with param.block.program._optimized_guard(
                         [param, grad]

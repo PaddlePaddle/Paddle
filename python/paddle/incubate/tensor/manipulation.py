@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+
+import paddle
 from paddle import _C_ops
+from paddle.base import core
 from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.framework import EagerParamBase
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 
@@ -80,3 +85,52 @@ def _npu_identity(x, format=-1):
             attrs={'format': format},
         )
         return out
+
+
+def _load_reload_impl(src_tensor, func):
+    if isinstance(src_tensor, EagerParamBase):
+        state = copy.deepcopy(src_tensor.__dict__)
+        new_param = EagerParamBase(src_tensor.shape, src_tensor.dtype, **state)
+        task = func(new_param, src_tensor)
+        return new_param, task
+    elif isinstance(src_tensor, paddle.Tensor):
+        new_varbase = core.eager.Tensor()
+        task = func(new_varbase, src_tensor)
+        return new_varbase, task
+
+
+def create_async_load():
+    """Constructs a new AsyncLoad object. It is used to load/reload data asynchronously."""
+    return core.AsyncLoad()
+
+
+def async_offload(src_tensor, async_load):
+    """
+    Loads the source tensor into the destination tensor asynchronously.
+
+    Args:
+        src_tensor (EagerParamBase|paddle.Tensor): The source tensor.
+        async_load (core.AsyncLoad): The AsyncLoad object.
+
+    Returns:
+        tuple: A tuple containing two elements:
+         - dest_tensor (EagerParamBase|paddle.Tensor): The destination tensor.
+         - task (Task): The task that loads the source tensor into the destination tensor.
+    """
+    return _load_reload_impl(src_tensor, async_load.offload)
+
+
+def async_reload(src_tensor, async_load):
+    """
+    Reloads the source tensor into the destination tensor asynchronously.
+
+    Args:
+        src_tensor (EagerParamBase|paddle.Tensor): The source tensor.
+        async_load (core.AsyncLoad): The AsyncLoad object.
+
+    Returns:
+        tuple: A tuple containing two elements:
+         - dest_tensor (EagerParamBase|paddle.Tensor): The destination tensor.
+         - task (Task): The task that reloads the source tensor into the destination tensor.
+    """
+    return _load_reload_impl(src_tensor, async_load.reload)

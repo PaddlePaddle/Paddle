@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/platform/device_event_base.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
@@ -39,11 +39,11 @@ void BindXpuStream(py::module *m_ptr) {
     paddle::platform::SetXPUDeviceId(device_id);
     auto place = phi::XPUPlace(device_id);
     auto *dev_ctx = static_cast<phi::XPUContext *>(
-        paddle::platform::DeviceContextPool::Instance().Get(place));
+        phi::DeviceContextPool::Instance().Get(place));
     dev_ctx->Wait();
     paddle::platform::SetXPUDeviceId(curr_device_id);
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Paddle is not compiled with XPU. Cannot visit device synchronize."));
 #endif
   });

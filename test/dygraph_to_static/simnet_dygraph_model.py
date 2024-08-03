@@ -299,15 +299,15 @@ class FC(paddle.nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.base as base
-            from paddle.base.dygraph import FC
-            import numpy as np
-            data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-            with base.dygraph.guard():
-                fc = FC("fc", 64, num_flatten_dims=2)
-                data = paddle.to_tensor(data)
-                conv = fc(data)
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> from paddle.base.dygraph import FC
+            >>> import numpy as np
+            >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+            >>> with base.dygraph.guard():
+            ...     fc = FC("fc", 64, num_flatten_dims=2)
+            ...     data_tensor = paddle.to_tensor(data)
+            ...     conv = fc(data_tensor)
     """
 
     def __init__(

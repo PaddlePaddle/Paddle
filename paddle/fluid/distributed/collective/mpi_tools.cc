@@ -30,7 +30,7 @@ MPI_Op ToMPIType(ReduceOp reduction) {
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != red_type.end(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Invalid mpi reduction. Must be MPI_MIN | MPI_MAX | "
                         "MPI_PROD | MPI_SUM."));
   return it->second;
@@ -43,11 +43,11 @@ void CheckValidInputs(const std::vector<phi::DenseTensor>& tensors) {
   PADDLE_ENFORCE_EQ(
       tensors.size() == 1,
       true,
-      platform::errors::InvalidArgument("the inputs size of MPI must be 1!"));
+      common::errors::InvalidArgument("the inputs size of MPI must be 1!"));
 
   PADDLE_ENFORCE_EQ(CheckTensorsInCudaPlace(tensors) && !CheckMpiCudaAware(),
                     false,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Found CUDA Tensor. But CUDA-aware MPI not support!"));
 }
 

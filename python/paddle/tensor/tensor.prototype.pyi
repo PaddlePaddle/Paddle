@@ -24,7 +24,7 @@ from paddle._typing import *  # noqa: F403
 
 # isort: on
 
-from typing import Any, Iterator, Literal, Protocol, overload
+from typing import Any, Iterator, Literal, overload
 
 import numpy.typing as npt
 
@@ -36,9 +36,11 @@ from paddle import (
 from paddle.base.dygraph.tensor_patch_methods import (
     TensorHookRemoveHelper,  # noqa: F401
 )
+from paddle.tensor.linalg import _POrder  # noqa: F401
+from paddle.tensor.stat import _Interpolation  # noqa: F401
 
 # annotation: ${eager_param_base_begin}
-class AbstractEagerParamBase(Protocol):
+class AbstractEagerParamBase:
     # annotation: ${eager_param_base_docstring}
 
     # annotation: ${eager_param_base_attributes}
@@ -54,9 +56,7 @@ class AbstractEagerParamBase(Protocol):
 # annotation: ${eager_param_base_end}
 
 # annotation: ${tensor_begin}
-class AbstractTensor(Protocol):
-    # annotation: ${tensor_docstring}
-
+class AbstractTensor:
     # annotation: ${tensor_attributes}
 
     # If method defined below, we should make the method's signature complete,
@@ -272,7 +272,7 @@ class AbstractTensor(Protocol):
     def process_mesh(self) -> paddle.distributed.ProcessMesh | None: ...
     def rows(self) -> list[int]: ...
     def set_string_list(self, value: str) -> None: ...
-    def set_vocab(self, value: dict) -> None: ...
+    def set_vocab(self, value: dict[str, int]) -> None: ...
     @property
     def shape(self) -> list[int]: ...
     @property
@@ -294,7 +294,9 @@ class AbstractTensor(Protocol):
 
     # annotation: ${tensor_alias}
 
-# annotation: ${tensor_end}
-
 class Tensor(AbstractTensor, AbstractEagerParamBase):
+    # annotation: ${tensor_docstring}
+
     __qualname__: Literal["Tensor"]
+
+# annotation: ${tensor_end}

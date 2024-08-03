@@ -1461,7 +1461,7 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   PADDLE_ENFORCE_NE(
       var_name,
       "",
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Cannot find table id %d to save variables.", table_id));
 
   std::string var_store = string::Sprintf("%s", path);
@@ -1498,8 +1498,8 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   // create lod tensor
   std::shared_ptr<framework::Scope> scope;
   scope.reset(new framework::Scope());
-  auto place = platform::CPUPlace();
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto place = phi::CPUPlace();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(place);
 
   framework::Variable *var = scope->Var(var_name);
@@ -1517,7 +1517,7 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   std::ofstream fout(file_name, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
                     true,
-                    platform::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Cannot open %s to save variables.", file_name));
 
   framework::SerializeToStream(fout, *var_tensor, dev_ctx);
@@ -1915,9 +1915,17 @@ std::future<int32_t> BrpcPsClient::PushDense(const Region *regions,
   uint32_t pos = 0;
   for (size_t i = 0; i < region_num; ++i) {
     uint32_t data_num = regions[i].size / sizeof(float);
-    CHECK(pos + data_num <= data_size)
-        << "invalid dense size, cur pos[" << pos << "]"
-        << " data_num[" << data_num << "] size[" << data_size << "]";
+    PADDLE_ENFORCE_LE((pos + data_num),
+                      data_size,
+                      phi::errors::InvalidArgument(
+                          "Invalid dense size."
+                          "Expect the sum of current position and data number "
+                          "to be equal to or smaller than the size."
+                          "But recieved current position = %lu, data number = "
+                          "%lu, size = %lu.",
+                          pos,
+                          data_num,
+                          data_size));
     const float *region_data = (const float *)(regions[i].data);
     memcpy(data + pos, region_data, regions[i].size);
     pos += data_num;

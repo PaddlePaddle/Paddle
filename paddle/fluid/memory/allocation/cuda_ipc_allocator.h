@@ -24,7 +24,7 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace memory {
@@ -38,7 +38,7 @@ class CudaIpcAllocation : public Allocation {
                              size_t size,
                              int device_id,
                              std::shared_ptr<void> shared_ptr)
-      : Allocation(ptr, size, platform::CUDAPlace(device_id)),
+      : Allocation(ptr, size, phi::GPUPlace(device_id)),
         device_id_(std::move(device_id)),
         shared_ptr_(std::move(shared_ptr)) {}
 

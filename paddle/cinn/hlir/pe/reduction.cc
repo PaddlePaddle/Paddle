@@ -25,7 +25,6 @@
 #include "paddle/cinn/hlir/pe/nn_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
@@ -52,7 +51,9 @@ using lang::Compute;
 void GetRealAxes(int ndim,
                  const std::vector<int>& axes,
                  std::vector<int>* real_axes) {
-  CHECK(real_axes);
+  PADDLE_ENFORCE_NOT_NULL(real_axes,
+                          phi::errors::InvalidArgument(
+                              "The 'real_axes' pointer must not be null."));
   if (axes.empty()) {
     for (int i = 0; i < ndim; ++i) {
       real_axes->push_back(i);
@@ -62,18 +63,19 @@ void GetRealAxes(int ndim,
       if (axis < 0) {
         axis += ndim;
       }
-      PADDLE_ENFORCE_LE(axis,
-                        ndim,
-                        phi::errors::InvalidArgument("The axis(%d) exceeds the "
-                                                     "maximum dimension(%d).",
-                                                     axis,
-                                                     ndim));
+      PADDLE_ENFORCE_LE(
+          axis,
+          ndim,
+          ::common::errors::InvalidArgument("The axis(%d) exceeds the "
+                                            "maximum dimension(%d).",
+                                            axis,
+                                            ndim));
       PADDLE_ENFORCE_GE(
           axis,
           0,
-          phi::errors::InvalidArgument("The axis(%d) is less than "
-                                       "the minimum dimension(0).",
-                                       axis));
+          ::common::errors::InvalidArgument("The axis(%d) is less than "
+                                            "the minimum dimension(0).",
+                                            axis));
       real_axes->push_back(axis);
     }
     real_axes->resize(std::unique(real_axes->begin(), real_axes->end()) -
@@ -101,7 +103,7 @@ std::string Type2StrForReduce(cinn::common::Type type) {
   }
   std::stringstream ss;
   ss << "Reduce Not Support " << type;
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   return "";
 }
 
@@ -120,7 +122,9 @@ void GetOutputShape(const std::vector<int>& real_axes,
                     std::vector<Expr>* output_shape,
                     const Tensor& tensor,
                     bool keep_dims) {
-  CHECK(output_shape);
+  PADDLE_ENFORCE_NOT_NULL(output_shape,
+                          phi::errors::InvalidArgument(
+                              "The 'output_shape' pointer must not be null."));
   auto ndim = tensor->shape.size();
   if (keep_dims) {
     for (size_t i = 0; i < ndim; ++i) {
@@ -141,7 +145,10 @@ void GetOutputShape(const std::vector<int>& real_axes,
     output_shape->push_back(cinn::common::make_one());
   }
 
-  CHECK(!tensor->shape.empty());
+  PADDLE_ENFORCE_EQ(
+      !tensor->shape.empty(),
+      true,
+      phi::errors::InvalidArgument("The 'tensor' shape must not be empty."));
   if (tensor->shape[0]->type() == Int(64)) {
     for (auto& shape_item : *output_shape) {
       shape_item->convert_int32_to_int64();
@@ -231,10 +238,11 @@ Tensor Reduce(const Tensor& tensor,
               ir::Expr initial,
               const std::string& output_name) {
   auto ndim = tensor->shape.size();
-  PADDLE_ENFORCE_GT(ndim,
-                    0,
-                    phi::errors::InvalidArgument("Reduce tensor's dim must be "
-                                                 "more than 0"));
+  PADDLE_ENFORCE_GT(
+      ndim,
+      0,
+      ::common::errors::InvalidArgument("Reduce tensor's dim must be "
+                                        "more than 0"));
   std::vector<int> real_axes;
   GetRealAxes(static_cast<int>(ndim), axes, &real_axes);
   std::vector<Expr> output_shapes;
@@ -330,7 +338,7 @@ std::vector<Tensor> WarpReduce(const ir::Tensor& A,
         }
         PADDLE_ENFORCE_EQ(A->shape.size(),
                           tmp_indexs.size(),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Indexs size is not equal to Input shape!"));
         Expr offset = cinn::common::IndiceToAbsOffset(A->shape, tmp_indexs);
         return lang::CallExtern(reduce_type, {A, offset, reduce_width});
@@ -400,7 +408,7 @@ std::vector<ir::Tensor> BlockReduceInternal(const ir::Tensor& A,
                                             const std::string& output_name) {
   PADDLE_ENFORCE_GE(A->shape.size(),
                     axes.back() + 1,
-                    phi::errors::InvalidArgument("Axes is over size!"));
+                    ::common::errors::InvalidArgument("Axes is over size!"));
   // compute reduce dimension size.
   Expr reduce_width(1);
   for (int idx = axes.front(); idx < A->shape.size(); ++idx) {
@@ -436,7 +444,7 @@ std::vector<ir::Tensor> BlockReduceInternal(const ir::Tensor& A,
         // checkout input_indexs size equals input shape
         PADDLE_ENFORCE_EQ(input_indexs.size(),
                           A->shape.size(),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Indexs size is not equal to Input shape!"));
         return lang::CallExtern(reduce_type, {A(input_indexs)});
       },
@@ -567,7 +575,7 @@ std::vector<ir::Tensor> BlockReduce(const ir::Tensor& A,
         // checkout input shape size equals tmp indexs size.
         PADDLE_ENFORCE_EQ(A->shape.size(),
                           tmp_indexs.size(),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Indexs size is not equal to Input shape!"));
         // compute offset.
         Expr offset = cinn::common::IndiceToAbsOffset(A->shape, tmp_indexs);
@@ -711,9 +719,10 @@ std::vector<ir::Tensor> ReduceInternal(const ir::Tensor& A,
                  std::back_inserter(inshape),
                  [](ir::Expr expr) { return expr.as_int32(); });
   auto reduce_shape = GetFirstStepReduceShape(inshape, axes, inbound, tail);
-  PADDLE_ENFORCE_GT(reduce_shape.size(),
-                    0,
-                    phi::errors::InvalidArgument("Reduce shape size is 0!"));
+  PADDLE_ENFORCE_GT(
+      reduce_shape.size(),
+      0,
+      ::common::errors::InvalidArgument("Reduce shape size is 0!"));
 
   VLOG(4) << "Reduce " << output_name << " on " << reduce_type
           << " with input shape=[" << cinn::utils::Join(inshape, ", ")
@@ -739,7 +748,7 @@ std::vector<ir::Tensor> ReduceInternal(const ir::Tensor& A,
     }
     PADDLE_ENFORCE_EQ(strides.size(),
                       axes.size() - axis_index,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Strides size is not equal to axes size!"));
     std::transform(reduce_shape.begin(),
                    reduce_shape.end(),
@@ -770,7 +779,7 @@ std::vector<ir::Tensor> ReduceInternal(const ir::Tensor& A,
 
           PADDLE_ENFORCE_EQ(tmp_indexs.size(),
                             A->shape.size(),
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "Indexs size is not equal to Input shape!"));
           return ir::Select::Make(selected, A(tmp_indexs), initial);
         },
@@ -866,8 +875,10 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(
     ReduceFunc reduce_func,
     BlockReduceFunc block_reduce_func,
     ir::Expr initial) {
-  CHECK(!WithoutLastDimInReduce(A->shape, axes))
-      << "Can't find last axis in reduce!";
+  PADDLE_ENFORCE_EQ(
+      !WithoutLastDimInReduce(A->shape, axes),
+      true,
+      phi::errors::InvalidArgument("Can't find last axis in reduce!"));
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.
@@ -1005,7 +1016,7 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(
 
           PADDLE_ENFORCE_EQ(tmp_indexs.size(),
                             A->shape.size(),
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "Indexs size is not equal to Input shape!"));
           if (check_bound) {
             return ir::Select::Make(selected, A(tmp_indexs), initial);
@@ -1130,7 +1141,7 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
                                               const ir::Expr& tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor.as_tensor(),
-      phi::errors::InvalidArgument("Tensor is not a tensor!"));
+      ::common::errors::InvalidArgument("Tensor is not a tensor!"));
   if (op.As<ir::Add>()) {
     if (tensor.as_tensor()->type().is_bool()) {
       return "cinn_block_reduce_any_internal_shm";
@@ -1156,7 +1167,7 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
   } else {
     std::stringstream ss;
     ss << "Reduce type: " << op << " Not supported yet!";
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return "";
 }
@@ -1189,7 +1200,7 @@ std::string DiscreteReduceExternalFuncName(const ir::Expr& op,
   } else {
     std::stringstream ss;
     ss << "Reduce type: " << op << " Not supported yet!";
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return "";
 }

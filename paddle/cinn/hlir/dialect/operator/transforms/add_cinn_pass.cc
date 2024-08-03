@@ -246,10 +246,8 @@ void ApplyCinnPass(::pir::Program* program,
       .file_name("original_programs.py")
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
       .SaveIfFlagEnabled();
-  ApplyPdToCinnPass(program, CreatePassManager);
-  // TODO(Hongqing-work): move ApplyShapeOptimizationPass before
-  // ApplyPdToCinnPass after fixing infer shape bug.
   ApplyShapeOptimizationPass(program, CreatePassManager);
+  ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
   PirToPyCodeConverter(program)

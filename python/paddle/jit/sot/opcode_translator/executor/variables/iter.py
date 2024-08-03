@@ -39,8 +39,8 @@ class IterVariable(VariableBase):
         super().__init__(graph, tracker)
         self.hold = obj
 
-    def make_stringify_guard(self):
-        return self.hold.make_stringify_guard()
+    def make_stringified_guard(self):
+        return self.hold.make_stringified_guard()
 
     def next(self):
         raise NotImplementedError(f"Can not simulate `next` for {type(self)}")

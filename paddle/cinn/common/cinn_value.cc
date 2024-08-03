@@ -44,7 +44,6 @@ __m(char const *, 21);
 __m(ir::Expr, 22);
 __m(ir::Var, 23);
 __m(CINNValuePack, 24);
-__m(poly::StageMap, 25);
 __m(std::string, 26);
 #undef __m
 //@}
@@ -118,10 +117,6 @@ bool CINNValue::is_expr() const {
          !absl::any_cast<Expr>(shared_).as_tensor();
 }
 
-bool CINNValue::is_stagemap() const {
-  return type_code_ == TypeCode<poly::StageMap>();
-}
-
 bool CINNValue::is_tensor() const {
   return type_code_ == TypeCode<ir::Expr>() &&
          absl::any_cast<Expr>(shared_).as_tensor();
@@ -131,37 +126,31 @@ CINNValue::operator std::string() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<std::string>(),
-      phi::errors::InvalidArgument("The type_code is not std::string."));
+      ::common::errors::InvalidArgument("The type_code is not std::string."));
   return absl::any_cast<std::string>(shared_);
 }
 CINNValue::operator ir::Var() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<ir::Var>(),
-      phi::errors::InvalidArgument("The type_code is not ir::Var."));
+      ::common::errors::InvalidArgument("The type_code is not ir::Var."));
   return absl::any_cast<ir::Var>(shared_);
 }
 CINNValue::operator ir::Expr() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<ir::Expr>(),
-      phi::errors::InvalidArgument("The type_code is not ir::Expr."));
+      ::common::errors::InvalidArgument("The type_code is not ir::Expr."));
   return absl::any_cast<Expr>(shared_);
 }
 CINNValue::operator CINNValuePack() const {
   PADDLE_ENFORCE_EQ(
       type_code_,
       TypeCode<CINNValuePack>(),
-      phi::errors::InvalidArgument("The type_code is not CINNValuePack."));
+      ::common::errors::InvalidArgument("The type_code is not CINNValuePack."));
   return absl::any_cast<CINNValuePack>(shared_);
 }
-CINNValue::operator poly::StageMap() const {
-  PADDLE_ENFORCE_EQ(
-      type_code(),
-      TypeCode<poly::StageMap>(),
-      phi::errors::InvalidArgument("The type_code is not poly::StageMap."));
-  return absl::any_cast<poly::StageMap>(shared_);
-}
+
 CINNValue::CINNValue(char *value)
     : cinn_pod_value_t(ToValue(value), TypeCode<char *>()) {}
 
@@ -171,22 +160,26 @@ CINNValue::CINNValue(const std::string &value)
 }
 CINNValue::CINNValue(const Var &value)
     : cinn_pod_value_t(cinn_value_t(), TypeCode<Var>()) {
-  CHECK(value.defined());
+  PADDLE_ENFORCE_EQ(
+      value.defined(),
+      true,
+      ::common::errors::InvalidArgument("The input of Var is not defined."));
   shared_ = value;
 }
 CINNValue::CINNValue(const Expr &value)
     : cinn_pod_value_t(cinn_value_t(), TypeCode<Expr>()) {
-  CHECK(value.defined());
+  PADDLE_ENFORCE_EQ(
+      value.defined(),
+      true,
+      ::common::errors::InvalidArgument("The input of Expr is not defined."));
   shared_ = value;
 }
 CINNValue::CINNValue(const CINNValuePack &value)
     : cinn_pod_value_t(cinn_value_t(), TypeCode<CINNValuePack>()) {
-  CHECK(value.defined());
-  shared_ = value;
-}
-CINNValue::CINNValue(const poly::StageMap &value)
-    : cinn_pod_value_t(cinn_value_t(), TypeCode<poly::StageMap>()) {
-  CHECK(value.defined());
+  PADDLE_ENFORCE_EQ(value.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input of CINNValuePack is not defined."));
   shared_ = value;
 }
 
@@ -199,18 +192,22 @@ CINNValue &_CINNValuePack_::operator[](int offset) {
   PADDLE_ENFORCE_LT(
       offset,
       size(),
-      phi::errors::InvalidArgument("The offset is out of range."));
+      ::common::errors::InvalidArgument("The offset is out of range."));
   return values_[offset];
 }
 const CINNValue &_CINNValuePack_::operator[](int offset) const {
   PADDLE_ENFORCE_LT(
       offset,
       size(),
-      phi::errors::InvalidArgument("The offset is out of range."));
+      ::common::errors::InvalidArgument("The offset is out of range."));
   return values_[offset];
 }
 void _CINNValuePack_::AddValue(const CINNValue &value) {
-  CHECK(value.defined());
+  PADDLE_ENFORCE_EQ(
+      value.defined(),
+      true,
+      ::common::errors::InvalidArgument("The CINNValue is not defined. Which "
+                                        "can't be added to CINNValuePack."));
   values_.push_back(value);
 }
 void _CINNValuePack_::Clear() { values_.clear(); }
@@ -273,10 +270,6 @@ CINNValue &CINNValue::operator=(const ir::Var &value) {
   return *this;
 }
 CINNValue &CINNValue::operator=(const ir::Expr &value) {
-  *this = CINNValue(value);
-  return *this;
-}
-CINNValue &CINNValue::operator=(const poly::StageMap &value) {
   *this = CINNValue(value);
   return *this;
 }

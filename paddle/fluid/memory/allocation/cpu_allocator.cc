@@ -17,7 +17,7 @@
 #include <cstdlib>
 
 #include "paddle/fluid/memory/stats.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle::memory::allocation {
 
@@ -44,10 +44,10 @@ phi::Allocation *CPUAllocator::AllocateImpl(size_t size) {
   PADDLE_ENFORCE_EQ(
       error,
       0,
-      platform::errors::ResourceExhausted(
+      common::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
 #endif
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
-  return new Allocation(p, size, platform::CPUPlace());
+  return new Allocation(p, size, phi::CPUPlace());
 }
 }  // namespace paddle::memory::allocation

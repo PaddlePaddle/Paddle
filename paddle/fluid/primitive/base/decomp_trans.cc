@@ -39,12 +39,15 @@ using Program = pir::Program;
 
 // some outputs like xshape will no longer used after decomp, and those outputs
 // will skip checking.
-std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
-                                                          "pd_op.unsqueeze",
-                                                          "pd_op.flatten",
-                                                          "pd_op.batch_norm",
-                                                          "pd_op.batch_norm_",
-                                                          "pd_op.dropout"};
+std::unordered_set<std::string> decomp_op_contain_none = {
+    "pd_op.squeeze",
+    "pd_op.unsqueeze",
+    "pd_op.flatten",
+    "pd_op.batch_norm",
+    "pd_op.batch_norm_",
+    "pd_op.dropout",
+    "pd_op.instance_norm",
+};
 //
 std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
                                                            "pd_op.unsqueeze",
@@ -101,7 +104,8 @@ static bool has_dynamic_shape(const phi::DDim& dims) {
 static const phi::DDim GetValueDims(pir::Value value) {
   pir::Type origin_type = value.type();
   if (!origin_type) {
-    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The type of value is nullptr."));
   }
   auto getdims = [](pir::Type value_type) -> phi::DDim {
     if (value_type.isa<DenseTensorType>()) {
@@ -109,7 +113,7 @@ static const phi::DDim GetValueDims(pir::Value value) {
     } else if (value_type.isa<SelectedRowsType>()) {
       return value_type.dyn_cast<SelectedRowsType>().dims();
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "[Prim] Currently, we can only get shape for dense "
           "tensor."));
     }
@@ -138,7 +142,7 @@ static phi::DataType GetValueDtype(pir::Value value) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<SelectedRowsType>().dtype());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
         "SelectedRowsType."));
   }
@@ -180,7 +184,7 @@ void DecompProgram::check_ops() {
       decomposed_ops_stream.append(" ");
       decomposed_ops_stream.append(item);
     }
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "[Prim] Currently, decomposed program "
         "should not contain none primitive ops: %s .",
         decomposed_ops_stream));
@@ -371,7 +375,7 @@ std::vector<std::vector<pir::Value>> call_decomp_rule(pir::Operation* op) {
   paddle::dialect::DecompInterface decomp_interface =
       op->dyn_cast<paddle::dialect::DecompInterface>();
   PADDLE_ENFORCE(decomp_interface,
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "[Prim] The decomp function is not registered in %s op ",
                      op->name()));
   std::vector<std::vector<pir::Value>> decomp_res = decomp_interface.Decomp(op);

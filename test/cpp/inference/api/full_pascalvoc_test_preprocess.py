@@ -277,13 +277,13 @@ def download_pascalvoc(data_url, data_dir, tar_targethash, tar_path):
     print("Downloading pascalvcoc test set...")
     download(data_url, data_dir, tar_targethash)
     if not os.path.exists(tar_path):
-        print("Failed in downloading pascalvoc test set. URL %s\n" % data_url)
+        print(f"Failed in downloading pascalvoc test set. URL {data_url}\n")
     else:
         tmp_hash = hashlib.md5(open(tar_path, 'rb').read()).hexdigest()
         if tmp_hash != tar_targethash:
             print("Downloaded test set is broken, removing ...\n")
         else:
-            print("Downloaded successfully. Path: %s\n" % tar_path)
+            print(f"Downloaded successfully. Path: {tar_path}\n")
 
 
 def run_convert():
@@ -305,7 +305,7 @@ def run_convert():
         else:
             download_pascalvoc(DATA_URL, DATA_DIR, TAR_TARGETHASH, TAR_PATH)
             convert_pascalvoc_tar2bin(TAR_PATH, DATA_OUT_PATH)
-    print("Success!\nThe binary file can be found at %s\n" % DATA_OUT_PATH)
+    print(f"Success!\nThe binary file can be found at {DATA_OUT_PATH}\n")
 
 
 def main_pascalvoc_preprocess(args):

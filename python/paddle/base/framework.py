@@ -28,7 +28,7 @@ import traceback
 import warnings
 from collections.abc import Iterable
 from types import FunctionType, MethodType
-from typing import TYPE_CHECKING, Callable, TypeVar
+from typing import TYPE_CHECKING, Callable, TypeVar, overload
 
 import numpy as np
 from typing_extensions import ParamSpec
@@ -49,6 +49,8 @@ _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 
 if TYPE_CHECKING:
+    from typing import Generator, Sequence
+
     from paddle.static.amp.fp16_utils import AmpOptions
 
 __all__ = []
@@ -106,7 +108,7 @@ def _global_flags():
     return _global_flags_
 
 
-def set_flags(flags):
+def set_flags(flags: dict[str, bool | str | float]) -> None:
     """
     This function sets the GFlags value in Paddle.
     For FLAGS please refer to :ref:`en_guides_flags_flags`
@@ -127,11 +129,11 @@ def set_flags(flags):
             _global_flags()[key] = value
         else:
             raise ValueError(
-                "Flag %s cannot set its value through this function." % (key)
+                f"Flag {key} cannot set its value through this function."
             )
 
 
-def get_flags(flags):
+def get_flags(flags: str | Sequence[str]) -> dict[str, bool | str | float]:
     """
     This function gets the GFlags value in Paddle.
     For FLAGS please refer to :ref:`en_guides_flags_flags`
@@ -161,8 +163,7 @@ def get_flags(flags):
                 flags_value.update(temp)
             else:
                 raise ValueError(
-                    "Flag %s cannot get its value through this function."
-                    % (key)
+                    f"Flag {key} cannot get its value through this function."
                 )
     elif isinstance(flags, str):
         if _global_flags().is_public(flags):
@@ -171,7 +172,7 @@ def get_flags(flags):
             flags_value.update(temp)
         else:
             raise ValueError(
-                "Flag %s cannot get its value through this function." % (flags)
+                f"Flag {flags} cannot get its value through this function."
             )
     else:
         raise TypeError("Flags in get_flags should be a list, tuple or string.")
@@ -405,7 +406,9 @@ ipu_stage_attr_name = "ipu_stage"
 
 
 @signature_safe_contextmanager
-def ipu_shard_guard(index=-1, stage=-1):
+def ipu_shard_guard(
+    index: int = -1, stage: int = -1
+) -> Generator[None, None, None]:
     """
     Used to shard the graph on IPUs. Set each Op run on which IPU in the sharding and which stage in the pipelining.
 
@@ -457,6 +460,20 @@ def ipu_shard_guard(index=-1, stage=-1):
         global_ipu_stage = prev_ipu_stage
 
 
+@overload
+def set_ipu_shard(
+    call_func: Callable[_InputT, _RetT], index: int = ..., stage: int = ...
+) -> Callable[_InputT, _RetT]:
+    ...
+
+
+@overload
+def set_ipu_shard(
+    call_func: paddle.nn.Layer, index: int = ..., stage: int = ...
+) -> paddle.nn.Layer:
+    ...
+
+
 def set_ipu_shard(call_func, index=-1, stage=-1):
     """
     Shard the ipu with the given call function. Set every ops in call function to the given ipu sharding.
@@ -468,9 +485,9 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
 
     Args:
         call_func(Layer|function): Specify the call function to be wrapped.
-        index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
+        index(int, optional): Specify which ipu the Tensor is computed on, (such as '0, 1, 2, 3').
             The default value is -1, which means the Op only run on IPU 0.
-        stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
+        stage(int, optional): Specify the computation order of the sharded model(such as '0, 1, 2, 3').
             The sharded model will be computed from small to large. The default value is -1,
             which means no pipelining computation order and run Ops in terms of graph.
 
@@ -490,8 +507,8 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
             >>> relu(a)
     """
 
-    def decorate(func):
-        def wrapper(*args, **kwargs):
+    def decorate(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             with ipu_shard_guard(index=index, stage=stage):
                 return func(*args, **kwargs)
 
@@ -552,21 +569,19 @@ def require_version(min_version: str, max_version: str | None = None) -> None:
     """
     if not isinstance(min_version, str):
         raise TypeError(
-            "The type of 'min_version' in require_version must be str, but received %s."
-            % (type(min_version))
+            f"The type of 'min_version' in require_version must be str, but received {type(min_version)}."
         )
 
     if not isinstance(max_version, (str, type(None))):
         raise TypeError(
-            "The type of 'max_version' in require_version must be str or type(None), but received %s."
-            % (type(max_version))
+            f"The type of 'max_version' in require_version must be str or type(None), but received {type(max_version)}."
         )
 
     check_format = re.match(r"\d+(\.\d+){0,3}", min_version)
     if check_format is None or check_format.group() != min_version:
         raise ValueError(
             "The value of 'min_version' in require_version must be in format '\\d+(\\.\\d+){0,3}', "
-            "like '1.5.2.0', but received %s" % min_version
+            f"like '1.5.2.0', but received {min_version}"
         )
 
     if max_version is not None:
@@ -574,7 +589,7 @@ def require_version(min_version: str, max_version: str | None = None) -> None:
         if check_format is None or check_format.group() != max_version:
             raise ValueError(
                 "The value of 'max_version' in require_version must be in format '\\d+(\\.\\d+){0,3}', "
-                "like '1.5.2.0', but received %s" % max_version
+                f"like '1.5.2.0', but received {max_version}"
             )
 
     version_installed = [
@@ -638,9 +653,9 @@ def _dygraph_not_support_(
     func: Callable[_InputT, _RetT]
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        assert not in_dygraph_mode(), (
-            "We don't support %s in dynamic graph mode" % func.__name__
-        )
+        assert (
+            not in_dygraph_mode()
+        ), f"We don't support {func.__name__} in dynamic graph mode"
         return func(*args, **kwargs)
 
     return __impl__
@@ -648,10 +663,9 @@ def _dygraph_not_support_(
 
 def _dygraph_only_(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        assert in_dygraph_mode(), (
-            "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
-            % func.__name__
-        )
+        assert (
+            in_dygraph_mode()
+        ), f"We only support '{func.__name__}()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
         return func(*args, **kwargs)
 
     return __impl__
@@ -847,7 +861,7 @@ def _custom_device_ids(device_type):
     return device_ids
 
 
-def is_compiled_with_xpu():
+def is_compiled_with_xpu() -> bool:
     """
     Whether this whl package can be used to run the model on XPU.
 
@@ -862,7 +876,7 @@ def is_compiled_with_xpu():
     return core.is_compiled_with_xpu()
 
 
-def disable_signal_handler():
+def disable_signal_handler() -> None:
     """
     Reset signal handler registered by Paddle.
 
@@ -888,7 +902,7 @@ def disable_signal_handler():
     core.disable_signal_handler()
 
 
-def is_compiled_with_cinn():
+def is_compiled_with_cinn() -> bool:
     """
     Whether this whl package can be used to run the model on CINN.
 
@@ -904,7 +918,7 @@ def is_compiled_with_cinn():
     return core.is_compiled_with_cinn()
 
 
-def is_compiled_with_cuda():
+def is_compiled_with_cuda() -> bool:
     """
     Whether this whl package can be used to run the model on GPU.
 
@@ -920,7 +934,7 @@ def is_compiled_with_cuda():
     return core.is_compiled_with_cuda()
 
 
-def is_compiled_with_distribute():
+def is_compiled_with_distribute() -> bool:
     """
     Whether this whl package can be used to run the model with distribute.
 
@@ -936,7 +950,7 @@ def is_compiled_with_distribute():
     return core.is_compiled_with_distribute()
 
 
-def is_compiled_with_rocm():
+def is_compiled_with_rocm() -> bool:
     """
     Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
 
@@ -952,7 +966,9 @@ def is_compiled_with_rocm():
     return core.is_compiled_with_rocm()
 
 
-def cuda_places(device_ids=None):
+def cuda_places(
+    device_ids: Sequence[int] | None = None,
+) -> list[core.CUDAPlace]:
     """
     Note:
         For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
@@ -1000,7 +1016,7 @@ def cuda_places(device_ids=None):
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
 
 
-def xpu_places(device_ids=None):
+def xpu_places(device_ids: Sequence[int] | None = None) -> list[core.XPUPlace]:
     """
     **Note**:
         For multi-card tasks, please use `FLAGS_selected_xpus` environment variable to set the visible XPU device.
@@ -1039,7 +1055,7 @@ def xpu_places(device_ids=None):
     return [core.XPUPlace(dev_id) for dev_id in device_ids]
 
 
-def cpu_places(device_count=None):
+def cpu_places(device_count: int | None = None) -> list[core.CPUPlace]:
     """
     This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
 
@@ -1073,7 +1089,9 @@ def cpu_places(device_count=None):
     return [core.CPUPlace()] * device_count
 
 
-def cuda_pinned_places(device_count=None):
+def cuda_pinned_places(
+    device_count: int | None = None,
+) -> list[core.CUDAPinnedPlace]:
     """
     This function creates a list of :code:`base.CUDAPinnedPlace` objects.
 
@@ -1134,7 +1152,7 @@ _name_scope = NameScope()
 
 
 @signature_safe_contextmanager
-def name_scope(prefix=None):
+def name_scope(prefix: str | None = None) -> Generator[None, None, None]:
     """
 
     Generate hierarchical name prefix for the operators in Static Graph.
@@ -1335,7 +1353,7 @@ def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
     elif dtype == np.complex128:
         return core.VarDesc.VarType.COMPLEX128
     else:
-        raise ValueError("Not supported numpy dtype %s" % dtype)
+        raise ValueError(f"Not supported numpy dtype {dtype}")
 
 
 def convert_np_dtype_to_dtype_(np_dtype):
@@ -1806,8 +1824,8 @@ class Variable(metaclass=VariableMetaClass):
                 >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 >>> with base.dygraph.guard():
                 ...     linear = Linear(32, 64)
-                ...     data = paddle.to_tensor(data)
-                ...     x = linear(data)
+                ...     data_tensor = paddle.to_tensor(data)
+                ...     x = linear(data_tensor)
                 ...     print(x.numpy())
 
         """
@@ -1837,7 +1855,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle
                 >>> paddle.disable_static()
 
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> inputs = []
                 >>> for _ in range(10):
                 ...     tmp = paddle.to_tensor(x)
@@ -1881,7 +1899,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import numpy as np
 
                 >>> # example1: return ndarray
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> with base.dygraph.guard():
                 ...     inputs2 = []
                 ...     for _ in range(10):
@@ -1903,8 +1921,8 @@ class Variable(metaclass=VariableMetaClass):
                 ...         sparse=True)
                 ...     x_data = np.arange(12).reshape(4, 3).astype('int64')
                 ...     x_data = x_data.reshape((-1, 3, 1))
-                ...     x = paddle.to_tensor(x_data)
-                ...     out = embedding(x)
+                ...     x_tensor = paddle.to_tensor(x_data)
+                ...     out = embedding(x_tensor)
                 ...     out.backward()
                 ...     print(embedding.weight.gradient())
 
@@ -1930,7 +1948,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> import numpy as np
 
-                >>> x = np.ones([2, 2], np.float32)
+                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
                 >>> inputs2 = []
                 >>> for _ in range(10):
                 >>>     tmp = paddle.to_tensor(x)
@@ -3004,7 +3022,7 @@ class OpProtoHolder:
 
         """
         if type not in self.op_proto_map:
-            raise ValueError('Operator "%s" has not been registered.' % type)
+            raise ValueError(f'Operator "{type}" has not been registered.')
         return self.op_proto_map[type]
 
     def update_op_proto(self):
@@ -3204,7 +3222,7 @@ class Operator:
                     op_attrs[op_device] = _current_device
                 else:
                     warnings.warn(
-                        "The Op(%s) is not support to set device." % type
+                        f"The Op({type}) is not support to set device."
                     )
                 if "force_cpu" in op_attrs:
                     if (
@@ -3212,9 +3230,9 @@ class Operator:
                         and op_attrs["force_cpu"] is not None
                     ) or op_attrs["force_cpu"] is not False:
                         warnings.warn(
-                            "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
+                            f"The Attr(force_cpu) of Op({type}) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
-                            "used at the same time." % type
+                            "used at the same time."
                         )
             if _current_pipeline_stage is not None:
                 pipeline_attr_name = (
@@ -3468,7 +3486,7 @@ class Operator:
 
             if attr_type == core.AttrType.VARS:
                 attr_var_names = [
-                    "'%s'" % var.name() for var in self.desc.attr(name, True)
+                    f"'{var.name()}'" for var in self.desc.attr(name, True)
                 ]
                 a = "{name} = Vars[{value}]".format(
                     name=name, value=",".join(attr_var_names)
@@ -4259,12 +4277,14 @@ class Block:
                 self.parent_idx,
             )
             for var in list(self.vars.values()):
-                res_str += "\n  vars {\n    %s  }" % re_add_indent.sub(
-                    r"\n    \1", var.to_string(throw_on_error, with_details)
+                res_str += "\n  vars {{\n    {}  }}".format(
+                    re_add_indent.sub(
+                        r"\n    \1", var.to_string(throw_on_error, with_details)
+                    )
                 )
             for op in self.ops:
-                res_str += "\n  ops {\n    %s  }" % re_add_indent.sub(
-                    r"\n    \1", op.to_string(throw_on_error)
+                res_str += "\n  ops {{\n    {}  }}".format(
+                    re_add_indent.sub(r"\n    \1", op.to_string(throw_on_error))
                 )
             res_str += "\n}"
         else:
@@ -4323,12 +4343,11 @@ class Block:
         """
         if not isinstance(name, str):
             raise TypeError(
-                "var require string as parameter, but get %s instead."
-                % (type(name))
+                f"var require string as parameter, but get {type(name)} instead."
             )
         v = self.vars.get(name, None)
         if v is None:
-            raise ValueError("var %s not in this block" % name)
+            raise ValueError(f"var {name} not in this block")
         return v
 
     def _find_var_recursive(self, name):
@@ -4432,7 +4451,7 @@ class Block:
         )
 
         if not self.has_var(name):
-            raise ValueError("var %s is not in current block" % name)
+            raise ValueError(f"var {name} is not in current block")
         v = self.var(name)
         if type(v) == Parameter:
             var_type = "Parameter"
@@ -4446,7 +4465,7 @@ class Block:
             error_clip = v.error_clip
             stop_gradient = v.stop_gradient
         else:
-            raise ValueError("unsupported var type: %s", type(v))
+            raise ValueError(f"unsupported var type: {type(v)}")
         orig_var_type = v.type
         self.desc._rename_var(name.encode(), new_name.encode())
         # NOTE: v is destroyed by C++ after calling _rename_var.
@@ -4559,9 +4578,9 @@ class Block:
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
             warnings.warn(
-                "Op `%s` is executed through `append_op` under the dynamic mode, "
+                f"Op `{op_type}` is executed through `append_op` under the dynamic mode, "
                 "the corresponding API implementation needs to be upgraded to "
-                "using `_C_ops` method." % type,
+                "using `_C_ops` method.",
                 DeprecationWarning,
             )
             op = Operator(
@@ -5629,12 +5648,12 @@ class IrGraph:
             node_in(IrNode): the input node.
             node_out(IrNode): the output node.
         """
-        assert node_in.node in self.graph.nodes(), (
-            "node_in(%s) must be in the graph nodes." % node_in.node.name()
-        )
-        assert node_out.node in self.graph.nodes(), (
-            "node_out(%s) must be in the graph nodes." % node_out.node.name()
-        )
+        assert (
+            node_in.node in self.graph.nodes()
+        ), f"node_in({node_in.node.name()}) must be in the graph nodes."
+        assert (
+            node_out.node in self.graph.nodes()
+        ), f"node_out({node_out.node.name()}) must be in the graph nodes."
         node_in.append_output(node_out)
         node_out.append_input(node_in)
 
@@ -5795,9 +5814,9 @@ class IrGraph:
         for n in nodes:
             if n.name() == node_name:
                 target_node = n
-        assert target_node is not None, (
-            "Cannot find the target node (%s)in the giving set." % node_name
-        )
+        assert (
+            target_node is not None
+        ), f"Cannot find the target node ({node_name})in the giving set."
         return target_node
 
     def _update_desc_attr(self, desc, name, val):
@@ -6631,7 +6650,7 @@ class Program:
             if not isinstance(var, str):
                 raise ValueError(
                     "All feeded_var_names of Program._prune_with_input() can only be "
-                    "str, but received %s." % type(var)
+                    f"str, but received {type(var)}."
                 )
 
         # find out all variables that can be generated or updated with given feed
@@ -6660,7 +6679,7 @@ class Program:
                 else:
                     raise ValueError(
                         "All targets of Program._prune_with_input() can only be "
-                        "Variable or Operator, but received %s." % type(t)
+                        f"Variable or Operator, but received {type(t)}."
                     )
 
                 # NOTE(zhiqiu): For variable to be fed in fetch_list, there two cases:
@@ -7002,8 +7021,7 @@ class Program:
     def random_seed(self, seed):
         if not isinstance(seed, int):
             raise ValueError(
-                "Program.random_seed's input seed must be an integer, but received %s."
-                % type(seed)
+                f"Program.random_seed's input seed must be an integer, but received {type(seed)}."
             )
         self._seed = seed
 
@@ -7153,8 +7171,7 @@ class Program:
         """
         if not isinstance(other, Program):
             raise TypeError(
-                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
-                % type(other)
+                f"Function Program._copy_param_info_from() needs to pass in a source Program, but received {type(other)}"
             )
 
         self.global_block()._copy_param_info_from(other.global_block())
@@ -7171,8 +7188,7 @@ class Program:
         """
         if not isinstance(other, Program):
             raise TypeError(
-                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
-                % type(other)
+                f"Function Program._copy_param_info_from() needs to pass in a source Program, but received {type(other)}"
             )
         self._is_distributed = other._is_distributed
         self._is_chief = other._is_chief
@@ -7200,8 +7216,7 @@ class Program:
         """
         if not isinstance(other, Program):
             raise TypeError(
-                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
-                % type(other)
+                f"Function Program._copy_param_info_from() needs to pass in a source Program, but received {type(other)}"
             )
 
         if not pruned_origin_block_id_map:
@@ -7518,8 +7533,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         for each in shape:
             if each < 0:
                 raise ValueError(
-                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
-                    % list(shape)
+                    f"Each dimension of shape for Parameter must be greater than 0, but received {list(shape)}"
                 )
 
         Variable.__init__(
@@ -7628,8 +7642,7 @@ class EagerParamBase(core.eager.Tensor):
         for each in shape:
             if each < 0:
                 raise ValueError(
-                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
-                    % list(shape)
+                    f"Each dimension of shape for Parameter must be greater than 0, but received {list(shape)}"
                 )
 
         if dtype is not None:
@@ -7710,8 +7723,7 @@ class EagerParamBase(core.eager.Tensor):
             self.stop_gradient = not trainable
         else:
             raise ValueError(
-                "The type of trainable MUST be bool, but the type is ",
-                type(trainable),
+                f"The type of trainable MUST be bool, but the type is {type(trainable)}"
             )
 
     def _create_init_op(self, block):
@@ -7794,7 +7806,7 @@ _startup_program_ = Program()
 _startup_program_._is_start_up_program_ = True
 
 
-def default_startup_program():
+def default_startup_program() -> Program:
     """
     Get default/global startup program.
 
@@ -7823,7 +7835,7 @@ def default_startup_program():
     return _startup_program_
 
 
-def default_main_program():
+def default_main_program() -> Program:
     """
     This API can be used to get ``default main program`` which store the
     descriptions of Ops and tensors.
@@ -7860,7 +7872,7 @@ def default_main_program():
     return _main_program_
 
 
-def switch_main_program(program):
+def switch_main_program(program: Program) -> Program:
     """
     Switch the main program to a new program.
 
@@ -7876,7 +7888,7 @@ def switch_main_program(program):
     return prev_program
 
 
-def switch_startup_program(program):
+def switch_startup_program(program: Program) -> Program:
     """
     Switch the startup program to a new program
     Args:
@@ -7892,7 +7904,9 @@ def switch_startup_program(program):
 
 
 @signature_safe_contextmanager
-def program_guard(main_program, startup_program=None):
+def program_guard(
+    main_program: Program, startup_program: Program | None = None
+) -> Generator[None, None, None]:
     """
     :api_attr: Static Graph
 
@@ -8026,7 +8040,7 @@ def switch_device(device):
 
 
 @signature_safe_contextmanager
-def device_guard(device=None):
+def device_guard(device: str | None = None) -> Generator[None, None, None]:
     """
 
     Note:
@@ -8084,7 +8098,7 @@ def device_guard(device=None):
     ):
         raise ValueError(
             "The Attr(device) should be 'cpu', 'xpu', 'gpu' or custom device, and it can also be empty string or None "
-            "when there is no need to specify device. But received %s" % device
+            f"when there is no need to specify device. But received {device}"
         )
     if index:
         device = ":".join([device, index])
@@ -8243,7 +8257,7 @@ def dtype_to_str(in_dtype):
     elif in_dtype == core.VarDesc.VarType.COMPLEX128:
         return "complex128"
     else:
-        raise TypeError(f"got unspport data type for promotion: {in_dtype}.")
+        raise TypeError(f"got unsupport data type for promotion: {in_dtype}.")
 
 
 def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):

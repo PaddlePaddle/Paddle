@@ -196,11 +196,14 @@ struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
   void Visit(const Ramp* op, Expr* expr) override {
     auto* node = expr->As<ir::Ramp>();
 
-    CHECK(cinn::common::IsPureMath(node->base))
-        << node->base << "is not a pure math!";
-    CHECK(cinn::common::IsPureMath(node->stride))
-        << node->stride << "is not a pure math!";
-
+    PADDLE_ENFORCE_EQ(
+        cinn::common::IsPureMath(node->base),
+        true,
+        phi::errors::InvalidArgument("node->base is not a pure math!"));
+    PADDLE_ENFORCE_EQ(
+        cinn::common::IsPureMath(node->stride),
+        true,
+        phi::errors::InvalidArgument("node->stride is not a pure math!"));
     PartialSimplify(&node->base);
     PartialSimplify(&node->stride);
   }
@@ -307,7 +310,9 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
 
   void Visit(const ScheduleBlock* op, Expr* expr) override {
     auto* node = expr->As<ScheduleBlock>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            phi::errors::InvalidArgument(
+                                "The node expr->As<ScheduleBlock>() is null"));
     for (auto& var : node->iter_vars) {
       if (var->lower_bound.defined()) {
         Visit(&var->lower_bound, &var->lower_bound);

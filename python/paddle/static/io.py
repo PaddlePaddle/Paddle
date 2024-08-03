@@ -684,8 +684,7 @@ def deserialize_persistables(program, data, executor):
     """
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `base.Program`, but received `%s`"
-            % type(program)
+            f"program type must be `base.Program`, but received `{type(program)}`"
         )
     # load params to a tmp program
     load_program = Program()
@@ -838,7 +837,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
 
             >>> [inference_program, feed_target_names, fetch_targets] = (
             ...     paddle.static.load_inference_model(path_prefix, exe))
-            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
+            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32) # type: ignore[var-annotated]
             >>> results = exe.run(inference_program,
             ...               feed={feed_target_names[0]: tensor_img},
             ...               fetch_list=fetch_targets)
@@ -946,13 +945,37 @@ def load_inference_model(path_prefix, executor, **kwargs):
                 predicate=is_persistable,
                 filename=params_filename,
             )
-
     feed_target_names = program.desc.get_feed_target_names()
-    fetch_target_names = program.desc.get_fetch_target_names()
-    fetch_targets = [
-        program.global_block().var(name) for name in fetch_target_names
-    ]
+    if paddle.framework.in_pir_executor_mode():
+        with paddle.pir_utils.IrGuard():
+            program = paddle.pir.translate_to_pir(program.desc)
+            block = program.global_block()
+            remove_op_list = []
+            fetch_targets = []
+            for op in block.ops:
+                if op.name() == "pd_op.feed":
+                    var_name = op.attrs()["name"]
+                    org_value = op.result(0)
+                    with block:
+                        value = paddle.static.data(
+                            name=var_name,
+                            shape=org_value.shape,
+                            dtype=org_value.dtype,
+                        )
+                        org_value.replace_all_uses_with(value)
+                        value.get_defining_op().move_before(op)
+                    remove_op_list.append(op)
+            for op in remove_op_list:
+                block.remove_op(op)
+            for op in block.ops:
+                if op.name() == "pd_op.fetch":
+                    fetch_targets.append(op.operand_source(0))
 
+    else:
+        fetch_target_names = program.desc.get_fetch_target_names()
+        fetch_targets = [
+            program.global_block().var(name) for name in fetch_target_names
+        ]
     return [program, feed_target_names, fetch_targets]
 
 

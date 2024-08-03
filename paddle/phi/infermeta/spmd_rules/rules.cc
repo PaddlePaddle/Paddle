@@ -572,6 +572,10 @@ PD_REGISTER_SPMD_RULE(concat,
                       PD_INFER_SPMD(phi::distributed::ConcatInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ConcatInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(stack,
+                      PD_INFER_SPMD(phi::distributed::StackInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::StackInferSpmdReverse));
+
 // transpose rule
 PD_REGISTER_SPMD_RULE(
     transpose,
@@ -646,6 +650,11 @@ PD_REGISTER_SPMD_RULE(
     gather,
     PD_INFER_SPMD(phi::distributed::GatherInferSpmdBase),
     PD_INFER_SPMD(phi::distributed::GatherInferSpmdReverseBase));
+
+PD_REGISTER_SPMD_RULE(
+    gather_nd,
+    PD_INFER_SPMD(phi::distributed::GatherNdInferSpmd),
+    PD_INFER_SPMD(phi::distributed::GatherNdInferSpmdReverse));
 
 // one_hot
 PD_REGISTER_SPMD_RULE(one_hot,

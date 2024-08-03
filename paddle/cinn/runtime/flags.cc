@@ -81,16 +81,21 @@ PD_DEFINE_bool(general_fusion_merge_pass,
                BoolFromEnv("FLAGS_general_fusion_merge_pass", true),
                "Whether to use general fusion_merge pass.");
 
+PD_DEFINE_bool(
+    cinn_bc_branch_optimize,
+    BoolFromEnv("FLAGS_cinn_bc_branch_optimize", true),
+    "Whether to open the broadcast branch optimization in frontend.");
+
 PD_DEFINE_bool(cinn_new_group_scheduler,
-               BoolFromEnv("FLAGS_cinn_new_group_scheduler", false),
+               BoolFromEnv("FLAGS_cinn_new_group_scheduler", true),
                "Whether to use new group scheduler.");
 
 PD_DEFINE_bool(cinn_bucket_compile,
-               BoolFromEnv("FLAGS_cinn_bucket_compile", false),
+               BoolFromEnv("FLAGS_cinn_bucket_compile", true),
                "Whether to enable bucket compile for dynamic shape.");
 
 PD_DEFINE_bool(group_schedule_tiling_first,
-               BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
+               BoolFromEnv("FLAGS_group_schedule_tiling_first", true),
                "Whether to enable new group scheduler tiling first strategy.");
 
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
@@ -318,7 +323,7 @@ bool GetCinnCudnnDeterministic() {
 #ifdef CINN_WITH_CUDNN
   return FLAGS_cinn_cudnn_deterministic;
 #else
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "CINN is compiled without cuDNN, this api is invalid!"));
   return false;
 #endif
@@ -362,7 +367,7 @@ bool IsCompiledWithCUDNN() {
 }
 
 void CheckCompileOptionImpl(cinn::common::UnknownArch) {
-  PADDLE_THROW(phi::errors::Fatal("unknown architecture"));
+  PADDLE_THROW(::common::errors::Fatal("unknown architecture"));
 }
 
 void CheckCompileOptionImpl(cinn::common::X86Arch) {
@@ -377,7 +382,7 @@ void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
 #if defined(CINN_WITH_CUDNN)
   // Do nothing;
 #else
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "Current CINN version does not support NVGPU, please try to "
       "recompile with -DWITH_CUDA."));
 #endif
@@ -387,7 +392,7 @@ void CheckCompileOptionImpl(cinn::common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
   // Do nothing;
 #else
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "Current CINN version does not support HygonDCU, please try to "
       "recompile with -DWITH_ROCM."));
 #endif

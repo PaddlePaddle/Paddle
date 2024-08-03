@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/complex_grad_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -24,6 +27,11 @@ template <typename T, typename Context>
 void RealGradStridedKernel(const Context& dev_ctx,
                            const DenseTensor& dout,
                            DenseTensor* dx) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   dev_ctx.Alloc(dx, dx->dtype());
   dx->set_strides(DenseTensorMeta::calc_strides(dx->dims()));
   PD_VISIT_ALL_TYPES(dx->dtype(), "RealGradStridedKernel", ([&] {
@@ -46,6 +54,11 @@ template <typename T, typename Context>
 void ImagGradStridedKernel(const Context& dev_ctx,
                            const DenseTensor& dout,
                            DenseTensor* dx) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   dev_ctx.Alloc(dx, dx->dtype());
   dx->set_strides(DenseTensorMeta::calc_strides(dx->dims()));
   PD_VISIT_ALL_TYPES(dx->dtype(), "ImagGradStridedKernel", ([&] {

@@ -28,7 +28,7 @@ void AddVarToScope(Scope* param_scope,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  tensor->mutable_data<float>(platform::CPUPlace());
+  tensor->mutable_data<float>(phi::CPUPlace());
 }
 
 Scope* CreateParamScope() {

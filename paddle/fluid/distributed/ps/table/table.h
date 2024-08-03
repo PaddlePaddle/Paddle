@@ -31,7 +31,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
@@ -92,7 +92,7 @@ class Table {
   // only for tensor table
   virtual int32_t SetProgramEnv(
       framework::Scope *scope UNUSED,
-      platform::Place place UNUSED,
+      phi::Place place UNUSED,
       const std::vector<framework::ProgramDesc> *sub_program UNUSED) {
     return 0;
   }

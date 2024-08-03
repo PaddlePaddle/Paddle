@@ -356,6 +356,10 @@ void KernelWithXShapeInferMeta(const MetaTensor& xshape,
                                const MetaTensor& out,
                                MetaTensor* dx);
 
+void ReshapeGradInferMeta(const MetaTensor& xshape,
+                          const MetaTensor& out,
+                          MetaTensor* dx);
+
 void LUGradInferMeta(const MetaTensor& x,
                      const MetaTensor& out,
                      const MetaTensor& pivots,
@@ -406,6 +410,7 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const std::vector<int>& paddings,
                                    bool global_pooling,
                                    bool adaptive,
+                                   bool ceil_mode,
                                    MetaTensor* dx);
 
 void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,

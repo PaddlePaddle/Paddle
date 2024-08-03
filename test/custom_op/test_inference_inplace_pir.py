@@ -126,5 +126,130 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         pir_output = self.get_outputs(pir_predictor)
 
 
+class TestPredictorRunWithConfig(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        net = TestInplaceNet()
+        model = paddle.jit.to_static(
+            net,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 4], dtype='float32', name='x'
+                ),
+            ],
+            full_graph=True,
+        )
+        paddle.jit.save(
+            model,
+            os.path.join(
+                self.temp_dir.name, 'test_predictor_run_model/inference'
+            ),
+        )
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def init_predictor(self):
+        config = Config(
+            os.path.join(
+                self.temp_dir.name,
+                'test_predictor_run_model',
+            ),
+            'inference',
+        )
+        config.enable_use_gpu(256, 0)
+        config.switch_ir_optim(False)
+        config.enable_new_executor()
+        config.enable_new_ir()
+        predictor = create_predictor(config)
+        return predictor
+
+    def get_inputs(self):
+        x = np.array([[1, 2, 3, 4], [2, 3, 4, 5]]).astype(np.float32)
+
+        x_tensor = paddle.to_tensor(x)
+
+        return [x_tensor]
+
+    def get_outputs(self, predictor):
+        [x_tensor] = self.get_inputs()
+
+        input_names = predictor.get_input_names()
+        x_tensor.name = input_names[0]
+
+        # disorder
+        inputs = [x_tensor]
+        outputs = predictor.run(inputs)
+
+        return outputs[0]
+
+    def test_output(self):
+        pir_predictor = self.init_predictor()
+        pir_output = self.get_outputs(pir_predictor)
+
+
+class TestPredictorRunWithConfigSetModel(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        net = TestInplaceNet()
+        model = paddle.jit.to_static(
+            net,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 4], dtype='float32', name='x'
+                ),
+            ],
+            full_graph=True,
+        )
+        paddle.jit.save(
+            model,
+            os.path.join(
+                self.temp_dir.name, 'test_predictor_run_model/inference'
+            ),
+        )
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def init_predictor(self):
+        config = Config()
+        config.set_model(
+            os.path.join(
+                self.temp_dir.name,
+                'test_predictor_run_model',
+            ),
+            'inference',
+        )
+        config.enable_use_gpu(256, 0)
+        config.switch_ir_optim(False)
+        config.enable_new_executor()
+        config.enable_new_ir()
+        predictor = create_predictor(config)
+        return predictor
+
+    def get_inputs(self):
+        x = np.array([[1, 2, 3, 4], [2, 3, 4, 5]]).astype(np.float32)
+
+        x_tensor = paddle.to_tensor(x)
+
+        return [x_tensor]
+
+    def get_outputs(self, predictor):
+        [x_tensor] = self.get_inputs()
+
+        input_names = predictor.get_input_names()
+        x_tensor.name = input_names[0]
+
+        # disorder
+        inputs = [x_tensor]
+        outputs = predictor.run(inputs)
+
+        return outputs[0]
+
+    def test_output(self):
+        pir_predictor = self.init_predictor()
+        pir_output = self.get_outputs(pir_predictor)
+
+
 if __name__ == "__main__":
     unittest.main()

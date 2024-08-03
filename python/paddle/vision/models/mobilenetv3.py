@@ -17,6 +17,7 @@ from __future__ import annotations
 from functools import partial
 from typing import (
     TYPE_CHECKING,
+    Callable,
     TypedDict,
 )
 
@@ -69,8 +70,8 @@ class SqueezeExcitation(nn.Layer):
         self,
         input_channels: int,
         squeeze_channels: int,
-        activation: type[nn.Layer] = nn.ReLU,
-        scale_activation: type[nn.Layer] = nn.Sigmoid,
+        activation: Callable[..., nn.Layer] = nn.ReLU,
+        scale_activation: Callable[..., nn.Layer] = nn.Sigmoid,
     ) -> None:
         super().__init__()
         self.avgpool = nn.AdaptiveAvgPool2D(1)
@@ -136,8 +137,8 @@ class InvertedResidual(nn.Layer):
         filter_size: int,
         stride: int,
         use_se: bool,
-        activation_layer: type[nn.Layer],
-        norm_layer: type[nn.Layer],
+        activation_layer: Callable[..., nn.Layer],
+        norm_layer: Callable[..., nn.Layer],
     ) -> None:
         super().__init__()
         self.use_res_connect = stride == 1 and in_channels == out_channels

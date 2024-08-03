@@ -93,8 +93,8 @@ API_INNER_CODE_TEMPLATE = """
     {handle_optional_inputs}
     {in_combine}
     {compute_op}
-    {handle_optional_outputs}
     {set_null_type}
+    {handle_optional_outputs}
     {out_split}
     {return_result}"""
 
@@ -126,7 +126,7 @@ OP_DISPATCH_TEMPLATE = """
     }}"""
 
 OP_DISPATCH_ERROR_TEMPLATE = """
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The kernel of ({op_name}) for input Value is unimplemented, please check the type of input Value."));"""
 
 

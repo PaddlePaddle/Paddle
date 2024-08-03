@@ -148,6 +148,13 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
 
   return var_json;
 }
+#define OPTIONAL_CHECK(array_json, attr_name, int)          \
+  if (op.attributes().count(attr_name) > 0) {               \
+    array_json.emplace_back(                                \
+        ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE(attr_name)); \
+  } else {                                                  \
+    array_json.emplace_back(int);                           \
+  }
 
 #define ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE(attr_name)   \
   static_cast<int32_t>(op.attributes()                      \
@@ -157,6 +164,28 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
                            .dyn_cast<pir::BoolAttribute>()  \
                            .data())
 Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
+  std::vector<std::string> AttrsNameList = {"is_distributed",
+                                            "is_parameter",
+                                            "need_clip",
+                                            "parameter_name",
+                                            "persistable",
+                                            "stop_gradient",
+                                            "trainable",
+                                            "op_callstack" /*no need*/};
+
+  for (auto attr : op.attributes()) {
+    auto attr_name = attr.first;
+    auto it = std::find(AttrsNameList.begin(), AttrsNameList.end(), attr_name);
+    if (it == AttrsNameList.end()) {
+      PADDLE_ENFORCE(
+          false,
+          common::errors::InvalidArgument(
+              "attr name %s not supposed be serialized in WriteParameterOP, "
+              "please add it in order and add deserialization code in "
+              "ReadParameterOP.",
+              attr_name));
+    }
+  }
   // attr_name ; type
   // is_distributed; array(bool)
   // is_parameter; array(bool)
@@ -171,23 +200,26 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
   VLOG(4) << "Begin write Operation " << op.name() << ".";
   op_json[OPRESULTS] = WriteValue(op.result(0));
   Json attrs_json = Json::array();
-  attrs_json.emplace_back(
-      ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("is_distributed"));
-  attrs_json.emplace_back(
-      ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("is_parameter"));
-  attrs_json.emplace_back(ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("need_clip"));
-  attrs_json.emplace_back(op.attributes()
-                              .at("parameter_name")
-                              .dyn_cast<pir::StrAttribute>()
-                              .AsString());
+  OPTIONAL_CHECK(attrs_json, "is_distributed", 0)
+  OPTIONAL_CHECK(attrs_json, "is_parameter", 1)
+  OPTIONAL_CHECK(attrs_json, "need_clip", 0)
+
+  if (op.attributes().count("parameter_name") > 0) {
+    attrs_json.emplace_back(op.attributes()
+                                .at("parameter_name")
+                                .dyn_cast<pir::StrAttribute>()
+                                .AsString());
+  } else {
+    PADDLE_ENFORCE(false,
+                   common::errors::InvalidArgument(
+                       "parameter_name not found in ParameterOp"));
+  }
   op_json[ATTRS] = attrs_json;
+
   Json other_attrs_json = Json::array();
-  other_attrs_json.emplace_back(
-      ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("persistable"));
-  other_attrs_json.emplace_back(
-      ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("stop_gradient"));
-  other_attrs_json.emplace_back(
-      ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("trainable"));
+  OPTIONAL_CHECK(other_attrs_json, "persistable", 1)
+  OPTIONAL_CHECK(other_attrs_json, "stop_gradient", 1)
+  OPTIONAL_CHECK(other_attrs_json, "trainable", 1)
   if (trainable_) {
     op_json[OPRESULTS_ATTRS] = other_attrs_json;
   }

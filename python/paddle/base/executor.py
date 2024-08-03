@@ -533,6 +533,20 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
                 out.persistable = True
 
 
+def _add_single_pir_fetch_op(program, fetch_value, fetch_name, fetch_col):
+    import paddle
+
+    global_block = program.global_block()
+    fetch_op = "pd_op.fetch"
+    need_fetch_info = has_fetch_operations(
+        global_block, [fetch_value], fetch_name, fetch_op
+    )
+    if need_fetch_info:
+        with paddle.static.program_guard(program):
+            out = paddle._pir_ops.fetch(fetch_value, fetch_name, fetch_col)
+            out.persistable = True
+
+
 def _merge_tensors(tensor, micro_batch_num):
     if micro_batch_num <= 1:
         return tensor
@@ -605,12 +619,8 @@ def _to_name_str(var):
             return var.desc.name()
         elif isinstance(var, str):
             return var
-        elif isinstance(var, str):
-            return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
-        elif isinstance(var, Value):
-            return str(var)
         elif isinstance(var, Value):
             return str(var)
         else:
@@ -725,11 +735,7 @@ def _as_lodtensor(data, place, dtype=None):
         assert (
             dtype is not None
         ), 'The dtype should be given when feed data is not np.ndarray'
-        dtype = (
-            convert_dtype(dtype)
-            if isinstance(dtype, core.VarDesc.VarType)
-            else dtype
-        )
+        dtype = convert_dtype(dtype)
         if np.isscalar(data):
             data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
@@ -864,6 +870,7 @@ class _ExecutorCache:
             fetch_var_name,
             place,
             scope,
+            plan=None,
         ):
             self.program = program
             self.feed = feed
@@ -872,6 +879,7 @@ class _ExecutorCache:
             self.fetch_var_name = fetch_var_name
             self.place = place
             self.scope = scope
+            self.plan = plan
 
             # NOTE(Ruibiao): Not all changeable item is considered for key at present,
             # ONLY: program, feed, and fetch_list
@@ -1122,7 +1130,17 @@ class _ExecutorCache:
         fetch_var_name,
         place,
         scope,
+        plan,
     ):
+        if plan is None:
+            _add_pir_fetch_ops(
+                program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
+            )
+        else:
+            for i, value in enumerate(fetch_list):
+                _add_single_pir_fetch_op(
+                    value.block.program, value, fetch_var_name + str(i), i
+                )
         return self._get_cached_program_and_executor_pir_mode(
             self._CachedData(
                 program,
@@ -1132,6 +1150,7 @@ class _ExecutorCache:
                 fetch_var_name,
                 place,
                 scope,
+                plan,
             )
         )
 
@@ -1144,13 +1163,12 @@ class _ExecutorCache:
         place = cached_data.place
         scope = cached_data.scope
 
-        _add_pir_fetch_ops(
-            program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
-        )
-
-        default_job = core.Job("default")
-        type_to_program = {"default": program}
-        plan = core.Plan([default_job], type_to_program)
+        if cached_data.plan is None:
+            default_job = core.Job("default")
+            type_to_program = {"default": program}
+            plan = core.Plan([default_job], type_to_program)
+        else:
+            plan = cached_data.plan
 
         new_exe = _StandaloneExecutor(place, plan, scope)
 
@@ -1261,6 +1279,7 @@ class Executor:
         self._closed = False
         self.pruned_program_scope_caches = {}
         self._prepare_to_run_called = False
+        self.plan = None
 
         self._auto_checkpoint_name = unique_name.generate(
             "__auto_checkpoint_executor__"
@@ -1288,6 +1307,9 @@ class Executor:
         # that brings errors to mkl-dnn unit tests (see ClearMKLDNNCache in interpretercore.cc for why).
         self.close()
         self._executor_cache.clear()
+
+    def _set_plan(self, plan):
+        self.plan = plan
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -2103,6 +2125,7 @@ class Executor:
             fetch_var_name,
             self.place,
             scope,
+            self.plan,
         )
         self._pir_feed_data(program, feed, scope, data_op_infos)
 
@@ -3133,7 +3156,7 @@ class Executor:
                 >>> dataset.set_use_var([x, y])
                 >>> dataset.set_thread(1)
                 >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-                >>> filelist = []
+                >>> filelist = [] # type: ignore[var-annotated]
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
                 >>> exe.infer_from_dataset(program=paddle.static.default_main_program(),
@@ -3255,7 +3278,7 @@ class Executor:
                 >>> dataset.set_use_var([x, y])
                 >>> dataset.set_thread(1)
                 >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-                >>> filelist = []
+                >>> filelist = [] # type: ignore[var-annotated]
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
                 >>> exe.train_from_dataset(program=paddle.static.default_main_program(),

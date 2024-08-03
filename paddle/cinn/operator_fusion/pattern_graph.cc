@@ -254,12 +254,12 @@ PatternNodePtr<T> PatternGraph<T>::MergeNode(
   PADDLE_ENFORCE_EQ(
       vec_unique(merged_node->upstream()),
       true,
-      phi::errors::PreconditionNotMet(
+      ::common::errors::PreconditionNotMet(
           "The upstream nodes of the merged node are not unique."));
   PADDLE_ENFORCE_EQ(
       vec_unique(merged_node->downstream()),
       true,
-      phi::errors::PreconditionNotMet(
+      ::common::errors::PreconditionNotMet(
           "The downstream nodes of the merged node are not unique."));
 
   // deal with the graph storage.

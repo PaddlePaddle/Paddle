@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/view_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/strided_reshape_utils.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -23,6 +26,11 @@ void ViewShapeKernel(const Context& dev_ctx,
                      const DenseTensor& input,
                      const std::vector<int64_t>& dims,
                      DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   // infer dims
   auto infer_dim = -1;
   auto new_size = 1;
@@ -69,6 +77,11 @@ void ViewDtypeKernel(const Context& dev_ctx,
                      const DenseTensor& input,
                      DataType dtype,
                      DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(
+        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
+                           "be called, something wrong has happened!"));
+  }
   size_t input_dtype_size = phi::SizeOf(input.dtype());
   size_t output_dtype_size = phi::SizeOf(dtype);
 

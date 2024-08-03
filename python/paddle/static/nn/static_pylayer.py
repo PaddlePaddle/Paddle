@@ -330,7 +330,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                 ...     data_grad = paddle.static.gradients([ret], data)[0]
 
                 >>> exe.run(start_program)
-                >>> x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32)
+                >>> x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32) # type: ignore[var-annotated]
                 >>> x, x_grad, y = exe.run(
                 ...     main_program,
                 ...     feed={"X": x},

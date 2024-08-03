@@ -15,6 +15,7 @@
 
 #include <string>
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/include/core/dll_decl.h"
 #include "paddle/pir/include/core/program.h"
 namespace pir {
 /**
@@ -37,12 +38,12 @@ namespace pir {
  * @note readable and trainable Parameters may affect the content and format of
  * the generated file, depending on implementation.
  */
-void WriteModule(const pir::Program& program,
-                 const std::string& file_path,
-                 const uint64_t& pir_version,
-                 bool overwrite,
-                 bool readable = false,
-                 bool trainable = true);
+void IR_API WriteModule(const pir::Program& program,
+                        const std::string& file_path,
+                        const uint64_t& pir_version,
+                        bool overwrite,
+                        bool readable = false,
+                        bool trainable = true);
 
 /**
  * @brief Gets a PIR program from the specified file path.
@@ -60,9 +61,9 @@ void WriteModule(const pir::Program& program,
  * @note If 'pir_version' is larger than the version of file, will trigger
  * version compatibility modification rule.
  */
-bool ReadModule(const std::string& file_path,
-                pir::Program* program,
-                const uint64_t& pir_version);
+bool IR_API ReadModule(const std::string& file_path,
+                       pir::Program* program,
+                       const uint64_t& pir_version);
 
 /**
  * @brief Save the given tensor into a single file at the specified file path
@@ -79,11 +80,11 @@ bool ReadModule(const std::string& file_path,
  * @return void。
  *
  */
-void SaveFunction(const phi::DenseTensor& x,
-                  const std::string& name,
-                  const std::string& file_path,
-                  bool overwrite,
-                  bool save_as_fp16);
+void IR_API SaveFunction(const phi::DenseTensor& x,
+                         const std::string& name,
+                         const std::string& file_path,
+                         bool overwrite,
+                         bool save_as_fp16);
 
 /**
  * @brief Save the given tensor list into a combined file at the specified file
@@ -103,12 +104,12 @@ void SaveFunction(const phi::DenseTensor& x,
  * @return void。
  *
  */
-void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
-                         const std::vector<std::string>& names,
-                         const std::string& file_path,
-                         bool overwrite,
-                         bool save_as_fp16,
-                         bool save_to_memory);
+void IR_API SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
+                                const std::vector<std::string>& names,
+                                const std::string& file_path,
+                                bool overwrite,
+                                bool save_as_fp16,
+                                bool save_to_memory);
 
 /**
  * @brief Save the given tensor into a single file at the specified file path
@@ -124,12 +125,12 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
  * @return void。
  *
  */
-void LoadFunction(const std::string& file_path,
-                  int64_t seek,
-                  const std::vector<int64_t>& shape,
-                  bool load_as_fp16,
-                  phi::DenseTensor* out,
-                  phi::Place place = phi::Place());
+void IR_API LoadFunction(const std::string& file_path,
+                         int64_t seek,
+                         const std::vector<int64_t>& shape,
+                         bool load_as_fp16,
+                         phi::DenseTensor* out,
+                         phi::Place place = phi::Place());
 
 /**
  * @brief Save the given tensor into a single file at the specified file path
@@ -144,9 +145,9 @@ void LoadFunction(const std::string& file_path,
  * @return void。
  *
  */
-void LoadCombineFunction(const std::string& file_path,
-                         const std::vector<std::string>& names,
-                         std::vector<phi::DenseTensor*>* out,
-                         bool load_as_fp16,
-                         phi::Place place = phi::Place());
+void IR_API LoadCombineFunction(const std::string& file_path,
+                                const std::vector<std::string>& names,
+                                std::vector<phi::DenseTensor*>* out,
+                                bool load_as_fp16,
+                                phi::Place place = phi::Place());
 }  // namespace pir

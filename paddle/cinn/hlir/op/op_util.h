@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/packed_func.h"
@@ -130,7 +129,7 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
   } else {
     std::stringstream ss;
     ss << "Not support " << type;
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return shape_v;
 }

@@ -15,7 +15,7 @@
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 COMMON_DECLARE_string(allocator_strategy);
 
@@ -36,7 +36,7 @@ static AllocatorStrategy GetStrategyFromFlag() {
     return AllocatorStrategy::kThreadLocal;
   }
 
-  PADDLE_THROW(platform::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "Unsupported allocator strategy: %s, candidates are naive_best_fit, "
       "auto_growth or thread_local.",
       FLAGS_allocator_strategy));

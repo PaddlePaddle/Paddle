@@ -49,6 +49,15 @@ void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void AnchorGeneratorInferMeta(const MetaTensor& input,
+                              const std::vector<float>& anchor_sizes,
+                              const std::vector<float>& aspect_ratios,
+                              const std::vector<float>& variances,
+                              const std::vector<float>& stride,
+                              float offset,
+                              MetaTensor* anchors,
+                              MetaTensor* variances_out);
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -356,9 +365,6 @@ void HashInferMeta(const MetaTensor& x,
                    int64_t mod_by,
                    MetaTensor* out);
 
-void HistogramInferMeta(
-    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out);
-
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out);
@@ -413,6 +419,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& paddings,
                                bool global_pooling,
                                bool adaptive,
+                               bool ceil_mode,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
@@ -666,6 +673,8 @@ void SequencePoolInferMeta(const MetaTensor& x,
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void ShareDataInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void ShardIndexInferMeta(const MetaTensor& in,
@@ -710,6 +719,8 @@ void FillSplitOutDims(const MetaTensor& x,
                       const int axis_value,
                       const std::vector<int64_t>& sections_vec,
                       std::vector<MetaTensor*>* out);
+
+void SequenceSoftmaxInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void SplitInferMeta(const MetaTensor& x_meta,
                     const IntArray& sections,
@@ -849,6 +860,8 @@ void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
+void UnchangedInferMetaIncludingTensorArray(const MetaTensor& x,
+                                            MetaTensor* out);
 void UnchangedVectorInferMeta(const std::vector<const MetaTensor*>& xs,
                               std::vector<MetaTensor*> outs);
 

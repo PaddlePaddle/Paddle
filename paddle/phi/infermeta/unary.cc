@@ -155,6 +155,32 @@ void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(dim);
 }
 
+void AnchorGeneratorInferMeta(const MetaTensor& input,
+                              const std::vector<float>& anchor_sizes,
+                              const std::vector<float>& aspect_ratios,
+                              const std::vector<float>& variances,
+                              const std::vector<float>& stride,
+                              float offset,
+                              MetaTensor* anchors,
+                              MetaTensor* variances_out) {
+  const auto& input_dims = input.dims();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("The layout of input is NCHW."));
+
+  size_t num_anchors = aspect_ratios.size() * anchor_sizes.size();
+  std::vector<int64_t> dim_vec(4);
+  dim_vec[0] = input_dims[2];
+  dim_vec[1] = input_dims[3];
+  dim_vec[2] = static_cast<int64_t>(num_anchors);
+  dim_vec[3] = 4;
+  anchors->set_dims(common::make_ddim(dim_vec));
+  anchors->set_dtype(input.dtype());
+  variances_out->set_dims(common::make_ddim(dim_vec));
+  variances_out->set_dtype(input.dtype());
+}
+
 void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(phi::DataType::INT64);
   out->set_dims(common::make_ddim({1}));
@@ -2072,27 +2098,6 @@ void HashInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void HistogramInferMeta(
-    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out) {
-  PADDLE_ENFORCE_GE(bins,
-                    1,
-                    phi::errors::InvalidArgument(
-                        "The bins should be greater than or equal to 1."
-                        "But received nbins is %d",
-                        bins));
-  PADDLE_ENFORCE_GE(
-      max,
-      min,
-      phi::errors::InvalidArgument("max must be larger or equal to min."
-                                   "But received max is %d, min is %d",
-                                   max,
-                                   min));
-
-  out->set_dims({bins});
-  out->share_lod(input);
-  out->set_dtype(DataType::INT64);
-}
-
 void IdentityLossInferMeta(const MetaTensor& x,
                            int reduction,
                            MetaTensor* out) {
@@ -2542,6 +2547,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& paddings,
                                bool global_pooling,
                                bool adaptive,
+                               bool ceil_mode,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config) {
@@ -2600,7 +2606,8 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
             funcs::MaxPoolOutputSize(static_cast<int>(x_dims[i + 2]),
                                      kernel_size_[i],
                                      paddings_[i],
-                                     strides[i]));
+                                     strides[i],
+                                     ceil_mode));
       }
     }
   }
@@ -3913,14 +3920,14 @@ void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
       axis_data.size(),
       1,
       phi::errors::InvalidArgument(
-          "The size of axis must be 1 when the Input(X) is LoDTensorArray, "
+          "The size of axis must be 1 when the Input(X) is phi::TensorArray, "
           "but received %d.",
           axis_data.size()));
   PADDLE_ENFORCE_EQ(
       axis_data[0],
       0,
       phi::errors::InvalidArgument("The value of axis should be 1 when "
-                                   "the Input(X) is LoDTensorArray, "
+                                   "the Input(X) is phi::TensorArray, "
                                    "but received %d.",
                                    axis_data[0]));
 }
@@ -4021,6 +4028,11 @@ void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
   auto in_dim = input.dims();
   out->set_dims(common::make_ddim({in_dim.size()}));
   out->set_dtype(DataType::INT32);
+}
+
+void ShareDataInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void ShardIndexInferMeta(const MetaTensor& in,
@@ -4254,6 +4266,11 @@ void QuantizeXPUInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   y->set_dims(x_dims);
   y->set_dtype(out_dtype);
+}
+
+void SequenceSoftmaxInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
 }
 
 void SplitInferMeta(const MetaTensor& x,
@@ -5279,6 +5296,15 @@ void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void UnchangedInferMetaIncludingTensorArray(const MetaTensor& x,
+                                            MetaTensor* out) {
+  if (x.is_tensor_array()) {
+    UnchangedArrayInferMeta(x, out);
+  } else {
+    UnchangedInferMeta(x, out);
+  }
+}
+
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
@@ -5816,12 +5842,14 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              const int32_t group_size,
                              MetaTensor* out,
                              MetaTensor* scale) {
+#ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
        (arch == 89) || (arch == 90)),
       true,
       phi::errors::InvalidArgument(
           "Currently, arch only support 70, 75, 80, 86, 89, 90."));
+#endif
 
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(

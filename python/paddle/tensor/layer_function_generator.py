@@ -71,8 +71,8 @@ def generate_layer_fn(op_type: str):
 
     if len(not_intermediate_outputs) != 1:
         raise ValueError(
-            "Only one non intermediate output operator can be",
-            f"automatically generated. {op_type}",
+            "Only one non intermediate output operator can be"
+            f"automatically generated. {op_type}"
         )
 
     if not_intermediate_outputs[0].duplicable:
@@ -83,8 +83,8 @@ def generate_layer_fn(op_type: str):
     for output in intermediate_outputs:
         if output.duplicable:
             raise ValueError(
-                "The op can be automatically generated only when ",
-                "all intermediate ops are not duplicable.",
+                "The op can be automatically generated only when "
+                "all intermediate ops are not duplicable."
             )
 
     o_name = not_intermediate_outputs[0].name

@@ -15,34 +15,45 @@
 incubate layers just related to the neural network.
 """
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.base import core, unique_name
 from paddle.base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle.base.framework import Variable, convert_np_dtype_to_dtype_
+from paddle.base.framework import (
+    Variable,
+    convert_np_dtype_to_dtype_,
+    in_dynamic_or_pir_mode,
+)
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.param_attr import ParamAttr
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DTypeLike, ParamAttrLike
 
 __all__ = []
 
 
 def fused_embedding_seq_pool(
-    input,
-    size,
-    is_sparse=False,
-    padding_idx=None,
-    combiner='sum',
-    param_attr=None,
-    dtype='float32',
-):
+    input: Tensor,
+    size: list[int] | tuple[int, int],
+    is_sparse: bool = False,
+    padding_idx: int | None = None,
+    combiner: Literal['sum'] = 'sum',
+    param_attr: ParamAttrLike | None = None,
+    dtype: DTypeLike = 'float32',
+) -> Tensor:
     r"""
     **Embedding Sequence pool**
 
@@ -56,14 +67,14 @@ def fused_embedding_seq_pool(
             embedding and the size of each embedding vector respectively.
         is_sparse (bool, optional): The flag indicating whether to use sparse update.
             Default: False.
-        padding_idx (int|long|None, optional): It will output all-zero padding data whenever
+        padding_idx (int|None, optional): It will output all-zero padding data whenever
             lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
             no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
             will automatically be converted to :math:`size[0] + padding\_idx` to use.
             Default: None.
         combiner (str, optional): The pooling type of sequence_pool, and only support `sum`.
             Default: sum.
-        param_attr (ParamAttr, optional): Parameters for this layer. Default: None.
+        param_attr (ParamAttr|None, optional): Parameters for this layer. Default: None.
         dtype (np.dtype|core.VarDesc.VarType|str, optional): The dtype refers to the data type of output
             tensor. It can be float32, float_16, int etc. Default: float32.
 
@@ -115,8 +126,13 @@ def fused_embedding_seq_pool(
 
 
 def fused_seqpool_cvm(
-    input, pool_type, cvm, pad_value=0.0, use_cvm=True, cvm_offset=2
-):
+    input: Tensor,
+    pool_type: Literal['sum'],
+    cvm: Tensor,
+    pad_value: float = 0.0,
+    use_cvm: bool = True,
+    cvm_offset: int = 2,
+) -> Tensor:
     """
     :api_attr: Static Graph
 
@@ -193,18 +209,18 @@ def fused_seqpool_cvm(
 
 
 def multiclass_nms2(
-    bboxes,
-    scores,
-    score_threshold,
-    nms_top_k,
-    keep_top_k,
-    nms_threshold=0.3,
-    normalized=True,
-    nms_eta=1.0,
-    background_label=0,
-    return_index=False,
-    name=None,
-):
+    bboxes: Tensor,
+    scores: Tensor,
+    score_threshold: float,
+    nms_top_k: int,
+    keep_top_k: int,
+    nms_threshold: float = 0.3,
+    normalized: bool = True,
+    nms_eta: float = 1.0,
+    background_label: int = 0,
+    return_index: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     **Multiclass NMS2**
 
@@ -257,7 +273,7 @@ def multiclass_nms2(
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0.
         return_index(bool, optional): Whether return selected index. Default: False.
-        name(str, optional): Name of the multiclass nms op. Default: None.
+        name(str|None, optional): Name of the multiclass nms op. Default: None.
 
     Returns:
         A tuple with two dimensions of the tensor: (Out, Index) if return_index is True,
@@ -323,25 +339,25 @@ def multiclass_nms2(
 
 
 def search_pyramid_hash(
-    input,
-    num_emb,
-    space_len,
-    pyramid_layer,
-    rand_len,
-    drop_out_percent,
-    is_training,
-    use_filter,
-    white_list_len,
-    black_list_len,
-    seed,
-    lr,
-    param_attr=None,
-    param_attr_wl=None,
-    param_attr_bl=None,
-    name=None,
-    distribute_update_vars=None,
-    dtype='float32',
-):
+    input: Tensor,
+    num_emb: int,
+    space_len: int,
+    pyramid_layer: int,
+    rand_len: int,
+    drop_out_percent: float,
+    is_training: bool,
+    use_filter: bool,
+    white_list_len: int,
+    black_list_len: int,
+    seed: int,
+    lr: float,
+    param_attr: ParamAttrLike | None = None,
+    param_attr_wl: ParamAttrLike | None = None,
+    param_attr_bl: ParamAttrLike | None = None,
+    name: str | None = None,
+    distribute_update_vars: list[str] | None = None,
+    dtype: DTypeLike = 'float32',
+) -> Tensor:
     """
     **Pyramid hash embedding**
 
@@ -363,13 +379,13 @@ def search_pyramid_hash(
         seed (int): The number of random seed.
         lr (float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
             in this layer.
-        param_attr (ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
+        param_attr (ParamAttr|None, optional): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
-        param_attr_wl (ParamAttr, optional): Specified parameters of white filter. Default: None.
-        param_attr_bl (ParamAttr, optional): Specified parameters of black filter. Default: None.
-        distribute_update_vars(list[ParamAttr.name], optional): Decided which params should be updated in distribute training.
+        param_attr_wl (ParamAttr|None, optional): Specified parameters of white filter. Default: None.
+        param_attr_bl (ParamAttr|None, optional): Specified parameters of black filter. Default: None.
+        distribute_update_vars(list[ParamAttr.name]|None, optional): Decided which params should be updated in distribute training.
             Used in Distribute Transpiler to create a trainer/server program. Default: None.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+        name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` . Default: None.
         dtype (str, optional): The data type of output Tensor, float32. Default: float32.
 
@@ -417,34 +433,54 @@ def search_pyramid_hash(
                     f"Pyramid Hash layer didn't have parameter {param}"
                 )
         distribute_update_vars_str = ",".join(distribute_update_vars)
+    if in_dynamic_or_pir_mode():
+        res, drop_pos = _C_ops.pyramid_hash(
+            input_vars['X'],
+            input_vars['W'],
+            input_vars['WhiteList'],
+            input_vars['BlackList'],
+            num_emb,
+            space_len,
+            pyramid_layer,
+            rand_len,
+            drop_out_percent,
+            int(is_training),
+            use_filter,
+            white_list_len,
+            black_list_len,
+            seed,
+            lr,
+            distribute_update_vars_str,
+        )
+        return res
+    else:
+        res = helper.create_variable_for_type_inference(dtype)
+        drop_pos = helper.create_variable_for_type_inference(dtype)
+        x_temp_out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='pyramid_hash',
+            inputs=input_vars,
+            outputs={"Out": res, "X_Temp_Out": x_temp_out, 'DropPos': drop_pos},
+            attrs={
+                'num_emb': num_emb,
+                'space_len': space_len,
+                'pyramid_layer': pyramid_layer,
+                'rand_len': rand_len,
+                'drop_out_percent': drop_out_percent,
+                'is_training': is_training,
+                'use_filter': use_filter,
+                'white_list_len': white_list_len,
+                'black_list_len': black_list_len,
+                'seed': seed,
+                'lr': lr,
+                'distribute_update_vars': distribute_update_vars_str,
+            },
+        )
 
-    res = helper.create_variable_for_type_inference(dtype)
-    drop_pos = helper.create_variable_for_type_inference(dtype)
-    x_temp_out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='pyramid_hash',
-        inputs=input_vars,
-        outputs={"Out": res, "X_Temp_Out": x_temp_out, 'DropPos': drop_pos},
-        attrs={
-            'num_emb': num_emb,
-            'space_len': space_len,
-            'pyramid_layer': pyramid_layer,
-            'rand_len': rand_len,
-            'drop_out_percent': drop_out_percent,
-            'is_training': is_training,
-            'use_filter': use_filter,
-            'white_list_len': white_list_len,
-            'black_list_len': black_list_len,
-            'seed': seed,
-            'lr': lr,
-            'distribute_update_vars': distribute_update_vars_str,
-        },
-    )
-
-    return res
+        return res
 
 
-def shuffle_batch(x, seed=None):
+def shuffle_batch(x: Tensor, seed: int | Tensor | None = None) -> Tensor:
     """
     This layer shuffle input tensor :attr:`x` . Normally, :attr:`x` is 2-D LoDTensor.
 
@@ -508,7 +544,9 @@ def shuffle_batch(x, seed=None):
     return out
 
 
-def partial_concat(input, start_index=0, length=-1):
+def partial_concat(
+    input: list[Tensor], start_index: int = 0, length: int = -1
+) -> Tensor:
     """
     **Partial Concat**
     This OP concatenates the inputs according to the start index and length. This
@@ -552,8 +590,7 @@ def partial_concat(input, start_index=0, length=-1):
     """
     if not isinstance(input, list):
         warnings.warn(
-            "The type of input in partial_concat should be list, but received %s."
-            % (type(input))
+            f"The type of input in partial_concat should be list, but received {type(input)}."
         )
         input = [input]
     for id, x in enumerate(input):
@@ -587,7 +624,9 @@ def partial_concat(input, start_index=0, length=-1):
     return out
 
 
-def partial_sum(input, start_index=0, length=-1):
+def partial_sum(
+    input: list[Tensor], start_index: int = 0, length: int = -1
+) -> Tensor:
     """
     **PartialSum**
     This Op can sum the vars by specifying the initial position(start_index) and length(length).
@@ -647,7 +686,13 @@ def partial_sum(input, start_index=0, length=-1):
     return out
 
 
-def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
+def tdm_child(
+    x: Tensor,
+    node_nums: int,
+    child_nums: int,
+    param_attr: ParamAttrLike | None = None,
+    dtype: DTypeLike = 'int32',
+) -> tuple[Tensor, Tensor]:
     """
     **Tdm Child**
      According to the input node_id on the given tree, return the corresponding child node_id and
@@ -671,7 +716,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         x (Tensor): Tensor contained the node_id information, dtype support int32/int64.
         node_nums (int): Number of total nodes.
         child_nums (int): Maximum number of child nodes per node.
-        param_attr (ParamAttr, optional): To specify the tdm-tree-info parameter property. Default: None, which means the
+        param_attr (ParamAttr|None, optional): To specify the tdm-tree-info parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in: ref: `api_paddle_ParamAttr`, should
             has shape (node_nums, 3 + child_nums), dtype support int32/int64.
             The dimension[1] of tdm-tree-info contains the following:
@@ -732,6 +777,60 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     return (child, leaf_mask)
 
 
+@overload
+def tdm_sampler(
+    x: Tensor,
+    neg_samples_num_list: list[int],
+    layer_node_num_list: list[int],
+    leaf_node_num: int,
+    tree_travel_attr: ParamAttrLike | None = ...,
+    tree_layer_attr: ParamAttrLike | None = ...,
+    output_positive: bool = ...,
+    output_list: Literal[True] = ...,
+    seed: int = ...,
+    tree_dtype: DTypeLike = ...,
+    dtype: DTypeLike = ...,
+) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:
+    ...
+
+
+@overload
+def tdm_sampler(
+    x: Tensor,
+    neg_samples_num_list: list[int],
+    layer_node_num_list: list[int],
+    leaf_node_num: int,
+    tree_travel_attr: ParamAttrLike | None = ...,
+    tree_layer_attr: ParamAttrLike | None = ...,
+    output_positive: bool = ...,
+    output_list: Literal[False] = ...,
+    seed: int = ...,
+    tree_dtype: DTypeLike = ...,
+    dtype: DTypeLike = ...,
+) -> tuple[Tensor, Tensor, Tensor]:
+    ...
+
+
+@overload
+def tdm_sampler(
+    x: Tensor,
+    neg_samples_num_list: list[int],
+    layer_node_num_list: list[int],
+    leaf_node_num: int,
+    tree_travel_attr: ParamAttrLike | None = ...,
+    tree_layer_attr: ParamAttrLike | None = ...,
+    output_positive: bool = ...,
+    output_list: bool = ...,
+    seed: int = ...,
+    tree_dtype: DTypeLike = ...,
+    dtype: DTypeLike = ...,
+) -> (
+    tuple[Tensor, Tensor, Tensor]
+    | tuple[list[Tensor], list[Tensor], list[Tensor]]
+):
+    ...
+
+
 def tdm_sampler(
     x,
     neg_samples_num_list,
@@ -772,10 +871,10 @@ def tdm_sampler(
         neg_samples_num_list (list(int)): Number of negative samples per layer.
         layer_node_num_list (list(int)): Number of nodes per layer, must has same shape with neg_samples_num_list.
         leaf_node_num (int): Number of leaf nodes.
-        tree_travel_attr (ParamAttr, optional): To specify the tdm-travel parameter property. Default: None, which means the
+        tree_travel_attr (ParamAttr|None, optional): To specify the tdm-travel parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr`, should
             has shape (leaf_node_num, len(layer_node_num_list)), dtype support int32/int64.
-        tree_layer_attr (ParamAttr, optional): To specify the tdm-layer parameter property. Default: None, which means the
+        tree_layer_attr (ParamAttr|None, optional): To specify the tdm-layer parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr`, should
             has shape (node_num, 1), dtype support int32/int64.
         output_positive (bool, optional): Whether to output positive samples (include label and mask )at the same time. Default: True.
@@ -951,13 +1050,13 @@ def tdm_sampler(
 
 
 def rank_attention(
-    input,
-    rank_offset,
-    rank_param_shape,
-    rank_param_attr,
-    max_rank=3,
-    max_size=0,
-):
+    input: Tensor,
+    rank_offset: Tensor,
+    rank_param_shape: list[int],
+    rank_param_attr: ParamAttrLike,
+    max_rank: int = 3,
+    max_size: int = 0,
+) -> Tensor:
     """
     **Rank Attention layer**
     This Op can calculate rank attention between input and rank_param, and
@@ -1019,7 +1118,14 @@ def rank_attention(
     return output
 
 
-def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
+def batch_fc(
+    input: Tensor,
+    param_size: list[int],
+    param_attr: ParamAttrLike,
+    bias_size: list[int],
+    bias_attr: ParamAttrLike,
+    act: str | None = None,
+) -> Tensor:
     """
     **Batch FC layer**
     This Op can calculate BatchFC. This is similar to matmul op,
@@ -1083,7 +1189,13 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     return helper.append_activation(pre_act)
 
 
-def bilateral_slice(x, guide, grid, has_offset, name=None):
+def bilateral_slice(
+    x: Tensor,
+    guide: Tensor,
+    grid: Tensor,
+    has_offset: bool,
+    name: str | None = None,
+) -> Tensor:
     """
     :alias_main: paddle.nn.functional.bilateral_slice
         :alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
@@ -1102,7 +1214,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
         grid (Tensor): Input grid tensor of shape [N, C, D, H, W]. The
                         data type is float32 and float64.
         has_offset (bool): Whether to slice with affine offset.
-        name (str, optional): For detailed information, please refer
+        name (str|None, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
@@ -1151,15 +1263,15 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 
 
 def correlation(
-    x,
-    y,
-    pad_size,
-    kernel_size,
-    max_displacement,
-    stride1,
-    stride2,
-    corr_type_multiply=1,
-):
+    x: Tensor,
+    y: Tensor,
+    pad_size: int,
+    kernel_size: int,
+    max_displacement: int,
+    stride1: int,
+    stride2: int,
+    corr_type_multiply: int = 1,
+) -> Tensor:
     """
 
     This operation compute correlation of two tensor.
@@ -1240,17 +1352,17 @@ def correlation(
 
 
 def fused_bn_add_act(
-    x,
-    y,
-    momentum=0.9,
-    epsilon=1e-05,
-    param_attr=None,
-    bias_attr=None,
-    moving_mean_name=None,
-    moving_variance_name=None,
-    act=None,
-    name=None,
-):
+    x: Tensor,
+    y: Tensor,
+    momentum: float | Tensor = 0.9,
+    epsilon: float = 1e-05,
+    param_attr: ParamAttrLike | None = None,
+    bias_attr: ParamAttrLike | None = None,
+    moving_mean_name: str | None = None,
+    moving_variance_name: str | None = None,
+    act: str | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     This Op performs batch norm on input x, and adds the result to input y. Then
     it performs activation on the sum. The data format of inputs must be NHWC
@@ -1269,24 +1381,24 @@ def fused_bn_add_act(
             Default is 0.9.
         epsilon (float, optional): A value added to the denominator for
             numerical stability. Default is 1e-05.
-        param_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`
+        param_attr (ParamAttr|None, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the param_attr is not set, the parameter is initialized
             with Xavier. Default: None.
-        bias_attr (ParamAttr, optional): The parameter attribute for the bias of batch_norm.
+        bias_attr (ParamAttr|None, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
             Default: None.
-        moving_mean_name (str, optional): The name of moving_mean which store the global Mean. If it
+        moving_mean_name (str|None, optional): The name of moving_mean which store the global Mean. If it
             is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm
             will save global mean with the string. Default: None.
-        moving_variance_name (str, optional): The name of the moving_variance which store the global Variance.
+        moving_variance_name (str|None, optional): The name of the moving_variance which store the global Variance.
             If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
             will save global variance with the string. Default: None.
-        act (string, optional): Activation type, linear|relu|prelu|... Default: None.
-        name (str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        act (str|None, optional): Activation type, linear|relu|prelu|... Default: None.
+        name (str:None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default. Default: None.
 
     Examples:
@@ -1445,8 +1557,13 @@ def fused_bn_add_act(
 
 
 def pow2_decay_with_linear_warmup(
-    warmup_steps, total_steps, base_lr, end_lr, dtype='float32', name=None
-):
+    warmup_steps: float,
+    total_steps: float,
+    base_lr: float,
+    end_lr: float,
+    dtype: DTypeLike = 'float32',
+    name: str | None = None,
+) -> Tensor:
     if paddle.in_dynamic_mode():
         raise NotImplementedError(
             "pow2_decay_with_linear_warmup does not support dygraph mode yet."

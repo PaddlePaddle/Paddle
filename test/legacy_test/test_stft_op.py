@@ -89,5 +89,26 @@ class TestStftOp(OpTest):
         paddle.disable_static()
 
 
+class TestStftOpReal(unittest.TestCase):
+    def test_as_real(self):
+        input = np.random.randn(4410)
+        x = paddle.to_tensor(data=input, dtype='float32')
+        n_fft = 400
+        res0 = paddle.signal.stft(n_fft=n_fft, x=x)
+        res_a = paddle.as_real(res0)
+
+        res_np = res0.numpy()
+        res_p = paddle.to_tensor(data=res_np)
+        res_b = paddle.as_real(res_p)
+
+        np.testing.assert_allclose(
+            res0.numpy(), res_p.numpy(), rtol=1e-5, atol=1e-5
+        )
+
+        np.testing.assert_allclose(
+            res_a.numpy(), res_b.numpy(), rtol=1e-5, atol=1e-5
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

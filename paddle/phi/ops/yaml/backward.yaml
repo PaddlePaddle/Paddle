@@ -1985,8 +1985,8 @@
   composite : max_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
 
 - backward_op : max_pool2d_with_index_grad
-  forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(mask)
-  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
+  forward : max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive, bool ceil_mode = false)
   output : Tensor(x_grad)
   infer_meta :
     func : MaxPoolWithIndexGradInferMeta
@@ -1994,8 +1994,8 @@
     func : max_pool2d_with_index_grad
 
 - backward_op : max_pool3d_with_index_grad
-  forward : max_pool3d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false) -> Tensor(out), Tensor(mask)
-  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
+  forward : max_pool3d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive, bool ceil_mode = false)
   output : Tensor(x_grad)
   infer_meta :
     func : MaxPoolWithIndexGradInferMeta
@@ -2609,7 +2609,7 @@
   no_need_buffer : x
 
 - backward_op : round_grad
-  forward : round(Tensor x) -> Tensor(out)
+  forward : round(Tensor x, int decimals = 0 ) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :

@@ -210,7 +210,7 @@ ProgramInfo BuildSoftmax() {
 //   builder.Build<paddle::dialect::FetchOp>(
 //       cinn_op->result(cinn_op->num_results() - 1), "out", 0);
 
-//   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+//   phi::Place place = phi::GPUPlace(0);
 
 //   auto kernel_program =
 //       paddle::dialect::PdOpLowerToKernelPass(new_program.get(), place);
