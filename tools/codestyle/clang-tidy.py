@@ -479,26 +479,21 @@ if __name__ == '__main__':
 
     target_version = "15.0.2"
     try:
-        out = subprocess.check_output(['clang-tidy', '--version'])
+        out = subprocess.check_output(['clang-tidy', '--version'], shell=True)
         version = out.decode('utf-8')
-        if target_llvm_version not in version:
+        if version.find(target_version) == -1:
             print(
-                f"clang-tidy version {target_version} not found, attempting auto-install...",
+                f"clang-tidy version == {target_version} not found, attempting auto-install...",
                 file=sys.stderr,
             )
             subprocess.check_output(
-                [
-                    'pip',
-                    'install',
-                    '--no-cache',
-                    f'clang-tidy=={target_version}',
-                ]
+                'pip install --no-cache clang-tidy=="15.0.2.1"', shell=True
             )
-    except subprocess.CalledProcessError:
+    except:
         print(
             "clang-tidy not found, attempting auto-install...", file=sys.stderr
         )
         subprocess.check_output(
-            ['pip', 'install', '--no-cache', f'clang-tidy=={target_version}']
+            'pip install --no-cache clang-tidy=="15.0.2.1"', shell=True
         )
     main()
