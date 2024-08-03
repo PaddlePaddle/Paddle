@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Any, Sequence, SupportsIndex, Union
+from typing import TYPE_CHECKING, Any, SupportsIndex, Union
 
 import numpy as np
 
@@ -23,7 +23,7 @@ import paddle
 from paddle.framework import core
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Sequence
     from types import TracebackType
 
     import numpy.typing as npt
