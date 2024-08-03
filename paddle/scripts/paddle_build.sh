@@ -3824,7 +3824,7 @@ function clang-tidy_check() {
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
     
-    python ./tools/codestyle/clang-tidy.py -p=build -j=20 \
+    check_error = $(python ./tools/codestyle/clang-tidy.py -p=build -j=20 \
     -clang-tidy-binary=clang-tidy \
     -extra-arg=-Wno-unknown-warning-option \
     -extra-arg=-Wno-pessimizing-move \
@@ -3849,8 +3849,8 @@ function clang-tidy_check() {
     -extra-arg=-Wno-defaulted-function-deleted  \
     -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
     -extra-arg=-Wno-return-type-c-linkage  \
-    -extra-arg=-fopenmp=libomp \
-    check_error=$?
+    -extra-arg=-fopenmp=libomp)
+
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Files Num: $[ $num_diff_files ]"
