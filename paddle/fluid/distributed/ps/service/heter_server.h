@@ -232,7 +232,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     auto* var = local_scope.FindVar("microbatch_id");
     PADDLE_ENFORCE_NE(var,
                       nullptr,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Not find variable microbatch_id in scope."));
     auto* tensor = var->GetMutable<phi::DenseTensor>();
     auto data = reinterpret_cast<const float*>(tensor->data());
@@ -249,7 +249,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       PADDLE_ENFORCE_EQ(
           (*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(),
           1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "minibatch index should in current trainer"));
 
     } else {
@@ -390,7 +390,7 @@ class HeterService : public PsService {
     PADDLE_ENFORCE_NE(
         itr,
         handler_map_.end(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "HeterService::SendAndRecvVariable Get illegal message_name: %s "
             "which is not in HeterService::handler_map_",
             message_name));
@@ -439,7 +439,7 @@ class HeterService : public PsService {
         PADDLE_ENFORCE_NE(
             closure->cntl.Failed(),
             true,
-            phi::errors::Unimplemented(
+            common::errors::Unimplemented(
                 "HeterClient::SendS2S meets brpc error, error message is %s",
                 closure->cntl.ErrorText()));
       }

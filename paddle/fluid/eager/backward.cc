@@ -43,7 +43,7 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
 
     PADDLE_ENFORCE_NOT_NULL(
         node,
-        phi::errors::Fatal(
+        common::errors::Fatal(
             "We got null node when we traverse the backward graph, and this "
             "should not happened please check your code and contact us."));
     // Find and append next nodes
@@ -75,7 +75,7 @@ void EnforceGradNodeHasInput(GradNodeBase* node) {
   PADDLE_ENFORCE_NE(
       node->IsTensorWrappersCleared(),
       true,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "The TensorWrappers of %s do not exist. This may be because:\n"
           "You calculate backward twice for the same subgraph without "
           "setting retain_graph=True. Please set retain_graph=True in the "
@@ -91,7 +91,7 @@ void DuplicateCheck(const std::vector<paddle::Tensor>& inputs, bool is_input) {
     PADDLE_ENFORCE_EQ(
         visited_ins.count(auto_grad_meta),
         0,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "%s contain duplicate tensor %s, please check %s carefully.",
             msg,
             in.name(),
@@ -183,7 +183,7 @@ std::vector<paddle::Tensor> RunBackward(
     if (!grad_tensors.empty() && grad_tensors[i].initialized()) {
       PADDLE_ENFORCE(
           grad_tensors.size() == tensors.size(),
-          phi::errors::Fatal(
+          common::errors::Fatal(
               "Detected size mismatch between tensors and grad_tensors"
               "grad_tensors should either have "
               "size = 0 or same size as tensors."));
@@ -265,7 +265,7 @@ std::vector<paddle::Tensor> RunBackward(
     PADDLE_ENFORCE_NE(
         node_input_buffer_iter,
         node_input_buffers_dict.end(),
-        phi::errors::Fatal(
+        common::errors::Fatal(
             "Unable to find next node in the GradTensorHolder \n"
             "Trying to run Node without configuring its GradTensorHolder."));
 
@@ -286,7 +286,7 @@ std::vector<paddle::Tensor> RunBackward(
     //    'Local_XXXGradNode'.
     // * 'Local_XXXGradNode' will only cover execution time of GradNode
     // function.
-    paddle::platform::RecordEvent grad_node_record_event(
+    phi::RecordEvent grad_node_record_event(
         "Global_" + std::string((*node).name()),
         paddle::platform::TracerEventType::Operator,
         1);
@@ -315,7 +315,7 @@ std::vector<paddle::Tensor> RunBackward(
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         metas = node->OutputMeta();
     PADDLE_ENFORCE(metas.size() == grad_output_tensors.size() || metas.empty(),
-                   phi::errors::Fatal(
+                   common::errors::Fatal(
                        "Number of edges should be either empty ( for leaf node "
                        ") or the same as number of output grad tensors, but we "
                        "got edges size is: %d, grad_output size is: %d",
@@ -346,7 +346,7 @@ std::vector<paddle::Tensor> RunBackward(
         PADDLE_ENFORCE_LT(
             j,
             grad_output_tensors[i].size(),
-            phi::errors::Fatal(
+            common::errors::Fatal(
                 "Rank of grad_output_tensors should be less than "
                 "grad_output_tensors[i].size(), which is: %d. This error may "
                 "indicate autoprune or autograd api error. ",
@@ -388,7 +388,7 @@ std::vector<paddle::Tensor> RunBackward(
 
         PADDLE_ENFORCE(
             node_in_degree_map[next_node] >= 0,
-            phi::errors::Fatal(
+            common::errors::Fatal(
                 "Detected in-degree value smaller than zero. For Node: %s"
                 "Node's in-degree cannot be negative.",
                 next_node->name()));
@@ -440,7 +440,7 @@ void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               const std::vector<paddle::Tensor>& grad_tensors,
               bool retain_graph) {
   VLOG(3) << "Run in Backward";
-  paddle::platform::RecordEvent backward_record_event(
+  phi::RecordEvent backward_record_event(
       "backward", paddle::platform::TracerEventType::UserDefined, 1);
   RunBackward(tensors, grad_tensors, retain_graph);
   egr::Controller::Instance().ClearForceSequentialNodes();

@@ -40,7 +40,7 @@ void InstanceNormKernel(const Context &dev_ctx,
   auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The `shape` in InstanceNormOp is invalid: "
                         "the size of X's dimensions must greater than "
                         "or equal to 2. But received: "
@@ -48,7 +48,7 @@ void InstanceNormKernel(const Context &dev_ctx,
                         x_dims.size()));
   PADDLE_ENFORCE_LE(x_dims.size(),
                     5,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The `shape` in InstanceNormOp is invalid: "
                         "the size of X's dimensions must smaller than"
                         "or equal to 5. But received: "

@@ -17,7 +17,7 @@
 #include <utility>
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 REGISTER_FILE_SYMBOLS(aligned_allocator);
 namespace paddle::memory::allocation {
