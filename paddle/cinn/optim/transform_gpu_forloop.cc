@@ -233,9 +233,8 @@ class ReplaceIndexToBindExpr : public ir::IRMutator<> {
   void Visit(const ir::ScheduleBlockRealize *op, Expr *expr) override {
     ir::ScheduleBlockRealize *schedule_block_realize =
         expr->As<ir::ScheduleBlockRealize>();
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NOT_NULL(
         schedule_block_realize->schedule_block.As<ir::ScheduleBlock>(),
-        true,
         ::common::errors::InvalidArgument(
             "The type of schedule block realize should be ScheduleBlock!"));
     std::vector<ir::Expr> iter_values = schedule_block_realize->iter_values;
@@ -266,10 +265,9 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
  private:
   void Visit(const ir::For *op, Expr *expr) override {
     auto for_ir = expr->As<ir::For>();
-    PADDLE_ENFORCE_EQ(for_ir,
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The type of expression should be For!"));
+    PADDLE_ENFORCE_NOT_NULL(for_ir,
+                            ::common::errors::InvalidArgument(
+                                "The type of expression should be For!"));
 
     auto bind_info = for_ir->bind_info();
 
@@ -438,10 +436,9 @@ class ReplaceVarToZero : public ir::IRMutator<> {
   }
 
   void Visit(const ir::For *op, Expr *expr) override {
-    PADDLE_ENFORCE_EQ(expr->As<ir::For>(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The type of expression should be For!"));
+    PADDLE_ENFORCE_NOT_NULL(expr->As<ir::For>(),
+                            ::common::errors::InvalidArgument(
+                                "The type of expression should be For!"));
     auto for_ir = expr->As<ir::For>();
     auto var_name = for_ir->loop_var->name;
     auto extent_i = for_ir->extent;
