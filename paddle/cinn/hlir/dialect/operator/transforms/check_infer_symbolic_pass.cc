@@ -66,6 +66,9 @@ class BlockDimExprsAsserter {
 
  private:
   void AssertOpRegions(const pir::Operation* op) {
+    // Inserting too many check op in while block will cause model too slow, so
+    // skip the while block checking.
+    if (op->isa<paddle::dialect::WhileOp>()) return;
     for (std::size_t i = 0; i < op->num_regions(); ++i) {
       for (auto& block : op->region(i)) {
         BlockDimExprsAsserter asserter(GraphDimExprs4Value, ir_ctx_, &block);
@@ -86,6 +89,18 @@ class BlockDimExprsAsserter {
       LOG(INFO) << "skip the checking for [ " << op->name() << " ]";
       return;
     }
+    const bool is_same_operand_result_op = [&] {
+      if (op->num_operands() != 1 || op->num_results() != 1) return false;
+      if (!op->operand_source(0).type().isa<paddle::dialect::DenseTensorType>())
+        return false;
+      if (op->result(0).type().isa<paddle::dialect::DenseTensorType>())
+        return false;
+      return GraphDimExprs4Value(op->operand_source(0)) ==
+             GraphDimExprs4Value(op->result(0));
+    }();
+    // skip the ops which operand and result have same shape
+    if (is_same_operand_result_op) return;
+
     auto OpDimExprs4Value = GetOpDimExprs4Value(op);
     const auto& inputs = [&] {
       std::vector<pir::Value> inputs;

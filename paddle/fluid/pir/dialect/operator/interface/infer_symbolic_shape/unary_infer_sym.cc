@@ -348,6 +348,19 @@ bool AsRealOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool AssignOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
+  return true;
+}
+
+bool Assign_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return AssignOpInferSymbolicShape(op, infer_context);
+}
+
 bool BipartiteMatchOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &dist_mat_shape_or_data =
@@ -364,6 +377,19 @@ bool BipartiteMatchOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(op->result(1), dist_mat_shape_or_data);
 
   return true;
+}
+
+bool CastOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
+  return true;
+}
+
+bool Cast_OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  return CastOpInferSymbolicShape(op, infer_context);
 }
 
 bool CholeskyOpInferSymbolicShape(
