@@ -1796,7 +1796,7 @@ class Executor:
                 >>> adam = paddle.optimizer.Adam()
                 >>> adam.minimize(loss)
                 >>> i = paddle.zeros(shape=[1], dtype='int64')
-                >>> array = paddle.tensor.array_write(x=loss, i=i)  # type: paddle.Tensor
+                >>> array = paddle.tensor.array_write(x=loss, i=i)
 
                 >>> # Run the startup program once and only once.
                 >>> exe.run(paddle.static.default_startup_program())
@@ -1804,7 +1804,7 @@ class Executor:
                 >>> x = numpy.random.random(size=(10, 1)).astype('float32')
                 >>> loss_val, array_val = exe.run(
                 ...     feed={'X': x},
-                ...     fetch_list=[loss.name, array.name]
+                ...     fetch_list=[loss.name, array.name]  # type: ignore[union-attr]
                 ... )
                 >>> print(array_val)
                 >>> # doctest: +SKIP("Random output")
