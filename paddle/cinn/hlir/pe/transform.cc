@@ -1142,7 +1142,7 @@ ir::Tensor LayoutTransform(const Tensor& input,
         int min_dim = std::min(src_dim, dst_dim);
         for (int i = 0; i < min_dim; i++) {
           PADDLE_ENFORCE_EQ(
-              split_index_map->find(i) != split_index_map->end(),
+              split_index_map.find(i) != split_index_map.end(),
               true,
               ::common::errors::InvalidArgument(
                   "Spilt index map found should not be equal to end."));
