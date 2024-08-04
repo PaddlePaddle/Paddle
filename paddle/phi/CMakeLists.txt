@@ -103,6 +103,11 @@ if(WITH_DGC)
   list(APPEND PHI_DEPS dgc)
 endif()
 
+# core/memory/allocation uses shm_unlink and requires the rt library
+if(UNIX AND NOT APPLE)
+  list(APPEND PHI_DEPS rt)
+endif()
+
 set(PHI_CORE_SRCS
     ${common_srcs}
     ${api_srcs}
