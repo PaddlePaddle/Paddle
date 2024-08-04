@@ -103,11 +103,6 @@ if(WITH_DGC)
   list(APPEND PHI_DEPS dgc)
 endif()
 
-# core/memory/allocation uses shm_unlink and requires the rt library
-if(UNIX AND NOT APPLE)
-  list(APPEND PHI_DEPS rt)
-endif()
-
 set(PHI_CORE_SRCS
     ${common_srcs}
     ${api_srcs}
@@ -173,6 +168,11 @@ else()
     phi_core ${PHI_BUILD_TYPE}
     SRCS ${PHI_CORE_SRCS}
     DEPS ${PHI_DEPS})
+endif()
+
+# core/memory/allocation uses shm_unlink and requires the rt library
+if(UNIX AND NOT APPLE)
+  target_link_libraries(phi_core rt)
 endif()
 
 set(PHI_DUMMY_FILE ${CMAKE_CURRENT_BINARY_DIR}/phi_dummy.cpp)
