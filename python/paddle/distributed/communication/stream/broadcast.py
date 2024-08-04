@@ -126,7 +126,7 @@ def broadcast(
             >>> else:
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> task = dist.stream.broadcast(data, src=1, sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> out = data.numpy()
             >>> print(out)
             >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs)

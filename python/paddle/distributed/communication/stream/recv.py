@@ -107,7 +107,7 @@ def recv(
             >>> else:
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             ...     task = dist.stream.recv(data, src=0, sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> out = data.numpy()
             >>> print(out)
             >>> # [[4, 5, 6], [4, 5, 6]] (2 GPUs)
