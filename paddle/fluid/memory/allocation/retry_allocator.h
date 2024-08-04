@@ -22,7 +22,7 @@
 #include <utility>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace memory {

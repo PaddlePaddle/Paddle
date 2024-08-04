@@ -46,8 +46,8 @@ constexpr double sampling_prob = 1.0;
 constexpr int kMaxSamplingTimes = 100;
 constexpr int kRepeats = 2;
 
-std::shared_ptr<::pir::Program> BuildSpatialReduceProgram(int spatial_size,
-                                                          int reduce_size) {
+std::shared_ptr<::pir::Program> BuildEREBEProgram(int spatial_size,
+                                                  int reduce_size) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
@@ -60,7 +60,6 @@ std::shared_ptr<::pir::Program> BuildSpatialReduceProgram(int spatial_size,
                .Build<paddle::dialect::DataOp>(
                    "x", shape, phi::DataType::FLOAT32, phi::GPUPlace())
                .result(0);
-  // auto out = builder.Build<paddle::dialect::RmsNormOp>(x);
   auto pow_val = builder.Build<paddle::dialect::PowOp>(x, 2.0).result(0);
   auto sum_val =
       builder
@@ -84,6 +83,28 @@ std::shared_ptr<::pir::Program> BuildSpatialReduceProgram(int spatial_size,
   auto rsqrt_val = builder.Build<paddle::dialect::RsqrtOp>(add_val).result(0);
   auto out = builder.Build<paddle::dialect::MultiplyOp>(rsqrt_val, x).result(0);
 
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  return program;
+}
+
+std::shared_ptr<::pir::Program> BuildReduceSumProgram(int spatial_size,
+                                                      int reduce_size) {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+  const float value_one = 1.0;
+  const std::vector<int64_t> shape = {spatial_size, reduce_size};
+  auto x = builder
+               .Build<paddle::dialect::DataOp>(
+                   "x", shape, phi::DataType::FLOAT32, phi::GPUPlace())
+               .result(0);
+  auto out = builder
+                 .Build<paddle::dialect::SumOp>(
+                     x, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
+                 .result(0);
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
   return program;
 }
@@ -136,13 +157,13 @@ void search_then_save_one_window(bool is_spatial_dynamic,
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   std::shared_ptr<::pir::Program> program;
   if (!is_spatial_dynamic && !is_reduce_dynamic) {
-    program = BuildSpatialReduceProgram(s_dimension_lower, r_dimension_lower);
+    program = BuildEREBEProgram(s_dimension_lower, r_dimension_lower);
   } else if (is_spatial_dynamic && !is_reduce_dynamic) {
-    program = BuildSpatialReduceProgram(-1, r_dimension_lower);
+    program = BuildEREBEProgram(-1, r_dimension_lower);
   } else if (!is_spatial_dynamic && is_reduce_dynamic) {
-    program = BuildSpatialReduceProgram(s_dimension_lower, -1);
+    program = BuildEREBEProgram(s_dimension_lower, -1);
   } else {
-    program = BuildSpatialReduceProgram(-1, -1);
+    program = BuildEREBEProgram(-1, -1);
   }
 
   // Step 2: Switch schedule config manager mode.
@@ -415,7 +436,7 @@ TEST(ConfigSearcher, TestDynamicSpatial) {
                           is_reduce_dynamic);
 }
 
-TEST(ConfigSearcher, TestDynamicDeboule) {
+TEST(ConfigSearcher, TestDynamicSR) {
   int spatial_left_bound = 2;
   int spatial_right_bound = 2;  // To reproduce, set it to 4096
   int reduce_left_bound = 2;

@@ -17,7 +17,7 @@
 #include <string>
 
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace memory {

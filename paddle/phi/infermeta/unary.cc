@@ -3920,14 +3920,14 @@ void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
       axis_data.size(),
       1,
       phi::errors::InvalidArgument(
-          "The size of axis must be 1 when the Input(X) is LoDTensorArray, "
+          "The size of axis must be 1 when the Input(X) is phi::TensorArray, "
           "but received %d.",
           axis_data.size()));
   PADDLE_ENFORCE_EQ(
       axis_data[0],
       0,
       phi::errors::InvalidArgument("The value of axis should be 1 when "
-                                   "the Input(X) is LoDTensorArray, "
+                                   "the Input(X) is phi::TensorArray, "
                                    "but received %d.",
                                    axis_data[0]));
 }

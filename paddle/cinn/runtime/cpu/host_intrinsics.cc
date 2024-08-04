@@ -28,7 +28,12 @@
 extern "C" {
 
 void __cinn_host_tanh_v(const cinn_buffer_t* x, cinn_buffer_t* out) {
-  CINN_CHECK_EQ(x->num_elements(), out->num_elements());
+  PADDLE_ENFORCE_EQ(
+      x->num_elements(),
+      out->num_elements(),
+      phi::errors::InvalidArgument(
+          "The number of elements in input buffer (x) must be equal to the "
+          "number of elements in output buffer (out)."));
   int xn = x->num_elements();
   auto* x_data = reinterpret_cast<float*>(x->memory);
   auto* out_data = reinterpret_cast<float*>(out->memory);
