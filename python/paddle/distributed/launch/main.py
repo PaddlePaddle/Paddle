@@ -18,7 +18,7 @@ from paddle.distributed.launch.context import Context
 ctx = None
 
 
-def launch():
+def launch() -> None:
     """
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
 
