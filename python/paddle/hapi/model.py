@@ -23,10 +23,8 @@ import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     List,
     Literal,
-    Sequence,
     Union,
     overload,
 )
@@ -59,6 +57,8 @@ from .callbacks import EarlyStopping, config_callbacks
 from .model_summary import summary
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     import numpy.typing as npt
 
     from paddle import Tensor
