@@ -65,7 +65,7 @@ def gather(
     group: Group | None = None,
     sync_op: bool = True,
     use_calc_stream: bool = False,
-) -> task:
+) -> task | None:
     """
 
     Gather tensors from all participators.

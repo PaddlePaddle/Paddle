@@ -93,7 +93,7 @@ def broadcast(
     group: Group | None = None,
     sync_op: bool = True,
     use_calc_stream: bool = False,
-) -> task:
+) -> task | None:
     """
 
     Broadcast a tensor to all devices.

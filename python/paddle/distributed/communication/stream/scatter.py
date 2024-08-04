@@ -147,7 +147,7 @@ def scatter(
     group: Group | None = None,
     sync_op: bool = True,
     use_calc_stream: bool = False,
-) -> task:
+) -> task | None:
     """
 
     Scatter a tensor (or a tensor list) across devices.

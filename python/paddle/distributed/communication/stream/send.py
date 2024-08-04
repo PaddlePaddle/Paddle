@@ -75,7 +75,7 @@ def send(
     group: Group | None = None,
     sync_op: bool = True,
     use_calc_stream: bool = False,
-) -> task:
+) -> task | None:
     """
 
     Send a tensor to the destination device.

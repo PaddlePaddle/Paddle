@@ -120,7 +120,7 @@ def reduce_scatter(
     group: Group | None = None,
     sync_op: bool = True,
     use_calc_stream: bool = False,
-) -> task:
+) -> task | None:
     """
 
     Reduce, then scatter a tensor (or a tensor list) across devices.

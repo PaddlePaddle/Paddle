@@ -92,7 +92,7 @@ def reduce(
     group: Group | None = None,
     sync_op: bool = True,
     use_calc_stream: bool = False,
-) -> task:
+) -> task | None:
     """
 
     Perform specific reduction (for example, sum, max) on a tensor across devices and send to the destination device.
