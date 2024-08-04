@@ -86,7 +86,10 @@ struct DimExprToIrExprVisitor {
 
   ir::Expr operator()(const Max<DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK(!operands->empty());
+    PADDLE_ENFORCE_EQ(
+        !operands->empty(),
+        true,
+        phi::errors::InvalidArgument("The value in dim_expr is empty"));
     ir::Expr max = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
       max = ir::Max::Make(max, ConvertToIrExpr(operands->at(i)));
@@ -96,7 +99,10 @@ struct DimExprToIrExprVisitor {
 
   ir::Expr operator()(const Min<DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK(!operands->empty());
+    PADDLE_ENFORCE_EQ(
+        !operands->empty(),
+        true,
+        phi::errors::InvalidArgument("The value in dim_expr is empty"));
     ir::Expr min = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
       min = ir::Min::Make(min, ConvertToIrExpr(operands->at(i)));
@@ -107,7 +113,10 @@ struct DimExprToIrExprVisitor {
   // convert Broadcast to Max
   ir::Expr operator()(const Broadcast<DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK(!operands->empty());
+    PADDLE_ENFORCE_EQ(
+        !operands->empty(),
+        true,
+        phi::errors::InvalidArgument("The value in dim_expr is empty"));
     ir::Expr max = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
       max = ir::Max::Make(max, ConvertToIrExpr(operands->at(i)));
@@ -129,7 +138,10 @@ struct DimExprConverterWithSymbolBindings::
       symbol_binding_map_;
 
   ir::Expr operator()(const std::string& dim_expr) override {
-    CHECK(symbol_binding_map_.count(dim_expr));
+    PADDLE_ENFORCE_EQ(symbol_binding_map_.count(dim_expr),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "symbol_binding_map_ does not contain dim_expr"));
     auto symbol_binding = symbol_binding_map_[dim_expr];
     auto [input_idx, input_dim_idx] = std::visit(
         [](auto&& symbol_binding) -> std::pair<int64_t, int64_t> {

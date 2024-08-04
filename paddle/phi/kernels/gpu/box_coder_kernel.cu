@@ -164,7 +164,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   if (prior_box_var) {
     PADDLE_ENFORCE_EQ(variance.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input 'PriorBoxVar' and attribute 'variance'"
                           " of BoxCoder operator should not be used at the "
                           "same time."));
@@ -174,7 +174,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   if (!(variance.empty())) {
     PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()),
                       4,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Size of attribute 'variance' in BoxCoder operator"
                           " should be 4. But received size is %d",
                           variance.size()));
@@ -183,7 +183,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   if (target_box.lod().size()) {
     PADDLE_ENFORCE_EQ(target_box.lod().size(),
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input 'TargetBox' of BoxCoder operator only"
                           " supports LoD with one level."));
   }

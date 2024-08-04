@@ -85,16 +85,16 @@ void ShardTensorOp::VerifySig() {
             "op_dist_attr");
     PADDLE_ENFORCE_EQ(op_dist_attr.num_operands(),
                       0u,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The op_dist_attr input size must be equal to 0."));
 
-    PADDLE_ENFORCE_EQ(
-        op_dist_attr.num_results(),
-        num_results(),
-        phi::errors::PreconditionNotMet("The op_dist_attr output size %d must "
-                                        "be equal to op output size %d.",
-                                        op_dist_attr.num_results(),
-                                        num_results()));
+    PADDLE_ENFORCE_EQ(op_dist_attr.num_results(),
+                      num_results(),
+                      common::errors::PreconditionNotMet(
+                          "The op_dist_attr output size %d must "
+                          "be equal to op output size %d.",
+                          op_dist_attr.num_results(),
+                          num_results()));
   }
   VLOG(4) << "End Verifying for: ShardTensorOp.";
 }
@@ -271,7 +271,7 @@ void ReshardOp::VerifySig() {
 
     PADDLE_ENFORCE_EQ(op_dist_attr.num_results(),
                       num_results(),
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The op_dist_attr output size of reshard op must be "
                           "equal to op output size."));
   }

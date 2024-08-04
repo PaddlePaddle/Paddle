@@ -284,7 +284,16 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
       }
     }
   }
-  CHECK_EQ(attr_names.size(), kernel_context->AttrsSize());
+
+  PADDLE_ENFORCE_EQ(
+      attr_names.size(),
+      kernel_context->AttrsSize(),
+      phi::errors::InvalidArgument("The attr_names.size() should be equal to "
+                                   "kernel_context->AttrsSize()."
+                                   "Received attr_names.size() = % d,"
+                                   "kernel_context->AttrsSize() = %d.",
+                                   attr_names.size(),
+                                   kernel_context->AttrsSize()));
 }
 
 GenericPlugin::GenericPlugin(
@@ -602,6 +611,9 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
   phi_kernel_contexts_[data_type]->ClearInputOutput();
 
+  auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));
+  phi_kernel_contexts_[data_type]->SetDeviceContext(dev_ctx);
+
   for (int i = 0; i < getNbInputs(); i++) {
     if (inputs_data_type_[i] == GeneratePluginDataType::PLUGIN_OPTIONAL) {
       phi_kernel_contexts_[data_type]->EmplaceBackInput(nullptr);
@@ -654,8 +666,20 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         &((*dense_tensor_outputs_)[i]));
   }
 
-  CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
-  CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
+  PADDLE_ENFORCE_EQ(
+      phi_kernel_contexts_[data_type]->InputsSize(),
+      getNbInputs(),
+      phi::errors::InvalidArgument(
+          "The phi_kernel_contexts_[data_type]->InputsSize() "
+          "should be equal to getNbInputs()."
+          "Received phi_kernel_contexts_[data_type]->InputsSize() "
+          "= %d, getNbInputs() = %d.",
+          phi_kernel_contexts_[data_type]->InputsSize()));
+  PADDLE_ENFORCE_EQ(phi_kernel_contexts_[data_type]->OutputsSize(),
+                    getNbOutputs(),
+                    phi::errors::InvalidArgument(
+                        "The phi_kernel_contexts_[data_type]->OutputsSize() "
+                        "should be equal to getNbOutputs()."));
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
 
   if (op_desc_.Type() == "argsort") {

@@ -710,6 +710,19 @@ void BindBlock(py::module *m) {
               None
 
         )DOC")
+      .def(
+          "move_op_to_block_end",
+          [](Block &self, Operation *op) { op->MoveTo(&self, self.end()); },
+          R"DOC(
+            Move an op to the end of the block.
+
+            Args:
+                op (pir.Operation): The operator to be moved.
+
+            Returns:
+                None
+
+            )DOC")
       .def("all_parameters",
            [](Block &self) -> py::list {
              py::list param_list;
@@ -1350,6 +1363,10 @@ void BindValue(py::module *m) {
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("_rename", &name_analysis::RenameValue)
+      .def("_has_only_one_name",
+           [](Value self) -> bool {
+             return name_analysis::HasOnlyOneValueName(self);
+           })
       .def("detach",
            [](Value self) {
              auto share_data_op =
@@ -1795,43 +1812,6 @@ int AppendShadowOutputs(Program *program,
   return counter;
 }
 
-std::unordered_map<::pir::Value, std::string> GetNameMap(
-    const ::pir::Block *block) {
-  std::unordered_map<::pir::Value, std::string> value2name;
-  for (auto &kwarg : block->kwargs()) {
-    value2name[kwarg.second] = kwarg.first;
-  }
-  for (auto &op : *block) {
-    std::string name;
-    if (op.name() == "pd_op.data") {
-      name = op.attributes().at("name").dyn_cast<StrAttribute>().AsString();
-      value2name[op.results()[0].Value::impl()] = name;
-    } else if (op.name() == "builtin.set_parameter") {
-      name = op.attributes()
-                 .at("parameter_name")
-                 .dyn_cast<StrAttribute>()
-                 .AsString();
-      value2name[op.operand(0).source()] = name;
-    } else if (op.name() == "builtin.shadow_output") {
-      name =
-          op.attributes().at("output_name").dyn_cast<StrAttribute>().AsString();
-      value2name[op.operand(0).source()] = name;
-    } else if (op.name() == "builtin.parameter") {
-      name = op.attributes()
-                 .at("parameter_name")
-                 .dyn_cast<StrAttribute>()
-                 .AsString();
-      value2name[op.result(0).Value::impl()] = name;
-    } else if (op.name() == "builtin.constant") {
-      if (op.isa<pir::ConstantTensorOp>()) {
-        name = op.dyn_cast<pir::ConstantTensorOp>().tensor_name();
-        value2name[op.result(0).Value::impl()] = name;
-      }
-    }
-  }
-  return value2name;
-}
-
 SplitedResult SplitForwardBackward(
     const Program &program,
     const std::vector<pir::Value> &forward_inputs,
@@ -1919,22 +1899,16 @@ SplitedResult SplitForwardBackward(
   std::for_each(
       forward_outputs.begin(), forward_outputs.end(), create_output_fn_forward);
 
-  pir::Block *forward_block = forward_program->block();
-  const auto &forward_name_map = GetNameMap(forward_block);
   auto create_kwarg_fn = [&backward_block,
                           &backward_inputs,
                           &backward_value_map,
                           &forward_value_map,
-                          &forward_name_map,
                           &counter](const pir::Value &v) {
     if (v && !backward_value_map.count(v) && (backward_inputs.count(v))) {
-      auto forward_value = forward_value_map[v];
-      std::string name = "input_" + std::to_string(counter++);
-      if (forward_name_map.count(forward_value)) {
-        name = forward_name_map.at(forward_value);
-      }
-
-      backward_value_map[v] = backward_block.AddKwarg(name, v.type());
+      backward_value_map[v] = backward_block.AddKwarg(
+          name_analysis::TryGetValueFirstName(forward_value_map[v])
+              .value_or("input_" + std::to_string(counter++)),
+          v.type());
     }
   };
 

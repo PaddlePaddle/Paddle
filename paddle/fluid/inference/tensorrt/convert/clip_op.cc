@@ -26,25 +26,36 @@ class ClipOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(5130)
-    VLOG(3) << "convert a clip op to tensorrt IActivationLayer.";
+    VLOG(3) << "convert a clip op to tensorrt layer.";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     float min = PADDLE_GET_CONST(float, op_desc.GetAttr("min"));
     float max = PADDLE_GET_CONST(float, op_desc.GetAttr("max"));
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Activation, *input, nvinfer1::ActivationType::kCLIP);
-    layer->setAlpha(min);
-    layer->setBeta(max);
+    int32_t rank = input->getDimensions().nbDims;
+    nvinfer1::ITensor* input_shape_tensor = Shape(input);
+    nvinfer1::DataType data_type = input->getType();
+    nvinfer1::ITensor* alphaT{nullptr};
+    nvinfer1::ITensor* betaT{nullptr};
+    if (data_type == nvinfer1::DataType::kINT32) {
+      alphaT =
+          FillConstantLayer(input_shape_tensor, rank, static_cast<int>(min));
+      betaT =
+          FillConstantLayer(input_shape_tensor, rank, static_cast<int>(max));
+    } else {
+      alphaT = FillConstantLayer(input_shape_tensor, rank, min);
+      betaT = FillConstantLayer(input_shape_tensor, rank, max);
+    }
+
+    auto* lowerClip = Max(input, alphaT);
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                       ElementWise,
+                                       *lowerClip,
+                                       *betaT,
+                                       nvinfer1::ElementWiseOperation::kMIN);
 
     auto output_name = op_desc.Output("Out")[0];
     ReplenishLayerAndOutput(layer, "clip", {output_name}, test_mode);
-#else
-    PADDLE_THROW(
-        common::errors::Fatal("clip TRT converter is only supported on TRT "
-                              "5.1.3.0 or higher version."));
-#endif
   }
 };
 

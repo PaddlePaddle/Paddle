@@ -66,7 +66,8 @@ class IRContext {
   template <typename TIRContextNode>
   const TIRContextNode* As() const {
     static_assert(std::is_base_of<IRContextNode, TIRContextNode>());
-    CHECK(data_.get()) << "IrContext holds null";
+    PADDLE_ENFORCE_NOT_NULL(
+        data_.get(), phi::errors::InvalidArgument("IrContext holds null"));
     auto* ctx_node = data_.get()->safe_as<TIRContextNode>();
     if (!ctx_node) {
       std::stringstream err_msg;
@@ -79,7 +80,8 @@ class IRContext {
   }
   template <typename TIRContextNode>
   TIRContextNode* As() {
-    CHECK(data_.get()) << "IrContext holds null";
+    PADDLE_ENFORCE_NOT_NULL(
+        data_.get(), phi::errors::InvalidArgument("IrContext holds null"));
     auto* ctx_node = data_.get()->safe_as<TIRContextNode>();
     if (!ctx_node) {
       std::stringstream ss;

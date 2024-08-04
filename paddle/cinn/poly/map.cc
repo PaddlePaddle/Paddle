@@ -16,12 +16,17 @@
 
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/functional.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace poly {
 
 std::string Map::__str__() const {
-  CHECK(!domain_iterators_.empty());
+  PADDLE_ENFORCE_EQ(
+      !domain_iterators_.empty(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The domain iterators are empty. Please provide valid iterators."));
 
   auto get_ids_repr = [](const std::vector<Iterator>& ids) {
     std::vector<std::string> fields;
