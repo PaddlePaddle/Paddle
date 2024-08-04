@@ -24,6 +24,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    List,
     Literal,
     Sequence,
     Union,
@@ -69,8 +70,8 @@ if TYPE_CHECKING:
     _InputBatch: TypeAlias = Union[
         Tensor,
         npt.NDArray[Any],
-        list[Tensor],
-        list[npt.NDArray[Any]],
+        List[Tensor],
+        List[npt.NDArray[Any]],
     ]
 
 
