@@ -960,5 +960,3 @@ std::vector<ir::Graph *> CompiledProgram::CompileGraphWithBuildStrategy(
 }  // namespace paddle
 
 USE_PASS(eager_deletion_pass);
-USE_PASS(buffer_shared_inplace_pass);
-USE_PASS(inplace_addto_op_pass);

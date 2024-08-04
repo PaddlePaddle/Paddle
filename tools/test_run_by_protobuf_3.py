@@ -54,7 +54,6 @@ PROTOBUF3_NEEDED_TESTING_LIST = [
     'test_dist_fuse_momentum_pass',
     'test_dist_fuse_relu_depthwise_conv_pass',
     'test_dist_fuse_sgd_pass',
-    'test_dist_inplace_addto_pass',
     'test_fleet_sharding_meta_optimizer',
     'test_rnn_dp',
     'test_communicator_half_async',
