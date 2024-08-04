@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import framework
 from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
@@ -19,6 +23,11 @@ from paddle.distributed.communication.group import (
     _get_or_throw_group_rank,
     _warn_cur_rank_not_in_group,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
 
 def _send_in_dygraph(
@@ -60,7 +69,13 @@ def _send_in_static_mode(
     )
 
 
-def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
+def send(
+    tensor: Tensor,
+    dst: int = 0,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task:
     """
 
     Send a tensor to the destination device.
