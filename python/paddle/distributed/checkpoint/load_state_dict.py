@@ -39,9 +39,9 @@ class ReadItem:
     local_tensor_index: LocalTensorIndex
     rank: int
     dtype: str
-    cur_offset: tuple[int]
-    storage_offset: tuple[int]
-    lengths: tuple[int]
+    cur_offset: tuple[int, ...]
+    storage_offset: tuple[int, ...]
+    lengths: tuple[int, ...]
 
 
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list[str], list[str]]] = {}
