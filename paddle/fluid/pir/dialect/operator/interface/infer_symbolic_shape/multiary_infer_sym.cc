@@ -615,29 +615,25 @@ bool BilinearInterpOpInferSymbolicShape(
 
 bool CheckFiniteAndUnscaleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  // Retrieve shapes for all input tensors except the last one (scale)
   std::vector<symbol::ShapeOrDataDimExprs> xs_shapes;
   for (size_t i = 0; i < op->num_operands() - 1; ++i) {
     xs_shapes.push_back(
         infer_context->GetShapeOrDataForValue(op->operand_source(i)));
   }
-
   // Ensure the number of inputs (xs) matches the number of outputs (outs)
   infer_context->AddEqualCstr(
       symbol::DimExpr(static_cast<int>(xs_shapes.size())),
       symbol::DimExpr(static_cast<int>(op->num_results() - 1)));
-
-  // Set shapes for output tensors corresponding to each input tensor
   for (size_t i = 0; i < xs_shapes.size(); ++i) {
+    symbol::TensorShapeOrDataDimExprs output_shape(xs_shapes[i].shape());
     infer_context->SetShapeOrDataForValue(
-        op->result(i), symbol::ShapeOrDataDimExprs{xs_shapes[i].shape()});
+        op->result(i), symbol::ShapeOrDataDimExprs{output_shape});
   }
 
-  // Set shape for the found_infinite output tensor
+  symbol::TensorShapeOrDataDimExprs found_infinite_shape({symbol::DimExpr(1)});
   infer_context->SetShapeOrDataForValue(
       op->result(op->num_results() - 1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(1)})});
+      symbol::ShapeOrDataDimExprs{found_infinite_shape});
 
   return true;
 }
