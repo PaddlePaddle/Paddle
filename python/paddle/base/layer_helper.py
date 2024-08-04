@@ -72,11 +72,11 @@ class LayerHelper(LayerHelperBase):
         return inputs[0]
 
     @property
-    def param_attr(self) -> ParamAttr | list[ParamAttr]:
+    def param_attr(self) -> ParamAttr:
         return ParamAttr._to_attr(self.kwargs.get('param_attr', None))
 
     @property
-    def bias_attr(self) -> ParamAttr | list[ParamAttr]:
+    def bias_attr(self) -> ParamAttr:
         return ParamAttr._to_attr(self.kwargs.get('bias_attr', None))
 
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of param_attr
