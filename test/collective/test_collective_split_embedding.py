@@ -27,7 +27,10 @@ class TestParallelEmbeddingAPI(TestDistBase):
 
     def test_parallel_embedding(self):
         self.check_with_place(
-            "parallel_embedding_api.py", "parallel_embedding", "nccl"
+            "parallel_embedding_api.py",
+            "parallel_embedding",
+            "nccl",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "false"},
         )
 
 

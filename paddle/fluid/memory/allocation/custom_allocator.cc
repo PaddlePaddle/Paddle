@@ -15,9 +15,9 @@
 #include "paddle/fluid/memory/allocation/custom_allocator.h"
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/core/enforce.h"
 
 COMMON_DECLARE_bool(custom_device_mem_record);
 

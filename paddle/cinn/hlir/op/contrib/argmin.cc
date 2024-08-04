@@ -62,8 +62,10 @@ std::vector<Tensor> Argmin(const Tensor &in_tensor,
 
   std::vector<Expr> output_shape;
   for (int i = 0; i < shape.size(); ++i) {
-    CHECK(shape[i].is_constant())
-        << "Input tensor's shape should be constant value.";
+    PADDLE_ENFORCE_EQ(shape[i].is_constant(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Input tensor's shape should be constant value."));
     if (pos_axis == i) {
       if (keep_dims) {
         output_shape.push_back(Expr(1));
@@ -109,32 +111,44 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
     keep_dims = absl::get<bool>(attrs.attr_store.at("keep_dim"));
   }
 
-  framework::CINNCompute argmin_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of argmin compute is empty! Please check.";
-        cinn::common::CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "There should be 1 input args for argmax compute";
-        Expr in_expr = pack_args[0];
-        CHECK(in_expr.as_tensor());
-        Tensor in_tensor = in_expr.as_tensor_ref();
-        CHECK_EQ(pack_args.size(), 2U);
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
-        auto out_tensor =
-            Argmin(in_tensor, target, axis, keep_dims, tensor_name);
+  framework::CINNCompute argmin_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of argmin compute is empty! Please check."));
+    cinn::common::CINNValuePack pack_args = args[0];
+    CHECK_GE(pack_args.size(), 1U)
+        << "There should be 1 input args for argmax compute";
+    Expr in_expr = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        in_expr.as_tensor(),
+        phi::errors::InvalidArgument(
+            "The input argument of argmin compute is not tensor."));
+    Tensor in_tensor = in_expr.as_tensor_ref();
+    CHECK_EQ(pack_args.size(), 2U);
+    PADDLE_ENFORCE_EQ(
+        pack_args[1].is_string(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of argmin compute is not string."));
+    std::string tensor_name = pack_args[1].operator std::string();
+    auto out_tensor = Argmin(in_tensor, target, axis, keep_dims, tensor_name);
 
-        std::vector<CINNValue> cinn_values{CINNValue(out_tensor[0]),
-                                           CINNValue(out_tensor[1]),
-                                           CINNValue(out_tensor[2])};
-        *ret = cinn::common::CINNValuePack{cinn_values};
-      });
+    std::vector<CINNValue> cinn_values{CINNValue(out_tensor[0]),
+                                       CINNValue(out_tensor[1]),
+                                       CINNValue(out_tensor[2])};
+    *ret = cinn::common::CINNValuePack{cinn_values};
+  });
 
   framework::CINNSchedule argmin_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of arange_schedule is empty! Please check.\n";
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of argmin schedule is empty! Please check."));
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -143,7 +157,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
         vec_ast.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_EQ(
+        !vec_ast.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of argmin schedule is empty! Please check."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();

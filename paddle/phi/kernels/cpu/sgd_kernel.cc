@@ -101,7 +101,7 @@ void sgd_dense_param_sparse_grad_impl<phi::dtype::bfloat16>(
     PADDLE_ENFORCE_LT(
         grad_rows[i],
         grad_height,
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "Grad rows index value should be less than grad height."
             "Got [%s], but expected less than [%s]",
             grad_rows[i],
@@ -161,7 +161,7 @@ void SGDSparseParamSparseGradKernel(
   PADDLE_ENFORCE_EQ(
       param_row_width,
       grad_row_width,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The param_row in SgdOP should have the same size with grad_row. "
           "But received param_row's width is [%s], and grad_row's width is "
           "[%s]",
@@ -176,7 +176,7 @@ void SGDSparseParamSparseGradKernel(
     PADDLE_ENFORCE_GE(
         id_index,
         static_cast<int64_t>(0),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The id in SgdOp should be >= 0. But received id_index is [%s]",
             id_index));
     for (int64_t j = 0; j < grad_row_width; j++) {

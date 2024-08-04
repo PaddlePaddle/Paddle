@@ -39,7 +39,7 @@ void ShuffleBatchGradKernel(const Context& dev_ctx,
                             int startup_seed,
                             DenseTensor* x_grad) {
 #ifdef _MSC_VER
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "GPU shuffle_batch_grad is not supported on Windows yet"));
 #else
   const auto* out_grad_data = out_grad.data<T>();
