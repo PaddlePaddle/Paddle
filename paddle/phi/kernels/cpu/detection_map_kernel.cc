@@ -367,7 +367,7 @@ T CalcMAP(APType ap_type,
       mAP += average_precisions;
       ++count;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unkown ap version %s. Now only supports integral and l1point.",
           ap_type));
     }
@@ -407,7 +407,7 @@ void GetBoxes(const phi::DenseTensor& input_label,
         PADDLE_ENFORCE_EQ(
             input_label.dims()[1],
             5,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The input label width"
                 " must be 5, but received %d, please check your input data",
                 input_label.dims()[1]));
@@ -465,12 +465,12 @@ void DetectionMAPOpKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       label_lod.size(),
       1UL,
-      phi::errors::InvalidArgument("Only support LodTensor of lod_level "
-                                   "with 1 in label, but received %d.",
-                                   label_lod.size()));
+      common::errors::InvalidArgument("Only support LodTensor of lod_level "
+                                      "with 1 in label, but received %d.",
+                                      label_lod.size()));
   PADDLE_ENFORCE_EQ(label_lod[0].size(),
                     detect_lod[0].size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The batch_size of input(Label) and input(Detection) "
                         "must be the same, but received %d:%d",
                         label_lod[0].size(),

@@ -53,7 +53,7 @@ void LambKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         kIsSameType,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "When multi_precision=False, T and MT must be the same type."));
   }
   bool cpu_skip_update = false;

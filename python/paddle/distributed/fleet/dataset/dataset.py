@@ -236,9 +236,13 @@ class DatasetBase:
             slot_var = multi_slot.slots.add()
             slot_var.is_used = True
             slot_var.name = var.name
-            if var.lod_level == 0:
+            if paddle.framework.use_pir_api():
                 slot_var.is_dense = True
                 slot_var.shape.extend(var.shape)
+            else:
+                if var.lod_level == 0:
+                    slot_var.is_dense = True
+                    slot_var.shape.extend(var.shape)
             if var.dtype == paddle.float32:
                 slot_var.type = "float"
             elif var.dtype == paddle.int64:

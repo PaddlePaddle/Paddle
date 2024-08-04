@@ -37,7 +37,6 @@ class AutoParallelPassTestBase(DistPassTestBase):
     def setUp(self):
         paddle.enable_static()
         seed = int(os.environ.get('SEED', -1))
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
         if seed <= 0:
             seed = np.random.randint(low=1, high=1000000, size=[1])[0]
             os.environ['SEED'] = str(seed)

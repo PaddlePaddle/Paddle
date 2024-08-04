@@ -342,6 +342,12 @@ class RunnableProgram:
             rename_mapping.update(
                 value._rename(new_name, program.global_block())
             )
+        # Get all values again because some values has been erased.
+        for value in RunnableProgram._get_program_all_values(program):
+            if value.has_name:
+                assert (
+                    value._has_only_one_name()
+                ), f"Expected all values in Program have only one name, but {value} has multiple names: {value._names}"
         return rename_mapping
 
     @cached_property

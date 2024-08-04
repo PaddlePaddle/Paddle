@@ -28,7 +28,7 @@ PyReader::PyReader(
   queue_ = queue;
 }
 
-void PyReader::ReadNext(paddle::framework::LoDTensorArray* out) {
+void PyReader::ReadNext(phi::TensorArray* out) {
   bool success = false;
   *out = queue_->Pop(&success);
   if (!success) out->clear();

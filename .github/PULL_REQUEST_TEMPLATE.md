@@ -2,7 +2,7 @@
 <!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/24810 -->
 
 ### PR Category
-<!-- One of [ User Experience | Execute Infrastructure | Operator Mechanism | CINN | Custom Device | Performance Optimization | Distributed Strategy | Parameter Server | Communication Library | Auto Parallel | Inference | Environment Adaptation | Others ] -->
+<!-- One of [ User Experience | Execute Infrastructure | Operator Mechanism | CINN | Custom Device | Performance Optimization | Distributed Strategy | Parameter Server | Communication Library | Auto Parallel | Inference | Environment Adaptation] -->
 
 
 ### PR Types
