@@ -3825,7 +3825,7 @@ function clang-tidy_check() {
     if [ ${#diff_files[@]} -ne 0 ]; then
         echo "Checking code style by clang-tidy ..."
         startTime_s=`date +%s`
-        
+
         check_error=$(python ./tools/codestyle/clang-tidy.py -p=build -j=20 -head-filter=.* -system-headers \
         -clang-tidy-binary=clang-tidy \
         -extra-arg=-Wno-unknown-warning-option \
