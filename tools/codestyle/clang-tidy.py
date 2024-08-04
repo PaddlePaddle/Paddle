@@ -419,7 +419,6 @@ def main():
             t.start()
 
         # Fill the queue with files.
-        # todo! 修改文件路径
         with open('./tools/codestyle/diff_files.txt', 'r') as f:
             files = f.read().splitlines()
 
