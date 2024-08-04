@@ -378,20 +378,11 @@ def monkey_patch_value():
                         other_var,
                     )
 
-            # 3. unify right var type to left var
-            rhs_dtype = safe_get_dtype(other_var_value)
-            if lhs_dtype != rhs_dtype:
-                other_var_value = paddle.cast(other_var_value, lhs_dtype)
+            # 3. the type promotion is put into the api generation phase
             if reverse:
                 tmp = self
                 self = other_var_value
                 other_var_value = tmp
-
-            if (
-                python_api == paddle.divide
-            ) and self.dtype in _supported_int_dtype_:
-                self = paddle.cast(self, DataType.FLOAT32)
-                other_var_value = paddle.cast(other_var_value, DataType.FLOAT32)
 
             out = python_api(self, other_var_value)
             return out
