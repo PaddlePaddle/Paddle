@@ -282,13 +282,22 @@ class TestMatrixRankAPI(unittest.TestCase):
 def np_matrix_rank_atol_rtol(x, atol=None, rtol=None, hermitian=False):
     if (atol is None) and (rtol is None):
         return np.linalg.matrix_rank(x, hermitian=hermitian)
+    use_default_tol = False
     if atol is None:
-        atol = 0.0
+        atol = np.array(0.0).astype(x.dtype)
     if rtol is None:
-        rtol = 0.0
+        rtol = np.array(0.0).astype(x.dtype)
+        use_default_tol = True
+    atol, rtol = np.broadcast_arrays(atol, rtol)
     _, sv, _ = np.linalg.svd(x)
     sv_max = sv.max(axis=-1)
-    tol = np.maximum(atol, rtol * sv_max)
+    if use_default_tol:
+        rtol_T = np.finfo(x.dtype).eps * max(x.shape[-2], x.shape[-1]) * sv_max
+        rtol_default = np.full(rtol.shape, rtol_T, x.dtype)
+        rtol = np.where(atol == 0.0, rtol_default, rtol * sv_max)
+    else:
+        rtol = rtol * sv_max
+    tol = np.maximum(atol, rtol)
     return np.linalg.matrix_rank(x, tol, hermitian=hermitian)
 
 
@@ -302,7 +311,6 @@ class TestMatrixRankAtolRtolOP(OpTest):
     def setUp(self):
         self.python_api = matrix_rank_atol_rtol_wraper
         self.op_type = "matrix_rank_atol_rtol"
-        self.use_default_tol = False
         self.init_data()
         self.process_data()
         self.inputs = {'x': self.x}
@@ -335,10 +343,7 @@ class TestMatrixRankAtolRtolOP(OpTest):
 
             if self.rtol is None:
                 self.rtol = np.full([], 0.0, self.x.dtype)
-                if (self.atol is None) or (
-                    isinstance(self.atol, (float, int)) and self.atol == 0
-                ):
-                    self.use_default_tol = True
+                self.use_default_tol = True
             if self.atol is None:
                 self.atol = np.full([], 0.0, self.x.dtype)
 
@@ -586,6 +591,25 @@ class TestMatrixRankAtolRtolAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
+            # atol: tensor, rtol: None; atol specified as 0
+            x_np = np.random.rand(3, 4, 5, 5)
+            atol_np = np.array(
+                [
+                    [0.0, 0.0, 0.0, 0.0],
+                    [10.0, 10.0, 10.0, 10.0],
+                    [10.0, 0.0, 10.0, 0.0],
+                ]
+            )
+            x_pd = paddle.to_tensor(x_np)
+            atol_pd = paddle.to_tensor(atol_np)
+            rank_np = np_matrix_rank_atol_rtol(
+                x_np, atol=atol_np, rtol=None, hermitian=False
+            )
+            rank_pd = paddle.linalg.matrix_rank(
+                x_pd, hermitian=False, atol=atol_pd, rtol=None
+            )
+            np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
+
     @test_with_pir_api
     def test_static(self):
         places = [base.CPUPlace()]
@@ -723,6 +747,36 @@ class TestMatrixRankAtolRtolAPI(unittest.TestCase):
                 exe = base.Executor(place)
                 fetches = exe.run(
                     feed={"X": x_np, "Atol": atol_np, "Rtol": rtol_np},
+                    fetch_list=[rank_pd],
+                )
+                np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)
+
+        for place in places:
+            # atol: tensor, rtol: None; atol specified as 0
+            with static.program_guard(static.Program(), static.Program()):
+                x_np = np.ones([3, 4, 5, 5])
+                x_pd = paddle.static.data(
+                    name="X", shape=x_np.shape, dtype='float64'
+                )
+                atol_np = np.array(
+                    [
+                        [0.0, 0.0, 0.0, 0.0],
+                        [10.0, 10.0, 10.0, 10.0],
+                        [10.0, 0.0, 10.0, 0.0],
+                    ]
+                )
+                atol_pd = paddle.static.data(
+                    name="Atol", shape=atol_np.shape, dtype='float64'
+                )
+                rank_np = np_matrix_rank_atol_rtol(
+                    x_np, atol=atol_np, rtol=None, hermitian=True
+                )
+                rank_pd = paddle.linalg.matrix_rank(
+                    x_pd, hermitian=True, atol=atol_pd, rtol=None
+                )
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    feed={"X": x_np, "Atol": atol_np},
                     fetch_list=[rank_pd],
                 )
                 np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)

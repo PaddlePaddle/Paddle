@@ -24,6 +24,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/abs_kernel.h"
+#include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -31,6 +32,7 @@
 #include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/where_kernel.h"
 
 namespace phi {
 
@@ -540,16 +542,33 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(&tol_tensor);
 
     if (use_default_tol) {
+      // when `rtol` is specified to be None in py api
+      // use tol=eps*max(m, n)*sigma_1 only if `atol` is specified as 0
       T rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
       DenseTensor default_rtol_tensor;
       default_rtol_tensor =
           phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(rtol_T));
       default_rtol_tensor =
           phi::Multiply<T>(dev_ctx, default_rtol_tensor, max_eigenvalue_tensor);
+
+      DenseTensor tmp_zeros;
+      tmp_zeros = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(0.0));
+      DenseTensor atol_compare_result;
+      atol_compare_result.Resize(atol_tensor.dims());
+      phi::EqualKernel<T, Context>(
+          dev_ctx, atol_tensor, tmp_zeros, &atol_compare_result);
+
+      DenseTensor selected_rtol_tensor;
+      selected_rtol_tensor.Resize(rtol_tensor.dims());
+      phi::WhereKernel<T, Context>(dev_ctx,
+                                   atol_compare_result,
+                                   default_rtol_tensor,
+                                   rtol_tensor,
+                                   &selected_rtol_tensor);
       funcs::ElementwiseCompute<GreaterElementFunctor<T>, T>(
           dev_ctx,
           atol_tensor,
-          default_rtol_tensor,
+          selected_rtol_tensor,
           GreaterElementFunctor<T>(),
           &tol_tensor);
     } else {

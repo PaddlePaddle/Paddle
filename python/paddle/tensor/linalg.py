@@ -2300,10 +2300,7 @@ def matrix_rank(
     if use_atol_rtol:
         if rtol is None:
             rtol = full([], 0.0, x.dtype)
-            if (atol is None) or (
-                (isinstance(atol, (float, int))) and (atol == 0)
-            ):
-                use_default_tol = True
+            use_default_tol = True
         if atol is None:
             atol = full([], 0.0, x.dtype)
 
