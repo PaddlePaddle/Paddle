@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import paddle
-from paddle.nn.initializer.initializer import Initializer
 
 from .data_feeder import check_type
+
+if TYPE_CHECKING:
+    from paddle.nn.initializer import Initializer
 
 __all__ = []
 
