@@ -17,9 +17,6 @@ import itertools
 import re
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
 from type_mapping import (
     attr_types_map,
     dense_input_types_map,
@@ -33,6 +30,9 @@ from type_mapping import (
     phi_attr_types_map,
     sr_output_types_map,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def get_infer_var_type_func(op_name):
