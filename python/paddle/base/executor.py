@@ -1712,7 +1712,7 @@ class Executor:
         return_numpy: bool = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
-    ) -> list[Tensor] | list[npt.NDArray]:
+    ) -> list[Tensor] | list[npt.NDArray[Any]]:
         ...
 
     def run(
@@ -1796,7 +1796,7 @@ class Executor:
                 >>> adam = paddle.optimizer.Adam()
                 >>> adam.minimize(loss)
                 >>> i = paddle.zeros(shape=[1], dtype='int64')
-                >>> array = paddle.tensor.array_write(x=loss, i=i)
+                >>> array = paddle.tensor.array_write(x=loss, i=i)  # type: paddle.Tensor
 
                 >>> # Run the startup program once and only once.
                 >>> exe.run(paddle.static.default_startup_program())
