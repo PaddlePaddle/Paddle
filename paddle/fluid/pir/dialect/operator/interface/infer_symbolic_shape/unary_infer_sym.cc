@@ -851,6 +851,7 @@ bool KthvalueOpInferSymbolicShape(
 
 bool L1NormOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
+  // The output is a scalar, set the output shape accordingly
   std::vector<symbol::DimExpr> output_shape;
   infer_context->SetShapeOrDataForValue(
       op->result(0),
@@ -1279,14 +1280,40 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
 
 bool RreluOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
+  float lower = op->attribute<pir::FloatAttribute>("lower").data();
+  float upper = op->attribute<pir::FloatAttribute>("upper").data();
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
 
+  // Check constraints for the attributes lower and upper
+  PADDLE_ENFORCE_GE(lower,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The lower value should be greater than or equal to 0. "
+                        "But received lower value = %f.",
+                        lower));
+  PADDLE_ENFORCE_LE(upper,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The upper value should be less than or equal to 1. "
+                        "But received upper value = %f.",
+                        upper));
+  PADDLE_ENFORCE_GE(
+      upper,
+      lower,
+      phi::errors::InvalidArgument(
+          "The upper value should be greater than or equal to lower value. "
+          "But received upper value = %f, lower value = %f.",
+          upper,
+          lower));
+
+  // Set the shape for the output tensor out
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
+  // Set the shape for the output tensor noise if it exists
   if (op->num_results() > 1 && op->result(1) != nullptr) {
     infer_context->SetShapeOrDataForValue(
         op->result(1),
