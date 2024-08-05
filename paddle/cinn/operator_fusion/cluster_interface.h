@@ -14,23 +14,19 @@
 
 #pragma once
 
-#include "paddle/cinn/operator_fusion/backend/pattern.h"
-#include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern_fuser.h"
+#include "paddle/cinn/operator_fusion/pattern.h"
+#include "paddle/cinn/operator_fusion/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/pattern_graph.h"
-#include "paddle/cinn/operator_fusion/policy/general_topo_policy.h"
-#include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
-#include "paddle/cinn/operator_fusion/policy/shardable_axes_policy.h"
+#include "paddle/cinn/operator_fusion/pattern_node.h"
+#include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 
 namespace cinn::fusion {
 
-template <typename T>
-inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
-    const std::vector<fusion::PatternContent<T>>& contents,
+inline std::vector<fusion::PatternNodePtr> ClusterOps(
+    const std::vector<fusion::PatternContent>& contents,
     const std::vector<pir::Value>& output_values) {
-  std::function<pir::Operation*(fusion::PatternContent<T>)> func =
-      [](const fusion::PatternContent<T>& content) { return content.op; };
+  std::function<pir::Operation*(fusion::PatternContent)> func =
+      [](const fusion::PatternContent& content) { return content.op; };
   const auto& origin_ops = fusion::MapVector(contents, func);
   PADDLE_ENFORCE_GT(origin_ops.size(),
                     0,
@@ -56,7 +52,7 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
   }();
 
   const auto& content_without_yield =
-      FilterVector(contents, [](const fusion::PatternContent<T>& content) {
+      FilterVector(contents, [](const fusion::PatternContent& content) {
         return content.op->name() != "cf.yield";
       });
 
@@ -66,26 +62,29 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
 
   VLOG(4) << "Start Create Policies and PolicyManager!";
   const auto& relative_judge_policy =
-      std::make_shared<fusion::RelativeJudgePolicy<T>>(ops, shape_analysis);
+      std::make_shared<fusion::RelativeJudgePolicy>(ops, shape_analysis);
 
   const auto& general_topo_policy =
-      std::make_shared<fusion::GeneralTopoPolicy<T>>();
+      std::make_shared<fusion::GeneralTopoPolicy>();
 
-  auto policy_manager =
-      fusion::PolicyManager<T>({relative_judge_policy, general_topo_policy});
+  const auto& anchor_search_policy =
+      std::make_shared<fusion::AnchorSearchPolicy>();
 
-  auto topo_manager = fusion::PolicyManager<T>({general_topo_policy});
+  fusion::PolicyManager policy_manager;
+
+  policy_manager.SetPolicy(relative_judge_policy);
+  policy_manager.SetPolicy(general_topo_policy);
+  policy_manager.SetPolicy(anchor_search_policy);
 
   VLOG(4) << "Start Create PatternGraph";
-  fusion::PatternGraph<T> graph(
-      content_without_yield, outputs, policy_manager, topo_manager);
+  fusion::PatternGraph graph(content_without_yield, outputs, policy_manager);
   auto result = graph.ClusterOps();
 
   VLOG(4) << "End Cluster Ops! result size:" << result.size();
   for (const auto& node : result) {
     VLOG(4) << "\n"
             << node->DebugStr() << "\n"
-            << fusion::StmtPatternDebugStr(node->stmt_pattern());
+            << fusion::StmtPatternDebugStr(node->stmt_pattern()) << "\n";
   }
 
   return result;

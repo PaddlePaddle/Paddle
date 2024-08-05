@@ -12,23 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/operator_fusion/policy/dim_relation.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/dim_relation.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 
 #include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
-
-const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
-  size_t i = 0;
-  for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
-       ++consumer_it, ++i) {
-    if (consumer_it->owner() == op) {
-      return i;
-    }
-  }
-  PADDLE_THROW(::common::errors::NotFound(
-      "Can not find the usage of value %s in op %s", v.impl(), op->name()));
-}
 
 ValueUsage GetValueUsage(const pir::Value& v, const size_t usage_idx) {
   ValueUsage valud_dim;
@@ -103,42 +92,6 @@ static DimUsageRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
   return res;
 }
 
-static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
-    pir::Operation* op) {
-  std::vector<std::pair<size_t, size_t>> res;
-  auto* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-
-  const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
-  PADDLE_ENFORCE_EQ(broad_cast_value.has_value(),
-                    true,
-                    ::common::errors::PreconditionNotMet(
-                        "Required broad_cast_value is not empty."));
-  const auto& [input_value, output_value] = broad_cast_value.value();
-  const int input_rank = GetCompitableRank(input_value);
-  const int output_rank = GetCompitableRank(output_value);
-  PADDLE_ENFORCE_GE(
-      output_rank,
-      input_rank,
-      ::common::errors::PreconditionNotMet(
-          "Required output rank shall be greater than or equal input rank."));
-
-  // Compare axis one by one, from back to front.
-  // The rule of broadcasting:
-  // https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/beginner/tensor_cn.html#id7
-  for (int i = 1; i <= input_rank; ++i) {
-    int input_axis = input_rank - i;
-    int output_axis = output_rank - i;
-    if (input_axis < 0 || output_axis < 0) break;
-    if (shape_analysis->IsProductEqual(
-            input_value, {input_axis}, output_value, {output_axis})) {
-      res.emplace_back(input_axis, output_axis);
-    }
-  }
-
-  return res;
-}
-
 static DimUsageRelation CreateOpRelativenessForBroadcast(pir::Operation* op) {
   DimUsageRelation res;
   const auto& in_value = op->operand(0).source();
@@ -159,7 +112,7 @@ static DimUsageRelation CreateOpRelativenessForReduce(pir::Operation* op) {
   const size_t input_rank = GetCompitableRank(op->operand_source(0));
   int out_idx = 0;
   bool keep_dim = GetReduceOpKeepDims(op);
-  for (int i = 0; i < input_rank; i++) {
+  for (size_t i = 0; i < input_rank; i++) {
     if (std::find(reduce_axis_idx.begin(), reduce_axis_idx.end(), i) ==
         reduce_axis_idx.end()) {
       auto input_dim = DimUsage(
@@ -193,16 +146,13 @@ static std::optional<DimUsageRelation> CreateOpRelativenessForSpecialOps(
   if (op->name() == "cinn_op.generate_shape") {
     return CreateOpRelativenessForDefault(op);
   }
-  if (op->name() == "cinn_op.yield_store") {
-    return CreateOpRelativenessForDefault(op);
-  }
   return {};
 }
 
 static DimUsageRelation GetSingleOpRelation(pir::Operation* op) {
   const auto& special_result = CreateOpRelativenessForSpecialOps(op);
   if (special_result != std::nullopt) {
-    VLOG(4) << "[DimUsageRelation] GetSingleOpRelation for special op: \n"
+    VLOG(5) << "[DimUsageRelation] GetSingleOpRelation for special op: \n"
             << op->name() << " : " << RelationDebugStr(special_result.value());
     return special_result.value();
   }
@@ -218,7 +168,7 @@ static DimUsageRelation GetSingleOpRelation(pir::Operation* op) {
   } else {
     result = CreateOpRelativenessForDefault(op);
   }
-  VLOG(4) << "[DimUsageRelation] GetSingleOpRelation: \n"
+  VLOG(5) << "[DimUsageRelation] GetSingleOpRelation: \n"
           << op->name() << " : " << RelationDebugStr(result);
   return result;
 }
