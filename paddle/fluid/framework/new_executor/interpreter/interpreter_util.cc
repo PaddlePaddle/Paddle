@@ -978,8 +978,7 @@ void BuildOpFuncList(const phi::Place& place,
       std::rethrow_exception(std::current_exception());
     } catch (std::exception& ex) {
       LOG(WARNING) << op_type << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
+                   << common::demangle(typeid(ex).name()) << ", " << ex.what();
       std::rethrow_exception(std::current_exception());
     } catch (...) {
       LOG(WARNING) << op_type << " raises an unknown exception";
@@ -1090,8 +1089,8 @@ void BuildOpFuncList(const phi::Place& place,
                                      ->mutable_value()
                                      ->MoveMemoryHolder());
           var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
-        } else if (var->IsType<LoDTensorArray>()) {
-          auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+        } else if (var->IsType<phi::TensorArray>()) {
+          auto* tensor_arr = var->GetMutable<phi::TensorArray>();
           for (auto& t : *tensor_arr) {
             garbages->emplace_back(t.MoveMemoryHolder());
           }
@@ -1137,8 +1136,8 @@ void BuildOpFuncList(const phi::Place& place,
                                  ->mutable_value()
                                  ->MoveMemoryHolder());
       var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
-    } else if (var->IsType<LoDTensorArray>()) {
-      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+    } else if (var->IsType<phi::TensorArray>()) {
+      auto* tensor_arr = var->GetMutable<phi::TensorArray>();
       for (auto& t : *tensor_arr) {
         garbages->emplace_back(t.MoveMemoryHolder());
       }

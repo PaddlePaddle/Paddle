@@ -820,10 +820,10 @@ void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
       // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
-      platform::RecordEvent op_type_record_event(
+      phi::RecordEvent op_type_record_event(
           Type(), platform::TracerEventType::Operator, 1);
       auto op_name = platform::OpName(outputs_, Type());
-      platform::RecordEvent op_name_record_event(
+      phi::RecordEvent op_name_record_event(
           op_name,
           platform::TracerEventType::Operator,
           FLAGS_enable_host_event_recorder_hook ? 20 : 1,
@@ -839,7 +839,7 @@ void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
     std::rethrow_exception(std::current_exception());
   } catch (std::exception& ex) {
     LOG(WARNING) << Type() << " raises an exception "
-                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+                 << common::demangle(typeid(ex).name()) << ", " << ex.what();
     std::rethrow_exception(std::current_exception());
   } catch (...) {
     LOG(WARNING) << Type() << " raises an unknown exception";
@@ -2007,10 +2007,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::vector<std::string> transfered_inplace_vars;
   Scope* transfer_scope = nullptr;
   {
-    platform::RecordEvent record_event("prepare_data",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       phi::EventRole::kInnerOp);
+    phi::RecordEvent record_event("prepare_data",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
     if (need_prepare_data_) {
       if (fallback_to_cpu) {  // NOLINT
         transfer_scope = PrepareData(scope,
@@ -2033,10 +2033,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       (transfer_scope == nullptr ? scope : *transfer_scope);
 
   if (!all_kernels_must_compute_runtime_shape_) {
-    platform::RecordEvent record_event("infer_shape",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       phi::EventRole::kInnerOp);
+    phi::RecordEvent record_event("infer_shape",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->Info().infer_shape_(&infer_shape_ctx);
     record_event.End();
@@ -2051,10 +2051,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
-    platform::RecordEvent record_event("compute",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       phi::EventRole::kInnerOp);
+    phi::RecordEvent record_event("compute",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
     if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
                                phi::KernelRegisteredType::FUNCTION) {
       phi::KernelContext phi_kernel_context;
@@ -2490,7 +2490,7 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
       if (grad_var == nullptr) {
         continue;
       }
-      // don't process LoDTensorArray temporarily,
+      // don't process phi::TensorArray temporarily,
       // add support if necessary for complex number calculations in the future
       if (!VarIsTensor(*grad_var)) {
         continue;
@@ -2871,8 +2871,8 @@ void OperatorWithKernel::ParseInputDataType(
       const phi::SparseCooTensor* sp_t = &(var->Get<phi::SparseCooTensor>());
       *data_type = paddle::framework::TransToProtoVarType(sp_t->dtype());
       return;
-    } else if (var->IsType<LoDTensorArray>()) {
-      auto t_arr = &var->Get<LoDTensorArray>();
+    } else if (var->IsType<phi::TensorArray>()) {
+      auto t_arr = &var->Get<phi::TensorArray>();
       for (const auto& item : *t_arr) {
         if (item.IsInitialized()) {
           t = &(item);
@@ -2921,8 +2921,8 @@ void OperatorWithKernel::ParseMultiInputDataType(
                            DataTypeToString(tmp),
                            DataTypeToString(*data_type)));
         *data_type = tmp;
-      } else if (var->IsType<LoDTensorArray>()) {
-        auto t_arr = &var->Get<LoDTensorArray>();
+      } else if (var->IsType<phi::TensorArray>()) {
+        auto t_arr = &var->Get<phi::TensorArray>();
         for (const auto& item : *t_arr) {
           if (item.IsInitialized()) {
             t = &(item);
@@ -3140,7 +3140,7 @@ static void SetDnnAttrIntoDeviceContext(
       default:
         PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported Attribute value type `%s` for phi.",
-            platform::demangle(attr.type().name())));
+            common::demangle(attr.type().name())));
     }
   }
 #endif
@@ -3159,7 +3159,7 @@ static void SetDnnAttrIntoDeviceContext(
       default:
         PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported Attribute value type `%s` for phi.",
-            platform::demangle(attr.type().name())));
+            common::demangle(attr.type().name())));
     }
   }
 #endif
@@ -3246,9 +3246,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } else if (var->IsType<phi::SparseCooTensor>()) {
         tensor_in = &(var->Get<phi::SparseCooTensor>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
-      } else if (var->IsType<framework::LoDTensorArray>()) {
+      } else if (var->IsType<phi::TensorArray>()) {
         need_prepare_phi_data_ = true;
-        tensor_in = &(var->Get<framework::LoDTensorArray>());
+        tensor_in = &(var->Get<phi::TensorArray>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::Vocab>()) {
         tensor_in = &(var->Get<framework::Vocab>());
@@ -3262,7 +3262,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             framework::ToTypeName(var->Type())));
       }
     }
-    // Note: here cannot deal with vector<LoDTensorArray> input
+    // Note: here cannot deal with vector<phi::TensorArray> input
     phi_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
   VLOG(4) << "Done inputs";
@@ -3299,10 +3299,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else if (var->template IsType<phi::SparseCooTensor>()) {
           tensor_out = var->template GetMutable<phi::SparseCooTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<framework::LoDTensorArray>()) {
-          tensor_out = var->template GetMutable<framework::LoDTensorArray>();
-          // Note: If the input LoDTensorArray size is 0, the output
-          // LoDTensorArray is also 0
+        } else if (var->template IsType<phi::TensorArray>()) {
+          tensor_out = var->template GetMutable<phi::TensorArray>();
+          // Note: If the input phi::TensorArray size is 0, the output
+          // phi::TensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::Strings>()) {
           tensor_out = var->template GetMutable<framework::Strings>();
