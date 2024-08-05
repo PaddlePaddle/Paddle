@@ -114,5 +114,4 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unsqueeze_)
 // OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unfold)
 // OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unstack)
 
-
 }  // namespace paddle::dialect
