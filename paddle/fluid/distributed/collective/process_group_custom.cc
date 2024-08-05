@@ -143,7 +143,7 @@ phi::DeviceContext* ProcessGroupCustom::GetDeviceContext(
     PADDLE_ENFORCE_NE(
         iter,
         place_to_comm_ctx_.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Cannot find the device context in this process group."));
     return iter->second.get();
   }
@@ -155,7 +155,7 @@ phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) const {
   PADDLE_ENFORCE_NE(
       iter,
       place_to_comm_ctx_.end(),
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Cannot find the XCCL communicator in this process group."));
   return iter->second->xccl_comm();
 }
@@ -163,13 +163,13 @@ phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) const {
 std::string ProcessGroupCustom::GetCommName(int rank) {
   PADDLE_ENFORCE_GE(rank,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The rank must greater or equal than 0!"));
   auto num_devices = phi::DeviceManager::GetDeviceCount(device_type_);
   PADDLE_ENFORCE_GT(
       num_devices,
       0,
-      phi::errors::InvalidArgument("The num_devices must greater than 0!"));
+      common::errors::InvalidArgument("The num_devices must greater than 0!"));
 
   auto place_id = rank % num_devices;
   phi::CustomPlace place(device_type_, place_id);
@@ -303,7 +303,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
     const BarrierOptions& opts) {
   PADDLE_ENFORCE_GE(opts.device_id,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
   phi::CustomPlace place(device_type_, opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
@@ -471,7 +471,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Gather(
   auto& gather_tensors = *gather_tensors_ptr;
   PADDLE_ENFORCE_GT(size_,
                     opts.root_rank,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "root world size [%d]  is less than root rank [%d]",
                         size_,
                         opts.root_rank));
@@ -685,7 +685,7 @@ void ProcessGroupCustom::CreateXCCLManagerCache(
     const std::string& places_key, const std::vector<Place>& places) {
   PADDLE_ENFORCE_EQ(places_key.empty(),
                     false,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Not able to create/get the XCCL Communicator since "
                         "the CustomPlace are not known"));
 
@@ -862,7 +862,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
-      phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
   return Collective(
       in_tensors,
       out_tensors,
@@ -890,7 +890,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
-      phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
 
   return Collective(
       in_tensors,
@@ -912,25 +912,25 @@ inline void CheckTensorsInDifferentDevices(
   PADDLE_ENFORCE_EQ(
       tensors.empty(),
       false,
-      phi::errors::InvalidArgument("Tensor list must be nonempty."));
+      common::errors::InvalidArgument("Tensor list must be nonempty."));
   PADDLE_ENFORCE_LE(
       tensors.size(),
       num_devices,
-      phi::errors::InvalidArgument("Tensor list mustn't be larger than the "
-                                   "number of available CustomDevices."));
+      common::errors::InvalidArgument("Tensor list mustn't be larger than the "
+                                      "number of available CustomDevices."));
 
   std::set<Place> used_devices;
 
   for (const auto& t : tensors) {
     PADDLE_ENFORCE_EQ(phi::is_custom_place(t.place()),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Tensors must be CustomDevice and dense tensor."));
 
     const auto inserted = used_devices.insert(t.place()).second;
     PADDLE_ENFORCE_EQ(inserted,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Tensors must be on distinct CustomDevice devices."));
   }
 }
@@ -984,11 +984,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
-      phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(out_tensors, device_type_),
       true,
-      phi::errors::InvalidArgument("All outputs should be in CustomPlace."));
+      common::errors::InvalidArgument("All outputs should be in CustomPlace."));
   return Collective(
       in_tensors,
       out_tensors,
@@ -1011,11 +1011,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
-      phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(out_tensors, device_type_),
       true,
-      phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
   return Collective(
       in_tensors,
       out_tensors,
@@ -1064,7 +1064,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
-      phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
   return Collective(
       in_tensors,
       out_tensors,
@@ -1092,11 +1092,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
-      phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(out_tensors, device_type_),
       true,
-      phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
   return Collective(
       in_tensors,
       out_tensors,
@@ -1144,7 +1144,7 @@ phi::distributed::XCCLCommContext* ProcessGroupCustom::GetCommContext() {
       comm_context_manager.Get(std::to_string(this->gid_)));
   PADDLE_ENFORCE_NE(comm_context,
                     nullptr,
-                    phi::errors::Unavailable("XCCLCommContext is nullptr"));
+                    common::errors::Unavailable("XCCLCommContext is nullptr"));
   return comm_context;
 }
 

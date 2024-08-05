@@ -27,8 +27,8 @@ void LimitByCapacityKernel(const Context& dev_ctx,
                            const DenseTensor& capacity,
                            int n_worker,
                            DenseTensor* Out) {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("limit_by_capacity is not supported on CPU."));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "limit_by_capacity is not supported on CPU."));
 }
 
 }  // namespace phi

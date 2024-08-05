@@ -140,7 +140,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(phi::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use CUDA device since it's not compiled with CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
@@ -150,7 +150,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(phi::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use CUDAPinned device since it's not compiled with "
           "CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
@@ -160,7 +160,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
       gc = std::make_unique<framework::XPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(phi::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
@@ -172,7 +172,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
       gc = std::make_unique<framework::IPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(phi::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
 #endif
@@ -189,14 +189,14 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
         VLOG(10) << "Created GarbageCollector at " << place;
       }
 #else
-      PADDLE_THROW(phi::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use CustomDevice since it's not compiled with "
           "CustomDevice,"
           "Please recompile or reinstall Paddle with CustomDevice "
           "support."));
 #endif
     } else {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "Unsupported place for garbage collection"));
     }
     gcs_.emplace(place, std::move(gc));
@@ -312,30 +312,30 @@ void Tracer::TraceOpImpl(const std::string& type,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::SetDeviceId(place.device);
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
     } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
       platform::SetXPUDeviceId(place.device);
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       phi::DeviceManager::SetDevice(place);
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "PaddlePaddle should compile with CustomDevice if use "
           "CustomPlace."));
 #endif
     }
 
     if (!use_default_attr_map) {
-      PADDLE_ENFORCE_NOT_NULL(
-          passed_default_attrs_,
-          phi::errors::PermissionDenied("Detected default_attrs = nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
+                              common::errors::PermissionDenied(
+                                  "Detected default_attrs = nullptr."));
       VLOG(6) << "Use passed in default attrs";
       OpBase::Run(*op, new_ins, outs, attrs, (*passed_default_attrs_), place);
     } else {
@@ -351,17 +351,17 @@ void Tracer::TraceOpImpl(const std::string& type,
     throw exception;
   } catch (std::exception& ex) {
     PADDLE_THROW(
-        phi::errors::Fatal("Operator %s raises an %s exception.\n"
-                           "The exception content is\n:%s.",
-                           type,
-                           platform::demangle(typeid(ex).name()),
-                           ex.what()));
+        common::errors::Fatal("Operator %s raises an %s exception.\n"
+                              "The exception content is\n:%s.",
+                              type,
+                              platform::demangle(typeid(ex).name()),
+                              ex.what()));
   } catch (...) {
     // NOTE: this branch represents a very serious bug with
     // low probability of occurrence, and we can't get its
     // exception content here.
-    PADDLE_THROW(
-        phi::errors::Fatal("Operator %s raises an unknown exception.", type));
+    PADDLE_THROW(common::errors::Fatal(
+        "Operator %s raises an unknown exception.", type));
   }
 
   {
@@ -372,7 +372,7 @@ void Tracer::TraceOpImpl(const std::string& type,
       PADDLE_ENFORCE_EQ(
           passed_default_attrs_,
           nullptr,
-          phi::errors::PermissionDenied(
+          common::errors::PermissionDenied(
               "We expect passed_default_attrs_ is nullptr while "
               "use_default_attr_map is true, however we got not null "
               "passed_default_attrs_. Please check your usage of trace_op. "));
@@ -637,7 +637,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
       dynamic_cast<framework::OperatorWithKernel*>(op.get());
   PADDLE_ENFORCE_NE(opbase_with_kernel,
                     nullptr,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "This op type:`%s` is not a OperatorWithKernel, only "
                         "OperatorWithKernel can get KernelSignature",
                         type));

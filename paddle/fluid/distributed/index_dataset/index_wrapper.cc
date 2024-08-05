@@ -31,7 +31,7 @@ int TreeIndex::Load(const std::string filename) {
   PADDLE_ENFORCE_NE(
       fp,
       nullptr,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Open file %s failed. Please check whether the file exists.",
           filename));
 
@@ -49,7 +49,7 @@ int TreeIndex::Load(const std::string filename) {
     PADDLE_ENFORCE_EQ(
         read_num,
         static_cast<size_t>(num),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Read from file: %s failed. Valid Format is "
             "an integer representing the length of the following string, "
             "and the string itself.We got an integer[% d], "
@@ -62,9 +62,9 @@ int TreeIndex::Load(const std::string filename) {
     PADDLE_ENFORCE_EQ(
         item.ParseFromString(content),
         true,
-        phi::errors::InvalidArgument("Parse from file: %s failed. It's "
-                                     "content can't be parsed by KVItem.",
-                                     filename));
+        common::errors::InvalidArgument("Parse from file: %s failed. It's "
+                                        "content can't be parsed by KVItem.",
+                                        filename));
 
     if (item.key() == ".tree_meta") {
       meta_.ParseFromString(item.value());
@@ -74,7 +74,7 @@ int TreeIndex::Load(const std::string filename) {
       node.ParseFromString(item.value());
 
       // PADDLE_ENFORCE_NE(node.id(), 0,
-      //                  phi::errors::InvalidArgument(
+      //                  common::errors::InvalidArgument(
       //                      "Node'id should not be equal to zero."));
       if (node.is_leaf()) {
         id_codes_map_[node.id()] = code;
@@ -176,7 +176,7 @@ std::vector<uint64_t> TreeIndex::GetTravelCodes(uint64_t id, int start_level) {
   PADDLE_ENFORCE_NE(
       id_codes_map_.find(id),
       id_codes_map_.end(),
-      phi::errors::InvalidArgument("id = %d doesn't exist in Tree.", id));
+      common::errors::InvalidArgument("id = %d doesn't exist in Tree.", id));
   auto code = id_codes_map_.at(id);
   int level = meta_.height() - 1;
 

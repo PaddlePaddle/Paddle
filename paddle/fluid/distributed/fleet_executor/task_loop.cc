@@ -28,7 +28,7 @@ TaskLoop::TaskLoop()
   PADDLE_ENFORCE_EQ(
       thread_local_loop_,
       nullptr,
-      phi::errors::AlreadyExists("Another TaskLoop is already init."));
+      common::errors::AlreadyExists("Another TaskLoop is already init."));
   thread_local_loop_ = this;
 }
 
@@ -37,7 +37,7 @@ TaskLoop::~TaskLoop() { thread_local_loop_ = nullptr; }
 void TaskLoop::Loop() {
   PADDLE_ENFORCE_EQ(looping_,
                     false,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Loop can only execute in one loop thread"));
   AssertInLoopThread();
 
@@ -74,7 +74,7 @@ void TaskLoop::WakeUp() {
 }
 
 void TaskLoop::AbortNotInLoopThread() {
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "This TaskLoop was created in thread %d, but current thread is %d",
       thread_id_,
       std::this_thread::get_id()));

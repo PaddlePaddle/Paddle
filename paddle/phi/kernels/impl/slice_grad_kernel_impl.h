@@ -347,7 +347,7 @@ void SliceGradKernel(const Context& ctx,
                                       input_grad);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
 }

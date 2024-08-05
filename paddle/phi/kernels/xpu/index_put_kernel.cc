@@ -81,12 +81,13 @@ void IndexPutKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       value.dtype(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The data type of tensor value must be same to the data type "
           "of tensor x."));
-  PADDLE_ENFORCE_EQ(indices.empty(),
-                    false,
-                    phi::errors::InvalidArgument("Indices cannot be empty."));
+  PADDLE_ENFORCE_EQ(
+      indices.empty(),
+      false,
+      common::errors::InvalidArgument("Indices cannot be empty."));
   const int64_t total_dims = x.dims().size();
   PADDLE_ENFORCE_LE(
       total_dims,

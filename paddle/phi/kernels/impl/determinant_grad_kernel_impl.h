@@ -86,7 +86,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         out_grad.dims().size() + 2,
         input_dims_size,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The grad tensor of det dims size should be 2 less than"
             " input tensor's, but here differ %d",
             input_dims_size - out_grad.dims().size()));
@@ -95,7 +95,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         out_grad.dims().size(),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The grad tensor of det dims size should be 2 less than"
             " input tensor's, but here differ %d",
             input_dims_size - out_grad.dims().size()));

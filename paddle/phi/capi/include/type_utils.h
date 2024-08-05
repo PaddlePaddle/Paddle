@@ -45,8 +45,8 @@ inline PD_DataType ToPDDataType(::phi::DataType dtype) {
     return_result(COMPLEX64, COMPLEX64);
     return_result(COMPLEX128, COMPLEX128);
     default: {
-      PADDLE_THROW(
-          ::phi::errors::Unavailable("DataType %d is not supported.", dtype));
+      PADDLE_THROW(::common::errors::Unavailable(
+          "DataType %d is not supported.", dtype));
     }
   }
 #undef return_result
@@ -74,8 +74,8 @@ inline ::phi::DataType ToPhiDataType(PD_DataType dtype) {
     return_result(COMPLEX64, COMPLEX64);
     return_result(COMPLEX128, COMPLEX128);
     default: {
-      PADDLE_THROW(
-          ::phi::errors::Unavailable("DataType %d is not supported.", dtype));
+      PADDLE_THROW(::common::errors::Unavailable(
+          "DataType %d is not supported.", dtype));
       return ::phi::DataType::UNDEFINED;
     }
   }
@@ -93,8 +93,8 @@ inline PD_DataLayout ToPDDataLayout(::phi::DataLayout layout) {
     return_result(NCDHW, NCDHW);
     return_result(NDHWC, NDHWC);
     default: {
-      PADDLE_THROW(::phi::errors::Unavailable("DataLayout %d is not supported.",
-                                              layout));
+      PADDLE_THROW(::common::errors::Unavailable(
+          "DataLayout %d is not supported.", layout));
       return PD_DataLayout::ANY;
     }
   }
@@ -112,8 +112,8 @@ inline ::phi::DataLayout ToPhiDataLayout(PD_DataLayout layout) {
     return_result(NCDHW, NCDHW);
     return_result(NDHWC, NDHWC);
     default: {
-      PADDLE_THROW(::phi::errors::Unavailable("DataLayout %d is not supported.",
-                                              layout));
+      PADDLE_THROW(::common::errors::Unavailable(
+          "DataLayout %d is not supported.", layout));
       return ::phi::DataLayout::ANY;
     }
   }

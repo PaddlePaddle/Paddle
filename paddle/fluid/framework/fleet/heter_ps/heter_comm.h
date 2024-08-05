@@ -33,9 +33,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/memory.h"
 
 #ifdef PADDLE_WITH_HETERPS
 
@@ -347,8 +347,21 @@ class HeterComm {
     }
     void check(const size_t& len,
                const size_t& value_bytes = sizeof(GradType)) {
-      CHECK_GE(all_keys_mem->size(), len);
-      CHECK_GE(all_grads_mem->size(), len * value_bytes);
+      PADDLE_ENFORCE_GE(all_keys_mem->size(),
+                        len,
+                        phi::errors::InvalidArgument(
+                            "Invalid size of all keys memory. Expect to be "
+                            "equal to length %d. But recieved %d.",
+                            len,
+                            all_keys_mem->size()));
+      PADDLE_ENFORCE_GE(
+          all_grads_mem->size(),
+          len * value_bytes,
+          phi::errors::InvalidArgument(
+              "Invalid size of all gradients memory. Expect to be equal to "
+              "length * value bytes %d. But recieved %d.",
+              len * value_bytes,
+              all_grads_mem->size()));
     }
     void init_pull(const size_t& len) {
       pull_res.h_recv_fea_num = len;
