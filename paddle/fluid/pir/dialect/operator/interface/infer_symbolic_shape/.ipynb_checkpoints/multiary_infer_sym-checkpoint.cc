@@ -1201,6 +1201,80 @@ bool Where_OpInferSymbolicShape(pir::Operation *op,
   return WhereOpInferSymbolicShape(op, infer_context);
 }
 
+bool YoloLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &dim_x =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &dim_gtbox =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &dim_gtlabel =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
+  std::vector<int> anchors_mask =
+      paddle::dialect::details::GetVectorAttr<int>(op, "anchors_mask");
+  int mask_num = static_cast<int>(anchors_mask.size());
+  int class_num = op->attribute<pir::Int32Attribute>("class_num").data();
+
+  PADDLE_ENFORCE_EQ(dim_x.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input(X) should be a 4-D tensor. But received "
+                        "X dimension size(%s)",
+                        dim_x.size()));
+  PADDLE_ENFORCE_EQ(
+      dim_gtbox.size(),
+      3,
+      phi::errors::InvalidArgument("Input(GTBox) should be a 3-D tensor, but "
+                                   "received gtbox dimension size(%s)",
+                                   dim_gtbox.size()));
+  PADDLE_ENFORCE_EQ(
+      dim_gtbox[2],
+      4,
+      phi::errors::InvalidArgument("Input(GTBox) dim[2] should be 4",
+                                   "But receive dim[2](%s) != 5. ",
+                                   dim_gtbox[2]));
+  PADDLE_ENFORCE_EQ(dim_gtlabel.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Input(GTLabel) should be a 2-D tensor,"
+                        "But received Input(GTLabel) dimension size(%s) != 2.",
+                        dim_gtlabel.size()));
+  infer_context->AddEqualCstr(dim_x[2], dim_x[3]);
+  infer_context->AddEqualCstr(dim_x[1], mask_num * (5 + class_num));
+  infer_context->AddEqualCstr(dim_gtlabel[0], dim_gtbox[0]);
+  infer_context->AddEqualCstr(dim_gtlabel[1], dim_gtbox[1]);
+
+  const auto &dim_gtscore =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
+  PADDLE_ENFORCE_EQ(
+      dim_gtscore.size(),
+      2,
+      phi::errors::InvalidArgument("Input(GTScore) should be a 2-D tensor"
+                                   "But received GTScore dimension(%s)",
+                                   dim_gtbox.size()));
+  infer_context->AddEqualCstr(dim_gtscore[0], dim_gtbox[0]);
+  infer_context->AddEqualCstr(dim_gtscore[1], dim_gtbox[1]);
+
+  std::vector<symbol::DimExpr> dim_out = {dim_x[0]};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(dim_out)});
+
+  std::vector<symbol::DimExpr> dim_obj_mask = {
+      dim_x[0], mask_num, dim_x[2], dim_x[3]};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(dim_obj_mask)});
+
+  std::vector<symbol::DimExpr> dim_gt_match_mask = {dim_gtbox[0], dim_gtbox[1]};
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(dim_gt_match_mask)});
+
+  return true;
+}
+
 bool FakeChannelWiseDequantizeMaxAbsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
