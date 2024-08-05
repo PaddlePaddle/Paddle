@@ -75,19 +75,19 @@ nvinfer1::Dims ElementWisePlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *input_dims, int num_inputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "There is only one output in TRT elementwise "
                         "op plugin, but got output index: %d.",
                         index));
   PADDLE_ENFORCE_EQ(
       num_inputs,
       2,
-      phi::errors::InvalidArgument("There are 2 inputs in TRT elementwise "
-                                   "op plugin, but got input number: %d.",
-                                   num_inputs));
+      common::errors::InvalidArgument("There are 2 inputs in TRT elementwise "
+                                      "op plugin, but got input number: %d.",
+                                      num_inputs));
   PADDLE_ENFORCE_NOT_NULL(
       input_dims,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input dims of TRT elementwise op plugin should not be null."));
   return input_dims[0];
 }
@@ -104,7 +104,7 @@ int ElementWisePlugin::initialize() TRT_NOEXCEPT {
 
   PADDLE_ENFORCE_GE(dims_x_.nbDims,
                     dims_y_.nbDims + axis_,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "We expect [number of x dims] >= [number of y dims + "
                         "axis] in TRT elementwise op plugin, but got [number "
                         "of x dims] = %d, [number of y dims + axis] = %d.",
@@ -113,11 +113,11 @@ int ElementWisePlugin::initialize() TRT_NOEXCEPT {
   PADDLE_ENFORCE_LT(
       axis_,
       dims_x_.nbDims,
-      phi::errors::InvalidArgument("We expect [axis] < [number of x dims] "
-                                   "in TRT elementwise op plugin, but got "
-                                   "[axis] = %d, [number of x dims] = %d.",
-                                   axis_,
-                                   dims_x_.nbDims));
+      common::errors::InvalidArgument("We expect [axis] < [number of x dims] "
+                                      "in TRT elementwise op plugin, but got "
+                                      "[axis] = %d, [number of x dims] = %d.",
+                                      axis_,
+                                      dims_x_.nbDims));
 
   prev_size_ = 1;
   midd_size_ = 1;
@@ -129,7 +129,7 @@ int ElementWisePlugin::initialize() TRT_NOEXCEPT {
   for (int i = 0; i < dims_y_.nbDims; ++i) {
     PADDLE_ENFORCE_EQ(dims_x_.d[i + axis_],
                       dims_y_.d[i],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Broadcast dimension mismatch. The dims of input Y "
                           "should be a subsequence of X."));
     midd_size_ *= dims_y_.d[i];
@@ -204,7 +204,7 @@ int ElementWisePlugin::enqueue(int batch_size,
                                                      post_size_,
                                                      details::Pow<float>());
   } else {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "The %s type elementwise is not implemented in trt plugin.", type_));
   }
 
@@ -240,16 +240,16 @@ bool ElementwisePluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
@@ -268,7 +268,7 @@ nvinfer1::DataType ElementwisePluginDynamic::getOutputDataType(
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Elementwise Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
@@ -304,7 +304,7 @@ int ElementwisePluginDynamic::enqueue(
   for (int i = 0; i < trimed_nb_dims; ++i) {
     PADDLE_ENFORCE_EQ(x_dims.d[i + axis],
                       y_dims.d[i],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Broadcast dimension mismatch found in trt "
                           "elementwise plugin's x and y input."));
     midd_size *= y_dims.d[i];
@@ -338,7 +338,7 @@ int ElementwisePluginDynamic::enqueue(
     elementwise_kernel<<<block, thread, 0, stream>>>(
         num, x, y, out, prev_size, midd_size, post_size, details::Pow<float>());
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Paddle-TRT only support elementwise "
         "operation: {add, mul, div, sub, pow} currently, "
         "but got %s.",

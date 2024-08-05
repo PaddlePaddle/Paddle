@@ -272,7 +272,7 @@ void LstsqKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: Lapack info is not zero but [%d]", i, info));
 
     if (rank_working_ptr) *rank_working_ptr = static_cast<int>(rank_32);

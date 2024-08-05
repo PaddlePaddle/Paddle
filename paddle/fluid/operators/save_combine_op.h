@@ -43,7 +43,7 @@ inline void SaveToMemory(const std::string& file_path,
   if (save_to_memory) {
     PADDLE_ENFORCE_NE(output,
                       nullptr,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Cannot find variable Y for save_combine_op"));
     *output = ss.str();
   } else {
@@ -51,7 +51,7 @@ inline void SaveToMemory(const std::string& file_path,
     std::ofstream fout(file_path, std::ios::binary);
     PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
                       true,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "Cannot open %s to save variables.", file_path));
     fout << ss.str();
     fout.close();
@@ -74,7 +74,7 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
 
   bool is_present = FileExists(file_path);
   if (is_present && !overwrite) {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "%s exists! Cannot save_combine to it when overwrite is set to "
         "false.",
         file_path,
@@ -84,7 +84,7 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
   std::ostringstream ss;
   PADDLE_ENFORCE_GT(x.size(),
                     0UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of variables to be saved is %d, expect "
                         "it to be greater than 0.",
                         x.size()));
@@ -94,7 +94,7 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         tensor.IsInitialized(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The Tensor with Index (%d) to be saved is not initialized.", i));
     // Serialize tensors one by one
     // Check types to see if a fp16 transformation is required
@@ -141,7 +141,7 @@ void SaveCombineVocabKernel(
   }
   bool is_present = FileExists(file_path);
   if (is_present && !overwrite) {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "%s exists! Cannot save_combine to it when overwrite is set to "
         "false.",
         file_path,
@@ -151,7 +151,7 @@ void SaveCombineVocabKernel(
   std::ostringstream ss;
   PADDLE_ENFORCE_GT(x.size(),
                     0UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of variables to be saved is %d, expect "
                         "it to be greater than 0.",
                         x.size()));
@@ -185,7 +185,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GT(inp_var_names.size(),
                       0UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The number of variables to be saved is %d, expect "
                           "it to be greater than 0.",
                           inp_var_names.size()));
@@ -199,12 +199,12 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < inp_vars.size(); i++) {
         PADDLE_ENFORCE_NOT_NULL(
             inp_vars[i],
-            phi::errors::InvalidArgument("Cannot find variable %s to save.",
-                                         inp_var_names[i]));
+            common::errors::InvalidArgument("Cannot find variable %s to save.",
+                                            inp_var_names[i]));
         PADDLE_ENFORCE_EQ(
             inp_vars[i]->IsType<phi::DenseTensor>(),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "SaveCombine operator only supports saving "
                 "phi::DenseTensor or Vocab variable, %s has wrong type.",
                 inp_var_names[i]));
@@ -222,12 +222,12 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < inp_vars.size(); i++) {
         PADDLE_ENFORCE_NOT_NULL(
             inp_vars[i],
-            phi::errors::InvalidArgument("Cannot find variable %s to save.",
-                                         inp_var_names[i]));
+            common::errors::InvalidArgument("Cannot find variable %s to save.",
+                                            inp_var_names[i]));
         PADDLE_ENFORCE_EQ(
             inp_vars[i]->IsType<framework::Vocab>(),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "SaveCombine operator only supports saving "
                 "phi::DenseTensor or Vocab variable, %s has wrong type.",
                 inp_var_names[i]));

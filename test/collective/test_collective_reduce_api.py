@@ -86,7 +86,13 @@ class TestCollectiveReduceAPI(TestDistBase):
             self.check_with_place("collective_reduce_api.py", "reduce", "bkcl")
 
     def test_reduce_gloo(self):
-        self.check_with_place("collective_reduce_api.py", "reduce", "gloo", "1")
+        self.check_with_place(
+            "collective_reduce_api.py",
+            "reduce",
+            "gloo",
+            "1",
+            need_envs={"USE_COMM_CONTEXT": "1"},
+        )
 
     def test_reduce_gloo_with_comm_context(self):
         dtypes_to_test = [

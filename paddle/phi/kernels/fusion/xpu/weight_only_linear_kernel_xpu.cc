@@ -73,7 +73,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                                    0.f);
         PD_CHECK(r == 0, "scale failed");
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Only support that weight scale as type float32 ot float16."));
       }
 

@@ -86,27 +86,40 @@ std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(
     const Target &target) {
   std::string op_name("logical_right_shift");
 
-  framework::CINNCompute logical_right_shift_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of " << op_name
-                             << " compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 2U)
-            << "2 input tensors for " << op_name << " compute\n";
+  framework::CINNCompute logical_right_shift_compute([=](lang::Args args,
+                                                         lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of  %s compute is empty! Please check.\n",
+            op_name.c_str()));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "2 input tensors for %s compute\n", op_name.c_str()));
 
-        Expr A_expr = pack_args[0];
-        Expr B_expr = pack_args[1];
-        CHECK(A_expr.as_tensor());
-        CHECK(B_expr.as_tensor());
-        ir::Tensor A = A_expr.as_tensor_ref();
-        ir::Tensor B = B_expr.as_tensor_ref();
+    Expr A_expr = pack_args[0];
+    Expr B_expr = pack_args[1];
+    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
+                      true,
+                      phi::errors::InvalidArgument("Input is not a Tensor"));
+    PADDLE_ENFORCE_EQ(B_expr.as_tensor(),
+                      true,
+                      phi::errors::InvalidArgument("Input in not a Tensor"));
+    ir::Tensor A = A_expr.as_tensor_ref();
+    ir::Tensor B = B_expr.as_tensor_ref();
 
-        CHECK_EQ(pack_args.size(), 3U);
-        std::string tensor_name = pack_args[2].operator std::string();
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      3U,
+                      phi::errors::InvalidArgument("Input size is %u not 3",
+                                                   pack_args.size()));
+    std::string tensor_name = pack_args[2].operator std::string();
 
-        auto out = LogicalRightShift(A, B, target, tensor_name);
-        *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
-      });
+    auto out = LogicalRightShift(A, B, target, tensor_name);
+    *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(logical_right_shift_compute,

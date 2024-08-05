@@ -53,7 +53,7 @@ class TypeTranslator {
     PADDLE_ENFORCE_NE(
         handlers.count(type),
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "ProtoType %d has no corresponding translator", type));
 
     return handlers[type];

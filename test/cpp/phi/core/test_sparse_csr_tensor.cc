@@ -59,9 +59,15 @@ TEST(sparse_csr_tensor, construct) {
 
   SparseCsrTensor sparse(crows, cols, elements, dense_dims);
 
-  CHECK_EQ(sparse.non_zero_cols().numel(),
-           static_cast<int64_t>(non_zero_data.size()));
-  CHECK_EQ(sparse.numel(), 9);
+  PADDLE_ENFORCE_EQ(sparse.non_zero_cols().numel(),
+                    non_zero_data.size(),
+                    phi::errors::InvalidArgument(
+                        "Required sparse.non_zero_cols().numel() should be "
+                        "equal to non_zero_data.size(). "));
+  PADDLE_ENFORCE_EQ(sparse.numel(),
+                    9,
+                    phi::errors::InvalidArgument(
+                        "Required sparse.numel() should be equal to 9. "));
   CHECK(sparse.dims() == dense_dims);
   CHECK(sparse.dtype() == DataType::FLOAT32);
   CHECK(sparse.place() == phi::CPUPlace());
@@ -85,12 +91,19 @@ TEST(sparse_csr_tensor, other_function) {
 
   SparseCsrTensor csr(crows, cols, values, dense_dims);
   CHECK(csr.initialized());
-  CHECK_EQ(csr.dims(), dense_dims);
+  PADDLE_ENFORCE_EQ(csr.dims(),
+                    dense_dims,
+                    phi::errors::InvalidArgument(
+                        "Required csr.dims() should be equal to dense_dims. "));
 
   // Test Resize
   auto dense_dims_3d = common::make_ddim({2, 4, 4});
   csr.Resize(dense_dims_3d, 2);
-  CHECK_EQ(csr.non_zero_cols().numel(), 2);
+  PADDLE_ENFORCE_EQ(
+      csr.non_zero_cols().numel(),
+      2,
+      phi::errors::InvalidArgument(
+          "Required csr.non_zero_cols().numel() should be equal to 2. "));
 
   // Test shallow_copy
   SparseCsrTensor csr2(csr);

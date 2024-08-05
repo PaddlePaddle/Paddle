@@ -97,8 +97,13 @@ class CodeGenCX86 : public CodeGenC {
     auto index = op->index();
     auto *ramp_n = index.template As<ir::Ramp>();
     if (ramp_n) {
-      CHECK(!ramp_n->base.template As<ir::Ramp>())
-          << "base of a Ramp node should not be Ramp type";
+      PADDLE_ENFORCE_EQ(
+          !ramp_n->base.template As<ir::Ramp>(),
+          true,
+          ::common::errors::InvalidArgument(
+              "The base of a Ramp node should not be of Ramp type. "
+              "Please ensure that the base is correctly set to a non-Ramp "
+              "type."));
       IrPrinter::Visit(ramp_n->base);
     } else {
       IrPrinter::Visit(op->index());
@@ -114,10 +119,10 @@ void CodeGenCX86::VisitBinaryOp(const Op *op,
                                 Expr a,
                                 Expr b,
                                 const std::string &op_repr) {
-  PADDLE_ENFORCE_EQ(
-      a.type(),
-      b.type(),
-      phi::errors::InvalidArgument("The type of a and b should be the same."));
+  PADDLE_ENFORCE_EQ(a.type(),
+                    b.type(),
+                    ::common::errors::InvalidArgument(
+                        "The type of a and b should be the same."));
 
   // scalar.
   if (a.type().lanes() == 1) {

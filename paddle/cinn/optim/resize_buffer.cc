@@ -35,7 +35,11 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::IfThenElse* op, Expr* expr) override {
-    CHECK(expr->As<ir::IfThenElse>());
+    PADDLE_ENFORCE_NOT_NULL(
+        expr->As<ir::IfThenElse>(),
+        phi::errors::InvalidArgument(
+            "The expression could not be cast to ir::IfThenElse. Please check "
+            "the expression type."));
 
     const ir::IfThenElse* if_ir = expr->As<ir::IfThenElse>();
     const ir::LT* less_than_ir = if_ir->condition.As<ir::LT>();
@@ -53,7 +57,10 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
 
   // Visit for and collect extent
   void Visit(const ir::For* op, Expr* expr) override {
-    CHECK(expr->As<ir::For>());
+    PADDLE_ENFORCE_NOT_NULL(expr->As<ir::For>(),
+                            phi::errors::InvalidArgument(
+                                "The expression could not be cast to ir::For. "
+                                "Please check the expression type."));
     ir::For* for_ir = expr->As<ir::For>();
     std::string var_name = for_ir->loop_var->name;
     Expr extent = for_ir->extent;

@@ -88,8 +88,23 @@ from .translated_layer import (
 )
 
 if TYPE_CHECKING:
+    from paddle import Tensor
     from paddle._typing import NestedStructure
     from paddle.static import InputSpec
+
+    class _SaveOptions(TypedDict):
+        output_spec: NotRequired[Sequence[Tensor | int]]
+        with_hook: NotRequired[bool]
+        combine_params: NotRequired[bool]
+        clip_extra: NotRequired[bool]
+        skip_forward: NotRequired[bool]
+        input_names_after_prune: NotRequired[list[str]]
+        skip_prune_program: NotRequired[bool]
+
+    class _LoadOptions(TypedDict):
+        model_filename: NotRequired[str]
+        params_filename: NotRequired[str]
+
 
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 
@@ -493,17 +508,7 @@ class _SaveLoadConfig:
         self._keep_name_table = value
 
 
-class _SaveLoadOptions(TypedDict):
-    output_spec: NotRequired[Sequence[InputSpec]]
-    with_hook: NotRequired[bool]
-    combine_params: NotRequired[bool]
-    clip_extra: NotRequired[bool]
-    skip_forward: NotRequired[bool]
-    input_names_after_prune: NotRequired[list[str]]
-    skip_prune_program: NotRequired[bool]
-
-
-def _parse_save_configs(configs: _SaveLoadOptions):
+def _parse_save_configs(configs: _SaveOptions) -> _SaveLoadConfig:
     supported_configs = [
         "output_spec",
         "with_hook",
@@ -536,7 +541,7 @@ def _parse_save_configs(configs: _SaveLoadOptions):
     return inner_config
 
 
-def _parse_load_config(configs):
+def _parse_load_config(configs: _LoadOptions) -> _SaveLoadConfig:
     supported_configs = ['model_filename', 'params_filename']
 
     # input check
@@ -876,8 +881,8 @@ class _SaveFunction(Protocol):
         self,
         layer: Layer | Callable[..., Any],
         path: str,
-        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = ...,
-        **configs: Unpack[_SaveLoadOptions],
+        input_spec: Sequence[InputSpec | Tensor | object] | None = ...,
+        **configs: Unpack[_SaveOptions],
     ) -> None:
         ...
 
@@ -887,8 +892,8 @@ def _run_save_pre_hooks(func: _SaveFunction) -> _SaveFunction:
     def wrapper(
         layer: Layer | Callable[..., Any],
         path: str,
-        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
-        **configs: Unpack[_SaveLoadOptions],
+        input_spec: Sequence[InputSpec | Tensor | object] | None = None,
+        **configs: Unpack[_SaveOptions],
     ) -> None:
         global _save_pre_hooks
         for hook in _save_pre_hooks:
@@ -949,8 +954,8 @@ def _get_function_names_from_layer(layer: Layer) -> list[str]:
 def save(
     layer: Layer | Callable[..., Any],
     path: str,
-    input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
-    **configs: Unpack[_SaveLoadOptions],
+    input_spec: Sequence[InputSpec | Tensor | object] | None = None,
+    **configs: Unpack[_SaveOptions],
 ) -> None:
     """
     Saves input Layer or function as ``paddle.jit.TranslatedLayer``
@@ -1517,7 +1522,7 @@ def save(
 
 @dygraph_only
 def load(
-    path: str, **configs: Unpack[_SaveLoadOptions]
+    path: str, **configs: Unpack[_LoadOptions]
 ) -> TranslatedLayer | PirTranslatedLayer:
     """
     :api_attr: imperative
