@@ -873,7 +873,7 @@ bool LerpOpInferSymbolicShape(pir::Operation *op,
     }
   }
   symbol::DimExprBuilder builder;
-  for (int i = 0; i < x_shape.size(); ++i) {
+  for (size_t i = 0; i < x_shape.size(); ++i) {
     out1_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
     infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
   }
@@ -888,7 +888,7 @@ bool LerpOpInferSymbolicShape(pir::Operation *op,
       w_shape.emplace(w_shape.begin(), 1);
     }
   }
-  for (int i = 0; i < w_shape.size(); ++i) {
+  for (size_t i = 0; i < w_shape.size(); ++i) {
     out2_shape.emplace_back(builder.Broadcast(w_shape[i], out1_shape[i]));
     infer_context->AddBroadcastableCstr(w_shape[i], out1_shape[i]);
   }
