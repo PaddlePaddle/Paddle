@@ -19,8 +19,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    ContextManager,
-    List,
     Literal,
     Protocol,
     TypeVar,
@@ -43,7 +41,8 @@ from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 from .amp_lists import black_list, white_list
 
 if TYPE_CHECKING:
-    from typing import Generator
+    from collections.abc import Generator
+    from contextlib import AbstractContextManager
 
     from typing_extensions import TypeAlias, TypeGuard
 
@@ -76,8 +75,8 @@ if TYPE_CHECKING:
             ...
 
 
-_ModelsT = TypeVar("_ModelsT", "Layer", List["Layer"])
-_OptimizersT = TypeVar("_OptimizersT", "_OptimizerLike", List["_OptimizerLike"])
+_ModelsT = TypeVar("_ModelsT", "Layer", list["Layer"])
+_OptimizersT = TypeVar("_OptimizersT", "_OptimizerLike", list["_OptimizerLike"])
 
 
 AMP_RELATED_FLAGS = [
@@ -1022,7 +1021,7 @@ def auto_cast(
     level: _AmpLevelLiteral = 'O1',
     dtype: _DTypeLiteral = 'float16',
     use_promote: bool = True,
-) -> ContextManager:
+) -> AbstractContextManager:
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32, float16 or bfloat16) of each operator is decided
