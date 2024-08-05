@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import typing
 import unittest
 from functools import partial
 
@@ -41,10 +42,10 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: list[dict[str, any]]):
+        def generate_input1(attrs: list[dict[str, typing.Any]]):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        def generate_weight1(attrs: list[dict[str, any]]):
+        def generate_weight1(attrs: list[dict[str, typing.Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
         for pad_value in [0.0, 1.0, 2.0, -100, 100.0]:
@@ -81,7 +82,7 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, list[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
