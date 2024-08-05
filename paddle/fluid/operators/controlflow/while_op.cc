@@ -260,9 +260,9 @@ class WhileOp : public framework::OperatorBase {
             auto *t = var->GetMutable<phi::DenseTensor>();
             framework::LoD empty_lod;
             t->set_lod(empty_lod);
-          } else if (var->IsType<framework::LoDTensorArray>()) {
+          } else if (var->IsType<phi::TensorArray>()) {
             // Clear elements of all tensor arrays.
-            auto *t = var->GetMutable<framework::LoDTensorArray>();
+            auto *t = var->GetMutable<phi::TensorArray>();
             t->clear();
           }
         }
@@ -428,11 +428,9 @@ class WhileGradOp : public framework::OperatorBase {
           auto &inside_tensor = *og_inside.GetMutable<phi::DenseTensor>();
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
-        } else if (og_outside.IsType<framework::LoDTensorArray>()) {
-          auto outside_array =
-              og_outside.GetMutable<framework::LoDTensorArray>();
-          auto &inside_array =
-              *og_inside.GetMutable<framework::LoDTensorArray>();
+        } else if (og_outside.IsType<phi::TensorArray>()) {
+          auto outside_array = og_outside.GetMutable<phi::TensorArray>();
+          auto &inside_array = *og_inside.GetMutable<phi::TensorArray>();
           inside_array.clear();
           inside_array.resize(outside_array->size());
           VLOG(8) << outside_og_name << " size = " << outside_array->size();
@@ -496,9 +494,8 @@ class WhileGradOp : public framework::OperatorBase {
             pg_ig_var,
             common::errors::NotFound("Variable %s is not found.",
                                      inside_grad_name));
-        if (pg_ig_var->IsType<framework::LoDTensorArray>()) {
-          auto pg_ig_lod_t_arr =
-              pg_ig_var->GetMutable<framework::LoDTensorArray>();
+        if (pg_ig_var->IsType<phi::TensorArray>()) {
+          auto pg_ig_lod_t_arr = pg_ig_var->GetMutable<phi::TensorArray>();
           bool empty = true;
           for (auto &each : *pg_ig_lod_t_arr) {
             if (each.numel() != 0) {
@@ -535,11 +532,11 @@ class WhileGradOp : public framework::OperatorBase {
               common::errors::NotFound("Variable %s is not found.",
                                        inside_grad_name));
           PADDLE_ENFORCE_EQ(
-              var->IsType<framework::LoDTensorArray>() ||
+              var->IsType<phi::TensorArray>() ||
                   var->IsType<phi::DenseTensor>(),
               true,
               common::errors::InvalidArgument(
-                  "Currently the type of var only can be LoDTensorArray, "
+                  "Currently the type of var only can be phi::TensorArray, "
                   "or phi::DenseTensor, but the received var[%s] is %s.",
                   inside_grad_name,
                   framework::ToTypeName(var->Type())));
@@ -592,9 +589,9 @@ class WhileGradOp : public framework::OperatorBase {
         to_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
             from_var->Get<phi::DenseTensor>());
       }
-    } else if (from_var->IsType<framework::LoDTensorArray>()) {
-      auto from_arr = from_var->GetMutable<framework::LoDTensorArray>();
-      auto to_arr = to_var->GetMutable<framework::LoDTensorArray>();
+    } else if (from_var->IsType<phi::TensorArray>()) {
+      auto from_arr = from_var->GetMutable<phi::TensorArray>();
+      auto to_arr = to_var->GetMutable<phi::TensorArray>();
       to_arr->clear();
       to_arr->resize(from_arr->size());
       for (size_t i = 0; i < to_arr->size(); ++i) {

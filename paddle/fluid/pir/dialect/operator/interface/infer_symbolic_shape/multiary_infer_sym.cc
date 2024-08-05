@@ -316,7 +316,8 @@ bool BatchNormOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(param_dims)});
   }
   if (op->result(5) && op->result(5).type()) {
-    std::vector<symbol::DimExpr> reserve_space_dims = {symbol::DimExpr{-1}};
+    std::vector<symbol::DimExpr> reserve_space_dims{
+        symbol::DimExpr{infer_context->GetNextSymName()}};
     infer_context->SetShapeOrDataForValue(
         op->result(5),
         symbol::ShapeOrDataDimExprs{
@@ -364,25 +365,15 @@ bool BicubicInterpOpInferSymbolicShape(
         common::errors::InvalidArgument(
             "The size_tensor of Interpolation should be type of "
             "TensorListShapeOrDataDimExprs"));
-    const auto &size_tensor_list_shape =
-        size_tensor_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-    std::vector<symbol::DimExpr> result;
-    result.reserve(size_tensor_list_shape.size());
-    for (const auto &tensor_shape : size_tensor_list_shape) {
-      result.push_back(tensor_shape.data()->front());
-    }
-    return result;
+    return details::GetOrCreateExprVecFromData(size_tensor_shape,
+                                               infer_context);
   };
   auto GetOutSizeDataExpr =
       [&](pir::Value value) -> std::vector<symbol::DimExpr> {
     const symbol::ShapeOrDataDimExprs &out_size_tensor_shape =
         infer_context->GetShapeOrDataForValue(value);
-    PADDLE_ENFORCE_EQ(
-        out_size_tensor_shape.data().has_value(),
-        true,
-        common::errors::InvalidArgument(
-            "The output size of Interpolation should have data value."));
-    return out_size_tensor_shape.data().value();
+    return details::GetOrCreateExprVecFromData(out_size_tensor_shape,
+                                               infer_context);
   };
   auto GetOutDimByScale = [&](const symbol::DimExpr &in_dim,
                               float scale) -> symbol::DimExpr {
@@ -458,6 +449,15 @@ bool BicubicInterpOpInferSymbolicShape(
       }
       // has out_size tensor
       if (op->operand_source(1)) {
+        const auto &out_size_shape_or_data =
+            infer_context->GetShapeOrDataForValue(op->operand_source(1));
+        PADDLE_ENFORCE_EQ(
+            out_size_shape_or_data.shape().size(),
+            1,
+            common::errors::InvalidArgument(
+                "The rank of input out_size tensor should be 1."));
+        infer_context->AddEqualCstr(out_size_shape_or_data.shape()[0],
+                                    symbol::DimExpr{2});
         const auto &out_size_data = GetOutSizeDataExpr(op->operand_source(1));
         return std::make_tuple(symbol::DimExpr{out_size_data[0]},
                                symbol::DimExpr{out_size_data[1]});
@@ -552,7 +552,8 @@ bool BicubicInterpOpInferSymbolicShape(
     infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
     return true;
   } else {
-    PADDLE_THROW(phi::errors::Fatal("Input(X) dimension must be 3, 4 or 5!"));
+    PADDLE_THROW(
+        common::errors::Fatal("Input(X) dimension must be 3, 4 or 5!"));
   }
 
   return true;
@@ -627,7 +628,7 @@ bool CrossEntropyWithSoftmaxOpInferSymbolicShape(
   bool soft_label =
       attributes.at("soft_label").dyn_cast<pir::BoolAttribute>().data();
   PADDLE_ENFORCE(!soft_label || input_dim.size() == index_dim.size(),
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "The input and index should have the same rank when "
                      "soft_label is true. But received input rank(%d) and "
                      "index rank(%d)",
@@ -697,7 +698,7 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
 
       return true;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           op->name() +
           " 's InferSymbolicShape can NOT deal with rank > 1 now."));
     }
@@ -769,7 +770,7 @@ bool FlashAttnOpInferSymbolicShape(
 
   PADDLE_ENFORCE_EQ(q.shape().size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
 
@@ -1034,21 +1035,21 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       q_shape.size(),
       4,
-      phi::errors::InvalidArgument("Query should be a 4-D tensor"
-                                   "But received Query dimension(%d)",
-                                   q_shape.size()));
+      common::errors::InvalidArgument("Query should be a 4-D tensor"
+                                      "But received Query dimension(%d)",
+                                      q_shape.size()));
   PADDLE_ENFORCE_EQ(
       k_shape.size(),
       4,
-      phi::errors::InvalidArgument("Key should be a 4-D tensor"
-                                   "But received Key dimension(%d)",
-                                   k_shape.size()));
+      common::errors::InvalidArgument("Key should be a 4-D tensor"
+                                      "But received Key dimension(%d)",
+                                      k_shape.size()));
   PADDLE_ENFORCE_EQ(
       v_shape.size(),
       4,
-      phi::errors::InvalidArgument("Value should be a 4-D tensor"
-                                   "But received Value dimension(%d)",
-                                   v_shape.size()));
+      common::errors::InvalidArgument("Value should be a 4-D tensor"
+                                      "But received Value dimension(%d)",
+                                      v_shape.size()));
 
   const auto &query_batch_size = q_shape[0];
   const auto &query_seq_length = q_shape[1];
@@ -1177,7 +1178,7 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
           result_data.emplace_back(shape_data.data().value().at(0));
         }
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             op->name() +
             " 's InferSymbolicShape can NOT deal with data size > 1 now."));
       }

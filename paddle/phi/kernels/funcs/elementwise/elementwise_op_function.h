@@ -1283,7 +1283,7 @@ void FusedElemwiseAndActGradComputeEx(const DeviceContext &dev_ctx,
   if (UseIntermediateOut) {
     PADDLE_ENFORCE_NOT_NULL(
         intermediate_out,
-        phi::errors::InvalidArgument("Intermediate out is null pointer."));
+        common::errors::InvalidArgument("Intermediate out is null pointer."));
   }
   if (x_dim == y_dim) {
     FusedElemwiseAndActGradComputeNoBroadcast<DeviceContext,
@@ -1387,7 +1387,7 @@ void FusedElemwiseAndActComputeEx(const DeviceContext &dev_ctx,
   if (KeepIntermediateOut) {
     PADDLE_ENFORCE_NOT_NULL(
         intermediate_out,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The save_intermediate_out is opened, intermediate "
             "out is null pointer."));
   }

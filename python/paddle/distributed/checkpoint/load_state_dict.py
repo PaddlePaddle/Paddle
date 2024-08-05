@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import os
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -27,18 +29,22 @@ from .utils import (
     flatten_state_dict,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.distributed.collective import Group
+
 
 @dataclass(frozen=True)
 class ReadItem:
     local_tensor_index: LocalTensorIndex
     rank: int
     dtype: str
-    cur_offset: Tuple[int]
-    storage_offset: Tuple[int]
-    lengths: Tuple[int]
+    cur_offset: tuple[int, ...]
+    storage_offset: tuple[int, ...]
+    lengths: tuple[int, ...]
 
 
-PATH_TO_CHECKPOINT_FILES: Dict[str, Tuple[list, list]] = {}
+PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list[str], list[str]]] = {}
 
 
 def get_checkpoint_files(path, use_cache=True):
@@ -392,10 +398,10 @@ def get_read_items(path, state_dict, process_group, use_dist):
 
 
 def load_state_dict(
-    state_dict,
-    path,
-    process_group=None,
-    coordinator_rank=0,
+    state_dict: dict[str, Tensor],
+    path: str,
+    process_group: Group | None = None,
+    coordinator_rank: int = 0,
 ) -> None:
     """
     Load the state_dict inplace from a checkpoint path.

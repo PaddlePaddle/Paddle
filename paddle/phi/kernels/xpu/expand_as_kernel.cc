@@ -34,13 +34,13 @@ void ExpandAs(const Context& context,
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(target_shape[i],
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The value of target shape cannot be zero."));
     if (vec_in_dims[i] != 1) {
       PADDLE_ENFORCE_EQ(
           vec_in_dims[i],
           target_shape[i],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The value (%d) of the non-singleton dimension does not match"
               " the corresponding value (%d) in "
               "target tensor for expand_as_v2 op.",
@@ -83,10 +83,10 @@ void ExpandAs(const Context& context,
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
-      phi::errors::External("XPU API(broadcast) return wrong "
-                            "value[%d %s] in ExpandAsV2XPUKernel.",
-                            r,
-                            XPUAPIErrorMsg[r]));
+      common::errors::External("XPU API(broadcast) return wrong "
+                               "value[%d %s] in ExpandAsV2XPUKernel.",
+                               r,
+                               XPUAPIErrorMsg[r]));
 }
 
 template <typename T, typename Context>
@@ -99,7 +99,7 @@ void ExpandAsKernel(const Context& ctx,
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,
                     rank,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The rank (%d) of the input 'target_tensor' for "
                         "expand_as_v2 op must be greater than or equal to "
                         "the rank (%d) of the input 'x'.",
@@ -108,12 +108,12 @@ void ExpandAsKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       rank,
       0,
-      phi::errors::InvalidArgument("The rank (%d) of the input 'x' for "
-                                   "expand_as_v2 op must be positive.",
-                                   rank));
+      common::errors::InvalidArgument("The rank (%d) of the input 'x' for "
+                                      "expand_as_v2 op must be positive.",
+                                      rank));
   PADDLE_ENFORCE_LE(target_rank,
                     MAX_RANK_SUPPORTED,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The rank (%d) of the input 'target_tensor' for "
                         "expand_as_v2 op must be less than or equal to %d.",
                         target_rank,

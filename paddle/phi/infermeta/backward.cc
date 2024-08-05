@@ -124,7 +124,7 @@ void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
   auto do_dims = out_grad.dims();
   PADDLE_ENFORCE_EQ(do_dims.size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input should be a 4-D tensor of format [N, C, H, W] "
                         "or [N, H, W, C], but got %u.",
                         do_dims.size()));
@@ -230,7 +230,7 @@ void CrossEntropyGradInferMeta(const MetaTensor& x,
   int rank = x_dims.size();
   PADDLE_ENFORCE_EQ(dy_dims.size(),
                     label_dims.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(Y@Grad) and Input(Y) should have the same rank."
                         "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
                         dy_dims.size(),
@@ -244,7 +244,7 @@ void CrossEntropyGradInferMeta(const MetaTensor& x,
   if (check) {
     PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
                       common::slice_ddim(dy_dims, 0, rank - 1),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The Input(X) and Input(Y@Grad) should have the same "
                           "shape except the last dimension. but received: "
                           "the shape of Input(X) is [%s], "
@@ -272,7 +272,7 @@ void CrossEntropyGrad2InferMeta(const MetaTensor& x_shape,
   int rank = x_dims.size();
   PADDLE_ENFORCE_EQ(dy_dims.size(),
                     label_dims.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(Y@Grad) and Input(Y) should have the same rank."
                         "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
                         dy_dims.size(),
@@ -286,7 +286,7 @@ void CrossEntropyGrad2InferMeta(const MetaTensor& x_shape,
   if (check) {
     PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
                       common::slice_ddim(dy_dims, 0, rank - 1),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The Input(X) and Input(Y@Grad) should have the same "
                           "shape except the last dimension. but received: "
                           "the shape of Input(X) is [%s], "
@@ -374,12 +374,12 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
   auto softmax_rank = softmax_dims.size();
   PADDLE_ENFORCE_GE(axis,
                     -softmax_rank,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Attr(axis) value should be in range [-R, R-1], "
                         "R is the rank of Input(Logits)."));
   PADDLE_ENFORCE_LT(axis,
                     softmax_rank,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Attr(axis) value should be in range [-R, R-1], "
                         "R is the rank of Input(Logits)."));
 
@@ -390,7 +390,7 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
         PADDLE_ENFORCE_EQ(
             softmax_dims[i],
             labels_dims[i],
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Input(Logits) and Input(Label) should in same shape in "
                 "dimensions except axis."));
       }
@@ -402,7 +402,7 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
         (softmax_dims[axis] > 0 && labels_dims[axis] > 0)) {
       PADDLE_ENFORCE_EQ(softmax_dims[axis],
                         labels_dims[axis],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "If Attr(soft_label) == true, "
                             "the axis dimension of "
                             "Input(X) and Input(Label) should be equal."));
@@ -412,9 +412,9 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
       PADDLE_ENFORCE_EQ(
           labels_dims[axis],
           1UL,
-          phi::errors::InvalidArgument("If Attr(soft_label) == false, "
-                                       "the axis dimension of "
-                                       "Input(Label) should be 1."));
+          common::errors::InvalidArgument("If Attr(soft_label) == false, "
+                                          "the axis dimension of "
+                                          "Input(Label) should be 1."));
     }
   }
 
@@ -535,7 +535,7 @@ void FFTC2RGradInferMeta(const MetaTensor& x,
                          MetaTensor* out,
                          MetaConfig config) {
   PADDLE_ENFORCE_NOT_NULL(out,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Output of fft_c2r _grad should not be null."));
   const phi::DDim x_dim = x.dims();
 
@@ -545,7 +545,7 @@ void FFTC2RGradInferMeta(const MetaTensor& x,
     for (auto axis : axes) {
       PADDLE_ENFORCE_GT(x_dim[axis],
                         0,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Invalid fft n-point (%d).", x_dim[axis]));
     }
   }
@@ -698,7 +698,7 @@ void GruGradInferMeta(const MetaTensor& input,
   PADDLE_ENFORCE_EQ(
       input_size,
       frame_size * 3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The second dimension of Input(Input) must be 3 times of "
           "frame_size in GRUOp, but received %d (Input) vs %d (frame_size).",
           input_size,
@@ -706,7 +706,7 @@ void GruGradInferMeta(const MetaTensor& input,
   PADDLE_ENFORCE_EQ(
       weight_height,
       frame_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The shape of Input(Weight) matrix must be [frame_size, frame_size "
           "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
           weight_height,
@@ -716,7 +716,7 @@ void GruGradInferMeta(const MetaTensor& input,
   PADDLE_ENFORCE_EQ(
       weight_width,
       frame_size * 3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The shape of Input(Weight) matrix must be [frame_size, frame_size "
           "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
           weight_height,
@@ -728,7 +728,7 @@ void GruGradInferMeta(const MetaTensor& input,
     PADDLE_ENFORCE_EQ(
         h0_dims[1],
         frame_size,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The width of Input(H0) must be equal to frame_size, but "
             "received %d (width of H0) vs %d (frame_size).",
             h0_dims[1],
@@ -745,7 +745,7 @@ void GruGradInferMeta(const MetaTensor& input,
     PADDLE_ENFORCE_EQ(
         bias_height,
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The shape of Bias must be [1, frame_size * 3], but received "
             "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
             bias_height,
@@ -754,7 +754,7 @@ void GruGradInferMeta(const MetaTensor& input,
     PADDLE_ENFORCE_EQ(
         bias_width,
         frame_size * 3,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The shape of Bias must be [1, frame_size * 3], but received "
             "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
             bias_height,
@@ -796,7 +796,7 @@ void GruUnitGradInferMeta(const MetaTensor& input,
     PADDLE_ENFORCE_EQ(
         input_size,
         frame_size * 3,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The second dimension of Input(Input) must be 3 "
             "times of frame_size in GRUUnitGradOp, but received %d "
             "(Input) vs %d (frame_size).",
@@ -806,7 +806,7 @@ void GruUnitGradInferMeta(const MetaTensor& input,
   PADDLE_ENFORCE_EQ(
       weight_height,
       frame_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The shape of Input(Weight) matrix must be [frame_size, frame_size "
           "* 3] in GRUUnitGradOp, but received [%d, %d] (Weight) vs [%d, %d] "
           "(frame_size).",
@@ -817,7 +817,7 @@ void GruUnitGradInferMeta(const MetaTensor& input,
   PADDLE_ENFORCE_EQ(
       weight_width,
       frame_size * 3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The shape of Input(Weight) matrix must be [frame_size, frame_size "
           "* 3] in GRUUnitGradOp, but received [%d, %d] (Weight) vs [%d, %d] "
           "(frame_size).",
@@ -833,7 +833,7 @@ void GruUnitGradInferMeta(const MetaTensor& input,
     PADDLE_ENFORCE_EQ(
         bias_height,
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The shape of Bias must be [1, frame_size * 3], but received "
             "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
             bias_height,
@@ -842,7 +842,7 @@ void GruUnitGradInferMeta(const MetaTensor& input,
     PADDLE_ENFORCE_EQ(
         bias_width,
         frame_size * 3,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The shape of Bias must be [1, frame_size * 3], but received "
             "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
             bias_height,
@@ -899,7 +899,7 @@ void InstanceNormGradInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_NE(
       x_grad,
       nullptr,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The X@GRAD in InstanceNormGradInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
   const int C = static_cast<int>(x_dims[1]);
@@ -928,7 +928,7 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_NE(
       dx,
       nullptr,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The DX in InstanceNormDoubleGradInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
   const int C = static_cast<int>(x_dims[1]);
@@ -1018,7 +1018,7 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
   PADDLE_ENFORCE_NE(
       logits_grad,
       nullptr,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Logits@GRAD in MarginCrossEntropy can't be nullptr."));
   auto softmax_dims = softmax.dims();
 
@@ -1086,15 +1086,15 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   PADDLE_ENFORCE_EQ(
       output_grad.dims().size(),
       4,
-      phi::errors::InvalidArgument("Key should be a 4-D tensor"
-                                   "But received Key dimension(%s)",
-                                   output_grad.dims().size()));
+      common::errors::InvalidArgument("Key should be a 4-D tensor"
+                                      "But received Key dimension(%s)",
+                                      output_grad.dims().size()));
   PADDLE_ENFORCE_EQ(
       output.dims().size(),
       4,
-      phi::errors::InvalidArgument("Key should be a 4-D tensor"
-                                   "But received Key dimension(%s)",
-                                   output_grad.dims().size()));
+      common::errors::InvalidArgument("Key should be a 4-D tensor"
+                                      "But received Key dimension(%s)",
+                                      output_grad.dims().size()));
 
   const int64_t query_batch_size = query.dims()[0];
   const int64_t query_seq_length = query.dims()[1];
@@ -1284,18 +1284,18 @@ void NllLossGradInferMeta(const MetaTensor& x,
       if (reduction == "none") {
         PADDLE_ENFORCE_EQ(dout_dims.size(),
                           1,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The dimensions of Input(Out@Grad) must be 1"));
         PADDLE_ENFORCE_EQ(
             dout_dims[0],
             batch_size,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The unreduced size ofInput(Out@Grad) must be the "
                 "same as batch_size."));
       } else {
         PADDLE_ENFORCE_EQ(dout_dims.size(),
                           0,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The dimensions of Input(Out@Grad) must be 0"));
       }
     } else if (x_dims.size() == 4) {
@@ -1303,20 +1303,20 @@ void NllLossGradInferMeta(const MetaTensor& x,
         PADDLE_ENFORCE_EQ(
             dout_dims.size(),
             3,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimensions of Input(Out@Grad) must be 3,But got [%s].",
                 dout_dims.size()));
         PADDLE_ENFORCE_EQ(dout_dims[0] == label_dims[0] &&
                               dout_dims[1] == label_dims[1] &&
                               dout_dims[2] == label_dims[2],
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The dimensions of Input(Out@Grad) must be match "
                               "to Input(Label) dimensions."));
       } else {
         PADDLE_ENFORCE_EQ(dout_dims.size(),
                           0,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The dimensions of Input(Out@Grad) must be 0"));
       }
     }
@@ -1347,7 +1347,7 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
   auto do_dims = out_grad.dims();
   PADDLE_ENFORCE_EQ(do_dims.size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input should be a 4-D tensor of format [N, C, H, W] "
                         "or [N, H, W, C], but got %u.",
                         do_dims.size()));
@@ -1430,12 +1430,12 @@ void RnnGradInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_GT(
       pre_state.size(),
       0UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input pre_state in RnnGradInferMeta can't be empty."));
   PADDLE_ENFORCE_GT(
       weight_grad_list.size(),
       0UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input weight_grad_list in RnnGradInferMeta can't be empty."));
   if (x_grad) {
     UnchangedInferMeta(x, x_grad);
@@ -1554,7 +1554,7 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   PADDLE_ENFORCE_GE(
       axis,
       -rank,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Attr(axis) must be inside [-rank, rank), where rank = %d, "
           "but received axis is:%d.",
           rank,
@@ -1562,7 +1562,7 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   PADDLE_ENFORCE_LT(
       axis,
       rank,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Attr(axis) must be inside [-rank, rank), where rank = %d, "
           "but received axis is:%d.",
           rank,
@@ -1572,7 +1572,7 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   PADDLE_ENFORCE_LE(
       x_grad.size(),
       static_cast<size_t>(dy_dim[axis]),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Number of Outputs(X@Grad) should be less than or equal to dy dim "
           "at axis, but received outputs size is:%d, dy dims is:%d.",
           x_grad.size(),
@@ -1639,7 +1639,7 @@ void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
   PADDLE_ENFORCE_NE(
       x_grad,
       nullptr,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The X@GRAD in UniformRandomInplaceGradInferMeta can't be nullptr."));
   auto dims = out_grad.dims();
   x_grad->set_dims(dims);
@@ -1657,7 +1657,7 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
     PADDLE_ENFORCE_EQ(
         input_dims[i],
         input_dims[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The dimensions of all Inputs(Y@Grad) must be the same,"
             "but received Inputs(Y@Grad)'s %d-th dimension is %d, "
             "Inputs(Y@Grad)'s 0-th to %d-th dimension is %d.",
@@ -1670,13 +1670,13 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
   int rank = input_dims[0].size();
   PADDLE_ENFORCE_GE(axis,
                     -(rank + 1),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The attribute axis is out of range, it must be "
                         "inside [-(rank+1), rank+1), where rank = %d",
                         rank));
   PADDLE_ENFORCE_LT(axis,
                     rank + 1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The attribute axis is out of range, it must be "
                         "inside [-(rank+1), rank+1), where rank = %d",
                         rank));
@@ -1700,12 +1700,12 @@ void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       ((arch == 80) || (arch == 86)),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently weightonly linear grad only support arch = 80 or 86. "));
   PADDLE_ENFORCE_EQ(
       group_size,
       -1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently weightonly linear grad only support per-channel mode. "));
 
   x_grad->set_dims(x.dims());
@@ -1786,13 +1786,13 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                             MetaTensor* dk,
                             MetaTensor* dv) {
   auto input_dims = dout_q.dims();
-  PADDLE_ENFORCE_EQ(
-      input_dims.size(),
-      4,
-      phi::errors::InvalidArgument("Input should be a 4-D tensor of format "
-                                   "[batch_size, seq_len, num_heads, head_dim],"
-                                   "but got %u.",
-                                   input_dims.size()));
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format "
+                        "[batch_size, seq_len, num_heads, head_dim],"
+                        "but got %u.",
+                        input_dims.size()));
   if (dout_q && dq) {
     dq->set_dims(dout_q.dims());
     dq->set_dtype(dout_q.dtype());

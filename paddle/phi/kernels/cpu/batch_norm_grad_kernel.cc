@@ -75,14 +75,14 @@ void BatchNormGradFunctor(const Context& ctx,
     if (d_x) {
       PADDLE_ENFORCE_EQ(d_x,
                         d_y,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
     }
   } else {
     if (d_x) {
       PADDLE_ENFORCE_NE(d_x,
                         d_y,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
     }
   }
@@ -93,14 +93,14 @@ void BatchNormGradFunctor(const Context& ctx,
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of input X's dimensions should be larger than 1."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
@@ -299,8 +299,8 @@ void BatchNormGradFunctor(const Context& ctx,
       break;
     }
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
-                                                data_layout_str));
+      PADDLE_THROW(common::errors::InvalidArgument("Unknown storage order: %s",
+                                                   data_layout_str));
   }
 }
 
@@ -376,7 +376,7 @@ void BatchNormDoubleGradKernel(
 
   PADDLE_ENFORCE_EQ(is_test,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "`is_test = True` CANNOT be used in train program. If "
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));

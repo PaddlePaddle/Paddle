@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Callable, Literal, overload
 
 import numpy as np
 
@@ -38,6 +38,8 @@ from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 from ..nn.initializer import Normal
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor, nn
     from paddle._typing import ParamAttrLike, Size2, Size4
     from paddle.nn.functional.common import _PaddingSizeMode
@@ -1097,6 +1099,7 @@ class DeformConv2D(Layer):
             >>> print(out.shape)
             [8, 16, 26, 26]
     """
+
     weight: Tensor
     bias: Tensor
 

@@ -287,7 +287,7 @@ void RnnFunc(const Context& dev_ctx,
   const auto& init_h_dims = init_h->dims();
   PADDLE_ENFORCE_EQ(init_h_dims[0],
                     num_layers * direction_num,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The num_layers of in RNN layer must be the same as "
                         "first dim of init hidden, but received"
                         " num_layers:%d, dim:%d",
@@ -297,7 +297,7 @@ void RnnFunc(const Context& dev_ctx,
     const auto& init_c_dims = init_c->dims();  // NOLINT
     PADDLE_ENFORCE_EQ(init_c_dims[0],
                       num_layers * direction_num,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The num_layers of in RNN layer must be the same as "
                           "first dim of cell state hidden, but received"
                           " num_layers:%d, dim:%d",
@@ -345,9 +345,9 @@ void RnnFunc(const Context& dev_ctx,
   std::vector<DenseTensor> init_c_unbind, last_c_unbind;
   if (is_lstm(cell_type)) {
     PADDLE_ENFORCE_NOT_NULL(
-        init_c, phi::errors::InvalidArgument("init_c contains no data."));
+        init_c, common::errors::InvalidArgument("init_c contains no data."));
     PADDLE_ENFORCE_NOT_NULL(
-        last_c, phi::errors::InvalidArgument("last_c contains no data."));
+        last_c, common::errors::InvalidArgument("last_c contains no data."));
     init_c_unbind = Unbind(*init_c);
     last_c_unbind = Unbind(*last_c);
   }
