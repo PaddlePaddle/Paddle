@@ -503,7 +503,7 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorFromVector on %s is not supported.", dst_place));
   }
 }
@@ -552,7 +552,7 @@ void TensorFromVector(const std::vector<bool>& src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorFromVector on %s is not supported.", dst_place));
   }
   delete[] array;
@@ -649,7 +649,7 @@ void TensorFromArray(const T* src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorFromArray on %s is not supported.", dst_place));
   }
 }
@@ -743,7 +743,7 @@ void TensorToVector(const phi::DenseTensor& src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorToVector on %s is not supported.", src.place()));
   }
 }
@@ -838,7 +838,7 @@ void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst) {
   PADDLE_ENFORCE_EQ(
       src.place().GetType() == AllocationType::CPU,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
 
@@ -859,7 +859,7 @@ void TensorToVector(const phi::DenseTensor& src, std::vector<bool>* dst) {
   PADDLE_ENFORCE_EQ(
       src.place().GetType() == AllocationType::CPU,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
 
@@ -904,7 +904,7 @@ phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src,
   PADDLE_ENFORCE_GE(
       rank,
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'ReshapeToMatrix()' is only used for flatten high rank "
           "tensors to matrixs. The dimensions of phi::DenseTensor must be "
           "greater or equal than 2. "
@@ -979,7 +979,7 @@ std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
     // NOTE: Converting int64 to int32 may cause data overflow.
     vec_new_data = std::vector<T>(data, data + x->numel());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The dtype of Tensor must be int32 or int64, but received: %s",
         phi::TransToProtoVarType(x->dtype())));
   }
@@ -1010,7 +1010,7 @@ std::vector<T> _GetVectorFromTensor(const phi::DenseTensor* x) {
 template <>
 std::vector<float> GetVectorFromTensor<float>(const phi::DenseTensor* x) {
   if (phi::TransToProtoVarType(x->dtype()) != ProtoDataType::FP32) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The dtype of Tensor must be float32, but received: %s",
         phi::TransToProtoVarType(x->dtype())));
   }
@@ -1020,7 +1020,7 @@ std::vector<float> GetVectorFromTensor<float>(const phi::DenseTensor* x) {
 template <>
 std::vector<double> GetVectorFromTensor<double>(const phi::DenseTensor* x) {
   if (phi::TransToProtoVarType(x->dtype()) != ProtoDataType::FP64) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The dtype of Tensor must be float64, but received: %s",
         phi::TransToProtoVarType(x->dtype())));
   }

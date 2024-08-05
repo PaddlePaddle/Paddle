@@ -328,7 +328,7 @@ class MetaFnFactory {
     PADDLE_ENFORCE_NE(
         Contains(kernel_name_prefix),
         true,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "`%s`'s Series Kernel's InferMetaFn has been registered.",
             kernel_name_prefix));
     meta_fn_map_.insert(
@@ -340,7 +340,7 @@ class MetaFnFactory {
     PADDLE_ENFORCE_NE(
         it,
         meta_fn_map_.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "`%s`'s Series Kernel's InferMetaFn is not registered.",
             kernel_name_prefix));
     return it->second;

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/exception.h"
 
 #include "paddle/common/exception.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
 namespace paddle::pybind {
 
 /* Paddle Exception mapping rules:
@@ -83,7 +83,8 @@ void BindException(pybind11::module* m) {
   });
 
   m->def("__unittest_throw_exception__", [] {
-    PADDLE_THROW(phi::errors::PermissionDenied("This is a test of exception"));
+    PADDLE_THROW(
+        common::errors::PermissionDenied("This is a test of exception"));
   });
 }
 

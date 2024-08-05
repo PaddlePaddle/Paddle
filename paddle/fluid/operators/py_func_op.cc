@@ -47,7 +47,7 @@ static py::object *GetPythonCallableObject(size_t i) {
   PADDLE_ENFORCE_LT(
       i,
       g_py_callables.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Invalid python callable id %d, which should be less than %d.",
           i,
           g_py_callables.size()));
@@ -81,7 +81,7 @@ static void CallPythonFunc(py::object *callable,
     // Otherwise, ret_num must be equal to out_num
     PADDLE_ENFORCE_EQ(ret_num == 1,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Python function has no return values or returns "
                           "None. In this case, ret_num = 1 && ret[0] == None "
                           "&& out_num should be 0. But ret_num is %d",
@@ -90,7 +90,7 @@ static void CallPythonFunc(py::object *callable,
     PADDLE_ENFORCE_EQ(
         out_num == 0,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Python function has no return values or returns None. In "
             "this case, ret_num = 1 && ret[0] == None && out_num should "
             "be 0. But out_num is %d",
@@ -99,7 +99,7 @@ static void CallPythonFunc(py::object *callable,
     PADDLE_ENFORCE_EQ(
         py::cast<phi::DenseTensor *>(ret_tuple[0]) == nullptr,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Python function has no return values or returns None. In "
             "this case, ret_num = 1 && ret[0] == None && out_num should "
             "be 0. But ret[0] is not None"));
@@ -113,12 +113,12 @@ static void CallPythonFunc(py::object *callable,
     try {
       auto *py_out_tensor = py::cast<phi::DenseTensor *>(ret_tuple[i]);
       PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "Output tensor %d should not be nullptr", i));
       out->set_lod(py_out_tensor->lod());
       out->ShareDataWith(*py_out_tensor);
     } catch (py::cast_error &) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "py::cast to phi::DenseTensor error. The %d-th output exception is "
           "phi::DenseTensor",
           i));
@@ -139,15 +139,15 @@ class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
     PADDLE_ENFORCE_EQ(
         has_in || has_out,
         true,
-        phi::errors::InvalidArgument("Input(X) or Output(Out) must exist, "
-                                     "but has_in is %d, has_out is %d.",
-                                     has_in,
-                                     has_out));
+        common::errors::InvalidArgument("Input(X) or Output(Out) must exist, "
+                                        "but has_in is %d, has_out is %d.",
+                                        has_in,
+                                        has_out));
 
     PADDLE_ENFORCE_GE(
         PADDLE_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId.data())),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Function id cannot be less than 0, but received value is %d.",
             PADDLE_GET_CONST(int,
                              ctx->GetAttr(kForwardPythonCallableId.data()))));
@@ -192,8 +192,8 @@ class PyFuncOpShapeInference : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         !ctx->IsRuntime(),
         true,
-        phi::errors::InvalidArgument("Shape inference cannot be called at "
-                                     "run time in 'py_func' operator."));
+        common::errors::InvalidArgument("Shape inference cannot be called at "
+                                        "run time in 'py_func' operator."));
   }
 };
 

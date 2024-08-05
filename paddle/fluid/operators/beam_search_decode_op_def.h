@@ -23,7 +23,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using LoDTensorArray = framework::LoDTensorArray;
+using TensorArray = phi::TensorArray;
 
 // all the lod have 2 levels.
 // The first is source level, the second is sentence level.
@@ -67,10 +67,10 @@ struct BeamSearchDecoder {
 
   /**
    * Gather the hypotheses for each source sentence by backtrace though the
-   * LoDTensorArray step_ids whose lods reserve the path in the tree.
+   * phi::TensorArray step_ids whose lods reserve the path in the tree.
    */
-  void Backtrace(const LoDTensorArray& step_ids,
-                 const LoDTensorArray& step_scores,
+  void Backtrace(const phi::TensorArray& step_ids,
+                 const phi::TensorArray& step_scores,
                  phi::DenseTensor* id_tensor,
                  phi::DenseTensor* score_tensor) const;
 
@@ -90,7 +90,7 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
   PADDLE_ENFORCE_NE(
       src_num,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "src_num is the sequence number of the first decoding step"
           ", indicating by Input(Ids)[0].lod[0].size."
           "src_num has wrong value."
@@ -154,19 +154,19 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
 }
 
 template <typename T>
-void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
-                                     const LoDTensorArray& step_scores,
+void BeamSearchDecoder<T>::Backtrace(const phi::TensorArray& step_ids,
+                                     const phi::TensorArray& step_scores,
                                      phi::DenseTensor* id_tensor,
                                      phi::DenseTensor* score_tensor) const {
   PADDLE_ENFORCE_NE(
       step_ids.empty(),
       true,
-      phi::errors::InvalidArgument("Input(Ids) should not be empty."
-                                   "But the Input(Ids) is empty."));
+      common::errors::InvalidArgument("Input(Ids) should not be empty."
+                                      "But the Input(Ids) is empty."));
   PADDLE_ENFORCE_EQ(
       step_ids.size(),
       step_scores.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of Input(Ids) and Input(Scores) should be "
           "the same. But the size of Input(Ids) and Input(Scores) "
           "are not equal."));

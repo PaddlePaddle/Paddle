@@ -92,6 +92,7 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
   optional : scale, bias, reserve_space
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : beam_search_decode
   args: (Tensor ids, Tensor scores, int beam_size, int end_id)

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import framework
 from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
@@ -19,6 +23,11 @@ from paddle.distributed.communication.group import (
     _get_or_throw_group_rank,
     _warn_cur_rank_not_in_group,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
 
 def _recv_in_dygraph(
@@ -61,7 +70,13 @@ def _recv_in_static_mode(
     )
 
 
-def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
+def recv(
+    tensor: Tensor,
+    src: int = 0,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Receive a tensor from the source device.
@@ -69,7 +84,7 @@ def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
     Args:
         tensor (Tensor): The tensor to receive. Support float16, float32, float64, int32, int64, int8, uint8 or bool as its data type.
         src (int, optional): Rank of the source device. If none is given, use `0` as default.
-        group (Group, optional): Communicate in which group. If none is given, use the global group as default.
+        group (Group|None, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
             option is designed for high performance demand, be careful to turn it on except you are clearly know its meaning.
@@ -92,7 +107,7 @@ def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
             >>> else:
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             ...     task = dist.stream.recv(data, src=0, sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> out = data.numpy()
             >>> print(out)
             >>> # [[4, 5, 6], [4, 5, 6]] (2 GPUs)

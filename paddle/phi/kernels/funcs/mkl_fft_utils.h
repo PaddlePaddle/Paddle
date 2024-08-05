@@ -23,12 +23,12 @@ namespace phi {
 namespace funcs {
 namespace detail {
 
-#define MKL_DFTI_CHECK(expr)                                              \
-  do {                                                                    \
-    MKL_LONG status = (expr);                                             \
-    if (!phi::dynload::DftiErrorClass(status, DFTI_NO_ERROR))             \
-      PADDLE_THROW(                                                       \
-          phi::errors::External(phi::dynload::DftiErrorMessage(status))); \
+#define MKL_DFTI_CHECK(expr)                                                 \
+  do {                                                                       \
+    MKL_LONG status = (expr);                                                \
+    if (!phi::dynload::DftiErrorClass(status, DFTI_NO_ERROR))                \
+      PADDLE_THROW(                                                          \
+          common::errors::External(phi::dynload::DftiErrorMessage(status))); \
   } while (0);
 
 struct DftiDescriptorDeleter {
@@ -48,7 +48,7 @@ class DftiDescriptor {
             MKL_LONG* sizes) {
     PADDLE_ENFORCE_EQ(desc_.get(),
                       nullptr,
-                      phi::errors::AlreadyExists(
+                      common::errors::AlreadyExists(
                           "DftiDescriptor has already been initialized."));
 
     DFTI_DESCRIPTOR* raw_desc;
@@ -60,7 +60,7 @@ class DftiDescriptor {
   DFTI_DESCRIPTOR* get() const {
     DFTI_DESCRIPTOR* raw_desc = desc_.get();
     PADDLE_ENFORCE_NOT_NULL(raw_desc,
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "DFTI DESCRIPTOR has not been initialized."));
     return raw_desc;
   }
@@ -87,7 +87,7 @@ static DftiDescriptor plan_mkl_fft(const DataType in_dtype,
       case DataType::COMPLEX128:
         return DFTI_DOUBLE;
       default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Invalid input datatype (%s), input data type should be FP32, "
             "FP64, COMPLEX64 or COMPLEX128.",
             in_dtype));

@@ -30,9 +30,9 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
                                const IntArray& axes_arr,
                                DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   std::vector<int64_t> axes = axes_arr.GetData();
   std::vector<int64_t> output_dims;
@@ -107,7 +107,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   auto tmp_dim = DDim(output_dims.data(), static_cast<int>(output_dims.size()));
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
-  //       phi::errors::Fatal("Unsqueeze kernel stride compute diff, infer
+  //       common::errors::Fatal("Unsqueeze kernel stride compute diff, infer
   //       shape"
   //                          "is %s, but compute is %s.",
   //                          meta.dims,
@@ -129,9 +129,9 @@ void SqueezeStridedKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* xshape UNUSED) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   SqueezeInferStridedKernel<Context>(dev_ctx, x, axes, out);
 }

@@ -553,7 +553,13 @@ TEST(Predictor, Streams) {
     auto predictor = CreatePredictor(config);
     gpuStream_t stream =
         reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 0);
+    PADDLE_ENFORCE_EQ(
+        paddle::ResourceManager::Instance().RefCount(stream),
+        0,
+        phi::errors::InvalidArgument(
+            "paddle::ResourceManager::Instance().RefCount(stream) should be 0 "
+            "but recieved %d.",
+            paddle::ResourceManager::Instance().RefCount(stream)));
   }
 
   // internal stream, create 2 predictor.
@@ -564,7 +570,13 @@ TEST(Predictor, Streams) {
     auto predictor1 = CreatePredictor(config1);
     gpuStream_t stream1 =
         reinterpret_cast<gpuStream_t>(predictor1->GetExecStream());
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream1), 0);
+    PADDLE_ENFORCE_EQ(
+        paddle::ResourceManager::Instance().RefCount(stream1),
+        0,
+        phi::errors::InvalidArgument(
+            "paddle::ResourceManager::Instance().RefCount(stream1) should be 0 "
+            "but recieved %d.",
+            paddle::ResourceManager::Instance().RefCount(stream1)));
 
     Config config2;
     config2.SetModel(FLAGS_dirname);
@@ -572,8 +584,22 @@ TEST(Predictor, Streams) {
     auto predictor2 = CreatePredictor(config2);
     gpuStream_t stream2 =
         reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 0);
-    CHECK_EQ(stream1, stream2);
+    PADDLE_ENFORCE_EQ(
+        paddle::ResourceManager::Instance().RefCount(stream2),
+        0,
+        phi::errors::InvalidArgument(
+            "paddle::ResourceManager::Instance().RefCount(stream2) should be 0 "
+            "but recieved %d.",
+            paddle::ResourceManager::Instance().RefCount(stream2)));
+    PADDLE_ENFORCE_EQ(
+        stream1,
+        stream2,
+        phi::errors::InvalidArgument(
+            "paddle::ResourceManager::Instance().RefCount(stream1) should be "
+            "equal to paddle::ResourceManager::Instance().RefCount(stream2) "
+            "but recieved %d and %d.",
+            paddle::ResourceManager::Instance().RefCount(stream1),
+            paddle::ResourceManager::Instance().RefCount(stream2)));
   }
 
   // internal stream, clone
@@ -584,13 +610,33 @@ TEST(Predictor, Streams) {
     auto predictor = CreatePredictor(config);
     gpuStream_t stream =
         reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 0);
+    PADDLE_ENFORCE_EQ(
+        paddle::ResourceManager::Instance().RefCount(stream),
+        0,
+        phi::errors::InvalidArgument(
+            "paddle::ResourceManager::Instance().RefCount(stream) should be 0 "
+            "but recieved %d.",
+            paddle::ResourceManager::Instance().RefCount(stream)));
 
     auto predictor2 = predictor->Clone();
     gpuStream_t stream2 =
         reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 0);
-    CHECK_EQ(stream, stream2);
+    PADDLE_ENFORCE_EQ(
+        paddle::ResourceManager::Instance().RefCount(stream2),
+        0,
+        phi::errors::InvalidArgument(
+            "paddle::ResourceManager::Instance().RefCount(stream) should be 0 "
+            "but recieved %d.",
+            paddle::ResourceManager::Instance().RefCount(stream2)));
+    PADDLE_ENFORCE_EQ(
+        stream,
+        stream2,
+        phi::errors::InvalidArgument(
+            "paddle::ResourceManager::Instance().RefCount(stream) should be "
+            "equal to paddle::ResourceManager::Instance().RefCount(stream2) "
+            "but recieved %d and %d.",
+            paddle::ResourceManager::Instance().RefCount(stream),
+            paddle::ResourceManager::Instance().RefCount(stream2)));
   }
 
   // external stream
@@ -601,14 +647,34 @@ TEST(Predictor, Streams) {
     config.SetModel(FLAGS_dirname);
     config.EnableUseGpu(100, 0);
     config.SetExecStream(external_stream);
-    CHECK_EQ(config.external_stream_enabled(), true);
+    PADDLE_ENFORCE_EQ(
+        config.external_stream_enabled(),
+        true,
+        phi::errors::InvalidArgument(
+            "External stream of configuration should be enabled but not."));
 
     auto predictor = CreatePredictor(config);
     gpuStream_t stream =
         reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
-    CHECK_EQ(external_stream, stream);
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
+    PADDLE_ENFORCE_EQ(external_stream,
+                      stream,
+                      phi::errors::InvalidArgument("external_stream should be "
+                                                   "equal to stream "
+                                                   "but recieved %d and %d.",
+                                                   external_stream,
+                                                   stream));
+    PADDLE_ENFORCE_NOT_NULL(
+        paddle::ResourceManager::Instance().GetGPUResource(stream),
+        phi::errors::NotFound(
+            "GPU resource for the given stream was not found."));
+    PADDLE_ENFORCE_EQ(
+        paddle::ResourceManager::Instance().RefCount(stream),
+        1,
+        phi::errors::InvalidArgument(
+            "The reference count for the stream is expected to be 1, but got "
+            "%d. This indicates that there may be an issue with resource "
+            "management or stream handling.",
+            paddle::ResourceManager::Instance().RefCount(stream)));
   }
 
   // 2 predictor on 2 stream
@@ -622,8 +688,18 @@ TEST(Predictor, Streams) {
     auto predictor = CreatePredictor(config);
     gpuStream_t stream =
         reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
+    PADDLE_ENFORCE_NOT_NULL(
+        paddle::ResourceManager::Instance().GetGPUResource(stream),
+        phi::errors::NotFound(
+            "GPU resource for the given stream was not found."));
+    PADDLE_ENFORCE_EQ(
+        paddle::ResourceManager::Instance().RefCount(stream),
+        1,
+        phi::errors::InvalidArgument(
+            "The reference count for the stream is expected to be 1, but got "
+            "%d. This indicates that there may be an issue with resource "
+            "management or stream handling.",
+            paddle::ResourceManager::Instance().RefCount(stream)));
 
     cudaStream_t external_stream2;
     cudaStreamCreate(&external_stream2);
@@ -634,10 +710,25 @@ TEST(Predictor, Streams) {
     auto predictor2 = CreatePredictor(config2);
     gpuStream_t stream2 =
         reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream2));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 1);
-
-    CHECK_NE(stream, stream2);
+    PADDLE_ENFORCE_NOT_NULL(
+        paddle::ResourceManager::Instance().GetGPUResource(stream2),
+        phi::errors::NotFound(
+            "GPU resource for the given stream was not found."));
+    PADDLE_ENFORCE_EQ(
+        paddle::ResourceManager::Instance().RefCount(stream2),
+        1,
+        phi::errors::InvalidArgument(
+            "The reference count for the stream is expected to be 1, but got "
+            "%d. This indicates that there may be an issue with resource "
+            "management or stream handling.",
+            paddle::ResourceManager::Instance().RefCount(stream2)));
+    PADDLE_ENFORCE_NE(stream,
+                      stream2,
+                      phi::errors::InvalidArgument(
+                          "The two streams should not be equal. This indicates "
+                          "that the streams "
+                          "for two predictors should be different to avoid "
+                          "potential conflicts or resource mismanagement."));
   }
 }
 

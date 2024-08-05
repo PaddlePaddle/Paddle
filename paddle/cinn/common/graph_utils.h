@@ -85,7 +85,8 @@ class GraphNode : public Object {
   template <typename EdgeT = GraphEdge>
   std::tuple<EdgeT*, EdgeT*> LinkTo(GraphNode* other) {
     EdgeT *a, *b;
-    CHECK(other);
+    PADDLE_ENFORCE_NOT_NULL(
+        other, phi::errors::InvalidArgument("The input node is null."));
     PADDLE_ENFORCE_NE(
         other,
         this,
@@ -110,8 +111,11 @@ class GraphNode : public Object {
         break;
       }
     }
-    CHECK(a);
-    CHECK(b);
+    PADDLE_ENFORCE_NOT_NULL(
+        a, phi::errors::InvalidArgument("Sorry,but outlinks is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(
+        b,
+        phi::errors::InvalidArgument("Sorry, but other->inlinks_ is nullptr"));
     return std::make_tuple(a, b);
   }
 
