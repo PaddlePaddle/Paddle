@@ -182,24 +182,61 @@ TEST(EagerUtils, ComputeRequireGrad) {
                                    auto_grad0->NumericStopGradient()));
   VLOG(6) << "Single Test ComputeRequireGrad";
   auto_grad0->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get()) == false);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get()) == false);
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get()),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Expected ComputeRequireGrad(true, auto_grad0) to be "
+                        "false, but it is true."));
+  PADDLE_ENFORCE_EQ(
+      egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get()),
+      false,
+      ::common::errors::InvalidArgument(
+          "Expected ComputeRequireGrad(false, auto_grad0) to be false, but it "
+          "is true."));
   auto_grad0->SetStopGradient(false);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get()) == false);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get()) == true);
+  PADDLE_ENFORCE_EQ(
+      egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get()),
+      false,
+      ::common::errors::InvalidArgument(
+          "Expected ComputeRequireGrad(false, auto_grad0) to be false, but it "
+          "is true."));
+
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Expected ComputeRequireGrad(true, auto_grad0) to be "
+                        "true, but it is false."));
 
   VLOG(6) << "Multi Test ComputeRequireGrad";
   auto_grad0->SetStopGradient(false);
   auto_grad1->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(
-            true, auto_grad0.get(), auto_grad1.get()) == true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(
-            false, auto_grad0.get(), auto_grad1.get()) == false);
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::ComputeRequireGrad(
+                        true, auto_grad0.get(), auto_grad1.get()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Expected ComputeRequireGrad(true, auto_grad0, "
+                        "auto_grad1) to be true, but it is false."));
+
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::ComputeRequireGrad(
+                        false, auto_grad0.get(), auto_grad1.get()),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Expected ComputeRequireGrad(false, auto_grad0, "
+                        "auto_grad1) to be false, but it is true."));
   auto_grad0->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(
-            true, auto_grad0.get(), auto_grad1.get()) == false);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(
-            false, auto_grad0.get(), auto_grad1.get()) == false);
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::ComputeRequireGrad(
+                        true, auto_grad0.get(), auto_grad1.get()),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Expected ComputeRequireGrad(true, auto_grad0, "
+                        "auto_grad1) to be false, but it is true."));
+
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::ComputeRequireGrad(
+                        false, auto_grad0.get(), auto_grad1.get()),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Expected ComputeRequireGrad(false, auto_grad0, "
+                        "auto_grad1) to be false, but it is true."));
 }
 
 TEST(EagerUtils, PassStopGradient) {
@@ -215,16 +252,41 @@ TEST(EagerUtils, PassStopGradient) {
                                    auto_grad0->NumericStopGradient()));
   VLOG(6) << "Test PassStopGradient";
   egr::EagerUtils::PassStopGradient(false, auto_grad0.get());
-  CHECK(auto_grad0->StopGradient() == false);
+  PADDLE_ENFORCE_EQ(
+      auto_grad0->StopGradient(),
+      false,
+      ::common::errors::InvalidArgument(
+          "Expected auto_grad0->StopGradient() to be false, but recieved %d.",
+          auto_grad0->StopGradient()));
   egr::EagerUtils::PassStopGradient(true,
                                     auto_grad0.get(),
                                     auto_grad1.get(),
                                     auto_grad2.get(),
                                     auto_grad3.get());
-  CHECK(auto_grad0->StopGradient() == true);
-  CHECK(auto_grad1->StopGradient() == true);
-  CHECK(auto_grad2->StopGradient() == true);
-  CHECK(auto_grad3->StopGradient() == true);
+  PADDLE_ENFORCE_EQ(
+      auto_grad0->StopGradient(),
+      true,
+      ::common::errors::InvalidArgument(
+          "Expected auto_grad0->StopGradient() to be true, but recieved %d.",
+          auto_grad0->StopGradient()));
+  PADDLE_ENFORCE_EQ(
+      auto_grad1->StopGradient(),
+      true,
+      ::common::errors::InvalidArgument(
+          "Expected auto_grad1->StopGradient() to be true, but recieved %d.",
+          auto_grad1->StopGradient()));
+  PADDLE_ENFORCE_EQ(
+      auto_grad2->StopGradient(),
+      true,
+      ::common::errors::InvalidArgument(
+          "Expected auto_grad2->StopGradient() to be true, but recieved %d.",
+          auto_grad2->StopGradient()));
+  PADDLE_ENFORCE_EQ(
+      auto_grad3->StopGradient(),
+      true,
+      ::common::errors::InvalidArgument(
+          "Expected auto_grad3->StopGradient() to be true, but recieved %d.",
+          auto_grad3->StopGradient()));
 }
 
 TEST(EagerUtils, TrySyncToVar) {
@@ -323,7 +385,11 @@ TEST(EagerUtils, CreateVars) {
       2UL,
       phi::errors::InvalidArgument(
           "Size of outs mismatch. Expected 2 but received %d.", outs.size()));
-  CHECK(outs[0]->Var().IsInitialized() == false);
+  PADDLE_ENFORCE_EQ(
+      outs[0]->Var().IsInitialized(),
+      false,
+      ::common::errors::AlreadyExists("Expected the first variable to be "
+                                      "uninitialized, but already exists."));
 }
 
 TEST(EagerUtils, GetGradAccumulationNode) {
