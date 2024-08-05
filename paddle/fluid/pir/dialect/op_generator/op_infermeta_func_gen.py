@@ -871,9 +871,9 @@ def GenDistBranch(args, op_info):
 
     if spmd_input_value_num == len(op_info.input_name_list):
         TEMPLATE = """
-    for(auto& arg_dist : spmd_info.first) {{
-        dist_operand_attrs.push_back(CvtToPirAttr(arg_dist));
-    }}
+    for(auto& arg_dist : spmd_info.first) {
+      dist_operand_attrs.push_back(CvtToPirAttr(arg_dist));
+    }
 """
         dist_branch_str += TEMPLATE
     else:
@@ -901,12 +901,12 @@ def GenDistBranch(args, op_info):
     if len(op_info.mutable_attribute_name_list) > 0:
         TEMPLATE = """
     for(int i = {input_size}; i < {all_input_size}; ++i) {{
-        if(auto dist_type = input_values[i].type().dyn_cast<DistTypeInterface>()) {{
-            dist_operand_attrs.push_back(dist_type.tensor_dist_attr());
-        }}
-        else {{
-            dist_operand_attrs.push_back(nullptr);
-        }}
+      if(auto dist_type = input_values[i].type().dyn_cast<DistTypeInterface>()) {{
+        dist_operand_attrs.push_back(dist_type.tensor_dist_attr());
+      }}
+      else {{
+        dist_operand_attrs.push_back(nullptr);
+      }}
     }}
 """
         dist_branch_str += TEMPLATE.format(
