@@ -66,7 +66,7 @@ struct CUBlas<float> {
   // https://github.com/ROCm-Developer-Tools/HIP/blob/roc-3.5.x/docs/markdown/CUBLAS_API_supported_by_HIP.md
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasSgemmEx is not supported on HIP platform."));
   }
 
@@ -77,25 +77,25 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasSgetrfBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasSgetriBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasSmatinvBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void TRSM_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasStrsmBatched is not supported on HIP platform."));
   }
 };
@@ -135,8 +135,8 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Currently there are not cublasDgemmEx."));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Currently there are not cublasDgemmEx."));
   }
 
   template <typename... ARGS>
@@ -146,25 +146,25 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasDgetrfBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasDgetriBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasDmatinvBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void TRSM_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasDtrsmBatched is not supported on HIP platform."));
   }
 };
@@ -696,7 +696,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas fp16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -758,7 +758,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "rocblas bf16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -823,7 +823,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas complex64 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -880,7 +880,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas complex128 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1014,7 +1014,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "rocblas bf16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1505,7 +1505,7 @@ void Blas<phi::GPUContext>::BatchedGETRI(int n,
   PADDLE_ENFORCE_NE(
       a_inv,
       a,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cuBLAS fuction 'cublas<S/D>getrfBatched' cannot be executed "
           "in-place. The memory space of output matrix (address: %p) cannot "
           "overlap memory space of input matrix (address: %p).",
