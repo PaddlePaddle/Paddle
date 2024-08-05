@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+import logging
+import re
+
 import paddle
 from paddle.autograd.backward_utils import ValueDict
+from paddle.base.log_helper import get_logger
 from paddle.distributed.passes.pass_base import PassContext, new_pass
 
 from .process_group import get_process_group
@@ -21,6 +26,10 @@ from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
 from .reshard_funcs.reshard_func_register import register_reshard_funcs
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 register_reshard_funcs()
 
@@ -430,9 +439,14 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
 
 
 def complete_chunk_id(dist_program, pipeline_strategy):
+    def find_seg_method(regex, op):
+        return regex.search(op.struct_name)
+
     if not pipeline_strategy.enable:
         return
 
+    # TODO(write a right func to get pp_degree and sub_process_meshes
+    pp_degree, sub_process_meshes = None, None
     pp_degree = pipeline_strategy.pp_degree
     vpp_degree = pipeline_strategy.vpp_degree
     seg_method = pipeline_strategy.vpp_segment_method
@@ -452,3 +466,134 @@ def complete_chunk_id(dist_program, pipeline_strategy):
     # Step1: search seg_method in op's struct_name
     # 1. get op_idx of each segment
     # 2. get process_mesh of each segment
+    seg_op_deps = collections.OrderedDict()
+    seg_op_mesh = collections.OrderedDict()
+    regex = re.compile(seg_method, re.IGNORECASE)
+
+    start_op_index = 0
+    for i, op in enumerate(ops):
+        if find_seg_method(regex, op):
+            start_op_index = i
+            break
+
+    total_op_num = len(ops)
+    end_op_index = total_op_num - 1
+    for i in reversed(range(total_op_num)):
+        if find_seg_method(regex, ops[i]):
+            end_op_index = i
+            break
+
+    # all ops between start_op_index and end_op_index should not be ignored
+    for i in range(start_op_index, end_op_index + 1):
+        m = find_seg_method(regex, ops[i])
+        if not m:
+            # only assgin op created by reshard is allowed
+            if (
+                ops[i].name() == "pd_op.assign"
+                and "reshard_api" in ops[i].output_arg_names[0]
+            ):
+                # this assign op belongs to next segment
+                find_in_next_seg = False
+                for j in range(i + 1, total_op_num):
+                    if find_seg_method(regex, ops[j]):
+                        seg_op_deps[i] = j
+                        find_in_next_seg = True
+                        break
+                assert find_in_next_seg
+                struct_name = ops[i].struct_name
+            else:
+                raise ValueError(
+                    f"The op {ops[i].name()} should only be created by reshard"
+                )
+
+        struct_name = struct_name[m.start(0) :].split("/")[0]
+        if struct_name not in seg_op_deps:
+            seg_op_deps[struct_name] = [i]
+            seg_op_deps[struct_name] = op.dist_attr.process_mesh
+        else:
+            assert (
+                seg_op_deps[struct_name][-1] + 1 == i
+            ), "The segment's ops should be continuous."
+            pre_mesh = seg_op_mesh[struct_name]
+            assert (
+                pre_mesh == op.dist_attr.process_mesh
+            ), "The segment's ops should have same process_mesh."
+            seg_op_deps[struct_name].extend([i])
+
+    num_chunks = pp_degree * vpp_degree
+    assert (
+        len(seg_op_deps) % num_chunks == 0
+    ), f"The number of layers[{seg_method}] ({len(seg_op_deps)}) should be divided by part number ({num_chunks})."
+
+    # Step2: analysis whether the pp_stage is non-decreasing among segments
+    # 1. if non_decreasing is True, the ops' process_mesh will be changed by vpp strategy
+    # 2. if non_decreasing is False, the ops's process_mesh will not be changed.
+    non_decreasing = True
+    seg_pp_stages = [-1]
+    for seg_pm in seg_op_mesh.values():
+        assert seg_pm in sub_process_meshes
+        pp_stage = sub_process_meshes.index(seg_pm)
+        if seg_pp_stages[-1] > pp_stage:
+            non_decreasing = False
+            break
+        seg_pp_stages.append(pp_stage)
+
+    if not non_decreasing:
+        _logger.info("Cannot Use Auto VPP")
+    else:
+        _logger.info("Using Auto VPP")
+
+    # Step3: Get op index boundary, pp_stage, chunk_id, struct_names of each segment
+    seg_pp_stages = [i % pp_degree for i in range(num_chunks)]
+    seg_chunk_ids = [i // pp_degree for i in range(num_chunks)]
+    part_size = len(seg_op_deps) // num_chunks
+    segment_struct_names = []
+    # mark the start and end index of each segment
+    segment_parts = [0] * (num_chunks + 1)
+    memory_counter, seg_idx = 0, 1
+    struct_name = []
+    for name, idxs in seg_op_deps.items():
+        struct_name.append(name)
+        memory_counter += 1
+        if memory_counter == part_size:
+            segment_parts[seg_idx] = idxs[-1] + 1
+            memory_counter, seg_idx = 0, seg_idx + 1
+            segment_struct_names.append(struct_name)
+    segment_parts[num_chunks] = len(ops)
+
+    # Step4: set right chunk_id and process_mesh for each op and var
+    for seg_id in range(len(segment_parts) - 1):
+        start_idx = segment_parts[seg_id]
+        end_idx = segment_parts[seg_id + 1]
+        pp_stage = seg_pp_stages[seg_id]
+        chunk_id = seg_chunk_ids[seg_id]
+        process_mesh = sub_process_meshes[pp_stage]
+        struct_names = segment_struct_names[seg_id]
+        seg_op_idx = []
+        for name in struct_names:
+            seg_op_idx.extend(seg_op_deps[name])
+
+        _logger.info(
+            f"stage=[{pp_stage}], chunk_id=[{chunk_id}], layer_name=[{struct_names}]"
+        )
+        _logger.info(
+            f"start op: [{ops[start_idx].type}]: [{ops[start_idx].input_arg_names}] [{ops[start_idx].output_arg_names}]"
+        )
+        _logger.info(
+            f"end op: [{ops[end_idx - 1].type}]: [{ops[end_idx - 1].input_arg_names}] [{ops[end_idx - 1].output_arg_names}]"
+        )
+
+        for idx in range(start_idx, end_idx):
+            op = ops[idx]
+            if non_decreasing and idx in seg_op_idx:
+                op.dist_attr.process_mesh = process_mesh
+            op.dist_attr.chunk_id = chunk_id
+
+            if op.has_attr("sub_block"):
+                block_id = op.attr("sub_block").id
+                sub_block = dist_program.blocks[block_id]
+
+                for sub_op in sub_block.ops:
+                    if non_decreasing and idx in seg_op_idx:
+                        sub_op.dist_attr.process_mesh = process_mesh
+                    sub_op.dist_attr.chunk_id = chunk_id
