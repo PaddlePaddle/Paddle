@@ -113,10 +113,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
             reduce_axes.back(),
             ndim));
     for (int idx = 1; idx < reduce_axes.size(); ++idx) {
-      PADDLE_ENFORCE_NE(
-          reduce_axes[idx - 1],
-          reduce_axes[idx],
-          common::errors::InvalidArgument("The reduce axes should be unique!"));
+      PADDLE_ENFORCE_NE(reduce_axes[idx - 1],
+                        reduce_axes[idx],
+                        ::common::errors::InvalidArgument(
+                            "The reduce axes should be unique!"));
     }
   } else {
     PADDLE_THROW(
