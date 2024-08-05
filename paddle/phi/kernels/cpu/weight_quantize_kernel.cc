@@ -39,7 +39,7 @@ void quant_compute(const DeviceContext& dev_ctx,
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
        (arch == 89) || (arch == 90)),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently, arch only support 70, 75, 80, 86, 89, 90."));
 
 #endif
@@ -47,7 +47,7 @@ void quant_compute(const DeviceContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
   size_t m = x_dims[0];
   size_t n = x_dims[1];
@@ -169,7 +169,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     quant_compute<Context, T, int8_t, 4>(
         dev_ctx, x, out, scale, algo, arch, group_size);
   } else {
-    phi::errors::Unimplemented(
+    common::errors::Unimplemented(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
         "'llm.int8'], but got[%s]",
         algo);

@@ -676,14 +676,14 @@ void ProgramInterpreter::BuildOperatorDependences() {
   }
 }
 
-// At the end of each step, the holder of phi::DenseTensor in LoDTensorArray is
-// null. Clear these Tensors and leave LoDTensorArray empty, otherwise an
+// At the end of each step, the holder of phi::DenseTensor in phi::TensorArray
+// is null. Clear these Tensors and leave phi::TensorArray empty, otherwise an
 // exception will occur in the next step
 void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
   auto vars = local_scope_->LocalVars();
   for (auto var : vars) {
-    if (var->IsType<LoDTensorArray>()) {
-      auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+    if (var->IsType<phi::TensorArray>()) {
+      auto* lod_tensor_arr = var->GetMutable<phi::TensorArray>();
       lod_tensor_arr->clear();
     }
   }
@@ -822,7 +822,7 @@ void ProgramInterpreter::Convert(
       paddle::framework::Variable* var = inner_scope->FindVar(
           var_scope_.GetNameById(static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
-          var->IsType<LoDTensorArray>() ||
+          var->IsType<phi::TensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
           var->IsType<phi::SparseCsrTensor>()) {
         last_live_ops_[var_id].insert(op_idx);
@@ -958,7 +958,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
   {
     // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr) {
-      platform::RecordEvent infershape_event(
+      phi::RecordEvent infershape_event(
           "infer_shape",
           platform::TracerEventType::OperatorInner,
           1,
@@ -1002,11 +1002,10 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     // sub-graphs also run on the same machine concurrently, which cannot be
     // guaranteed in most of the time.
   } else {
-    platform::RecordEvent compute_event(
-        "compute",
-        platform::TracerEventType::OperatorInner,
-        1,
-        phi::EventRole::kInnerOp);
+    phi::RecordEvent compute_event("compute",
+                                   platform::TracerEventType::OperatorInner,
+                                   1,
+                                   phi::EventRole::kInnerOp);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (is_in_op_profiling_mode_) {
@@ -1056,7 +1055,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
           << op->DebugStringEx(local_scope);  // NOLINT
 
   if (!instr_node.InplaceBackMap().empty()) {
-    platform::RecordEvent inplaceback_event(
+    phi::RecordEvent inplaceback_event(
         "InplaceVarsBack", platform::TracerEventType::UserDefined, 10);
     auto& m = instr_node.InplaceBackMap();
     // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
@@ -1172,7 +1171,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
           << " runs on " << phi::GetCurrentThreadName();
 
   auto* op = instr_node.OpBase();
-  platform::RecordEvent instruction_event(
+  phi::RecordEvent instruction_event(
       op->Type(), platform::TracerEventType::Operator, 1);
 
   SetDeviceId(instr_node.DeviceContext().GetPlace());
@@ -1214,7 +1213,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
     LOG(WARNING) << op->Type() << " raises an exception "
-                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+                 << common::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::current_exception());
   } catch (...) {
     LOG(WARNING) << op->Type() << " raises an unknown exception";
@@ -1335,7 +1334,7 @@ void ProgramInterpreter::ExecuteInstructionList(
 
 void ProgramInterpreter::RunNextInstructions(
     const Instruction& instr, SchedulingQueue* reserved_next_ops) {
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
 
   auto IsReady = [this](size_t next_id) {
@@ -1398,7 +1397,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
   PADDLE_THROW(common::errors::Unimplemented(
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
   auto TensorRecordStream = [](phi::DenseTensor& tensor,
@@ -1466,8 +1465,8 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
       TensorRecordStream(
           *(var->GetMutable<phi::SelectedRows>()->mutable_value()),
           instr.stream_);
-    } else if (var->IsType<LoDTensorArray>()) {
-      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+    } else if (var->IsType<phi::TensorArray>()) {
+      auto* tensor_arr = var->GetMutable<phi::TensorArray>();
       for (auto& tensor : *tensor_arr) {
         TensorRecordStream(tensor, instr.stream_);
       }
@@ -1500,7 +1499,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
 }
 
 void ProgramInterpreter::CheckGC(const Instruction& instr) {
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (instr.need_record_stream_for_gc_) {
@@ -1662,7 +1661,7 @@ void ProgramInterpreter::RecordMemcpyD2H(const Instruction& instr_node) {
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node.EventsToWait()) {
-      platform::RecordEvent record(
+      phi::RecordEvent record(
           "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
       VLOG(3) << "Record event on default stream in jit_input_var at op: "
               << instr_node.OpBase()->Type();

@@ -274,7 +274,7 @@ class PyLayerMeta(type):
             name + '_backward', (PyLayerBackward,), {"_forward_cls": cls}
         )
 
-        return super().__init__(name, bases, attrs)
+        super().__init__(name, bases, attrs)
 
 
 class PyLayer(core.eager.PyLayer, PyLayerContext, metaclass=PyLayerMeta):

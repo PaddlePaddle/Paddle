@@ -14,7 +14,7 @@
 
 #ifndef _WIN32
 
-#include "paddle/fluid/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 
 #include "gtest/gtest.h"
 

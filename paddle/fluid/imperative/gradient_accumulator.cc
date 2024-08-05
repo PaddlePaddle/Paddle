@@ -72,7 +72,7 @@ static void MoveOrCopyVar(framework::Variable* dst,
     dst_selected_rows->set_rows(src_selected_rows.rows());
     dst_selected_rows->set_height(src_selected_rows.height());
   } else {
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Only support LoDTensor and SelectedRows for sum gradient"));
   }
 }
@@ -136,9 +136,9 @@ TType& GetInnerTensor(const paddle::Tensor& src) {
   PADDLE_ENFORCE_EQ(
       src.initialized(),
       true,
-      phi::errors::Fatal("We only add tensor with value if a tensor is "
-                         "NOT INITIALIZED, it should just move instead of "
-                         "calling this method."));
+      common::errors::Fatal("We only add tensor with value if a tensor is "
+                            "NOT INITIALIZED, it should just move instead of "
+                            "calling this method."));
   auto* src_tensor = static_cast<TType*>(src.impl().get());
   return *src_tensor;
 }
@@ -148,7 +148,7 @@ TType* GetEmptyInnerTensor(paddle::Tensor* dst) {
   PADDLE_ENFORCE_EQ(
       dst->defined(),
       false,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "The underlying Tensor implementation should be nullptr"));
   dst->set_impl(std::make_shared<TType>());
   auto* dst_tensor = static_cast<TType*>(dst->impl().get());
@@ -181,7 +181,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   PADDLE_ENFORCE_EQ(
       dst_tensor->numel(),
       numel,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The number of elements of source tensor and destination tensor "
           "should be equal, but got the number of elements of source tensor is "
           "%zu and the number of elements of destination tensor is %zu.",
@@ -277,7 +277,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
                framework::DataTypeTrait<phi::dtype::bfloat16>::DataType()) {
       XPUTensorAddFunctor<phi::dtype::bfloat16>(place, src_tensor, dst_tensor);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "
           "supported in imperative mode",
           framework::DataTypeToString(data_type),
@@ -287,7 +287,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
 #endif
 
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Gradient accumulation of data type (%s) on place (%s) is not "
       "supported in imperative mode",
       framework::DataTypeToString(data_type),
@@ -338,7 +338,7 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
 
 #undef PADDLE_SELECTED_ROWS_ADD_TO_TENSOR
 
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsAddToTensor",
       framework::DataTypeToString(data_type)));
 }
@@ -391,7 +391,7 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
   }
 #endif
 
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsAddToTensor",
       framework::DataTypeToString(data_type)));
 
@@ -466,7 +466,7 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
 #endif
 
 #undef PADDLE_SELECTED_ROWS_ADD
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsMerge",
       framework::DataTypeToString(data_type)));
 }
@@ -487,7 +487,7 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
     } else if (src.IsType<phi::SelectedRows>()) {
       SelectedRowsAddToTensor(src, dst);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unexpected branch, output variable type is %s",
           framework::ToTypeName(dst->Type())));
     }
@@ -506,7 +506,7 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
       auto temp = SelectedRowsMerge<VariableWrapper>(src, *dst);
       *dst = std::move(*(temp->MutableVar()));
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unexpected branch, output variable type is %s",
           framework::ToTypeName(dst->Type())));
     }
@@ -520,7 +520,7 @@ static phi::Place GetPlaceOfVar(const std::shared_ptr<VariableWrapper>& var) {
   } else if (var->Var().IsType<phi::SelectedRows>()) {
     place = var->Var().Get<phi::SelectedRows>().place();
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "only support LoDTensor and SelectedRows in dygraph"));
   }
   return place;
@@ -536,12 +536,12 @@ void GradientAccumulator::AccumulateGrad() {
   }
   PADDLE_ENFORCE_EQ(HasInnerVar(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Leaf tensor should have inner var to store results of "
                         "this auto-grad"));
   PADDLE_ENFORCE_EQ(inner_var_->Var().IsInitialized(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Interior var of Leaf tensor should be initialized."));
   auto* src = inner_var_->MutableVar();
   auto* dst = var_->MutableVar();
@@ -564,7 +564,7 @@ void GradientAccumulator::AccumulateGrad() {
         *dst = std::move(*(temp->MutableVar()));
       }
     } else {
-      PADDLE_THROW(phi::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Only support LoDTensor and SelectedRows for gradient var"));
     }
   } else {
@@ -582,24 +582,25 @@ void GradientAccumulator::AccumulateGrad() {
 void GradientAccumulator::CallGradientHooks() {
   PADDLE_ENFORCE_EQ(var_->IsLeafGrad(),
                     true,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Only leaf gradient Tensor can deal with by gradient "
                         "hook in gradient accumulator."));
   PADDLE_ENFORCE_EQ(
       SumGradCompleted(),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Only can call gradient hooks after sum gradient completed."));
-  PADDLE_ENFORCE_EQ(
-      HasInnerVar(),
-      true,
-      phi::errors::PreconditionNotMet("Leaf Tensor's inner var is nullptr when "
-                                      "call gradient hook."));
-  PADDLE_ENFORCE_EQ(inner_var_->Var().IsInitialized(),
+  PADDLE_ENFORCE_EQ(HasInnerVar(),
                     true,
-                    phi::errors::PreconditionNotMet("Leaf Tensor's inner var "
-                                                    "is not initialized when "
-                                                    "call gradient hook."));
+                    common::errors::PreconditionNotMet(
+                        "Leaf Tensor's inner var is nullptr when "
+                        "call gradient hook."));
+  PADDLE_ENFORCE_EQ(
+      inner_var_->Var().IsInitialized(),
+      true,
+      common::errors::PreconditionNotMet("Leaf Tensor's inner var "
+                                         "is not initialized when "
+                                         "call gradient hook."));
   if (var_->HasVariableWrapperHook()) {
     VLOG(3) << "Call " << var_->GetVariableWrapperHooks().size()
             << " hooks of leaf gradient accumulator's inner var `"
@@ -619,19 +620,19 @@ void GradientAccumulator::CallReduceHooks() {
   PADDLE_ENFORCE_EQ(
       var_->IsLeafGrad(),
       true,
-      phi::errors::Unavailable("Only leaf gradient Tensor can deal with "
-                               "by reduce hook in gradient accumulator."));
+      common::errors::Unavailable("Only leaf gradient Tensor can deal with "
+                                  "by reduce hook in gradient accumulator."));
   PADDLE_ENFORCE_EQ(SumGradCompleted(),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Only can call reduce hooks after the gradient "
                         "summation is completed in current batch."));
-  PADDLE_ENFORCE_EQ(
-      HasInnerVar(),
-      false,
-      phi::errors::PreconditionNotMet("Only can call reduce hooks after the "
-                                      "gradient accumulation is completed in "
-                                      "current batch or across batches."));
+  PADDLE_ENFORCE_EQ(HasInnerVar(),
+                    false,
+                    common::errors::PreconditionNotMet(
+                        "Only can call reduce hooks after the "
+                        "gradient accumulation is completed in "
+                        "current batch or across batches."));
   if (var_->HasVoidHook()) {
     for (const auto& hook : var_->GetVoidHooks()) {
       VLOG(3) << "call gradient accumulator backward hooks.";
@@ -756,10 +757,10 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
             continue;
           }
 
-          PADDLE_ENFORCE_EQ(
-              var_info.var->Var().IsType<phi::DenseTensor>(),
-              true,
-              phi::errors::PermissionDenied("Gradient var must be LoDTensor"));
+          PADDLE_ENFORCE_EQ(var_info.var->Var().IsType<phi::DenseTensor>(),
+                            true,
+                            common::errors::PermissionDenied(
+                                "Gradient var must be LoDTensor"));
           if (CurCnt() == 0) {
             MoveOrCopyVar(dst_var->MutableVar(),
                           var_info.var->MutableVar(),
@@ -782,9 +783,9 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
               var_info.var->Var().IsType<phi::DenseTensor>() ||
                   var_info.var->Var().IsType<phi::SelectedRows>(),
               true,
-              phi::errors::PermissionDenied("The type of Gradient "
-                                            "var must be LoDTensor "
-                                            "or SelectedRows"));
+              common::errors::PermissionDenied("The type of Gradient "
+                                               "var must be LoDTensor "
+                                               "or SelectedRows"));
           if (CurCnt() == 0) {
             MoveOrCopyVar(dst_var->MutableVar(),
                           var_info.var->MutableVar(),

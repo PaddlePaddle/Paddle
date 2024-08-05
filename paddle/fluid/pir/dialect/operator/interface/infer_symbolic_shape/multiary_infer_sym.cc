@@ -316,7 +316,8 @@ bool BatchNormOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(param_dims)});
   }
   if (op->result(5) && op->result(5).type()) {
-    std::vector<symbol::DimExpr> reserve_space_dims = {symbol::DimExpr{-1}};
+    std::vector<symbol::DimExpr> reserve_space_dims{
+        symbol::DimExpr{infer_context->GetNextSymName()}};
     infer_context->SetShapeOrDataForValue(
         op->result(5),
         symbol::ShapeOrDataDimExprs{
@@ -448,6 +449,15 @@ bool BicubicInterpOpInferSymbolicShape(
       }
       // has out_size tensor
       if (op->operand_source(1)) {
+        const auto &out_size_shape_or_data =
+            infer_context->GetShapeOrDataForValue(op->operand_source(1));
+        PADDLE_ENFORCE_EQ(
+            out_size_shape_or_data.shape().size(),
+            1,
+            common::errors::InvalidArgument(
+                "The rank of input out_size tensor should be 1."));
+        infer_context->AddEqualCstr(out_size_shape_or_data.shape()[0],
+                                    symbol::DimExpr{2});
         const auto &out_size_data = GetOutSizeDataExpr(op->operand_source(1));
         return std::make_tuple(symbol::DimExpr{out_size_data[0]},
                                symbol::DimExpr{out_size_data[1]});
@@ -542,7 +552,8 @@ bool BicubicInterpOpInferSymbolicShape(
     infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
     return true;
   } else {
-    PADDLE_THROW(phi::errors::Fatal("Input(X) dimension must be 3, 4 or 5!"));
+    PADDLE_THROW(
+        common::errors::Fatal("Input(X) dimension must be 3, 4 or 5!"));
   }
 
   return true;
@@ -617,7 +628,7 @@ bool CrossEntropyWithSoftmaxOpInferSymbolicShape(
   bool soft_label =
       attributes.at("soft_label").dyn_cast<pir::BoolAttribute>().data();
   PADDLE_ENFORCE(!soft_label || input_dim.size() == index_dim.size(),
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "The input and index should have the same rank when "
                      "soft_label is true. But received input rank(%d) and "
                      "index rank(%d)",
@@ -687,7 +698,7 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
 
       return true;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           op->name() +
           " 's InferSymbolicShape can NOT deal with rank > 1 now."));
     }
@@ -759,7 +770,7 @@ bool FlashAttnOpInferSymbolicShape(
 
   PADDLE_ENFORCE_EQ(q.shape().size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
 
@@ -833,6 +844,57 @@ bool GroupNormOpInferSymbolicShape(
     infer_context->SetShapeOrDataForValue(op->result(2), mean_shape);
   }
   return true;
+}
+
+bool LerpOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &w_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const auto &x_shape = x_shape_or_data.shape();
+  const auto &y_shape = y_shape_or_data.shape();
+  const auto &w_shape = w_shape_or_data.shape();
+  size_t x_ndims = x_shape.size();
+  size_t y_ndims = y_shape.size();
+  size_t w_ndims = w_shape.size();
+  std::vector<symbol::DimExpr> out1_shape;
+  std::vector<symbol::DimExpr> out2_shape;
+  if (x_ndims > y_ndims) {
+    out1_shape.assign(x_shape.begin(), x_shape.end());
+  } else if (x_ndims < y_ndims) {
+    out1_shape.assign(y_shape.begin(), y_shape.end());
+  } else {
+    symbol::DimExprBuilder builder;
+    for (size_t i = 0; i < x_ndims; ++i) {
+      out1_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
+      infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
+    }
+  }
+  size_t out1_ndims = out1_shape.size();
+  if (w_ndims > out1_ndims) {
+    out2_shape.assign(w_shape.begin(), w_shape.end());
+  } else if (w_ndims < out1_ndims) {
+    out2_shape.assign(out1_shape.begin(), out1_shape.end());
+  } else {
+    symbol::DimExprBuilder builder;
+    for (size_t i = 0; i < w_ndims; ++i) {
+      out2_shape.emplace_back(builder.Broadcast(w_shape[i], out1_shape[i]));
+      infer_context->AddBroadcastableCstr(w_shape[i], out1_shape[i]);
+    }
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out2_shape)});
+  return true;
+}
+
+bool Lerp_OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  return LerpOpInferSymbolicShape(op, infer_context);
 }
 
 bool LayerNormOpInferSymbolicShape(
@@ -932,21 +994,21 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       q_shape.size(),
       4,
-      phi::errors::InvalidArgument("Query should be a 4-D tensor"
-                                   "But received Query dimension(%d)",
-                                   q_shape.size()));
+      common::errors::InvalidArgument("Query should be a 4-D tensor"
+                                      "But received Query dimension(%d)",
+                                      q_shape.size()));
   PADDLE_ENFORCE_EQ(
       k_shape.size(),
       4,
-      phi::errors::InvalidArgument("Key should be a 4-D tensor"
-                                   "But received Key dimension(%d)",
-                                   k_shape.size()));
+      common::errors::InvalidArgument("Key should be a 4-D tensor"
+                                      "But received Key dimension(%d)",
+                                      k_shape.size()));
   PADDLE_ENFORCE_EQ(
       v_shape.size(),
       4,
-      phi::errors::InvalidArgument("Value should be a 4-D tensor"
-                                   "But received Value dimension(%d)",
-                                   v_shape.size()));
+      common::errors::InvalidArgument("Value should be a 4-D tensor"
+                                      "But received Value dimension(%d)",
+                                      v_shape.size()));
 
   const auto &query_batch_size = q_shape[0];
   const auto &query_seq_length = q_shape[1];
@@ -1075,7 +1137,7 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
           result_data.emplace_back(shape_data.data().value().at(0));
         }
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             op->name() +
             " 's InferSymbolicShape can NOT deal with data size > 1 now."));
       }

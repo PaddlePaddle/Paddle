@@ -543,6 +543,60 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
 
             return out
 
+    def pir_nadam_mp(self, mp, use_amp):
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            paddle.seed(2024)
+            exe = paddle.static.Executor('gpu')
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+
+            with paddle.static.program_guard(train_program, startup_program):
+                model = paddle.nn.Linear(2, 10)
+                optimizer = paddle.optimizer.NAdam(
+                    0.1, parameters=model.parameters()
+                )
+                if use_amp:
+                    data = paddle.static.data(
+                        shape=[2, 2], name='X', dtype='float16'
+                    )
+                    model, optimizer = paddle.amp.decorate(
+                        models=model,
+                        optimizers=optimizer,
+                        level='O2',
+                        master_weight=mp,
+                    )
+                    scaler = paddle.amp.GradScaler(init_loss_scaling=128.0)
+                    with paddle.amp.auto_cast(
+                        level='O2', dtype="float16", use_promote=True
+                    ):
+                        output = model(data)
+                        loss = paddle.mean(output)
+                    scaled = scaler.scale(loss)
+                    scaler.minimize(optimizer, scaled)
+                else:
+                    data = paddle.static.data(
+                        shape=[2, 2], name='X', dtype='float32'
+                    )
+                    output = model(data)
+                    loss = paddle.mean(output)
+                    optimizer.minimize(loss)
+            exe.run(startup_program)
+
+            np.random.seed(2024)
+            if use_amp:
+                x = np.random.random(size=(2, 2)).astype('float16')
+            else:
+                x = np.random.random(size=(2, 2)).astype('float32')
+            out = []
+            for idx in range(5):
+                (loss_data,) = exe.run(
+                    train_program, feed={"X": x}, fetch_list=[loss]
+                )
+                out.append(loss_data)
+
+            return out
+
     def static_nadam_amp_o2_without_scaler(self):
         paddle.enable_static()
         paddle.seed(2024)
@@ -610,6 +664,16 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
             np.testing.assert_allclose(
                 output1_st[idx].astype('float32'),
                 output2_st[idx].astype('float32'),
+                rtol=1e-05,
+                atol=0.1,
+            )
+        "Test pir mode"
+        output1_pir = self.pir_nadam_mp(use_amp=True, mp=True)
+        output2_pir = self.pir_nadam_mp(use_amp=False, mp=False)
+        for idx in range(len(output1_st)):
+            np.testing.assert_allclose(
+                output1_pir[idx].astype('float32'),
+                output2_pir[idx].astype('float32'),
                 rtol=1e-05,
                 atol=0.1,
             )

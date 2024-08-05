@@ -95,7 +95,7 @@ class AutoTuneBase {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
   }
 
