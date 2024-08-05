@@ -25,7 +25,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "test/cpp/eager/performance_tests/benchmark_utils.h"
 #include "test/cpp/eager/test_utils.h"
 
