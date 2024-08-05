@@ -52,11 +52,11 @@ inline int GetBranchNumber(const phi::DenseTensor &mask) {
   PADDLE_ENFORCE_EQ(
       mask.numel(),
       1,
-      phi::errors::Fatal("The numel of Input(Mask) in SelectInputOp or "
-                         "SelectOutputOp must be 1. "
-                         "But received %d, and it's shape is [%s].",
-                         mask.numel(),
-                         mask.dims()));
+      common::errors::Fatal("The numel of Input(Mask) in SelectInputOp or "
+                            "SelectOutputOp must be 1. "
+                            "But received %d, and it's shape is [%s].",
+                            mask.numel(),
+                            mask.dims()));
   if (phi::is_cpu_place(mask.place())) {
     return mask.data<int>()[0];
   }
@@ -66,7 +66,7 @@ inline int GetBranchNumber(const phi::DenseTensor &mask) {
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   framework::TensorCopySync(mask, phi::CPUPlace(), cpu_mask.get());
 #else
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(common::errors::Fatal(
       "This version of PaddlePaddle does NOT support GPU, "
       "but got GPU tensor 'Mask' in SelectInputOp or SelectOutputOp. "
       "Please compile PaddlePaddle WITH_GPU first."));
@@ -105,7 +105,7 @@ class AssignFunctor {
     PADDLE_ENFORCE_EQ(
         true,
         false,
-        phi::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "Not support type for assign op with type %s", typeid(T).name()));
   }
 
@@ -128,7 +128,7 @@ void SelectOutputInstruction::Run() {
   PADDLE_ENFORCE_LE(
       output_branch,
       outputs_.size(),
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "Input 'Mask' in SelectInputOp is invalid. "
           "'Mask' must be less than the size of output vector 'X'. "
           "But received Mask = %d, Out's size = %d.",

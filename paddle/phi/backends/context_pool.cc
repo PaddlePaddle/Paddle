@@ -34,7 +34,7 @@ static DeviceContextPool* pool = nullptr;
 
 TEST_API DeviceContextPool& DeviceContextPool::Instance() {
   PADDLE_ENFORCE_NOT_NULL(pool,
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "Need to Create DeviceContextPool firstly!"));
   return *pool;
 }
@@ -70,7 +70,7 @@ TEST_API phi::DeviceContext* DeviceContextPool::Get(const phi::Place& place) {
 
   auto it = ptr->find(place);
   if (it == ptr->end()) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
         "with WITH_GPU, WITH_XPU or WITH_IPU option "
         "or check "

@@ -205,7 +205,7 @@ InstructionBase::InstructionBase(size_t id, const phi::Place& place)
     PADDLE_ENFORCE_EQ(
         interpreter::IsSupportedHeterPlace(place),
         true,
-        phi::errors::Fatal("Unsupported current place %s", place));
+        common::errors::Fatal("Unsupported current place %s", place));
     type_ = OpFuncType::kGpuAsync;
   }
 
@@ -219,7 +219,7 @@ const phi::DeviceContext& InstructionBase::DeviceContext() const {
 }
 
 void InstructionBase::RecordEvent(const Place& place) const {
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
   if (event_to_record_) {
     VLOG(6) << "Record event at instruction: " << id_;
@@ -233,7 +233,7 @@ void InstructionBase::WaitEvent(const Place& place) const {
     return;
   }
   for (const EventInter& event_iter : events_to_wait_) {
-    platform::RecordEvent record(
+    phi::RecordEvent record(
         "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
     VLOG(6) << "Wait instruction: " << event_iter.instr_id_
             << " 's event with waiter_type: " << event_iter.waiter_type_;
@@ -308,7 +308,7 @@ void InstructionBase::InitInputsOutputsIds(
       PADDLE_ENFORCE_EQ(
           value_exec_info.HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               op_name));
@@ -325,7 +325,7 @@ void InstructionBase::InitInputsOutputsIds(
       PADDLE_ENFORCE_EQ(
           value_exec_info.HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               op_name));

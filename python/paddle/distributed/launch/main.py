@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import paddle
 from paddle.distributed.launch.context import Context
 
 ctx = None
 
 
-def launch():
+def launch() -> None:
     """
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
 

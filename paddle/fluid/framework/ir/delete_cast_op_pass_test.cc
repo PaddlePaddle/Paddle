@@ -149,14 +149,14 @@ TEST(ApplyCastWriteReadPass, basic) {
   int cast_num_in_graph1 = GetOpNum(graph->GetSubGraph(1), "cast");
   PADDLE_ENFORCE_EQ(cast_num_in_graph1,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "graph1 should have 0 cast after delete_cast_op_pass, "
                         "but actually has %d.",
                         cast_num_in_graph1));
   int cast_num_in_graph0 = GetOpNum(graph.get(), "cast");
   PADDLE_ENFORCE_EQ(cast_num_in_graph0,
                     1,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "graph0 should have 1 cast after delete_cast_op_pass, "
                         "but actually has %d.",
                         cast_num_in_graph0));
@@ -196,14 +196,14 @@ TEST(ApplyCastLodResetWriteReadPass, basic) {
   int cast_num_in_graph1 = GetOpNum(graph->GetSubGraph(1), "cast");
   PADDLE_ENFORCE_EQ(cast_num_in_graph1,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "graph1 should have 0 cast after delete_cast_op_pass, "
                         "but actually has %d.",
                         cast_num_in_graph1));
   int cast_num_in_graph0 = GetOpNum(graph.get(), "cast");
   PADDLE_ENFORCE_EQ(cast_num_in_graph0,
                     2,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "graph0 should have 2 cast after delete_cast_op_pass, "
                         "but actually has %d.",
                         cast_num_in_graph0));
@@ -229,7 +229,7 @@ TEST(ApplyCastIndexSamplePass, basic) {
   int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
   PADDLE_ENFORCE_EQ(GetOpNum(graph->GetSubGraph(0), "cast"),
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "graph should have 0 cast after delete_cast_op_pass, "
                         "but actually has %d.",
                         cast_num_in_graph));
@@ -258,7 +258,7 @@ TEST(ApplyCastScatterPass, basic) {
   int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
   PADDLE_ENFORCE_EQ(GetOpNum(graph->GetSubGraph(0), "cast"),
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "graph should have 0 cast after delete_cast_op_pass, "
                         "but actually has %d.",
                         cast_num_in_graph));
@@ -288,7 +288,7 @@ TEST(ApplyCastLookupTablePass, basic) {
   int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
   PADDLE_ENFORCE_EQ(GetOpNum(graph->GetSubGraph(0), "cast"),
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "graph should have 0 cast after delete_cast_op_pass, "
                         "but actually has %d.",
                         cast_num_in_graph));
@@ -307,7 +307,7 @@ TEST(ApplyCastPass, basic) {
   int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
   PADDLE_ENFORCE_EQ(GetOpNum(graph->GetSubGraph(0), "cast"),
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "graph should have 0 cast after delete_cast_op_pass, "
                         "but actually has %d.",
                         cast_num_in_graph));

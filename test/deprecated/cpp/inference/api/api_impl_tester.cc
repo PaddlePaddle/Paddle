@@ -51,7 +51,7 @@ PaddleTensor LodTensorToPaddleTensor(phi::DenseTensor* t) {
     pt.data.Reset(t->data(), t->numel() * sizeof(int32_t));
     pt.dtype = PaddleDType::INT32;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported tensor date type. Now only supports INT64, FP32, INT32."));
   }
   pt.shape = common::vectorize<int>(t->dims());

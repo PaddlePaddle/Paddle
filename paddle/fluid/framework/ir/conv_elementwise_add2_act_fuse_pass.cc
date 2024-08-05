@@ -210,7 +210,7 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
     PADDLE_ENFORCE_NE(
         subgraph.count(x),
         0,
-        phi::errors::NotFound("Detector did not find input x of conv2d."));
+        common::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 
     IR_NODE_LINK_TO(conv_in_node, new_conv_op);            // Input
