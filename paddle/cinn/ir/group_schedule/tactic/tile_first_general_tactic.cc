@@ -264,292 +264,372 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
   VLOG(4) << "After SplitReduce on block: [" << block_id << "], loop nest:\n"
           << sch->GetModule().GetExprs().front();
 
-  //// Vectorize
-  // const auto DoVectorize = [&](const std::vector<ir::Expr>& loops) {
-  //   std::vector<size_t> unroll_loops_idx = [&] {
-  //     if (!vec_flatten_axis_.empty() && sp_thread > 1) {
-  //       if (vec_reduce_axis_.empty()) {
-  //         return std::vector<size_t>{current_reduce_axis -
-  //                                    1};  // the last flatten dim
-  //       } else {
-  //         return std::vector<size_t>{
-  //             current_reduce_axis};  // todo: reduce may not done.
-  //       }
-  //     }
-  //     return std::vector<size_t>{current_reduce_axis};
-  //   }();
+  bool do_reduce_vec = false;
+  bool do_flatten_vec = false;
 
-  //  const auto DoVec =
-  //      [&](const std::vector<ir::Expr>& loops, int vec_dim, int vec_factor) {
-  //        if (loops.size() > vec_dim &&
-  //            loops[vec_dim].As<ir::For>()->extent.is_constant()) {
-  //          sch->Vectorize(loops[vec_dim], vec_factor);
-  //        }
-  //      };
+  // Vectorize
+  const auto DoVectorize = [&](const std::vector<ir::Expr>& loops) {
+    std::vector<size_t> unroll_loops_idx = [&] {
+      if (!vec_flatten_axis_.empty() && sp_thread > 1) {
+        if (vec_reduce_axis_.empty()) {
+          return std::vector<size_t>{current_reduce_axis -
+                                     1};  // the last flatten dim
+        } else {
+          return std::vector<size_t>{
+              current_reduce_axis};  // todo: reduce may not done.
+        }
+      }
+      return std::vector<size_t>{current_reduce_axis};
+    }();
 
-  //  // this is used for the homogeneous multi-gpus per node
-  //  // compute the parallel resource
-  //  const auto GetSPCount = [&]() {
-  //    cudaDeviceProp devProp;
-  //    cudaGetDeviceProperties(&devProp, 0);
+    const auto DoVec =
+        [&](const std::vector<ir::Expr>& loops, int vec_dim, int vec_factor) {
+          if (loops.size() > vec_dim &&
+              loops[vec_dim].As<ir::For>()->extent.is_constant()) {
+            sch->Vectorize(loops[vec_dim], vec_factor);
+          }
+        };
 
-  //    int sps = 0;
-  //    int mp = devProp.multiProcessorCount;
-  //    switch (devProp.major) {
-  //      case 7:  // Volta and Turing
-  //        if ((devProp.minor == 0) || (devProp.minor == 5))
-  //          sps = mp * 4;
-  //        else
-  //          printf("Unknown device type\n");
-  //        break;
-  //      case 8:  // Ampere
-  //        if (devProp.minor == 0)
-  //          sps = mp * 4;
-  //        else if (devProp.minor == 6)
-  //          sps = mp * 4;
-  //        else if (devProp.minor == 9)
-  //          sps = mp * 4;  // ada lovelace
-  //        else
-  //          printf("Unknown device type\n");
-  //        break;
-  //      case 9:  // Hopper
-  //        if (devProp.minor == 0)
-  //          sps = mp * 4;
-  //        else
-  //          printf("Unknown device type\n");
-  //        break;
-  //      default:
-  //        printf("Unknown device type\n");
-  //        break;
-  //    }
-  //    return sps;
-  //  };
+    // this is used for the homogeneous multi-gpus per node
+    // compute the parallel resource
+    const auto GetSPCount = [&]() {
+      cudaDeviceProp devProp;
+      cudaGetDeviceProperties(&devProp, 0);
 
-  //  const auto getThreadInnerExtent = [&](const std::vector<ir::Expr>& loops)
-  //  {
-  //    int start_idx = 0;
-  //    if (!vec_flatten_axis_.empty() && sp_thread > 1) {
-  //      if (vec_reduce_axis_.empty()) {
-  //        start_idx = current_reduce_axis - 1;  // the last flatten dim
-  //      } else {
-  //        start_idx = current_reduce_axis - 1;  // todo: reduce may not done.
-  //      }
-  //    }
+      int sps = 0;
+      int mp = devProp.multiProcessorCount;
+      switch (devProp.major) {
+        case 7:  // Volta and Turing
+          if ((devProp.minor == 0) || (devProp.minor == 5))
+            sps = mp * 4;
+          else
+            printf("Unknown device type\n");
+          break;
+        case 8:  // Ampere
+          if (devProp.minor == 0)
+            sps = mp * 4;
+          else if (devProp.minor == 6)
+            sps = mp * 4;
+          else if (devProp.minor == 9)
+            sps = mp * 4;  // ada lovelace
+          else
+            printf("Unknown device type\n");
+          break;
+        case 9:  // Hopper
+          if (devProp.minor == 0)
+            sps = mp * 4;
+          else
+            printf("Unknown device type\n");
+          break;
+        default:
+          printf("Unknown device type\n");
+          break;
+      }
+      return sps;
+    };
 
-  //    // this is used for static extent, but the dynamic extent is not done
-  //    long total_extents = 1;
-  //    for (int loop_idx = start_idx; loop_idx < loops.size(); loop_idx++) {
-  //      if (loops[loop_idx].As<ir::For>()->extent.is_constant()) {
-  //        total_extents *= loops[loop_idx].As<ir::For>()->extent.as_int64();
-  //      }
-  //    }
-  //    return total_extents;
-  //  };
+    const auto getThreadInnerExtent = [&](const std::vector<ir::Expr>& loops) {
+      int start_idx = 0;
+      if (!vec_flatten_axis_.empty() && sp_thread > 1) {
+        if (vec_reduce_axis_.empty()) {
+          start_idx = current_reduce_axis - 1;  // the last flatten dim
+        } else {
+          start_idx = current_reduce_axis - 1;  // todo: reduce may not done.
+        }
+      }
 
-  //  const auto GetFuncBlocks = [&](const std::vector<ir::Expr>& loops) {
-  //    long num_blocks = 1;
-  //    if (loops[0].As<ir::For>()->extent.is_constant()) {
-  //      num_blocks = loops[0].As<ir::For>()->extent.as_int64();
-  //    }
+      // this is used for static extent, but the dynamic extent is
+      // not done
+      int total_extents = 1;
+      for (int loop_idx = start_idx; loop_idx < loops.size(); loop_idx++) {
+        if (loops[loop_idx].As<ir::For>()->extent.is_constant()) {
+          total_extents *= loops[loop_idx].As<ir::For>()->extent.as_int64();
+        }
+      }
+      return total_extents;
+    };
 
-  //    return num_blocks;
-  //  };
+    const auto GetFuncBlocks = [&](const std::vector<ir::Expr>& loops) {
+      int num_blocks = 1;
+      if (loops[0].As<ir::For>()->extent.is_constant()) {
+        num_blocks = loops[0].As<ir::For>()->extent.as_int64();
+      }
 
-  //  const auto GetFuncWarps = [&](const std::vector<ir::Expr>& loops) {
-  //    long num_warps = 1;
-  //    for (int loop_idx = 1; loop_idx < loops.size(); loop_idx++) {
-  //      if (loops[loop_idx].As<ir::For>()->extent.is_constant()) {
-  //        num_warps *= loops[loop_idx].As<ir::For>()->extent.as_int64();
-  //      }
-  //    }
+      return num_blocks;
+    };
 
-  //    return (num_warps + 31) / 32;
-  //  };
+    const auto GetFuncWarps = [&](const std::vector<ir::Expr>& loops) {
+      int num_warps = 1;
+      for (int loop_idx = 1; loop_idx < loops.size(); loop_idx++) {
+        if (loops[loop_idx].As<ir::For>()->extent.is_constant()) {
+          num_warps *= loops[loop_idx].As<ir::For>()->extent.as_int64();
+        }
+      }
 
-  //  int SP_count = GetSPCount();
+      return (num_warps + 31) / 32;
+    };
 
-  //  long num_blocks = GetFuncBlocks(sch->GetLoops(block_id));
+    int SP_count = GetSPCount();
 
-  //  long num_warps_per_block = GetFuncWarps(sch->GetLoops(block_id));
+    int num_blocks = GetFuncBlocks(sch->GetLoops(block_id));
 
-  //  int vec_factor = 4;  // for float and int
+    int num_warps_per_block = GetFuncWarps(sch->GetLoops(block_id));
 
-  //  float Bef_SMSP_usage =
-  //      (1.0 * num_blocks * num_warps_per_block / SP_count) > 1
-  //          ? 1
-  //          : (1.0 * num_blocks * num_warps_per_block / SP_count);
-  //  float Aft_SMSP_usage =
-  //      (1.0 * num_blocks * num_warps_per_block / vec_factor / SP_count) > 1
-  //          ? 1
-  //          : (1.0 * num_blocks * num_warps_per_block / SP_count);
+    int vec_factor = 4;  // for float and int
 
-  //  bool is_vec = (Aft_SMSP_usage == Bef_SMSP_usage);
-  //  bool is_merge_threads =
-  //      (getThreadInnerExtent(sch->GetLoops(block_id)) == 1l);
+    float Bef_SMSP_usage =
+        (1.0 * num_blocks * num_warps_per_block / SP_count) > 1
+            ? 1
+            : (1.0 * num_blocks * num_warps_per_block / SP_count);
+    float Aft_SMSP_usage =
+        (1.0 * num_blocks * num_warps_per_block / vec_factor / SP_count) > 1
+            ? 1
+            : (1.0 * num_blocks * num_warps_per_block / SP_count);
 
-  //  VLOG(-1) << "is_vec: " << is_vec;
-  //  VLOG(-1) << "is_merge_threads: " << is_merge_threads;
+    bool is_vec = (Aft_SMSP_usage == Bef_SMSP_usage);
+    bool is_merge_threads =
+        (getThreadInnerExtent(sch->GetLoops(block_id)) == 1l);
 
-  //  is_vec = false;
-  //  //  start vectorizing
-  //  if (is_vec) {
-  //    int vec_dim = 0;
+    VLOG(-1) << "is_vec: " << is_vec;
+    VLOG(-1) << "is_merge_threads: " << is_merge_threads;
 
-  //    // elementwise
-  //    if (vec_reduce_axis_.empty()) {
-  //      // condition:
-  //      // 1\ sp_loop > 1 && sp_thread > 1
-  //      //    shape: [-1, sp_loop, sp_thread]
-  //      //    is_merge_threads -> sp_loop < factor
-  //      //    if is_merge_threads flase,  then "split [-1, sp_loop/factor,
-  //      //    sp_thread, factor]
-  //      //    current_rudece_axis = 4;
-  //      //    if is_merge_threads true, then "[-1, sp_thread / (factor /
-  //      //    sp_loop), factor]" current_reduce_axis = 3
-  //      // 2\ sp_loop > 1 || sp_thread > 1
-  //      //    shape: [-1, max(sp_loop, sp_thread)]
-  //      //    is_merge_threads -> always true
-  //      //    split [-1, max(sp_loop, sp_thread) / factor, factor]
-  //      // 3\ else : (sp_loop == 1 && sp_thread == 1)
-  //      //    do nothing
-  //      if (!vec_flatten_axis_.empty()) {
-  //        if (sp_loop > 1 && sp_thread > 1) {
-  //          bool is_merge_threads = sp_loop < vec_factor;
-  //          if (is_merge_threads) {
-  //            if (vec_factor % sp_loop == 0) {
-  //              // merge the sp_thread with (vec_factor / sp_loop)
-  //              sch->Fuse(block_id, std::vector<int>({1, 2}));
-  //              auto loops = sch->GetLoops(block_id);
-  //              sch->Split(
-  //                  loops[1],
-  //                  std::vector<int>({-1,
-  //                                    (sp_thread / (vec_factor / sp_loop)),
-  //                                    vec_factor}));
-  //              current_reduce_axis = 3;
+    // is_vec = false;
+    //    start vectorizing
+    if (is_vec) {
+      int vec_dim = 0;
 
-  //              loops = sch->GetLoops(block_id);
-  //              sch->Bind(loops[1], "threadIdx.x");
-  //              vec_dim = current_reduce_axis - 1;  // the last flatten dim
-  //            }
-  //          } else if (sp_loop % vec_factor == 0) {
-  //            // fuse the sp_loop and sp_threads, and resplit with [-1,
-  //            // sp_loop/factor, sp_thread, factor]
-  //            sch->Fuse(block_id, std::vector<int>({1, 2}));
-  //            auto loops = sch->GetLoops(block_id);
-  //            sch->Split(
-  //                loops[1],
-  //                std::vector<int>(
-  //                    {-1, (sp_loop / vec_factor), sp_thread, vec_factor}));
-  //            current_reduce_axis = 4;
+      // elementwise
+      if (vec_reduce_axis_.empty()) {
+        // condition:
+        // 1\ sp_loop > 1 && sp_thread > 1
+        //    shape: [-1, sp_loop, sp_thread]
+        //    is_merge_threads -> sp_loop < factor
+        //    if is_merge_threads flase,  then "split [-1,
+        //    sp_loop/factor, sp_thread, factor] current_rudece_axis =
+        //    4; if is_merge_threads true, then "[-1, sp_thread /
+        //    (factor / sp_loop), factor]" current_reduce_axis = 3
+        // 2\ sp_loop > 1 || sp_thread > 1
+        //    shape: [-1, max(sp_loop, sp_thread)]
+        //    is_merge_threads -> always true
+        //    split [-1, max(sp_loop, sp_thread) / factor, factor]
+        // 3\ else : (sp_loop == 1 && sp_thread == 1)
+        //    do nothing
+        if (!vec_flatten_axis_.empty()) {
+          if (sp_loop > 1 && sp_thread > 1) {
+            do_flatten_vec = true;
+            bool is_merge_threads = sp_loop < vec_factor;
+            if (is_merge_threads) {
+              if (vec_factor % sp_loop == 0) {
+                // merge the sp_thread with (vec_factor / sp_loop)
+                sch->Fuse(block_id, std::vector<int>({1, 2}));
+                auto loops = sch->GetLoops(block_id);
+                sch->Split(
+                    loops[1],
+                    std::vector<int>({-1,
+                                      (sp_thread / (vec_factor / sp_loop)),
+                                      vec_factor}));
+                current_reduce_axis = 3;
 
-  //            loops = sch->GetLoops(block_id);
-  //            sch->Bind(loops[1], "threadIdx.x");
-  //            vec_dim = current_reduce_axis - 1;  // the last flatten dim
-  //          }
-  //        } else if (sp_loop > 1 || sp_thread > 1) {
-  //          // is_merge_threads always be true
+                loops = sch->GetLoops(block_id);
+                sch->Bind(loops[1], "threadIdx.x");
+                vec_dim = current_reduce_axis - 1;  // the last flatten dim
+                DoVec(sch->GetLoops(block_id), vec_dim, vec_factor);
 
-  //          int thread_dim = sp_loop > 1 ? sp_loop : sp_thread;
-  //          if (thread_dim % vec_factor == 0) {
-  //            auto loops = sch->GetLoops(block_id);
-  //            sch->Split(
-  //                loops[1],
-  //                std::vector<int>({-1, thread_dim / vec_factor,
-  //                vec_factor}));
+                if (IsReduceBlock(context_->config, block_id) &&
+                    sch->HasBlock(block_id + "_rf")) {
+                  DoVec(sch->GetLoops(block_id + "_rf"),
+                        vec_dim,
+                        vec_factor);  // todo: reduce may have bugs
+                }
+              }
+            } else if (sp_loop % vec_factor == 0) {
+              do_flatten_vec = true;
+              // fuse the sp_loop and sp_threads, and resplit with [-1,
+              // sp_loop/factor, sp_thread, factor]
+              sch->Fuse(block_id, std::vector<int>({1, 2}));
+              auto loops = sch->GetLoops(block_id);
+              sch->Split(
+                  loops[1],
+                  std::vector<int>(
+                      {-1, (sp_loop / vec_factor), sp_thread, vec_factor}));
+              current_reduce_axis = 4;
 
-  //            current_reduce_axis = 3;
+              loops = sch->GetLoops(block_id);
+              sch->Bind(loops[1], "threadIdx.x");
+              vec_dim = current_reduce_axis - 1;  // the last flatten dim
+              DoVec(sch->GetLoops(block_id), vec_dim, vec_factor);
 
-  //            loops = sch->GetLoops(block_id);
-  //            sch->Bind(loops[1], "threadIdx.x");
-  //            vec_dim = current_reduce_axis - 1;  // the last flatten dim
-  //          }
-  //        }
-  //      }
-  //    } else {
-  //      // reduce
-  //      //   shape[rd_thread, rd_loop]
-  //      //   condition:
-  //      //    fuse rd_thread, rd_loop
-  //      //    if rd_thread * rd_loop > factor, then split [-1, rd_thread,
-  //      //    factor]
-  //      sch->Fuse(
-  //          block_id,
-  //          std::vector<int>({current_reduce_axis, current_reduce_axis + 1}));
-  //      auto loops = sch->GetLoops(block_id);
-  //      sch->Split(loops[current_reduce_axis],
-  //                 std::vector<int>({-1, rd_thread, vec_factor}));
-  //      sch->Reorder(
-  //          {loops[current_reduce_axis + 1], loops[current_reduce_axis]});
+              if (IsReduceBlock(context_->config, block_id) &&
+                  sch->HasBlock(block_id + "_rf")) {
+                DoVec(sch->GetLoops(block_id + "_rf"),
+                      vec_dim,
+                      vec_factor);  // todo: reduce may have bugs
+              }
+            }
+          } else if (sp_loop > 1 || sp_thread > 1) {
+            // is_merge_threads always be true
+            do_flatten_vec = true;
 
-  //      loops = sch->GetLoops(block_id);
-  //      sch->Bind(loops[current_reduce_axis], "threadIdx.x");
-  //      vec_dim = current_reduce_axis + 2;  // the last flatten dim
-  //    }
-  //  }
+            int thread_dim = sp_loop > 1 ? sp_loop : sp_thread;
+            if (thread_dim % vec_factor == 0) {
+              auto loops = sch->GetLoops(block_id);
+              sch->Split(
+                  loops[1],
+                  std::vector<int>({-1, thread_dim / vec_factor, vec_factor}));
 
-  //  // if (is_vec) {
-  //  //   int vec_dim = 0;
-  //  //   if (is_merge_threads) {
-  //  //     if (!vec_flatten_axis_.empty() && sp_thread > 1) {
-  //  //       if (vec_reduce_axis_.empty()) {
-  //  //         // split the thread.x with factor
-  //  //         auto split_loops = sch->Split(loops[current_reduce_axis - 1],
-  //  //                                       std::vector<int>({-1,
-  //  //                                       vec_factor}));
+              current_reduce_axis = 3;
 
-  //  //        current_reduce_axis++;
-  //  //        vec_dim = current_reduce_axis - 1;  // the last flatten dim
-  //  //      } else {
-  //  //        vec_dim = current_reduce_axis - 1;  // todo: reduce may not
-  //  done.
-  //  //      }
-  //  //    }
-  //  //    DoVec(sch->GetLoops(block_id), vec_dim, vec_factor);
-  //  //    if (IsReduceBlock(context_->config, block_id) &&
-  //  //        sch->HasBlock(block_id + "_rf")) {
-  //  //      DoVec(sch->GetLoops(block_id + "_rf"),
-  //  //            vec_dim,
-  //  //            vec_factor);  // todo: reduce may have bugs
-  //  //    }
-  //  //  } else {
-  //  //    if (!vec_flatten_axis_.empty() && sp_thread > 1) {
-  //  //      if (vec_reduce_axis_.empty()) {
-  //  //        // fuse the sp_loop and sp_threads, and resplit with [-1,
-  //  //        sp_thread,
-  //  //        // sp_loop]
-  //  //        sch->Fuse(block_id, std::vector<int>({1, 2}));
-  //  //        auto loops = sch->GetLoops(block_id);
-  //  //        sch->Split(loops[1], std::vector<int>({-1, sp_loop}));
-  //  //        loops = sch->GetLoops(block_id);
-  //  //        if (sp_loop > vec_factor) {
-  //  //          sch->Split(loops[current_reduce_axis - 1],
-  //  //                     std::vector<int>({-1, vec_factor}));
-  //  //          current_reduce_axis++;
-  //  //        }
+              loops = sch->GetLoops(block_id);
+              sch->Bind(loops[1], "threadIdx.x");
+              vec_dim = current_reduce_axis - 1;  // the last flatten dim
+              DoVec(sch->GetLoops(block_id), vec_dim, vec_factor);
 
-  //  //        loops = sch->GetLoops(block_id);
-  //  //        sch->Bind(loops[1], "threadIdx.x");
-  //  //        vec_dim = current_reduce_axis - 1;  // the last flatten dim
-  //  //      } else {
-  //  //        vec_dim = current_reduce_axis - 1;  // todo: reduce may not
-  //  done.
-  //  //      }
-  //  //      DoVec(sch->GetLoops(block_id), vec_dim, vec_factor);
-  //  //      if (IsReduceBlock(context_->config, block_id) &&
-  //  //          sch->HasBlock(block_id + "_rf")) {
-  //  //        DoVec(sch->GetLoops(block_id + "_rf"),
-  //  //              vec_dim,
-  //  //              vec_factor);  // todo: reduce may have bugs
-  //  //      }
-  //  //    }
-  //  //  }
-  //  //}
-  //};
+              if (IsReduceBlock(context_->config, block_id) &&
+                  sch->HasBlock(block_id + "_rf")) {
+                DoVec(sch->GetLoops(block_id + "_rf"),
+                      vec_dim,
+                      vec_factor);  // todo: reduce may have bugs
+              }
+            }
+          }
+        }
+      } else {
+        // reduce
+        //   shape[rd_thread, rd_loop]
+        //   condition:
+        //    fuse rd_thread, rd_loop
+        //    if rd_thread * rd_loop > factor, then split [-1,
+        //    rd_thread, factor]
+        auto loops = sch->GetLoops(block_id);
+        // auto forloop = loops[current_reduce_axis + 1].As<ir::For>();
+        // rd_loop > factor, then vectorize
+        bool do_reduce_vec = false;
 
-  // VLOG(-1) << "Start Vectorize";
-  // DoVectorize(sch->GetLoops(block_id));
-  // VLOG(6) << "After Vectorize on block: [" << block_id << "], loop nest:\n"
-  //         << sch->GetLoops(block_id)[0];
+        if ((loops.size() > (current_reduce_axis + 1)) &&
+            loops[current_reduce_axis + 1]
+                .As<ir::For>()
+                ->extent.is_constant() &&
+            ((loops[current_reduce_axis + 1]
+                  .As<ir::For>()
+                  ->extent.type()
+                  .is_int(32) &&
+              loops[current_reduce_axis + 1].As<ir::For>()->extent.as_int32() >=
+                  vec_factor) ||
+             (loops[current_reduce_axis + 1]
+                  .As<ir::For>()
+                  ->extent.type()
+                  .is_int(64) &&
+              loops[current_reduce_axis + 1].As<ir::For>()->extent.as_int64() >=
+                  vec_factor))) {
+          do_reduce_vec = true;
+        }
+        if ((loops.size() > current_reduce_axis) &&
+            loops[current_reduce_axis].As<ir::For>()->extent.is_constant() &&
+            ((loops[current_reduce_axis].As<ir::For>()->extent.type().is_int(
+                  32) &&
+              loops[current_reduce_axis].As<ir::For>()->extent.as_int32() >=
+                  vec_factor * rd_thread) ||
+             (loops[current_reduce_axis].As<ir::For>()->extent.type().is_int(
+                  64) &&
+              loops[current_reduce_axis].As<ir::For>()->extent.as_int64() >=
+                  vec_factor * rd_thread))) {
+          do_reduce_vec = true;
+        }
+
+        if (do_reduce_vec) {
+          sch->Fuse(
+              block_id,
+              std::vector<int>({current_reduce_axis, current_reduce_axis + 1}));
+          auto loops = sch->GetLoops(block_id);
+          sch->Split(loops[current_reduce_axis],
+                     std::vector<int>({-1, rd_thread, vec_factor}));
+          loops = sch->GetLoops(block_id);
+          sch->Reorder(
+              {loops[current_reduce_axis + 1], loops[current_reduce_axis]});
+
+          loops = sch->GetLoops(block_id);
+          sch->Bind(loops[current_reduce_axis], "threadIdx.x");
+          vec_dim = current_reduce_axis + 2;  // the last flatten dim
+          DoVec(sch->GetLoops(block_id), vec_dim, vec_factor);
+
+          if (IsReduceBlock(context_->config, block_id) &&
+              sch->HasBlock(block_id + "_rf")) {
+            DoVec(sch->GetLoops(block_id + "_rf"),
+                  vec_dim,
+                  vec_factor);  // todo: reduce may have bugs
+          }
+        }
+      }
+
+      // if (is_vec) {
+      //   int vec_dim = 0;
+      //   if (is_merge_threads) {
+      //     if (!vec_flatten_axis_.empty() && sp_thread > 1) {
+      //       if (vec_reduce_axis_.empty()) {
+      //         // split the thread.x with factor
+      //         auto split_loops = sch->Split(loops[current_reduce_axis
+      //         - 1],
+      //                                       std::vector<int>({-1,
+      //                                       vec_factor}));
+
+      //        current_reduce_axis++;
+      //        vec_dim = current_reduce_axis - 1;  // the last flatten
+      //        dim
+      //      } else {
+      //        vec_dim = current_reduce_axis - 1;  // todo: reduce may
+      //        not
+      // done.
+      //      }
+      //    }
+      //    DoVec(sch->GetLoops(block_id), vec_dim, vec_factor);
+      //    if (IsReduceBlock(context_->config, block_id) &&
+      //        sch->HasBlock(block_id + "_rf")) {
+      //      DoVec(sch->GetLoops(block_id + "_rf"),
+      //            vec_dim,
+      //            vec_factor);  // todo: reduce may have bugs
+      //    }
+      //  } else {
+      //    if (!vec_flatten_axis_.empty() && sp_thread > 1) {
+      //      if (vec_reduce_axis_.empty()) {
+      //        // fuse the sp_loop and sp_threads, and resplit with
+      //        [-1, sp_thread,
+      //        // sp_loop]
+      //        sch->Fuse(block_id, std::vector<int>({1, 2}));
+      //        auto loops = sch->GetLoops(block_id);
+      //        sch->Split(loops[1], std::vector<int>({-1, sp_loop}));
+      //        loops = sch->GetLoops(block_id);
+      //        if (sp_loop > vec_factor) {
+      //          sch->Split(loops[current_reduce_axis - 1],
+      //                     std::vector<int>({-1, vec_factor}));
+      //          current_reduce_axis++;
+      //        }
+
+      //        loops = sch->GetLoops(block_id);
+      //        sch->Bind(loops[1], "threadIdx.x");
+      //        vec_dim = current_reduce_axis - 1;  // the last flatten
+      //        dim
+      //      } else {
+      //        vec_dim = current_reduce_axis - 1;  // todo: reduce may
+      //        not
+      // done.
+      //      }
+      //      DoVec(sch->GetLoops(block_id), vec_dim, vec_factor);
+      //      if (IsReduceBlock(context_->config, block_id) &&
+      //          sch->HasBlock(block_id + "_rf")) {
+      //        DoVec(sch->GetLoops(block_id + "_rf"),
+      //              vec_dim,
+      //              vec_factor);  // todo: reduce may have bugs
+      //      }
+      //    }
+      //  }
+      //}
+    }
+  };
+
+  VLOG(-1) << "Start Vectorize";
+  DoVectorize(sch->GetLoops(block_id));
+  VLOG(6) << "After Vectorize on block: [" << block_id << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
 
   // Bind CUDA info
   const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
@@ -558,8 +638,9 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
     sch->Bind(loops[0], "blockIdx.x");
     if (!vec_flatten_axis_.empty() && sp_thread > 1) {
       if (vec_reduce_axis_.empty()) {
-        // [S..S] => [S(blockIdx.x), optional(inner_loop), S(threadIdx.x)]
-        sch->Bind(loops[current_reduce_axis - 1], rd_axis_type);
+        if (!do_flatten_vec) {
+          sch->Bind(loops[current_reduce_axis - 1], rd_axis_type);
+        }
       } else {
         // [S..S, R..R] =>
         // [S(blockIdx.x), optional(inner_loop), S(threadIdx.y), R..R]
@@ -567,10 +648,12 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
       }
     }
     if (!vec_reduce_axis_.empty() && current_reduce_axis > 0) {
-      // [S(blockIdx.x), optional(inner_loop), S(threadIdx.y), R..R] =>
-      // [S(blockIdx.x), optional(inner_loop), S(threadIdx.y), R(threadIdx.x),
-      // R(inner_loop)]
-      // sch->Bind(loops[current_reduce_axis], rd_axis_type);
+      if (!do_reduce_vec) {
+        // [S(blockIdx.x), optional(inner_loop), S(threadIdx.y), R..R] =>
+        // [S(blockIdx.x), optional(inner_loop), S(threadIdx.y), R(threadIdx.x),
+        // R(inner_loop)]
+        sch->Bind(loops[current_reduce_axis], rd_axis_type);
+      }
     }
   };
   DoBind(sch->GetLoops(block_id));

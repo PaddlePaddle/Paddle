@@ -35,6 +35,66 @@ struct IfFusionMutator : public ir::IRMutator<Expr *> {
   void operator()(Expr *expr) { Visit(expr, expr); }
 
  private:
+  // bool is_in_replace = false;
+  // void ReplaceVar(vector<Expr> &body, Expr *old_var, Expr *new_var) {
+  //   for (int i = 0; i < body.size(); i++) {
+  //     Visit(&body[i], &body[i]);
+  //   }
+  // }
+
+  // void Visit(const ir::Var *op, Expr *expr) override {
+  //   if (is_in_replace) {
+  //   }
+  // }
+  //  void Visit(const ir::For *op, Expr *expr) override {
+  //    if (!last_op.get()) {
+  //      last_op = Expr(const_cast<ir::For *>(op));
+  //      return;
+  //    }
+  //    ir::For *lop = last_op.As<ir::For>();
+  //    if (!lop) {
+  //      last_op = Expr(const_cast<ir::For *>(op));
+  //      return;
+  //    }
+
+  //  // bool is_need_fuse = ir::ir_utils::IRCompare(op->condition,
+  //  // lop->condition);
+  //  bool is_same_extent = ir::ir_utils::IRCompare(op->extent, lop->extent);
+  //  bool is_same_min = ir::ir_utils::IRCompare(op->min, lop->min);
+
+  //  bool is_same_var = ir::ir_utils::IRCompare(op->loop_var, lop->loop_var);
+
+  //  bool is_need_fuse = is_same_extent && is_same_min;
+  //  if (is_need_fuse) {
+  //    if (!is_same_var) {
+  //      // replace op->loop_var with lop->lop_var
+  //    }
+  //    // do fusion (cop.true_case <-> lop.true_case)
+  //    // if (!is_same_var) {
+  //    //
+  //    //  ReplaceVar(op->body, op->loop_var, lop->loop_var);
+  //    //}
+
+  //    Fuse(op->body, lop->body);
+
+  //    // support for recursive true case merge
+  //    Expr tmp = last_op;
+  //    Visit(&lop->body, &lop->body);
+  //    last_op = tmp;
+
+  //    // Remove the op which refers to current ir::IfThenElse block,
+  //    // because this block is merged with previous ir::IfThenElse block,
+  //    // so blank now.
+  //    // push the elements position which will be deleted after visit current
+  //    // block.
+  //    RecordIndexForErase(Expr(const_cast<ir::For *>(op)), cur_block);
+  //  }
+
+  //  if (!is_need_fuse) {
+  //    last_op = Expr(const_cast<ir::For *>(op));
+  //  }
+  //}
+
   void Visit(const ir::IfThenElse *op, Expr *expr) override {
     // the implementation of ifFusion
     // compare the last condition with current condition
@@ -114,7 +174,7 @@ struct IfFusionMutator : public ir::IRMutator<Expr *> {
 
   VisitImpl(Expr);
   VisitImpl(ScheduleBlock);
-  VisitImpl(For);
+  // VisitImpl(For);
   VisitImpl(IntImm);
   VisitImpl(UIntImm);
   VisitImpl(FloatImm);
@@ -153,6 +213,9 @@ struct IfFusionMutator : public ir::IRMutator<Expr *> {
     oeb->stmts.append_range(neb->stmts);
 #else
     oeb->stmts.insert(oeb->stmts.end(), neb->stmts.cbegin(), neb->stmts.cend());
+    for (int i = 0; i < neb->stmts.size(); i++) {
+      VLOG(-1) << "stmts for: " << neb->stmts[i];
+    }
 #endif
 
     neb->stmts.clear();
