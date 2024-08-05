@@ -71,8 +71,8 @@ inline std::vector<int> shuffle_int_vector(int n) {
   do {                                                             \
     cudaError_t e = cmd;                                           \
     PADDLE_ENFORCE_EQ(                                             \
-        e,                                                         \
-        cudaSuccess,                                               \
+        e == cudaSuccess,                                          \
+        true,                                                      \
         common::errors::InvalidArgument("CUDA error at %s:%s: %s", \
                                         __FILE__,                  \
                                         __LINE__,                  \
