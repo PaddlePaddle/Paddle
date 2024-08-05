@@ -65,7 +65,7 @@ void Pad3dKernel(const Context& dev_ctx,
   }
 
   if (mode == "circular") {
-    PADDLE_THROW(phi::errors::External(
+    PADDLE_THROW(common::errors::External(
         "XPU is not support circular padding mode in pad3d"));
   }
 

@@ -11,13 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 
 from ....framework import LayerHelper, in_dynamic_or_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 
-def swiglu(x, y=None, name=None):
+
+def swiglu(
+    x: Tensor, y: Tensor | None = None, name: str | None = None
+) -> Tensor:
     """
     This function performs SwiGLU activation to the input Tensor.
 

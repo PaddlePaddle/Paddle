@@ -38,20 +38,34 @@ class TestElementwiseOp(OpTest):
         x = np.random.random((13, 17)).astype("float64")
         y = np.random.random((13, 17)).astype("float64")
         self.python_api = paddle.heaviside
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.heaviside
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True)
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestHeavisideBroadcast(unittest.TestCase):
@@ -167,11 +181,37 @@ class TestHeavisideAPI_int32(TestHeavisideAPI_float64):
         self.dtype = "int32"
 
 
+class TestElementwiseOp1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_heaviside"
+        x = np.random.random(100).astype("float64")
+        y = np.random.random((13, 100)).astype("float64")
+        self.python_api = paddle.heaviside
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.heaviside
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseOp2(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_heaviside"
+        x = np.random.random((13, 100)).astype("float64")
+        y = np.random.random(100).astype("float64")
+        self.python_api = paddle.heaviside
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.heaviside
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
+
+
 class TestHeavisideFP16Op(OpTest):
     def setUp(self):
         self.dtype = np.float16
         self.op_type = "elementwise_heaviside"
         self.python_api = paddle.heaviside
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.heaviside
         self.inputs = {
             'X': np.random.uniform(1, 2, [20, 5]).astype("float16"),
             'Y': np.random.uniform(1, 2, [20, 5]).astype("float16"),
@@ -179,7 +219,7 @@ class TestHeavisideFP16Op(OpTest):
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -189,6 +229,7 @@ class TestHeavisideFP16Op(OpTest):
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
             check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -203,6 +244,8 @@ class TestHeavisideBF16Op(OpTest):
         self.np_dtype = np.float32
         self.op_type = "elementwise_heaviside"
         self.python_api = paddle.heaviside
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.heaviside
         self.inputs = {
             'X': np.random.uniform(1, 2, [20, 5]).astype(self.np_dtype),
             'Y': np.random.uniform(1, 2, [20, 5]).astype(self.np_dtype),
@@ -215,7 +258,9 @@ class TestHeavisideBF16Op(OpTest):
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_pir=True)
+        self.check_output_with_place(
+            self.place, check_pir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -230,6 +275,7 @@ class TestHeavisideBF16Op(OpTest):
                 True,
             ),
             check_pir=True,
+            check_prim_pir=True,
         )
 
 

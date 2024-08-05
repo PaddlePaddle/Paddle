@@ -436,15 +436,14 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       comm_ctx->AllReduce(&logits_max, logits_max, BKCL_ADD, stream);
     } else {
       void* logits_max_buff = logits_max.data<T>();
-      PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(
-          comm->comm(),
-          logits_max_buff,
-          logits_max_buff,
-          logits_max.numel(),
-          platform::ToBKCLDataType(
-              framework::TransToProtoVarType(logits_max.dtype())),
-          BKCL_MAX,
-          stream));
+      PADDLE_ENFORCE_XPU_SUCCESS(
+          bkcl_all_reduce(comm->comm(),
+                          logits_max_buff,
+                          logits_max_buff,
+                          logits_max.numel(),
+                          phi::ToBKCLDataType(logits_max.dtype()),
+                          BKCL_MAX,
+                          stream));
     }
 
     // step 2, obtain logit - logit_max
@@ -506,15 +505,14 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
           &predicted_logits, predicted_logits, BKCL_ADD, stream);
     } else {
       void* predict_logits_buff = predicted_logits.data<T>();
-      PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(
-          comm->comm(),
-          predict_logits_buff,
-          predict_logits_buff,
-          predicted_logits.numel(),
-          platform::ToBKCLDataType(
-              framework::TransToProtoVarType(predicted_logits.dtype())),
-          BKCL_ADD,
-          stream));
+      PADDLE_ENFORCE_XPU_SUCCESS(
+          bkcl_all_reduce(comm->comm(),
+                          predict_logits_buff,
+                          predict_logits_buff,
+                          predicted_logits.numel(),
+                          phi::ToBKCLDataType(predicted_logits.dtype()),
+                          BKCL_ADD,
+                          stream));
     }
 
     // step 4, obtain exp(logit)
@@ -556,15 +554,14 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, BKCL_ADD, stream);
     } else {
       void* sum_exp_logits_buff = sum_exp_logits.data<T>();
-      PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(
-          comm->comm(),
-          sum_exp_logits_buff,
-          sum_exp_logits_buff,
-          sum_exp_logits.numel(),
-          platform::ToBKCLDataType(
-              framework::TransToProtoVarType(sum_exp_logits.dtype())),
-          BKCL_ADD,
-          stream));
+      PADDLE_ENFORCE_XPU_SUCCESS(
+          bkcl_all_reduce(comm->comm(),
+                          sum_exp_logits_buff,
+                          sum_exp_logits_buff,
+                          sum_exp_logits.numel(),
+                          phi::ToBKCLDataType(sum_exp_logits.dtype()),
+                          BKCL_ADD,
+                          stream));
     }
 
     {

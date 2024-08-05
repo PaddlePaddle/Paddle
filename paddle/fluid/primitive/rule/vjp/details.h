@@ -1178,17 +1178,22 @@ void matmul_grad(const Tensor& x,
                 reverse_perm[reverse_perm.size() - 2]);
       x_grad_trans = transpose<T>(x_grad_mm, reverse_perm);
     }
-
-    if (x_grad_trans.dims() != x.dims()) {
-      phi::DDim x_reduce_dim = get_reduce_dims_from_out(
-          x_grad_trans.dims(), temp_x_unsqueeze.dims());
-      auto dx_reduce_res = sum<T>(
-          x_grad_trans, common::vectorize(x_reduce_dim), x.dtype(), false);
-      auto x_grad_out = reshape<T>(dx_reduce_res, x.shape());
+    if (has_dynamic_shape(x.shape()) ||
+        has_dynamic_shape(x_grad_trans.shape())) {
+      auto x_grad_out = reduce_as<T>(x_grad_trans, temp_x_unsqueeze);
       set_output<T>(x_grad_out, x_grad);
     } else {
-      auto x_grad_out = x_grad_trans;
-      set_output<T>(x_grad_out, x_grad);
+      if (x_grad_trans.dims() != x.dims()) {
+        phi::DDim x_reduce_dim = get_reduce_dims_from_out(
+            x_grad_trans.dims(), temp_x_unsqueeze.dims());
+        auto dx_reduce_res = sum<T>(
+            x_grad_trans, common::vectorize(x_reduce_dim), x.dtype(), false);
+        auto x_grad_out = reshape<T>(dx_reduce_res, x.shape());
+        set_output<T>(x_grad_out, x_grad);
+      } else {
+        auto x_grad_out = x_grad_trans;
+        set_output<T>(x_grad_out, x_grad);
+      }
     }
   }
 
@@ -1206,17 +1211,22 @@ void matmul_grad(const Tensor& x,
                 reverse_perm[reverse_perm.size() - 2]);
       y_grad_trans = transpose<T>(y_grad_mm, reverse_perm);
     }
-
-    if (y_grad_trans.dims() != y.dims()) {
-      phi::DDim y_reduce_dim = get_reduce_dims_from_out(
-          y_grad_trans.dims(), temp_y_unsqueeze.dims());
-      auto dy_reduce_res = sum<T>(
-          y_grad_trans, common::vectorize(y_reduce_dim), y.dtype(), false);
-      auto y_grad_out = reshape<T>(dy_reduce_res, y.shape());
+    if (has_dynamic_shape(y.shape()) ||
+        has_dynamic_shape(y_grad_trans.shape())) {
+      auto y_grad_out = reduce_as<T>(y_grad_trans, temp_y_unsqueeze);
       set_output<T>(y_grad_out, y_grad);
     } else {
-      auto y_grad_out = y_grad_trans;
-      set_output<T>(y_grad_out, y_grad);
+      if (y_grad_trans.dims() != y.dims()) {
+        phi::DDim y_reduce_dim = get_reduce_dims_from_out(
+            y_grad_trans.dims(), temp_y_unsqueeze.dims());
+        auto dy_reduce_res = sum<T>(
+            y_grad_trans, common::vectorize(y_reduce_dim), y.dtype(), false);
+        auto y_grad_out = reshape<T>(dy_reduce_res, y.shape());
+        set_output<T>(y_grad_out, y_grad);
+      } else {
+        auto y_grad_out = y_grad_trans;
+        set_output<T>(y_grad_out, y_grad);
+      }
     }
   }
 }

@@ -856,7 +856,7 @@ std::tuple<Tensor, Tensor> dropout_decomp(
       // train: out = input * mask / ( 1.0 - p )
       if (p.to<float>() == 1.0) {
         // Process p=1. for avoid divide zero error (x*mask/(1.0-p))
-        auto zero = full_scalar<T>(0.0, org_dtype);
+        auto zero = full_like_decomp<T>(x, 0.0, org_dtype, x.place());
         return std::make_tuple(x * zero, cast<T>(zero, DataType::UINT8));
       } else {
         auto ans = (x * mask) / ones_p;
@@ -923,6 +923,27 @@ Tensor hardswish_decomp(const Tensor& x) {
                             full_scalar<T>(0.0, x.dtype())),
                  full_scalar<T>(THRESHOLD, x.dtype()));
   return (minimum_out * x) / full_scalar<T>(SCALE, x.dtype());
+}
+
+template <typename T>
+Tensor heaviside_decomp(const Tensor& x, const Tensor& y) {
+  Tensor zero, one;
+  if (has_dynamic_shape(x.shape())) {
+    Tensor zero_x = backend::full_with_tensor<T>(shape<T>(x), 0.0, x.dtype());
+    Tensor zero_y = backend::full_with_tensor<T>(shape<T>(y), 0.0, x.dtype());
+    zero = zero_x + zero_y;
+    one = backend::full_with_tensor<T>(shape<T>(zero), 1.0, x.dtype());
+  } else {
+    auto out_dims = phi::funcs::BroadcastTwoDims(x.dims(), y.dims());
+    zero = full<T>(phi::vectorize(out_dims), 0.0, x.dtype());
+    one = full<T>(phi::vectorize(out_dims), 1.0, x.dtype());
+  }
+  Tensor broadcast_x = x + zero;
+  Tensor broadcast_y = y + zero;
+  Tensor res = where<T>(broadcast_x > zero, one, broadcast_x);
+  res = where<T>(broadcast_x == zero, broadcast_y, res);
+  res = where<T>(broadcast_x < zero, zero, res);
+  return res;
 }
 
 template <typename T>
