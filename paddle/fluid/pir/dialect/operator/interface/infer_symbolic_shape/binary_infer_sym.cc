@@ -280,15 +280,15 @@ bool LuUnpackOpInferSymbolicShape(
   if (unpack_ludata) {
     infer_context->SetShapeOrDataForValue(
         op->result(2),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(xdims)});
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
     infer_context->SetShapeOrDataForValue(
         op->result(1),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(xdims)});
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
   }
   if (unpack_pivots) {
     infer_context->SetShapeOrDataForValue(
         op->result(0),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(xdims)});
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_sdims)});
   }
 
   return true;
