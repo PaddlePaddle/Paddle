@@ -81,9 +81,12 @@ class HorizontalFusePattern : public pir::RewritePattern {
     if (!has_multiple_uses) {
       return false;
     }
-
+    // 这是一个很不规范的判断。意思是，默认matmul的输入x 是当前op的第一个输出。
+    if (multiple_use_res_idx != 0) {
+      return false;
+    }
     pir::Value matmul_operand_x = op->result(multiple_use_res_idx);
-    /// 如果使用各个出边的op不一样，则不能横向融合（暂时）
+    /// 如果使用各个出边的op不是matmul，则不能横向融合（暂时）
     for (auto it = matmul_operand_x.use_begin();
          it != matmul_operand_x.use_end();
          ++it) {
