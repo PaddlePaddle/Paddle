@@ -223,9 +223,7 @@ double SingleThreadProfile(paddle_infer::Predictor *predictor,
   timer.start();
   // inference
   for (size_t i = 0; i < repeat_times; ++i) {
-    PADDLE_ENFORCE(
-        predictor->Run(),
-        common::errors::PreconditionNotMet("Predictor is not runnable"));
+    CHECK(predictor->Run());
     auto output_names = predictor->GetOutputNames();
     for (auto &output_name : output_names) {
       auto output_tensor = predictor->GetOutputHandle(output_name);
