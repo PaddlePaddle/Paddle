@@ -201,7 +201,7 @@ void Conv2dXPUKernel(const Context& ctx,
       } else if (out_dtype == DataType::FLOAT16) {
         CONV2D_XPU_KERNEL_IMPL(float, int16_t, dtype::float16, int16_t);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
             "%s.",
             DataTypeToString(x.dtype()),
@@ -214,7 +214,7 @@ void Conv2dXPUKernel(const Context& ctx,
       } else if (out_dtype == DataType::INT8) {
         CONV2D_XPU_KERNEL_IMPL(float, int8_t, int8_t, int8_t);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
             "%s.",
             DataTypeToString(x.dtype()),
@@ -224,7 +224,7 @@ void Conv2dXPUKernel(const Context& ctx,
     } else if (filter.dtype() == DataType::FLOAT32) {
       CONV2D_XPU_KERNEL_IMPL(float, float, float, int32_t);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",
           DataTypeToString(x.dtype()),
           DataTypeToString(filter.dtype()),
@@ -242,7 +242,7 @@ void Conv2dXPUKernel(const Context& ctx,
         CONV2D_XPU_KERNEL_IMPL(
             phi::dtype::float16, int16_t, dtype::float16, int16_t);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
             "%s.",
             DataTypeToString(x.dtype()),
@@ -256,7 +256,7 @@ void Conv2dXPUKernel(const Context& ctx,
       } else if (out_dtype == DataType::INT8) {
         CONV2D_XPU_KERNEL_IMPL(phi::dtype::float16, int8_t, int8_t, int8_t);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
             "%s.",
             DataTypeToString(x.dtype()),
@@ -264,7 +264,7 @@ void Conv2dXPUKernel(const Context& ctx,
             DataTypeToString(out_dtype)));
       }
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",
           DataTypeToString(x.dtype()),
           DataTypeToString(filter.dtype()),
@@ -282,7 +282,7 @@ void Conv2dXPUKernel(const Context& ctx,
       } else if (out_dtype == DataType::INT8) {
         CONV2D_XPU_KERNEL_IMPL(int8_t, int8_t, int8_t, int8_t);
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
             "%s.",
             DataTypeToString(x.dtype()),
@@ -290,7 +290,7 @@ void Conv2dXPUKernel(const Context& ctx,
             DataTypeToString(out_dtype)));
       }
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",
           DataTypeToString(x.dtype()),
           DataTypeToString(filter.dtype()),
@@ -299,7 +299,7 @@ void Conv2dXPUKernel(const Context& ctx,
     return;
   }
 
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",
       DataTypeToString(x.dtype()),
       DataTypeToString(filter.dtype()),

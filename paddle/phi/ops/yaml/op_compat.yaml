@@ -206,6 +206,12 @@
     amin_grad : GetReduceGradExpectedKernelType
   manual_signature : [amin]
 
+- op : anchor_generator
+  inputs:
+    input : Input
+  outputs:
+    {anchors : Anchors, variances_out : Variances}
+
 - op : angle
   backward : angle_grad
   inputs :
@@ -2639,12 +2645,6 @@
   extra:
     outputs : [medians]
 
-- op : nce
-  backward : nce_grad
-  extra :
-    attrs : [int trainer_id = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
-             'str[] table_names = {}', 'int[] custom_neg_classes = {}']
-
 - op : nearest_interp (nearest_interp_v2)
   backward : nearest_interp_grad (nearest_interp_v2_grad)
   inputs :
@@ -4421,6 +4421,9 @@
     {input : Input, label : Label, weight : Weight, bias : Bias, sample_weight : SampleWeight, custom_dist_probs : CustomDistProbs, custom_dist_alias : CustomDistAlias, custom_dist_alias_probs : CustomDistAliasProbs}
   outputs:
     {cost : Cost, sample_logits : SampleLogits, sample_labels : SampleLabels}
+  extra :
+    attrs : [int trainer_id = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
+             'str[] table_names = {}', 'int[] custom_neg_classes = {}']
 
 - op: nop
   inputs :

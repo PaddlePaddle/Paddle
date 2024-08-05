@@ -85,11 +85,11 @@ class LayerNormOpConverter : public OpConverter {
               : 1;
       PADDLE_ENFORCE_NOT_NULL(
           Bias_v,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input(Bias) of layer_norm should not be null."));
       PADDLE_ENFORCE_NOT_NULL(
           Scale_v,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input(Scale) of layer_norm should not be null."));
       auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
       auto* Scale_t = Scale_v->GetMutable<phi::DenseTensor>();
@@ -122,11 +122,11 @@ class LayerNormOpConverter : public OpConverter {
       auto* Scale_v = scope.FindVar(op_desc.Input("Scale")[0]);
       PADDLE_ENFORCE_NOT_NULL(
           Bias_v,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input(Bias) of layer_norm should not be null."));
       PADDLE_ENFORCE_NOT_NULL(
           Scale_v,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input(Scale) of layer_norm should not be null."));
       auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
       auto* Scale_t = Scale_v->GetMutable<phi::DenseTensor>();

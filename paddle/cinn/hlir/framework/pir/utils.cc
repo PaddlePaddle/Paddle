@@ -144,6 +144,7 @@ class OpTransInfo {
                                                     "embedding_grad",
                                                     "embedding",
                                                     "arange",
+                                                    "argmax",
                                                     "softmax",
                                                     "randint"};
 };
@@ -527,7 +528,7 @@ static utils::Attribute ConvertArrayAttribute(
               element.dyn_cast<::pir::StrAttribute>().AsString());
         }
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(::common::errors::InvalidArgument(
             "only support bool/int32/int64/float/double/string attribute in "
             "ArrayAttribute"));
       }
@@ -538,7 +539,7 @@ static utils::Attribute ConvertArrayAttribute(
   } else {
     std::stringstream ss;
     ss << "unknown Attribute: " << src_attr;
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return dst_attr;
 }
@@ -623,7 +624,7 @@ cinn::common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
 
   std::stringstream ss;
   ss << "unknown ir::Type " << type;
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 }
 #undef CASE_TYPE
 

@@ -40,7 +40,7 @@ struct BNStatsFinalizeArgs {
     PADDLE_ENFORCE_EQ(
         param_shape.size(),
         4U,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of param_shape is expected to 4. But received "
             "param_shape's size is %d, param_shape is [%s].",
             param_shape.size(),
@@ -161,11 +161,11 @@ class CudnnBNStatsFinalize {
                                   CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
     // Check workspace size, also creates plan.
     size_t workspace_size_bytes = train_op_.GetWorkspaceSizeInBytes(handle);
-    PADDLE_ENFORCE_EQ(
-        workspace_size_bytes,
-        0U,
-        phi::errors::InvalidArgument("Unexpected non-zero workspace size for "
-                                     "CudnnBNStatsFinalize."));
+    PADDLE_ENFORCE_EQ(workspace_size_bytes,
+                      0U,
+                      common::errors::InvalidArgument(
+                          "Unexpected non-zero workspace size for "
+                          "CudnnBNStatsFinalize."));
     train_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
                                        static_cast<void *>(nullptr));
     train_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
@@ -193,11 +193,11 @@ class CudnnBNStatsFinalize {
                                       CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
     // Check workspace size, also creates plan.
     size_t workspace_size_bytes = inference_op_.GetWorkspaceSizeInBytes(handle);
-    PADDLE_ENFORCE_EQ(
-        workspace_size_bytes,
-        0U,
-        phi::errors::InvalidArgument("Unexpected non-zero workspace size for "
-                                     "CudnnBNStatsFinalize."));
+    PADDLE_ENFORCE_EQ(workspace_size_bytes,
+                      0U,
+                      common::errors::InvalidArgument(
+                          "Unexpected non-zero workspace size for "
+                          "CudnnBNStatsFinalize."));
     inference_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
                                            static_cast<void *>(nullptr));
     inference_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,

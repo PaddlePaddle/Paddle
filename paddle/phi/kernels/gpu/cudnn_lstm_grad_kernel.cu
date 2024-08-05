@@ -336,7 +336,7 @@ void CudnnLSTMGradKernel(
         const_cast<uint8_t *>(reserve_data),
         reserve_size));
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "The padded input of rnn is supported by cudnnRNNBackwardDataEx, "
         "cudnnRNNBackwardWeightsEx, but it only works when the version "
         "of cudnn is larger than 7.2.1"));

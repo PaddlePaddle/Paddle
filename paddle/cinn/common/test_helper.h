@@ -20,7 +20,7 @@
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/simple_jit.h"
 #include "paddle/cinn/cinn.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -105,7 +105,11 @@ struct ArgsBuilder {
   }
 
   std::vector<cinn_pod_value_t> Build() {
-    CHECK(!data_.empty());
+    PADDLE_ENFORCE_EQ(!data_.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The data_ container is empty. Please "
+                          "ensure it contains valid data."));
     return data_;
   }
 

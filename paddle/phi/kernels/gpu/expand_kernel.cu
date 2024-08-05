@@ -35,12 +35,12 @@ void ExpandKernel(const Context& ctx,
     PADDLE_ENFORCE_NE(
         expand_shape[i],
         0,
-        phi::errors::InvalidArgument("The expanded size cannot be zero."));
+        common::errors::InvalidArgument("The expanded size cannot be zero."));
     if (i < diff) {
       PADDLE_ENFORCE_GT(
           expand_shape[i],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The expanded size (%d) for non-existing dimensions must be "
               "positive for expand kernel.",
               expand_shape[i]));
@@ -50,7 +50,7 @@ void ExpandKernel(const Context& ctx,
         PADDLE_ENFORCE_EQ(
             out_shape[i],
             expand_shape[i],
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The value (%d) of the non-singleton dimension does not match"
                 " the corresponding value (%d) in shape for expand kernel.",
                 out_shape[i],
@@ -62,7 +62,7 @@ void ExpandKernel(const Context& ctx,
       PADDLE_ENFORCE_EQ(
           expand_shape[i],
           -1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When the value in shape is negative for expand_v2 op, "
               "only -1 is supported, but the value received is %d.",
               expand_shape[i]));

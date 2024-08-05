@@ -62,7 +62,7 @@ void KLDivLossGradKernel(const Context& dev_ctx,
   }
 
   if ("none" != reduction) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Not supported reduction [%s] in kldiv_loss_grad", reduction));
   }
 }
