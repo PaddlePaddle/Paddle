@@ -40,7 +40,7 @@ void FusedElemwiseActivationKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       out != nullptr,
       true,
-      phi::errors::InvalidArgument("The output(Out) should not be empty"));
+      common::errors::InvalidArgument("The output(Out) should not be empty"));
   auto output = out;
 
   std::vector<phi::DenseTensor *> outputs;
@@ -49,7 +49,7 @@ void FusedElemwiseActivationKernel(const Context &dev_ctx,
   if (save_intermediate_out) {
     PADDLE_ENFORCE_EQ(intermediate_out != nullptr,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The save_intermediate_out is enable, so the "
                           "IntermediateOut should not be empty."));
 
@@ -86,14 +86,14 @@ void FusedElemwiseActivationGradKernel(
   PADDLE_ENFORCE_NE(
       in_y,
       nullptr,
-      phi::errors::InvalidArgument("Input(Y) should not be nullptr."));
+      common::errors::InvalidArgument("Input(Y) should not be nullptr."));
   phi::DenseTensor *in_out = const_cast<phi::DenseTensor *>(&out);
 
   auto in_out_grad = &out_grad;
-  PADDLE_ENFORCE_NE(
-      in_out_grad,
-      nullptr,
-      phi::errors::InvalidArgument("Input(Out@Grad) should not be nullptr."));
+  PADDLE_ENFORCE_NE(in_out_grad,
+                    nullptr,
+                    common::errors::InvalidArgument(
+                        "Input(Out@Grad) should not be nullptr."));
 
   std::vector<std::string> functor_list_new = functor_list;
   size_t sz = functor_list_new[0].size();
@@ -121,7 +121,7 @@ void FusedElemwiseActivationGradKernel(
     in_intermediate_out = const_cast<phi::DenseTensor *>(&intermediate_out);
     PADDLE_ENFORCE_NE(in_intermediate_out,
                       nullptr,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The option of 'save_intermediate_out' is opened,"
                           " so the number of 'Out' should be two."));
   } else {
@@ -129,7 +129,7 @@ void FusedElemwiseActivationGradKernel(
       PADDLE_ENFORCE_NE(
           in_x,
           nullptr,
-          phi::errors::InvalidArgument("Input(X) should not be null."));
+          common::errors::InvalidArgument("Input(X) should not be null."));
     }
   }
 
@@ -138,13 +138,13 @@ void FusedElemwiseActivationGradKernel(
     PADDLE_ENFORCE_NE(
         in_x,
         nullptr,
-        phi::errors::InvalidArgument("Input(X) should not be null."));
+        common::errors::InvalidArgument("Input(X) should not be null."));
   } else {
     // If functor_list contains elementwise_add, the backward doesn't use
     // in_x, in_y and in_out.
     PADDLE_ENFORCE_EQ(phi::funcs::InputXCanBeAbsent(functor_list_new),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Only when the compoundfunctor contains "
                           "elementwise_add_grad, the 'X' could be absent."));
     in_x = const_cast<phi::DenseTensor *>(in_out_grad);
@@ -155,13 +155,13 @@ void FusedElemwiseActivationGradKernel(
     PADDLE_ENFORCE_NE(
         in_out,
         nullptr,
-        phi::errors::InvalidArgument("Input(X) should not be null."));
+        common::errors::InvalidArgument("Input(X) should not be null."));
   } else {
     // If functor_list contains elementwise_add, the backward doesn't use
     // in_x, in_y and in_out.
     PADDLE_ENFORCE_EQ(phi::funcs::InputXCanBeAbsent(functor_list_new),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Only when the compoundfunctor contains "
                           "elementwise_add_grad, the 'X' could be absent."));
     in_out = const_cast<phi::DenseTensor *>(in_out_grad);

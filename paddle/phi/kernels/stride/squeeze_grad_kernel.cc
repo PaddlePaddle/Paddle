@@ -28,9 +28,9 @@ void SqueezeGradStridedKernel(const Context& dev_ctx,
                               const IntArray& axes UNUSED,
                               DenseTensor* dx) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   const auto& xshape_dims = xshape.dims();
   auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());

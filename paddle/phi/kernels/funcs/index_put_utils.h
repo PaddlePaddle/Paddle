@@ -89,7 +89,7 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
         int rank = indices_v[i]->dims().size();
         PADDLE_ENFORCE_GE(rank,
                           1UL,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "the only bool tensor in indices should "
                               "have number of dimension at least 1"));
         phi::DenseTensor nonzero_indices(phi::DataType::INT64);
@@ -128,7 +128,7 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
                  (indices_v[i]->dtype() == phi::DataType::INT32)) {
         tmp_indices_v->emplace_back(*indices_v[i]);
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "data type of tensor in indices must be int32, int64 or bool"));
       }
     }
@@ -276,7 +276,7 @@ static void CalCompressedDimsWith1AndWithout1(
   int i = static_cast<int>(after_dims->size()) - 1;
   int j = static_cast<int>(before_dims->size()) - 1;
   if (i < j) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "shape of value can't not be broadcast to shape of x[indices]"));
   }
 
@@ -291,7 +291,7 @@ static void CalCompressedDimsWith1AndWithout1(
       i--;
       j--;
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "shape of value can't not be broadcast to shape of x[indices]"));
     }
   }

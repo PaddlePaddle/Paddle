@@ -29,9 +29,9 @@ void ReshapeStridedKernel(const Context& dev_ctx,
                           const IntArray& shape,
                           DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   DDim x_dims = x.dims();
   DDim x_stride = x.strides();

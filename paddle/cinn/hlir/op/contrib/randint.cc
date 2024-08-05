@@ -40,6 +40,7 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -56,7 +57,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForRandInt(
     const Target &target) {
   framework::CINNCompute randint_compute(
       [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(attrs.attr_store.count("shape"));
+        PADDLE_ENFORCE_GE(
+            attrs.attr_store.count("shape"),
+            1,
+            ::common::errors::NotFound("The attribute 'shape' is not found in "
+                                       "attr_store. Please ensure it is set."));
         ir::Tensor shape_tensor;
         std::string tensor_name = "randint_out";
         auto out = pe::Identity(shape_tensor, tensor_name).front();

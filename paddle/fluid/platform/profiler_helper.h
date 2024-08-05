@@ -38,9 +38,9 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/profiler/profiler_helper.h"
+#include "paddle/phi/core/memory/memory.h"
 
 namespace paddle {
 namespace platform {

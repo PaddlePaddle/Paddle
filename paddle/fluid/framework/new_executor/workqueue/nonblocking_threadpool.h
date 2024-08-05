@@ -421,7 +421,7 @@ class ThreadPoolTempl {
     }
 
     // Wait for work
-    platform::RecordEvent record(
+    phi::RecordEvent record(
         "WaitForWork", platform::TracerEventType::UserDefined, 10);
     ec_.CommitWait(waiter);
     blocked_--;

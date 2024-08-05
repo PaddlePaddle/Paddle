@@ -36,6 +36,7 @@
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace optim {
@@ -92,7 +93,10 @@ void RemoveGpuForloopsAxis(Expr *expr) {
     void ReplaceForloopWithIfThenElse(Expr *expr) {
       auto *for_n = expr->As<ir::For>();
       auto *poly_for_n = expr->As<ir::PolyFor>();
-      CHECK(for_n || poly_for_n);
+      PADDLE_ENFORCE_EQ(for_n || poly_for_n,
+                        true,
+                        ::common::errors::InvalidArgument(
+                            "PolyFor is not exist, please check."));
 
       Expr condition;
 
@@ -123,7 +127,10 @@ void RemoveGpuForloopsAxis(Expr *expr) {
         condition_append(poly_for_n->condition);
       }
 
-      CHECK(condition.defined());
+      PADDLE_ENFORCE_EQ(condition.defined(),
+                        true,
+                        ::common::errors::InvalidArgument(
+                            "Condition is not defined, please check."));
 
       VLOG(3) << "GPU replacing\n" << *expr;
       VLOG(3) << "\nto\n";
@@ -135,9 +142,21 @@ void RemoveGpuForloopsAxis(Expr *expr) {
     void Visit(const ir::PolyFor *op, Expr *expr) override {
       const auto msg =
           "PolyFor is not allowed for GPU, only For nodes are allowed";
-      CHECK(op->for_type() != ir::ForType::GPUBlock) << msg;
-      CHECK(op->for_type() != ir::ForType::GPUThread) << msg;
-      CHECK(op->for_type() != ir::ForType::GPULane) << msg;
+      PADDLE_ENFORCE_EQ(
+          op->for_type() != ir::ForType::GPUBlock,
+          true,
+          ::common::errors::InvalidArgument(
+              "PolyFor is not allowed for GPU, only For nodes are allowed."));
+      PADDLE_ENFORCE_EQ(
+          op->for_type() != ir::ForType::GPUThread,
+          true,
+          ::common::errors::InvalidArgument(
+              "PolyFor is not allowed for GPU, only For nodes are allowed."));
+      PADDLE_ENFORCE_EQ(
+          op->for_type() != ir::ForType::GPULane,
+          true,
+          ::common::errors::InvalidArgument(
+              "PolyFor is not allowed for GPU, only For nodes are allowed."));
     }
   };
 
@@ -214,7 +233,10 @@ class ReplaceIndexToBindExpr : public ir::IRMutator<> {
   void Visit(const ir::ScheduleBlockRealize *op, Expr *expr) override {
     ir::ScheduleBlockRealize *schedule_block_realize =
         expr->As<ir::ScheduleBlockRealize>();
-    CHECK(schedule_block_realize->schedule_block.As<ir::ScheduleBlock>());
+    PADDLE_ENFORCE_NOT_NULL(
+        schedule_block_realize->schedule_block.As<ir::ScheduleBlock>(),
+        ::common::errors::InvalidArgument(
+            "The type of schedule block realize should be ScheduleBlock!"));
     std::vector<ir::Expr> iter_values = schedule_block_realize->iter_values;
     ir::Expr body =
         schedule_block_realize->schedule_block.As<ir::ScheduleBlock>()->body;
@@ -243,7 +265,9 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
  private:
   void Visit(const ir::For *op, Expr *expr) override {
     auto for_ir = expr->As<ir::For>();
-    CHECK(for_ir);
+    PADDLE_ENFORCE_NOT_NULL(for_ir,
+                            ::common::errors::InvalidArgument(
+                                "The type of expression should be For!"));
 
     auto bind_info = for_ir->bind_info();
 
@@ -412,7 +436,9 @@ class ReplaceVarToZero : public ir::IRMutator<> {
   }
 
   void Visit(const ir::For *op, Expr *expr) override {
-    CHECK(expr->As<ir::For>());
+    PADDLE_ENFORCE_NOT_NULL(expr->As<ir::For>(),
+                            ::common::errors::InvalidArgument(
+                                "The type of expression should be For!"));
     auto for_ir = expr->As<ir::For>();
     auto var_name = for_ir->loop_var->name;
     auto extent_i = for_ir->extent;
