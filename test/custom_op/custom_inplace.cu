@@ -18,9 +18,9 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_GPU_INPUT(x)      \
-  PADDLE_ENFORCE_EQ(x.is_gpu(), \
-                    common::errors::Fatal(#x " must be a GPU Tensor."))
+#define CHECK_GPU_INPUT(x) \
+  PADDLE_ENFORCE_EQ(       \
+      x.is_gpu(), true, common::errors::Fatal(#x " must be a GPU Tensor."))
 
 template <typename data_t>
 __global__ void relu_cuda_forward_kernel(data_t* x, int64_t num) {
