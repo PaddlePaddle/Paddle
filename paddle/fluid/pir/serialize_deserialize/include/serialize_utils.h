@@ -19,6 +19,8 @@
 #include <vector>
 
 #include "paddle/common/layout.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
@@ -208,7 +210,7 @@ Json serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
 // partial_status;
 template <>
 Json serializeAttrToJson<paddle::dialect::TensorDistAttribute>(
-    const paddle::dialect::PlaceAttribute& attr) {
+    const paddle::dialect::TensorDistAttribute& attr) {
   Json json_obj;
   json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
   Json content = Json::array();
@@ -222,34 +224,6 @@ Json serializeAttrToJson<paddle::dialect::TensorDistAttribute>(
     map_json[key] = value;
   }
   content.push_back(map_json);
-
-  json_obj[DATA] = content;
-  return json_obj;
-}
-
-// OperationDistAttribute includes: ProcessMeshAttribute mesh_attr,
-// std::vector<pir::Attribute> operands, std::vector<pir::Attribute> results;
-template <>
-Json serializeAttrToJson<paddle::dialect::OperationDistAttribute>(
-    const paddle::dialect::PlaceAttribute& attr) {
-  Json json_obj;
-  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
-  Json content = Json::array();
-
-  content.push_back(serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
-      attr.process_mesh_attr()));
-
-  Json operands_json = Json::array();
-  for (size_t i = 0; i < attr.operands().size(); i++) {
-    operands_json.push_back(writeAttr(attr.operands().at(i)));
-  }
-  content.push_back(operands_json);
-
-  Json results_json = Json::array();
-  for (size_t i = 0; i < attr.results().size(); i++) {
-    results_json.push_back(writeAttr(attr.results().at(i)));
-  }
-  content.push_back(results_json);
 
   json_obj[DATA] = content;
   return json_obj;
@@ -301,6 +275,34 @@ Json writeAttr(const pir::Attribute& attr) {
   VLOG(8) << "Finish write attr ... ";
 
   return Json::object();
+}
+
+// OperationDistAttribute includes: ProcessMeshAttribute mesh_attr,
+// std::vector<pir::Attribute> operands, std::vector<pir::Attribute> results;
+template <>
+Json serializeAttrToJson<paddle::dialect::OperationDistAttribute>(
+    const paddle::dialect::OperationDistAttribute& attr) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
+  Json content = Json::array();
+
+  content.push_back(serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
+      attr.process_mesh_attr()));
+
+  Json operands_json = Json::array();
+  for (size_t i = 0; i < attr.operands().size(); i++) {
+    operands_json.push_back(writeAttr(attr.operands().at(i)));
+  }
+  content.push_back(operands_json);
+
+  Json results_json = Json::array();
+  for (size_t i = 0; i < attr.results().size(); i++) {
+    results_json.push_back(writeAttr(attr.results().at(i)));
+  }
+  content.push_back(results_json);
+
+  json_obj[DATA] = content;
+  return json_obj;
 }
 
 Json AttrTypeWriter::WriteBuiltInAttr(const pir::Attribute& attr) {
