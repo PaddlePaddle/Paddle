@@ -133,12 +133,6 @@ void PatternGraph::SinkTrivialPattern() {
                        DownstreamSmallerThan<2>,
                        NonSinkNodeMatcher>,
                    MergeTrivialPatternOperation>(this);
-
-  GraphTransformer<NodePattern,
-                   And<StmtPatternGraphMatcher<TrivialPattern>,
-                       NonSinkNodeMatcher,
-                       LEOneElementWiseDownstreamMatcher>,
-                   MergeTrivialPatternOperation>(this);
 }
 
 void PatternGraph::ReduceLiftReduceTree() {
