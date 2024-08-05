@@ -38,21 +38,27 @@ struct FindUselessOpPattern : public PatternBase {
 FindUselessOpPattern::FindUselessOpPattern(PDPattern* pattern,
                                            const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
-  auto* useless_op_in = pattern->NewNode(useless_op_in_repr())
-                            ->assert_is_var()
-                            ->assert_var_not_persistable()
-                            ->assert_has_n_outputs(1)
-                            ->assert_more([](Node* x) {
-                              for (auto* op : x->inputs) {
-                                CHECK_EQ(op->IsOp(), true);
-                                const auto& op_type = op->Op()->Type();
-                                if (op_type == "conditional_block" ||
-                                    op_type == "while" || op_type == "feed") {
-                                  return false;
-                                }
-                              }
-                              return true;
-                            });
+  auto* useless_op_in =
+      pattern->NewNode(useless_op_in_repr())
+          ->assert_is_var()
+          ->assert_var_not_persistable()
+          ->assert_has_n_outputs(1)
+          ->assert_more([](Node* x) {
+            for (auto* op : x->inputs) {
+              PADDLE_ENFORCE_EQ(op->IsOp(),
+                                true,
+                                phi::errors::InvalidArgument(
+                                    "op->IsOp() is False, which means that "
+                                    "%p may be an invalid option.",
+                                    op));
+              const auto& op_type = op->Op()->Type();
+              if (op_type == "conditional_block" || op_type == "while" ||
+                  op_type == "feed") {
+                return false;
+              }
+            }
+            return true;
+          });
 
   // This useless_op must have only one input and one output!
   auto* useless_op =
@@ -107,21 +113,27 @@ struct FindTwoCastOpPattern : public PatternBase {
 FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
                                            const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
-  auto* pre_op_out = pattern->NewNode(pre_op_out_repr())
-                         ->assert_is_var()
-                         ->assert_var_not_persistable()
-                         ->assert_has_n_outputs(1)
-                         ->assert_more([](Node* x) {
-                           for (auto* op : x->inputs) {
-                             CHECK_EQ(op->IsOp(), true);
-                             const auto& op_type = op->Op()->Type();
-                             if (op_type == "conditional_block" ||
-                                 op_type == "while" || op_type == "feed") {
-                               return false;
-                             }
-                           }
-                           return true;
-                         });
+  auto* pre_op_out =
+      pattern->NewNode(pre_op_out_repr())
+          ->assert_is_var()
+          ->assert_var_not_persistable()
+          ->assert_has_n_outputs(1)
+          ->assert_more([](Node* x) {
+            for (auto* op : x->inputs) {
+              PADDLE_ENFORCE_EQ(op->IsOp(),
+                                true,
+                                phi::errors::InvalidArgument(
+                                    "op->IsOp() is False, which means that "
+                                    "%p may be an invalid option.",
+                                    op));
+              const auto& op_type = op->Op()->Type();
+              if (op_type == "conditional_block" || op_type == "while" ||
+                  op_type == "feed") {
+                return false;
+              }
+            }
+            return true;
+          });
 
   auto* cast_op_1 = pattern->NewNode(cast_op_1_repr())->assert_is_op("cast");
   auto* cast_op_1_out = pattern->NewNode(cast_op_1_out_repr())
@@ -151,12 +163,34 @@ int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {
         GET_IR_NODE_FROM_SUBGRAPH(useless_op_in, useless_op_in, pattern);
         GET_IR_NODE_FROM_SUBGRAPH(useless_op, useless_op, pattern);
         GET_IR_NODE_FROM_SUBGRAPH(useless_op_out, useless_op_out, pattern);
-        CHECK_EQ(useless_op_in->IsVar(), true);
-        CHECK_EQ(useless_op_out->IsVar(), true);
-        CHECK_EQ(useless_op->IsOp(), true);
+        PADDLE_ENFORCE_EQ(
+            useless_op_in->IsVar(),
+            true,
+            phi::errors::InvalidArgument(
+                "useless_op_in->IsVar() is False, which means that "
+                "the input of the option %p is not a valid variable.",
+                useless_op));
+        PADDLE_ENFORCE_EQ(
+            useless_op_out->IsVar(),
+            true,
+            phi::errors::InvalidArgument(
+                "useless_op_out->IsVar() is False, which means that "
+                "the output of the option %p is not a valid variable.",
+                useless_op));
+        PADDLE_ENFORCE_EQ(useless_op->IsOp(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "op->IsOp() is False, which means that "
+                              "%p may be an invalid option.",
+                              useless_op));
 
         for (auto* prev_op : useless_op_in->inputs) {
-          CHECK_EQ(prev_op->IsOp(), true);
+          PADDLE_ENFORCE_EQ(prev_op->IsOp(),
+                            true,
+                            phi::errors::InvalidArgument(
+                                "prev_op->IsOp() is False, which means that "
+                                "%p may be an invalid option.",
+                                prev_op));
           prev_op->Op()->RenameOutput(useless_op_in->Var()->Name(),
                                       useless_op_out->Var()->Name());
           IR_NODE_LINK_TO(prev_op, useless_op_out);
@@ -182,15 +216,47 @@ int IdentityOpCleanPass::CleanTwoCastOp(ir::Graph* graph) const {
         GET_IR_NODE_FROM_SUBGRAPH(cast_op_1_out, cast_op_1_out, pattern);
         GET_IR_NODE_FROM_SUBGRAPH(cast_op_2, cast_op_2, pattern);
         GET_IR_NODE_FROM_SUBGRAPH(cast_op_2_out, cast_op_2_out, pattern);
-        CHECK_EQ(pre_op_out->IsVar(), true);
-        CHECK_EQ(cast_op_1_out->IsVar(), true);
-        CHECK_EQ(cast_op_2_out->IsVar(), true);
-        CHECK_EQ(cast_op_1->IsOp(), true);
-        CHECK_EQ(cast_op_2->IsOp(), true);
+        PADDLE_ENFORCE_EQ(
+            pre_op_out->IsVar(),
+            true,
+            phi::errors::InvalidArgument(
+                "pre_op_out->IsVar() is False, which means that "
+                "the output of the option is not a valid variable."));
+        PADDLE_ENFORCE_EQ(
+            cast_op_1_out->IsVar(),
+            true,
+            phi::errors::InvalidArgument(
+                "cast_op_1_out->IsVar() is False, which means that "
+                "the output of the option %p is not a valid variable.",
+                cast_op_1));
+        PADDLE_ENFORCE_EQ(
+            cast_op_2_out->IsVar(),
+            true,
+            phi::errors::InvalidArgument(
+                "cast_op_2_out->IsVar() is False, which means that "
+                "the output of the option %p is not a valid variable.",
+                cast_op_2));
+        PADDLE_ENFORCE_EQ(cast_op_1->IsOp(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "cast_op_1->IsOp() is False, which means that "
+                              "%p may be an invalid option.",
+                              cast_op_1));
+        PADDLE_ENFORCE_EQ(cast_op_2->IsOp(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "cast_op_2->IsOp() is False, which means that "
+                              "%p may be an invalid option.",
+                              cast_op_2));
         if (pre_op_out->Var()->GetDataType() ==
             cast_op_2_out->Var()->GetDataType()) {
           for (auto* prev_op : pre_op_out->inputs) {
-            CHECK_EQ(prev_op->IsOp(), true);
+            PADDLE_ENFORCE_EQ(prev_op->IsOp(),
+                              true,
+                              phi::errors::InvalidArgument(
+                                  "prev_op->IsOp() is False, which means that "
+                                  "%p may be an invalid option.",
+                                  prev_op));
             prev_op->Op()->RenameOutput(pre_op_out->Var()->Name(),
                                         cast_op_2_out->Var()->Name());
             IR_NODE_LINK_TO(prev_op, cast_op_2_out);

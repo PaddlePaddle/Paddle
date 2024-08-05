@@ -34,8 +34,8 @@ static void DispatchComputeImpl(const phi::XPUContext *xpu_ctx,
                                 const float quant_min_bound,
                                 DenseTensor *out) {
   PADDLE_THROW(
-      phi::errors::Unimplemented("fused_bias_act with smooth "
-                                 "quant on xpu is not implemented yet."));
+      common::errors::Unimplemented("fused_bias_act with smooth "
+                                    "quant on xpu is not implemented yet."));
 }
 
 template <typename T>

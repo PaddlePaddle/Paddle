@@ -39,7 +39,7 @@ namespace mpi {
       std::stringstream ss;                                        \
       ss << "Failed, MPI error in" << __FILE__ << ":" << __LINE__  \
          << "with error code: " << std::to_string(r) << std::endl; \
-      PADDLE_THROW(phi::errors::Fatal(ss.str()));                  \
+      PADDLE_THROW(common::errors::Fatal(ss.str()));               \
       exit(EXIT_FAILURE);                                          \
     }                                                              \
   } while (0)

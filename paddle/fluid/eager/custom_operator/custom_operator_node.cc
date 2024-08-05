@@ -49,7 +49,7 @@ static void ConstructFwdAndBwdMap(
   PADDLE_ENFORCE_LE(
       grad_outputs_names.size(),
       inputs_names.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Grad outputs num should be less equal than forward inputs num."));
   for (size_t i = 0; i < grad_outputs_names.size(); i++) {
     auto end = grad_outputs_names[i].find("@GRAD@GRAD");
@@ -89,7 +89,7 @@ static void ConstructFwdAndBwdMap(
             }
           }
         } else {
-          PADDLE_THROW(phi::errors::NotFound(
+          PADDLE_THROW(common::errors::NotFound(
               "All Grad outputs should be end of @GRAD@GRAD or @GRAD@NEW or "
               "@GRAD and we got %s is not one of them, "
               "please check your op and change to fit the rule.",
@@ -144,7 +144,7 @@ static void ConstructFwdAndBwdMap(
         std::find(attrs_names.begin(), attrs_names.end(), grad_attrs_names[i]);
     PADDLE_ENFORCE_NE(end,
                       attrs_names.end(),
-                      phi::errors::NotFound(
+                      common::errors::NotFound(
                           "All Grad attrs should be one of forward attrs and "
                           "we got %s is not one of them, please check your "
                           "op and change to fit the rule.",
@@ -267,7 +267,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
             paddle::framework::detail::IsOptionalVar(
                 grad_outputs_names.at(i)) ||
                 out_tensor->is_dist_tensor(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom grad operator's %d-th output is not initialized. "
                 "Please check your implementation again. If you are "
                 "using inplace optional outputs, then you must use "
@@ -298,7 +298,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   }
 
   if (require_any_grad && (vec_map.size() > 2)) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "Custom Op " + op_type_ + " double_grad node_creation",
         paddle::platform::TracerEventType::OperatorInner,
         1);

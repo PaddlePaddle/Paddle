@@ -348,6 +348,19 @@ bool AsRealOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool AssignOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
+  return true;
+}
+
+bool Assign_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return AssignOpInferSymbolicShape(op, infer_context);
+}
+
 bool BipartiteMatchOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &dist_mat_shape_or_data =
@@ -364,6 +377,61 @@ bool BipartiteMatchOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(op->result(1), dist_mat_shape_or_data);
 
   return true;
+}
+
+bool CastOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
+  return true;
+}
+
+bool Cast_OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  return CastOpInferSymbolicShape(op, infer_context);
+}
+
+bool CholeskyOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  auto rank = x_shape.shape().size();
+  PADDLE_ENFORCE_GE(rank,
+                    2,
+                    common::errors::InvalidArgument(
+                        "The Input(X) should have at least 2 dimensions. But "
+                        "received a %d dimension tensor.",
+                        rank));
+
+  infer_context->AddEqualCstr(x_shape.shape()[rank - 2],
+                              x_shape.shape()[rank - 1]);
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+
+  return true;
+}
+
+bool ClipByNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  float max_norm = op->attribute<pir::FloatAttribute>("max_norm").data();
+  PADDLE_ENFORCE_GT(
+      max_norm,
+      0,
+      phi::errors::InvalidArgument("max_norm should be greater than 0. "
+                                   "Received max_norm is %f.",
+                                   max_norm));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
+  return true;
+}
+
+bool ClipByNormSrOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return ClipByNormOpInferSymbolicShape(op, infer_context);
 }
 
 bool CummaxOpInferSymbolicShape(pir::Operation *op,
@@ -419,6 +487,51 @@ bool CumsumOpInferSymbolicShape(pir::Operation *op,
 bool Cumsum_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return CumsumOpInferSymbolicShape(op, infer_context);
+}
+bool ChannelShuffleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &input_dims = x_shape_or_data.shape();
+
+  int groups = op->attribute<pir::Int32Attribute>("groups").data();
+  std::string data_format =
+      op->attribute<pir::StrAttribute>("data_format").AsString();
+
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input should be a 4-D tensor of format [N, "
+                                   "C, H, W] or [N, H, W, C], but got %u.",
+                                   input_dims.size()));
+  PADDLE_ENFORCE_GE(
+      groups,
+      1,
+      phi::errors::InvalidArgument("groups should be larger than 0."));
+  PADDLE_ENFORCE_EQ(
+      data_format == "NCHW" || data_format == "NHWC",
+      true,
+      phi::errors::InvalidArgument("data_format must be one of NCHW and NHWC. "
+                                   "But received data_format: %s",
+                                   data_format));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  symbol::DimExpr channels;
+  if (!channel_last) {
+    channels = input_dims[1];
+  } else {
+    channels = input_dims[3];
+  }
+
+  symbol::DimExpr groups_expr = symbol::DimExpr(groups);
+  symbol::DimExpr expected_channels = groups_expr * (channels / groups_expr);
+
+  infer_context->AddEqualCstr(channels, expected_channels);
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  return true;
 }
 
 bool DiagEmbedOpInferSymbolicShape(
@@ -716,13 +829,13 @@ bool FlattenOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         start_axis == 0 || start_axis == -1,
         true,
-        phi::errors::InvalidArgument("The start_axis should be 0 or -1 when "
-                                     "the input tensor is a 0D-Tensor"));
-    PADDLE_ENFORCE_EQ(
-        stop_axis == 0 || stop_axis == -1,
-        true,
-        phi::errors::InvalidArgument("The stop_axis should be 0 or -1 when the "
-                                     "input tensor is a 0D-Tensor"));
+        common::errors::InvalidArgument("The start_axis should be 0 or -1 when "
+                                        "the input tensor is a 0D-Tensor"));
+    PADDLE_ENFORCE_EQ(stop_axis == 0 || stop_axis == -1,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The stop_axis should be 0 or -1 when the "
+                          "input tensor is a 0D-Tensor"));
     // this can ensure out shape {1}
     start_axis = 0;
     stop_axis = -1;
@@ -738,8 +851,8 @@ bool FlattenOpInferSymbolicShape(
     PADDLE_ENFORCE_GE(
         stop_axis,
         start_axis,
-        phi::errors::InvalidArgument("The stop_axis should be greater"
-                                     "than or equal to start_axis."));
+        common::errors::InvalidArgument("The stop_axis should be greater"
+                                        "than or equal to start_axis."));
   }
 
   symbol::DimExpr outer{1};
@@ -799,6 +912,29 @@ bool FakeQuantizeDequantizeAbsMaxOpInferSymbolicShape(
 bool Flatten_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return FlattenOpInferSymbolicShape(op, infer_context);
+}
+
+bool IdentityLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  int reduction = op->attribute<pir::Int32Attribute>("reduction").data();
+  if (reduction == 2) {
+    infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
+  } else {
+    std::vector<symbol::DimExpr> out_shape = {};
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_shape)});
+  }
+
+  return true;
+}
+
+bool IdentityLoss_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return IdentityLossOpInferSymbolicShape(op, infer_context);
 }
 
 bool KthvalueOpInferSymbolicShape(
@@ -878,9 +1014,9 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
       // TODO(lanxianghit): there's other source: pir::VectorType,
       // paddle::dialect::DenseTensorType, but after PRIM, maybe always
       // FullIntArrayOp, to be confirmed
-      PADDLE_THROW(
-          phi::errors::Unimplemented("MaxOpInferSymbolicShape: 'axis' only "
-                                     "support FullIntArrayOp's result now."));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "MaxOpInferSymbolicShape: 'axis' only "
+          "support FullIntArrayOp's result now."));
     }
     return axis_vec;
   }();
@@ -950,7 +1086,7 @@ bool NonzeroOpInferSymbolicShape(
   PADDLE_ENFORCE_GE(
       rank,
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(x) should have number of dimension at least 1."));
 
   std::string sym_name = infer_context->GetNextSymName();
@@ -981,7 +1117,7 @@ bool PadOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   PADDLE_ENFORCE_EQ(x_shape_or_data.data().has_value(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "InferSymbolicShape of PadOp only support input with "
                         "value now."));
   const auto &x_dims_sym = x_shape_or_data.shape();
@@ -992,7 +1128,7 @@ bool PadOpInferSymbolicShape(pir::Operation *op,
       paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
   PADDLE_ENFORCE_EQ(rank * 2,
                     paddings.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of paddings should be 2 * input's rank. But "
                         "got paddings.size() = %d, input's rank = %d.",
                         paddings.size(),
@@ -1094,8 +1230,8 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
     // TODO(lanxianghit): deal with other source: pir::VectorType,
     // paddle::dialect::DenseTensorType
     PADDLE_THROW(
-        phi::errors::Unimplemented("ProdOpInferSymbolicShape: 'axis' only "
-                                   "support FullIntArrayOp's result now."));
+        common::errors::Unimplemented("ProdOpInferSymbolicShape: 'axis' only "
+                                      "support FullIntArrayOp's result now."));
   }
 
   return true;
@@ -1290,7 +1426,7 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   PADDLE_ENFORCE_EQ(x_shape_or_data.data().has_value(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "InferSymbolicShape of SplitOp only support input with "
                         "value now."));
   const auto &x_dims_sym = x_shape_or_data.shape();
@@ -1381,14 +1517,14 @@ bool SplitWithNumOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       axis_shape_data.data().has_value(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "In InferSymbolicShape, axis of SplitWithNumOp is null"));
   const std::vector<symbol::DimExpr> &axis_data =
       axis_shape_data.data().value();
   PADDLE_ENFORCE_EQ(
       axis_data.size() == 1,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "In SplitWithNumOp, data of axis should be one dimension"));
 
   const auto &attributes = op->attributes();
@@ -1433,7 +1569,7 @@ bool SplitWithNumOpInferSymbolicShape(
         }
       } else {
         PADDLE_THROW(
-            phi::errors::InvalidArgument("The type of X must be int64_t."));
+            common::errors::InvalidArgument("The type of X must be int64_t."));
       }
     }
     if (count == 1) {
@@ -1459,7 +1595,7 @@ bool SplitWithNumOpInferSymbolicShape(
           op->result(0), symbol::ShapeOrDataDimExprs{res_list_s_d});
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The type of axis must be int64_t or string."));
   }
   return true;
@@ -1483,8 +1619,8 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
     // TODO(lanxianghit): deal with other source: pir::VectorType,
     // paddle::dialect::DenseTensorType
     PADDLE_THROW(
-        phi::errors::Unimplemented("SumOpInferSymbolicShape: 'axis' only "
-                                   "support FullIntArrayOp's result now."));
+        common::errors::Unimplemented("SumOpInferSymbolicShape: 'axis' only "
+                                      "support FullIntArrayOp's result now."));
   }
 
   return true;
@@ -1646,7 +1782,7 @@ bool SqueezeOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       op->num_operands(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "SqueezeOpInferSymbolicShape ONLY support num_operands() == 2 "
           "now, but got %d operands",
           op->num_operands()));
@@ -1675,7 +1811,7 @@ bool SqueezeOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         squeeze_dim.Has<std::int64_t>(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "in SqueezeOpInferSymbolicShape, axes must be known int type, "
             "but got: %s",
             symbol::ToString(squeeze_dim)));
@@ -1748,7 +1884,7 @@ bool UnbindOpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_EQ(
       x_shape_or_data.data().has_value(),
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "InferSymbolicShape of UnbindOp only support input with "
           "value now."));
   const auto &x_dims_sym = x_shape_or_data.shape();
@@ -1766,7 +1902,7 @@ bool UnbindOpInferSymbolicShape(pir::Operation *op,
     const symbol::DimExpr &unbound_dim = x_dims_sym.at(axis);
     PADDLE_ENFORCE_EQ(unbound_dim.isa<int64_t>(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "InferSymbolicShape of UnbindOp only support unbound "
                           "dim with constant length!"));
     output_dims_sym.erase(output_dims_sym.begin() + axis);
@@ -1792,7 +1928,7 @@ bool UniqueOpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_EQ(
       x_shape_or_data.data().has_value(),
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "InferSymbolicShape of UniqueOp only support input with "
           "value now."));
   const auto &x_dims_sym = x_shape_or_data.shape();
@@ -1866,7 +2002,7 @@ bool UniqueConsecutiveOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       x_shape_or_data.data().has_value(),
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "InferSymbolicShape of UniqueConsecutiveOp only support input with "
           "value now."));
   const auto &x_dims_sym = x_shape_or_data.shape();
@@ -1932,7 +2068,7 @@ bool UnsqueezeOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       op->num_operands(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "UnsqueezeOp InferSymbolicShape ONLY support num_operands() == 2 "
           "now, but got %d operands",
           op->num_operands()));
@@ -1967,7 +2103,7 @@ bool UnsqueezeOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         axis_expr.Has<std::int64_t>(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "in UnsqueezeOpInferSymbolicShape, axes must be known int type, "
             "but got: %s",
             symbol::ToString(axis_expr)));

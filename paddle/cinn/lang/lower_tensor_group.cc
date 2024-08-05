@@ -97,11 +97,17 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
         func_body, [](const Expr* x) { return x->As<ir::Store>(); });
     for (auto& expr : store_exprs) {
       auto* store_node = expr.As<ir::Store>();
-      CHECK(store_node);
+      PADDLE_ENFORCE_NOT_NULL(
+          store_node, phi::errors::InvalidArgument("store_node is nullptr"));
       auto* tensor = store_node->tensor.As<ir::_Tensor_>();
-      CHECK(tensor);
+      PADDLE_ENFORCE_NOT_NULL(
+          tensor,
+          phi::errors::InvalidArgument("Sorry,but store_node is nullptr"));
       VLOG(3) << "In store_exprs, its name is : " << tensor->name;
-      CHECK(tensor->buffer.defined());
+      PADDLE_ENFORCE_EQ(
+          tensor->buffer.defined(),
+          true,
+          phi::errors::InvalidArgument("tensor->buffer is nullptr"));
       if (tensor->buffer->memory_type != ir::MemoryType::Heap) {
         temp_tensor_names.insert(store_node->tensor.as_tensor_ref()->name);
       }
@@ -156,9 +162,15 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
   std::set<std::string> arg_names;
 
   for (auto& scalar : scalar_args_) {
-    CHECK(!arg_names.count(scalar->name));
+    PADDLE_ENFORCE_EQ(
+        !arg_names.count(scalar->name),
+        true,
+        phi::errors::InvalidArgument("arg_names.count(scalar->name) is true"));
     auto* scalar_node = scalar.As<ir::_Var_>();
-    CHECK(scalar_node->type().valid());
+    PADDLE_ENFORCE_EQ(
+        scalar_node->type().valid(),
+        true,
+        phi::errors::InvalidArgument("scalar_node->type().valid() is false"));
     arg_names.insert(scalar->name);
 
     args.emplace_back(scalar, ir::Argument::IO::kInput);
@@ -181,7 +193,10 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
           std::find_if(args.begin(), args.end(), [&](const ir::Argument& x) {
             return x.name() == tensor_node->buffer->name;
           });
-      CHECK(it != args.end());
+      PADDLE_ENFORCE_EQ(it != args.end(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "it which refers to first element should be end"));
       if (it->is_input()) {
         args.erase(it);
       } else if (it->is_output()) {
