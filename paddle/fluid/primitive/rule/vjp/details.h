@@ -406,10 +406,8 @@ void reshape_grad(const Tensor& xshape,
                   const Tensor& grad_out,
                   Tensor* grad_x) {
   if (grad_x) {
-    // xshape: [0] + x.shape
     auto xshape_dims = xshape.dims();
-    auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    auto grad_x_tmp = reshape<T>(grad_out, common::vectorize(x_dims));
+    auto grad_x_tmp = reshape<T>(grad_out, common::vectorize(xshape_dims));
     set_output<T>(grad_x_tmp, grad_x);
   }
 }
@@ -1084,7 +1082,8 @@ void softmax_grad(const Tensor& out,
         set_output<T>(tmp_x_grad, x_grad);
       }
     } else {
-      set_output<T>(out_grad * 0.0, x_grad);
+      Tensor zeros = full_scalar<T>(0.0, out.dtype());
+      set_output<T>(out_grad * zeros, x_grad);
     }
   }
 }
@@ -1179,17 +1178,22 @@ void matmul_grad(const Tensor& x,
                 reverse_perm[reverse_perm.size() - 2]);
       x_grad_trans = transpose<T>(x_grad_mm, reverse_perm);
     }
-
-    if (x_grad_trans.dims() != x.dims()) {
-      phi::DDim x_reduce_dim = get_reduce_dims_from_out(
-          x_grad_trans.dims(), temp_x_unsqueeze.dims());
-      auto dx_reduce_res = sum<T>(
-          x_grad_trans, common::vectorize(x_reduce_dim), x.dtype(), false);
-      auto x_grad_out = reshape<T>(dx_reduce_res, x.shape());
+    if (has_dynamic_shape(x.shape()) ||
+        has_dynamic_shape(x_grad_trans.shape())) {
+      auto x_grad_out = reduce_as<T>(x_grad_trans, temp_x_unsqueeze);
       set_output<T>(x_grad_out, x_grad);
     } else {
-      auto x_grad_out = x_grad_trans;
-      set_output<T>(x_grad_out, x_grad);
+      if (x_grad_trans.dims() != x.dims()) {
+        phi::DDim x_reduce_dim = get_reduce_dims_from_out(
+            x_grad_trans.dims(), temp_x_unsqueeze.dims());
+        auto dx_reduce_res = sum<T>(
+            x_grad_trans, common::vectorize(x_reduce_dim), x.dtype(), false);
+        auto x_grad_out = reshape<T>(dx_reduce_res, x.shape());
+        set_output<T>(x_grad_out, x_grad);
+      } else {
+        auto x_grad_out = x_grad_trans;
+        set_output<T>(x_grad_out, x_grad);
+      }
     }
   }
 
@@ -1207,17 +1211,22 @@ void matmul_grad(const Tensor& x,
                 reverse_perm[reverse_perm.size() - 2]);
       y_grad_trans = transpose<T>(y_grad_mm, reverse_perm);
     }
-
-    if (y_grad_trans.dims() != y.dims()) {
-      phi::DDim y_reduce_dim = get_reduce_dims_from_out(
-          y_grad_trans.dims(), temp_y_unsqueeze.dims());
-      auto dy_reduce_res = sum<T>(
-          y_grad_trans, common::vectorize(y_reduce_dim), y.dtype(), false);
-      auto y_grad_out = reshape<T>(dy_reduce_res, y.shape());
+    if (has_dynamic_shape(y.shape()) ||
+        has_dynamic_shape(y_grad_trans.shape())) {
+      auto y_grad_out = reduce_as<T>(y_grad_trans, temp_y_unsqueeze);
       set_output<T>(y_grad_out, y_grad);
     } else {
-      auto y_grad_out = y_grad_trans;
-      set_output<T>(y_grad_out, y_grad);
+      if (y_grad_trans.dims() != y.dims()) {
+        phi::DDim y_reduce_dim = get_reduce_dims_from_out(
+            y_grad_trans.dims(), temp_y_unsqueeze.dims());
+        auto dy_reduce_res = sum<T>(
+            y_grad_trans, common::vectorize(y_reduce_dim), y.dtype(), false);
+        auto y_grad_out = reshape<T>(dy_reduce_res, y.shape());
+        set_output<T>(y_grad_out, y_grad);
+      } else {
+        auto y_grad_out = y_grad_trans;
+        set_output<T>(y_grad_out, y_grad);
+      }
     }
   }
 }
@@ -1881,8 +1890,8 @@ void batch_norm_grad(const Tensor& x,
     }
 
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
-                                                data_layout));
+      PADDLE_THROW(common::errors::InvalidArgument("Unknown storage order: %s",
+                                                   data_layout));
   }
 }
 
@@ -2082,7 +2091,7 @@ void group_norm_grad(const Tensor& x,
   std::vector<int64_t> x_dims = x.shape();
   int rank = x_dims.size();
   if (rank < 3 || rank > 5) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Only support NCHW and NHWC format in rank {3, 4, 5}."));
   }
   int N = x_dims[0];
@@ -2103,8 +2112,8 @@ void group_norm_grad(const Tensor& x,
       reduce_axis.push_back(i);
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
-                                              data_layout));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unsupported storage order: %s", data_layout));
   }
 
   int g_num = C / groups;
@@ -2248,6 +2257,18 @@ void swiglu_grad(const Tensor& x,
     x_grad = concat<T>({x0_grad, x1_grad}, c_axis);
   }
   set_output<T>(x_grad, dx);
+}
+
+template <typename T>
+void softsign_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  // x_grad = out_grad / ((1 + abs(x))^2)
+
+  if (x_grad) {
+    Tensor x_abs = abs<T>(x);
+    Tensor x_abs_plusone = x_abs + full_scalar<T>(1.0, x.dtype());
+    Tensor x_grad_tmp = out_grad / (x_abs_plusone * x_abs_plusone);
+    set_output<T>(x_grad_tmp, x_grad);
+  }
 }
 
 }  // namespace details

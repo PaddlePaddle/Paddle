@@ -31,12 +31,12 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/common/place.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
-PD_DECLARE_bool(benchmark);
+COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(run_kp_kernel);
 
 namespace paddle::imperative {
@@ -121,7 +121,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::OperatorWithKernel::OpKernelFunc& func,
                        const phi::ArgumentMappingFn* arg_map_fn,
                        const phi::KernelSignature* default_kernel_signature,
-                       platform::DeviceContext* dev_ctx)
+                       phi::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
       kernel_key_(kernel_key),
@@ -138,7 +138,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const phi::KernelSignature* default_kernel_signature,
                        phi::KernelSignature&& kernel_signature,
                        const phi::Kernel& phi_kernel,
-                       platform::DeviceContext* dev_ctx)
+                       phi::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
       kernel_key_(kernel_key),
@@ -368,7 +368,7 @@ PreparedOp PrepareImpl(
   PADDLE_ENFORCE_NE(
       kernels_iter,
       all_op_kernels.end(),
-      platform::errors::NotFound(
+      common::errors::NotFound(
           "There are no kernels which are registered in the %s operator.",
           op.Type()));
 
@@ -435,9 +435,9 @@ PreparedOp PrepareImpl(
   PADDLE_ENFORCE_NE(
       kernel_iter,
       kernels.end(),
-      platform::errors::NotFound("Operator %s does not have kernel for %s.",
-                                 op.Type(),
-                                 KernelTypeToString(fluid_kernel_type)));
+      common::errors::NotFound("Operator %s does not have kernel for %s.",
+                               op.Type(),
+                               KernelTypeToString(fluid_kernel_type)));
 
   if (!phi::places_are_same_class(fluid_kernel_type.place_,
                                   dev_ctx->GetPlace())) {
@@ -511,7 +511,7 @@ static void PreparedOpRunImpl(
     const framework::OperatorWithKernel::OpKernelFunc& func,
     const phi::ArgumentMappingFn* arg_map_fn,
     const phi::KernelSignature* default_kernel_signature,
-    platform::DeviceContext* dev_ctx,
+    phi::DeviceContext* dev_ctx,
     const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs,
     const framework::AttributeMap& attrs,
@@ -522,7 +522,7 @@ static void PreparedOpRunImpl(
     platform::RecordEvent record_event("infer_shape",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(&ins,
                                                       &outs,
                                                       &attrs,
@@ -541,7 +541,7 @@ static void PreparedOpRunImpl(
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
 
     func(DygraphExecutionContext<VarType>(
         op, empty_scope, *dev_ctx, ctx, ins, outs, attrs, default_attrs));
@@ -586,7 +586,7 @@ static void PreparedOpRunPtImpl(
     const phi::KernelSignature& kernel_signature,
     const phi::Kernel& phi_kernel,
     const framework::RuntimeContext& ctx,
-    platform::DeviceContext* dev_ctx,
+    phi::DeviceContext* dev_ctx,
     const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs,
     const framework::AttributeMap& attrs,
@@ -595,7 +595,7 @@ static void PreparedOpRunPtImpl(
     platform::RecordEvent record_event("infer_shape",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(&ins,
                                                       &outs,
                                                       &attrs,
@@ -614,7 +614,7 @@ static void PreparedOpRunPtImpl(
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1,
-                                       platform::EventRole::kInnerOp);
+                                       phi::EventRole::kInnerOp);
 
     if (phi_kernel.GetKernelRegisteredType() ==
         phi::KernelRegisteredType::FUNCTION) {

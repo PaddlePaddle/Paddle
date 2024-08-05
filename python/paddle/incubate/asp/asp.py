@@ -16,8 +16,11 @@
 Functions for Auto SParsity (ASP) training and inference.
 """
 
+from __future__ import annotations
+
 import copy
 import os
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Sequence
 
 import numpy as np
 
@@ -34,16 +37,27 @@ from .utils import MaskAlgo
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    from paddle import Tensor
+    from paddle._typing import PlaceLike
+    from paddle.nn import Layer
+    from paddle.optimizer import Optimizer
+    from paddle.static import Operator, Program
+
 __all__ = []
 
 
-def set_excluded_layers(param_names, main_program=None):
+def set_excluded_layers(
+    param_names: list[str], main_program: Program | None = None
+) -> None:
     r"""
     Set parameter name of layers which would not be pruned as sparse weights.
 
     Args:
         param_names (list of string): A list contains names of parameters.
-        main_program (Program, optional): Program with model definition and its parameters.
+        main_program (Program|None, optional): Program with model definition and its parameters.
                                           If None is given, then it would be set as `paddle.static.default_main_program().
                                           Default is None.
     Examples:
@@ -124,7 +138,7 @@ def set_excluded_layers(param_names, main_program=None):
     )
 
 
-def reset_excluded_layers(main_program=None):
+def reset_excluded_layers(main_program: Program | None = None) -> None:
     r"""
     Reset excluded layers setting corresponding to :attr:`main_program`. If :attr:`main_program`
     is None, then all configurations of excluded_layers would be cleaned.
@@ -213,7 +227,7 @@ def reset_excluded_layers(main_program=None):
     ASPHelper.reset_excluded_layers(main_program=main_program)
 
 
-def decorate(optimizer):
+def decorate(optimizer: Optimizer) -> OptimizerWithSparsityGuarantee:
     r"""
     Wrap the given optimizer as a OptimizerWithSparsityGuarantee,
     If running with dynamic graph mode. ASP would creates mask variables for supported parameters.
@@ -299,7 +313,13 @@ def decorate(optimizer):
     return ASPHelper.decorate(optimizer)
 
 
-def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
+def prune_model(
+    model: Program | Layer,
+    n: int = 2,
+    m: int = 4,
+    mask_algo: Literal['mask_1d', 'mask_2d_greedy', 'mask_2d_best'] = 'mask_1d',
+    with_mask: bool = True,
+) -> dict[str, Tensor]:
     r"""
     Pruning parameters of supported layers in :attr:`model` via
     specified mask generation function given by :attr:`mask_algo`. This
@@ -480,33 +500,33 @@ class ProgramASPInfo:
     3. __excluded_layers (List): It stores name of layers which should not involve into ASP workflow.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.__mask_vars = {}
         self.__masks = {}
         self.__excluded_layers = []
 
-    def update_mask_vars(self, param_name, var):
+    def update_mask_vars(self, param_name: str, var: Tensor) -> None:
         self.__mask_vars[param_name] = var
 
-    def update_masks(self, param_name, var):
+    def update_masks(self, param_name: str, var: npt.NDArray[Any]) -> None:
         self.__masks[param_name] = var
 
-    def update_excluded_layers(self, param_names):
+    def update_excluded_layers(self, param_names: list[str]) -> None:
         self.__excluded_layers.extend(copy.deepcopy(param_names))
 
-    def reset_excluded_layers(self):
+    def reset_excluded_layers(self) -> None:
         self.__excluded_layers = []
 
     @property
-    def mask_vars(self):
+    def mask_vars(self) -> dict[str, Tensor]:
         return self.__mask_vars
 
     @property
-    def masks(self):
+    def masks(self) -> dict[str, npt.NDArray[Any]]:
         return self.__masks
 
     @property
-    def excluded_layers(self):
+    def excluded_layers(self) -> list[str]:
         return self.__excluded_layers
 
 
@@ -524,7 +544,9 @@ class ASPHelper:
     __asp_info = {}
 
     @classmethod
-    def set_excluded_layers(cls, param_names, main_program):
+    def set_excluded_layers(
+        cls, param_names: list[str], main_program: Program
+    ) -> None:
         r"""
         This is the implementation of `asp.set_excluded_layers`, for details please see explanation in `asp.set_excluded_layers`.
         """
@@ -532,7 +554,7 @@ class ASPHelper:
         asp_info.update_excluded_layers(param_names)
 
     @classmethod
-    def reset_excluded_layers(cls, main_program=None):
+    def reset_excluded_layers(cls, main_program: Program | None = None) -> None:
         r"""
         This is the implementation of `asp.reset_excluded_layers`, for details please see explanation in `asp.reset_excluded_layers`.
         """
@@ -543,7 +565,7 @@ class ASPHelper:
             cls._get_program_asp_info(main_program).reset_excluded_layers()
 
     @staticmethod
-    def decorate(optimizer):
+    def decorate(optimizer: Optimizer) -> OptimizerWithSparsityGuarantee:
         r"""
         This is the implementation of `asp.decorate`, for details please see explanation in `asp.decorate`.
         """
@@ -562,13 +584,13 @@ class ASPHelper:
     @classmethod
     def prune_model_by_program(
         cls,
-        place,
-        main_program=None,
-        n=2,
-        m=4,
-        mask_algo=MaskAlgo.MASK_1D,
-        with_mask=True,
-    ):
+        place: PlaceLike,
+        main_program: Program | None = None,
+        n: int = 2,
+        m: int = 4,
+        mask_algo: MaskAlgo = MaskAlgo.MASK_1D,
+        with_mask: bool = True,
+    ) -> dict[str, npt.NDArray[Any]]:
         r"""
         This is the implementation of `asp.prune_model`, for details please see explanation in `asp.prune_model`.
         """
@@ -612,13 +634,13 @@ class ASPHelper:
     @classmethod
     def prune_model_by_layer(
         cls,
-        place,
-        layer,
-        n=2,
-        m=4,
-        mask_algo=MaskAlgo.MASK_1D,
-        with_mask=True,
-    ):
+        place: PlaceLike,
+        layer: Layer,
+        n: int = 2,
+        m: int = 4,
+        mask_algo: MaskAlgo = MaskAlgo.MASK_1D,
+        with_mask: bool = True,
+    ) -> dict[str, npt.NDArray[Any]]:
         r"""
         This is the implementation of `asp.prune_model`, for details please see explanation in `asp.prune_model`.
         """
@@ -673,7 +695,7 @@ class ASPHelper:
             )
 
     @staticmethod
-    def _get_mask_name(param_name):
+    def _get_mask_name(param_name: str) -> str:
         r"""
         Return mask name by given parameter name :attr:`param_name`.
 
@@ -685,7 +707,7 @@ class ASPHelper:
         return param_name + "." + ASPHelper.MASK_APPENDDED_NAME
 
     @staticmethod
-    def _get_not_ASP_relevant_vars(main_program):
+    def _get_not_ASP_relevant_vars(main_program: Program) -> list[Tensor]:
         r"""
         Get all parameters's Variables in :attr:`main_program` but excluded ASP mask Variables.
 
@@ -703,13 +725,15 @@ class ASPHelper:
         return var_list
 
     @classmethod
-    def _get_program_asp_info(cls, main_program):
+    def _get_program_asp_info(cls, main_program: Program) -> ProgramASPInfo:
         if main_program not in cls.__asp_info:
             cls.__asp_info[main_program] = ProgramASPInfo()
         return cls.__asp_info[main_program]
 
     @classmethod
-    def _is_supported_layer(cls, main_program, param_name):
+    def _is_supported_layer(
+        cls, main_program: Program, param_name: str
+    ) -> bool:
         r"""
         Verify if given :attr:`param_name` is supported by ASP.
 
@@ -768,7 +792,12 @@ class ASPHelper:
         return False
 
     @classmethod
-    def _get_prune_func_by_name(cls, param_name):
+    def _get_prune_func_by_name(
+        cls, param_name: str
+    ) -> Callable[
+        [npt.NDArray[Any], int, int, MaskAlgo, str],
+        tuple[npt.NDArray[Any], npt.NDArray[Any]],
+    ]:
         func = supported_layers_and_prune_func_map.get(param_name, None)
         param_name_no_weight_suffix = param_name.split('.')[0]
         if func is None:
@@ -787,13 +816,13 @@ class ASPHelper:
     @classmethod
     def _minimize(
         cls,
-        optimizer,
-        loss,
-        main_program=None,
-        startup_program=None,
-        parameter_list=None,
-        no_grad_set=None,
-    ):
+        optimizer: Optimizer,
+        loss: Tensor,
+        main_program: Program | None = None,
+        startup_program: Program | None = None,
+        parameter_list: Iterable[Tensor] | Iterable[str] | None = None,
+        no_grad_set: set[Tensor] | set[str] | None = None,
+    ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
         r"""
         This function is a decorator of `minimize` function in `Optimizer`.
         There are three steps:
@@ -834,7 +863,7 @@ class ASPHelper:
 
     @classmethod
     @dygraph_only
-    def _step(cls, optimizer):
+    def _step(cls, optimizer: Optimizer) -> None:
         r"""
         This function is a decorator of `step` function in `Optimizer`.
         There are three steps:
@@ -857,7 +886,12 @@ class ASPHelper:
             )
 
     @classmethod
-    def _create_mask_variables(cls, main_program, startup_program, params):
+    def _create_mask_variables(
+        cls,
+        main_program: Program,
+        startup_program: Program,
+        params: Sequence[Tensor],
+    ) -> None:
         r"""
         Create sparse mask Tensors according to supported layers in :attr:`main_program`.
         This function is called in second step of `ASPHelper._minimize`
@@ -885,7 +919,9 @@ class ASPHelper:
                         asp_info.update_mask_vars(param.name, mask_param)
 
     @classmethod
-    def _insert_sparse_mask_ops(cls, main_program, params):
+    def _insert_sparse_mask_ops(
+        cls, main_program: Program, params: Sequence[Tensor]
+    ) -> None:
         r"""
         Insert masking ops in the end of parameters update.
         This function is called in third step of `ASPHelper._minimize`
@@ -918,15 +954,19 @@ class OptimizerWithSparsityGuarantee:
     3. Call `ASPHelper._insert_sparse_mask_ops` to insert weight masking ops in the end of `loss`'s Program.
     """
 
-    def __init__(self, optimizer):
+    def __init__(self, optimizer: Optimizer) -> None:
         self._optimizer = optimizer
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         return getattr(self._optimizer, item)
 
     def minimize(
-        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
-    ):
+        self,
+        loss: Tensor,
+        startup_program: Program | None = None,
+        parameter_list: Iterable[Tensor] | Iterable[str] | None = None,
+        no_grad_set: set[Tensor] | set[str] | None = None,
+    ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
         r"""
         This function is to call `ASPHelper.minimize()` and return its return
 
@@ -948,7 +988,7 @@ class OptimizerWithSparsityGuarantee:
         )
 
     @dygraph_only
-    def step(self):
+    def step(self) -> None:
         r"""
         This function is a decorator of `step` function in `Optimizer`.
         There are three steps:
@@ -966,7 +1006,7 @@ class OptimizerWithSparsityGuarantee:
         ASPHelper._step(self._optimizer)
 
     @dygraph_only
-    def state_dict(self):
+    def state_dict(self) -> dict[str, Tensor]:
         r"""
         This function is a decorator of `state_dict` function in `Optimizer`.
 
@@ -982,7 +1022,7 @@ class OptimizerWithSparsityGuarantee:
         return state_dict
 
     @dygraph_only
-    def set_state_dict(self, state_dict):
+    def set_state_dict(self, state_dict: dict[str, Tensor]) -> None:
         r"""
         This function is a decorator of `set_state_dict` function in `Optimizer`.
         Args:

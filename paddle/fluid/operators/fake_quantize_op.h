@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/common/hostdevice.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/core/memory/malloc.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
@@ -87,9 +87,9 @@ class StraightThroughEstimatorGradKernel : public framework::OpKernel<T> {
     auto *d_x = context.Output<phi::DenseTensor>(x_grad_name);
     PADDLE_ENFORCE_NOT_NULL(
         d_x,
-        phi::errors::PreconditionNotMet("StraightThroughEstimatorGradKernel "
-                                        "doesn't have the output named %s.",
-                                        x_grad_name));
+        common::errors::PreconditionNotMet("StraightThroughEstimatorGradKernel "
+                                           "doesn't have the output named %s.",
+                                           x_grad_name));
 
     // Initialize dx as same as d_out
     d_x->mutable_data<T>(context.GetPlace());

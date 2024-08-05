@@ -32,7 +32,7 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
     const paddle::Tensor& LnScale,
     const paddle::Tensor& LnBias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "fused_bias_dropout_residual_layer_norm dygraph",
       paddle::platform::TracerEventType::Operator,
       1);
@@ -162,7 +162,7 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
   egr::EagerUtils::GetOutput(outs["Y"][0], &Y);
 
   {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "fused_bias_dropout_residual_layer_norm node_creation",
         paddle::platform::TracerEventType::OperatorInner,
         1);

@@ -833,7 +833,11 @@ def max_unpool1d(
     padding = _expand_low_nd_padding(padding)
 
     if output_size is not None:
-        output_size = output_size[:2] + [1] + output_size[2:]
+        output_size = (
+            output_size[:2]
+            + ([1] if isinstance(output_size, list) else (1,))
+            + output_size[2:]
+        )
     output_size = _unpool_output_size(
         x, kernel_size, stride, padding, output_size
     )
@@ -2187,7 +2191,7 @@ def fractional_max_pool2d(
         if output_size[1] is None:
             output_size[1] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pool_out = _C_ops.fractional_max_pool2d(
             x, output_size, kernel_size, float(random_u), return_mask
         )
@@ -2344,7 +2348,7 @@ def fractional_max_pool3d(
         if output_size[2] is None:
             output_size[2] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pool_out = _C_ops.fractional_max_pool3d(
             x,
             output_size,

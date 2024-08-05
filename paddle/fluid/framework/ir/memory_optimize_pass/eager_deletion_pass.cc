@@ -60,10 +60,10 @@ static int64_t GetMemorySize(
   auto *var_desc = TryGetLatestVarDesc(vars.at(var_name));
   PADDLE_ENFORCE_NOT_NULL(
       var_desc,
-      platform::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
+      common::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
   PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Var(%s) must be phi::DenseTensor.", var_name));
   auto dims = var_desc->GetShape();
   return static_cast<int64_t>(
@@ -75,9 +75,9 @@ static int64_t GetMemorySize(
 }
 
 // Split all variables in the graph into phi::DenseTensor and
-// Non-phi::DenseTensor (e.g. SelectedRows, LoDTensorArray) Since partial GC is
-// based on static analysis of memory size of each variable So we should skip
-// SelectedRows and LoDTensorArray here
+// Non-phi::DenseTensor (e.g. SelectedRows, phi::TensorArray) Since partial GC
+// is based on static analysis of memory size of each variable So we should skip
+// SelectedRows and phi::TensorArray here
 static void SplitIntoLoDTensorAndNonLoDTensorVars(
     const OpToVarNameSetMap &m,
     const details::GraphVars &vars,
@@ -186,7 +186,7 @@ static OpToVarNameSetMap ShrinkGCVars(const OpToVarNameSetMap &m,
   }
 
   /**
-   * Step 4: Combine other vars (SelectedRows, LoDTensorArray)
+   * Step 4: Combine other vars (SelectedRows, phi::TensorArray)
    */
   if (!delete_lod_tensor_only) {
     for (auto &op_vars_pair : other_vars) {
@@ -274,7 +274,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
 
     eager_deletion_op->SetDeviceContext(
         places[op->GetScopeIdx()],
-        platform::DeviceContextPool::Instance().Get(places[op->GetScopeIdx()]));
+        phi::DeviceContextPool::Instance().Get(places[op->GetScopeIdx()]));
   }
 
   VLOG(10) << "FLAGS_memory_fraction_of_eager_deletion = " << memory_fraction;

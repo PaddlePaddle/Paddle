@@ -36,7 +36,7 @@ void* GetCutlassGemmEpilogueHandle() {
 
     PADDLE_ENFORCE_NOT_NULL(
         cutlass_gemm_epilogue_dso_handle,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "libCutlassGemmEpilogue.so is needed, "
             "but libCutlassGemmEpilogue.so is not found.\n"
             "  Suggestions:\n"

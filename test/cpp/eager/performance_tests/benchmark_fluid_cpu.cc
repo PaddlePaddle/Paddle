@@ -25,7 +25,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "test/cpp/eager/performance_tests/benchmark_utils.h"
 #include "test/cpp/eager/test_utils.h"
 
@@ -60,15 +60,14 @@ TEST(Benchmark, FluidScaleCPU) {
                          sizeof(float) * src_data.size());
 
     if (mode == "Accuracy") {
-      benchmark_fluid_scale(
-          X, platform::Place(place), true /* accuracy_check */);
+      benchmark_fluid_scale(X, phi::Place(place), true /* accuracy_check */);
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_scale_cpu.out");
 #endif
-      benchmark_fluid_scale(X, platform::Place(place));
+      benchmark_fluid_scale(X, phi::Place(place));
 
 #ifdef WITH_GPERFTOOLS
       ProfilerStop();
@@ -79,7 +78,7 @@ TEST(Benchmark, FluidScaleCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(common::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -119,14 +118,14 @@ TEST(Benchmark, FluidMatmulCPU) {
 
     if (mode == "Accuracy") {
       benchmark_fluid_matmul(
-          X, Y, platform::Place(place), true /* accuracy_check */);
+          X, Y, phi::Place(place), true /* accuracy_check */);
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_matmul_cpu.out");
 #endif
-      benchmark_fluid_matmul(X, Y, platform::Place(place));
+      benchmark_fluid_matmul(X, Y, phi::Place(place));
 
 #ifdef WITH_GPERFTOOLS
       ProfilerStop();
@@ -138,7 +137,7 @@ TEST(Benchmark, FluidMatmulCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(common::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -203,14 +202,14 @@ TEST(Benchmark, FluidMLPCPU) {
 
     if (mode == "Accuracy") {
       benchmark_fluid_mlp(
-          X, Ws, Bs, platform::Place(place), true /* accuracy_check */);
+          X, Ws, Bs, phi::Place(place), true /* accuracy_check */);
 
     } else if (mode == "Performance") {
       auto t_start = std::chrono::high_resolution_clock::now();
 #ifdef WITH_GPERFTOOLS
       ProfilerStart("fluid_mlp_cpu.out");
 #endif
-      benchmark_fluid_mlp(X, Ws, Bs, platform::Place(place));
+      benchmark_fluid_mlp(X, Ws, Bs, phi::Place(place));
 
 #ifdef WITH_GPERFTOOLS
       ProfilerStop();
@@ -222,7 +221,7 @@ TEST(Benchmark, FluidMLPCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(common::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }

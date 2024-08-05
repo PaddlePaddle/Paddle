@@ -219,12 +219,12 @@ void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ct
   ctx.template Alloc<uint8_t>(&workspace);
   status = fmha.initialize(args, workspace.data<uint8_t>());
   if (status != cutlass::Status::kSuccess) {{
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Failed to initialize CUTLASS Grouped FMHA kernel."));
   }}
   status = fmha.run(ctx.stream());
   if (status != cutlass::Status::kSuccess) {{
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Failed to run CUTLASS Grouped FMHA kernel."));
   }}
 }}
@@ -396,7 +396,7 @@ void dispatch_{family_name}(const ::phi::GPUContext &ctx, T cb) {{
     PADDLE_ENFORCE_GE(
         cc,
         70,
-        phi::errors::InvalidArgument("the Nvidia GPU's Compute Capability must be greater or equal than 70"));
+        common::errors::InvalidArgument("the Nvidia GPU's Compute Capability must be greater or equal than 70"));
 
     using DT = typename ::phi::CutlassTrait<PaddleT>::Type;
 {dispatch_all}

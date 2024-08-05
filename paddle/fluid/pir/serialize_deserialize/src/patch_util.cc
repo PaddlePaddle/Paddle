@@ -32,6 +32,7 @@ Json BuildAttrJsonPatch(const YAML::Node &action) {
     j_attr_type = nullptr;
   } else {
     j_attr_type = GetAttrJson(action);
+    j_attr_type = GetAttrJson(action);
   }
   return j_attr_type;
 }
@@ -148,7 +149,7 @@ Json GetAttrJson(const YAML::Node &action) {
       json[ID] = dialect + paddle::dialect::PlaceAttribute::name();
     }
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Attr %s in the OpPatches.", at_name));
   }
   return json;
@@ -248,6 +249,7 @@ Json ParseOpPatches(const YAML::Node &root) {
   Json json_patch = Json::array();
   for (size_t i = 0; i < root.size(); i++) {
     // parse op_name
+    YAML::Node node = root[i];
     YAML::Node node = root[i];
     auto op_name = node["op_name"].as<std::string>();
     if (op_name == pir::ParameterOp::name()) {

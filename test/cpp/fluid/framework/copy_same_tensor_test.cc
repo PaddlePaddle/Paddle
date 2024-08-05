@@ -22,15 +22,15 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 PD_DECLARE_bool(use_system_allocator);
 
 namespace paddle {
 namespace framework {
 
-static std::vector<platform::Place> CreatePlaceList() {
-  std::vector<platform::Place> places;
+static std::vector<phi::Place> CreatePlaceList() {
+  std::vector<phi::Place> places;
   places.emplace_back(phi::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   places.emplace_back(phi::GPUPlace(0));

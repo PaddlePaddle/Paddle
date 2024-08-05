@@ -35,9 +35,9 @@ void StridedSliceRawGradStridedKernel(const Context& dev_ctx,
                                       const std::vector<int>& decrease_axis,
                                       DenseTensor* x_grad) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   dev_ctx.Alloc(x_grad, x_grad->dtype());
   x_grad->set_strides(DenseTensorMeta::calc_strides(x_grad->dims()));
@@ -79,9 +79,9 @@ void StridedSliceGradStridedKernel(const Context& dev_ctx,
                                    const IntArray& strides,
                                    DenseTensor* x_grad) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   std::vector<int> infer_flags(axes.size(), 1);
   std::vector<int> decrease_axis;

@@ -28,17 +28,17 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
+        def generate_input1(dims, batch, dtype, attrs: List[Dict[str, Any]]):
             if dims == 0:
-                return np.ones([]).astype(np.float32)
+                return np.ones([]).astype(dtype)
             elif dims == 1:
-                return np.ones([32]).astype(np.float32)
+                return np.ones([32]).astype(dtype)
             elif dims == 2:
-                return np.ones([3, 32]).astype(np.float32)
+                return np.ones([3, 32]).astype(dtype)
             elif dims == 3:
-                return np.ones([3, 32, 32]).astype(np.float32)
+                return np.ones([3, 32, 32]).astype(dtype)
             else:
-                return np.ones([batch, 3, 32, 32]).astype(np.float32)
+                return np.ones([batch, 3, 32, 32]).astype(dtype)
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.array([np.random.uniform(1, 10)]).astype("float32")
@@ -48,50 +48,54 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
 
         for dims in [0, 1, 2, 3, 4]:
             for batch in [1, 4]:
-                for op_inputs in [
-                    {"X": ["input_data"]},
-                    {"X": ["input_data"], "Min": ["Min_"], "Max": ["Max_"]},
-                ]:
-                    self.input_num = len(op_inputs)
-                    self.dims = dims
-                    dics = [
-                        {
-                            "min": np.random.uniform(1, 10),
-                            "max": np.random.uniform(10, 20),
-                        },
-                        {"op_inputs": op_inputs},
-                    ]
-                    ops_config = [
-                        {
-                            "op_type": "clip",
-                            "op_inputs": op_inputs,
-                            "op_outputs": {"Out": ["output_data"]},
-                            "op_attrs": dics[0],
-                        }
-                    ]
-                    ops = self.generate_op_config(ops_config)
-
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={
-                            "Min_": TensorConfig(
-                                data_gen=partial(generate_weight1, dics)
-                            ),
-                            "Max_": TensorConfig(
-                                data_gen=partial(generate_weight2, dics)
-                            ),
-                        },
-                        inputs={
-                            "input_data": TensorConfig(
-                                data_gen=partial(
-                                    generate_input1, dims, batch, dics
+                for dtype in [np.float32, np.int32]:
+                    for op_inputs in [
+                        {"X": ["input_data"]},
+                        {"X": ["input_data"], "Min": ["Min_"], "Max": ["Max_"]},
+                    ]:
+                        self.input_num = len(op_inputs)
+                        self.dims = dims
+                        dics = [
+                            {
+                                "min": np.random.uniform(1, 10),
+                                "max": np.random.uniform(10, 20),
+                            },
+                            {"op_inputs": op_inputs},
+                        ]
+                        ops_config = [
+                            {
+                                "op_type": "clip",
+                                "op_inputs": op_inputs,
+                                "op_outputs": {"Out": ["output_data"]},
+                                "op_attrs": dics[0],
+                            }
+                        ]
+                        ops = self.generate_op_config(ops_config)
+                        program_config = ProgramConfig(
+                            ops=ops,
+                            weights={
+                                "Min_": TensorConfig(
+                                    data_gen=partial(generate_weight1, dics)
+                                ),
+                                "Max_": TensorConfig(
+                                    data_gen=partial(generate_weight2, dics)
+                                ),
+                            },
+                            inputs={
+                                "input_data": TensorConfig(
+                                    data_gen=partial(
+                                        generate_input1,
+                                        dims,
+                                        batch,
+                                        dtype,
+                                        dics,
+                                    )
                                 )
-                            )
-                        },
-                        outputs=["output_data"],
-                    )
+                            },
+                            outputs=["output_data"],
+                        )
 
-                    yield program_config
+                        yield program_config
 
     def sample_predictor_configs(self, program_config):
         def generate_dynamic_shape(attrs):
@@ -128,13 +132,10 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.input_num == 3:
-                return 0, 3
+            if dynamic_shape and self.dims != 0 and self.input_num != 3:
+                return 1, 2
             else:
-                if not dynamic_shape and (self.dims == 1 or self.dims == 0):
-                    return 0, 3
-                else:
-                    return 1, 2
+                return 0, 3
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -143,12 +144,10 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), (1e-3, 1e-3)
@@ -156,12 +155,10 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)

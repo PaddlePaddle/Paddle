@@ -29,11 +29,11 @@ namespace ir {
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
-  }                                                                         \
-  catch (const utils::ErrorHandler& err_handler) {                          \
-    PADDLE_THROW(                                                           \
-        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)              \
+  }                                                      \
+  catch (const utils::ErrorHandler& err_handler) {       \
+    PADDLE_THROW(::common::errors::Fatal(                \
+        err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 void DyScheduleImpl::MutateForType(const Expr& loop,
@@ -56,7 +56,10 @@ void DyScheduleImpl::MutateForType(const Expr& loop,
 
   auto loop_copy = ir::ir_utils::IRCopy(loop, /* copy_buffer_node = */ false);
   auto* new_for_node = loop_copy.As<ir::For>();
-  CHECK(new_for_node);
+  PADDLE_ENFORCE_NOT_NULL(new_for_node,
+                          ::common::errors::InvalidArgument(
+                              "The newly created For node is null. "
+                              "Please ensure the loop_copy is valid."));
   new_for_node->set_for_type(for_type);
   if (new_for_node->is_vectorized()) {
     VectorizeInfo vec_info(0, factor);

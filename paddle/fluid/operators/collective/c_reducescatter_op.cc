@@ -31,7 +31,7 @@ class CReduceScatterOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           dim[0] % nranks,
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "dim[0] (%d) is not divisible by nranks(%d)", dim[0], nranks));
       dim[0] /= nranks;
     }

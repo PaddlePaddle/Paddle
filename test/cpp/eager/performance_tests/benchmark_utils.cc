@@ -35,7 +35,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/memory/memcpy.h"
 
 static size_t max_num_benchmark_runs = 4000;
 
@@ -183,7 +183,7 @@ static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
   VLOG(6) << "Tensor Value: " << t_ptr[0] << ", Expected Value: " << value;
   PADDLE_ENFORCE(
       t_ptr[0] == value,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "Detected numerical Error, Expected %f but got %f", value, t_ptr[0]));
 }
 
@@ -214,7 +214,7 @@ static void FluidCheckGradTensorValue(
   VLOG(6) << "Tensor Value: " << g_ptr[0] << ", Expected Value: " << value;
   PADDLE_ENFORCE(
       g_ptr[0] == value,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "Detected numerical Error, Expected %f but got %f", value, g_ptr[0]));
 }
 
