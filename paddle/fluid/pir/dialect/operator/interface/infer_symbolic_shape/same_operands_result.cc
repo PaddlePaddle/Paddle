@@ -161,6 +161,12 @@ OP_SAME_OPERANDS_AND_RESULT(Polygamma)
 OP_SAME_OPERANDS_AND_RESULT(Polygamma_)
 OP_SAME_OPERANDS_AND_RESULT(EnableCheckModelNanInf)
 OP_SAME_OPERANDS_AND_RESULT(ViewShape)
+OP_SAME_OPERANDS_AND_RESULT(Silu)
+OP_SAME_OPERANDS_AND_RESULT(ViewDtype)
+OP_SAME_OPERANDS_AND_RESULT(Sqrt)
+OP_SAME_OPERANDS_AND_RESULT(Sqrt_)
+OP_SAME_OPERANDS_AND_RESULT(SqrtSr)
+OP_SAME_OPERANDS_AND_RESULT(SqrtSr_)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
