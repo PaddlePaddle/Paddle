@@ -901,33 +901,38 @@ bool MultiplexOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &ids_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const std::vector<symbol::DimExpr> &ids_dims = ids_shape_or_data.shape();
-
-  PADDLE_ENFORCE_GE(
-      ids_dims.size(),
-      1UL,
-      common::errors::InvalidArgument(
-          "The Input(ids) should be a 1-D tensor, but received rank is %d.",
-          ids_dims.size()));
+  const auto &ids_dims = ids_shape_or_data.shape();
 
   const auto &ins_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  std::vector<symbol::DimExpr> in_dims = ins_shape_or_data.shape();
+  const auto &ins_dims = ins_shape_or_data.shape();
+  auto num_ins = ins_dims.size();
 
-  PADDLE_ENFORCE_GT(in_dims.size(),
-                    0UL,
-                    common::errors::InvalidArgument(
-                        "The Input(ins) dims size must be greater than 0, but "
-                        "received dims size is 0."));
+  PADDLE_ENFORCE_GT(
+      num_ins,
+      1,
+      phi::errors::InvalidArgument("multiplex operator should have more than "
+                                   "one candidate input tensors."));
 
-  in_dims[0] = ids_dims[0];
+  auto in_dim = ins_dims[0];
 
+  for (size_t i = 1; i < num_ins; i++) {
+    auto dim = ins_dims[i];
+    PADDLE_ENFORCE_EQ(
+        dim == in_dim,
+        true,
+        phi::errors::PreconditionNotMet(
+            "All the candidate tensors must have the same size."));
+  }
+
+  std::vector<symbol::DimExpr> out_dims = ins_dims;
+  out_dims[0] = ids_dims[0];
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs(in_dims));
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
 
   return true;
 }
-
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
