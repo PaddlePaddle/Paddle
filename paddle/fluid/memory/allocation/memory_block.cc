@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/memory_block.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle::memory::detail {
 

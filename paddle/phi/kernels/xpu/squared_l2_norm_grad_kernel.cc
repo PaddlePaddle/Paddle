@@ -31,7 +31,7 @@ void SquaredL2NormGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       dout.numel(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(GRAD@Out) of SquaredL2NormGradOP should be a scalar."));
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());

@@ -75,6 +75,16 @@ void SetBroadcastLeafGroup(
           new_group->ops().size()));
   UpdateGroupShapeExprs(
       new_group, origin_group, value_dim_exprs_list, value_to_dim_expr_idx);
+
+  // We should update the GlobalShapeAnalysisCache after the group is cloned.
+  for (const auto& op : new_group->ops()) {
+    for (const auto& v : op->results()) {
+      auto* shape_analysis =
+          &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+      shape_analysis->SetShapeOrDataForValue(v,
+                                             new_group->GetShapeOrDataExprs(v));
+    }
+  }
   group_list->emplace_back(new_group);
 }
 
