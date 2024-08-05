@@ -1170,6 +1170,22 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);
 
+  m.def("need_type_promotion_with_datatype",
+        [](const std::string &op_name,
+           phi::DataType type_x,
+           phi::DataType type_y) {
+          return phi::NeedTypePromotion(op_name, type_x, type_y);
+        });
+  m.def("get_promote_dtype_with_datatype",
+        [](const std::string &op_name,
+           phi::DataType type_x,
+           phi::DataType type_y) {
+          return phi::GetPromoteDtype(op_name, type_x, type_y);
+        });
+  m.def("is_common_dtype_for_scalar_with_datatype",
+        [](phi::DataType type_x, phi::DataType type_y) {
+          return phi::is_common_dtype_for_scalar(type_x, type_y);
+        });
   m.def("need_type_promotion",
         [](const std::string &op_name,
            framework::proto::VarType::Type type_x,

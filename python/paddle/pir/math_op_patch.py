@@ -19,6 +19,7 @@ import warnings
 import numpy as np
 
 from paddle import _C_ops
+from paddle.base import core
 from paddle.base.libpaddle import DataType
 from paddle.base.wrapped_decorator import wrap_decorator
 
@@ -33,6 +34,29 @@ _supported_int_dtype_ = [
     DataType.INT16,
     DataType.INT32,
     DataType.INT64,
+]
+
+SUPPORT_PROMOTION_OPS = [
+    "__add__",
+    "__radd__",
+    "__sub__",
+    "__rsub__",
+    "__mul__",
+    "__rmul__",
+    "__mod__",
+    "__div__",
+    "__rdiv__",
+    "__truediv__",
+    "__rtruediv__",
+    "__floordiv__",
+    "__pow__",
+    "__rpow__",
+    "__eq__",
+    "__ne__",
+    "__lt__",
+    "__le__",
+    "__gt__",
+    "__ge__",
 ]
 
 
@@ -343,6 +367,9 @@ def monkey_patch_value():
                     and self.dtype in _supported_int_dtype_
                 ):
                     self = paddle.cast(self, DataType.FLOAT32)
+                # bool(tensor) + int(scalar) will do type promotion to int64
+                if self.dtype == paddle.bool:
+                    self = astype(self, 'int64')
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
                 if scalar_method is not None:
@@ -353,38 +380,76 @@ def monkey_patch_value():
 
             # 2. create Value for scalar
             lhs_dtype = safe_get_dtype(self)
-            other_var_value = other_var
             if not isinstance(other_var, Value):
                 if reverse:
                     for elem in self.shape:
                         if elem < 0:
-                            other_var_value = create_tensor_with_batchsize(
+                            other_var = create_tensor_with_batchsize(
                                 self, other_var, lhs_dtype
                             )
 
                             break
                     else:
                         # when break is not triggered, enter the else branch
-                        other_var_value = paddle.tensor.creation.fill_constant(
+                        other_var = paddle.tensor.creation.fill_constant(
                             self.shape,
                             lhs_dtype,
                             other_var,
                         )
                 else:
                     # add fill_op to current_block
-                    other_var_value = paddle.tensor.creation.fill_constant(
+                    other_var = paddle.tensor.creation.fill_constant(
                         [],
                         lhs_dtype,
                         other_var,
                     )
 
-            # 3. the type promotion is put into the api generation phase
+            # 3. unify right var type to left var
+            rhs_dtype = safe_get_dtype(other_var)
+            op_type = python_api.__name__
+            if lhs_dtype != rhs_dtype:
+                if method_name in SUPPORT_PROMOTION_OPS:
+                    # different major types or both 0-d tensor follow with T+T rule.
+                    if len(other_var.shape) == 0 or len(self.shape) == 0:
+                        if not core.is_common_dtype_for_scalar_with_datatype(
+                            lhs_dtype, rhs_dtype
+                        ) or (
+                            len(other_var.shape) == 0 and len(self.shape) == 0
+                        ):
+                            promote_type = core.get_promote_dtype_with_datatype(
+                                op_type, lhs_dtype, rhs_dtype
+                            )
+                            if lhs_dtype != promote_type:
+                                self = astype(self, promote_type)
+                            if rhs_dtype != promote_type:
+                                other_var = astype(other_var, promote_type)
+                        # common major types follow with tensor: int32(tensor) + int64(scalar) = int32
+                        else:
+                            if len(self.shape) == 0:
+                                self = astype(self, rhs_dtype)
+                            else:
+                                other_var = astype(other_var, lhs_dtype)
+                    elif core.need_type_promotion_with_datatype(
+                        op_type, lhs_dtype, rhs_dtype
+                    ):
+                        # only report warning here, real promotion deal in Executor
+                        warnings.warn(
+                            f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, the output will be auto-promoted"
+                        )
+                        warnings.filterwarnings(
+                            "ignore", message="The input dtypes of OP"
+                        )
+                else:
+                    raise TypeError(
+                        f"got different data type in {op_type} between {lhs_dtype} and {rhs_dtype}."
+                    )
+
             if reverse:
                 tmp = self
-                self = other_var_value
-                other_var_value = tmp
+                self = other_var
+                other_var = tmp
 
-            out = python_api(self, other_var_value)
+            out = python_api(self, other_var)
             return out
 
         __impl__.__doc__ = """
