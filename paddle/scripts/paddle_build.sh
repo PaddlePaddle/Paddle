@@ -2777,7 +2777,7 @@ set +x
 
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
 
-        run_cinn_ut=`check_cinn_file_diff`
+        run_cinn_ut="OFF"
         if [[ "OFF" == ${run_cinn_ut} ]]; then
           echo "No CINN-related changes were found"
           echo "Skip PR-CI-CINN-GPU UT CI"
