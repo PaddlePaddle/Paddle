@@ -56,7 +56,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         "backward": ["elementwise_add_grad", "matmul_v2_grad"],
     },
     {  # MP + SP
-        "forward": ["matmul_v2", "c_reducescatter", "elementwise_add"],
+        "forward": ["matmul_v2", "reduce_scatter", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
             "c_allreduce_sum",
@@ -76,7 +76,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         ],
     },
     {  # DP + MP + SP
-        "forward": ["matmul_v2", "c_reducescatter", "elementwise_add"],
+        "forward": ["matmul_v2", "reduce_scatter", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
             "c_allreduce_sum",
@@ -94,7 +94,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         "backward": ["elementwise_add_grad", "matmul_v2_grad"],
     },
     {
-        "forward": ["matmul_v2", "c_reducescatter", "cast", "elementwise_add"],
+        "forward": ["matmul_v2", "reduce_scatter", "cast", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
             "c_allreduce_sum",
@@ -114,7 +114,7 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         ],
     },
     {
-        "forward": ["matmul_v2", "c_reducescatter", "cast", "elementwise_add"],
+        "forward": ["matmul_v2", "reduce_scatter", "cast", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
             "c_allreduce_sum",

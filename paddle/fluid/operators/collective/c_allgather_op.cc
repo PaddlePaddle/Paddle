@@ -29,7 +29,7 @@ class CAllGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         nranks,
         2,
-        phi::errors::InvalidArgument("The value of nranks should be >=2."));
+        common::errors::InvalidArgument("The value of nranks should be >=2."));
     phi::DDim dim = ctx->GetInputDim("X");
     // 0D use stack/unstack while others use concat/split
     if (dim.size() == 0) {

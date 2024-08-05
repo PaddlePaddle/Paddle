@@ -61,9 +61,10 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
                                     DenseTensor *bias_grad) {
 #if defined(PADDLE_WITH_CUDA) and CUDNN_VERSION >= 7401
   bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
-  PADDLE_ENFORCE_EQ(is_gpu_place,
-                    true,
-                    phi::errors::PreconditionNotMet("It must use CUDAPlace."));
+  PADDLE_ENFORCE_EQ(
+      is_gpu_place,
+      true,
+      common::errors::PreconditionNotMet("It must use CUDAPlace."));
   double epsilon1 = static_cast<double>(epsilon);
 
   const auto *x_ptr = &x;
@@ -91,7 +92,7 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       d_scale && d_bias,
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Both the scale grad and the bias grad must not be null."));
 
   dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale);
@@ -100,11 +101,11 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       scale_ptr->dims().size(),
       1UL,
-      phi::errors::PreconditionNotMet("The scale only has one dimension."));
+      common::errors::PreconditionNotMet("The scale only has one dimension."));
   PADDLE_ENFORCE_EQ(
       scale_ptr->dims()[0],
       C,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The size of scale is equal to the channel of Input(X)."));
 
   std::vector<int> dims = {N, C, H, W, D};
@@ -205,7 +206,7 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "The fused_bn_add_activation operator is not supported on GPU "
       "when CUDNN version < 7.4.1"));
 #endif

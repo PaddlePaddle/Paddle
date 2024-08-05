@@ -87,7 +87,7 @@ void SequenceMaskKernel(const Context& ctx,
     PADDLE_ENFORCE_GT(
         maxlen,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(MaxLenTensor) value should be greater than 0. But "
             "received Input(MaxLenTensor) value = %d.",
             maxlen));

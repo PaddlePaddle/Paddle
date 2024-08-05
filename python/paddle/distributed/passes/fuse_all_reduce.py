@@ -154,6 +154,7 @@ def filter_all_collective_op_indices(block):
         "c_broadcast",
         "broadcast",
         "all_gather",
+        "all_reduce",
     }
 
     match_op_indices = []

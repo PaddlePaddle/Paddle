@@ -87,7 +87,7 @@ class ElementwiseDivCompositeGradOpMaker
     PADDLE_ENFORCE_EQ(
         axis,
         -1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "We only support axis = -1 in composite div but we got: ", axis));
     VLOG(6) << "Running div_grad composite func";
     prim::divide_grad<prim::DescTensor>(

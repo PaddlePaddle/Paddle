@@ -94,27 +94,37 @@ const char *CallOp::__func_type__ = "call_op";
 
 const std::string &CallOp::target() const {
   auto *call = call_expr.As<ir::Call>();
-  CHECK(call);
+  PADDLE_ENFORCE_NOT_NULL(call,
+                          phi::errors::InvalidArgument(
+                              "The 'call_expr' must be of type 'ir::Call'."));
   return call->name;
 }
 std::vector<Expr> &CallOp::write_args() {
   auto *call = call_expr.As<ir::Call>();
-  CHECK(call);
+  PADDLE_ENFORCE_NOT_NULL(call,
+                          phi::errors::InvalidArgument(
+                              "The 'call_expr' must be of type 'ir::Call'."));
   return call->write_args;
 }
 std::vector<Expr> &CallOp::read_args() {
   auto *call = call_expr.As<ir::Call>();
-  CHECK(call);
+  PADDLE_ENFORCE_NOT_NULL(call,
+                          phi::errors::InvalidArgument(
+                              "The 'call_expr' must be of type 'ir::Call'."));
   return call->read_args;
 }
 const std::vector<Expr> &CallOp::write_args() const {
   auto *call = call_expr.As<ir::Call>();
-  CHECK(call);
+  PADDLE_ENFORCE_NOT_NULL(call,
+                          phi::errors::InvalidArgument(
+                              "The 'call_expr' must be of type 'ir::Call'."));
   return call->write_args;
 }
 const std::vector<Expr> &CallOp::read_args() const {
   auto *call = call_expr.As<ir::Call>();
-  CHECK(call);
+  PADDLE_ENFORCE_NOT_NULL(call,
+                          phi::errors::InvalidArgument(
+                              "The 'call_expr' must be of type 'ir::Call'."));
   return call->read_args;
 }
 std::vector<Expr> CallOp::args() const {
