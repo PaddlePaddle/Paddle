@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +15,6 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <numeric>
-#include "paddle/common/errors.h"
 
 #include "paddle_inference_api.h"  //NOLINT
 
@@ -35,10 +33,7 @@ void run(Predictor *predictor,
   input_t->Reshape(input_shape);
   input_t->CopyFromCpu(input.data());
 
-  PADDLE_ENFORCE_EQ(
-      predictor->Run(),
-      true,
-      common::errors::PermissionDenied("Predictor is not running!!!"));
+  CHECK(predictor->Run());
 
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputHandle(output_names[0]);
