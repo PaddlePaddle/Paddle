@@ -654,7 +654,7 @@ bool FakeQuantizeAbsMaxOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
   int bit_length = op->attribute<pir::Int32Attribute>("bit_length").data();
-  
+
   PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
                     true,
                     common::errors::InvalidArgument(
