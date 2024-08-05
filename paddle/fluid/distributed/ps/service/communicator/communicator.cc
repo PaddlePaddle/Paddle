@@ -165,7 +165,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
     PADDLE_ENFORCE_NE(
         var,
         nullptr,
-        phi::errors::InvalidArgument("Param var should not be NULL!"));
+        common::errors::InvalidArgument("Param var should not be NULL!"));
     phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
     if (phi::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
@@ -625,7 +625,7 @@ void AsyncCommunicator::PullSparseToTensorSync(
         PADDLE_ENFORCE_LT(
             output_index,
             outputs->size(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The output index should be less than %d, but got %d.",
                 outputs->size(),
                 output_index));  // NOLINT
@@ -633,16 +633,16 @@ void AsyncCommunicator::PullSparseToTensorSync(
         output->set_lod(tensor->lod());
         output_data = output->mutable_data<float>(place);
         output_len = 0;
-        PADDLE_ENFORCE_EQ(
-            output->numel() % fea_dim,
-            0,
-            phi::errors::InvalidArgument("The 'output->numel() % fea_dim' "
-                                         "should be equal to 0, but got %d.",
-                                         output->numel() % fea_dim));  // NOLINT
+        PADDLE_ENFORCE_EQ(output->numel() % fea_dim,
+                          0,
+                          common::errors::InvalidArgument(
+                              "The 'output->numel() % fea_dim' "
+                              "should be equal to 0, but got %d.",
+                              output->numel() % fea_dim));  // NOLINT
         PADDLE_ENFORCE_NE(
             output_data,
             nullptr,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The output data should not be NULL!"));  // NOLINT
       }
       uint64_t real_id = static_cast<uint64_t>(ids[i]);
@@ -692,7 +692,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   }
   PADDLE_ENFORCE_GT(batch_size,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The batch size should be greater than 0, but got %d.",
                         batch_size));  // NOLINT
 
@@ -701,22 +701,22 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   PADDLE_ENFORCE_EQ(
       show_size == batch_size || show_size == 1,
       true,
-      phi::errors::InvalidArgument("The show size should be equal to batch "
-                                   "size or equal to 1, but got %d.",
-                                   show_size));
+      common::errors::InvalidArgument("The show size should be equal to batch "
+                                      "size or equal to 1, but got %d.",
+                                      show_size));
   int clk_size =
       !clks->lod().empty() ? clks->lod()[0].size() - 1 : clks->dims()[0];
-  PADDLE_ENFORCE_EQ(
-      clk_size == batch_size || clk_size == 1,
-      true,
-      phi::errors::InvalidArgument("The clk size should be equal to batch size "
-                                   "or equal to 1, but got %d.",
-                                   clk_size));
+  PADDLE_ENFORCE_EQ(clk_size == batch_size || clk_size == 1,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The clk size should be equal to batch size "
+                        "or equal to 1, but got %d.",
+                        clk_size));
 
   PADDLE_ENFORCE_EQ(
       outputs->size(),
       inputs->size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of outputs should be equal to inputs, but the size of "
           "outputs is %d, the size of inputs is %d",
           outputs->size(),
@@ -804,7 +804,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
     PADDLE_ENFORCE_EQ(
         static_cast<int64_t>(output_len),
         g_tensor->numel(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output length should be equal to %d, but got %d.",
             g_tensor->numel(),
             static_cast<int64_t>(output_len)));
