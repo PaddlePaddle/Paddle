@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import typing
 import unittest
 from functools import partial
 
@@ -26,7 +27,7 @@ import paddle.inference as paddle_infer
 
 class TrtConvertPNormTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
-        def generate_input1(dims, attrs: list[dict[str, any]]):
+        def generate_input1(dims, attrs: list[dict[str, typing.Any]]):
             if dims == 1:
                 return np.ones([3]).astype(np.float32)
             elif dims == 2:
@@ -82,7 +83,7 @@ class TrtConvertPNormTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, list[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
