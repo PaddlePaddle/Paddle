@@ -79,7 +79,7 @@ std::shared_ptr<OpImpl> OpStrategy::SelectImpl(
   }
   PADDLE_ENFORCE(
       res,
-      common::errors::NotFound(
+      phi::errors::NotFound(
           "There is no available strategy implementation! SelectImpl failed!"));
   return res;
 }
