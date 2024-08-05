@@ -991,10 +991,9 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       ++persist_total;
       if (stat_var_name_map_.find(name) != stat_var_name_map_.end()) {
         Variable *root_var = root_scope_->FindVar(name);
-        CHECK(root_var != nullptr);
-        PADDLE_ENFORCE_EQ(
-            root_var != nullptr,
-            true,
+        PADDLE_ENFORCE_NE(
+            root_var,
+            nullptr,
             common::errors::NotFound("Root scope should contain variable."));
         auto root_tensor = root_var->Get<phi::DenseTensor>();
         if (root_tensor.place() == place_) {
