@@ -39,6 +39,8 @@ from paddle.base.libpaddle.pir import (
 from ..base.variable_index import _setitem_static
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import DTypeLike, ShapeLike, Size1
 
@@ -419,7 +421,11 @@ class InputSpec:
         return not self == other
 
 
-def setitem(x, index, value):
+def setitem(
+    x: Tensor,
+    index: int | slice | Sequence[int] | Tensor | None,
+    value: Tensor | npt.NDArray[Any] | bool | complex,
+) -> Tensor:
     """
     x(Tensor): input Tensor.
     index(Scalar|Tuple|List|Tensor): Where should be set value.
