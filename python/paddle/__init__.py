@@ -110,7 +110,6 @@ from paddle import (  # noqa: F401
     regularizer,
     sparse,
     static,
-    # pp_tensorrt,
     sysconfig,
     vision,
 )

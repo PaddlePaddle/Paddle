@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import numpy as np
-import math
+
 import paddle
-from paddle.base import ParamAttr
+
 try:
     import tensorrt as trt
 except Exception as e:
@@ -82,10 +83,6 @@ def run_pir_pass(program, partition_mode=False):
     if partition_mode:
         passes = [{'trt_sub_graph_extract_pass': {}}]
 
-    # pm = pir.PassManager(opt_level=4)
-
-    # pm.enable_print_statistics()
-    # pm.enable_ir_printing()
     for pass_item in passes:
         for pass_name, pass_attr in pass_item.items():
             pm.add_pass(pass_name, pass_attr)
@@ -197,19 +194,18 @@ def get_dummy_program():
             x = paddle.matmul(input, weight)
             x_1 = paddle.add(x, bias)
             x_1 = paddle.unsqueeze(x_1, axis=0)
-            x_1=paddle.squeeze(x_1, axis=0)
+            x_1 = paddle.squeeze(x_1, axis=0)
             y = paddle.nn.functional.relu(x_1)
             y_gelu_1 = paddle.nn.functional.gelu(y)
             y_gelu_2 = paddle.nn.functional.gelu(x_1)
 
             # Concatenate the outputs of the two GELU operations
             concat_out = paddle.concat([y_gelu_1, y_gelu_2], axis=-1)
-            output =paddle.unsqueeze(concat_out, axis=0)
-            
+            output = paddle.unsqueeze(concat_out, axis=0)
+
         main_program = run_pir_pass(main_program)
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(default_startup_program)
-        
 
         params = main_program.global_block().all_parameters()
         param_dict = {}
@@ -228,7 +224,7 @@ class BertModel(nn.Layer):
         num_hidden_layers=12,
         num_attention_heads=12,
     ):
-        super(BertModel, self).__init__()
+        super().__init__()
         self.embeddings = nn.Embedding(vocab_size, hidden_size)
         encoder_layer = TransformerEncoderLayer(
             hidden_size, num_attention_heads, hidden_size * 4
@@ -312,35 +308,11 @@ if __name__ == "__main__":
 
 class SimpleGatherNet(nn.Layer):
     def __init__(self):
-        super(SimpleGatherNet, self).__init__()
+        super().__init__()
         self.linear = paddle.nn.Linear(149600, 1)
-        pass
-        # self.fake_param = nn.Parameter(torch.tensor([1.]))
 
     def forward(self, map_vector_features, polyline_mask):
         map_vector_features = map_vector_features[polyline_mask]
-        # num_element = map_vector_features.shape[0]
-
-        # center_inds_sort = paddle.arange(num_element)
-
-        # center_ind = int(num_points_per_element // 2)
-
-        # center_coords = map_vector_features[:, center_ind, :2]
-        # center_radius = paddle.norm(center_coords, axis=-1, p=2)
-
-        # center_inds_sort = paddle.argsort(center_radius)
-        # center_inds_sort = center_inds_sort[:num_max_element]
-
-        # num_element = center_inds_sort.shape[0]
-
-        # map_vector_features_out = paddle.zeros(
-        #     [num_max_element, 11, 17], dtype=paddle.float32)
-
-        # print(center_inds_sort)
-        # print(center_inds_sort.shape)
-        # map_vector_features_out[:num_element] = map_vector_features[center_inds_sort]
-        # map_vector_features_out = paddle.flatten(map_vector_features_out)
-        # map_vector_features_out = self.linear(map_vector_features_out)
 
         return map_vector_features
 
@@ -394,4 +366,3 @@ def get_idg_program():
         name = v.get_defining_op().attrs()["parameter_name"]
         param_dict.update({name: np.array(scope.var(name).get_tensor())})
     return pir_program, scope, param_dict
-

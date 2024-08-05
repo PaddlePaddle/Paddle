@@ -120,12 +120,10 @@ class PaddleToTensorRTConverter:
         max_shape_map = {}
         input_names = []
 
-        # 在处理 input_value2 时，确保对 `builtin.combine` 操作的处理是正确的
         input_value2 = []
         for value in input_values:
             defining_op = value.get_defining_op()
             if defining_op.name() == "builtin.combine":
-                # 获取 combine 操作的所有输入
                 for operand in defining_op.operands():
                     source = operand.source()
                     input_value2.append(source)
@@ -184,7 +182,6 @@ class PaddleToTensorRTConverter:
             for operand in op.operands():
                 source = operand.source()
                 define_op_name = source.get_defining_op().name()
-                # 如果是builtin.combine,获取其所有输入
                 if define_op_name == "builtin.combine":
                     for combined_operand in source.get_defining_op().operands():
                         combined_source = combined_operand.source()
@@ -209,9 +206,8 @@ class PaddleToTensorRTConverter:
             layer = self.convert(network, op, operands)
 
             # _logger.info(f"start convert {op}")
-            # TODO TRT layer output order must be the same as paddle_op. I will change these.
             for idx, result in enumerate(op.results()):
-                # TODO TRT layer output order must be the same as paddle_op. I will change these.
+                # TODO In some cases, the output index (idx) of a Paddle OP may not necessarily be the same as the output index of TensorRT
                 if idx < layer.num_outputs:
                     value_to_trt_tensor[result.id] = layer.get_output(idx)
                 else:

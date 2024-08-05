@@ -121,7 +121,7 @@ def reshape_converter(network, paddle_op, inputs):
     input_tensor, shape_tensor = inputs
     input_shape = paddle_op.operands()[0].source().shape
 
-    output_shape = paddle_op.results()[0].shape
+    output_shape = paddle_op.results()[1].shape
     if network.has_implicit_batch_dimension:
         output_shape = output_shape[1:]
 
@@ -484,19 +484,14 @@ def flatten_converter(network, paddle_op, inputs):
     return flatten_layer
 
 
-# 在converter中,pd_op.concat有三个输入,因为builtin.combine有两个输入
+# In the converter, pd_op.concat has three inputs, because builtin.combine has two inputs.
 @converter_registry.register("pd_op.concat", trt_version="8.x")
 def concat_converter(network, paddle_op, inputs):
     input_tensors = inputs[:-1]
     axis_tensor = inputs[-1]
     concat_layer = network.add_concatenation(inputs=input_tensors)
 
-    # 这是获取op
-    full_op = paddle_op.operands()[1]
-    # 这是获取value
-    full_value = full_op.source()
-    full_operation = full_value.get_defining_op()
-    axis = full_operation.attrs()["value"]
+    axis = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
     axis = int(axis)
     if axis < 0:
         axis = len(input_tensors[0].shape) + axis
