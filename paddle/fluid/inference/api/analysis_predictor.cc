@@ -857,15 +857,6 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     // Apply some optimization passes required by the inference
     ::pir::PassManager pass_pm(::pir::IrContext::Instance(),
                                config_.pm_opt_level_);
-
-    auto horizontal_fuse_pass = ::pir::CreateHorizontalFusePass();
-    if (std::find(config_.deleted_passes_.begin(),
-                  config_.deleted_passes_.end(),
-                  horizontal_fuse_pass->name()) ==
-        config_.deleted_passes_.end()) {
-      pass_pm.AddPass(std::move(horizontal_fuse_pass));
-    }
-
     if (!config_.custom_passes_.empty()) {
       for (const auto &custom_pass : config_.custom_passes_) {
         pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
@@ -922,6 +913,14 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
           }
         }
       }
+    }
+
+    auto horizontal_fuse_pass = ::pir::CreateHorizontalFusePass();
+    if (std::find(config_.deleted_passes_.begin(),
+                  config_.deleted_passes_.end(),
+                  horizontal_fuse_pass->name()) ==
+        config_.deleted_passes_.end()) {
+      pass_pm.AddPass(std::move(horizontal_fuse_pass));
     }
 
     // set attr

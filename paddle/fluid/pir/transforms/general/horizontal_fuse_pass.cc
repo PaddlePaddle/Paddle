@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,29 +68,55 @@ class HorizontalFusePattern : public pir::RewritePattern {
             << "] op";
 
     /// 至少有一个出边被多个op使用才能横向融合
-    bool has_multiple_uses = false;
-    /// 暂时假定只有一个出边被多个op使用。如果有多个，目前只处理最后一个（- -
-    /// ！）
-    int multiple_use_res_idx = -1;
+    bool has_multi_uses = false;
+    /// 假定只有一个出边被多个op使用。如果有多个，只处理最后一个（- -！）
+    int multi_use_res_idx = -1;
     for (uint32_t i = 0; i < op->num_results(); i++) {
       if (op->result(i).use_count() > 1) {
-        has_multiple_uses = true;
-        multiple_use_res_idx = i;
+        has_multi_uses = true;
+        multi_use_res_idx = i;
       }
     }
-    if (!has_multiple_uses) {
+    if (!has_multi_uses) {
       return false;
     }
-    // 这是一个很不规范的判断。意思是，默认matmul的输入x 是当前op的第一个输出。
-    if (multiple_use_res_idx != 0) {
-      return false;
+
+    /// 使用该出边的op中至少得有两个完全相同的MatmulOp/GemmEpilogueOp/FcOp
+    /// 属性也应该完全相等，如果不完全相等，则不进行横向融合
+    // 这就是一道算法题，我们直接构建屎山
+    int op_cnt_useX = 0;
+    pir::Value x = op->result(multi_use_res_idx);
+    // 我们假定，使用x的多个op的种类里，MatmulOp GemmEpilogueOp FcOp两两互斥
+    // 即，最多有一种Op会出现。如果同时出现两种，则匹配失败。
+    // 我们假定，该种类的多个op的属性会完全相同
+    // 即不会出现某几个op属性相同，且和其他op的属性不一样的情况
+    // 如果出现这个情况，直接匹配失败，不进行融合。
+    pir::Operation* op_example = nullptr;
+    std::string op_example_name;
+    pir::AttributeMap op_example_attrs;
+    for (auto it = x.use_begin(); it != x.use_end(); ++it) {
+      pir::Operation* curr_op = it.owner();
+      if (!(curr_op->isa<paddle::dialect::MatmulOp>() ||
+            curr_op->isa<paddle::dialect::GemmEpilogueOp>() ||
+            curr_op->isa<paddle::dialect::FcOp>())) {
+        continue;
+      }
+      if (op_example == nullptr) {
+        op_example = curr_op;
+        op_example_name = curr_op->name();
+        op_example_attrs = curr_op->attributes();
+        op_cnt_useX++;
+      } else {
+        if (curr_op->name() == op_example_name &&
+            areAttributeMapsEqual(op_example_attrs, curr_op->attributes())) {
+          op_cnt_useX++;
+        } else {
+          return false;
+        }
+      }
     }
-    pir::Value matmul_operand_x = op->result(multiple_use_res_idx);
-    /// 如果使用各个出边的op不是matmul，则不能横向融合（暂时）
-    for (auto it = matmul_operand_x.use_begin();
-         it != matmul_operand_x.use_end();
-         ++it) {
-      if (!it.owner()->isa<paddle::dialect::MatmulOp>()) return false;
+    if (op_cnt_useX < 2) {
+      return false;
     }
 
     VLOG(4) << "horizontal_fuse_pass applied match on [" << op->name()
@@ -102,56 +128,64 @@ class HorizontalFusePattern : public pir::RewritePattern {
                pir::PatternRewriter& rewriter) const override {  // NOLINT
     VLOG(4) << "horizontal_fuse_pass applies rewrite on [" << op->name()
             << "] op";
+    /// 现在我们知道，x被多个op使用，该op属于MatmulOp/GemmEpilogueOp/FcOp的一种
+    /// 我们统称 fused_matmul_op
 
     /// 数据准备
     // 准备x
-    pir::Value x = op->result(0);
+    int multi_used_res_idx = -1;
+    for (uint32_t i = 0; i < op->num_results(); i++) {
+      if (op->result(i).use_count() > 1) {
+        multi_used_res_idx = i;
+      }
+    }
+    pir::Value x = op->result(multi_used_res_idx);
     std::vector<int64_t> x_dims = pir::GetShapeFromValue(x);
     auto x_last_axis = x_dims.size() - 1;
-    pir::Type x_dtype = pir::GetDataTypeFromValue(x);
-    // GemmEpilogueOp只支持fp16和bf16
-    bool is_fp16_or_bf16 =
-        (x_dtype.isa<pir::BFloat16Type>() || x_dtype.isa<pir::Float16Type>());
+
+    // 准备源模式算子
+    std::vector<pir::Operation*> fused_matmul_ops;
+    std::string fused_matmul_op_name;
+    pir::AttributeMap fused_matmul_op_attrs;
     // 准备weight
     std::vector<int64_t> w_shapes;
     std::vector<pir::Value> combine_op_inputs_weight;
-    std::vector<pir::Operation*> matmul_ops;
     // 准备bias
-    int matmul_cnt = static_cast<int>(x.use_count());
+    bool with_bias = false;
     std::vector<pir::Value> combine_op_inputs_bias;
-    std::vector<pir::Operation*> add_ops;
-    bool with_bias = check_bias(x, matmul_cnt, combine_op_inputs_bias, add_ops);
-    // 准备act
-    bool with_act = false;
-    std::vector<pir::Operation*> act_ops;
-    if (with_bias) {
-      with_act = check_act(x, matmul_cnt, act_ops, is_fp16_or_bf16);
-    }
     // 准备outs
-    std::vector<pir::Value> origin_outs;
-    for (auto it_matmul = x.use_begin(); it_matmul != x.use_end();
-         ++it_matmul) {
-      auto curr_matmul_op = it_matmul.owner();
-      matmul_ops.push_back(curr_matmul_op);
-      combine_op_inputs_weight.push_back(curr_matmul_op->operand_source(1));
-      auto w_dims = pir::GetShapeFromValue(curr_matmul_op->operand_source(1));
+    std::vector<pir::Value> src_outs;
+
+    for (auto it = x.use_begin(); it != x.use_end(); ++it) {
+      pir::Operation* curr_op = it.owner();
+      if (!(curr_op->isa<paddle::dialect::MatmulOp>() ||
+            curr_op->isa<paddle::dialect::GemmEpilogueOp>() ||
+            curr_op->isa<paddle::dialect::FcOp>())) {
+        continue;
+      }
+      fused_matmul_ops.push_back(curr_op);
+      combine_op_inputs_weight.push_back(curr_op->operand_source(1));
+      auto w_dims = pir::GetShapeFromValue(curr_op->operand_source(1));
       w_shapes.push_back(w_dims[w_dims.size() - 1]);
-      // if else嵌套 应该考虑怎么优化了。
-      if (!with_bias) {
-        origin_outs.push_back(curr_matmul_op->result(0));
-      } else {
-        auto curr_add_op = curr_matmul_op->result(0).first_use().owner();
-        if (!with_act) {
-          origin_outs.push_back(curr_add_op->result(0));
-        } else {
-          auto curr_act_op = curr_add_op->result(0).first_use().owner();
-          origin_outs.push_back(curr_act_op->result(0));
-        }
+
+      src_outs.push_back(curr_op->result(0));
+
+      if (fused_matmul_op_name.empty()) {
+        fused_matmul_op_name = curr_op->name();
+        fused_matmul_op_attrs = curr_op->attributes();
+        with_bias =
+            (fused_matmul_op_name == paddle::dialect::GemmEpilogueOp::name() ||
+             fused_matmul_op_name == paddle::dialect::FcOp::name());
+      }
+      if (with_bias) {
+        combine_op_inputs_bias.push_back(curr_op->operand_source(2));
       }
     }
 
     /// 构建新图：（顺序插入新节点，逆序删除旧节点）
-    // 插入新节点
+    /// 插入新节点
+    // 我感觉如下的三句应该有简单写法，或许是不用挨个SetInsertionPointAfter
+    // 但是我没找
     rewriter.SetInsertionPointAfter(op);
     auto combine_op_weight =
         rewriter.Build<pir::CombineOp>(combine_op_inputs_weight);
@@ -162,13 +196,11 @@ class HorizontalFusePattern : public pir::RewritePattern {
         rewriter.Build<paddle::dialect::ConcatOp>(weight_combined, 1);
     auto w_qkv = concat_op_weight.result(0);
 
-    pir::Value x_qkv;
-    pir::Operation* last_op = nullptr;
+    pir::Value xw_fused;
+    pir::Operation* fused_matmul_op = nullptr;
     rewriter.SetInsertionPointAfter(concat_op_weight);
     if (!with_bias) {
-      auto matmul_op = rewriter.Build<paddle::dialect::MatmulOp>(x, w_qkv);
-      x_qkv = matmul_op.result(0);
-      last_op = matmul_op;
+      fused_matmul_op = rewriter.Build<paddle::dialect::MatmulOp>(x, w_qkv);
     } else {
       auto combine_bias =
           rewriter.Build<pir::CombineOp>(combine_op_inputs_bias);
@@ -180,130 +212,52 @@ class HorizontalFusePattern : public pir::RewritePattern {
       auto bias_qkv = concat_op_bias.result(0);
 
       rewriter.SetInsertionPointAfter(concat_op_bias);
-      pir::Operation* gemm_epilogue_op = nullptr;
-      if (is_fp16_or_bf16) {
-        gemm_epilogue_op = rewriter.Build<paddle::dialect::GemmEpilogueOp>(
-            x, w_qkv, bias_qkv, x_last_axis);  // , "silu"
+      if (fused_matmul_op_name == paddle::dialect::GemmEpilogueOp::name()) {
+        fused_matmul_op = rewriter.Build<paddle::dialect::GemmEpilogueOp>(
+            x, w_qkv, bias_qkv, fused_matmul_op_attrs);
       } else {
-        gemm_epilogue_op = rewriter.Build<paddle::dialect::FcOp>(
-            x, w_qkv, bias_qkv, x_last_axis);
-      }
-      // 直接干懵了,  pir::Operation *?  pir::Operation?
-      x_qkv = gemm_epilogue_op->result(0);
-
-      // 这里直接可以融进GemmEpilogueOp里。
-      if (!with_act) {
-        last_op = gemm_epilogue_op;
-      } else {
-        pir::Operation* act_op = nullptr;
-        if (act_ops[0]->isa<paddle::dialect::GeluOp>())
-          act_op = rewriter.Build<paddle::dialect::GeluOp>(x_qkv);
-        else if (act_ops[0]->isa<paddle::dialect::ReluOp>())
-          act_op = rewriter.Build<paddle::dialect::ReluOp>(x_qkv);
-        else if (act_ops[0]->isa<paddle::dialect::SiluOp>())
-          act_op = rewriter.Build<paddle::dialect::SiluOp>(x_qkv);
-        else
-          throw std::runtime_error("Unsupported activation type");
-        x_qkv = act_op->result(0);
-        last_op = act_op;
+        fused_matmul_op = rewriter.Build<paddle::dialect::FcOp>(
+            x, w_qkv, bias_qkv, fused_matmul_op_attrs);
       }
     }
+    xw_fused = fused_matmul_op->result(0);
 
-    // 这里应该有last_op判空?
-    rewriter.SetInsertionPointAfter(last_op);
-    auto split_op =
-        rewriter.Build<paddle::dialect::SplitOp>(x_qkv, w_shapes, x_last_axis);
-    auto x_qkv_splitted = split_op.result(0);
+    rewriter.SetInsertionPointAfter(fused_matmul_op);
+    auto split_op = rewriter.Build<paddle::dialect::SplitOp>(
+        xw_fused, w_shapes, x_last_axis);
+    auto xw_splitted = split_op.result(0);
 
     rewriter.SetInsertionPointAfter(split_op);
-    auto split_builtin_op = rewriter.Build<pir::SplitOp>(x_qkv_splitted);
-    std::vector<pir::Value> xq_xk_xv = split_builtin_op.outputs();
+    auto split_builtin_op = rewriter.Build<pir::SplitOp>(xw_splitted);
+    std::vector<pir::Value> xw = split_builtin_op.outputs();
 
-    assert(xq_xk_xv.size() == origin_outs.size());
-    for (size_t k = 0; k < origin_outs.size(); k++) {
-      rewriter.ReplaceAllUsesWith(origin_outs[k], xq_xk_xv[k]);
+    // 替换结果Value
+    for (size_t k = 0; k < src_outs.size(); k++) {
+      rewriter.ReplaceAllUsesWith(src_outs[k], xw[k]);
     }
     // 删除旧节点
-    if (with_act) {
-      for (auto act_op : act_ops) rewriter.EraseOp(act_op);
-    }
-    if (with_bias) {
-      for (auto add_op : add_ops) rewriter.EraseOp(add_op);
-    }
-    for (auto matmul_op : matmul_ops) rewriter.EraseOp(matmul_op);
+    for (auto fused_matmul_op : fused_matmul_ops)
+      rewriter.EraseOp(fused_matmul_op);
 
     VLOG(4) << "horizontal_fuse_pass applied rewrite on [" << op->name()
             << "] op";
   }
 
  private:
-  bool check_bias(const pir::Value x,
-                  int matmul_cnt,
-                  std::vector<pir::Value>& combine_op_inputs_bias,
-                  std::vector<pir::Operation*>& add_ops) const {
-    for (auto it_matmul = x.use_begin(); it_matmul != x.use_end();
-         ++it_matmul) {
-      auto curr_matmul_op = it_matmul.owner();
-      if (!check_bias_single(curr_matmul_op)) return false;
-
-      auto curr_add_op = curr_matmul_op->result(0).first_use().owner();
-      add_ops.push_back(curr_add_op);
-      combine_op_inputs_bias.push_back(curr_add_op->operand_source(1));
-    }
-    return true;
-  }
-
-  /// 目前只支持处理 一个matmul + 一个bias 的情况
-  bool check_bias_single(pir::Operation* op) const {
-    if (op->num_results() != 1) {
+  bool areAttributeMapsEqual(const pir::AttributeMap& attrs1,
+                             const pir::AttributeMap& attrs2) const {
+    if (attrs1.size() != attrs2.size()) {
       return false;
     }
-    auto value_matmul_out = op->result(0);
-    auto add_op = value_matmul_out.first_use().owner();
-    if (!add_op->isa<paddle::dialect::AddOp>()) {
-      return false;
+    pir::AttributeMap attrs2_copy(attrs2);
+    for (const auto& kv : attrs1) {
+      auto it = attrs2_copy.find(kv.first);
+      if (it == attrs2_copy.end() || it->second != kv.second) {
+        return false;
+      }
+      attrs2_copy.erase(it);
     }
-    if (pir::GetShapeFromValue(add_op->operand_source(1)).size() != 1) {
-      return false;
-    }
-    return true;
-  }
-
-  bool check_act(const pir::Value x,
-                 int matmul_cnt,
-                 std::vector<pir::Operation*>& act_ops,
-                 bool is_fp16_or_bf16) const {
-    /// 在已知一个matmul + 一个bias 的情况下
-    for (auto it_matmul = x.use_begin(); it_matmul != x.use_end();
-         ++it_matmul) {
-      auto curr_matmul_op = it_matmul.owner();
-      auto curr_add_op = curr_matmul_op->result(0).first_use().owner();
-      if (!check_act_single(curr_add_op, is_fp16_or_bf16)) return false;
-
-      auto curr_act_op = curr_add_op->result(0).first_use().owner();
-      act_ops.push_back(curr_act_op);
-    }
-    return true;
-  }
-  /// 目前只支持处理 一个matmul + 一个bias + 一个silu/relu/gelu 的情况
-  bool check_act_single(pir::Operation* op, bool is_fp16_or_bf16) const {
-    if (op->num_results() != 1) {
-      return false;
-    }
-    auto value_addBias_out = op->result(0);
-    auto act_op = value_addBias_out.first_use().owner();
-    /// 这个是GemmEpilogueOp确定要融silu，才开放的版本。
-    // if(!(act_op->isa<paddle::dialect::ReluOp>() ||
-    //      (act_op->isa<paddle::dialect::GeluOp>() && is_fp16_or_bf16)||
-    //      (act_op->isa<paddle::dialect::SiluOp>() && is_fp16_or_bf16))){
-    //   return false;
-    // }
-    if (!(act_op->isa<paddle::dialect::ReluOp>() ||
-          act_op->isa<paddle::dialect::GeluOp>() ||
-          act_op->isa<paddle::dialect::SiluOp>())) {
-      return false;
-    }
-    return true;
+    return attrs2_copy.empty();
   }
 };
 
@@ -339,3 +293,8 @@ std::unique_ptr<Pass> CreateHorizontalFusePass() {
 }
 
 }  // namespace pir
+
+// 如果这里注册了，然后再跟USE_PIR_PASS(horizontal_fuse_pass);
+// 是不是可以不修改analysis_predictor.cc
+// 是否需要放到GPU路径下？或者跟死代码消除一样处理呢？
+// REGISTER_IR_PASS(horizontal_fuse_pass, HorizontalFusePass);
