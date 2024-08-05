@@ -250,6 +250,7 @@ class AllocatorFacadePrivate {
           InitAutoGrowthCUDAAllocator(phi::GPUPlace(dev_id),
                                       allow_free_idle_chunk_);
         }
+        auto_growth_allocators_ = allocators_;
 
         // Note(Ruibiao): For GPU multi-stream case without CUDA graph
         // capturing, the 'allocators_' map(place -> Allocator) hold the
@@ -813,6 +814,10 @@ class AllocatorFacadePrivate {
   };
 
   const AllocatorMap& GetAllocatorMap() { return allocators_; }
+
+  const AllocatorMap& GetAutoGrowthAllocatorMap() {
+    return auto_growth_allocators_;
+  }
 
   void InitNaiveBestFitCPUAllocator() {
 #if defined(__APPLE__) && defined(__arm64__)
@@ -1596,6 +1601,7 @@ class AllocatorFacadePrivate {
 
   AllocatorStrategy strategy_;
   AllocatorMap allocators_;
+  AllocatorMap auto_growth_allocators_;
   static AllocatorMap zero_size_allocators_;
   static AllocatorMap system_allocators_;
   bool allow_free_idle_chunk_;
@@ -1641,6 +1647,11 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const phi::Place& place) {
   return GetPrivate()->GetAllocator(
       place, /* A non-zero num to choose allocator_ */ 1);
+}
+
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAutoGrowthAllocator(
+    const phi::Place& place) {
+  return GetPrivate()->GetAutoGrowthAllocatorMap()[place];
 }
 
 void* AllocatorFacade::GetBasePtr(
