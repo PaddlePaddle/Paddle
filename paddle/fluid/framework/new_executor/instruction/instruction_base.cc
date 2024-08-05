@@ -219,7 +219,7 @@ const phi::DeviceContext& InstructionBase::DeviceContext() const {
 }
 
 void InstructionBase::RecordEvent(const Place& place) const {
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
   if (event_to_record_) {
     VLOG(6) << "Record event at instruction: " << id_;
@@ -233,7 +233,7 @@ void InstructionBase::WaitEvent(const Place& place) const {
     return;
   }
   for (const EventInter& event_iter : events_to_wait_) {
-    platform::RecordEvent record(
+    phi::RecordEvent record(
         "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
     VLOG(6) << "Wait instruction: " << event_iter.instr_id_
             << " 's event with waiter_type: " << event_iter.waiter_type_;

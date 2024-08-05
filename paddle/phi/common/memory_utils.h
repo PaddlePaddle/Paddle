@@ -197,7 +197,7 @@ class MemoryUtils {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(memory_method_->alloc_with_stream,
                       nullptr,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "alloc_with_stream method in memory_method_ is not "
                           "initiazed yet. You need init it first."));
     return memory_method_->alloc_with_stream(place, size, stream);
@@ -208,8 +208,8 @@ class MemoryUtils {
     PADDLE_ENFORCE_NE(
         memory_method_->alloc,
         nullptr,
-        phi::errors::Unavailable("alloc method in memory_method_ is not "
-                                 "initiazed yet. You need init it first."));
+        common::errors::Unavailable("alloc method in memory_method_ is not "
+                                    "initiazed yet. You need init it first."));
     return memory_method_->alloc(place, size);
   }
 
@@ -219,7 +219,7 @@ class MemoryUtils {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(memory_method_->alloc_shared_with_stream,
                       nullptr,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "alloc_shared_with_stream method in memory_method_ "
                           "is not initiazed yet. You need init it first."));
     return memory_method_->alloc_shared_with_stream(place, size, stream);
@@ -228,22 +228,22 @@ class MemoryUtils {
   std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                           size_t size) {
     CheckMemoryMethod();
-    PADDLE_ENFORCE_NE(
-        memory_method_->alloc_shared,
-        nullptr,
-        phi::errors::Unavailable("alloc_shared method in memory_method_ is not "
-                                 "initiazed yet. You need init it first."));
+    PADDLE_ENFORCE_NE(memory_method_->alloc_shared,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "alloc_shared method in memory_method_ is not "
+                          "initiazed yet. You need init it first."));
     return memory_method_->alloc_shared(place, size);
   }
 
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                     const phi::Stream& stream) {
     CheckMemoryMethod();
-    PADDLE_ENFORCE_NE(
-        memory_method_->in_same_stream,
-        nullptr,
-        phi::errors::Unavailable("in_same_stream method in memory_method_ is "
-                                 "not initiazed yet. You need init it first."));
+    PADDLE_ENFORCE_NE(memory_method_->in_same_stream,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "in_same_stream method in memory_method_ is "
+                          "not initiazed yet. You need init it first."));
     return memory_method_->in_same_stream(allocation, stream);
   }
 
@@ -251,7 +251,7 @@ class MemoryUtils {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(memory_method_->allocation_deleter,
                       nullptr,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "allocation_deleter method in memory_method_ is not "
                           "initiazed yet. You need init it first."));
     return memory_method_->allocation_deleter(allocation);
@@ -266,7 +266,7 @@ class MemoryUtils {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(memory_method_->copy_with_stream,
                       nullptr,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "copy_with_stream method in memory_method_ is not "
                           "initiazed yet. You need init it first."));
     memory_method_->copy_with_stream(
@@ -282,8 +282,8 @@ class MemoryUtils {
     PADDLE_ENFORCE_NE(
         memory_method_->copy,
         nullptr,
-        phi::errors::Unavailable("copy method in memory_method_ is not "
-                                 "initiazed yet. You need init it first."));
+        common::errors::Unavailable("copy method in memory_method_ is not "
+                                    "initiazed yet. You need init it first."));
     memory_method_->copy(dst_place, dst, src_place, src, num);
   }
 
@@ -293,7 +293,7 @@ class MemoryUtils {
     PADDLE_ENFORCE_NE(
         memory_method_->device_memory_stat_current_value,
         nullptr,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "device_memory_stat_current_value method in memory_method_ is not "
             "initiazed yet. You need init it first."));
     return memory_method_->device_memory_stat_current_value(stat_type, dev_id);
@@ -304,7 +304,7 @@ class MemoryUtils {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NOT_NULL(
         memory_method_->gpu_memory_usage,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "gpu_memory_usage method in memory_method_ is not initiazed "
             "yet. You need init it first."));
     return memory_method_->gpu_memory_usage(available, total);
@@ -313,11 +313,11 @@ class MemoryUtils {
 
   void InitDevices() {
     CheckMemoryMethod();
-    PADDLE_ENFORCE_NE(
-        memory_method_->init_devices,
-        nullptr,
-        phi::errors::Unavailable("init_devices method in memory_method_ is not "
-                                 "initiazed yet. You need init it first."));
+    PADDLE_ENFORCE_NE(memory_method_->init_devices,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "init_devices method in memory_method_ is not "
+                          "initiazed yet. You need init it first."));
     memory_method_->init_devices();
   }
 
@@ -331,7 +331,7 @@ class MemoryUtils {
     PADDLE_ENFORCE_NE(
         memory_method_->emplace_device_contexts,
         nullptr,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "emplace_device_contexts method in memory_method_ is not "
             "initiazed yet. You need init it first."));
     memory_method_->emplace_device_contexts(
@@ -345,7 +345,7 @@ class MemoryUtils {
     PADDLE_ENFORCE_NE(
         memory_method_.get(),
         nullptr,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "memory_method_ in MemoryUtils is not "
             "initiazed yet. You need init it first. If you compiled with "
             "Fluid. You can call InitMemoryMethod() for initialization."));

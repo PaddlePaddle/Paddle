@@ -166,7 +166,7 @@ void FFN(const phi::XPUContext& dev_ctx,
         xpu_ctx, linear1_out_ptr, linear2_before_tmp_ptr, linear1_out->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu");
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Currently only supports gelu or relu activation functions!"));
   }
 

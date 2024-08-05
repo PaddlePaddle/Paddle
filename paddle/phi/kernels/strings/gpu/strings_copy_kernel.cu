@@ -47,10 +47,10 @@ void Copy(const Context& dev_ctx,
 
   if (src_place == dst_place &&
       src_place.GetType() == phi::AllocationType::CPU) {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("The src and dst string tensor are all "
-                                     "CPU string tensor, you should call copy "
-                                     "function in CPU mode."));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The src and dst string tensor are all "
+        "CPU string tensor, you should call copy "
+        "function in CPU mode."));
   }
   VLOG(3) << "StringTensorCopy " << src.dims() << " from " << src.place()
           << " to " << dst_place;
@@ -104,7 +104,7 @@ void Copy(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         ctx_place.GetType(),
         phi::AllocationType::GPU,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     int64_t numel = src.numel();

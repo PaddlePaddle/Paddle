@@ -42,7 +42,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   int64_t head_dim = dout_q.dims()[3];
   PADDLE_ENFORCE_EQ(head_dim % 2,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The head_dim of input must be a multiple of 2."));
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
@@ -53,7 +53,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     if (sin.get_ptr() && cos.get_ptr()) {
       PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
                         cos.get_ptr()->dims(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The dims of sin and cos must be the same. But "
                             "received sin's dims is {%s}, cos's dims is {%s}.",
                             sin.get_ptr()->dims(),
@@ -126,7 +126,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     if (sin.get_ptr() && cos.get_ptr()) {
       PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
                         cos.get_ptr()->dims(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The dims of sin and cos must be the same. But "
                             "received sin's dims is {%s}, cos's dims is {%s}.",
                             sin.get_ptr()->dims(),

@@ -53,7 +53,6 @@
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -66,6 +65,7 @@
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/memory/memcpy.h"
 
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
