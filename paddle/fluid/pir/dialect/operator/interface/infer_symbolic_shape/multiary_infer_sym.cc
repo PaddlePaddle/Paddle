@@ -854,9 +854,9 @@ bool LerpOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const auto &w_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  const auto &x_shape = x_shape_or_data.shape();
-  const auto &y_shape = y_shape_or_data.shape();
-  const auto &w_shape = w_shape_or_data.shape();
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> y_shape = y_shape_or_data.shape();
+  std::vector<symbol::DimExpr> w_shape = w_shape_or_data.shape();
   int x_ndims = x_shape.size();
   int y_ndims = y_shape.size();
   int w_ndims = w_shape.size();
