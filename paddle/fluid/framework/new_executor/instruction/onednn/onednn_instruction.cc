@@ -442,8 +442,6 @@ void OneDNNPhiKernelInstruction::Run() {
           from_layout = phi::DataLayout::kNHWC;
           phi::funcs::MatchShapeToLayout(
               transed_tensor, from_layout, phi::DataLayout::ONEDNN);
-        } else {
-          continue;
         }
       } else {
         //  Handle 'layout_transform' in
