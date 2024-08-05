@@ -358,7 +358,6 @@ class TestDistBase(unittest.TestCase):
             "PATH_ID": path_id,
             "DTYPE": dtype,
             "REDUCE_TYPE": str(reduce_type),
-            "FLAGS_dynamic_static_unified_comm": "true",
         }
         required_envs.update(additional_envs)
         required_envs.update(need_envs)
