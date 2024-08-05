@@ -15,9 +15,8 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
 from functools import wraps
-from typing import Union
+from typing import Callable, Union
 
 import numpy as np
 
