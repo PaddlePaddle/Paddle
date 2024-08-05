@@ -143,8 +143,8 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     // float_attr
     auto attr_field = (fc->fields)[0];
     PADDLE_ENFORCE_EQ(
-        attr_field.type,
-        nvinfer1::PluginFieldType::kFLOAT32,
+        attr_field.type == nvinfer1::PluginFieldType::kFLOAT32,
+        true,
         phi::errors::InvalidArgument("Sorry,but type is not kFLOAT32"));
     CHECK_EQ(attr_field.length, 1);
     float float_value = (reinterpret_cast<const float*>(attr_field.data))[0];
@@ -153,8 +153,8 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     // int_attr
     attr_field = (fc->fields)[1];
     PADDLE_ENFORCE_EQ(
-        attr_field.type,
-        nvinfer1::PluginFieldType::kINT32,
+        attr_field.type == nvinfer1::PluginFieldType::kINT32,
+        true,
         phi::errors::InvalidArgument("Sorry,but type is not kINT32"));
     CHECK_EQ(attr_field.length, 1);
     int int_value = (reinterpret_cast<const int*>(attr_field.data))[0];
@@ -163,8 +163,8 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     // bool_attr
     attr_field = (fc->fields)[2];
     PADDLE_ENFORCE_EQ(
-        attr_field.type,
-        nvinfer1::PluginFieldType::kINT32,
+        attr_field.type == nvinfer1::PluginFieldType::kINT32,
+        true,
         phi::errors::InvalidArgument("Sorry,but type is not kINT32"));
     CHECK_EQ(attr_field.length, 1);
     int bool_value = (reinterpret_cast<const int*>(attr_field.data))[0];
@@ -173,23 +173,23 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     // string_attr
     attr_field = (fc->fields)[3];
     PADDLE_ENFORCE_EQ(
-        attr_field.type,
-        nvinfer1::PluginFieldType::kCHAR,
+        attr_field.type == nvinfer1::PluginFieldType::kCHAR,
+        true,
         phi::errors::InvalidArgument("Sorry,but type is not kCHAR"));
     std::string expect_string_attr = "test_string_attr";
     CHECK_EQ((size_t)attr_field.length, expect_string_attr.size() + 1);
     const char* receive_string_attr =
         reinterpret_cast<const char*>(attr_field.data);
     PADDLE_ENFORCE_EQ(
-        expect_string_attr,
-        std::string(receive_string_attr),
+        expect_string_attr == std::string(receive_string_attr),
+        true,
         phi::errors::InvalidArgument("Sorry,but expect_string_attr is not "
                                      "equal to receive_string_attr"));
     // ints_attr
     attr_field = (fc->fields)[4];
     PADDLE_ENFORCE_EQ(
-        attr_field.type,
-        nvinfer1::PluginFieldType::kINT32,
+        attr_field.type == nvinfer1::PluginFieldType::kINT32,
+        true,
         phi::errors::InvalidArgument("Sorry,but type is not kINT32"));
     CHECK_EQ(attr_field.length, 3);
     const int* ints_value = reinterpret_cast<const int*>(attr_field.data);
@@ -200,8 +200,8 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     // floats_attr
     attr_field = (fc->fields)[5];
     PADDLE_ENFORCE_EQ(
-        attr_field.type,
-        nvinfer1::PluginFieldType::kFLOAT32,
+        attr_field.type == nvinfer1::PluginFieldType::kFLOAT32,
+        true,
         phi::errors::InvalidArgument("Sorry,but type is not kFLOAT32"));
     CHECK_EQ(attr_field.length, 3);
     const float* floats_value = reinterpret_cast<const float*>(attr_field.data);
@@ -212,8 +212,8 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     // bools_attr
     attr_field = (fc->fields)[6];
     PADDLE_ENFORCE_EQ(
-        attr_field.type,
-        nvinfer1::PluginFieldType::kINT32,
+        attr_field.type == nvinfer1::PluginFieldType::kINT32,
+        true,
         phi::errors::InvalidArgument("Sorry,but type is not kINT32"));
     CHECK_EQ(attr_field.length, 3);
     ints_value = reinterpret_cast<const int*>(attr_field.data);
