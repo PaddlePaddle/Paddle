@@ -49,7 +49,7 @@ template <>
 struct CBlas<int8_t> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Blas VCOPY do not supported on CPU, please check your code"));
   }
 };
@@ -58,7 +58,7 @@ template <>
 struct CBlas<int16_t> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Blas VCOPY do not supported on CPU, please check your code"));
   }
 };
@@ -72,7 +72,7 @@ struct CBlas<phi::dtype::bfloat16> {
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args UNUSED) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Blas VCOPY do not supported on CPU with bfloat16,"
         " please check your code"));
   }
@@ -956,45 +956,45 @@ struct CBlas<phi::dtype::complex<double>> {
 template <>
 struct CBlas<phi::dtype::float16> {
   static void GEMM(...) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "float16 GEMM not supported on CPU, please check your code"));
   }
 
   static void SMM_GEMM(...) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "float16 SMM_GEMM not supported on CPU, please check your code"));
   }
   static void VMUL(...) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "float16 VMUL not supported on CPU, please check your code"));
   }
   static void VEXP(...) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "float16 VEXP not supported on CPU, please check your code"));
   }
   static void VSQUARE(...) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "float16 VSQUARE not supported on CPU, please check your code"));
   }
   static void VPOW(...) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "float16 VPOW not supported on CPU, please check your code"));
   }
   static void DOT(...) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "float16 DOT not supported on CPU, please check your code"));
   };
   static void SCAL(...) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "float16 SCAL not supported on CPU, please check your code"));
   };
   static void ASUM(...) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "float16 ASUM not supported on CPU, please check your code"));
   };
 #ifdef PADDLE_WITH_MKLML
   static void GEMM_BATCH(...) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "float16 GEMM_BATCH not supported on CPU, please check your code"));
   }
 #endif
@@ -1157,7 +1157,7 @@ void Blas<DeviceContext>::MatMul(const phi::DenseTensor &mat_a,
   PADDLE_ENFORCE_EQ(
       dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input and output of matmul should be matrix, the dim size must "
           "be 2,"
           "but received dim size input_a:%d, input_b:%d, output:%d",
@@ -1167,9 +1167,9 @@ void Blas<DeviceContext>::MatMul(const phi::DenseTensor &mat_a,
   PADDLE_ENFORCE_EQ(
       mat_a.place() == mat_b.place() && mat_a.place() == mat_out->place(),
       true,
-      phi::errors::InvalidArgument("The places of matrices in the matmul "
-                                   "should be same, please check your "
-                                   "code."));
+      common::errors::InvalidArgument("The places of matrices in the matmul "
+                                      "should be same, please check your "
+                                      "code."));
 
   int M = dim_out[0];
   int N = dim_out[1];
@@ -1366,11 +1366,11 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         int64_t strideA,
                                         int64_t strideB) const {
   PADDLE_ENFORCE_NOT_NULL(
-      A, phi::errors::InvalidArgument("Pointer A should not be null."));
+      A, common::errors::InvalidArgument("Pointer A should not be null."));
   PADDLE_ENFORCE_NOT_NULL(
-      B, phi::errors::InvalidArgument("Pointer B should not be null."));
+      B, common::errors::InvalidArgument("Pointer B should not be null."));
   PADDLE_ENFORCE_NOT_NULL(
-      C, phi::errors::InvalidArgument("Pointer C should not be null."));
+      C, common::errors::InvalidArgument("Pointer C should not be null."));
 #ifdef PADDLE_WITH_MKLML
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
@@ -1517,7 +1517,7 @@ void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
     PADDLE_ENFORCE_EQ(
         W1,
         H2,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The first matrix width should be same as second matrix height,"
             "but received first matrix width %d"
             ", second matrix height %d",
@@ -1649,7 +1649,7 @@ void Blas<DeviceContext>::MatMul(const T *mat_a,
   PADDLE_ENFORCE_EQ(
       dim_a.width_,
       dim_b.height_,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The first matrix width should be same as second matrix height,"
           "but received first matrix width %d"
           ", second matrix height %d",
@@ -1674,7 +1674,7 @@ void Blas<DeviceContext>::MatMul(const T *mat_a,
         dim_a.batch_size_ == dim_b.batch_size_ || dim_a.batch_size_ == 0 ||
             dim_b.batch_size_ == 0,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "dim_a.batch_size should be equal to dim_b.batch_size, or "
             "one of dim_a.batch_size and dim_b.batch_size should be 0. "
             "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
@@ -1731,22 +1731,22 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
   PADDLE_ENFORCE_EQ(
       dim_a.width_ % head_number,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The first input width must be some times the head number"
           "but received first input width %d"
           ",  head_number %d",
           dim_a.width_,
           head_number));
-  PADDLE_ENFORCE_GE(
-      head_number,
-      1,
-      phi::errors::InvalidArgument("The head number should be greater equal 1,"
-                                   "but received head number %d",
-                                   head_number));
+  PADDLE_ENFORCE_GE(head_number,
+                    1,
+                    common::errors::InvalidArgument(
+                        "The head number should be greater equal 1,"
+                        "but received head number %d",
+                        head_number));
   PADDLE_ENFORCE_LE(
       head_number,
       dim_a.width_,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The head number should be less equal first input width,"
           "but received first input width %d"
           ",  head_number %d",
@@ -1759,7 +1759,7 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
     PADDLE_ENFORCE_EQ(
         dim_b.height_,
         dim_a.width_ / head_number,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The second input height should be equal than first input width,"
             "but received second input height %d, first input width %d",
             dim_b.height_,
@@ -1767,7 +1767,7 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
     PADDLE_ENFORCE_EQ(
         dim_a.width_ % head_number,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The second input width should be some times the head number"
             "but received second input width %d"
             ",  head_number %d",
@@ -1831,7 +1831,7 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
         (dim_a.batch_size_ == dim_b.batch_size_ || dim_a.batch_size_ == 0 ||
          dim_b.batch_size_ == 0),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The first input batch size should be equal than second input,"
             "either two input batch size is 0, but received first input batch "
             "size"

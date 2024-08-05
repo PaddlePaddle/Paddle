@@ -93,7 +93,7 @@ inline dnnl::memory::format_tag GetPlainOneDNNFormat(int tensor_rank) {
     case 9:
       return dnnl::memory::format_tag::abcdefghi;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Paddle support tensors with rank in range <1, 9>, but received "
           "tensor with rank: %d",
           tensor_rank));
