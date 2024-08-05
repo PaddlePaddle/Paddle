@@ -13,13 +13,15 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar, Sequence, overload
+from typing import TYPE_CHECKING, Any, ClassVar, overload
 
 import paddle
 from paddle.base.data_feeder import check_type
 from paddle.regularizer import WeightDecayRegularizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import ParamAttrLike
     from paddle.nn.initializer import Initializer
