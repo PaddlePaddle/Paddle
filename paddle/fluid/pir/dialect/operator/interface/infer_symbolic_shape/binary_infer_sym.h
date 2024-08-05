@@ -17,6 +17,7 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
+
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Allclose)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Atan2)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(BceLoss)
