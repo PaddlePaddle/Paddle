@@ -50,11 +50,11 @@ struct ExtractAttribute {
     try {
       attr_value = &paddle::get<T>(attr);
     } catch (paddle::bad_variant_access const& bad_get) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type %s, its type is %s.",
           attr_name_,
-          paddle::platform::demangle(typeid(T).name()),
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(typeid(T).name()),
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -85,10 +85,10 @@ struct ExtractAttribute<bool> {
     try {
       attr_value = &paddle::get<bool>(attr);
     } catch (paddle::bad_variant_access const& bad_get) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type bool, its type is %s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -113,10 +113,10 @@ struct ExtractAttribute<int64_t> {
     try {
       attr_value = &paddle::get<int64_t>(attr);
     } catch (paddle::bad_variant_access const& bad_get) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type int64_t, its type is %s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -143,11 +143,11 @@ struct ExtractAttribute<std::vector<int64_t>> {
     try {
       attr_value = &paddle::get<std::vector<int64_t>>(attr);
     } catch (paddle::bad_variant_access const& bad_get) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type std::vector<int64_t>, its type is "
           "%s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -172,10 +172,10 @@ struct ExtractAttribute<float> {
     try {
       attr_value = &paddle::get<float>(attr);
     } catch (paddle::bad_variant_access const& bad_get) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type float, its type is %s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -203,10 +203,10 @@ struct ExtractAttribute<double> {
     try {
       attr_value = &paddle::get<double>(attr);
     } catch (paddle::bad_variant_access const& bad_get) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type double, its type is %s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -233,11 +233,11 @@ struct ExtractAttribute<std::vector<double>> {
     try {
       attr_value = &paddle::get<std::vector<double>>(attr);
     } catch (paddle::bad_variant_access const& bad_get) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type std::vector<double>, its type is "
           "%s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -255,11 +255,11 @@ struct ExtractAttribute<paddle::experimental::Scalar> {
     try {
       attr_value = &paddle::get<paddle::experimental::Scalar>(attr);
     } catch (paddle::bad_variant_access const& bad_get) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type Scalar, its type is %s, index is "
           "%d",
           attr_name_,
-          paddle::platform::demangle(attr.type().name()),
+          common::demangle(attr.type().name()),
           attr.index()));
     }
     return attr_value;
@@ -320,7 +320,7 @@ class AttrReader {
     }
     PADDLE_ENFORCE_EQ(found,
                       true,
-                      phi::errors::NotFound(
+                      common::errors::NotFound(
                           "Attribute (%s) should be in AttributeMap.", name));
 
     Attribute& attr = const_cast<Attribute&>(it->second);

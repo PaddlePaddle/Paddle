@@ -227,7 +227,6 @@ class TestLinspaceOpError(unittest.TestCase):
                     )
                     paddle.linspace(start, 10, 1, dtype="float32")
 
-                # test_start_dtype()
                 self.assertRaises(ValueError, test_start_dtype)
 
                 def test_end_dtype():

@@ -636,7 +636,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Gather(
   PADDLE_ENFORCE_NE(
       use_calc_stream,
       true,
-      phi::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
+      common::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
   std::shared_ptr<GatherGlooTask> task;
   auto tag = next_tag();
   auto comm_context = this->GetCommContext();
@@ -667,7 +667,7 @@ ProcessGroupGloo::createDefaultDevice() {
   PADDLE_ENFORCE_EQ(
       ret,
       0,
-      phi::errors::Fatal("Get hostname error for createDefaultDevice."));
+      common::errors::Fatal("Get hostname error for createDefaultDevice."));
   ::addrinfo* result;
   result = phi::distributed::tcputils::get_addr_info(
       hostname.data(), "", 0, AF_UNSPEC);
@@ -725,7 +725,7 @@ phi::distributed::GlooCommContext* ProcessGroupGloo::GetCommContext() {
       comm_context_manager.Get(std::to_string(this->gid_)));
   PADDLE_ENFORCE_NE(comm_context,
                     nullptr,
-                    phi::errors::Unavailable("GlooCommContext is nullptr"));
+                    common::errors::Unavailable("GlooCommContext is nullptr"));
   return comm_context;
 }
 

@@ -36,6 +36,7 @@ def is_collective_comm_op(op):
         "c_reduce_prod",
         "c_broadcast",
         "all_gather",
+        "all_reduce",
     ]
     if op.type in comm_list:
         return True

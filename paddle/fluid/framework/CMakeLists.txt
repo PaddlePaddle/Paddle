@@ -123,7 +123,7 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS fluid_memory data_type device_context phi common)
+  DEPS data_type device_context phi common)
 
 cc_library(
   lod_tensor
@@ -133,7 +133,7 @@ cc_library(
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context allocator phi common glog)
+  DEPS device_context phi common glog)
 
 cc_library(
   reader
@@ -237,7 +237,7 @@ cc_library(
 cc_library(
   attribute
   SRCS attribute.cc
-  DEPS framework_proto enforce common)
+  DEPS framework_proto phi common)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -402,7 +402,7 @@ cc_library(
 cc_library(
   op_call_stack
   SRCS op_call_stack.cc
-  DEPS op_proto_maker enforce common)
+  DEPS op_proto_maker phi common)
 
 cc_library(
   program_utils

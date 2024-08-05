@@ -1,7 +1,7 @@
 cc_test(
   selected_rows_functor_test
   SRCS selected_rows_functor_test.cc
-  DEPS allocator phi common)
+  DEPS phi common)
 cc_test(
   im2col_test
   SRCS im2col_test.cc

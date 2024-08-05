@@ -19,7 +19,7 @@
 #include <cassert>
 
 #include "paddle/fluid/inference/tensorrt/plugin/anchor_generator_op_plugin.h"
-#include "paddle/fluid/operators/detection/anchor_generator_op.h"
+#include "paddle/phi/kernels/impl/anchor_generator_kernel_impl.h"
 
 namespace paddle {
 namespace inference {
@@ -73,30 +73,30 @@ AnchorGeneratorPlugin::AnchorGeneratorPlugin(
   // anchors must be float32, which is the generator proposals' input
   PADDLE_ENFORCE_EQ(data_type_,
                     nvinfer1::DataType::kFLOAT,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts float32."));
   PADDLE_ENFORCE_GE(height_,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts height "
                         "greater than 0, but receive height = %d.",
                         height_));
   PADDLE_ENFORCE_GE(width_,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts width "
                         "greater than 0, but receive width = %d.",
                         width_));
   PADDLE_ENFORCE_GE(
       num_anchors_,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "TRT anchor generator plugin only accepts number of anchors greater "
           "than 0, but receive number of anchors = %d.",
           num_anchors_));
   PADDLE_ENFORCE_GE(box_num_,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts box_num "
                         "greater than 0, but receive box_num = %d.",
                         box_num_));
@@ -177,7 +177,7 @@ int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
-  paddle::operators::GenAnchors<T>
+  phi::GenAnchors<T>
       <<<gen_anchor_grid, block, 0, stream>>>(anchors,
                                               aspect_ratios_device,
                                               aspect_ratios_.size(),
@@ -189,7 +189,7 @@ int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
                                               width_,
                                               offset_);
   const int var_grid = (box_num_ * 4 + block - 1) / block;
-  paddle::operators::SetVariance<T><<<var_grid, block, 0, stream>>>(
+  phi::SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num_ * 4);
   return cudaGetLastError() != cudaSuccess;
 }
@@ -403,12 +403,12 @@ AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(
   // height, width, num_anchors are calculated at configurePlugin
   PADDLE_ENFORCE_EQ(data_type_,
                     nvinfer1::DataType::kFLOAT,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts float32."));
   PADDLE_ENFORCE_GE(
       num_anchors_,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "TRT anchor generator plugin only accepts number of anchors greater "
           "than 0, but receive number of anchors = %d.",
           num_anchors_));
@@ -518,7 +518,7 @@ int AnchorGeneratorPluginDynamic::enqueue_impl(
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
-  paddle::operators::GenAnchors<T>
+  phi::GenAnchors<T>
       <<<gen_anchor_grid, block, 0, stream>>>(anchors,
                                               aspect_ratios_device,
                                               aspect_ratios_.size(),
@@ -530,7 +530,7 @@ int AnchorGeneratorPluginDynamic::enqueue_impl(
                                               width,
                                               offset_);
   const int var_grid = (box_num * 4 + block - 1) / block;
-  paddle::operators::SetVariance<T><<<var_grid, block, 0, stream>>>(
+  phi::SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num * 4);
   return cudaGetLastError() != cudaSuccess;
 }

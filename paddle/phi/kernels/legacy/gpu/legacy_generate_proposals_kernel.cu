@@ -156,7 +156,7 @@ void CUDAGenerateProposalsKernel(const Context &dev_ctx,
 
   PADDLE_ENFORCE_GE(eta,
                     1.,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Not support adaptive NMS. The attribute 'eta' "
                         "should not less than 1. But received eta=[%d]",
                         eta));

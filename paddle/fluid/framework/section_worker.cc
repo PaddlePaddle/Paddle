@@ -51,7 +51,7 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
     } else if (op_role == static_cast<int>(OpRole::kOptimize)) {
       optimizer_ops_.push_back(op.get());
     } else {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "The op %s is None of LRSched, Forward, Backward or Optimize.",
           op->Type()));
     }
@@ -74,7 +74,7 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
     VLOG(3) << "Pipeline backward send var " << var_name;
     PADDLE_ENFORCE_NE(is_first_stage,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The first pipeline stage must do not have a "
                           "backward send var, please check var %s",
                           var_name));
@@ -167,7 +167,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
   PADDLE_ENFORCE_GT(
       num_microbatches_,
       startup_steps,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "To use pipeline with 1F1B scheduler, please make sure number of "
           "microbatches (%d) is than startup steps (%d).",
           num_microbatches_,

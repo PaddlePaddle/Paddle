@@ -48,7 +48,7 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
       break;
 #endif
     default:
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Paddle-TRT loads weights failed, found not supported data type %s.",
           type);
       break;
@@ -75,7 +75,7 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
   if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "You should build engine first and then set the context."));
     // We may see trt warning: Profile 0 has been chosen by another
     // IExecutionContext...
@@ -89,7 +89,7 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
     }
     PADDLE_ENFORCE_NOT_NULL(
         infer_context,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "TensorRT engine can not build execution context."));
     // need new profile if it's not the first
     if (cur_profile_num_ > 0) {
@@ -131,7 +131,7 @@ void TensorRTEngine::Execute(int batch_size,
     PADDLE_ENFORCE_EQ(
         ret,
         true,
-        phi::errors::PreconditionNotMet("Trt CudaGraph test run failed."));
+        common::errors::PreconditionNotMet("Trt CudaGraph test run failed."));
     cudaStreamSynchronize(stream);
 
     cuda_graph_.BeginCapture(stream);
@@ -194,11 +194,11 @@ void TensorRTEngine::FreezeNetwork() {
   FreshDeviceId();
   VLOG(3) << "TRT to freeze network";
   PADDLE_ENFORCE_NOT_NULL(infer_builder_,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Inference builder of TRT is null. Please make "
                               "sure you call InitNetwork first."));
   PADDLE_ENFORCE_NOT_NULL(network(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Call InitNetwork first to initialize network."));
 #if IS_TRT_VERSION_GE(8300)
   infer_builder_config_->setMemoryPoolLimit(
@@ -342,7 +342,7 @@ void TensorRTEngine::FreezeNetwork() {
                             max_shape_tensor().count(input_name) > 0 &&
                             optim_shape_tensor().count(input_name) > 0,
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Fail to find min/max/optim shape value for TRT "
                             "network's shape tensor input named %s.",
                             input_name));
@@ -403,8 +403,8 @@ void TensorRTEngine::FreezeNetwork() {
 
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_,
-      phi::errors::Fatal("Build TensorRT cuda engine failed! Please recheck "
-                         "you configurations related to paddle-TensorRT."));
+      common::errors::Fatal("Build TensorRT cuda engine failed! Please recheck "
+                            "you configurations related to paddle-TensorRT."));
 
 #if IS_TRT_VERSION_GE(10000)
   binding_num_ = infer_engine_->getNbIOTensors();
@@ -432,18 +432,18 @@ nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
                                                 const nvinfer1::Dims &dims) {
   PADDLE_ENFORCE_EQ(network() != nullptr,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The TRT network should be initialized first."));
   auto *input = network()->addInput(name.c_str(), dtype, dims);
   PADDLE_ENFORCE_NOT_NULL(
       input,
-      phi::errors::InvalidArgument("Adding input %s failed in "
-                                   "TensorRT inference network. "
-                                   "Please recheck your input.",
-                                   name));
+      common::errors::InvalidArgument("Adding input %s failed in "
+                                      "TensorRT inference network. "
+                                      "Please recheck your input.",
+                                      name));
   PADDLE_ENFORCE_EQ(input->isNetworkInput(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input %s is not the input of TRT inference network. "
                         "Please recheck your input.",
                         name));
@@ -458,19 +458,19 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer,
   SetITensor(name, output);
   PADDLE_ENFORCE_NOT_NULL(
       output,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The output %s of TRT engine should not be null.", name));
   output->setName(name.c_str());
   PADDLE_ENFORCE_EQ(output->isNetworkInput(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The output %s of TRT engine should not be the input "
                         "of the network at the same time.",
                         name));
   network()->markOutput(*output);
   PADDLE_ENFORCE_EQ(output->isNetworkOutput(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The output %s of TRT engine should be the output "
                         "of the network.",
                         name));
@@ -480,12 +480,12 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
   auto *output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE_NOT_NULL(
       output,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The output %s of TRT engine should not be null.", name));
   output->setName(name.c_str());
   PADDLE_ENFORCE_EQ(output->isNetworkInput(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The output %s of TRT engine should not be the input "
                         "of the network at the same time.",
                         name));
@@ -503,12 +503,12 @@ void TensorRTEngine::DeleteITensor(const std::string &name,
                                    nvinfer1::ITensor *tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Tensor named %s of TRT engine should not be null.", name));
   PADDLE_ENFORCE_EQ(
       true,
       itensor_map_.count(name),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Tensor named %s of TRT engine should not be null", name));
   itensor_map_.erase(name);
 }
@@ -517,12 +517,12 @@ void TensorRTEngine::SetITensor(const std::string &name,
                                 nvinfer1::ITensor *tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Tensor named %s of TRT engine should not be null.", name));
   PADDLE_ENFORCE_EQ(
       0,
       itensor_map_.count(name),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Tensor named %s of TRT engine should not be duplicated", name));
   itensor_map_[name] = tensor;
 }
@@ -547,10 +547,10 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
   auto *var_v = scope_->FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
       var_v,
-      phi::errors::NotFound("You are converting a persistable weight to a "
-                            "tensor, but there is no "
-                            "persistable variable called %s in scope.",
-                            name));
+      common::errors::NotFound("You are converting a persistable weight to a "
+                               "tensor, but there is no "
+                               "persistable variable called %s in scope.",
+                               name));
   auto *var_t = var_v->GetMutable<phi::DenseTensor>();
   auto weight = this->GetTrtWeight(name, *var_t);
 
@@ -616,7 +616,7 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
 
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "Building TRT cuda engine failed when deserializing engine info. "
           "Please check:\n1. Your TRT serialization is generated and "
           "loaded "
@@ -651,7 +651,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
   phi::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
                     0,
-                    phi::errors::AlreadyExists(
+                    common::errors::AlreadyExists(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
@@ -725,7 +725,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
   phi::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
                     0,
-                    phi::errors::AlreadyExists(
+                    common::errors::AlreadyExists(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
@@ -798,7 +798,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
   phi::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
                     0,
-                    phi::errors::AlreadyExists(
+                    common::errors::AlreadyExists(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
@@ -871,7 +871,7 @@ void TensorRTEngine::FreshDeviceId() {
   cudaGetDeviceCount(&count);
   PADDLE_ENFORCE_LT(device_id(),
                     count,
-                    phi::errors::OutOfRange(
+                    common::errors::OutOfRange(
                         "Device id %d exceeds the current device count: %d.",
                         device_id(),
                         count));

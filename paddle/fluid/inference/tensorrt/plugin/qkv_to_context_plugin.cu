@@ -40,7 +40,7 @@ inline int round_up(int seq_len, int multiple = 32) {
   PADDLE_ENFORCE_GT(
       multiple,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "multiple should be a positive number, but it's (%d)", multiple));
   return ((seq_len + multiple - 1) / multiple) * multiple;
 }
@@ -166,7 +166,7 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
   // output, (B, seq_len, hidden)
   PADDLE_ENFORCE_EQ(output_index,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "There is only one output of the EmbEltwiseLayernorm, "
                         "so the index should be zero,"
                         "but it's (%d)",
@@ -174,7 +174,7 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Input of the EmbEltwiseLayernorm should be 3, but we found "
           "it has (%d) inputs",
           nb_inputs));
@@ -222,7 +222,7 @@ void QkvToContextPluginDynamic::configurePlugin(
           cudaMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
 #endif
     } else {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "The QKV TRT Plugin's input type should be float or half."));
     }
   }
@@ -235,16 +235,16 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
@@ -279,7 +279,7 @@ nvinfer1::DataType QkvToContextPluginDynamic::getOutputDataType(
   PADDLE_ENFORCE_EQ(
       index,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The EmbEltwiseLayernorm Plugin only has one input, so the "
           "index value should be 0, but get %d.",
           index));
@@ -530,7 +530,7 @@ int QkvToContextPluginDynamic::enqueue(
           tptr, output, batch, seq_len, head_number_, head_size_);
     }
 #else
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "The Ernie(Bert) TensorRT Plugin should be "
         "complied with CUDA version >= 10.0 when running with fp16. "
         "Please recomplie it or try to use fp32 by set "
@@ -538,7 +538,7 @@ int QkvToContextPluginDynamic::enqueue(
         "max_input_shape, opt_input_shape, true"));
 #endif
   } else {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "The QKV TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
