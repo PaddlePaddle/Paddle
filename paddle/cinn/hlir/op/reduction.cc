@@ -99,7 +99,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     PADDLE_ENFORCE_LE(
         reduce_axes.size(),
         ndim,
-        common::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The reduce axes size %d should be less than or equal "
             "to the input tensor's dimension %d.",
             reduce_axes.size(),
@@ -107,7 +107,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     PADDLE_ENFORCE_LE(
         reduce_axes.back(),
         ndim,
-        common::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The reduce axes size %d should be less than or equal "
             "to the input tensor's dimension %d.",
             reduce_axes.back(),
@@ -237,11 +237,11 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     CINNValuePack arg_pack = args[0];
     PADDLE_ENFORCE_GE(arg_pack.size(),
                       2UL,
-                      common::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input tensor size should be greater than 2!"));
     PADDLE_ENFORCE_LE(arg_pack.size(),
                       8UL,
-                      common::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input tensor size should be less than 8!"));
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
@@ -274,7 +274,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         if (arg_pack.size() == 4) {
           PADDLE_ENFORCE_EQ(vec_tensor.size(),
                             2,
-                            common::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "The input tensor size should be 2!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
@@ -289,7 +289,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         } else if (arg_pack.size() == 6) {
           PADDLE_ENFORCE_EQ(vec_tensor.size(),
                             3,
-                            common::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "The input tensor size should be 3!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
@@ -308,7 +308,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         } else if (arg_pack.size() == 7) {
           PADDLE_ENFORCE_EQ(vec_tensor.size(),
                             4,
-                            common::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "The input tensor size should be 4!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
@@ -329,7 +329,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         } else if (arg_pack.size() == 5) {
           PADDLE_ENFORCE_EQ(vec_tensor.size(),
                             3,
-                            common::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "The input tensor size should be 3!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
@@ -353,7 +353,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         if (arg_pack.size() == 2) {
           PADDLE_ENFORCE_EQ(vec_tensor.size(),
                             1,
-                            common::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "The input tensor size should be 1!"));
           Expr reduce_out = vec_tensor[0];
 
@@ -370,7 +370,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         } else if (arg_pack.size() == 6) {
           PADDLE_ENFORCE_EQ(vec_tensor.size(),
                             3,
-                            common::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "The input tensor size should be 3!"));
           Expr reduce_out = vec_tensor[0];
           Expr reduce_internal = vec_tensor[1];
@@ -472,14 +472,14 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
     PADDLE_ENFORCE_LE(
         reduce_axes.size(),
         ndim,
-        common::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The reduce axes size %d should be less than or equal "
             "to the input tensor's dimension %d.",
             reduce_axes.size(),
             ndim));
     PADDLE_ENFORCE_LT(reduce_axes.back(),
                       ndim,
-                      common::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The reduce axes back %d should be less than "
                           "to the input tensor's dimension %d.",
                           reduce_axes.back(),
@@ -488,7 +488,7 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       PADDLE_ENFORCE_NE(
           reduce_axes[idx - 1],
           reduce_axes[idx],
-          common::errors::InvalidArgument("The reduce axes should be unique!"));
+          phi::errors::InvalidArgument("The reduce axes should be unique!"));
     }
   } else {
     PADDLE_THROW(
@@ -510,7 +510,7 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
     CINNValuePack arg_packs = args[0];
     PADDLE_ENFORCE_EQ(arg_packs.size(),
                       2U,
-                      common::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "There should be 2 input args for compute"));
     PADDLE_ENFORCE_EQ(arg_packs[1].is_string(),
                       true,
