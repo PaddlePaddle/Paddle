@@ -39,20 +39,20 @@ void GemmEpilogueKernel(const Context& dev_ctx,
                         const bool padding_weights,
                         DenseTensor* out) {
   if (!bias) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "In gemm_epilogue kernel, bias should be provided."));
     return;
   }
   PADDLE_ENFORCE_EQ(
       padding_weights,
       false,
-      phi::errors::PermissionDenied(
+      common::errors::PermissionDenied(
           "Weight padding in gemm_epilogue can not be used in GPU scope."));
 
   auto weight_dims = w.dims();
   PADDLE_ENFORCE_EQ(weight_dims.size(),
                     2UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "In gemm_epilogue kernel, weight_dims should be 2."));
   // gemm_epilogue_out should be reshape since can not get lod in infershape
   std::vector<int64_t> output_dims;
@@ -87,12 +87,12 @@ void GemmEpilogueKernel(const Context& dev_ctx,
   isAMisaligned = lda % alignA;
   isBMisaligned = ldb % alignB;
   if (isAMisaligned) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "  returning kErrorMisalignedOperand for input operand"));
     return;
   }
   if (isBMisaligned) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "  returning kErrorMisalignedOperand for weight operand"));
     return;
   }
@@ -116,9 +116,9 @@ void GemmEpilogueKernel(const Context& dev_ctx,
   auto gemm_epilogue_dtype = get_gemm_epilogue_dtype(input.dtype());
   if ((gemm_epilogue_dtype != GemmEpilogueDataType::fp16) &&
       (gemm_epilogue_dtype != GemmEpilogueDataType::bf16)) {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("Gemm_epilogue kernel only supports fp16 "
-                                     "and bf16, input dtype error!"));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Gemm_epilogue kernel only supports fp16 "
+        "and bf16, input dtype error!"));
     return;
   }
 
@@ -126,7 +126,7 @@ void GemmEpilogueKernel(const Context& dev_ctx,
     if (device_sm_version < 80) {
       PADDLE_ENFORCE_GE(device_sm_version,
                         80,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Gemm_epilogue only supports sm >= 80, but got %d.",
                             device_sm_version));
     } else if (device_sm_version > 80) {
@@ -168,7 +168,7 @@ void GemmEpilogueKernel(const Context& dev_ctx,
   func gemm_epilogue_func = NULL;
   PADDLE_ENFORCE_NOT_NULL(
       dlhandler,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "CutlassGemmEpilogueHandle should not be NULL, dynload error."));
   if (activation_type == "identity" || activation_type == "") {
     gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAdd"));
@@ -177,7 +177,7 @@ void GemmEpilogueKernel(const Context& dev_ctx,
   } else if (activation_type == "gelu") {
     gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddGelu"));
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Cutlass does not support this activation_type: %s.",
         activation_type.c_str()));
   }

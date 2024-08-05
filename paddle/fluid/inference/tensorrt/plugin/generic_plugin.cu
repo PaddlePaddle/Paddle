@@ -547,7 +547,11 @@ nvinfer1::DimsExprs GenericPlugin::getOutputDimensions(
     const nvinfer1::DimsExprs* inputs,
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
-  CHECK(output_index < getNbOutputs());
+  PADDLE_ENFORCE_EQ(
+      output_index < getNbOutputs(),
+      true,
+      common::errors::InvalidArgument(
+          "The output_index should be less than getNbOutputs()."));
   auto& dynamic_infermeta_factory = tensorrt::DynamicMetaFnFactory::Instance();
   PADDLE_ENFORCE_EQ(dynamic_infermeta_factory.Contains(op_desc_.Type()),
                     true,
@@ -565,10 +569,18 @@ void GenericPlugin::configurePlugin(
     int nb_inputs,
     const nvinfer1::DynamicPluginTensorDesc* out,
     int nb_outputs) TRT_NOEXCEPT {
-  CHECK(phi_kernels_[nvinfer1::DataType::kFLOAT]->IsValid() ||
-        phi_kernels_[nvinfer1::DataType::kHALF]->IsValid());
-  CHECK(nb_inputs == getNbInputs());
-  CHECK(nb_outputs == getNbOutputs());
+  PADDLE_ENFORCE_EQ(phi_kernels_[nvinfer1::DataType::kFLOAT]->IsValid() ||
+                        phi_kernels_[nvinfer1::DataType::kHALF]->IsValid(),
+                    true,
+                    common::errors::Fatal("Sorry, phi kernel is invalid!"));
+  PADDLE_ENFORCE_EQ(nb_inputs == getNbInputs(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The nb_inputs should be equal to getNbInputs()."));
+  PADDLE_ENFORCE_EQ(nb_outputs == getNbOutputs(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The nb_outputs should be equal to getNbOutputs()."));
 }
 
 // Shutdown the layer. This is called when the engine is destroyed
@@ -594,8 +606,11 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         {nvinfer1::DataType::kINT32, {phi::DataType::INT32, sizeof(int32_t)}},
         {nvinfer1::DataType::kBOOL, {phi::DataType::BOOL, sizeof(bool)}},
     };
-    CHECK(_map.count(nv_dtype))
-        << "dtype [" << static_cast<int>(nv_dtype) << "] is not supported.";
+    PADDLE_ENFORCE_EQ(
+        _map.count(nv_dtype),
+        true,
+        common::errors::InvalidArgument("Sorry, dtyp [ %d ] is not supported.",
+                                        static_cast<int>(nv_dtype)));
     return _map.at(nv_dtype);
   };
 
@@ -606,9 +621,11 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   } else {
     data_type = input_desc[0].type;
   }
-  CHECK((data_type == nvinfer1::DataType::kFLOAT) ||
-        (data_type == nvinfer1::DataType::kHALF));
-
+  PADDLE_ENFORCE_EQ((data_type == nvinfer1::DataType::kFLOAT) ||
+                        (data_type == nvinfer1::DataType::kHALF),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The data_type should be kFLOAT or kHALF."));
   phi_kernel_contexts_[data_type]->ClearInputOutput();
 
   auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));

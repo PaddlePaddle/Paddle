@@ -2982,7 +2982,7 @@ static std::string GenerateDygraphHFileIncludes() {
       "#pragma once\n"
       "#include \"glog/logging.h\"\n"
       "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
-      "#include \"paddle/fluid/memory/stats.h\"\n"
+      "#include \"paddle/phi/core/memory/stats.h\"\n"
       "#include \"paddle/phi/api/all.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
       "#include \"paddle/fluid/imperative/tracer.h\"\n"

@@ -14,14 +14,16 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/same_operands_result.h"
 
-#define OP_SAME_OPERANDS_AND_RESULT(name)                                  \
-  bool name##OpInferSymbolicShape(                                         \
-      pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) { \
-    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =             \
-        infer_context->GetShapeOrDataForValue(op->operand_source(0));      \
-    infer_context->SetShapeOrDataForValue(op->result(0),                   \
-                                          operand_shape_or_data);          \
-    return true;                                                           \
+#define OP_SAME_OPERANDS_AND_RESULT(name)                                     \
+  bool name##OpInferSymbolicShape(                                            \
+      pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {    \
+    const auto &operand_shape =                                               \
+        infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape(); \
+    infer_context->SetShapeOrDataForValue(                                    \
+        op->result(0),                                                        \
+        symbol::ShapeOrDataDimExprs{                                          \
+            symbol::TensorShapeOrDataDimExprs(operand_shape)});               \
+    return true;                                                              \
   }
 
 namespace paddle::dialect {
@@ -37,8 +39,6 @@ OP_SAME_OPERANDS_AND_RESULT(Asin)
 OP_SAME_OPERANDS_AND_RESULT(Asin_)
 OP_SAME_OPERANDS_AND_RESULT(Asinh)
 OP_SAME_OPERANDS_AND_RESULT(Asinh_)
-OP_SAME_OPERANDS_AND_RESULT(Assign)
-OP_SAME_OPERANDS_AND_RESULT(Assign_)
 OP_SAME_OPERANDS_AND_RESULT(Atan)
 OP_SAME_OPERANDS_AND_RESULT(Atan_)
 OP_SAME_OPERANDS_AND_RESULT(Atanh)
@@ -46,8 +46,6 @@ OP_SAME_OPERANDS_AND_RESULT(Atanh_)
 OP_SAME_OPERANDS_AND_RESULT(Bernoulli)
 OP_SAME_OPERANDS_AND_RESULT(BitwiseNot)
 OP_SAME_OPERANDS_AND_RESULT(BitwiseNot_)
-OP_SAME_OPERANDS_AND_RESULT(Cast)
-OP_SAME_OPERANDS_AND_RESULT(Cast_)
 OP_SAME_OPERANDS_AND_RESULT(Ceil)
 OP_SAME_OPERANDS_AND_RESULT(Ceil_)
 OP_SAME_OPERANDS_AND_RESULT(Celu)

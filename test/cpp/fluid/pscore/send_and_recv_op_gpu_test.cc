@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/memory/memcpy.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
