@@ -11,11 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 #include "glog/logging.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+
 namespace pir {
 /**
  * IMPORTANT!!!
