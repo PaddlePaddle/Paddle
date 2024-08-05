@@ -68,22 +68,55 @@ class HorizontalFusePattern : public pir::RewritePattern {
             << "] op";
 
     /// 至少有一个出边被多个op使用才能横向融合
-    /// 假定只有一个出边被多个op使用。如果有多个，只处理最后一个（- -！）
-    int multi_use_res_idx = -1;
-    for (uint32_t i = 0; i < op->num_results(); i++) {
-      if (op->result(i).use_count() > 1) {
-        multi_use_res_idx = i;
+    for (size_t i = 0; i < op->num_results(); i++) {
+      if (getOpCntUseX(op->result(i)) > 1) {
+        return true;
       }
     }
-    if (multi_use_res_idx < 0) {
-      return false;
+
+    VLOG(4) << "horizontal_fuse_pass applied match on [" << op->name()
+            << "] op";
+    return false;
+  }
+
+  void Rewrite(pir::Operation* op,
+               pir::PatternRewriter& rewriter) const override {  // NOLINT
+    VLOG(4) << "horizontal_fuse_pass applies rewrite on [" << op->name()
+            << "] op";
+
+    for (size_t i = 0; i < op->num_results(); i++) {
+      if (getOpCntUseX(op->result(i)) > 1) {
+        rewriteOpsbyValue(op, rewriter, i);
+      }
     }
 
+    VLOG(4) << "horizontal_fuse_pass applied rewrite on [" << op->name()
+            << "] op";
+  }
+
+ private:
+  bool areAttributeMapsEqual(const pir::AttributeMap& attrs1,
+                             const pir::AttributeMap& attrs2) const {
+    if (attrs1.size() != attrs2.size()) {
+      return false;
+    }
+    pir::AttributeMap attrs2_copy(attrs2);
+    for (const auto& kv : attrs1) {
+      auto it = attrs2_copy.find(kv.first);
+      if (it == attrs2_copy.end() || it->second != kv.second) {
+        return false;
+      }
+      attrs2_copy.erase(it);
+    }
+    return attrs2_copy.empty();
+  }
+
+  int getOpCntUseX(const pir::Value& x) const {
     /// 使用该出边的op中至少得有两个完全相同的MatmulOp/GemmEpilogueOp/FcOp
     /// 属性也应该完全相等，如果不完全相等，则不进行横向融合
     // 这就是一道算法题，我们直接构建屎山
     int op_cnt_useX = 0;
-    pir::Value x = op->result(multi_use_res_idx);
+
     // 我们假定，使用x的多个op的种类里，MatmulOp GemmEpilogueOp FcOp两两互斥
     // 即，最多有一种Op会出现。如果同时出现两种，则匹配失败。
     // 我们假定，该种类的多个op的属性会完全相同
@@ -109,38 +142,23 @@ class HorizontalFusePattern : public pir::RewritePattern {
             areAttributeMapsEqual(op_example_attrs, curr_op->attributes())) {
           op_cnt_useX++;
         } else {
-          return false;
+          return 0;
         }
       }
     }
-    if (op_cnt_useX < 2) {
-      return false;
-    }
-
-    VLOG(4) << "horizontal_fuse_pass applied match on [" << op->name()
-            << "] op";
-    return true;
+    return op_cnt_useX;
   }
 
-  void Rewrite(pir::Operation* op,
-               pir::PatternRewriter& rewriter) const override {  // NOLINT
-    VLOG(4) << "horizontal_fuse_pass applies rewrite on [" << op->name()
-            << "] op";
+  void rewriteOpsbyValue(pir::Operation* op,
+                         pir::PatternRewriter& rewriter,
+                         size_t idx) const {
     /// 现在我们知道，x被多个op使用，该op属于MatmulOp/GemmEpilogueOp/FcOp的一种
     /// 我们统称 fused_matmul_op
-
     /// 数据准备
     // 准备x
-    int multi_used_res_idx = -1;
-    for (uint32_t i = 0; i < op->num_results(); i++) {
-      if (op->result(i).use_count() > 1) {
-        multi_used_res_idx = i;
-      }
-    }
-    pir::Value x = op->result(multi_used_res_idx);
+    pir::Value x = op->result(idx);
     std::vector<int64_t> x_dims = pir::GetShapeFromValue(x);
     auto x_last_axis = x_dims.size() - 1;
-
     // 准备源模式算子
     std::vector<pir::Operation*> fused_matmul_ops;
     std::string fused_matmul_op_name;
@@ -229,33 +247,13 @@ class HorizontalFusePattern : public pir::RewritePattern {
     auto split_builtin_op = rewriter.Build<pir::SplitOp>(xw_splitted);
     std::vector<pir::Value> xw = split_builtin_op.outputs();
 
-    // 替换结果Value
+    /// 替换结果Value
     for (size_t k = 0; k < src_outs.size(); k++) {
       rewriter.ReplaceAllUsesWith(src_outs[k], xw[k]);
     }
-    // 删除旧节点
+    /// 删除旧节点
     for (auto fused_matmul_op : fused_matmul_ops)
       rewriter.EraseOp(fused_matmul_op);
-
-    VLOG(4) << "horizontal_fuse_pass applied rewrite on [" << op->name()
-            << "] op";
-  }
-
- private:
-  bool areAttributeMapsEqual(const pir::AttributeMap& attrs1,
-                             const pir::AttributeMap& attrs2) const {
-    if (attrs1.size() != attrs2.size()) {
-      return false;
-    }
-    pir::AttributeMap attrs2_copy(attrs2);
-    for (const auto& kv : attrs1) {
-      auto it = attrs2_copy.find(kv.first);
-      if (it == attrs2_copy.end() || it->second != kv.second) {
-        return false;
-      }
-      attrs2_copy.erase(it);
-    }
-    return attrs2_copy.empty();
   }
 };
 
