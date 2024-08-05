@@ -381,12 +381,12 @@
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
-    func : ReshapeGradInferMeta
+    func : GradSameWithXInferMeta
     param : [x, out_grad]
     spmd_rule: ReshapeGradInferSpmd
   kernel :
     func : reshape_grad
-    param : [out_grad]
+    param : [x, out_grad]
     data_type: out_grad
     backend: out_grad
     layout: out_grad

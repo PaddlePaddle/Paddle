@@ -868,8 +868,8 @@ class DistForwardAPI(ForwardAPI):
 
         # TODO(GhostScreaming): specialized case for reshape_grad
         # xshape is not kernel params, but inferspmd needs it.
-        if "reshape_grad" in self.kernel['func'][0]:
-            kernel_params = ["xshape"] + kernel_params
+        # if "reshape_grad" in self.kernel['func'][0]:
+        #     kernel_params = ["x"] + kernel_params
 
         input_decl_code = ""
         input_args_code = ""
@@ -1275,6 +1275,7 @@ class DistForwardAPI(ForwardAPI):
                     and self.infer_meta['global_shape'] is not None
                     and self.outputs['names'][i]
                     == self.infer_meta['global_shape']
+                    and i > 0
                 ):
                     output_decl_code += (
                         SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE.format(
@@ -1597,7 +1598,9 @@ class DistForwardAPI(ForwardAPI):
                 ] and self.need_to_generate_code_for_inplace_impl(i):
                     infer_meta_code += SET_DIMS_TEMPLATE.format(
                         dst=self.dist_output_args[i],
-                        src=self.dist_output_args[i] + '_tmp',
+                        src=self.dist_output_args[i] + '_tmp'
+                        if i > 0
+                        else self.dist_output_args[i],
                     )
 
         # TODO(GhostScreaming): kernel like reshape need calculate local_shape

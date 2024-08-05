@@ -402,12 +402,10 @@ void reduce_as_grad(const Tensor& x,
 }
 
 template <typename T>
-void reshape_grad(const Tensor& xshape,
-                  const Tensor& grad_out,
-                  Tensor* grad_x) {
+void reshape_grad(const Tensor& x, const Tensor& grad_out, Tensor* grad_x) {
   if (grad_x) {
-    auto xshape_dims = xshape.dims();
-    auto grad_x_tmp = reshape<T>(grad_out, common::vectorize(xshape_dims));
+    const auto& x_dims = x.dims();
+    auto grad_x_tmp = reshape<T>(grad_out, common::vectorize(x_dims));
     set_output<T>(grad_x_tmp, grad_x);
   }
 }

@@ -35,7 +35,7 @@ void SqueezeGradStridedKernel(const Context& dev_ctx,
   const auto& xshape_dims = xshape.dims();
   auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   ReshapeStridedKernel<Context>(
-      dev_ctx, dout, IntArray(common::vectorize<int64_t>(x_dims)), dx, nullptr);
+      dev_ctx, dout, IntArray(common::vectorize<int64_t>(x_dims)), dx);
 }
 
 }  // namespace phi

@@ -724,7 +724,7 @@
     func : ReshapeInferMeta
     spmd_rule : ReshapeInferSpmdDynamic
   kernel :
-    func : reshape_infer
+    func : reshape
   inplace : (x -> out)
   view: (x -> out)
   backward: reshape_grad
