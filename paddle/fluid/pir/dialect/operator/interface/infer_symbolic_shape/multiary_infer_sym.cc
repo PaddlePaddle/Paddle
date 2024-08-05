@@ -755,29 +755,17 @@ bool FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(
                         "the received is %d",
                         bit_length));
 
-  // Set the symbolic shape for the output tensors
   // Set the shape for the output tensor 'out', same as input tensor 'x'
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
 
-  // Set the shape for the output tensor 'out_scale'
-  if (op->num_results() > 1 && op->result(1) != nullptr) {
-    symbol::TensorShapeOrDataDimExprs scalar_shape(
-        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
-    infer_context->SetShapeOrDataForValue(op->result(1), scalar_shape);
-  }
+  // Create a scalar shape for the other output tensors
+  symbol::TensorShapeOrDataDimExprs scalar_shape(
+      std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
 
-  // Set the shape for the output tensor 'out_state'
-  if (op->num_results() > 2 && op->result(2) != nullptr) {
-    symbol::TensorShapeOrDataDimExprs scalar_shape(
-        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
-    infer_context->SetShapeOrDataForValue(op->result(2), scalar_shape);
-  }
-
-  // Set the shape for the output tensor 'out_accum'
-  if (op->num_results() > 3 && op->result(3) != nullptr) {
-    symbol::TensorShapeOrDataDimExprs scalar_shape(
-        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
-    infer_context->SetShapeOrDataForValue(op->result(3), scalar_shape);
+  // Set the shape for all scalar output tensors: 'out_scale', 'out_state',
+  // 'out_accum'
+  for (size_t i = 1; i < op->num_results(); ++i) {
+    infer_context->SetShapeOrDataForValue(op->result(i), scalar_shape);
   }
 
   return true;
@@ -790,7 +778,6 @@ bool FakeQuantizeMovingAverageAbsMax_OpInferSymbolicShape(
 
 bool FakeQuantizeDequantizeMovingAverageAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  // share the same infermeta FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta
   return FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(op, infer_context);
 }
 
