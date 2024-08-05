@@ -2740,6 +2740,10 @@ void LUUnpackInferMeta(const MetaTensor& x,
       2,
       phi::errors::InvalidArgument("The rank of input must greater than 2."));
 
+  int m = static_cast<int>(x_dims[x_rank - 1]);
+  int n = static_cast<int>(x_dims[x_rank - 2]);
+  int min_mn = std::min(m, n);
+
   if (unpack_pivots) {
     auto pdims = x_dims;
     pdims[x_rank - 1] = n;
@@ -2747,9 +2751,6 @@ void LUUnpackInferMeta(const MetaTensor& x,
     pmat->set_dtype(x.dtype());
   }
 
-  int m = static_cast<int>(x_dims[x_rank - 1]);
-  int n = static_cast<int>(x_dims[x_rank - 2]);
-  int min_mn = std::min(m, n);
   if (unpack_ludata) {
     auto ldims = x_dims;
     auto udims = x_dims;
