@@ -78,7 +78,7 @@ def _all_gather_in_dygraph(
 
 def _all_gather_in_static_mode(
     tensor_list: list[Tensor], tensor: Tensor, group: Group, sync_op: bool
-) -> task:
+) -> None:
     op_type = 'all_gather'
     helper = framework.LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)

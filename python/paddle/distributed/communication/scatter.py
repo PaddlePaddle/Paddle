@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle.base.core import task
     from paddle.distributed.communication.group import Group
 
 import numpy as np
@@ -39,7 +40,7 @@ def scatter(
     src: int = 0,
     group: Group | None = None,
     sync_op: bool = True,
-) -> None:
+) -> task | None:
     """
 
     Scatter a tensor to all participators. As shown below, one process is started with a GPU and the source of the scatter

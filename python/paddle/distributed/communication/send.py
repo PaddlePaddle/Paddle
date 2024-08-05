@@ -29,7 +29,7 @@ def send(
     dst: int = 0,
     group: Group | None = None,
     sync_op: bool = True,
-) -> task:
+) -> task | None:
     """
     Send a tensor to the receiver.
 
@@ -65,7 +65,7 @@ def send(
     )
 
 
-def isend(tensor: Tensor, dst: int, group: Group | None = None) -> task:
+def isend(tensor: Tensor, dst: int, group: Group | None = None) -> task | None:
     """
     Send tensor asynchronously
 
