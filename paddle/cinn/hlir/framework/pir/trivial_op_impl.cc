@@ -14,9 +14,9 @@
 
 #include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include <variant>
-#include "paddle/cinn/operator_fusion/backend/pattern.h"
-#include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
-#include "paddle/cinn/operator_fusion/group_cluster.h"
+#include "paddle/cinn/operator_fusion/cluster_interface.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/expr_utils.h"
+#include "paddle/cinn/operator_fusion/pattern.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
@@ -219,6 +219,19 @@ std::vector<ir::Var> GetReduceIters(const ReduceOp& op) {
   return AppendBound(reduce_iter_vars, _GetRootExpr(op));
 }
 
+std::vector<int> GetExpandVarPos(const ReduceOp& op) {
+  std::vector<ir::Var> all_iter_vars = GetAllForIters(_GetRootExpr(op));
+  VLOG(4) << "all_iter_vars: " << cinn::utils::Join(all_iter_vars, ", ");
+  std::vector<int> expand_pos;
+
+  for (int i = 0; i < all_iter_vars.size(); i++) {
+    if (all_iter_vars[i]->name.find("expand_var") == 0) {
+      expand_pos.push_back(i);
+    }
+  }
+  return expand_pos;
+}
+
 ir::Expr GetInitExpr(const ReduceOp& op) {
   const auto result =
       (ExprSetFinderUtils::ChildScheduleBlockRealizes *
@@ -344,7 +357,7 @@ int GetTensorCounter() {
 std::vector<FusibleOp> TransformReduceLoopRange(
     const ReduceOp& upstream,
     FusibleOp* downstream,
-    std::vector<size_t> fake_reduce_iter_idx) {
+    const std::vector<size_t>& fake_reduce_iter_idx) {
   // downstream will be mutated by this transform.
   VLOG(4) << "RRTransform begin";
   VLOG(4) << "RRTransform Upstream is \n" << _GetRootExpr(upstream);
@@ -505,7 +518,7 @@ void DebugPrintReduceVar(const FusibleOp& op) {
 }
 
 std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
-  VLOG(4) << "DebugPrint Op Origin: ";
+  VLOG(4) << "Start SplitReduceOp";
   VLOG(4) << "DebugPrint Op Origin: " << _GetRootExpr(reduce_op);
   ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
   // substitude compute_body with a new init value.
@@ -560,6 +573,15 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
                  ExprSetFinderUtils::Store2Value.GetSingle(new_reduce_body));
   const auto& result_reduce = ReduceOp(CreateExprWithNewComputeBody(
       reduce_op, ExprSetFinderUtils::Store2Value.GetSingle(new_reduce_body)));
+
+  auto expand_pos = GetExpandVarPos(reduce_op);
+  if (!expand_pos.empty()) {
+    auto pad_result_trivial = std::get<TrivialOp>(
+        cinn::fusion::DoPadding(result_trivial, expand_pos).back());
+    auto pad_result_reduce = std::get<ReduceOp>(
+        cinn::fusion::DoPadding(result_reduce, expand_pos).back());
+    return std::make_pair(pad_result_trivial, pad_result_reduce);
+  }
   VLOG(4) << "SplitReduceTransform End~";
   return std::make_pair(result_trivial, result_reduce);
 }
@@ -588,35 +610,6 @@ std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
 }
 
 }  // namespace trivial_fusion_detail
-
-std::vector<ir::Expr> OperationFusion(
-    const std::vector<::pir::Operation*>& ops,
-    const std::vector<ir::Expr>& op_compute_bodies,
-    const std::vector<::pir::Value>& outputs) {
-  PADDLE_ENFORCE_EQ(FLAGS_group_schedule_tiling_first,
-                    true,
-                    ::common::errors::PreconditionNotMet(
-                        "TrivialFusion must be used with tiling first, set "
-                        "FLAGS_group_schedule_tiling_first=1"));
-  std::vector<cinn::fusion::BackendContent> contents;
-  for (int i = 0; i < ops.size(); i++) {
-    contents.emplace_back(ops[i], op_compute_bodies[i]);
-  }
-  const auto& fusion_nodes =
-      cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents, outputs);
-
-  PADDLE_ENFORCE_EQ(fusion_nodes.size(),
-                    1,
-                    ::common::errors::Unimplemented(
-                        "Only support one fusion node in backend now."));
-
-  const auto& output = GetExprFromPattern(fusion_nodes[0]->stmt_pattern());
-  VLOG(4) << "Fusion Result: output size is " << output.size();
-  for (const auto& expr : output) {
-    VLOG(4) << expr;
-  }
-  return output;
-}
 
 void InitLoopTransformMap(FusionGroupInfo* group_info, const ir::Expr& body) {
   using trivial_fusion_detail::ExprSetFinderUtils::ChildScheduleBlockRealizes;
@@ -671,17 +664,11 @@ FusionGroupInfo GetFusionGroupInfo(
     const std::vector<ir::Expr>& op_compute_bodies) {
   using trivial_fusion_detail::AppendBound;
   using trivial_fusion_detail::GetAllForIters;
+  using trivial_fusion_detail::IsReduceBody;
   using trivial_fusion_detail::ReduceOp;
   using trivial_fusion_detail::ComposeUtils::ConcatVector;
-  using trivial_fusion_detail::ExprSetFinderUtils::ChildScheduleBlockRealizes;
-  using trivial_fusion_detail::ExprSetFinderUtils::ScheduleBlockRealizeIsInit;
 
   FusionGroupInfo group_info = FusionGroupInfo();
-
-  const auto IsReduceBody = [](const ir::Expr& expr_body) {
-    return !(ChildScheduleBlockRealizes * ScheduleBlockRealizeIsInit)(expr_body)
-                .empty();
-  };
 
   for (const auto& body : op_compute_bodies) {
     InitLoopTransformMap(&group_info, body);
