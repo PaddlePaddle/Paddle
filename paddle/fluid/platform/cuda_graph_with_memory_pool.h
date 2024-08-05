@@ -37,7 +37,7 @@ inline phi::GPUPlace CUDAGraphCapturingPlace() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return CUDAGraph::CapturingPlace();
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "CUDA Graph is only supported on NVIDIA GPU device."));
 #endif
 }

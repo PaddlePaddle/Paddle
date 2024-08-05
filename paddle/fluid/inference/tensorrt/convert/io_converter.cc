@@ -33,10 +33,10 @@ class DefaultIOConverter : public EngineIOConverter {
                           void* out,
                           size_t max_size) override {
     PADDLE_ENFORCE_NOT_NULL(out,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "The input param 'out' must not be nullptr."));
     PADDLE_ENFORCE_NOT_NULL(stream_,
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "You should set up stream_ by SetStream() "
                                 "before you call the operator()."));
     const auto& place = in.place();
@@ -44,7 +44,7 @@ class DefaultIOConverter : public EngineIOConverter {
     PADDLE_ENFORCE_LE(
         size,
         max_size,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input Tensor in's memory_size should be less than or equal to "
             "the input max_size. But in's memory_size = %u, max_size = %u.",
             size,
@@ -57,10 +57,10 @@ class DefaultIOConverter : public EngineIOConverter {
           0,
           cudaMemcpyAsync(
               out, in.data<float>(), size, cudaMemcpyDeviceToDevice, *stream_),
-          phi::errors::External(
+          common::errors::External(
               "cudaMemcpyAsync(cudaMemcpyDeviceToDevice) error."));
     } else {
-      PADDLE_THROW(phi::errors::NotFound("Unknown device for converter"));
+      PADDLE_THROW(common::errors::NotFound("Unknown device for converter"));
     }
     cudaStreamSynchronize(*stream_);
   }
@@ -69,10 +69,10 @@ class DefaultIOConverter : public EngineIOConverter {
                           LoDTensor* out,
                           size_t max_size) override {
     PADDLE_ENFORCE_NOT_NULL(in,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "The input param 'in' must not be nullptr."));
     PADDLE_ENFORCE_NOT_NULL(stream_,
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "You should set up stream_ by SetStream() "
                                 "before you call the operator()."));
     const auto& place = out->place();
@@ -80,7 +80,7 @@ class DefaultIOConverter : public EngineIOConverter {
     PADDLE_ENFORCE_LE(
         size,
         max_size,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input Tensor out's memory_size should be less than or equal "
             "to the input max_size. "
             "But out's memory_size = %u, max_size = %u.",
@@ -91,17 +91,17 @@ class DefaultIOConverter : public EngineIOConverter {
           0,
           cudaMemcpyAsync(
               out->data<float>(), in, size, cudaMemcpyDeviceToHost, *stream_),
-          phi::errors::External(
+          common::errors::External(
               "cudaMemcpyAsync(cudaMemcpyDeviceToHost) error."));
     } else if (is_gpu_place(place)) {
       PADDLE_ENFORCE_EQ(
           0,
           cudaMemcpyAsync(
               out->data<float>(), in, size, cudaMemcpyDeviceToDevice, *stream_),
-          phi::errors::External(
+          common::errors::External(
               "cudaMemcpyAsync(cudaMemcpyDeviceToDevice) error."));
     } else {
-      PADDLE_THROW(phi::errors::NotFound("Unknown device for converter"));
+      PADDLE_THROW(common::errors::NotFound("Unknown device for converter"));
     }
     cudaStreamSynchronize(*stream_);
   }

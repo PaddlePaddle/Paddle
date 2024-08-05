@@ -40,5 +40,24 @@ pir::Value reshard(
 pir::Value reshard(const pir::Value& x,
                    const TensorDistAttribute& tensor_dist_attr);
 
+std::vector<pir::Value> local_tensors_from_dist(
+    const pir::Value& input,
+    const std::vector<phi::distributed::ProcessMesh>& local_mesh_list,
+    const std::vector<int64_t>& local_dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& local_partial_status,
+    const phi::distributed::ProcessMesh& global_mesh,
+    const std::vector<int64_t>& global_dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& global_partial_status);
+
+pir::Value dist_tensor_from_locals(
+    const std::vector<pir::Value>& inputs,
+    const std::vector<phi::distributed::ProcessMesh>& local_mesh_list,
+    const std::vector<int64_t>& local_dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& local_partial_status,
+    const phi::distributed::ProcessMesh& global_mesh,
+    const std::vector<int64_t>& global_dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& global_partial_status,
+    const std::vector<int64_t>& global_shape);
+
 }  // namespace dialect
 }  // namespace paddle

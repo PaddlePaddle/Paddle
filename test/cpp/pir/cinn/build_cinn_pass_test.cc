@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
@@ -56,13 +57,26 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(origin_program.get()), true);
+  PADDLE_ENFORCE_EQ(
+      pm.Run(origin_program.get()),
+      true,
+      phi::errors::InvalidArgument("Origin program not run. Expected run."));
   LOG(INFO) << "after pass: " << *origin_program;
 
-  CHECK_EQ(origin_program->block()->size(), 1u);
+  PADDLE_ENFORCE_EQ(
+      origin_program->block()->size(),
+      1u,
+      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
+                                   "Expected 1 but received %d.",
+                                   origin_program->block()->size()));
   pir::Operation& group_op = origin_program->block()->front();
   pir::Block* group_block = group_op.dyn_cast<cinn::dialect::GroupOp>().block();
-  CHECK_EQ(group_block->size(), 6u);
+  PADDLE_ENFORCE_EQ(
+      group_block->size(),
+      6u,
+      phi::errors::InvalidArgument(
+          "Size of group block mismatch. Expected 6 but received %d.",
+          group_block->size()));
 
   std::vector<std::string> op_names = {
       paddle::dialect::FullOp::name(),
@@ -74,7 +88,10 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   };
   int index = 0;
   for (auto& op : *group_block) {
-    CHECK_EQ(op.name(), op_names[index++]);
+    PADDLE_ENFORCE_EQ(
+        op.name(),
+        op_names[index++],
+        phi::errors::InvalidArgument("Op name mismatch. Please check!"));
   }
 }
 
@@ -104,17 +121,28 @@ TEST(BuildCinnPassTest, NoOpSupportCinn) {
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
-  CHECK_EQ(pm.Run(origin_program.get()), true);
+  PADDLE_ENFORCE_EQ(
+      pm.Run(origin_program.get()),
+      true,
+      phi::errors::InvalidArgument("Origin program not run. Expected run."));
   LOG(INFO) << "after pass: " << *origin_program;
 
-  CHECK_EQ(origin_program->block()->size(), 3u);  // Because of `FullIntArrayOp`
+  PADDLE_ENFORCE_EQ(
+      origin_program->block()->size(),
+      3u,
+      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
+                                   "Expected 3 but received %d.",
+                                   origin_program->block()->size()));
 
   std::vector<std::string> op_names = {paddle::dialect::OnesOp::name(),
                                        paddle::dialect::HardswishOp::name(),
                                        paddle::dialect::SquareOp::name()};
   int index = 0;
   for (auto& op : *origin_program->block()) {
-    CHECK_EQ(op.name(), op_names[index++]);
+    PADDLE_ENFORCE_EQ(
+        op.name(),
+        op_names[index++],
+        phi::errors::InvalidArgument("Op name mismatch. Please check!"));
   }
 }
 
@@ -150,13 +178,26 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
-  CHECK_EQ(pm.Run(origin_program.get()), true);
+  PADDLE_ENFORCE_EQ(
+      pm.Run(origin_program.get()),
+      true,
+      phi::errors::InvalidArgument("Origin program not run. Expected run."));
   LOG(INFO) << "after pass: " << *origin_program;
 
-  CHECK_EQ(origin_program->block()->size(), 4u);
+  PADDLE_ENFORCE_EQ(
+      origin_program->block()->size(),
+      4u,
+      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
+                                   "Expected 4 but received %d.",
+                                   origin_program->block()->size()));
   pir::Operation& group_op = origin_program->block()->front();
   pir::Block* group_block = group_op.dyn_cast<cinn::dialect::GroupOp>().block();
-  CHECK_EQ(group_block->size(), 4u);
+  PADDLE_ENFORCE_EQ(
+      group_block->size(),
+      4u,
+      phi::errors::InvalidArgument(
+          "Size of group block mismatch. Expected 4 but received %d.",
+          group_block->size()));
 
   std::vector<std::string> op_names = {
       paddle::dialect::FullOp::name(),
@@ -166,7 +207,10 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   };
   int index = 0;
   for (auto& op : *group_block) {
-    CHECK_EQ(op.name(), op_names[index++]);
+    PADDLE_ENFORCE_EQ(
+        op.name(),
+        op_names[index++],
+        phi::errors::InvalidArgument("Op name mismatch. Please check!"));
   }
 }
 
@@ -205,14 +249,27 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
-  CHECK_EQ(pm.Run(origin_program.get()), true);
+  PADDLE_ENFORCE_EQ(
+      pm.Run(origin_program.get()),
+      true,
+      phi::errors::InvalidArgument("Origin program not run. Expected run."));
   LOG(INFO) << "after pass: " << *origin_program;
 
-  CHECK_EQ(origin_program->block()->size(), 5u);
+  PADDLE_ENFORCE_EQ(
+      origin_program->block()->size(),
+      5u,
+      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
+                                   "Expected 5 but received %d.",
+                                   origin_program->block()->size()));
   pir::Operation* group_op = &origin_program->block()->front();
   pir::Block* group_block =
       group_op->dyn_cast<cinn::dialect::GroupOp>().block();
-  CHECK_EQ(group_block->size(), 3u);
+  PADDLE_ENFORCE_EQ(
+      group_block->size(),
+      3u,
+      phi::errors::InvalidArgument(
+          "Size of group block mismatch. Expected 3 but received %d.",
+          group_block->size()));
 
   std::vector<std::string> op_names_front = {
       paddle::dialect::FullOp::name(),
@@ -221,12 +278,20 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   };
   int index = 0;
   for (auto& op : *group_block) {
-    CHECK_EQ(op.name(), op_names_front[index++]);
+    PADDLE_ENFORCE_EQ(
+        op.name(),
+        op_names_front[index++],
+        phi::errors::InvalidArgument("Op name mismatch. Please check!"));
   }
 
   group_op = &origin_program->block()->back();
   group_block = group_op->dyn_cast<cinn::dialect::GroupOp>().block();
-  CHECK_EQ(group_block->size(), 3u);
+  PADDLE_ENFORCE_EQ(
+      group_block->size(),
+      3u,
+      phi::errors::InvalidArgument(
+          "Size of group block mismatch. Expected 3 but received %d.",
+          group_block->size()));
 
   std::vector<std::string> op_names_back = {
       paddle::dialect::UnsqueezeOp::name(),
@@ -235,6 +300,9 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   };
   index = 0;
   for (auto& op : *group_block) {
-    CHECK_EQ(op.name(), op_names_back[index++]);
+    PADDLE_ENFORCE_EQ(
+        op.name(),
+        op_names_back[index++],
+        phi::errors::InvalidArgument("Op name mismatch. Please check!"));
   }
 }

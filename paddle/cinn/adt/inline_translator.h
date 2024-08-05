@@ -33,7 +33,10 @@ struct InlineTranslator final {
   using DstTree = Tree<MapT, DstLeaf>;
 
   static DstTree Call(const SrcTree& src_tree) {
-    CHECK((src_tree.template Has<MapT<SrcTree>>()));
+    PADDLE_ENFORCE_EQ((src_tree.template Has<MapT<SrcTree>>()),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "src_tree.template should have <MapT<SrcTree>>()"));
     const MapT<DstTree> dst_tree =
         CallMap(src_tree.template Get<MapT<SrcTree>>());
 
@@ -97,7 +100,10 @@ struct InlineTranslator final {
     const auto& arg = op_call_children->at(arg_index);
     const auto& arg_leaf = arg.template Get<Load<TensorT>>();
     const auto& [arg_tensor] = arg_leaf.tuple();
-    CHECK(producer_tensor == arg_tensor);
+    PADDLE_ENFORCE_EQ(producer_tensor == arg_tensor,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "producer_tensor should be equal to arg_tensor"));
     List<OpExpr> ret{};
     ret->assign(op_call_children->begin(), op_call_children->end());
     ret->at(arg_index) = producer_tree;
@@ -108,12 +114,20 @@ struct InlineTranslator final {
   static void CheckConsumerPosIsLoadTensor(const DstLeaf& consumer,
                                            int arg_index) {
     const auto& [tensor, consumer_tree] = consumer.tuple();
-    CHECK((consumer_tree.template Has<OpCallT<OpExpr>>()));
+    PADDLE_ENFORCE_EQ(
+        (consumer_tree.template Has<OpCallT<OpExpr>>()),
+        true,
+        phi::errors::InvalidArgument(
+            "consumer_tree.template should have <OpCallT<OpExpr>>()"));
     const auto& op_call = consumer_tree.template Get<OpCallT<OpExpr>>();
     const auto& op_call_children =
         InlineTranslatorTrait<OpCallT>::GetTreeInnerNodeChildren(op_call);
     const auto& op_call_child = op_call_children->at(arg_index);
-    CHECK((op_call_child.template Has<Load<TensorT>>()));
+    PADDLE_ENFORCE_EQ(
+        (op_call_child.template Has<Load<TensorT>>()),
+        true,
+        phi::errors::InvalidArgument(
+            "op_call_child.template should have <Load<TensorT>>()"));
   }
 
   template <typename DoEachT>
@@ -163,8 +177,12 @@ struct InlineTranslator final {
     std::unordered_map<int, DstLeaf> index2dst_leaf{};
     // Init dst leaves
     for (int i = 0; i < size; ++i) {
-      CHECK(index2dst_leaf.emplace(i, NaiveTranslateLeaf(*std::next(begin, i)))
-                .second);
+      PADDLE_ENFORCE_EQ(
+          index2dst_leaf.emplace(i, NaiveTranslateLeaf(*std::next(begin, i)))
+              .second,
+          true,
+          phi::errors::InvalidArgument(
+              "index2dst_leaf.emplace should return true"));
     }
     // Inline dst leaves
     for (int producer_i = 0; producer_i < size; ++producer_i) {
@@ -195,7 +213,10 @@ struct InlineTranslator final {
   // using SrcLeaf = Store<TensorT, OpCallT<Load<TensorT>>>;
   // using DstLeaf = Store<TensorT, OpExpr>;
   static DstLeaf NaiveTranslateLeaf(const SrcTree& src_tree) {
-    CHECK(src_tree.template Has<SrcLeaf>());
+    PADDLE_ENFORCE_EQ(src_tree.template Has<SrcLeaf>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "src_tree.template should have <SrcLeaf>()"));
     const auto& [tensor, op_call] = src_tree.template Get<SrcLeaf>().tuple();
     const List<Load<TensorT>>& src_loads =
         InlineTranslatorTrait<OpCallT>::GetTreeInnerNodeChildren(op_call);

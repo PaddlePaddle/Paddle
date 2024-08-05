@@ -56,7 +56,7 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::Offload(
   PADDLE_ENFORCE_EQ(
       phi::is_gpu_place(place),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "AsyncLoad::Offload only support GPU -> GPUPinned now."));
 
   dst->Resize(src.dims());
@@ -96,12 +96,12 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::Reload(
   PADDLE_ENFORCE_EQ(
       phi::is_cuda_pinned_place(place),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "AsyncLoad::Reload only support GPUPinned -> GPU now."));
 
   PADDLE_ENFORCE_EQ(is_initialized_,
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "You should call Offload before Reload."));
 
   auto* dev_ctx = static_cast<phi::GPUContext*>(

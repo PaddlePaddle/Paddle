@@ -64,12 +64,15 @@ inline void CheckAndUpdateSliceAttrs(
     int64_t end_i = 0;
     if (ends.at(i).isa<int64_t>()) {
       if (in_dims.at(axis).isa<int64_t>()) {
-        ends.at(i) =
-            (ends.at(i).Get<int64_t>() > in_dims.at(axis).Get<int64_t>())
-                ? in_dims.at(axis)
-                : ends.at(i);
+        ends[i] = std::min(ends.at(i).Get<int64_t>(),
+                           in_dims.at(axis).Get<int64_t>());
       }
-      end_i = ends.at(i).Get<int64_t>();
+      if (ends.at(i).Get<int64_t>() < 0) {
+        ends[i] = ends.at(i) + in_dims.at(axis);
+      }
+      if (ends.at(i).isa<int64_t>()) {
+        end_i = ends.at(i).Get<int64_t>();
+      }
     }
 
     // For both start and end can be negative or positive, we need to handle the
@@ -88,7 +91,7 @@ inline void CheckAndUpdateSliceAttrs(
     } else if (start_positive_end_negative) {
       starts.at(i) = starts.at(i) - in_dims.at(axis);
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Dead code"));
+      PADDLE_THROW(common::errors::Fatal("Dead code"));
     }
   }
 }
@@ -102,7 +105,7 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
   PADDLE_ENFORCE_EQ(
       (axes.size() == starts.size() && axes.size() == ends.size()),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of axes must equal size of starts and ends."));
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes.at(i);
@@ -144,6 +147,7 @@ inline std::vector<int64_t> FormatSliceAxes(
 
 inline ShapeOrData SliceRawInferSymbolicShape(
     const pir::Value x,
+    const pir::Value out,
     const ExprVec &starts_expr,
     const ExprVec &ends_expr,
     const std::vector<int64_t> &axes_raw,
@@ -195,7 +199,7 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         vec_int64.has_value(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "for slice op, all the elements in `starts` must be int64_t"));
     std::vector<int64_t> starts_int = vec_int64.value();
 
@@ -203,17 +207,23 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         vec_int64.has_value(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "for slice op, all the elements in `ends` must be int64_t"));
     std::vector<int64_t> ends_int = vec_int64.value();
 
     const int64_t start =
         starts_int[0] < 0 ? starts_int[0] + in_shapeordata.data().value().size()
                           : starts_int[0];
-    const int64_t end =
-        static_cast<int64_t>(std::numeric_limits<int>::max()) == ends_int[0]
-            ? in_shapeordata.data().value().size()
-            : ends_int[0];
+    const int64_t end = [&]() -> int64_t {
+      if (ends_int[0] < 0) {
+        return ends_int[0] + in_shapeordata.data().value().size();
+      }
+      if (ends_int[0] ==
+          static_cast<int64_t>(std::numeric_limits<int>::max())) {
+        return in_shapeordata.data().value().size();
+      }
+      return ends_int[0];
+    }();
 
     for (int64_t i = start; i < end; i++) {
       out_data.push_back(in_shapeordata.data().value().at(i));
@@ -225,7 +235,18 @@ inline ShapeOrData SliceRawInferSymbolicShape(
         symbol::TensorShapeOrDataDimExprs(shape, out_data)};
   };
 
-  return in_shapeordata.data().has_value() ? GetDataDimExprs()
-                                           : GetShapeDimExprs();
+  const auto &out_shape = in_shapeordata.data().has_value()
+                              ? GetDataDimExprs()
+                              : GetShapeDimExprs();
+  if (out_shape.data().has_value() && out_shape.shape().empty()) {  // 0D tensor
+    const auto &out_ddim =
+        out.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    if (out_ddim.size() == 1 && out_ddim[0] == 1) {  // value is 1D
+      return symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          std::vector<symbol::DimExpr>{1}, out_shape.data().value())};
+    }
+  }
+
+  return out_shape;
 }
 }  // namespace paddle::dialect::slice_utils
