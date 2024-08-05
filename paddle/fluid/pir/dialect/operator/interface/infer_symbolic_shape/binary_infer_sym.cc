@@ -571,11 +571,6 @@ bool MarginCrossEntropyOpInferSymbolicShape(
   std::vector<symbol::DimExpr> logits_dims = logits_shape_or_data.shape();
 
   size_t logits_rank = logits_dims.size();
-  PADDLE_ENFORCE_GT(logits_rank,
-                    0UL,
-                    phi::errors::InvalidArgument(
-                        "The Input(logits) dims size must be greater than 0, "
-                        "but received dims size is 0."));
   auto axis = logits_rank - 1;
 
   infer_context->SetShapeOrDataForValue(
