@@ -22,7 +22,8 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_decompose_control_flow
     test_decomp_whole_program
     test_dynamic_combine1
-    test_dynamic_combine2)
+    test_dynamic_combine2
+    test_decomp_fallback)
 
 foreach(target ${TEST_PRIM_PURE_PIR_CASES})
   py_test_modules(

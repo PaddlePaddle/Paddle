@@ -57,7 +57,7 @@ inline static void CheckDims(const phi::DDim& seq_tensor_dims,
   PADDLE_ENFORCE_EQ(
       static_cast<size_t>(seq_tensor_dims[0]),
       seq_offset.back(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Value of 1st dimension of the sequence tensor should be "
           "equal to sum of lengths of all sequences. Expected %ld == %ld, but "
           "got %ld != %ld. Please check the input value.",
@@ -70,7 +70,7 @@ inline static void CheckDims(const phi::DDim& seq_tensor_dims,
       seq_tensor_dims.size() + 1 == pad_tensor_dims.size() ||
           seq_tensor_dims.size() == pad_tensor_dims.size(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "pad_tensor's rank should be 1 greater than seq_tensor's "
           "rank, or be equal with it. The pad_tensor's rank is %ld, "
           "expected the seq_tensor's rank is %ld or %ld, but got %ld. "

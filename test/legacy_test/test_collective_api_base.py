@@ -125,7 +125,9 @@ class TestCollectiveAPIRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        if args["use_comm_context"] or args["dynamic_static_unified_comm"]:
+        if args['static_mode'] and (
+            args["use_comm_context"] or args["dynamic_static_unified_comm"]
+        ):
             paddle.distributed.collective._init_parallel_env(args["backend"])
         else:
             paddle.distributed.init_parallel_env()
@@ -152,13 +154,7 @@ class TestCollectiveAPIRunnerBase:
                     reduce_type=args['reduce_type'],
                 )
                 if args["use_comm_context"]
-                else (
-                    self.get_model_new_comm(
-                        train_prog, startup_prog, rank, dtype=args['dtype']
-                    )
-                    if args["dynamic_static_unified_comm"]
-                    else self.get_model(train_prog, startup_prog, rank)
-                )
+                else (self.get_model(train_prog, startup_prog, rank))
             )
             exe = base.Executor(place)
             exe.run(startup_prog)
@@ -189,8 +185,7 @@ def runtime_main(test_class, col_type):
     args["reduce_type"] = os.getenv("REDUCE_TYPE")
     args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
     args["dynamic_static_unified_comm"] = bool(
-        os.getenv("FLAGS_dynamic_static_unified_comm", "false").lower()
-        == "true"
+        os.getenv("FLAGS_dynamic_static_unified_comm", "true").lower() == "true"
     )
     model.run_trainer(args)
 
@@ -357,7 +352,6 @@ class TestDistBase(unittest.TestCase):
             "PATH_ID": path_id,
             "DTYPE": dtype,
             "REDUCE_TYPE": str(reduce_type),
-            "FLAGS_dynamic_static_unified_comm": "0",
         }
         required_envs.update(additional_envs)
         required_envs.update(need_envs)

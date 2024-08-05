@@ -16,10 +16,10 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/memory.h"
 #include "paddle/phi/core/stream.h"
 
 #ifdef PADDLE_WITH_CUDA

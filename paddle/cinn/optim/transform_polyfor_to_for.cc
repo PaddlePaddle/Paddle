@@ -98,7 +98,11 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
     if (!can_extract_extent) {
       if (node->condition.As<ir::LE>()) {
         auto le = node->condition.As<ir::LE>();
-        CHECK(le->a().As<ir::Sub>());
+
+        PADDLE_ENFORCE_NOT_NULL(
+            le->a().As<ir::Sub>(),
+            phi::errors::InvalidArgument("The value of le is incorrect."
+                                         "Expected value is 0"));
         PADDLE_ENFORCE_EQ(le->b().As<ir::IntImm>()->value,
                           0UL,
                           ::common::errors::InvalidArgument(
@@ -109,7 +113,10 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
         node->condition = ir::LE::Make(sub->a(), sub->b());
       } else if (node->condition.As<ir::LT>()) {
         auto lt = node->condition.As<ir::LT>();
-        CHECK(lt->a().As<ir::Sub>());
+        PADDLE_ENFORCE_NOT_NULL(
+            lt->a().As<ir::Sub>(),
+            phi::errors::InvalidArgument("The value of lt is incorrect."
+                                         "Expected value is 0"));
         PADDLE_ENFORCE_EQ(lt->b().As<ir::IntImm>()->value,
                           0UL,
                           ::common::errors::InvalidArgument(
@@ -131,7 +138,13 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
     Expr rhs = lt_n ? lt_n->b() : PlusOneWithMinMax(le_n->b());
     rhs = cinn::common::AutoSimplify(rhs);
 
-    if (op->is_vectorized()) CHECK(op->vectorize_info().valid());
+    if (op->is_vectorized())
+      PADDLE_ENFORCE_EQ(
+          op->vectorize_info().valid(),
+          true,
+          phi::errors::InvalidArgument(
+              "The value of op->vectorize_info().valid() is incorrect."
+              "Expected value is true"));
 
     Expr new_for = ir::For::Make(op->iterator,
                                  op->init,

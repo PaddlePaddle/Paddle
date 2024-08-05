@@ -11,10 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence, overload
 
 import paddle
 from paddle.base.data_feeder import check_type
 from paddle.regularizer import WeightDecayRegularizer
+
+if TYPE_CHECKING:
+    from paddle._typing import ParamAttrLike
 
 __all__ = []
 
@@ -152,6 +158,21 @@ class ParamAttr:
             None.
         """
         self._set_default_initializer(paddle.nn.initializer.Constant(0.0))
+
+    @overload
+    @staticmethod
+    def _to_attr(arg: None) -> ParamAttr:
+        ...
+
+    @overload
+    @staticmethod
+    def _to_attr(arg: ParamAttrLike) -> ParamAttr:
+        ...
+
+    @overload
+    @staticmethod
+    def _to_attr(arg: Sequence[ParamAttrLike]) -> list[ParamAttr]:
+        ...
 
     @staticmethod
     def _to_attr(arg):

@@ -233,6 +233,8 @@ def _remove_other_rank_params_grads(dist_params_grads):
     cur_rank = paddle.distributed.get_rank()
     need_remove_idx = []
     for idx, (_, grad) in enumerate(dist_params_grads):
+        if grad is None:
+            continue
         if cur_rank not in grad.dist_attr().process_mesh.process_ids:
             need_remove_idx.append(idx)
     for idx in need_remove_idx[::-1]:
