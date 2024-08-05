@@ -162,6 +162,17 @@ OP_SAME_OPERANDS_AND_RESULT(Polygamma)
 OP_SAME_OPERANDS_AND_RESULT(Polygamma_)
 OP_SAME_OPERANDS_AND_RESULT(EnableCheckModelNanInf)
 OP_SAME_OPERANDS_AND_RESULT(ViewShape)
+OP_SAME_OPERANDS_AND_RESULT(FusedSoftmaxMaskUpperTriangle)
+OP_SAME_OPERANDS_AND_RESULT(Gammaln)
+OP_SAME_OPERANDS_AND_RESULT(Gammaln_)
+OP_SAME_OPERANDS_AND_RESULT(GaussianInplace)
+OP_SAME_OPERANDS_AND_RESULT(GaussianInplace_)
+OP_SAME_OPERANDS_AND_RESULT(HardShrink)
+OP_SAME_OPERANDS_AND_RESULT(HardSigmoid)
+OP_SAME_OPERANDS_AND_RESULT(MergeSelectedRows)
+OP_SAME_OPERANDS_AND_RESULT(Renorm)
+OP_SAME_OPERANDS_AND_RESULT(Renorm_)
+OP_SAME_OPERANDS_AND_RESULT(TanhShrink)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
