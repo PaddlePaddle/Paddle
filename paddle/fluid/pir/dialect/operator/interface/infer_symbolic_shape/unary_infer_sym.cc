@@ -531,17 +531,8 @@ bool InverseOpInferSymbolicShape(
   const auto &input_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   std::vector<symbol::DimExpr> input_dims = input_shape.shape();
-  int input_rank = static_cast<int>(input_dims.size());
+  int input_rank = input_dims.size();
 
-  PADDLE_ENFORCE_GE(
-      input_rank,
-      2,
-      phi::errors::InvalidArgument(
-          "InverseOpInferSymbolicShape : The dimension of Input(Input) is "
-          "expected to be no less than 2. "
-          "But received: Input(Input)'s dimension = %zu, shape = [%s].",
-          input_rank,
-          input_dims));
   for (int i = 0; i < input_rank; i++) {
     PADDLE_ENFORCE_EQ(
         (input_dims[i] == 0),
@@ -552,22 +543,30 @@ bool InverseOpInferSymbolicShape(
             "But received: Input(Input)'s shape = [%s].",
             input_dims));
   }
-  if (input_dims[input_rank - 2] != 0 && input_dims[input_rank - 1] != 0) {
-    PADDLE_ENFORCE_EQ(
-        (input_dims[input_rank - 2] == input_dims[input_rank - 1]),
-        true,
-        phi::errors::InvalidArgument(
-            "InverseOpInferSymbolicShape : The last two dimensions of "
-            "Input(Input) is expected to be equal. "
-            "But received: Input(Input)'s shape = [%s].",
-            input_dims));
-  }
+  infer_context->AddEqualCstr(input_dims[input_rank - 2],
+                              input_dims[input_rank - 1]);
+
   std::vector<symbol::DimExpr> output_dims = input_dims;
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(output_dims)});
+  return true;
+}
+
+bool LpPool2dOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &kernel_size = [&]() -> std::vector<symbol::DimExpr> {
+    std::vector<int64_t> kernel_size_int_vec =
+        op->attribute<paddle::dialect::IntArrayAttribute>("kernel_size")
+            .data()
+            .GetData();
+    return details::VecInt642Expr(kernel_size_int_vec);
+  }();
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      Pool2dRawInferSymbolicShape(op, kernel_size, infer_context));
   return true;
 }
 
