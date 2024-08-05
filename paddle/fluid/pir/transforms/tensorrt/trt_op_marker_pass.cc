@@ -210,7 +210,7 @@ class DepthwiseConv2dTransposeOpPattern
         return false;
       }
     }
-    
+
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -845,8 +845,7 @@ class GreaterEqualOpPattern : public pir::OpRewritePattern<paddle::dialect::Grea
     auto x_dtype = pir::GetDataTypeFromValue(x);
     auto y_dtype = pir::GetDataTypeFromValue(y);
     if(x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()){
-      VLOG(3)<< "ElementWiseOperation::kLESS/ElementWiseOperation::kGREATER "
-         "do not support boolean datatype.";
+      VLOG(3)<< "Greate_equal op do not support bool datatype";
       return false;
     }
 #endif
@@ -876,6 +875,7 @@ class MultiplyOpPattern : public pir::OpRewritePattern<paddle::dialect::Multiply
     return true;
   }
 };
+
 
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
@@ -931,6 +931,13 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<SplitWithNumOpPattern>(context));
     ps.Add(std::make_unique<GreaterEqualOpPattern>(context));
     ps.Add(std::make_unique<MultiplyOpPattern>(context));
+    ps.Add(std::make_unique<SubtractOpPattern>(context));
+    ps.Add(std::make_unique<DivideOpPattern>(context));
+    ps.Add(std::make_unique<ElementwisePowOpPattern>(context));
+    ps.Add(std::make_unique<MinimumOpPattern>(context));
+    ps.Add(std::make_unique<MaximumOpPattern>(context));
+    ps.Add(std::make_unique<FloorDivideOpPattern>(context));
+    ps.Add(std::make_unique<RemainderOpPattern>(context));
     return ps;
   }
 };
