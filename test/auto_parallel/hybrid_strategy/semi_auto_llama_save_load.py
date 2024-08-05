@@ -167,7 +167,7 @@ class TestLlamaAuto:
             lr_scheduler.step()
             if step == 2:
                 state_dict = dist_model.state_dict()
-                dist.save_state_dict(state_dict, tmp_ckpt_path)
+                dist.save_state_dict(state_dict, tmp_ckpt_path, async_save=True)
             if step > 2:
                 numpy_array = np.array(loss)
                 array_bytes = numpy_array.tobytes()
