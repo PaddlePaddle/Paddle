@@ -41,7 +41,7 @@ const std::vector<symbol::DimExpr>& GetDimExprs(
   PADDLE_ENFORCE_EQ(
       shape_or_data_dim_exprs.data().has_value(),
       true,
-      common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "shape_or_data_dim_exprs has no data, it cannot be empty"));
   return shape_or_data_dim_exprs.data().value();
 }
