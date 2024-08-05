@@ -188,7 +188,7 @@ ExprSet ExprSetFinder::operator()(const ir::Expr& x) const { return f_(x); }
 ir::Expr ExprSetFinder::GetSingle(const ir::Expr& x) const {
   ExprSetFinder call = (*this) * ExprSetFinder::GetIdentity();
   const auto& o = call.operator()(x);
-  PADDLE_ENFORCE_NE(o.size(),
+  PADDLE_ENFORCE_EQ(o.size(),
                     1,
                     ::common::errors::InvalidArgument(
                         "Try to get single result, but we get %d.", o.size()));
