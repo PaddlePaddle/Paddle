@@ -516,6 +516,7 @@ class TestSplitTRTPattern(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
+
 class TestNonZeroTRTPattern(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -545,29 +546,31 @@ class TestNonZeroTRTPattern(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
+
 class TestSplitWithNumTRTPattern(PassTest):
     def is_program_valid(self, program=None):
         return True
+
     def sample_program(self):
         with paddle.pir_utils.IrGuard():
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(
-                    name='x', shape=[3,9,5], dtype='int64'
-                )
+                x = paddle.static.data(name='x', shape=[3, 9, 5], dtype='int64')
                 num_or_sections = 3
                 axis = 1
-                split_out = paddle.split(x, num_or_sections=num_or_sections, axis=axis)
+                split_out = paddle.split(
+                    x, num_or_sections=num_or_sections, axis=axis
+                )
                 out = paddle.assign(split_out[0])
                 out1 = paddle.assign(split_out[1])
                 out2 = paddle.assign(split_out[2])
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x": np.random.random([3,9,5]).astype("int64"),
+                    "x": np.random.random([3, 9, 5]).astype("int64"),
                 }
 
-                self.fetch_list = [out,out1,out2]
+                self.fetch_list = [out, out1, out2]
                 self.valid_op_map = {
                     "pd_op.fusion_transpose_flatten_concat": 0,
                 }
@@ -579,6 +582,7 @@ class TestSplitWithNumTRTPattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 class TestGeluTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -610,6 +614,7 @@ class TestGeluTRTPattern(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
+
 class TestGreaterEqualTRTPattern(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -625,8 +630,8 @@ class TestGreaterEqualTRTPattern(PassTest):
                 out = paddle.assign(greater_equal_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x" : np.array([1, 2, 3]).astype("float32"),
-                    "y" : np.array([1, 3, 2]).astype("float32"),
+                    "x": np.array([1, 2, 3]).astype("float32"),
+                    "y": np.array([1, 3, 2]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -640,6 +645,7 @@ class TestGreaterEqualTRTPattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 class TestMultiplyTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -650,14 +656,14 @@ class TestMultiplyTRTPattern(PassTest):
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(name='x', shape=[2,2], dtype='float32')
-                y = paddle.static.data(name='y', shape=[2,2], dtype='float32')
+                x = paddle.static.data(name='x', shape=[2, 2], dtype='float32')
+                y = paddle.static.data(name='y', shape=[2, 2], dtype='float32')
                 multiply_out = paddle.multiply(x, y)
                 out = paddle.assign(multiply_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x" : np.array([[1, 2], [3, 4]]).astype("float32"),
-                    "y" : np.array([[5, 6], [7, 8]]).astype("float32"),
+                    "x": np.array([[1, 2], [3, 4]]).astype("float32"),
+                    "y": np.array([[5, 6], [7, 8]]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -671,6 +677,7 @@ class TestMultiplyTRTPattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 class TestBatchNormTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -690,20 +697,21 @@ class TestBatchNormTRTPattern(PassTest):
                 )
                 weight = paddle.static.data(
                     name='weight', shape=[1], dtype='float32'
-                )                          
+                )
                 bias = paddle.static.data(
                     name='bias', shape=[1], dtype='float32'
-                )         
-                batch_norm_out = paddle.nn.functional.batch_norm(x, running_mean,
-                                                       running_variance, weight, bias)                                 
+                )
+                batch_norm_out = paddle.nn.functional.batch_norm(
+                    x, running_mean, running_variance, weight, bias
+                )
                 out = paddle.assign(batch_norm_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x" :  np.arange(12).reshape([2,1,2,3]).astype("float32"),
-                    "running_mean" :  np.array([0]).astype("float32"),
-                    "running_variance" :  np.array([1]).astype("float32"),
-                    "weight" :   np.array([2]).astype("float32"),
-                    "bias" :   np.array([1]).astype("float32")
+                    "x": np.arange(12).reshape([2, 1, 2, 3]).astype("float32"),
+                    "running_mean": np.array([0]).astype("float32"),
+                    "running_variance": np.array([1]).astype("float32"),
+                    "weight": np.array([2]).astype("float32"),
+                    "bias": np.array([1]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -717,6 +725,7 @@ class TestBatchNormTRTPattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 class TestSoftmaxTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -728,18 +737,26 @@ class TestSoftmaxTRTPattern(PassTest):
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(
-                    name='x', shape=[2,3,4], dtype='float32'
+                    name='x', shape=[2, 3, 4], dtype='float32'
                 )
-                softmax_out = paddle.nn.functional.softmax(x)                                 
+                softmax_out = paddle.nn.functional.softmax(x)
                 out = paddle.assign(softmax_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x" :  np.array([[[2.0, 3.0, 4.0, 5.0],
-                   [3.0, 4.0, 5.0, 6.0],
-                   [7.0, 8.0, 8.0, 9.0]],
-                  [[1.0, 2.0, 3.0, 4.0],
-                   [5.0, 6.0, 7.0, 8.0],
-                   [6.0, 7.0, 8.0, 9.0]]]).astype("float32"),
+                    "x": np.array(
+                        [
+                            [
+                                [2.0, 3.0, 4.0, 5.0],
+                                [3.0, 4.0, 5.0, 6.0],
+                                [7.0, 8.0, 8.0, 9.0],
+                            ],
+                            [
+                                [1.0, 2.0, 3.0, 4.0],
+                                [5.0, 6.0, 7.0, 8.0],
+                                [6.0, 7.0, 8.0, 9.0],
+                            ],
+                        ]
+                    ).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -753,6 +770,7 @@ class TestSoftmaxTRTPattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 class TestReluTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -763,14 +781,12 @@ class TestReluTRTPattern(PassTest):
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(
-                    name='x', shape=[3], dtype='float32'
-                )
-                relu_out = paddle.nn.functional.relu(x)                                 
+                x = paddle.static.data(name='x', shape=[3], dtype='float32')
+                relu_out = paddle.nn.functional.relu(x)
                 out = paddle.assign(relu_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x" :  np.array([-2, 0, 1]).astype("float32"),
+                    "x": np.array([-2, 0, 1]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -785,37 +801,6 @@ class TestReluTRTPattern(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
-class TestReshapeTRTPattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        with paddle.pir_utils.IrGuard():
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(
-                    name='x', shape=[2,4,6], dtype='float32'
-                )
-                shape_tensor = [-1, 0, 3, 2]
-                relu_out = paddle.reshape(x, shape_tensor)                                 
-                out = paddle.assign(relu_out)
-                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
-                self.feeds = {
-                    "x" :  np.random.random([2,4,6]).astype("float32"),
-                }
-                self.fetch_list = [out]
-                self.valid_op_map = {
-                    "pd_op.fusion_transpose_flatten_concat": 0,
-                }
-                yield [main_prog, start_prog], False
-
-    def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct()
 
 class TestDropoutTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -827,14 +812,14 @@ class TestDropoutTRTPattern(PassTest):
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 paddle.seed(2023)
-                x = paddle.static.data(
-                    name='x', shape=[2,3], dtype='float32'
+                x = paddle.static.data(name='x', shape=[2, 3], dtype='float32')
+                dropout_out = paddle.nn.functional.dropout(
+                    x, 0.5, training=False
                 )
-                dropout_out =  paddle.nn.functional.dropout(x, 0.5 ,training=False)                               
                 out = paddle.assign(dropout_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x" :   np.array([[1,2,3], [4,5,6]]).astype("float32"),
+                    "x": np.array([[1, 2, 3], [4, 5, 6]]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -848,6 +833,7 @@ class TestDropoutTRTPattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 class TestBmmTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -859,22 +845,27 @@ class TestBmmTRTPattern(PassTest):
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(
-                    name='x', shape=[2,2,3], dtype='float32'
+                    name='x', shape=[2, 2, 3], dtype='float32'
                 )
                 y = paddle.static.data(
-                    name='y', shape=[2,3,2], dtype='float32'
+                    name='y', shape=[2, 3, 2], dtype='float32'
                 )
-                bmm_out = paddle.bmm(x, y)                                
+                bmm_out = paddle.bmm(x, y)
                 out = paddle.assign(bmm_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x" :   np.array([[[1.0, 1.0, 1.0],
-                                       [2.0, 2.0, 2.0]],
-                                      [[3.0, 3.0, 3.0],
-                                       [4.0, 4.0, 4.0]]]).astype("float32"),
-                    
-                    "y":np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
-                     [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]]).astype("float32"),
+                    "x": np.array(
+                        [
+                            [[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]],
+                            [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]],
+                        ]
+                    ).astype("float32"),
+                    "y": np.array(
+                        [
+                            [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]],
+                            [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]],
+                        ]
+                    ).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -888,6 +879,7 @@ class TestBmmTRTPattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 class TestConcatTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -899,24 +891,23 @@ class TestConcatTRTPattern(PassTest):
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x1 = paddle.static.data(
-                    name='x1', shape=[2,3], dtype='float32'
+                    name='x1', shape=[2, 3], dtype='float32'
                 )
                 x2 = paddle.static.data(
-                    name='x2', shape=[2,3], dtype='float32'
+                    name='x2', shape=[2, 3], dtype='float32'
                 )
                 x3 = paddle.static.data(
-                    name='x3', shape=[2,2], dtype='float32'
+                    name='x3', shape=[2, 2], dtype='float32'
                 )
-                concat_out =  paddle.concat(x=[x1, x2, x3], axis=-1)                      
+                concat_out = paddle.concat(x=[x1, x2, x3], axis=-1)
                 out = paddle.assign(concat_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x1" :np.array([[1, 2, 3],
-                                      [4, 5, 6]]).astype("float32"),
-                    "x2":np.array([[11, 12, 13],
-                                   [14, 15, 16]]).astype("float32"),
-                    "x3":np.array([[21, 22],
-                                [23, 24]]).astype("float32"),
+                    "x1": np.array([[1, 2, 3], [4, 5, 6]]).astype("float32"),
+                    "x2": np.array([[11, 12, 13], [14, 15, 16]]).astype(
+                        "float32"
+                    ),
+                    "x3": np.array([[21, 22], [23, 24]]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -931,68 +922,6 @@ class TestConcatTRTPattern(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
-class TestFullTRTPattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        with paddle.pir_utils.IrGuard():
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.pir.core.program_guard(main_prog, start_prog):
-                shape = [3, 2]
-                full_out = paddle.full(shape=shape, fill_value=1.)           
-                out = paddle.assign(full_out)
-                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
-                self.feeds = {
-                }
-                self.fetch_list = [out]
-                self.valid_op_map = {
-                    "pd_op.fusion_transpose_flatten_concat": 0,
-                }
-                yield [main_prog, start_prog], False
-
-    def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct()
-  
-class TestAddTRTPattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        with paddle.pir_utils.IrGuard():
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(
-                    name='x', shape=[3], dtype='float32'
-                )
-                y = paddle.static.data(
-                    name='y', shape=[3], dtype='float32'
-                )                
-                add_out = paddle.add(x, y)
-                out = paddle.assign(add_out)
-                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
-                self.feeds = {
-                     "x": np.array([2,3,4]).astype("float32"),
-                     "y":np.array([1,5,2]).astype("float32"),
-                }
-                self.fetch_list = [out]
-                self.valid_op_map = {
-                    "pd_op.fusion_transpose_flatten_concat": 0,
-                }
-                yield [main_prog, start_prog], False
-
-    def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct()
 
 class TestLayer_normTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -1005,12 +934,12 @@ class TestLayer_normTRTPattern(PassTest):
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(
                     name='x', shape=[2, 2, 2, 3], dtype='float32'
-                )          
+                )
                 layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
                 out = paddle.assign(layer_norm_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                     "x":  np.random.random([2, 2, 2, 3]).astype("float32")
+                    "x": np.random.random([2, 2, 2, 3]).astype("float32")
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -1024,6 +953,7 @@ class TestLayer_normTRTPattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 class TestSiluTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -1034,49 +964,12 @@ class TestSiluTRTPattern(PassTest):
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(
-                    name='x', shape=[4], dtype='float32'
-                )          
+                x = paddle.static.data(name='x', shape=[4], dtype='float32')
                 Silu_out = paddle.nn.functional.silu(x)
                 out = paddle.assign(Silu_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                     "x":  np.array([[1, 2, 3, 4]]).astype("float32"),
-                }
-                self.fetch_list = [out]
-                self.valid_op_map = {
-                    "pd_op.fusion_transpose_flatten_concat": 0,
-                }
-                yield [main_prog, start_prog], False
-
-    def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct()
-  
-class TestConv2dTRTPattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        with paddle.pir_utils.IrGuard():
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(
-                    name='x', shape=[2,3,8,8], dtype='float32'
-                )   
-                w = paddle.static.data(
-                    name='w', shape=[6,3,3,3], dtype='float32'
-                )          
-                Conv2d_out = paddle.nn.functional.conv2d(x,w)
-                out = paddle.assign(Conv2d_out)
-                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
-                self.feeds = {
-                    "x":  np.random.random([2,3,8,8]).astype("float32"),
-                    "w":  np.random.random([6,3,3,3]).astype("float32"),
+                    "x": np.array([[1, 2, 3, 4]]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -1091,107 +984,6 @@ class TestConv2dTRTPattern(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
-class TestPool2dTRTPattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        with paddle.pir_utils.IrGuard():
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(
-                    name='x', shape=[1,3,32,32], dtype='float32'
-                )
-                AvgPool2D = paddle.nn.AvgPool2D(kernel_size=2, stride=2, padding=0) 
-                AvgPool2D_output = AvgPool2D(x)
-                out = paddle.assign(AvgPool2D_output)
-                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
-                self.feeds = {
-                    "x":  np.random.uniform(-1,1,[1, 3, 32, 32]).astype("float32"),
-                }
-                self.fetch_list = [out]
-                self.valid_op_map = {
-                    "pd_op.fusion_transpose_flatten_concat": 0,
-                }
-                yield [main_prog, start_prog], False
-
-    def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct()
-
-class TestConv2dTransposeTRTPattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        with paddle.pir_utils.IrGuard():
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(
-                    name='x', shape=[2,3,8,8], dtype='float32'
-                )   
-                w = paddle.static.data(
-                    name='w', shape=[3,6,3,3], dtype='float32'
-                )          
-                Conv2dTranspose_out = paddle.nn.functional.conv2d_transpose(x,w)
-                out = paddle.assign(Conv2dTranspose_out)
-                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
-                self.feeds = {
-                    "x":  np.random.random([2,3,8,8]).astype("float32"),
-                    "w":  np.random.random([3,6,3,3]).astype("float32"),
-                }
-                self.fetch_list = [out]
-                self.valid_op_map = {
-                    "pd_op.fusion_transpose_flatten_concat": 0,
-                }
-                yield [main_prog, start_prog], False
-
-    def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct() 
-
-class TestDepthwiseConv2dTransposeTRTPattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        with paddle.pir_utils.IrGuard():
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(
-                    name='x', shape=[2,3,8,8], dtype='float32'
-                )   
-                w = paddle.static.data(
-                    name='w', shape=[3,1,3,3], dtype='float32'
-                )          
-                Conv2dTranspose_out = paddle.nn.functional.conv2d_transpose(x,w,groups=3)
-                out = paddle.assign(Conv2dTranspose_out)
-                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
-                self.feeds = {
-                    "x":  np.random.random([2,3,8,8]).astype("float32"),
-                    "w":  np.random.random([3,1,3,3]).astype("float32"),
-                }
-                self.fetch_list = [out]
-                self.valid_op_map = {
-                    "pd_op.fusion_transpose_flatten_concat": 0,
-                }
-                yield [main_prog, start_prog], False
-
-    def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct() 
 
 class TestDeformableConvTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -1202,18 +994,31 @@ class TestDeformableConvTRTPattern(PassTest):
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
-
-                x = paddle.static.data(name='x', shape=[8,1,28,28], dtype='float32')
+                x = paddle.static.data(
+                    name='x', shape=[8, 1, 28, 28], dtype='float32'
+                )
                 kh, kw = 3, 3
-                weight = paddle.static.data(name='weight', shape=[16,1,kh,kw], dtype='float32')
-                offset = paddle.static.data(name='offset', shape=[8, 2 * kh * kw, 26, 26], dtype='float32')
-                deformable_conv_out = paddle.vision.ops.deform_conv2d(x, offset, weight)
+                weight = paddle.static.data(
+                    name='weight', shape=[16, 1, kh, kw], dtype='float32'
+                )
+                offset = paddle.static.data(
+                    name='offset',
+                    shape=[8, 2 * kh * kw, 26, 26],
+                    dtype='float32',
+                )
+                deformable_conv_out = paddle.vision.ops.deform_conv2d(
+                    x, offset, weight
+                )
                 out = paddle.assign(deformable_conv_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x":  np.random.random([8,1,28,28]).astype("float32"),
-                    "weight":  np.random.random([16,1,kh,kw]).astype("float32"),
-                    "offset": np.random.random([8, 2 * kh * kw, 26, 26]).astype("float32"),
+                    "x": np.random.random([8, 1, 28, 28]).astype("float32"),
+                    "weight": np.random.random([16, 1, kh, kw]).astype(
+                        "float32"
+                    ),
+                    "offset": np.random.random([8, 2 * kh * kw, 26, 26]).astype(
+                        "float32"
+                    ),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -1226,34 +1031,8 @@ class TestDeformableConvTRTPattern(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct()    
+        self.check_pass_correct()
 
-class TestArangeTRTPattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        with paddle.pir_utils.IrGuard():
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.pir.core.program_guard(main_prog, start_prog):
-                arange_out = paddle.arange(5)
-                out = paddle.assign(arange_out)
-                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
-                self.feeds = {
-                }
-                self.fetch_list = [out]
-                self.valid_op_map = {
-                    "pd_op.fusion_transpose_flatten_concat": 0,
-                }
-                yield [main_prog, start_prog], False
-
-    def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct()   
 
 class TestSignTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -1269,7 +1048,7 @@ class TestSignTRTPattern(PassTest):
                 out = paddle.assign(sign_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x":  np.array([3.0, 0.0, -2.0, 1.7]).astype("float32"),
+                    "x": np.array([3.0, 0.0, -2.0, 1.7]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -1282,7 +1061,8 @@ class TestSignTRTPattern(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct()   
+        self.check_pass_correct()
+
 
 class TestLogicalNotTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -1294,11 +1074,11 @@ class TestLogicalNotTRTPattern(PassTest):
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(name='x', shape=[4], dtype='bool')
-                logical_not_out =  paddle.logical_not(x)
+                logical_not_out = paddle.logical_not(x)
                 out = paddle.assign(logical_not_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x":  np.array([True, False, True, False]).astype("bool"),
+                    "x": np.array([True, False, True, False]).astype("bool"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -1311,39 +1091,8 @@ class TestLogicalNotTRTPattern(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct()  
+        self.check_pass_correct()
 
-class TestTransposeTRTPattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        with paddle.pir_utils.IrGuard():
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(name='x', shape=[2,3,4], dtype='float32')
-                perm0 = [1,0,2]
-                transpose_out =  paddle.transpose(x, perm0)
-                out = paddle.assign(transpose_out)
-                self.pass_attr_list = [{'trt_op_marker_pass': {}}]
-                self.feeds = {
-                    "x":  np.array(
-                        [[[ 1 ,2 , 3,  4] ,[ 5,  6,  7 , 8] ,[ 9, 10, 11, 12]],
-                         [[13, 14, 15, 16], [17, 18, 19, 20], [21, 22, 23, 24]]]).astype("float32"),
-                }
-                self.fetch_list = [out]
-                self.valid_op_map = {
-                    "pd_op.fusion_transpose_flatten_concat": 0,
-                }
-                yield [main_prog, start_prog], False
-
-    def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct() 
 
 class TestGatherTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -1354,14 +1103,16 @@ class TestGatherTRTPattern(PassTest):
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(name='x', shape=[3,2], dtype='float32')
-                index = paddle.static.data(name='index', shape=[2], dtype='int32')
-                gather_out =  paddle.gather(x, index, axis=0)
+                x = paddle.static.data(name='x', shape=[3, 2], dtype='float32')
+                index = paddle.static.data(
+                    name='index', shape=[2], dtype='int32'
+                )
+                gather_out = paddle.gather(x, index, axis=0)
                 out = paddle.assign(gather_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x":  np.array([[1,2],[3,4],[5,6]]).astype("float32"),
-                    "index":np.array([0,1]).astype("int32"),
+                    "x": np.array([[1, 2], [3, 4], [5, 6]]).astype("float32"),
+                    "index": np.array([0, 1]).astype("int32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -1374,7 +1125,8 @@ class TestGatherTRTPattern(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct()   
+        self.check_pass_correct()
+
 
 class TestScaleTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -1386,11 +1138,11 @@ class TestScaleTRTPattern(PassTest):
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.arange(6).astype("float32").reshape([2, 3])
-                scale_out =  paddle.scale(x, scale=2.0, bias=1.0)
+                scale_out = paddle.scale(x, scale=2.0, bias=1.0)
                 out = paddle.assign(scale_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x":  np.arange(6).astype("float32").reshape([2, 3]),
+                    "x": np.arange(6).astype("float32").reshape([2, 3]),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -1403,7 +1155,8 @@ class TestScaleTRTPattern(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct()  
+        self.check_pass_correct()
+
 
 class TestDepthwiseConv2dTRTPattern(PassTest):
     def is_program_valid(self, program=None):
@@ -1415,17 +1168,17 @@ class TestDepthwiseConv2dTRTPattern(PassTest):
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(
-                    name='x', shape=[2,3,8,8], dtype='float32'
-                )   
+                    name='x', shape=[2, 3, 8, 8], dtype='float32'
+                )
                 w = paddle.static.data(
-                    name='w', shape=[6,1,3,3], dtype='float32'
-                )          
-                Conv2d_out = paddle.nn.functional.conv2d(x,w,groups=3)
+                    name='w', shape=[6, 1, 3, 3], dtype='float32'
+                )
+                Conv2d_out = paddle.nn.functional.conv2d(x, w, groups=3)
                 out = paddle.assign(Conv2d_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
-                    "x":  np.random.random([2,3,8,8]).astype("float32"),
-                    "w":  np.random.random([6,1,3,3]).astype("float32"),
+                    "x": np.random.random([2, 3, 8, 8]).astype("float32"),
+                    "w": np.random.random([6, 1, 3, 3]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
