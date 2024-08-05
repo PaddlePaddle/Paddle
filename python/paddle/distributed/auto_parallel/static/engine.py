@@ -856,6 +856,13 @@ class Engine:
             # dist_program = apply_sharding_optimization_pass(dist_program)
             pass
 
+        if self.is_train and self._strategy.pipeline.enable:
+            self._strategy.gradient_merge.enable = True
+            self._strategy.gradient_merge.k_steps = (
+                self._strategy.pipeline.accumulate_steps
+            )
+            self._strategy.gradient_merge.avg = True
+
         if mode == "train" and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config[
