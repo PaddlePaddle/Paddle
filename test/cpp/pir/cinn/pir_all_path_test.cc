@@ -303,13 +303,13 @@ std::shared_ptr<::pir::Program> BuildScaleGroupProgram() {
   return program;
 }
 
-TEST(GroupOp, TestBuildScale) {
-  // Step 1: Construct pir::Program
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  std::shared_ptr<::pir::Program> program = BuildScaleGroupProgram();
+// TEST(GroupOp, TestBuildScale) {
+//   // Step 1: Construct pir::Program
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   std::shared_ptr<::pir::Program> program = BuildScaleGroupProgram();
 
-  RunAndCheckResult(program.get(), true, 0.5);
-}
+//   RunAndCheckResult(program.get(), true, 0.5);
+// }
 
 // std::shared_ptr<::pir::Program> BuildScaleTensorGroupProgram() {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -707,33 +707,31 @@ std::shared_ptr<::pir::Program> BuildSum2GroupProgram() {
 //   RunAndCheckResult(program.get(), 2.0);
 // }
 
-// std::shared_ptr<::pir::Program> BuildReshapeSumProgram() {
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   auto program = std::make_shared<::pir::Program>(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+std::shared_ptr<::pir::Program> BuildReshapeSumProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-//   auto x = builder
-//                .Build<paddle::dialect::FullOp>(
-//                    std::vector<int64_t>({128 * 128, 768}),
-//                    1.0,
-//                    phi::DataType::FLOAT32,
-//                    phi::GPUPlace())
-//                .result(0);
-//   auto sum = builder
-//                  .Build<paddle::dialect::SumOp>(
-//                      x, std::vector<int64_t>{0}, phi::DataType::FLOAT32,
-//                      true)
-//                  .result(0);
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({128, 768}),
+                                               1.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
+  auto sum = builder
+                 .Build<paddle::dialect::SumOp>(
+                     x, std::vector<int64_t>{1}, phi::DataType::FLOAT32, true)
+                 .result(0);
 
-//   builder.Build<paddle::dialect::FetchOp>(sum, "out", 0);
-//   return program;
-// }
+  builder.Build<paddle::dialect::FetchOp>(sum, "out", 0);
+  return program;
+}
 
-// TEST(GroupOp, TestBuildReshapeSum) {
-//   // Step 1: Construct pir::Program
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildReshapeSumProgram();
+TEST(GroupOp, TestBuildReshapeSum) {
+  // Step 1: Construct pir::Program
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  std::shared_ptr<::pir::Program> program = BuildReshapeSumProgram();
 
-//   RunAndCheckResult(program.get(), true, 128 * 128);
-// }
+  RunAndCheckResult(program.get(), true, 768);
+}

@@ -180,13 +180,16 @@ class ScheduleBase {
  protected:
   void Replace(const Expr& src_sref, const Expr& tgt_stmt);
 
-  void UpdateMergeOffset(const std::vector<int>& merge_index,
+  void UpdateMergeOffset(const std::string& block_name,
+                         const std::vector<int>& merge_index,
                          const Expr& new_indice);
-  void UpdateSplitOffset(const Var& base_loop_var,
+  void UpdateSplitOffset(const std::string& block_id,
+                         const Var& base_loop_var,
                          const std::vector<Var>& new_looop_vars,
                          const std::vector<int>& split_factors);
 
-  void UpdateReorderOffset(const std::vector<Var>& reorder_var_list);
+  void UpdateReorderOffset(const std::string& block_name,
+                           const std::vector<Var>& reorder_var_list);
 
   ModuleExpr module_expr_;
   bool debug_flag_{false};

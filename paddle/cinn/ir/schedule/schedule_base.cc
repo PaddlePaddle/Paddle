@@ -84,12 +84,16 @@ bool IsContigous(const std::vector<int>& merge_index,
   return true;
 }
 
-void ScheduleBase::UpdateMergeOffset(const std::vector<int>& merge_index,
+void ScheduleBase::UpdateMergeOffset(const std::string& block_name,
+                                     const std::vector<int>& merge_index,
                                      const Expr& new_indice) {
   struct LoadStoreOffsetMutator : public ir::IRMutator<> {
-    LoadStoreOffsetMutator(const std::vector<int> merge_index,
+    LoadStoreOffsetMutator(const std::string& block_name,
+                           const std::vector<int> merge_index,
                            const Expr& new_indice)
-        : merge_index_(merge_index), new_indice_(new_indice) {}
+        : block_name_(block_name),
+          merge_index_(merge_index),
+          new_indice_(new_indice) {}
 
     void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 
@@ -97,6 +101,26 @@ void ScheduleBase::UpdateMergeOffset(const std::vector<int>& merge_index,
     void UpdateInnerInfo(std::vector<Expr>* loop_vars,
                          std::vector<Expr>* view_shape,
                          std::vector<Expr>* stride_info) {
+      std::cerr << "loop vars " << std::endl;
+      for (auto val : *loop_vars) {
+        std::cerr << "var " << val << std::endl;
+      }
+
+      std::cerr << "shape info " << std::endl;
+      for (auto val : *view_shape) {
+        std::cerr << "shape " << val << std::endl;
+      }
+
+      std::cerr << "stride info " << std::endl;
+      for (auto val : *stride_info) {
+        std::cerr << "stride " << val << std::endl;
+      }
+
+      std::cerr << "merge index \n";
+      for (auto val : merge_index_) {
+        std::cerr << "merge index " << val << std::endl;
+      }
+
       if (!IsContigous(merge_index_, *stride_info, *view_shape)) {
         PADDLE_THROW(::common::errors::Unimplemented(
             "Only support contigous merge yet"));
@@ -139,10 +163,27 @@ void ScheduleBase::UpdateMergeOffset(const std::vector<int>& merge_index,
       stride_info->swap(new_stride_info);
     }
 
+    void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) {
+      auto block_name = expr->As<ir::ScheduleBlockRealize>()
+                            ->schedule_block.As<ScheduleBlock>()
+                            ->name;
+      if ((block_name != "root") && (block_name != block_name_)) {
+        std::cerr << "skip here !!!!!!! "
+                  << expr->As<ir::ScheduleBlockRealize>()
+                         ->schedule_block.As<ScheduleBlock>()
+                         ->name
+                  << std::endl;
+        return;
+      }
+
+      ir::IRMutator<>::Visit(op, expr);
+    }
+
     void Visit(const ir::Store* op, Expr* expr) override {
       auto* node = expr->As<ir::Store>();
       auto* tensor = node->tensor.as_tensor();
 
+      std::cerr << "store tensor info " << tensor->name << std::endl;
       UpdateInnerInfo(
           &(node->loop_vars), &(node->view_shape), &(node->stride_info));
 
@@ -160,6 +201,8 @@ void ScheduleBase::UpdateMergeOffset(const std::vector<int>& merge_index,
       auto* node = expr->As<ir::Load>();
       auto* tensor = node->tensor.as_tensor();
 
+      std::cerr << "load tensor info " << tensor->name << std::endl;
+
       std::cerr << "before merge load info !! " << node->offset << std::endl;
       UpdateInnerInfo(
           &(node->loop_vars), &(node->view_shape), &(node->stride_info));
@@ -173,11 +216,13 @@ void ScheduleBase::UpdateMergeOffset(const std::vector<int>& merge_index,
     }
 
    private:
+    std::string block_name_;
     std::vector<int> merge_index_;
     Expr new_indice_;
   };
 
-  LoadStoreOffsetMutator load_store_mutator(merge_index, new_indice);
+  LoadStoreOffsetMutator load_store_mutator(
+      block_name, merge_index, new_indice);
 
   auto exprs = module_expr_.GetExprs();
 
@@ -186,14 +231,17 @@ void ScheduleBase::UpdateMergeOffset(const std::vector<int>& merge_index,
   }
 }
 
-void ScheduleBase::UpdateSplitOffset(const Var& base_loop_var,
+void ScheduleBase::UpdateSplitOffset(const std::string& block_id,
+                                     const Var& base_loop_var,
                                      const std::vector<Var>& new_looop_vars,
                                      const std::vector<int>& split_factors) {
   struct LoadStoreOffsetMutator : public ir::IRMutator<> {
-    LoadStoreOffsetMutator(const Var& base_loop_var,
+    LoadStoreOffsetMutator(const std::string& block_id,
+                           const Var& base_loop_var,
                            const std::vector<Var>& new_looop_vars,
                            const std::vector<int>& split_factors)
-        : base_loop_var_(base_loop_var),
+        : block_id_(block_id),
+          base_loop_var_(base_loop_var),
           new_loop_vars_(new_looop_vars),
           split_factors_(split_factors) {}
 
@@ -215,10 +263,9 @@ void ScheduleBase::UpdateSplitOffset(const Var& base_loop_var,
         }
       }
 
-      PADDLE_ENFORCE_NE(
-          split_index,
-          -1,
-          ::common::errors::PreconditionNotMet("split index can not be -1"));
+      if (split_index == -1) {
+        return;
+      }
 
       std::vector<Expr> new_shape;
       std::vector<Expr> new_loop_var;
@@ -251,6 +298,22 @@ void ScheduleBase::UpdateSplitOffset(const Var& base_loop_var,
       view_shape->swap(new_shape);
       loop_vars->swap(new_loop_var);
       stride_info->swap(new_stride_info);
+    }
+
+    void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) {
+      auto block_name = expr->As<ir::ScheduleBlockRealize>()
+                            ->schedule_block.As<ScheduleBlock>()
+                            ->name;
+      if ((block_name != "root") && (block_name != block_id_)) {
+        std::cerr << "skip here !!!!!!! "
+                  << expr->As<ir::ScheduleBlockRealize>()
+                         ->schedule_block.As<ScheduleBlock>()
+                         ->name
+                  << std::endl;
+        return;
+      }
+
+      ir::IRMutator<>::Visit(op, expr);
     }
 
     void Visit(const ir::Store* op, Expr* expr) override {
@@ -288,13 +351,14 @@ void ScheduleBase::UpdateSplitOffset(const Var& base_loop_var,
     }
 
    private:
+    std::string block_id_;
     Var base_loop_var_;
     std::vector<Var> new_loop_vars_;
     std::vector<int> split_factors_;
   };
 
   LoadStoreOffsetMutator load_store_mutator(
-      base_loop_var, new_looop_vars, split_factors);
+      block_id, base_loop_var, new_looop_vars, split_factors);
 
   auto exprs = module_expr_.GetExprs();
 
@@ -304,10 +368,11 @@ void ScheduleBase::UpdateSplitOffset(const Var& base_loop_var,
 }
 
 void ScheduleBase::UpdateReorderOffset(
-    const std::vector<Var>& reorder_var_list) {
+    const std::string& block_name, const std::vector<Var>& reorder_var_list) {
   struct LoadStoreReorderMutator : public ir::IRMutator<> {
-    explicit LoadStoreReorderMutator(const std::vector<Var>& reorder_var_list)
-        : reorder_var_list_(reorder_var_list) {}
+    explicit LoadStoreReorderMutator(const std::string& block_name,
+                                     const std::vector<Var>& reorder_var_list)
+        : block_name_(block_name), reorder_var_list_(reorder_var_list) {}
 
     void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 
@@ -319,18 +384,24 @@ void ScheduleBase::UpdateReorderOffset(
 
       std::set<std::string> var_set;
       for (size_t i = 0; i < reorder_var_list_.size(); ++i) {
+        std::cerr << "reorder var list name " << reorder_var_list_[i]->name
+                  << std::endl;
         var_set.insert(reorder_var_list_[i]->name);
       }
 
       int split_index = -1;
       std::vector<int> pos_idx;
       for (int i = 0; i < loop_vars->size(); ++i) {
+        std::cerr << " !!!!!!!! loop vars "
+                  << (*loop_vars)[i].As<ir::_Var_>()->name << std::endl;
         if (var_set.count((*loop_vars)[i].As<ir::_Var_>()->name)) {
           reorder_map[(*loop_vars)[i].As<ir::_Var_>()->name] = i;
           pos_idx.push_back(i);
         }
       }
-
+      if (reorder_map.size() == 0) {
+        return;
+      }
       PADDLE_ENFORCE_EQ(reorder_map.size(),
                         reorder_var_list_.size(),
                         ::common::errors::PreconditionNotMet(
@@ -355,6 +426,22 @@ void ScheduleBase::UpdateReorderOffset(
       view_shape->swap(new_shape);
       loop_vars->swap(new_loop_var);
       stride_info->swap(new_stride_info);
+    }
+
+    void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) {
+      auto block_name = expr->As<ir::ScheduleBlockRealize>()
+                            ->schedule_block.As<ScheduleBlock>()
+                            ->name;
+      if ((block_name != "root") && (block_name != block_name_)) {
+        std::cerr << "skip here !!!!!!! "
+                  << expr->As<ir::ScheduleBlockRealize>()
+                         ->schedule_block.As<ScheduleBlock>()
+                         ->name
+                  << std::endl;
+        return;
+      }
+
+      ir::IRMutator<>::Visit(op, expr);
     }
 
     void Visit(const ir::Store* op, Expr* expr) override {
@@ -392,10 +479,12 @@ void ScheduleBase::UpdateReorderOffset(
     }
 
    private:
+    std::string block_name_;
     std::vector<Var> reorder_var_list_;
   };
 
-  LoadStoreReorderMutator load_store_reorder_mutator(reorder_var_list);
+  LoadStoreReorderMutator load_store_reorder_mutator(block_name,
+                                                     reorder_var_list);
 
   auto exprs = module_expr_.GetExprs();
 

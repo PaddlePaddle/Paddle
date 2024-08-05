@@ -121,9 +121,24 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
 
     this->Replace(loop, new_node);
 
+    // Get block id here
+    auto block_info = ir::ir_utils::CollectIRNodesInOrder(
+        loop, [&](const Expr* x) { return x->As<ir::ScheduleBlockRealize>(); });
+
+    auto block_name = block_info.front()
+                          .As<ir::ScheduleBlockRealize>()
+                          ->schedule_block.As<ScheduleBlock>()
+                          ->name;
+    std::cerr << "block info !!!!!!!!!!!! ! "
+              << block_info.front()
+                     .As<ir::ScheduleBlockRealize>()
+                     ->schedule_block.As<ScheduleBlock>()
+                     ->name
+              << std::endl;
+
     // new_loop_var, processed_factors
     this->UpdateSplitOffset(
-        loop.As<For>()->loop_var, new_loop_vars, processed_factors);
+        block_name, loop.As<For>()->loop_var, new_loop_vars, processed_factors);
     VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
     return splited_loops;
   }
@@ -467,7 +482,7 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
       test_block, [&](const Expr* x) { return x->As<ir::Store>(); });
 
   std::cerr << "before update !!!!\n";
-  this->UpdateMergeOffset(loops_index, fused_expr);
+  this->UpdateMergeOffset(block_name, loops_index, fused_expr);
 
   for (auto j = 0; j < consumer.size(); ++j) {
     std::cerr << "consumer jj " << consumer[j] << std::endl;
@@ -537,7 +552,16 @@ Expr DyScheduleImpl::Reorder(const std::vector<Expr>& loops) {
     reorder_var_list.push_back(loops[i].As<ir::For>()->loop_var);
   }
 
-  this->UpdateReorderOffset(reorder_var_list);
+  auto block_info = ir::ir_utils::CollectIRNodesInOrder(
+      loops[0],
+      [&](const Expr* x) { return x->As<ir::ScheduleBlockRealize>(); });
+
+  auto block_name = block_info.front()
+                        .As<ir::ScheduleBlockRealize>()
+                        ->schedule_block.As<ScheduleBlock>()
+                        ->name;
+
+  this->UpdateReorderOffset(block_name, reorder_var_list);
 
   VLOG(4) << "After Reorder, ir is:\n" << new_loop;
   return new_loop;
