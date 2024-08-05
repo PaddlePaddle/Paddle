@@ -266,7 +266,6 @@ bool LuUnpackOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
   int x_rank = x_dims.size();
-
   bool unpack_ludata =
       op->attribute<pir::BoolAttribute>("unpack_ludata").data();
   bool unpack_pivots =
@@ -278,33 +277,18 @@ bool LuUnpackOpInferSymbolicShape(
       common::errors::InvalidArgument(
           "The rank of input must be greater than or equal to 2."));
 
-  auto m = x_dims[x_rank - 1];
-  auto n = x_dims[x_rank - 2];
-  symbol::DimExprBuilder builder;
-  symbol::DimExpr min_mn = builder.Min(m, n);
-
   if (unpack_ludata) {
-    std::vector<symbol::DimExpr> ldims = x_dims;
-    std::vector<symbol::DimExpr> udims = x_dims;
-    if (min_mn == n) {
-      udims[x_rank - 2] = min_mn;
-    } else {
-      ldims[x_rank - 1] = min_mn;
-    }
     infer_context->SetShapeOrDataForValue(
         op->result(2),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(udims)});
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(xdims)});
     infer_context->SetShapeOrDataForValue(
         op->result(1),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(ldims)});
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(xdims)});
   }
-
   if (unpack_pivots) {
-    std::vector<symbol::DimExpr> pdims = x_dims;
-    pdims[x_rank - 1] = n;
     infer_context->SetShapeOrDataForValue(
         op->result(0),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(pdims)});
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(xdims)});
   }
 
   return true;
