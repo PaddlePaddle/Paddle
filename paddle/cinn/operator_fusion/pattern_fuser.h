@@ -483,8 +483,35 @@ static MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern) {
   return std::visit(LoopFrameworkVisitor(), pattern);
 }
 
-static inline auto GetPaddingVector(const MaybeLoopFramework& first,
-                                    const MaybeLoopFramework& second) {
+template <typename T>
+int InsertDownstreamIntoTree(const ReduceTreePattern<T>& upstream,
+                             ReduceTreePattern<T>& downstream) {  // NOLINT
+  if (IsDirectUpstream(upstream.GetRootPattern().GetReduceOp(),
+                       downstream.GetRootPattern().GetReduceOp())) {
+    downstream.InsertChild(upstream);
+    return 1;
+  }
+  int insert_num = 0;
+  for (auto& child : downstream.childs()) {
+    insert_num += InsertDownstreamIntoTree(upstream, child);
+  }
+  return insert_num;
+}
+
+template <typename T>
+StmtPattern<T> MergePatternImpl(const ReduceTreePattern<T>& upstream,
+                                const ReduceTreePattern<T>& downstream) {
+  ReduceTreePattern<T> result = downstream;  // copy first.
+  int insert_num = InsertDownstreamIntoTree(upstream, result);
+  PADDLE_ENFORCE_EQ(insert_num == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Must insert only once, but insert %d", insert_num));
+  return result;
+}
+
+inline auto GetPaddingVector(const MaybeLoopFramework& first,
+                             const MaybeLoopFramework& second) {
   // two pointer to get the padding body.
   std::vector<int> padding_f;
   std::vector<int> padding_s;
@@ -555,22 +582,11 @@ static StmtPattern MergePattern(const StmtPattern& first,
       [&](const TrivialPattern& lhs, const ReduceTreePattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const TrivialPattern& lhs, const ReduceTreePlusTrivialPattern& rhs) {
-        return MergePatternImpl(lhs, rhs);
-      },
-      [&](const TrivialPattern& lhs, const AnchorPattern& rhs) {
-        return MergePatternImpl(lhs, rhs);
-      },
-      [&](const AnchorPattern& lhs, const AnchorPattern& rhs) {
-        return MergePatternImpl(lhs, rhs);
-      },
-      [&](const HorizontalFusionPattern& lhs,
-          const HorizontalFusionPattern& rhs) {
-        return MergePatternImpl(lhs, rhs);
-      },
-      [&](const auto& lhs, const auto& rhs) -> StmtPattern {
-        CHECK(false) << "Found not support merge!" << GetPatternName(first)
-                     << "X" << GetPatternName(second);
+      [&](const auto& lhs, const auto& rhs) -> StmtPattern<T> {
+        PADDLE_ENFORCE_EQ(
+            false,
+            true,
+            phi::errors::InvalidArgument("Found not support merge!"));
       },
   };
   return std::visit(PatternMatch, first, second);
