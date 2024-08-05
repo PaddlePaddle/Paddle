@@ -364,6 +364,10 @@ class AllocatorFacadePrivate {
 #endif
   }
 
+  inline const AllocatorMap& GetAutoGrowthAllocatorMap() {
+    return auto_growth_allocators_;
+  }
+
   inline const std::shared_ptr<Allocator>& GetAllocator(const phi::Place& place,
                                                         size_t size) {
     const auto& allocators =
@@ -814,10 +818,6 @@ class AllocatorFacadePrivate {
   };
 
   const AllocatorMap& GetAllocatorMap() { return allocators_; }
-
-  const AllocatorMap& GetAutoGrowthAllocatorMap() {
-    return auto_growth_allocators_;
-  }
 
   void InitNaiveBestFitCPUAllocator() {
 #if defined(__APPLE__) && defined(__arm64__)
@@ -1651,7 +1651,7 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAutoGrowthAllocator(
     const phi::Place& place) {
-  return GetPrivate()->GetAutoGrowthAllocatorMap()[place];
+  return GetPrivate()->GetAutoGrowthAllocatorMap().at(place);
 }
 
 void* AllocatorFacade::GetBasePtr(
