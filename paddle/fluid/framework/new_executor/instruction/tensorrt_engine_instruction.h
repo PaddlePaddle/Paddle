@@ -42,6 +42,7 @@ class TensorRTEngineInstruction : public InstructionBase {
   const std::string& Name() const override { return op_name_; }
 
  private:
+  std::string ReadBinaryFileToString(const std::string& filePath);
   void PrepareDynamicShape();
   void RunTrt();
   void BindInputTensor(const std::string& input_name,

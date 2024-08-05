@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import numpy as np
 import hashlib
-import paddle
-from paddle import base
-from paddle import pir
-from paddle.base.log_helper import get_logger
-from paddle.base.core import get_value_shape_range_info
-from util import run_pir_pass, map_dtype
-from custom_plugin import PaddlePhiPluginCreator, GENERAL_PLUGIN_OPS_LIST
+import logging
+
+import numpy as np
+from custom_plugin import GENERAL_PLUGIN_OPS_LIST
+from impls.core import *  # noqa: F403
 from register import converter_registry
-from impls.core import *
+from util import map_dtype
+
+import paddle
+from paddle import pir
+from paddle.base.core import get_value_shape_range_info
+from paddle.base.log_helper import get_logger
+
 
 def get_cache_path():
     home_path = os.path.expanduser("~")
@@ -47,7 +49,7 @@ def get_trt_version():
 class PaddleToTensorRTConverter:
     def __init__(self, paddle_program, scope):
         try:
-            import tensorrt as trt
+            pass
         except Exception:
             _logger.info(
                 "import tensorrt failed, you may install it via `python3 -m pip install --upgrade tensorrt` according to https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html"
@@ -207,6 +209,7 @@ class PaddleToTensorRTConverter:
             layer = self.convert(network, op, operands)
 
             # _logger.info(f"start convert {op}")
+            # TODO TRT layer output order must be the same as paddle_op. I will change these.
             for idx, result in enumerate(op.results()):
                 # TODO TRT layer output order must be the same as paddle_op. I will change these.
                 if idx < layer.num_outputs:
@@ -260,6 +263,7 @@ class PaddleToTensorRTConverter:
         with open(PIR_DUMP_FILE, "w") as f:
             f.write(group_str)
         trt_params.engine_serialized_data = CACHE_FILE
+
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(program):
             pir.set_insertion_point(group_op)
             out = paddle._C_ops.tensorrt_engine(
@@ -269,6 +273,7 @@ class PaddleToTensorRTConverter:
                 out_names,
                 out_shapes,
                 out_types,
+                "",
             )
 
             for out_index in range(len(out)):

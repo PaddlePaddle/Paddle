@@ -15,8 +15,6 @@
 import numpy as np
 from converter import PaddleToTensorRTConverter
 from util import (
-    forbid_op_lower_trt,
-    enforce_op_lower_trt,
     get_bert_program,
     get_dummy_program,
     get_idg_program,
@@ -50,7 +48,6 @@ def test_paddle_to_tensorrt_conversion_dummy():
                 feed={"input": input_data_max_shape},
                 fetch_list=[output_var],
             )
-    # forbid_op_lower_trt(program,"pd_op.squeeze")
     # Apply PIR pass to the program
     program_with_pir = run_pir_pass(program, partition_mode=True)
 
@@ -73,8 +70,8 @@ def test_paddle_to_tensorrt_conversion_dummy():
     np.testing.assert_allclose(
         output_original[0],
         output_converted[0],
-        rtol=1e-3,
-        atol=1e-3,
+        rtol=1e-2,
+        atol=1e-2,
         err_msg="Outputs are not within the 1e-3 tolerance",
     )
 

@@ -121,7 +121,7 @@ def reshape_converter(network, paddle_op, inputs):
     input_tensor, shape_tensor = inputs
     input_shape = paddle_op.operands()[0].source().shape
 
-    output_shape = paddle_op.results()[1].shape
+    output_shape = paddle_op.results()[0].shape
     if network.has_implicit_batch_dimension:
         output_shape = output_shape[1:]
 

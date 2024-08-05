@@ -1892,3 +1892,9 @@ PHI_DEFINE_EXPORTED_bool(
     pinned_memory_as_cpu_backend,
     false,
     "Whether use CPU backend, when tensor is pinned_memory.");
+
+PHI_DEFINE_EXPORTED_int32(
+    trt_min_group_size,
+    3,
+    "when the trt subgraph size is not larger than `trt_min_group_size`, the "
+    "group will fallback to original graph.");
