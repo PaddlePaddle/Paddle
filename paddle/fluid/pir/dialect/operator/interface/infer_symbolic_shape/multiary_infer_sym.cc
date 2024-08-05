@@ -615,21 +615,29 @@ bool BilinearInterpOpInferSymbolicShape(
 
 bool CheckFiniteAndUnscaleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  std::vector<symbol::ShapeOrDataDimExprs> xs_shapes;
-  for (size_t i = 0; i < op->num_operands() - 1; ++i) {
-    xs_shapes.push_back(
-        infer_context->GetShapeOrDataForValue(op->operand_source(i)));
-  }
-  // Ensure the number of inputs (xs) matches the number of outputs (outs)
-  infer_context->AddEqualCstr(
-      symbol::DimExpr(static_cast<int>(xs_shapes.size())),
-      symbol::DimExpr(static_cast<int>(op->num_results() - 1)));
+  // Retrieve the shape information of the input list
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::TensorListShapeOrDataDimExprs &xs_shapes =
+      infer_context->GetShapeOrDataForValue(operand_source)
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+  PADDLE_ENFORCE_EQ(
+      xs_shapes.size(),
+      op->num_results() - 1,
+      phi::errors::InvalidArgument("The number of inputs (xs) should match the "
+                                   "number of outputs (outs), "
+                                   "but got %d inputs and %d outputs.",
+                                   xs_shapes.size(),
+                                   op->num_results() - 1));
+
+  // Set the shape for each output
   for (size_t i = 0; i < xs_shapes.size(); ++i) {
     symbol::TensorShapeOrDataDimExprs output_shape(xs_shapes[i].shape());
     infer_context->SetShapeOrDataForValue(
         op->result(i), symbol::ShapeOrDataDimExprs{output_shape});
   }
 
+  // Set the shape for the found_infinite output
   symbol::TensorShapeOrDataDimExprs found_infinite_shape({symbol::DimExpr(1)});
   infer_context->SetShapeOrDataForValue(
       op->result(op->num_results() - 1),
@@ -1134,37 +1142,20 @@ bool MeshgridOpInferSymbolicShape(
 
 bool MovingAverageAbsMaxScaleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  // Get the symbolic shape of the input tensor x
-  const symbol::ShapeOrDataDimExprs &x_shape =
+  // Get shapes of input tensors
+  const auto &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  // Get the symbolic shape of the input tensor in_state
-  const symbol::ShapeOrDataDimExprs &in_state_shape =
+  const auto &in_state_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  // Get the symbolic shape of the input tensor in_accum
-  const symbol::ShapeOrDataDimExprs &in_accum_shape =
+  const auto &in_accum_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-  // Set the shape for the output tensor out if it exists
-  if (op->num_results() > 0 && op->result(0) != nullptr) {
-    infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
-  }
-
-  // Set the shape for the output tensor out_scale as a scalar if it exists
-  if (op->num_results() > 1 && op->result(1) != nullptr) {
-    symbol::TensorShapeOrDataDimExprs scalar_shape(
-        std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
-    infer_context->SetShapeOrDataForValue(op->result(1), scalar_shape);
-  }
-
-  // Set the shape for the output tensor out_state if it exists
-  if (op->num_results() > 2 && op->result(2) != nullptr) {
-    infer_context->SetShapeOrDataForValue(op->result(2), in_state_shape);
-  }
-
-  // Set the shape for the output tensor out_accum if it exists
-  if (op->num_results() > 3 && op->result(3) != nullptr) {
-    infer_context->SetShapeOrDataForValue(op->result(3), in_accum_shape);
-  }
+  // Set shapes for output tensors
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+  infer_context->SetShapeOrDataForValue(
+      op->result(1), symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(1)}));
+  infer_context->SetShapeOrDataForValue(op->result(2), in_state_shape);
+  infer_context->SetShapeOrDataForValue(op->result(3), in_accum_shape);
 
   return true;
 }
