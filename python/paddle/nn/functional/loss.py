@@ -288,7 +288,19 @@ def base_softmax_with_cross_entropy(
              (got input_dims{input_dims}, label_dims{label_dims})'
         )
     if input_dims - 1 == label_dims:
-        label = paddle.unsqueeze(label, axis=axis)
+        batch_size = label.shape[0]
+        new_shape = [batch_size, logits.shape[1]]
+        label = paddle.reshape(label, new_shape)
+
+        # origin function
+        # -------
+        # label = paddle.unsqueeze(label, axis)
+        # ------
+
+        # notice : dim of label [-1,2,10] while logits is [-1,1] ,if use unsquezee
+        # logits [-1,1]->[-1,1,1], but input need 1 != 2 so change
+        # the modified function make logits [-1,1] -> [-1,2] (uncertain)
+        # another possible modify [-1,1] -> [-1,2,1]
     if in_dynamic_or_pir_mode():
         softmax, loss = _C_ops.cross_entropy_with_softmax(
             logits,

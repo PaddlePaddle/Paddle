@@ -229,9 +229,21 @@ def apply_reshard_pass(dist_program):
                 op.erase()
 
 
-# pruning op and value not belong to cur rank
-def remove_other_rank_op_pass(dist_program):
+def _remove_other_rank_params_grads(dist_params_grads):
     cur_rank = paddle.distributed.get_rank()
+    need_remove_idx = []
+    for idx, (_, grad) in enumerate(dist_params_grads):
+        if cur_rank not in grad.dist_attr().process_mesh.process_ids:
+            need_remove_idx.append(idx)
+    for idx in need_remove_idx[::-1]:
+        dist_params_grads.pop(idx)
+
+
+# pruning op and value not belong to cur rank
+def remove_other_rank_op_pass(dist_program, dist_params_grads):
+    cur_rank = paddle.distributed.get_rank()
+
+    _remove_other_rank_params_grads(dist_params_grads)
     for op in dist_program.global_block().ops[::-1]:
         if op.name() in partition_skip_op_list:
             can_delete = True

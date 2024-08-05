@@ -25,7 +25,7 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
     const paddle::Tensor& Y,
     const paddle::Tensor& Bias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "fused_gemm_epilogue dygraph",
       paddle::platform::TracerEventType::Operator,
       1);
@@ -93,7 +93,7 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
   egr::EagerUtils::GetOutput(outs["Out"][0], &Out);
 
   {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "fused_gemm_epilogue node_creation",
         paddle::platform::TracerEventType::OperatorInner,
         1);

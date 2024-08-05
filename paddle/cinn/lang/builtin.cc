@@ -30,7 +30,11 @@ using cinn::common::bfloat16;
 using cinn::common::float16;
 
 Expr logic_and(const std::vector<Expr>& conds) {
-  CHECK(!conds.empty());
+  PADDLE_ENFORCE_EQ(
+      !conds.empty(),
+      true,
+      phi::errors::InvalidArgument(
+          "The input conditions vector for logic_and should not be empty."));
   auto start = ir::And::Make(conds[0], conds[1]);
   for (int i = 2; i < conds.size(); i++) {
     start = ir::And::Make(start, conds[i]);
@@ -39,7 +43,11 @@ Expr logic_and(const std::vector<Expr>& conds) {
 }
 
 Expr logic_or(const std::vector<Expr>& conds) {
-  CHECK(!conds.empty());
+  PADDLE_ENFORCE_EQ(
+      !conds.empty(),
+      true,
+      phi::errors::InvalidArgument(
+          "The input conditions vector for logic_or should not be empty."));
   auto start = ir::Or::Make(conds[0], conds[1]);
   for (int i = 2; i < conds.size(); i++) {
     start = ir::Or::Make(start, conds[i]);

@@ -881,11 +881,13 @@ class GeneratorLoader(DataLoaderBase):
             shape_concat.extend(feed_data.shape)
             ranks.append(len(feed_data.shape))
             shapes.append(feed_data.shape)
-            lod_levels.append(feed_data.lod_level)
+
             if in_pir_mode():
                 need_check_feed.append(0)
+                lod_levels.append(0)
             else:
                 need_check_feed.append(int(feed_data.desc.need_check_feed()))
+                lod_levels.append(feed_data.lod_level)
 
         queue_name = data_loader_unique_name_generator(
             'lod_tensor_blocking_queue'

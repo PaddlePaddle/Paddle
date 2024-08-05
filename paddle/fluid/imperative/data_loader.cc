@@ -113,7 +113,7 @@ static inline void setSignalHandler(int signal,
   sa.sa_flags = SA_RESTART | SA_SIGINFO | SA_NOCLDSTOP | SA_NODEFER;
   if (sigemptyset(&sa.sa_mask) != 0 ||
       sigaction(signal, &sa, old_sa_ptr) != 0) {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "An error occurred while setting handler for %s.", strsignal(signal)));
   }
 }
@@ -147,7 +147,7 @@ void ThrowErrorIfLoadProcessFailed() {
       if (infop.si_code == CLD_EXITED &&
           infop.si_status != EXIT_SUCCESS) {  // exit with error
         pids_set->clear();
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "DataLoader process (pid %ld) exited unexpectedly with code %d. "
             "Error detailed are lost due to multiprocessing. Rerunning with:\n"
             "  1. If run DataLoader by DataLoader.from_generator(...), run "
@@ -163,7 +163,7 @@ void ThrowErrorIfLoadProcessFailed() {
                  infop.si_code == CLD_DUMPED) {  // killed by signal
         if (infop.si_status == SIGBUS) {
           pids_set->clear();
-          PADDLE_THROW(phi::errors::Fatal(
+          PADDLE_THROW(common::errors::Fatal(
               "DataLoader process (pid %ld) exited is killed by signal: %s.\n"
               "  It may be caused by insufficient shared storage space. This "
               "problem usually occurs when using docker as a development "
@@ -182,7 +182,7 @@ void ThrowErrorIfLoadProcessFailed() {
               process_pid,
               strsignal(infop.si_status)));
         } else {
-          PADDLE_THROW(phi::errors::Fatal(
+          PADDLE_THROW(common::errors::Fatal(
               "DataLoader process (pid %ld) exited is killed by signal: %s.",
               process_pid,
               strsignal(infop.si_status)));

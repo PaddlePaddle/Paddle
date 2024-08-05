@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -23,6 +25,10 @@ from .utils import (
     compute_local_shape_and_global_offset,
     flatten_state_dict,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.distributed.collective import Group
 
 
 def check_file_name(file_name, process_group):
@@ -92,10 +98,10 @@ def dedup_tensor(
 
 
 def save_state_dict(
-    state_dict,
-    path,
-    process_group=None,
-    coordinator_rank=0,
+    state_dict: dict[str, Tensor],
+    path: str,
+    process_group: Group | None = None,
+    coordinator_rank: int = 0,
 ) -> None:
     """
     Save the state_dict of model to path.
