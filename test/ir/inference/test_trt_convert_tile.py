@@ -70,7 +70,7 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, list[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 2]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3]}
@@ -169,7 +169,7 @@ class TrtConvertTileTest2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, list[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"tile_input": [1, 2]}
             self.dynamic_shape.max_input_shape = {"tile_input": [4, 3]}
@@ -270,7 +270,7 @@ class TrtConvertTileTest3(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, list[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"tile_input": [1, 2]}
             self.dynamic_shape.max_input_shape = {"tile_input": [4, 3]}
