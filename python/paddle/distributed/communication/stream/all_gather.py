@@ -145,7 +145,7 @@ def all_gather(
     group: Group | None = None,
     sync_op: bool = True,
     use_calc_stream: bool = False,
-) -> task:
+) -> task | None:
     """
 
     Gather tensors across devices to a correctly-sized tensor or a tensor list.
