@@ -114,9 +114,8 @@ class HorizontalFusePattern : public pir::RewritePattern {
   int getOpCntUseX(const pir::Value& x) const {
     /// 使用该出边的op中至少得有两个完全相同的MatmulOp/GemmEpilogueOp/FcOp
     /// 属性也应该完全相等，如果不完全相等，则不进行横向融合
-    // 这就是一道算法题，我们直接构建屎山
+    // 开始构建屎山
     int op_cnt_useX = 0;
-
     // 我们假定，使用x的多个op的种类里，MatmulOp GemmEpilogueOp FcOp两两互斥
     // 即，最多有一种Op会出现。如果同时出现两种，则匹配失败。
     // 我们假定，该种类的多个op的属性会完全相同
@@ -153,7 +152,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
                          pir::PatternRewriter& rewriter,
                          size_t idx) const {
     /// 现在我们知道，x被多个op使用，该op属于MatmulOp/GemmEpilogueOp/FcOp的一种
-    /// 我们统称 fused_matmul_op
+    /// 我们将这种op统称为fused_matmul_op
     /// 数据准备
     // 准备x
     pir::Value x = op->result(idx);
