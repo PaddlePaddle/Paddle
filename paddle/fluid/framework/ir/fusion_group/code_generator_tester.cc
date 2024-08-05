@@ -29,10 +29,7 @@ class DenseTensor;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace fusion_group {
+namespace paddle::framework::ir::fusion_group {
 
 // relu
 inline float relu(float x) { return x > 0 ? x : 0.; }  // NOLINT
@@ -164,10 +161,7 @@ void SetupRandomCPUTensor(phi::DenseTensor* tensor) {
   }
 }
 
-}  // namespace fusion_group
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fusion_group
 
 namespace fusion_group = paddle::framework::ir::fusion_group;
 

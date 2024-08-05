@@ -23,8 +23,7 @@
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 using paddle::framework::AESCipher;
 using paddle::framework::Cipher;
@@ -145,5 +144,4 @@ void BindCrypto(py::module* m) {
   BindAESCipher(m);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

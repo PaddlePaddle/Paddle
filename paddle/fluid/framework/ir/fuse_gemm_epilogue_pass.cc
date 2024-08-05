@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 static void GetTransposeAttrsFromOp(const OpDesc &op,
                                     bool *trans_x,
@@ -511,9 +509,7 @@ bool FuseGemmEpiloguePass::IsGemmFromLinear_(
   return (w_shape.size() == 2 && x_shape.size() >= 2);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fuse_gemm_epilogue_pass,
               paddle::framework::ir::FuseGemmEpiloguePass);

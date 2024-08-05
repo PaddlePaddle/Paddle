@@ -22,8 +22,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 inline void check_defined(const DistTensor& dist_tensor,
                           std::string method_hint) {
@@ -316,5 +315,4 @@ void DistTensor::clear() {
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

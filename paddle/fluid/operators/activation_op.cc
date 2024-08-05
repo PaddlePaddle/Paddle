@@ -31,8 +31,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(use_mkldnn);
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 template <typename GradFunctor>
 static constexpr bool CanInplaceAct() {
@@ -333,8 +332,7 @@ DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
 
 DEFINE_ACTIVATION_CPU_KERNEL(SoftRelu, SoftReluFunctor, SoftReluGradFunctor)
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

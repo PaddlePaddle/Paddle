@@ -15,8 +15,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 std::tuple<TensorDistAttr, TensorDistAttr> AlignExpandAsDistAttrs(
     const DistMetaTensor& x, const DistMetaTensor& y) {
@@ -82,5 +81,4 @@ SpmdInfo ExpandAsGradInferSpmd(const DistMetaTensor& x,
   return {{x_dist_attr, y_dist_attr}, {x_grad_dist_attr}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

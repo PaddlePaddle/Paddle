@@ -20,18 +20,12 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 class ComputationOpHandle;
 struct VarHandle;
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 
@@ -498,9 +492,7 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
   main_program->Flush();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(inplace_addto_op_pass, paddle::framework::ir::InplaceAddToOpPass)
     .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList)

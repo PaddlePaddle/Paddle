@@ -36,8 +36,7 @@
 
 COMMON_DECLARE_bool(sort_sum_gradient);
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 void BasicEngine::Init(
     const std::vector<std::shared_ptr<VarBase>>& tensors,
@@ -683,5 +682,4 @@ void BasicEngine::Clear() {
   leaf_accumulators_.clear();
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

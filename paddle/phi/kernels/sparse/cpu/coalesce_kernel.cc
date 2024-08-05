@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename IntT>
 void CoalesceCooCPUKernel(const CPUContext& dev_ctx,
@@ -104,8 +103,7 @@ void CoalesceCooKernel(const Context& dev_ctx,
       }));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(coalesce_coo,
                    CPU,

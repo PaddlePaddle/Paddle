@@ -19,9 +19,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph) const {
   std::unordered_set<std::string> act_types = {"relu", "scale", "tanh"};
@@ -527,9 +525,7 @@ std::vector<Node *> FuseElewiseAddActPass::RemoveNode(
       static_cast<uint64_t>(std::distance(new_list.begin(), end_iter)));
   return new_list;
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fuse_elewise_add_act_pass,
               paddle::framework::ir::FuseElewiseAddActPass);

@@ -19,8 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
  public:
@@ -80,8 +79,7 @@ we return an array which indicate the original index of rois in
 )DOC");
   }
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

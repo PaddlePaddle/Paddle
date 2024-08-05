@@ -17,8 +17,7 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 SelectOutputInstruction::SelectOutputInstruction(
     size_t id,
@@ -138,5 +137,4 @@ void SelectOutputInstruction::Run() {
   VisitVarType(*input_, AssignFunctor(selected));
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

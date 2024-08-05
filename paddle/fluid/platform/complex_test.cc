@@ -23,8 +23,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 template <typename T>
 using complex = phi::dtype::complex<T>;
@@ -325,5 +324,4 @@ TEST(complex, isnan) {
   EXPECT_EQ(std::isnan(c1), true);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

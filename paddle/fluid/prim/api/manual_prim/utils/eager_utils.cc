@@ -16,8 +16,7 @@
 #include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
 #include "paddle/phi/api/include/tensor.h"
 
-namespace paddle {
-namespace prim {
+namespace paddle::prim {
 
 template <>
 Tensor empty<Tensor>(const paddle::experimental::IntArray& shape,
@@ -50,5 +49,4 @@ void by_pass<Tensor>(const paddle::Tensor& x, Tensor* out) {
   set_output<Tensor>(x, out);
 }
 
-}  // namespace prim
-}  // namespace paddle
+}  // namespace paddle::prim

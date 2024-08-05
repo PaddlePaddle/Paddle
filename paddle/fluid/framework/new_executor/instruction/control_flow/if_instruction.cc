@@ -41,8 +41,7 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 IfInstruction::IfInstruction(size_t id,
                              const phi::Place& place,
@@ -266,5 +265,4 @@ void IfInstruction::Run() {
   // copy output
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

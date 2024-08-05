@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo TriuInferSpmdBase(const DistMetaTensor& x) {
@@ -176,5 +175,4 @@ SpmdInfo TrilTriuInferSpmdReverse(const DistMetaTensor& x,
                                   bool lower) {
   return TriuInferSpmdReverseBase(x, out);
 }
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

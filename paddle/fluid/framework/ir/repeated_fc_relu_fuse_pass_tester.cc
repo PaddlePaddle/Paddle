@@ -17,15 +17,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/ir/repeated_fc_relu_fuse_pass.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class VarDesc;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void TestMain(int num_fc) {
   // inputs                                 operator    output
@@ -80,8 +76,6 @@ TEST(RepeatedFCReluFusePass, basic_3) { TestMain(3); }
 
 TEST(RepeatedFCReluFusePass, basic_9) { TestMain(9); }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(repeated_fc_relu_fuse_pass);

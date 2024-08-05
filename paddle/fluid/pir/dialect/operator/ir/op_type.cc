@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 const pir::Type& SelectedRowsType::dtype() const { return storage()->dtype_; }
 
 const phi::DDim& SelectedRowsType::dims() const { return storage()->dims_; }
@@ -163,8 +162,7 @@ SparseCsrTensorType SparseCsrTensorType::dyn_cast_impl(Type type) {
   }
   return nullptr;
 }
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorArrayType)

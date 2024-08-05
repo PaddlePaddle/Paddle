@@ -21,8 +21,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/jit/serializer.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 ComputeInterceptor::ComputeInterceptor(int64_t interceptor_id, TaskNode* node)
     : Interceptor(interceptor_id, node),
@@ -398,5 +397,4 @@ void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
 
 REGISTER_INTERCEPTOR(Compute, ComputeInterceptor);
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

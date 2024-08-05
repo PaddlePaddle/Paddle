@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
+using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo NumelInferSpmd(const DistMetaTensor& x) {
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
@@ -49,5 +49,4 @@ SpmdInfo NumelInferSpmd(const DistMetaTensor& x) {
   return SpmdInfo({x_dist_attr_src}, {out_dist_attr});
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

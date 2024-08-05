@@ -18,9 +18,7 @@
 #include "paddle/fluid/primitive/backend/generated/generated_backend.h"
 #include "paddle/fluid/primitive/backend/manual/manual_prim_backend.h"
 
-namespace paddle {
-namespace primitive {
-namespace backend {
+namespace paddle::primitive::backend {
 
 template <>
 Tensor full<Tensor>(const IntArray& shape,
@@ -45,6 +43,4 @@ Tensor arange_with_tensor<Tensor>(const Tensor& start,
   return ::arange_ad_func(start, end, step, dtype, place);
 }
 
-}  // namespace backend
-}  // namespace primitive
-}  // namespace paddle
+}  // namespace paddle::primitive::backend
