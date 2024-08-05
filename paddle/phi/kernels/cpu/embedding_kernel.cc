@@ -54,7 +54,7 @@ struct EmbeddingCPUFunctor {
         PADDLE_ENFORCE_LT(
             ids[i],
             row_number,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0 and < %ld, but got %ld. Please check input "
                 "value.",
@@ -63,7 +63,7 @@ struct EmbeddingCPUFunctor {
         PADDLE_ENFORCE_GE(
             ids[i],
             0,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0 and < %ld, but got %ld. Please check input "
                 "value.",
@@ -108,7 +108,7 @@ void EmbeddingKernel(const Context& ctx,
   } else if (input.dtype() == phi::DataType::INT64) {
     functor.template apply<int64_t>();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "emebdding input only support int32 and int64, but get %s",
         input.dtype()));
   }

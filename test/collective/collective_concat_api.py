@@ -97,8 +97,15 @@ class TestCollectiveConcatAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program):
-        pass
+    def get_model(self, main_prog, startup_program, rank, dtype="float32"):
+        with base.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[10, 1000], dtype=dtype
+            )
+            tindata.desc.set_need_check_feed(False)
+            toutdata = concat_new_comm(tindata, rank=rank)
+
+            return [toutdata]
 
     def get_model_new(
         self, main_prog, startup_program, rank, dtype=None, reduce_type=None
@@ -109,18 +116,6 @@ class TestCollectiveConcatAPI(TestCollectiveAPIRunnerBase):
             )
             tindata.desc.set_need_check_feed(False)
             toutdata = concat_new(tindata)
-            return [toutdata]
-
-    def get_model_new_comm(
-        self, main_prog, startup_program, rank, dtype="float32"
-    ):
-        with base.program_guard(main_prog, startup_program):
-            tindata = paddle.static.data(
-                name="tindata", shape=[10, 1000], dtype=dtype
-            )
-            tindata.desc.set_need_check_feed(False)
-            toutdata = concat_new_comm(tindata, rank=rank)
-
             return [toutdata]
 
 

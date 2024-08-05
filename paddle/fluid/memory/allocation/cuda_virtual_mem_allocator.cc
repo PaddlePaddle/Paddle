@@ -20,7 +20,7 @@
 #include <string>
 
 #include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"

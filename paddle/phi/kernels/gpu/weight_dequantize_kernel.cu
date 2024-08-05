@@ -470,7 +470,7 @@ void WeightDequantizeKernel(const Context& dev_ctx,
   out->ShareDataWith(out_tmp);
 #else
   PADDLE_THROW(
-      phi::errors::PreconditionNotMet("Not compiled with WITH_CUTLASS=ON"));
+      common::errors::PreconditionNotMet("Not compiled with WITH_CUTLASS=ON"));
 #endif
 }
 

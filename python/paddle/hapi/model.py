@@ -23,9 +23,8 @@ import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
+    List,
     Literal,
-    Sequence,
     Union,
     overload,
 )
@@ -58,6 +57,8 @@ from .callbacks import EarlyStopping, config_callbacks
 from .model_summary import summary
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     import numpy.typing as npt
 
     from paddle import Tensor
@@ -69,8 +70,8 @@ if TYPE_CHECKING:
     _InputBatch: TypeAlias = Union[
         Tensor,
         npt.NDArray[Any],
-        list[Tensor],
-        list[npt.NDArray[Any]],
+        List[Tensor],
+        List[npt.NDArray[Any]],
     ]
 
 

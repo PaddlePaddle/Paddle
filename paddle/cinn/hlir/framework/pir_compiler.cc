@@ -156,7 +156,7 @@ void CompilationContextMapper::Construct(
 
   for (size_t i = 0; i < groups.size(); ++i) {
     fusion_infos_.emplace_back(*groups[i]);
-    VLOG(5) << "Construct FusionInfo: " << fusion_infos_[i]
+    VLOG(4) << "Construct FusionInfo: " << fusion_infos_[i]
             << " for group: " << *groups[i];
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
     // effects.
@@ -206,8 +206,10 @@ void CompilationContextMapper::UpdateGlobalCache() {
                       ::common::errors::PreconditionNotMet(
                           "Required mapper_index < fusion_infos_.size()."));
     const auto& fusion_info = fusion_infos_[mapper_index_[i]];
-    VLOG(5) << "Insert new compiled result into cache, fusion_info: "
-            << fusion_info;
+    VLOG(4) << "============== Insert new compiled result into cache, "
+               "fusion_info: ==============\n"
+            << fusion_info << ", host func name: "
+            << compilation_results_[i]->GetHostFuncName();
     CompilationCache::Instance().Insert(fusion_info, compilation_results_[i]);
   }
 }
