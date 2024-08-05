@@ -610,6 +610,7 @@ bool SegmentPoolOpInferSymbolicShape(
   int axis = input_shape.size();
   int row_shape = static_cast<int>(
       segment_shape_or_data.data().value()[input_shape[0] - 1].Get<int64_t>());
+  row_shape += 1;
   out_shape.push_back(symbol::DimExpr{row_shape});
   for (int i = 1; i < axis; ++i) {
     out_shape.push_back(input_shape[i]);
