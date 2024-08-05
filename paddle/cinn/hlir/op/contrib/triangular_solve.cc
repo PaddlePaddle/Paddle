@@ -26,6 +26,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -42,8 +43,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForTriangularSolve(
     const Target &target) {
   framework::CINNCompute triangular_solve_compute(
       [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty())
-            << "The input argument of triangular_solve is empty! Please check.";
+        PADDLE_ENFORCE_EQ(!args.empty(),
+                          true,
+                          ::common::errors::InvalidArgument(
+                              "The input argument of triangular_solve is "
+                              "empty. Please check the arguments."));
         CINNValuePack pack_args = args[0];
         PADDLE_ENFORCE_GE(
             pack_args.size(),

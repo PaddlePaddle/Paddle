@@ -18,12 +18,12 @@
 #include <string>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/backends/custom/fake_cpu_device.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
 void RegisterDevice() {
   CustomRuntimeParams runtime_params;

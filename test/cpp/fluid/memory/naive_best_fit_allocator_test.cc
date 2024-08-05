@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
+#include "paddle/phi/core/memory/allocation/naive_best_fit_allocator.h"
 
 #include "gtest/gtest.h"
 

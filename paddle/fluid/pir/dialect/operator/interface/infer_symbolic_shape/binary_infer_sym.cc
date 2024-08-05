@@ -145,6 +145,18 @@ bool BceLoss_OpInferSymbolicShape(
   return BceLossOpInferSymbolicShape(op, infer_context);
 }
 
+bool CtcAlignOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> out_shape = {input_shape.shape()[0], 1};
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
+  infer_context->SetShapeOrDataForValue(op->result(1), shape_data);
+  return true;
+}
+
 bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<int> strides =

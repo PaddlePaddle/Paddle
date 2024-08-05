@@ -81,10 +81,7 @@ std::vector<std::vector<pir::Value>> {{class_name}}::Decomp(pir::Operation* op) 
           ->value()
           .defining_op();
   if ({{item.name}}_define_op->name() != "pd_op.full") {
-    PADDLE_THROW(
-        common::errors::Unimplemented("We don't support dynamic tensors "
-                                        "attribute {{item.name}} for {{fwd_name}} decomposition "
-                                        "for now. "));
+    return {};
   }
   Scalar {{item.name}} = {{item.name}}_define_op->attribute("value").dyn_cast<paddle::dialect::ScalarAttribute>().data();
 
@@ -97,10 +94,7 @@ std::vector<std::vector<pir::Value>> {{class_name}}::Decomp(pir::Operation* op) 
           ->value()
           .defining_op();
   if ({{item.name}}_define_op->name() != "pd_op.full_int_array") {
-    PADDLE_THROW(
-        common::errors::Unimplemented("We don't support dynamic tensors "
-                                        "attribute {{item.name}} for {{fwd_name}} decomposition "
-                                        "for now. "));
+    return {};
   }
   IntArray {{item.name}} = phi::IntArray(
       paddle::dialect::GetInt64Vector({{item.name}}_define_op->attribute("value")));
@@ -120,7 +114,7 @@ std::vector<std::vector<pir::Value>> {{class_name}}::Decomp(pir::Operation* op) 
       }
 
     } else {
-      PADDLE_THROW(common::errors::Unimplemented("attr is not vector of {{temp_type}} "));
+      return {};
     }
   }
         {% else %}
