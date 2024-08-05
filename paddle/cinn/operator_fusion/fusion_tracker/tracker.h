@@ -104,7 +104,9 @@ struct InitPatternInstr : public FusionInstruction {
   void set_idx(int idx) { idx_in_fusion_op = idx; }
   int get_idx() const {
     PADDLE_ENFORCE_NE(
-        idx_in_fusion_op, -1, "FusionPattern is not initialized.");
+        idx_in_fusion_op,
+        -1,
+        ::common::errors::InvalidArgument("FusionPattern is not initialized."));
     return idx_in_fusion_op;
   }
   virtual InstructionType type() const { return T_InitPattern; }
@@ -231,7 +233,9 @@ struct PaddingInstr : public FusionInstruction {
 template <typename T>
 std::shared_ptr<T> dynamic_cast_instr_with_err(FusionInstrPtr instr) {
   auto chile_instr = std::dynamic_pointer_cast<T>(instr);
-  PADDLE_ENFORCE_NOT_NULL(chile_instr, "Cast Fusion Instr Failed.");
+  PADDLE_ENFORCE_NOT_NULL(
+      chile_instr,
+      ::common::errors::InvalidArgument("Cast Fusion Instr Failed."));
   return chile_instr;
 }
 
