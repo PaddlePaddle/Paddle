@@ -222,7 +222,6 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         } else {
           PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
               x.data<T>(), numel, dtype, peer, comm->comm(), stream));
-        }
           VLOG(3) << "rank " << comm->rank() << " send "
                   << common::product(x.dims()) << " to " << peer;
         }
