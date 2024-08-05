@@ -14,8 +14,6 @@
 
 #include "test_suite.h"  // NOLINT
 
-#include "paddle/common/errors.h"
-
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_string(int8dir, "", "Directory of the quant inference model.");
 DEFINE_string(datadir, "", "Directory of the infer data.");
