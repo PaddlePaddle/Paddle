@@ -33,6 +33,7 @@ from paddle.incubate.nn.memory_efficient_attention import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
 paddle.seed(2023)
 
 
