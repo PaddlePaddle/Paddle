@@ -28,7 +28,7 @@
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 #include "paddle/common/flags.h"
 PHI_DEFINE_EXPORTED_bool(

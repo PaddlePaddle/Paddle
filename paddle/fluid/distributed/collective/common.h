@@ -14,25 +14,17 @@
 
 #pragma once
 
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/collective/common.h"
+
 namespace paddle {
 namespace distributed {
 
-using Place = phi::Place;
-// Get the list of devices from list of tensors
-std::vector<Place> GetPlaceList(const std::vector<phi::DenseTensor>& tensors);
-// Get the deviceList String from the list of devices
-std::string GetKeyFromPlaces(const std::vector<Place>& places);
-// Get the device string from one device
-std::string GetKeyFromPlace(const Place& place);
-
-bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors);
-
-bool CheckTensorsInCustomPlace(const std::vector<phi::DenseTensor>& tensors,
-                               const std::string& dev_type);
-
-bool CheckTensorsInXPUPlace(const std::vector<phi::DenseTensor>& tensors);
+using phi::distributed::CheckTensorsInCudaPlace;
+using phi::distributed::CheckTensorsInCustomPlace;
+using phi::distributed::CheckTensorsInXPUPlace;
+using phi::distributed::GetKeyFromPlace;
+using phi::distributed::GetKeyFromPlaces;
+using phi::distributed::GetPlaceList;
 
 }  //  namespace distributed
 }  //  namespace paddle
