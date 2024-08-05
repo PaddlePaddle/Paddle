@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/onednn/cpu_bfloat16_pass_pattern.h"
+#include "paddle/fluid/pir/transforms/onednn/cpu_bfloat16_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -148,17 +148,19 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
 
       pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
       uint32_t num_operands = input_op->num_operands();
-      if (index_ >= num_operands) {
+      if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
       auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      if (!pre_op) {
+        return false;
+      }
       if (!pre_op->isa<paddle::onednn::dialect::QuantizeOp>()) {
         return true;
       }
 
       return false;
     });
-    // std::map<int, int> quantize_in_list;
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &quantize_op =
@@ -178,7 +180,7 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
       res_op({&res.Tensor("quantize_out_0"), &res.Tensor("quantize_1")},
              {&res.Tensor("out")});
 
-    } else {
+    } else if (index_ == 1) {
       res_op({&res.Tensor("quantize_0"), &res.Tensor("quantize_out_1")},
              {&res.Tensor("out")});
     }
@@ -271,7 +273,7 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      std::vector<std::string> nopermitted_output_names = {"xshape"};
+      std::vector<std::string> no_permitted_output_names = {"xshape"};
       auto op_info =
           pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
@@ -292,10 +294,10 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
         output_name = (*find_item).first;
       }
 
-      auto it = std::find(nopermitted_output_names.begin(),
-                          nopermitted_output_names.end(),
+      auto it = std::find(no_permitted_output_names.begin(),
+                          no_permitted_output_names.end(),
                           output_name);
-      if (it != nopermitted_output_names.end()) {
+      if (it != no_permitted_output_names.end()) {
         return false;
       }
 
@@ -320,18 +322,18 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class CpuBfloat16Pattern1_1 : public paddle::drr::DrrPatternBase {
+class CpuBfloat16PatternOne_one : public paddle::drr::DrrPatternBase {
  private:
   std::string bfloat16_ops_;
   uint32_t benefit_;
   uint32_t index_;
 
  public:
-  CpuBfloat16Pattern1_1(const std::string &bfloat16_ops, uint32_t benefit)
+  CpuBfloat16PatternOne_one(const std::string &bfloat16_ops, uint32_t benefit)
       : bfloat16_ops_(bfloat16_ops), benefit_(benefit), index_(0) {}
 
   std::string name() const override {
-    return bfloat16_ops_ + "CpuBfloat16Pattern1_1";
+    return bfloat16_ops_ + "CpuBfloat16PatternOne_one";
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -386,10 +388,14 @@ class CpuBfloat16Pattern1_1 : public paddle::drr::DrrPatternBase {
 
       pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
       uint32_t num_operands = input_op->num_operands();
-      if (index_ >= num_operands) {
+      if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
+
       auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      if (!pre_op) {
+        return false;
+      }
       if (!pre_op->isa<paddle::onednn::dialect::QuantizeOp>()) {
         return true;
       }
@@ -414,19 +420,19 @@ class CpuBfloat16Pattern1_1 : public paddle::drr::DrrPatternBase {
   }
 };
 
-class CpuBfloat16DequantPattern1_1 : public paddle::drr::DrrPatternBase {
+class CpuBfloat16DequantPatternOne_one : public paddle::drr::DrrPatternBase {
  private:
   std::string bfloat16_ops_;
   uint32_t benefit_;
   uint32_t index_;
 
  public:
-  CpuBfloat16DequantPattern1_1(const std::string &bfloat16_ops,
-                               uint32_t benefit)
+  CpuBfloat16DequantPatternOne_one(const std::string &bfloat16_ops,
+                                   uint32_t benefit)
       : bfloat16_ops_(bfloat16_ops), benefit_(benefit), index_(0) {}
 
   std::string name() const override {
-    return bfloat16_ops_ + "CpuBfloat16DequantPattern1_1";
+    return bfloat16_ops_ + "CpuBfloat16DequantPatternOne_one";
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -454,7 +460,7 @@ class CpuBfloat16DequantPattern1_1 : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      std::vector<std::string> nopermitted_output_names = {"xshape"};
+      std::vector<std::string> no_permitted_output_names = {"xshape"};
       auto op_info =
           pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
@@ -475,10 +481,10 @@ class CpuBfloat16DequantPattern1_1 : public paddle::drr::DrrPatternBase {
         output_name = (*find_item).first;
       }
 
-      auto it = std::find(nopermitted_output_names.begin(),
-                          nopermitted_output_names.end(),
+      auto it = std::find(no_permitted_output_names.begin(),
+                          no_permitted_output_names.end(),
                           output_name);
-      if (it != nopermitted_output_names.end()) {
+      if (it != no_permitted_output_names.end()) {
         return false;
       }
 
@@ -578,7 +584,7 @@ class CpuBfloat16Pattern2_2 : public paddle::drr::DrrPatternBase {
 
       pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
       uint32_t num_operands = input_op->num_operands();
-      if (index_ >= num_operands) {
+      if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
       auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
@@ -605,18 +611,6 @@ class CpuBfloat16Pattern2_2 : public paddle::drr::DrrPatternBase {
 
     const auto &res_op = res.Op(bfloat16_ops_, op_attrs);
     if (index_ == 0) {
-      // if(bfloat16_ops_ == "onednn_op.reshape_" || bfloat16_ops_ ==
-      // "onednn_op.reshape" ||
-      //  bfloat16_ops_ == "onednn_op.squeeze" || bfloat16_ops_ ==
-      //  "onednn_op.squeeze_" ){
-      //   const auto &full_int_array =
-      //       res.Op(paddle::dialect::FullIntArrayOp::name(),
-      //             {{"value", pat.Attr("value")},
-      //             {"dtype", pat.Attr("dtype")},
-      //             {"place", pat.Attr("place")}});
-      //   res.Tensor("quantize_1") = full_int_array();
-      // }
-
       res_op({&res.Tensor("quantize_out_0"), &res.Tensor("quantize_1")},
              {{&res.Tensor("out_0"), &res.Tensor("out_1")}});
 
@@ -674,7 +668,7 @@ class CpuBfloat16DequantPattern2_2 : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      std::vector<std::string> nopermitted_output_names = {"xshape"};
+      std::vector<std::string> no_permitted_output_names = {"xshape"};
       auto op_info =
           pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
@@ -695,10 +689,10 @@ class CpuBfloat16DequantPattern2_2 : public paddle::drr::DrrPatternBase {
         output_name = (*find_item).first;
       }
 
-      auto it = std::find(nopermitted_output_names.begin(),
-                          nopermitted_output_names.end(),
+      auto it = std::find(no_permitted_output_names.begin(),
+                          no_permitted_output_names.end(),
                           output_name);
-      if (it != nopermitted_output_names.end()) {
+      if (it != no_permitted_output_names.end()) {
         return false;
       }
 
@@ -736,20 +730,20 @@ class CpuBfloat16DequantPattern2_2 : public paddle::drr::DrrPatternBase {
   }
 };
 
-class CpuBfloat16Pattern3_1 : public paddle::drr::DrrPatternBase {
+class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
  private:
   std::string bfloat16_ops_;
   uint32_t benefit_;
   uint32_t index_;
 
  public:
-  CpuBfloat16Pattern3_1(const std::string &bfloat16_ops,
-                        uint32_t benefit,
-                        uint32_t index)
+  CpuBfloat16PatternThree_one(const std::string &bfloat16_ops,
+                              uint32_t benefit,
+                              uint32_t index)
       : bfloat16_ops_(bfloat16_ops), benefit_(benefit), index_(index) {}
 
   std::string name() const override {
-    return bfloat16_ops_ + "CpuBfloat16Pattern3_1";
+    return bfloat16_ops_ + "CpuBfloat16PatternThree_one";
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -782,6 +776,26 @@ class CpuBfloat16Pattern3_1 : public paddle::drr::DrrPatternBase {
 
     } else if (bfloat16_ops_ == "onednn_op.split") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+    } else if (bfloat16_ops_ == "onednn_op.fused_matmul") {
+      op_attrs.emplace("trans_x", pat.Attr("trans_x"));
+      op_attrs.emplace("trans_y", pat.Attr("trans_y"));
+      op_attrs.emplace("matmul_alpha", pat.Attr("matmul_alpha"));
+      op_attrs.emplace("fused_output_scale", pat.Attr("fused_output_scale"));
+      op_attrs.emplace("fused_reshape_x", pat.Attr("fused_reshape_x"));
+      op_attrs.emplace("fused_transpose_x", pat.Attr("fused_transpose_x"));
+      op_attrs.emplace("fused_reshape_y", pat.Attr("fused_reshape_y"));
+      op_attrs.emplace("fused_transpose_y", pat.Attr("fused_transpose_y"));
+      op_attrs.emplace("fused_reshape_out", pat.Attr("fused_reshape_out"));
+      op_attrs.emplace("fused_transpose_out", pat.Attr("fused_transpose_out"));
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("scale_x", pat.Attr("scale_x"));
+      op_attrs.emplace("scale_y", pat.Attr("scale_y"));
+      op_attrs.emplace("scale_in_eltwise", pat.Attr("scale_in_eltwise"));
+      op_attrs.emplace("scale_out", pat.Attr("scale_out"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
+      op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
+      op_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      op_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
     }
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("quantize_0"),
@@ -827,17 +841,20 @@ class CpuBfloat16Pattern3_1 : public paddle::drr::DrrPatternBase {
 
       pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
       uint32_t num_operands = input_op->num_operands();
-      if (index_ >= num_operands) {
+      if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
       auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      if (!pre_op) {
+        return false;
+      }
       if (!pre_op->isa<paddle::onednn::dialect::QuantizeOp>()) {
         return true;
       }
 
       return false;
     });
-    // std::map<int, int> quantize_in_list;
+
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &quantize_op =
@@ -874,19 +891,19 @@ class CpuBfloat16Pattern3_1 : public paddle::drr::DrrPatternBase {
   }
 };
 
-class CpuBfloat16DequantPattern3_1 : public paddle::drr::DrrPatternBase {
+class CpuBfloat16DequantPatternThree_one : public paddle::drr::DrrPatternBase {
  private:
   std::string bfloat16_ops_;
   uint32_t benefit_;
   uint32_t index_;
 
  public:
-  CpuBfloat16DequantPattern3_1(const std::string &bfloat16_ops,
-                               uint32_t benefit)
+  CpuBfloat16DequantPatternThree_one(const std::string &bfloat16_ops,
+                                     uint32_t benefit)
       : bfloat16_ops_(bfloat16_ops), benefit_(benefit), index_(0) {}
 
   std::string name() const override {
-    return bfloat16_ops_ + "CpuBfloat16DequantPattern3_1";
+    return bfloat16_ops_ + "CpuBfloat16DequantPatternThree_one";
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -919,6 +936,26 @@ class CpuBfloat16DequantPattern3_1 : public paddle::drr::DrrPatternBase {
 
     } else if (bfloat16_ops_ == "onednn_op.split") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+    } else if (bfloat16_ops_ == "onednn_op.fused_matmul") {
+      op_attrs.emplace("trans_x", pat.Attr("trans_x"));
+      op_attrs.emplace("trans_y", pat.Attr("trans_y"));
+      op_attrs.emplace("matmul_alpha", pat.Attr("matmul_alpha"));
+      op_attrs.emplace("fused_output_scale", pat.Attr("fused_output_scale"));
+      op_attrs.emplace("fused_reshape_x", pat.Attr("fused_reshape_x"));
+      op_attrs.emplace("fused_transpose_x", pat.Attr("fused_transpose_x"));
+      op_attrs.emplace("fused_reshape_y", pat.Attr("fused_reshape_y"));
+      op_attrs.emplace("fused_transpose_y", pat.Attr("fused_transpose_y"));
+      op_attrs.emplace("fused_reshape_out", pat.Attr("fused_reshape_out"));
+      op_attrs.emplace("fused_transpose_out", pat.Attr("fused_transpose_out"));
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("scale_x", pat.Attr("scale_x"));
+      op_attrs.emplace("scale_y", pat.Attr("scale_y"));
+      op_attrs.emplace("scale_in_eltwise", pat.Attr("scale_in_eltwise"));
+      op_attrs.emplace("scale_out", pat.Attr("scale_out"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
+      op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
+      op_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      op_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
     }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
@@ -936,7 +973,7 @@ class CpuBfloat16DequantPattern3_1 : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      std::vector<std::string> nopermitted_output_names = {"xshape"};
+      std::vector<std::string> no_permitted_output_names = {"xshape"};
       auto op_info =
           pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
@@ -957,10 +994,10 @@ class CpuBfloat16DequantPattern3_1 : public paddle::drr::DrrPatternBase {
         output_name = (*find_item).first;
       }
 
-      auto it = std::find(nopermitted_output_names.begin(),
-                          nopermitted_output_names.end(),
+      auto it = std::find(no_permitted_output_names.begin(),
+                          no_permitted_output_names.end(),
                           output_name);
-      if (it != nopermitted_output_names.end()) {
+      if (it != no_permitted_output_names.end()) {
         return false;
       }
 
@@ -1069,17 +1106,19 @@ class CpuBfloat16FusionGruPattern : public paddle::drr::DrrPatternBase {
 
       pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
       uint32_t num_operands = input_op->num_operands();
-      if (index_ >= num_operands) {
+      if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
       auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      if (!pre_op) {
+        return false;
+      }
       if (!pre_op->isa<paddle::onednn::dialect::QuantizeOp>()) {
         return true;
       }
 
       return false;
     });
-    // std::map<int, int> quantize_in_list;
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &quantize_op =
@@ -1214,7 +1253,7 @@ class CpuBfloat16FusionGruDequantPattern : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      std::vector<std::string> nopermitted_output_names = {"xshape"};
+      std::vector<std::string> no_permitted_output_names = {"xshape"};
       auto op_info =
           pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
@@ -1235,10 +1274,10 @@ class CpuBfloat16FusionGruDequantPattern : public paddle::drr::DrrPatternBase {
         output_name = (*find_item).first;
       }
 
-      auto it = std::find(nopermitted_output_names.begin(),
-                          nopermitted_output_names.end(),
+      auto it = std::find(no_permitted_output_names.begin(),
+                          no_permitted_output_names.end(),
                           output_name);
-      if (it != nopermitted_output_names.end()) {
+      if (it != no_permitted_output_names.end()) {
         return false;
       }
 
@@ -1420,10 +1459,13 @@ class CpuBfloat16LayerNormOpPattern : public paddle::drr::DrrPatternBase {
 
       pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
       uint32_t num_operands = input_op->num_operands();
-      if (index_ >= num_operands) {
+      if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
       auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      if (!pre_op) {
+        return false;
+      }
       if (!pre_op->isa<paddle::onednn::dialect::QuantizeOp>()) {
         return true;
       }
@@ -1514,7 +1556,11 @@ class CpuBfloat16LayerNormDequantPattern : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      std::vector<std::string> nopermitted_output_names = {"xshape"};
+      std::vector<std::string> no_permitted_output_names = {"xshape"};
+      if (bfloat16_ops_ == "onednn_op.layer_norm") {
+        no_permitted_output_names.push_back("mean");
+        no_permitted_output_names.push_back("variance");
+      }
       auto op_info =
           pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
@@ -1535,10 +1581,10 @@ class CpuBfloat16LayerNormDequantPattern : public paddle::drr::DrrPatternBase {
         output_name = (*find_item).first;
       }
 
-      auto it = std::find(nopermitted_output_names.begin(),
-                          nopermitted_output_names.end(),
+      auto it = std::find(no_permitted_output_names.begin(),
+                          no_permitted_output_names.end(),
                           output_name);
-      if (it != nopermitted_output_names.end()) {
+      if (it != no_permitted_output_names.end()) {
         return false;
       }
 
@@ -1599,20 +1645,20 @@ class CpuBfloat16LayerNormDequantPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class CpuBfloat16BilinearInterpPattern : public paddle::drr::DrrPatternBase {
+class CpuBfloat16PatternFour_one : public paddle::drr::DrrPatternBase {
  private:
   std::string bfloat16_ops_;
   uint32_t benefit_;
   uint32_t index_;
 
  public:
-  CpuBfloat16BilinearInterpPattern(const std::string &bfloat16_ops,
-                                   uint32_t benefit,
-                                   uint32_t index)
+  CpuBfloat16PatternFour_one(const std::string &bfloat16_ops,
+                             uint32_t benefit,
+                             uint32_t index)
       : bfloat16_ops_(bfloat16_ops), benefit_(benefit), index_(index) {}
 
   std::string name() const override {
-    return bfloat16_ops_ + "CpuBfloat16BilinearInterpPattern";
+    return bfloat16_ops_ + "CpuBfloat16PatternFour_one";
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -1621,15 +1667,35 @@ class CpuBfloat16BilinearInterpPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
-    op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-    op_attrs.emplace("align_mode", pat.Attr("align_mode"));
-    op_attrs.emplace("align_corners", pat.Attr("align_corners"));
-    op_attrs.emplace("interp_method", pat.Attr("interp_method"));
-    op_attrs.emplace("scale", pat.Attr("scale"));
-    op_attrs.emplace("out_w", pat.Attr("out_w"));
-    op_attrs.emplace("out_h", pat.Attr("out_h"));
-    op_attrs.emplace("out_d", pat.Attr("out_d"));
-    op_attrs.emplace("data_format", pat.Attr("data_format"));
+    if (bfloat16_ops_ == "onednn_op.bilinear_interp") {
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("align_mode", pat.Attr("align_mode"));
+      op_attrs.emplace("align_corners", pat.Attr("align_corners"));
+      op_attrs.emplace("interp_method", pat.Attr("interp_method"));
+      op_attrs.emplace("scale", pat.Attr("scale"));
+      op_attrs.emplace("out_w", pat.Attr("out_w"));
+      op_attrs.emplace("out_h", pat.Attr("out_h"));
+      op_attrs.emplace("out_d", pat.Attr("out_d"));
+      op_attrs.emplace("data_format", pat.Attr("data_format"));
+    } else if (bfloat16_ops_ == "onednn_op.fused_conv2d") {
+      op_attrs.emplace("strides", pat.Attr("strides"));
+      op_attrs.emplace("paddings", pat.Attr("paddings"));
+      op_attrs.emplace("padding_algorithm", pat.Attr("padding_algorithm"));
+      op_attrs.emplace("dilations", pat.Attr("dilations"));
+      op_attrs.emplace("groups", pat.Attr("groups"));
+      op_attrs.emplace("data_format", pat.Attr("data_format"));
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
+      op_attrs.emplace("fuse_residual_connection",
+                       pat.Attr("fuse_residual_connection"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
+      op_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      op_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
+      op_attrs.emplace("scale_in", pat.Attr("scale_in"));
+      op_attrs.emplace("scale_out", pat.Attr("scale_out"));
+      op_attrs.emplace("scale_in_eltwise", pat.Attr("scale_in_eltwise"));
+      op_attrs.emplace("scale_weights", pat.Attr("scale_weights"));
+    }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("quantize_0"),
@@ -1676,10 +1742,13 @@ class CpuBfloat16BilinearInterpPattern : public paddle::drr::DrrPatternBase {
 
       pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
       uint32_t num_operands = input_op->num_operands();
-      if (index_ >= num_operands) {
+      if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
       auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      if (!pre_op) {
+        return false;
+      }
       if (!pre_op->isa<paddle::onednn::dialect::QuantizeOp>()) {
         return true;
       }
@@ -1733,20 +1802,19 @@ class CpuBfloat16BilinearInterpPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class CpuBfloat16BilinearInterpDequantPattern
-    : public paddle::drr::DrrPatternBase {
+class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
  private:
   std::string bfloat16_ops_;
   uint32_t benefit_;
   uint32_t index_;
 
  public:
-  CpuBfloat16BilinearInterpDequantPattern(const std::string &bfloat16_ops,
-                                          uint32_t benefit)
+  CpuBfloat16DequantPatternFour_one(const std::string &bfloat16_ops,
+                                    uint32_t benefit)
       : bfloat16_ops_(bfloat16_ops), benefit_(benefit), index_(0) {}
 
   std::string name() const override {
-    return bfloat16_ops_ + "CpuBfloat16BilinearInterpDequantPattern";
+    return bfloat16_ops_ + "CpuBfloat16DequantPatternFour_one";
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -1755,15 +1823,35 @@ class CpuBfloat16BilinearInterpDequantPattern
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
-    op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-    op_attrs.emplace("align_mode", pat.Attr("align_mode"));
-    op_attrs.emplace("align_corners", pat.Attr("align_corners"));
-    op_attrs.emplace("interp_method", pat.Attr("interp_method"));
-    op_attrs.emplace("scale", pat.Attr("scale"));
-    op_attrs.emplace("out_w", pat.Attr("out_w"));
-    op_attrs.emplace("out_h", pat.Attr("out_h"));
-    op_attrs.emplace("out_d", pat.Attr("out_d"));
-    op_attrs.emplace("data_format", pat.Attr("data_format"));
+    if (bfloat16_ops_ == "onednn_op.bilinear_interp") {
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("align_mode", pat.Attr("align_mode"));
+      op_attrs.emplace("align_corners", pat.Attr("align_corners"));
+      op_attrs.emplace("interp_method", pat.Attr("interp_method"));
+      op_attrs.emplace("scale", pat.Attr("scale"));
+      op_attrs.emplace("out_w", pat.Attr("out_w"));
+      op_attrs.emplace("out_h", pat.Attr("out_h"));
+      op_attrs.emplace("out_d", pat.Attr("out_d"));
+      op_attrs.emplace("data_format", pat.Attr("data_format"));
+    } else if (bfloat16_ops_ == "onednn_op.fused_conv2d") {
+      op_attrs.emplace("strides", pat.Attr("strides"));
+      op_attrs.emplace("paddings", pat.Attr("paddings"));
+      op_attrs.emplace("padding_algorithm", pat.Attr("padding_algorithm"));
+      op_attrs.emplace("dilations", pat.Attr("dilations"));
+      op_attrs.emplace("groups", pat.Attr("groups"));
+      op_attrs.emplace("data_format", pat.Attr("data_format"));
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
+      op_attrs.emplace("fuse_residual_connection",
+                       pat.Attr("fuse_residual_connection"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
+      op_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      op_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
+      op_attrs.emplace("scale_in", pat.Attr("scale_in"));
+      op_attrs.emplace("scale_out", pat.Attr("scale_out"));
+      op_attrs.emplace("scale_in_eltwise", pat.Attr("scale_in_eltwise"));
+      op_attrs.emplace("scale_weights", pat.Attr("scale_weights"));
+    }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("x"), &pat.Tensor("y"), &pat.Tensor("z"), &pat.Tensor("s")},
@@ -1780,7 +1868,7 @@ class CpuBfloat16BilinearInterpDequantPattern
         return false;
       }
 
-      std::vector<std::string> nopermitted_output_names = {"xshape"};
+      std::vector<std::string> no_permitted_output_names = {"xshape"};
       auto op_info =
           pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
@@ -1801,10 +1889,10 @@ class CpuBfloat16BilinearInterpDequantPattern
         output_name = (*find_item).first;
       }
 
-      auto it = std::find(nopermitted_output_names.begin(),
-                          nopermitted_output_names.end(),
+      auto it = std::find(no_permitted_output_names.begin(),
+                          no_permitted_output_names.end(),
                           output_name);
-      if (it != nopermitted_output_names.end()) {
+      if (it != no_permitted_output_names.end()) {
         return false;
       }
 
@@ -1860,7 +1948,7 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
         paddle::onednn::dialect::FcOp::name(),
         paddle::onednn::dialect::SliceOp::name(),
         paddle::onednn::dialect::SplitOp::name(),
-
+        paddle::onednn::dialect::FusedMatmulOp::name(),
     };
     /*
       some special op(more input or putput)
@@ -1893,13 +1981,13 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
     // op with one inputs and one output
     benefit_idx = 1;
     for (auto op : bfloat16_ops_one_one) {
-      ps.Add(
-          paddle::drr::Create<CpuBfloat16Pattern1_1>(context, op, benefit_idx));
+      ps.Add(paddle::drr::Create<CpuBfloat16PatternOne_one>(
+          context, op, benefit_idx));
       benefit_idx++;
     }
     benefit_idx = 1;
     for (auto op : bfloat16_ops_one_one) {
-      ps.Add(paddle::drr::Create<CpuBfloat16DequantPattern1_1>(
+      ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternOne_one>(
           context, op, benefit_idx));
       benefit_idx++;
     }
@@ -1907,25 +1995,25 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
     // op with three inputs and one output
     benefit_idx = 1;
     for (auto op : bfloat16_ops_three_one) {
-      ps.Add(paddle::drr::Create<CpuBfloat16Pattern3_1>(
+      ps.Add(paddle::drr::Create<CpuBfloat16PatternThree_one>(
           context, op, benefit_idx, 0));
       benefit_idx++;
     }
     benefit_idx = 1;
     for (auto op : bfloat16_ops_three_one) {
-      ps.Add(paddle::drr::Create<CpuBfloat16Pattern3_1>(
+      ps.Add(paddle::drr::Create<CpuBfloat16PatternThree_one>(
           context, op, benefit_idx, 1));
       benefit_idx++;
     }
     benefit_idx = 1;
     for (auto op : bfloat16_ops_three_one) {
-      ps.Add(paddle::drr::Create<CpuBfloat16Pattern3_1>(
+      ps.Add(paddle::drr::Create<CpuBfloat16PatternThree_one>(
           context, op, benefit_idx, 2));
       benefit_idx++;
     }
     benefit_idx = 1;
     for (auto op : bfloat16_ops_three_one) {
-      ps.Add(paddle::drr::Create<CpuBfloat16DequantPattern3_1>(
+      ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternThree_one>(
           context, op, benefit_idx));
       benefit_idx++;
     }
@@ -1961,14 +2049,24 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
 
     // BilinearInterpOp: 4 input, 1 output
     for (int i = 0; i < 4; i++) {
-      ps.Add(paddle::drr::Create<CpuBfloat16BilinearInterpPattern>(
+      ps.Add(paddle::drr::Create<CpuBfloat16PatternFour_one>(
           context,
           paddle::onednn::dialect::BilinearInterpOp::name(),
           i + 1 /*benefit*/,
           i));
     }
-    ps.Add(paddle::drr::Create<CpuBfloat16BilinearInterpDequantPattern>(
+    ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternFour_one>(
         context, paddle::onednn::dialect::BilinearInterpOp::name(), 1));
+
+    for (int i = 0; i < 4; i++) {
+      ps.Add(paddle::drr::Create<CpuBfloat16PatternFour_one>(
+          context,
+          paddle::onednn::dialect::FusedConv2dOp::name(),
+          i + 1 /*benefit*/,
+          i));
+    }
+    ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternFour_one>(
+        context, paddle::onednn::dialect::FusedConv2dOp::name(), 1));
 
     return ps;
   }
