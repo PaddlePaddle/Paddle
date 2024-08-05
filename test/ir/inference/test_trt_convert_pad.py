@@ -14,9 +14,9 @@
 
 from __future__ import annotations
 
-import typing
 import unittest
 from functools import partial
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -42,10 +42,10 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: list[dict[str, typing.Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        def generate_weight1(attrs: list[dict[str, typing.Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
         for pad_value in [0.0, 1.0, 2.0, -100, 100.0]:

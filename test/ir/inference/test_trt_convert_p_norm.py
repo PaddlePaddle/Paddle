@@ -14,9 +14,9 @@
 
 from __future__ import annotations
 
-import typing
 import unittest
 from functools import partial
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -27,7 +27,7 @@ import paddle.inference as paddle_infer
 
 class TrtConvertPNormTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
-        def generate_input1(dims, attrs: list[dict[str, typing.Any]]):
+        def generate_input1(dims, attrs: list[dict[str, Any]]):
             if dims == 1:
                 return np.ones([3]).astype(np.float32)
             elif dims == 2:

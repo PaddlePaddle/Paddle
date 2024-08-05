@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import copy
 import itertools
-import typing
 import unittest
 from functools import partial
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -51,10 +51,10 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(attrs: list[dict[str, typing.Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        def generate_weight1(attrs: list[dict[str, typing.Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
         strides_options = [[1, 2]]
