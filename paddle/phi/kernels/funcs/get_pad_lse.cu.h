@@ -54,11 +54,11 @@ phi::DenseTensor get_pad_lse(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       lse->dims().size(),
       3,
-      phi::errors::InvalidArgument("The lse should be a 3d tensor"));
-  PADDLE_ENFORCE_EQ(
-      (data_format == "NCHW" || data_format == "NHWC"),
-      true,
-      phi::errors::InvalidArgument("The data_format should be NCHW or NHWC"));
+      common::errors::InvalidArgument("The lse should be a 3d tensor"));
+  PADDLE_ENFORCE_EQ((data_format == "NCHW" || data_format == "NHWC"),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The data_format should be NCHW or NHWC"));
   std::string pad3d_data_format = data_format == "NCHW" ? "NCDHW" : "NDHWC";
   if (pad_amount > 0) {
     phi::DenseTensor tmp = *lse;

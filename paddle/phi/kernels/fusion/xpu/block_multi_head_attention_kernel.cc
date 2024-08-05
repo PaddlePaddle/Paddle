@@ -149,7 +149,7 @@ void BlockMultiheadAttentionXPUKernel(
     dev_ctx.template Alloc<T>(fmha_out);
     fmha_buf = *fmha_out;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("Not supports out_scale > 0."));
+    PADDLE_THROW(common::errors::Unimplemented("Not supports out_scale > 0."));
   }
   int r = xpu::constant<XPUType>(xpu_context,
                                  reinterpret_cast<XPUType*>(fmha_buf.data<T>()),
@@ -174,7 +174,8 @@ void BlockMultiheadAttentionXPUKernel(
   bool use_pre_cache = false;
   int pre_cache_length = 0;
   if (pre_key_cache) {
-    PADDLE_THROW(phi::errors::Unimplemented("Not supports pre_key_cache now."));
+    PADDLE_THROW(
+        common::errors::Unimplemented("Not supports pre_key_cache now."));
   }
   VLOG(3) << "token_num: " << token_num
           << " pre_cache_length: " << pre_cache_length;
@@ -228,18 +229,20 @@ void BlockMultiheadAttentionXPUKernel(
     dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
     dev_ctx.template Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("Not supports pre_key_cache now."));
+    PADDLE_THROW(
+        common::errors::Unimplemented("Not supports pre_key_cache now."));
   }
   VLOG(3) << "encoder";
   VLOG(3) << "max_enc_len_this_time_data: " << max_enc_len_this_time_data;
   if (qkv_out_scale) {
-    PADDLE_THROW(phi::errors::Unimplemented("Not supports qkv_out_scale now."));
+    PADDLE_THROW(
+        common::errors::Unimplemented("Not supports qkv_out_scale now."));
   } else {
     VLOG(1) << "qkv_out_scale is none";
     qkv_buf = qkv;
   }
   if (qkv_bias) {
-    PADDLE_THROW(phi::errors::Unimplemented("Not supports qkv_bias now."));
+    PADDLE_THROW(common::errors::Unimplemented("Not supports qkv_bias now."));
   }
   std::vector<int> lods_cpu(bsz + 1, 0);
   xpu_wait(xpu_context->xpu_stream);
@@ -257,7 +260,7 @@ void BlockMultiheadAttentionXPUKernel(
   float* p_batch_max_ptrs = RAII_GUARD.alloc_l3_or_gm<float>(bsz);
 
   if (!rope_emb || !use_neox_style) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "only supports use_neox_style rope_emb now."));
   }
   if (max_enc_len_this_time_data > 0) {
@@ -304,11 +307,11 @@ void BlockMultiheadAttentionXPUKernel(
                                       &seed_offset);
     } else {
       PADDLE_THROW(
-          phi::errors::Unimplemented("Not supports use_pre_cache now."));
+          common::errors::Unimplemented("Not supports use_pre_cache now."));
     }
     VLOG(3) << "flash end";
     if (cache_k_quant_scales && dynamic_cachekv_quant) {
-      PADDLE_THROW(phi::errors::Unimplemented("Not supports quant now."));
+      PADDLE_THROW(common::errors::Unimplemented("Not supports quant now."));
     } else {
       std::vector<int32_t> start_token_ctx(bsz, 0);
       xpu::VectorParam<int32_t> start_token_ctx_VP =
@@ -403,7 +406,7 @@ void BlockMultiheadAttentionXPUKernel(
   if (max_dec_len_this_time_data > 0) {
     int cachekv_quant_mode = 0;
     if (cache_k_quant_scales || cachekv_quant_mode) {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Not supports cache_k_quant_scales or cachekv_quant_mode now."));
     }
     std::vector<int> lods_decoder_cpu(bsz + 1, 0);

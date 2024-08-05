@@ -22,6 +22,7 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
 #include "paddle/pir/include/core/operation.h"
@@ -42,13 +43,21 @@ class OpLoweringGroup {
   OpLoweringGroup(const OpLoweringGroup&) = delete;
   OpLoweringGroup(OpLoweringGroup&&) = delete;
 
-  explicit OpLoweringGroup(const std::vector<::pir::Operation*>& group_ops,
-                           const std::string& fn_name)
-      : ops_(group_ops), fn_name_(fn_name) {}
+  explicit OpLoweringGroup(
+      const std::vector<::pir::Operation*>& group_ops,
+      const std::string& fn_name,
+      cinn::fusion::FusionTrackerPtr fusion_tracker_ptr = nullptr)
+      : ops_(group_ops),
+        fn_name_(fn_name),
+        fusion_tracker_ptr(fusion_tracker_ptr) {}
 
-  explicit OpLoweringGroup(std::initializer_list<::pir::Operation*> group_ops,
-                           const std::string& fn_name)
-      : ops_(group_ops), fn_name_(fn_name) {}
+  explicit OpLoweringGroup(
+      std::initializer_list<::pir::Operation*> group_ops,
+      const std::string& fn_name,
+      cinn::fusion::FusionTrackerPtr fusion_tracker_ptr = nullptr)
+      : ops_(group_ops),
+        fn_name_(fn_name),
+        fusion_tracker_ptr(fusion_tracker_ptr) {}
 
   const std::string& FuncName() const { return this->fn_name_; }
   ::pir::Block* GetParentBlock() const;
@@ -230,6 +239,9 @@ class OpLoweringGroup {
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_exprs_;
+
+ public:
+  cinn::fusion::FusionTrackerPtr fusion_tracker_ptr;
 };
 
 std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group);

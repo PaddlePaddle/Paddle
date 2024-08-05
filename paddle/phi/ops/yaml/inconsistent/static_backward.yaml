@@ -383,7 +383,7 @@
   infer_meta :
     func : ReshapeGradInferMeta
     param : [x, out_grad]
-    spmd_rule: ReshapeGradInferSpmd
+    spmd_rule: StaticReshapeGradInferSpmd
   kernel :
     func : reshape_grad
     param : [out_grad]

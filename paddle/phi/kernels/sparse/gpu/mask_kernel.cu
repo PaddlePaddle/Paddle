@@ -58,10 +58,10 @@ void MaskCooGPUKernel(const GPUContext& dev_ctx,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out) {
   const DDim& dims = x.dims();
-  PADDLE_ENFORCE_EQ(
-      x.dims(),
-      mask.dims(),
-      phi::errors::InvalidArgument("the input x and mask must have the shape"));
+  PADDLE_ENFORCE_EQ(x.dims(),
+                    mask.dims(),
+                    common::errors::InvalidArgument(
+                        "the input x and mask must have the shape"));
   const DenseTensor& indices = mask.indices();
   const DenseTensor& values = mask.values();
   DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, indices);
@@ -352,7 +352,7 @@ void MaskAsCsrKernel(const Context& dev_ctx,
         }));
   } else {
     // throw exception
-    phi::errors::InvalidArgument(
+    common::errors::InvalidArgument(
         "mask_as for Sparse CSR Tensor only support 2-D or 3-D, but got "
         "%d-D.",
         x_dims.size());
@@ -403,7 +403,7 @@ void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       mask_indices.dims().size(),
       2,
-      phi::errors::InvalidArgument("the mask_indices must be 2-D tensor"));
+      common::errors::InvalidArgument("the mask_indices must be 2-D tensor"));
 
   const int32_t sparse_dim = x.sparse_dim();
   auto indices_dtype = phi::CppTypeToDataType<IntT>::Type();
