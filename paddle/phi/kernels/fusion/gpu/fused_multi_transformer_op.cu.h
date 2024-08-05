@@ -713,8 +713,8 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
           params, dev_ctx.stream(), load_func, store_func);
       break;
     default:
-      PADDLE_THROW(
-          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
+      PADDLE_THROW(common::errors::Unimplemented("Dim_head = %d is unsupport!",
+                                                 dim_head));
   }
 }
 
@@ -899,7 +899,7 @@ void write_cache_kv(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       dim_head % x,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", dim_head, x));
 
   int max_size = max_seq_len * dim_head / x;
@@ -1013,7 +1013,7 @@ void gqa_write_cachekv(
   PADDLE_ENFORCE_EQ(
       dim_head % x,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", dim_head, x));
 
   const int64_t num_elems = unpadding_k.numel();
@@ -1110,7 +1110,7 @@ void qkv_transpose_split(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -1231,7 +1231,7 @@ void qkv_bias_add_transpose_split(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -1343,7 +1343,7 @@ void gqa_qkv_transpose_split(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -1661,7 +1661,7 @@ void InitValue(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       numel % PackSize,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "numel=%d must be divisible by vec_size=%d", numel, PackSize));
   const int pack_num = numel / PackSize;
   const int blocksize = 128;
@@ -1933,7 +1933,7 @@ void TransposeSplit(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
