@@ -123,14 +123,14 @@ class FetchV2Kernel {
     PADDLE_ENFORCE_EQ(
         ctx.HasOutput("Out"),
         true,
-        phi::errors::NotFound("Output(Out) of fetch_v2_op is not found."));
+        common::errors::NotFound("Output(Out) of fetch_v2_op is not found."));
     auto *out_var = ctx.OutputVar("Out");
 
     int col = ctx.Attr<int>("col");
     PADDLE_ENFORCE_GE(
         col,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected the column index (the attribute 'col' of "
             "operator 'Fetch') of current fetching variable to be "
             "no less than 0. But received column index = %d.",
@@ -159,8 +159,8 @@ class FetchV2Kernel {
       PADDLE_ENFORCE_EQ(
           check_place,
           true,
-          phi::errors::InvalidArgument("Tensor's place of input(X) must "
-                                       "be CPUPlace or CUDAPinnedPlace."));
+          common::errors::InvalidArgument("Tensor's place of input(X) must "
+                                          "be CPUPlace or CUDAPinnedPlace."));
       if (deepcopy) {
         DeepCopy(src_item, fetch_var_name, dst_item);
       } else {
@@ -183,7 +183,7 @@ class FetchV2Kernel {
         PADDLE_ENFORCE_EQ(
             src_item[i].place().GetType() == phi::AllocationType::CPU,
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Tensor's place of input(X) must be CPUPlace."));
         if (deepcopy) {
           DeepCopy(src_item[i], fetch_var_name, &dst_item[i]);

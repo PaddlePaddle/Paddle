@@ -136,7 +136,8 @@ PD_REGISTER_KERNEL(repeat_interleave,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    XPU,
@@ -145,4 +146,5 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}

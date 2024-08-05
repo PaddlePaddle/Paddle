@@ -365,20 +365,20 @@ std::shared_ptr<OpStrategy> StrategyForMul(
     PADDLE_ENFORCE_EQ(
         !args.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The input arguments of Mul compute is empty! Please check.\n"));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
                       2U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "at least 2 input tensors for Mul compute\n"));
     Expr A = pack_args[0];
     Expr B = pack_args[1];
     PADDLE_ENFORCE_NOT_NULL(A.as_tensor(),
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "The A is not as tensor! Please check.\n"));
     PADDLE_ENFORCE_NOT_NULL(B.as_tensor(),
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "The B is not as tensor! Please check.\n"));
 
     auto A_tensor = A.as_tensor_ref();
@@ -393,7 +393,7 @@ std::shared_ptr<OpStrategy> StrategyForMul(
     std::vector<ir::Tensor> out;
     PADDLE_ENFORCE_EQ(pack_args.back().is_string(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The pack_args is not string! Please check.\n"));
     std::string tensor_name = pack_args.back().operator std::string();
 
@@ -587,7 +587,7 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
     for (auto &e : axis) {
       if (e >= static_cast<int>(output_shapes[0].size()) ||
           e < -1 * static_cast<int>(output_shapes[0].size())) {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(::common::errors::InvalidArgument(
             "axis is not in [0, n_dim), Please check."));
       }
       if (e < 0) {
@@ -725,7 +725,7 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
     }
   } else {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("axis is not be set! Please check."));
+        ::common::errors::InvalidArgument("axis is not be set! Please check."));
   }
 
   framework::CINNCompute transpose_compute([=](lang::Args args,
@@ -1215,8 +1215,8 @@ std::vector<T> GetIntVectorFromAttr(const utils::Attribute &attr) {
   } else if (absl::holds_alternative<bool>(attr)) {
     return std::vector<T>{};
   } else {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("attribute's vector type is invalid!"));
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "attribute's vector type is invalid!"));
   }
 }
 std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
