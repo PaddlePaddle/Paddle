@@ -193,6 +193,27 @@ bool EmptyOpInferSymbolicShape(pir::Operation *op,
   }
 }
 
+bool EyeOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  VLOG(3) << "start EyeOpInferSymbolicShape";
+
+  const auto &attributes = op->attributes();
+  int num_rows =
+      attributes.at("num_rows").dyn_cast<pir::Int64Attribute>().data();
+  int num_columns =
+      attributes.at("num_columns").dyn_cast<pir::Int64Attribute>().data();
+  int num_rows = 1;
+  int num_columns = 1;
+  if (num_columns == -1) num_columns = num_rows;
+  VLOG(3) << "num_rows:" << num_rows << "num_columns:" << num_columns;
+  std::vector<symbol::DimExpr> out_dims = {num_rows, num_columns};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
+
+  VLOG(3) << "end EyeOpInferSymbolicShape";
+  return true;
+}
+
 bool FeedOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const common::DDim &result_dims =
