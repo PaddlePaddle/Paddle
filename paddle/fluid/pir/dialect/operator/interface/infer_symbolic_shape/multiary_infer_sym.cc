@@ -846,6 +846,57 @@ bool GroupNormOpInferSymbolicShape(
   return true;
 }
 
+bool LerpOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &w_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const auto &x_shape = x_shape_or_data.shape();
+  const auto &y_shape = y_shape_or_data.shape();
+  const auto &w_shape = w_shape_or_data.shape();
+  size_t x_ndims = x_shape.size();
+  size_t y_ndims = y_shape.size();
+  size_t w_ndims = w_shape.size();
+  std::vector<symbol::DimExpr> out1_shape;
+  std::vector<symbol::DimExpr> out2_shape;
+  if (x_ndims > y_ndims) {
+    out1_shape.assign(x_shape.begin(), x_shape.end());
+  } else if (x_ndims < y_ndims) {
+    out1_shape.assign(y_shape.begin(), y_shape.end());
+  } else {
+    symbol::DimExprBuilder builder;
+    for (size_t i = 0; i < x_ndims; ++i) {
+      out1_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
+      infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
+    }
+  }
+  size_t out1_ndims = out1_shape.size();
+  if (w_ndims > out1_ndims) {
+    out2_shape.assign(w_shape.begin(), w_shape.end());
+  } else if (w_ndims < out1_ndims) {
+    out2_shape.assign(out1_shape.begin(), out1_shape.end());
+  } else {
+    symbol::DimExprBuilder builder;
+    for (size_t i = 0; i < w_ndims; ++i) {
+      out2_shape.emplace_back(builder.Broadcast(w_shape[i], out1_shape[i]));
+      infer_context->AddBroadcastableCstr(w_shape[i], out1_shape[i]);
+    }
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out2_shape)});
+  return true;
+}
+
+bool Lerp_OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  return LerpOpInferSymbolicShape(op, infer_context);
+}
+
 bool LayerNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // Get the shapes of input tensors

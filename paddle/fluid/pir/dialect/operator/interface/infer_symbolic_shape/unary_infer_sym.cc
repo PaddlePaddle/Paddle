@@ -413,6 +413,27 @@ bool CholeskyOpInferSymbolicShape(
   return true;
 }
 
+bool ClipByNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  float max_norm = op->attribute<pir::FloatAttribute>("max_norm").data();
+  PADDLE_ENFORCE_GT(
+      max_norm,
+      0,
+      phi::errors::InvalidArgument("max_norm should be greater than 0. "
+                                   "Received max_norm is %f.",
+                                   max_norm));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
+  return true;
+}
+
+bool ClipByNormSrOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return ClipByNormOpInferSymbolicShape(op, infer_context);
+}
+
 bool CummaxOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
