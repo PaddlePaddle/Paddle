@@ -16,9 +16,12 @@
 #include <iostream>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/extension.h"
 
-#define CHECK_INPUT(x) PADDLE_ENFORCE_EQ(x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
+#define CHECK_INPUT(x) \
+  PADDLE_ENFORCE_EQ(   \
+      x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
 
 template <typename data_t>
 using EnableComplex = typename std::enable_if<

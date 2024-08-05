@@ -14,6 +14,7 @@
 
 #include <iostream>
 
+#include "paddle/common/enforce.h"
 #include "paddle/extension.h"
 #include "paddle/phi/backends/context_pool.h"
 
@@ -27,15 +28,16 @@ std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
   auto* cpu_ctx =
       paddle::experimental::DeviceContextPool::Instance()
           .Get<paddle::experimental::AllocationType::CPU>(cpu_place);
-  PADDLE_ENFORCE_EQ(cpu_ctx->GetPlace() == cpu_place,
-                    true,
-                    phi::errors::Fatal("Variable `cpu_ctx` should be on CPU"));
+  PADDLE_ENFORCE_EQ(
+      cpu_ctx->GetPlace() == cpu_place,
+      true,
+      common::errors::Fatal("Variable `cpu_ctx` should be on CPU"));
   // if want to use the eigen_device here, need to include eigen headers
   auto* cpu_eigen_device = cpu_ctx->eigen_device();
-  PADDLE_ENFORCE_EQ(
-      cpu_eigen_device != nullptr,
-      true,
-      phi::errors::Fatal("Variable `cpu_eigen_device` should not be nullptr"));
+  PADDLE_ENFORCE_EQ(cpu_eigen_device != nullptr,
+                    true,
+                    common::errors::Fatal(
+                        "Variable `cpu_eigen_device` should not be nullptr"));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // 2. test gpu context
@@ -43,15 +45,16 @@ std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
   auto* gpu_ctx =
       paddle::experimental::DeviceContextPool::Instance()
           .Get<paddle::experimental::AllocationType::GPU>(gpu_place);
-  PADDLE_ENFORCE_EQ(gpu_ctx->GetPlace() == gpu_place,
-                    true,
-                    phi::errors::Fatal("Variable `gpu_ctx` should be on gpu"));
+  PADDLE_ENFORCE_EQ(
+      gpu_ctx->GetPlace() == gpu_place,
+      true,
+      common::errors::Fatal("Variable `gpu_ctx` should be on gpu"));
   // if want to use the eigen_device here, need to include eigen headers
   auto* gpu_eigen_device = gpu_ctx->eigen_device();
-  PADDLE_ENFORCE_EQ(
-      gpu_eigen_device != nullptr,
-      true,
-      phi::errors::Fatal("Variable `gpu_eigen_device` should not be nullptr"));
+  PADDLE_ENFORCE_EQ(gpu_eigen_device != nullptr,
+                    true,
+                    common::errors::Fatal(
+                        "Variable `gpu_eigen_device` should not be nullptr"));
 #endif
 
   return {x};

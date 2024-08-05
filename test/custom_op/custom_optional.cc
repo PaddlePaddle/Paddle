@@ -16,9 +16,12 @@
 #include <iostream>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/extension.h"
 
-#define CHECK_INPUT(x) PADDLE_ENFORCE_EQ(x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
+#define CHECK_INPUT(x) \
+  PADDLE_ENFORCE_EQ(   \
+      x.is_cpu(), true, common::errors::Fatal(#x " must be a CPU Tensor."))
 
 template <typename data_t>
 void add_one_pointer(const data_t* x_data, data_t* out_data, int64_t numel) {

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <iostream>
 #include <vector>
+#include "paddle/common/enforce.h"
 #include "paddle/extension.h"
 
 // The linear implemented here must be passed in bias
