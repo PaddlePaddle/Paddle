@@ -36,7 +36,7 @@ from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import CUDAPinnedPlace
 from paddle.jit.utils import OrderedSet
-from paddle.utils import flatten
+from paddle.utils import flatten, gast
 
 from .ast_utils import ast_to_source_code
 
@@ -272,6 +272,89 @@ def get_temp_dir():
     return temp_dir
 
 
+def wrap_as_closure(tree: gast.AST, closure_vars: list[str]):
+    """
+    Wrap a function to a closure function.
+
+    Before:
+
+        >>> def fn(x):
+        ...     ...
+
+    After:
+
+        >>> def create_fn():
+        ...     closure_var_1 = None
+        ...     def fn(x):
+        ...         ...
+        ...     return fn
+        ... fn = create_fn()
+    """
+    assert isinstance(tree, gast.Module)
+    assert len(tree.body) == 1
+    assert isinstance(tree.body[0], gast.FunctionDef)
+    fn_node = tree.body[0]
+    fn_name = fn_node.name
+    wrapper_fn_name = f"create_{fn_name}"
+
+    wrapper_fn_def = gast.FunctionDef(
+        name=wrapper_fn_name,
+        args=gast.arguments(
+            args=[],
+            posonlyargs=[],
+            vararg=None,
+            kwonlyargs=[],
+            kw_defaults=[],
+            kwarg=None,
+            defaults=[],
+        ),
+        body=[
+            *[
+                gast.Assign(
+                    targets=[
+                        gast.Name(
+                            id=var,
+                            ctx=gast.Store(),
+                            annotation=[],
+                            type_comment=[],
+                        )
+                    ],
+                    value=gast.Constant(value=None, kind=None),
+                )
+                for var in closure_vars
+            ],
+            fn_node,
+            gast.Return(
+                value=gast.Name(
+                    id=fn_name, ctx=gast.Load(), annotation=[], type_comment=[]
+                )
+            ),
+        ],
+        decorator_list=[],
+        returns=None,
+        type_comment=None,
+    )
+
+    assign_node = gast.Assign(
+        targets=[
+            gast.Name(
+                id=fn_name, ctx=gast.Store(), annotation=[], type_comment=[]
+            )
+        ],
+        value=gast.Call(
+            func=gast.Name(
+                id=wrapper_fn_name,
+                ctx=gast.Load(),
+                annotation=[],
+                type_comment=[],
+            ),
+            args=[],
+            keywords=[],
+        ),
+    )
+    return gast.Module(body=[wrapper_fn_def, assign_node], type_ignores=[])
+
+
 def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
@@ -292,8 +375,12 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
                 pass
         return pre_fix
 
+    closure_var_names = list(inspect.getclosurevars(dyfunc).nonlocals.keys())
+    ast_root = wrap_as_closure(ast_root, closure_var_names)
+
     source = ast_to_source_code(ast_root)
     source = _inject_import_statements() + source
+
     temp_dir = get_temp_dir()
     f = tempfile.NamedTemporaryFile(
         mode='w',
@@ -332,9 +419,16 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     # After transform dygraph function into callable_func saved in tmp file,
     # it lost the global variables from imported statements or defined in source file.
     # Recovers the necessary variables by `__globals__`.
-    recover_globals_attribute(dyfunc, callable_func)
+    # recover_globals_attribute(dyfunc, callable_func)
+    new_fn = types.FunctionType(
+        code=callable_func.__code__,
+        globals={**dyfunc.__globals__, **callable_func.__globals__},
+        name=func_name,
+        argdefs=dyfunc.__defaults__,
+        closure=dyfunc.__closure__,
+    )
 
-    return callable_func, f.name
+    return new_fn, f.name
 
 
 def _inject_import_statements():
