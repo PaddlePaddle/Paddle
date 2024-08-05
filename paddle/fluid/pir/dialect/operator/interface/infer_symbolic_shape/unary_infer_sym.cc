@@ -895,12 +895,10 @@ bool FakeQuantizeDequantizeAbsMaxOpInferSymbolicShape(
                         "the received is %d",
                         bit_length));
 
-  // Set the symbolic shape for the output tensors
   // Set the shape for the output tensor 'out', same as input tensor 'x'
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
 
   // Set the shape for the output tensor 'out_scale' as a scalar {1}
-
   symbol::TensorShapeOrDataDimExprs scalar_shape(
       std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
   infer_context->SetShapeOrDataForValue(op->result(1), scalar_shape);
