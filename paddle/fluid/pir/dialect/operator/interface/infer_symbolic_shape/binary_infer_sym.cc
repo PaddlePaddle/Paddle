@@ -603,9 +603,14 @@ bool SegmentPoolOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &segment_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
   std::vector<symbol::DimExpr> out_shape;
-  out_shape.push_back(symbol::DimExpr{-1});
+
   int axis = input_shape.size();
+  int row_shape = static_cast<int>(
+      segment_shape_or_data.data().value()[input_shape[0] - 1].Get<int64_t>());
+  out_shape.push_back(symbol::DimExpr{row_shape});
   for (int i = 1; i < axis; ++i) {
     out_shape.push_back(input_shape[i]);
   }
@@ -616,7 +621,7 @@ bool SegmentPoolOpInferSymbolicShape(
   const std::string pool_type =
       op->attribute<pir::StrAttribute>("pooltype").AsString();
   if (pool_type == "MEAN") {
-    std::vector<symbol::DimExpr> summed_shape = {-1, 1};
+    std::vector<symbol::DimExpr> summed_shape = {row_shape, 1};
     infer_context->SetShapeOrDataForValue(
         op->result(1),
         symbol::ShapeOrDataDimExprs{
