@@ -54,6 +54,7 @@ import glob
 import json
 import multiprocessing
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -320,6 +321,12 @@ def main():
         default=0,
         help='number of tidy instances to be run in parallel.',
     )
+    parser.add_argument(
+        'files',
+        nargs='*',
+        default=['.*'],
+        help='files to be processed (regex on path)',
+    )
     parser.add_argument('-fix', action='store_true', help='apply fix-its')
     parser.add_argument(
         '-format',
@@ -402,6 +409,9 @@ def main():
         check_clang_apply_replacements_binary(args)
         tmpdir = tempfile.mkdtemp()
 
+    # Build up a big regexy filter from all command line arguments.
+    file_name_re = re.compile('|'.join(args.files))
+
     return_code = 0
     try:
         # Spin up a bunch of tidy-launching threads.
@@ -417,11 +427,16 @@ def main():
             t.daemon = True
             t.start()
 
-        # Fill the queue with files.
-        with open('./tools/codestyle/diff_files.txt', 'r') as f:
-            files = f.read().splitlines()
+        # # Fill the queue with files.
+        # with open('./tools/codestyle/diff_files.txt', 'r') as f:
+        #     files = f.read().splitlines()
 
-            for name in files:
+        #     for name in files:
+        #         task_queue.put(name)
+        
+        # Fill the queue with files.
+        for name in files:
+            if file_name_re.search(name):
                 task_queue.put(name)
 
         # Wait for all threads to be done.
