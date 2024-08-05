@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import Any
+
 from ...base import framework
 
 __all__ = ["LazyGuard"]
@@ -110,7 +114,7 @@ class LazyGuard:
             ...     param.initialize()
     """
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """
         Construct instance from class_obj by Lazy Initializing parameters.
 
@@ -129,5 +133,5 @@ class LazyGuard:
         """
         lazy_init_helper().enable()
 
-    def __exit__(self, *args, **kwargs):
+    def __exit__(self, *args: object, **kwargs: Any) -> None:
         lazy_init_helper().disable()
