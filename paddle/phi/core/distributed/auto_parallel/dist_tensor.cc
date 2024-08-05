@@ -30,7 +30,7 @@ inline void check_defined(const DistTensor& dist_tensor,
   PADDLE_ENFORCE_EQ(
       dist_tensor.defined(),
       true,
-      phi::errors::Unimplemented(
+      common::errors::Unimplemented(
           "DistTensor is not defined yet when `%s` method is called.",
           method_hint));
 }
@@ -52,7 +52,7 @@ TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
       PADDLE_ENFORCE_EQ(
           dim_map[shard_dim],
           -1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Tensor dim %lld is already sharded on mesh dim %lld,"
               " DistTensor operator implementation does not support things "
               "like hybrid"
@@ -97,13 +97,13 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
       auto& p = placements[mesh_id];
 
       if (p->is_shard()) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "ProcessMesh dimension cann't be mapped to two  dimension of the "
             "same tensor: {%d} and {%d}",
             i,
             dynamic_cast<Shard&>(*p).get_dim()));
       } else if (p->is_partial()) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "ProcessMesh dimension {%d} cannot be both shard and partial!",
             mesh_id));
       }
@@ -298,7 +298,7 @@ void* DistTensor::AllocateFrom(Allocator* allocator,
                                DataType dtype,
                                size_t requested_size,
                                bool fake_alloc) {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "The DistTensor Cannot allocate memory directly and needs to perform "
       "memory operations through its DenseTensor value."));
   return nullptr;
