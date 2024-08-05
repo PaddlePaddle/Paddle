@@ -856,7 +856,7 @@ class Engine:
             # dist_program = apply_sharding_optimization_pass(dist_program)
             pass
 
-        if self.is_train and self._strategy.pipeline.enable:
+        if mode == "train" and self._strategy.pipeline.enable:
             self._strategy.gradient_merge.enable = True
             self._strategy.gradient_merge.k_steps = (
                 self._strategy.pipeline.accumulate_steps
