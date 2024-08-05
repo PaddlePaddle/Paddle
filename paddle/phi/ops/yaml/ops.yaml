@@ -2681,7 +2681,6 @@
     func : lerp
   inplace : (x -> out)
   backward : lerp_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : lgamma
   args : (Tensor x)
