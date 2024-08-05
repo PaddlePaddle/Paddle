@@ -1318,19 +1318,19 @@ class Optimizer:
             their internal state.
         """
 
-        global_block = framework.default_main_program().global_block()
+        global_block = paddle.static.default_main_program().global_block()
         target_block = global_block
 
-        start = len(target_block.ops)
+        last_op = target_block.ops[-1]
 
         self._create_global_learning_rate()
 
-        params_grads_device_map = (
-            parameters_and_grads['params']
-            if isinstance(parameters_and_grads, dict)
-            else parameters_and_grads
-        )
-        self._update_param_device_map(params_grads_device_map, target_block)
+        # params_grads_device_map = (
+        #     parameters_and_grads['params']
+        #     if isinstance(parameters_and_grads, dict)
+        #     else parameters_and_grads
+        # )
+        # self._update_param_device_map(params_grads_device_map, target_block)
 
         if isinstance(parameters_and_grads, list):
             self._create_accumulators(
@@ -1373,8 +1373,8 @@ class Optimizer:
         self._finish_update(target_block, parameters_and_grads)
         paddle.base.core._set_warmup(False)
 
-        end = len(target_block.ops)
-        return target_block._slice_ops(start, end)
+        start_index = target_block.ops.index(last_op) + 1
+        return target_block.ops[start_index:]
 
     def backward(
         self,
@@ -1527,7 +1527,10 @@ class Optimizer:
             params_grads, self.regularization
         )
 
-        optimize_ops = self._create_optimization_pass(params_grads)
+        if in_pir_mode():
+            optimize_ops = self._pir_create_optimization_pass(params_grads)
+        else:
+            optimize_ops = self._create_optimization_pass(params_grads)
         return optimize_ops
 
     def _apply_optimize(
