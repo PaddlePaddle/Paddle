@@ -49,7 +49,7 @@ void CreateInferMeta(const IntArray& shape,
                      DataType dtype,
                      MetaTensor* out,
                      MetaConfig config) {
-  if (config.is_runtime && !shape.FromTensor()) {
+  if (config.is_runtime || !shape.FromTensor()) {
     const auto& data = shape.GetData();
     for (size_t i = 0; i < data.size(); ++i) {
       PADDLE_ENFORCE_GE(
