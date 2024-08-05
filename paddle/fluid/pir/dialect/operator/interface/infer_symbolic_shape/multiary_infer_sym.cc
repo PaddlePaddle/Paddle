@@ -857,74 +857,40 @@ bool LerpOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape = x_shape_or_data.shape();
   const auto &y_shape = y_shape_or_data.shape();
   const auto &w_shape = w_shape_or_data.shape();
-  size_t x_ndims = x_shape.size();
-  size_t y_ndims = y_shape.size();
-  size_t w_ndims = w_shape.size();
+  int x_ndims = x_shape.size();
+  int y_ndims = y_shape.size();
+  int w_ndims = w_shape.size();
   std::vector<symbol::DimExpr> out1_shape;
   std::vector<symbol::DimExpr> out2_shape;
-  symbol::DimExpr tmp = 1;
-  if (x_ndims > y_ndims) {
-    symbol::DimExprBuilder builder;
-    for (size_t i = 0; i < x_ndims - y_ndims; ++i) {
-      out1_shape.emplace_back(builder.Broadcast(x_shape[i], tmp));
-      infer_context->AddBroadcastableCstr(x_shape[i], tmp);
-    }
-    for (size_t i = x_ndims - y_ndims; i < x_ndims; ++i) {
-      out1_shape.emplace_back(
-          builder.Broadcast(x_shape[i], y_shape[i - x_ndims + y_ndims]));
-      infer_context->AddBroadcastableCstr(x_shape[i],
-                                          y_shape[i - x_ndims + y_ndims]);
-    }
-  } else if (x_ndims < y_ndims) {
-    symbol::DimExprBuilder builder;
-    for (size_t i = 0; i < y_ndims - x_ndims; ++i) {
-      out1_shape.emplace_back(builder.Broadcast(y_shape[i], tmp));
-      infer_context->AddBroadcastableCstr(y_shape[i], tmp);
-    }
-    for (size_t i = y_ndims - x_ndims; i < y_ndims; ++i) {
-      out1_shape.emplace_back(
-          builder.Broadcast(y_shape[i], x_shape[i - y_ndims + x_ndims]));
-      infer_context->AddBroadcastableCstr(y_shape[i],
-                                          x_shape[i - y_ndims + x_ndims]);
+  int diffxy = x_ndims - y_ndims;
+  if (diffxy > 0) {
+    for (int i = 0; i < diffxy; ++i) {
+      y_shape.emplace(y_shape.begin(), 1);
     }
   } else {
-    symbol::DimExprBuilder builder;
-    for (size_t i = 0; i < x_ndims; ++i) {
-      out1_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
-      infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
+    for (int i = 0; i < -diffxy; ++i) {
+      x_shape.emplace(x_shape.begin(), 1);
     }
   }
-  size_t out1_ndims = out1_shape.size();
-  if (w_ndims > out1_ndims) {
-    symbol::DimExprBuilder builder;
-    for (size_t i = 0; i < w_ndims - out1_ndims; ++i) {
-      out2_shape.emplace_back(builder.Broadcast(w_shape[i], tmp));
-      infer_context->AddBroadcastableCstr(w_shape[i], tmp);
-    }
-    for (size_t i = w_ndims - out1_ndims; i < w_ndims; ++i) {
-      out2_shape.emplace_back(
-          builder.Broadcast(w_shape[i], out1_shape[i - w_ndims + out1_ndims]));
-      infer_context->AddBroadcastableCstr(w_shape[i],
-                                          out1_shape[i - w_ndims + out1_ndims]);
-    }
-  } else if (w_ndims < out1_ndims) {
-    symbol::DimExprBuilder builder;
-    for (size_t i = 0; i < out1_ndims - w_ndims; ++i) {
-      out2_shape.emplace_back(builder.Broadcast(out1_shape[i], tmp));
-      infer_context->AddBroadcastableCstr(out1_shape[i], tmp);
-    }
-    for (size_t i = out1_ndims - w_ndims; i < out1_ndims; ++i) {
-      out2_shape.emplace_back(
-          builder.Broadcast(out1_shape[i], w_shape[i - out1_ndims + w_ndims]));
-      infer_context->AddBroadcastableCstr(out1_shape[i],
-                                          w_shape[i - out1_ndims + w_ndims]);
+  symbol::DimExprBuilder builder;
+  for (int i = 0; i < x_shape.size(); ++i) {
+    out1_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
+    infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
+  }
+  int out1_ndims = out1_shape.size();
+  int diffxyw = w_ndims - out1_ndims;
+  if (diffxyw > 0) {
+    for (int i = 0; i < diffxyw; ++i) {
+      out1_shape.emplace(out1_shape.begin(), 1);
     }
   } else {
-    symbol::DimExprBuilder builder;
-    for (size_t i = 0; i < w_ndims; ++i) {
-      out2_shape.emplace_back(builder.Broadcast(w_shape[i], out1_shape[i]));
-      infer_context->AddBroadcastableCstr(w_shape[i], out1_shape[i]);
+    for (int i = 0; i < -diffxyw; ++i) {
+      w_shape.emplace(w_shape.begin(), 1);
     }
+  }
+  for (int i = 0; i < w_shape.size(); ++i) {
+    out2_shape.emplace_back(builder.Broadcast(w_shape[i], out1_shape[i]));
+    infer_context->AddBroadcastableCstr(w_shape[i], out1_shape[i]);
   }
   infer_context->SetShapeOrDataForValue(
       op->result(0),
