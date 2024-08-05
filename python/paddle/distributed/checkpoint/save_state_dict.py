@@ -38,7 +38,9 @@ async_save_queue = []
 def check_exitcode(task):
     exitcode = task.exitcode
     if exitcode != 0:
-        print(f"Error: save ckpt process failed with exitcode {exitcode}!!!")
+        logger.error(
+            f"Error: save ckpt process failed with exitcode {exitcode}!!!"
+        )
 
 
 def clear_async_save_task_queue():
