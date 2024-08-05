@@ -37,8 +37,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/unused_var_check.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/memory/malloc.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/common/macros.h"

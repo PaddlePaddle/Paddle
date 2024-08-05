@@ -170,6 +170,11 @@ else()
     DEPS ${PHI_DEPS})
 endif()
 
+# core/memory/allocation uses shm_unlink and requires the rt library
+if(UNIX AND NOT APPLE)
+  target_link_libraries(phi_core rt)
+endif()
+
 set(PHI_DUMMY_FILE ${CMAKE_CURRENT_BINARY_DIR}/phi_dummy.cpp)
 if(MSVC)
   set(PHI_DUMMY_FILE_CONTENT
