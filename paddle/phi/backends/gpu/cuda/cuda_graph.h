@@ -190,7 +190,7 @@ enum gpuStreamCaptureMode {
   cudaStreamCaptureModeRelaxed = 2
 };
 static void ThrowErrorIfNotSupportCUDAGraph() {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "CUDA Graph is only supported when CUDA version >= 10.1"));
 }
 #endif
@@ -221,19 +221,19 @@ class CUDAGraph {
 
   static int64_t SetMemoryPoolID(int64_t pool_id) {
     auto &pool_id_ = capturing_graph_->pool_id_;
-    PADDLE_ENFORCE_EQ(
-        pool_id_,
-        kInvalidPoolID,
-        phi::errors::InvalidArgument("Cannot reset memory pool id twice, the "
-                                     "former memory pool id is %d.",
-                                     pool_id_));
+    PADDLE_ENFORCE_EQ(pool_id_,
+                      kInvalidPoolID,
+                      common::errors::InvalidArgument(
+                          "Cannot reset memory pool id twice, the "
+                          "former memory pool id is %d.",
+                          pool_id_));
     if (pool_id <= kInvalidPoolID) {
       pool_id_ = UniqueMemoryPoolID();
     } else {
-      PADDLE_ENFORCE_GE(
-          pool_id,
-          kDefaultPoolID,
-          phi::errors::InvalidArgument("Invalid memory pool id %d.", pool_id));
+      PADDLE_ENFORCE_GE(pool_id,
+                        kDefaultPoolID,
+                        common::errors::InvalidArgument(
+                            "Invalid memory pool id %d.", pool_id));
       pool_id_ = pool_id;
     }
     return pool_id_;
