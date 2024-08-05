@@ -134,9 +134,7 @@ class CustomPluginCreater : public OpConverter {
         plugin_data.type = nvinfer1::PluginFieldType::kINT32;
         plugin_data.length = ints_attrs.back().size();
       } else {
-        PADDLE_ENFORCE_EQ(
-            false,
-            true,
+        PADDLE_THROW(
             common::errors::PreconditionNotMet("UNKNOWN PluginFieldType."));
       }
       plugin_datas.push_back(plugin_data);
@@ -160,7 +158,7 @@ class CustomPluginCreater : public OpConverter {
     }
 
     PADDLE_ENFORCE_NOT_NULL(
-        layer, common::errors::NotFound("Sorry,add plugin layer failed."));
+        layer, common::errors::NotFound("Sorry, add plugin layer failed."));
     // set outputs
     auto &op_output_names = OpMetaInfoHelper::GetOutputs(op_info);
     std::vector<std::string> output_names;

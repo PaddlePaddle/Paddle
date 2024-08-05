@@ -64,12 +64,12 @@ std::vector<float> GetOutputData(const std::shared_ptr<Predictor> &predictor) {
       predictor->Run(inputs, &outputs),
       true,
       common::errors::ExecutionTimeout("Sorry, predictor run failed"));
-  PADDLE_ENFORCE_EQ(outputs[0].place() == paddle::GPUPlace{},
-                    true,
+  PADDLE_ENFORCE_EQ(outputs[0].place(),
+                    paddle::GPUPlace{},
                     common::errors::InvalidArgument(
                         "Sorry, output tensor place is not GPUPlace"));
-  PADDLE_ENFORCE_EQ(outputs[0].dtype() == paddle::DataType::FLOAT32,
-                    true,
+  PADDLE_ENFORCE_EQ(outputs[0].dtype(),
+                    paddle::DataType::FLOAT32,
                     common::errors::InvalidArgument(
                         "Sorry, output tensor dtype is not FLOAT32"));
   auto output = outputs[0].copy_to(paddle::CPUPlace{}, true);

@@ -991,10 +991,10 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       ++persist_total;
       if (stat_var_name_map_.find(name) != stat_var_name_map_.end()) {
         Variable *root_var = root_scope_->FindVar(name);
-        PADDLE_ENFORCE_NE(
+        PADDLE_ENFORCE_NOT_NULL(
             root_var,
-            nullptr,
             common::errors::NotFound("Root scope should contain variable."));
+
         auto root_tensor = root_var->Get<phi::DenseTensor>();
         if (root_tensor.place() == place_) {
           continue;
@@ -1071,8 +1071,8 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
             }
           } else {
             auto *ptr = thread_scope_->Var(name);
-            PADDLE_ENFORCE_EQ(proto::VarType::LOD_TENSOR == var->GetType(),
-                              true,
+            PADDLE_ENFORCE_EQ(proto::VarType::LOD_TENSOR,
+                              var->GetType(),
                               common::errors::InvalidArgument(
                                   "The type of var should be LOD_TENSOR."));
             InitializeVariable(ptr, var->GetType());
