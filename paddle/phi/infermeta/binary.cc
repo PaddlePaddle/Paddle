@@ -2742,7 +2742,6 @@ void LUUnpackInferMeta(const MetaTensor& x,
 
   int m = static_cast<int>(x_dims[x_rank - 1]);
   int n = static_cast<int>(x_dims[x_rank - 2]);
-  int min_mn = std::min(m, n);
 
   if (unpack_pivots) {
     auto pdims = x_dims;
