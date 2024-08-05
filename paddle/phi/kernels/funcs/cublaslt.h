@@ -60,7 +60,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        phi::errors::External(
+        common::errors::External(
             "cublasLtMatmulDescCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -72,7 +72,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        phi::errors::External(
+        common::errors::External(
             "cublasLtMatmulDescSetAttribute execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -82,7 +82,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        phi::errors::External(
+        common::errors::External(
             "cublasLtMatrixLayoutCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -91,7 +91,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        phi::errors::External(
+        common::errors::External(
             "cublasLtMatrixLayoutCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -100,7 +100,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        phi::errors::External(
+        common::errors::External(
             "cublasLtMatrixLayoutCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -203,7 +203,7 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(
         status,
         CUBLAS_STATUS_SUCCESS,
-        phi::errors::External(
+        common::errors::External(
             "cublasLtMatmul execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
@@ -303,10 +303,10 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                                &heuristicResult,
                                                &returnedResults);
 
-  PADDLE_ENFORCE_NE(
-      returnedResults,
-      0,
-      phi::errors::NotFound("Unable to find suitable cuBLAS GEMM algorithm"));
+  PADDLE_ENFORCE_NE(returnedResults,
+                    0,
+                    common::errors::NotFound(
+                        "Unable to find suitable cuBLAS GEMM algorithm"));
 
   status =
       dyl::cublasLtMatmul(dev_ctx.cublaslt_handle(),

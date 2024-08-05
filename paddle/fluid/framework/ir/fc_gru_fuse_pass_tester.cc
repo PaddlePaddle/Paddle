@@ -33,19 +33,19 @@ TEST(FcGruFusePass, basic) {
   int num_fuse_gru_nodes_after = GetNumOpNodes(graph, "fusion_gru");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(
-      num_nodes_before,
-      num_nodes_after + 6,
-      phi::errors::PreconditionNotMet("The number of nodes before and after "
-                                      "the fuse does not meet expectations"));
+  PADDLE_ENFORCE_EQ(num_nodes_before,
+                    num_nodes_after + 6,
+                    common::errors::PreconditionNotMet(
+                        "The number of nodes before and after "
+                        "the fuse does not meet expectations"));
   PADDLE_ENFORCE_EQ(
       num_fuse_gru_nodes_after,
       2,
-      phi::errors::PreconditionNotMet("The number of gru nodes before the "
-                                      "fuse does not meet expectations"));
+      common::errors::PreconditionNotMet("The number of gru nodes before the "
+                                         "fuse does not meet expectations"));
   PADDLE_ENFORCE_EQ(num_gru_nodes_before,
                     num_fuse_gru_nodes_after,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The number of fusion_gru nodes does not meet "
                         "expectations after fuse"));
 }

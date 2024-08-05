@@ -42,7 +42,7 @@ inline static void ValidationCheck(const std::string& equation) {
   auto n_part = paddle::string::split_string(equation, "->").size();
   PADDLE_ENFORCE_EQ(n_part,
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required at least one `->` in equation of EinsumOp."));
   size_t pos;
   auto trimed_equ = equation;
@@ -56,7 +56,7 @@ inline static void ValidationCheck(const std::string& equation) {
   };
   for (auto c : trimed_equ) {
     if (!is_valid_char(c))
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Found invalid char in equation. Einsum only accept `a`-`z` and `...`"
           "but get:`%c`",
           c));
@@ -217,7 +217,7 @@ inline static void InferLabelShape(
         PADDLE_ENFORCE_EQ(
             (*labelshape)[c],
             op_dim[dim_ptr],
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Same label have different shapes for label: `%c`", c));
       }
       dim_ptr++;
@@ -572,7 +572,7 @@ DenseTensor TransposeToOutput(const Context& dev_ctx,
     auto it = std::find(all_labels.begin(), all_labels.end(), c);
     PADDLE_ENFORCE_NE(it,
                       all_labels.end(),
-                      phi::errors::InvalidArgument("Must in all_labels."));
+                      common::errors::InvalidArgument("Must in all_labels."));
     axis.push_back(it - all_labels.begin());
   }
   if (is_no_need_transpose(axis)) {
@@ -627,7 +627,7 @@ void EinsumKernelImpl(const Context& dev_ctx,
                       &right,
                       &input_strs);
   if (inputs.size() > 2) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "EinsumOp kernel only support len(operands) between (0, 2]. Use "
         "opt_einsum first to convert multi-variable to binary-variable."));
   }

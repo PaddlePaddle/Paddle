@@ -459,7 +459,7 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* var = scope.Var("OUT1");
-  var->GetMutable<paddle::framework::LoDTensorArray>();
+  var->GetMutable<phi::TensorArray>();
 
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(cpu_place);

@@ -91,7 +91,7 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
   PADDLE_ENFORCE_NE(
       src_num,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "src_num is the sequence number of the first decoding step"
           ", indicating by Input(Ids)[0].lod[0].size."
           "src_num has wrong value."
@@ -161,12 +161,12 @@ void BeamSearchDecoder<T>::Backtrace(const TensorArray& step_ids,
   PADDLE_ENFORCE_NE(
       step_ids.empty(),
       true,
-      phi::errors::InvalidArgument("Input(Ids) should not be empty."
-                                   "But the Input(Ids) is empty."));
+      common::errors::InvalidArgument("Input(Ids) should not be empty."
+                                      "But the Input(Ids) is empty."));
   PADDLE_ENFORCE_EQ(
       step_ids.size(),
       step_scores.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of Input(Ids) and Input(Scores) should be "
           "the same. But the size of Input(Ids) and Input(Scores) "
           "are not equal."));

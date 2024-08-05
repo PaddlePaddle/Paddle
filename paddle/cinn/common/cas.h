@@ -63,8 +63,14 @@ struct CasInterval {
             << "].";
 
     if (expr_l.is_constant() && expr_r.is_constant()) {
-      CHECK(expr_l->type().is_integer());
-      CHECK(expr_r->type().is_integer());
+      PADDLE_ENFORCE_EQ(
+          expr_l->type().is_integer(),
+          true,
+          phi::errors::InvalidArgument("Expected expr_l to be an integer."));
+      PADDLE_ENFORCE_EQ(
+          expr_r->type().is_integer(),
+          true,
+          phi::errors::InvalidArgument("Expected expr_r to be an integer."));
       l = expr_l.as_int64();
       r = expr_r.as_int64();
       return;

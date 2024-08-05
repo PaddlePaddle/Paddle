@@ -197,7 +197,7 @@ class OpLoweringGroup {
     this->alignment_schedule_info_ = alignment_schedule_info;
   }
 
-  std::shared_ptr<OpLoweringGroup> Clone(const int& group_idx) const;
+  std::shared_ptr<OpLoweringGroup> Clone(const std::string name_suffix) const;
 
  private:
   friend std::ostream& operator<<(std::ostream&, const OpLoweringGroup&);

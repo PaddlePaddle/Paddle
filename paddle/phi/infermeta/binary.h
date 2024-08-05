@@ -324,7 +324,8 @@ void DropoutNdInferMeta(const MetaTensor& x,
 
 TEST_API void ElementwiseInferMeta(const MetaTensor& x,
                                    const MetaTensor& y,
-                                   MetaTensor* out);
+                                   MetaTensor* out,
+                                   MetaConfig config = MetaConfig());
 
 void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
