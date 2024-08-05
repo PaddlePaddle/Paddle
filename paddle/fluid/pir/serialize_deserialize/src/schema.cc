@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
+#include <experimental/filesystem>
 #include "paddle/phi/core/enforce.h"
+#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
 namespace pir {
 
 std::pair<std::string, std::string> getContentSplitByDot(
@@ -77,6 +79,46 @@ std::string DialectIdMap::GetDecompressDialectId(const std::string& id) {
             id));
   }
   return "";
+}
+
+uint64_t GetPirVersion() {
+  std::string cur_file = std::string(__FILE__);
+  std::string patch_path =
+      cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
+  int version = 0;
+  VLOG(8) << "patch_path: " << patch_path;
+  std::experimental::filesystem::v1::path path(patch_path);
+  for (auto& v : std::experimental::filesystem::v1::directory_iterator(path)) {
+    std::string filename = v.path().filename().string();
+    std::string extension_name = v.path().extension().string();
+    // 0.yaml for develop version
+    if (filename == "0.yaml") {
+      VLOG(8) << "Develop version: " << version;
+      return 0;
+    } else if (extension_name == ".yaml") {
+      version = stoi(filename) > version ? stoi(filename) : version;
+    }
+  }
+  VLOG(8) << "PIR version: " << version;
+  return version;
+}
+uint64_t GetMaxReleasePirVersion() {
+  std::string cur_file = std::string(__FILE__);
+  std::string patch_path =
+      cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
+  int version = 0;
+  VLOG(8) << "patch_path: " << patch_path;
+  std::experimental::filesystem::v1::path path(patch_path);
+  for (auto& v : std::experimental::filesystem::v1::directory_iterator(path)) {
+    std::string filename = v.path().filename().string();
+    std::string extension_name = v.path().extension().string();
+    std::cout << filename << std::endl;
+    if (extension_name == ".yaml") {
+      version = stoi(filename) > version ? stoi(filename) : version;
+    }
+  }
+  VLOG(8) << "Max Release PIR version: " << version;
+  return version;
 }
 
 }  // namespace pir

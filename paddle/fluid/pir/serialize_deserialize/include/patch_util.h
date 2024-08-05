@@ -21,6 +21,10 @@ Json GetAttrJson(const YAML::Node &action);
 
 Json GetTypeJson(const YAML::Node &action);
 
+std::string GetTypeName(const YAML::Node &action);
+
+std::string GetAttrName(const YAML::Node &action);
+
 Json BuildAttrJsonPatch(const YAML::Node &action);
 
 Json BuildTypeJsonPatch(const YAML::Node &action);

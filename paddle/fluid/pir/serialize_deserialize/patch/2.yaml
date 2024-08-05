@@ -1,0 +1,45 @@
+op_patches:
+  - op_name : pd_op.data
+    actions:
+      - action : modify_output_attr
+        object : stop_gradient
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::BoolAttribute
+            default: "false"
+      - action : modify_attr
+        object : name
+        type : pir::StrAttribute
+        default : "B"
+  - op_name : builtin.parameter
+    actions :
+      - action : modify_attr
+        object : parameter_name
+        type : pir::StrAttribute
+        default : "fc_0"
+  #     - action : add_attr
+  #       object : new_attribute
+  #       type : pir::StrAttribute
+  #       default : "new.attribute"
+  - op_name : pd_op.fetch
+    actions :
+      - action : add_output
+        object : 1
+        type : pir::DenseTensorType
+        default : [pir::Float32Type,[-1,30],"NCHW",[],0]
+      # - action : delete_input
+      #   object : 0
+      # - action : delete_attr
+      #   object : col
+
+attr_patches:
+  - attr_name : pir::FloatAttribute
+    actions:
+      - action : modify_name
+        type : pir::DoubleAttribute
+
+type_patches:
+  - type_name : pir::Float32Type
+    actions:
+      - action : modify_name
+        type : pir::Float64Type

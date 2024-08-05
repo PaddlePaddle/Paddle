@@ -19,17 +19,28 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
+#include "paddle/phi/core/tensor_meta.h"
 #include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/region.h"
 #include "paddle/pir/include/core/utils.h"
+#include "test/cpp/pir/tools/test_dialect.h"
+#include "test/cpp/pir/tools/test_op.h"
+#include "test/cpp/pir/tools/test_pir_utils.h"
 
 TEST(save_load_version_compat, op_patch_test) {
   // (1) Init environment.
@@ -39,10 +50,12 @@ TEST(save_load_version_compat, op_patch_test) {
   pir::Program program(ctx);
   //   pir::Program *program = new pir::Program();
   EXPECT_EQ(program.block()->empty(), true);
-  const uint64_t pir_version = 2;
+  const uint64_t pir_version = 0;
   pir::PatchBuilder builder(pir_version);
+  builder.SetFileVersion(1);
   std::string cur_file = std::string(__FILE__);
-  std::string yaml_file =
-      cur_file.substr(0, cur_file.rfind('/')) + "/patch.yaml";
-  builder.BuildPatch(yaml_file);
+  std::string patch_path =
+      cur_file.substr(0, cur_file.rfind('/')) +
+      "/../../../../paddle/fluid/pir/serialize_deserialize/patch/";
+  builder.BuildPatch(patch_path);
 }

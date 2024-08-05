@@ -28,7 +28,7 @@ namespace pir {
 #define PIR "pir"
 void WriteModule(const pir::Program& program,
                  const std::string& file_path,
-                 const uint64_t& pir_version,
+                 uint64_t pir_version,
                  bool overwrite,
                  bool readable,
                  bool trainable) {
@@ -68,9 +68,10 @@ void WriteModule(const pir::Program& program,
 
 bool ReadModule(const std::string& file_path,
                 pir::Program* program,
-                const uint64_t& pir_version) {
+                uint64_t pir_version) {
   std::ifstream f(file_path);
   Json data = Json::parse(f);
+  pir_version = GetPirVersion();
   PatchBuilder builder(pir_version);
 
   if (data.contains(BASE_CODE) && data[BASE_CODE].contains(MAGIC) &&
@@ -78,10 +79,11 @@ bool ReadModule(const std::string& file_path,
     uint64_t file_version =
         data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
     if (file_version != pir_version) {
+      builder.SetFileVersion(file_version);
       std::string cur_file = std::string(__FILE__);
-      std::string yaml_file =
-          cur_file.substr(0, cur_file.rfind('/')) + "../patch/patch.yaml";
-      builder.BuildPatch(yaml_file);  // TODO(czy) : find file patch
+      std::string patch_path =
+          cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
+      builder.BuildPatch(patch_path);
     }
   } else {
     PADDLE_THROW(common::errors::InvalidArgument("Invalid model file."));

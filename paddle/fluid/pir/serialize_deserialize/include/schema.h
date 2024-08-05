@@ -99,4 +99,6 @@ class DialectIdMap {
   std::unordered_map<std::string, std::string> DecompressDialect;
 };
 
+uint64_t GetPirVersion();
+uint64_t GetMaxReleasePirVersion();
 }  // namespace pir
