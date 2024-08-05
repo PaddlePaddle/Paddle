@@ -392,6 +392,7 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     pass_name = pipeline_strategy.schedule_mode
     assert pass_name in [
         "FThenB",
+        "VPP",
     ], f"pipeline scheduler only support FThenB now, but receive {pass_name}"
 
     pass_attr = {}
@@ -436,4 +437,6 @@ def complete_chunk_id(dist_program, pipeline_strategy):
 
     ops = dist_program.global_block().ops
 
-    # Step1: search seg_method in op's
+    # Step1: search seg_method in op's struct_name
+    # 1. get op_idx of each segment
+    # 2. get process_mesh of each segment
