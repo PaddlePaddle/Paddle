@@ -11,11 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
+from __future__ import annotations
 
-from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import TYPE_CHECKING
 
-import paddle
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import paddle
 
 
 class AudioInfo:
@@ -68,12 +71,12 @@ def info(filepath: str) -> AudioInfo:
 
 
 def load(
-    filepath: Union[str, Path],
+    filepath: str | Path,
     frame_offset: int = 0,
     num_frames: int = -1,
     normalize: bool = True,
     channels_first: bool = True,
-) -> Tuple[paddle.Tensor, int]:
+) -> tuple[paddle.Tensor, int]:
     """Load audio data from file.Load the audio content start form frame_offset, and get num_frames.
 
     Args:
@@ -116,8 +119,8 @@ def save(
     src: paddle.Tensor,
     sample_rate: int,
     channels_first: bool = True,
-    encoding: Optional[str] = None,
-    bits_per_sample: Optional[int] = 16,
+    encoding: str | None = None,
+    bits_per_sample: int | None = 16,
 ):
     """
     Save audio tensor to file.
