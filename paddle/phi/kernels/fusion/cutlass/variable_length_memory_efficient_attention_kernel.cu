@@ -115,7 +115,7 @@ void MultiHeadAttentionVariableForwardKernel(
   PADDLE_ENFORCE_EQ(
       kernel_launched,
       true,
-      phi::errors::InvalidArgument("the kernel should not be launched"));
+      common::errors::InvalidArgument("the kernel should not be launched"));
 }
 
 }  // namespace fusion
