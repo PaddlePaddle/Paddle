@@ -89,10 +89,15 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 
   void Visit(const ir::Store *expr, const Expr *op) override {
     auto *node = op->As<ir::Store>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            phi::errors::InvalidArgument(
+                                "Expected Store node, but received nullptr."));
     IRMutator::Visit(&node->value, &node->value);
     auto *tensor = node->tensor.As<ir::_Tensor_>();
-    CHECK(tensor);
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor,
+        phi::errors::InvalidArgument(
+            "Expected _Tensor_ node in Store, but received nullptr."));
 
     // a tensor should pass all check of pre-conditions in every time it appears
     if (!tensor2flag_.count(tensor->name) || tensor2flag_.at(tensor->name)) {
@@ -103,9 +108,14 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 
   void Visit(const ir::Load *expr, const Expr *op) override {
     auto *node = op->As<ir::Load>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            phi::errors::InvalidArgument(
+                                "Expected Load node, but received nullptr."));
     auto *tensor = node->tensor.As<ir::_Tensor_>();
-    CHECK(tensor);
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor,
+        phi::errors::InvalidArgument(
+            "Expected _Tensor_ node in Load, but received nullptr."));
 
     // a tensor should pass all check of pre-conditions in every time it appears
     if (!tensor2flag_.count(tensor->name) || tensor2flag_.at(tensor->name)) {
@@ -209,9 +219,13 @@ class CudaVectorizer : public IRMutator<Expr *> {
       : iter_var_(iter_var),
         factor_(factor),
         vectorized_teller_(iter_var, factor, var_intervals) {
-    CHECK(factor <= CudaVectorTypeMaxLanes)
-        << "The maximum lanes of valid CUDA vector types: "
-        << CudaVectorTypeMaxLanes << ", but factor: " << factor;
+    PADDLE_ENFORCE_EQ(
+        factor <= CudaVectorTypeMaxLanes,
+        true,
+        phi::errors::InvalidArgument(
+            "The maximum lanes of valid CUDA vector types: %d, but factor: %d.",
+            CudaVectorTypeMaxLanes,
+            factor));
   }
 
   // return all cast statements collected through vectorizing
@@ -240,7 +254,10 @@ class CudaVectorizer : public IRMutator<Expr *> {
   void Visit(const Store *op, Expr *expr) override {
     auto *node = expr->As<Store>();
     auto *tensor = node->tensor.As<ir::_Tensor_>();
-    CHECK(tensor);
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor,
+        phi::errors::InvalidArgument(
+            "Expected _Tensor_ node in Store, but received nullptr."));
     if (vectorized_teller_.CanBeVectorized(tensor->name)) {
       TensorVectorized(node, &node->indices, true);
     }
@@ -383,7 +400,10 @@ class Vectorizer : public IRMutator<Expr *> {
   }
 
   void Visit(Expr *expr) {
-    CHECK(!need_scalarize_);
+    PADDLE_ENFORCE_EQ(
+        !need_scalarize_,
+        true,
+        phi::errors::InvalidArgument("Expression needs scalarization."));
     IRMutator<Expr *>::Visit(expr, expr);
 
     if (need_scalarize_) {
@@ -547,7 +567,10 @@ class Vectorizer : public IRMutator<Expr *> {
       node->write_args[i] = Widen(node->write_args[i], lanes);
     }
 
-    CHECK(!read_args.empty());
+    PADDLE_ENFORCE_EQ(
+        !read_args.empty(),
+        true,
+        phi::errors::InvalidArgument("The argument is empty, please check."));
     Type type = op->type().with_lanes(lanes);
     *expr = Call::Make(type,
                        node->name,
@@ -753,7 +776,11 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
               "Expected value is larger than 0, but receive %d. ",
               forloop->vectorize_info().factor));
 
-      CHECK(is_zero(forloop->min));
+      PADDLE_ENFORCE_EQ(
+          is_zero(forloop->min),
+          true,
+          phi::errors::InvalidArgument(
+              "The minimum of forloop should be zero, please check."));
       Expr for_extent = cinn::common::AutoSimplify(forloop->extent);
       Simplify(&for_extent);
       node->extent = for_extent;
@@ -881,13 +908,23 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
   //! extent
   //! @return The new forloop.
   bool UnrollCmpFor(For *outer_for, For *inner_for, Expr *expr) {
-    CHECK(outer_for);
-    CHECK(inner_for);
+    PADDLE_ENFORCE_NOT_NULL(
+        outer_for,
+        phi::errors::InvalidArgument(
+            "Outer_for is nullptr in UnrollCmpFor function."));
+    PADDLE_ENFORCE_NOT_NULL(
+        inner_for,
+        phi::errors::InvalidArgument(
+            "Inner_for is nullptr in UnrollCmpFor function."));
     Expr inner_for_extent = cinn::common::AutoSimplify(inner_for->extent);
     Simplify(&inner_for_extent);
     auto *extent_min = inner_for_extent.As<Min>();
     if (extent_min) {
-      CHECK(is_zero(inner_for->min));
+      PADDLE_ENFORCE_EQ(
+          is_zero(inner_for->min),
+          true,
+          phi::errors::InvalidArgument(
+              "The minimum of inner_for should be zero, please check."));
       // simplify the complicated indices of load/store from poly
       IRMutator::Visit(&inner_for->body, &inner_for->body);
       Expr a, b, condition;
@@ -965,7 +1002,10 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
                           "Expected value is larger than 1, but receive %d. ",
                           factor));
     auto *for_min_i = forloop->min.As<IntImm>();
-    CHECK(forloop);
+    PADDLE_ENFORCE_NOT_NULL(
+        forloop,
+        phi::errors::InvalidArgument(
+            "The forloop is nullptr in SplitForLoop function."));
     if (!for_min_i) return Expr();
     if (for_min_i->value != 0) return Expr();
 

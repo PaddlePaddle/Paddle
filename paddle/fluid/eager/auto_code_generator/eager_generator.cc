@@ -344,7 +344,7 @@ static std::string AttrTypeToString(const proto::AttrType& type) {
       break;
     }
     default: {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "AttrType of type paddle::variant only supports specific data types."
           "However, detected unrecognized AttrType: %d",
           type));
@@ -455,7 +455,7 @@ static std::pair<std::string, std::string> GetAttrType(
       break;
     }
     default: {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "AttrType of type paddle::variant only supports specific data types."
           "However, detected unrecognized AttrType: %d",
           variant_pos));
@@ -501,7 +501,7 @@ static void SlotNameMatching(
           if (grad_var == fwd_var) {
             if (grad_fwd_slotname_map.count(grad_slot_name) &&
                 grad_fwd_slotname_map[grad_slot_name] != fwd_slot_name) {
-              PADDLE_THROW(phi::errors::Fatal(
+              PADDLE_THROW(common::errors::Fatal(
                   "Detected mismatched slot names."
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name,
@@ -515,7 +515,7 @@ static void SlotNameMatching(
           if (fwd_var->GetGradVar() && grad_var == fwd_var->GetGradVar()) {
             if (grad_grad_slotname_map.count(grad_slot_name) &&
                 grad_grad_slotname_map[grad_slot_name] != fwd_slot_name) {
-              PADDLE_THROW(phi::errors::Fatal(
+              PADDLE_THROW(common::errors::Fatal(
                   "Detected mismatched slot names."
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name,
@@ -536,7 +536,7 @@ static void SlotNameMatching(
           if (grad_var == fwd_var) {
             if (grad_fwd_slotname_map.count(grad_slot_name) &&
                 grad_fwd_slotname_map[grad_slot_name] != fwd_slot_name) {
-              PADDLE_THROW(phi::errors::Fatal(
+              PADDLE_THROW(common::errors::Fatal(
                   "Detected mismatched slot names"
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name,
@@ -550,7 +550,7 @@ static void SlotNameMatching(
           if (fwd_var->GetGradVar() && grad_var == fwd_var->GetGradVar()) {
             if (grad_grad_slotname_map.count(grad_slot_name) &&
                 grad_grad_slotname_map[grad_slot_name] != fwd_slot_name) {
-              PADDLE_THROW(phi::errors::Fatal(
+              PADDLE_THROW(common::errors::Fatal(
                   "Detected mismatched slot names."
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name,
@@ -565,7 +565,7 @@ static void SlotNameMatching(
     }
 
     if (!found_matching) {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "Detected mismatched slot names."
           "Found no matching fwd_slot_name for grad_slot_name: %s",
           grad_slot_name));
@@ -729,7 +729,7 @@ static void PurifyGradNodeGenerationInfo(const proto::OpProto& op_proto,
 
               PADDLE_ENFORCE(
                   grad_outs->count(grad_output_name) > 0,
-                  phi::errors::Fatal(
+                  common::errors::Fatal(
                       "Unable to find gradient output name in grad_outs."));
               // grad_outs
               grad_outs->erase(grad_output_name);
@@ -767,7 +767,7 @@ static void PurifyGradNodeGenerationInfo(const proto::OpProto& op_proto,
 
               PADDLE_ENFORCE(
                   grad_ins->count(grad_input_name) > 0,
-                  phi::errors::Fatal(
+                  common::errors::Fatal(
                       "Unable to find gradient input name in grad_ins."));
               // grad_ins
               grad_ins->erase(grad_input_name);
@@ -1372,7 +1372,7 @@ static std::string GenerateGradNodeCreationContent(
       "%s\n"
       "%s"
       "  {\n"
-      "    paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
+      "    phi::RecordEvent node_creation_record_event(\"%s\", "
       "paddle::platform::TracerEventType::OperatorInner, 1);\n"
       "%s"
       "    if(require_any_grad) {\n"
@@ -1685,7 +1685,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       PADDLE_ENFORCE_NE(
           forward_inplace_map[output_name],
           "",
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Inplace op %s has no input corresponding to output %s.",
               op_type,
               output_name));
@@ -2096,7 +2096,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   }
 
   const char* DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE =
-      "  paddle::platform::RecordEvent dygraph_entrance_record_event(\"%s\", "
+      "  phi::RecordEvent dygraph_entrance_record_event(\"%s\", "
       "paddle::platform::TracerEventType::Operator, 1);";
   std::string event_name = op_type + " dygraph";
   std::string fwd_record_event_str = paddle::string::Sprintf(
@@ -2290,10 +2290,10 @@ static std::string GenerateSingleOpBase(
                                     can_be_inplaced_name);
       }
     } else {
-      PADDLE_THROW(
-          phi::errors::Fatal("Detected mismatched slot names."
-                             "Unable to find forward slot name that matches %s",
-                             grad_input_name));
+      PADDLE_THROW(common::errors::Fatal(
+          "Detected mismatched slot names."
+          "Unable to find forward slot name that matches %s",
+          grad_input_name));
     }
   }
   if (!ins_contents_str.empty())
@@ -2388,7 +2388,7 @@ static std::string GenerateSingleOpBase(
       */
       if (!fwd_inputs_name_pos_map.count(fwd_name)) {
         PADDLE_ENFORCE(fwd_outputs_name_pos_map.count(fwd_name),
-                       phi::errors::Fatal(
+                       common::errors::Fatal(
                            "fwd_name not found in fwd_inputs_name_pos_map nor "
                            "fwd_outputs_name_pos_map"));
 
@@ -2438,10 +2438,10 @@ static std::string GenerateSingleOpBase(
         }
       }
     } else {
-      PADDLE_THROW(
-          phi::errors::Fatal("Detected mismatched slot names."
-                             "Unable to find forward slot name that matches %s",
-                             grad_output_name));
+      PADDLE_THROW(common::errors::Fatal(
+          "Detected mismatched slot names."
+          "Unable to find forward slot name that matches %s",
+          grad_output_name));
     }
   }
 
@@ -2495,10 +2495,10 @@ static std::string GenerateSingleOpBase(
         }
       }
     } else {
-      PADDLE_THROW(
-          phi::errors::Fatal("Detected mismatched slot names."
-                             "Unable to find forward slot name that matches %s",
-                             grad_output_name));
+      PADDLE_THROW(common::errors::Fatal(
+          "Detected mismatched slot names."
+          "Unable to find forward slot name that matches %s",
+          grad_output_name));
     }
   }
 
@@ -2600,7 +2600,7 @@ static std::string GenerateSingleOpBase(
       num_appended_outputs++;
     } else {
       PADDLE_ENFORCE(fwd_outputs_name_pos_map.count(fwd_name),
-                     phi::errors::Fatal(
+                     common::errors::Fatal(
                          "fwd_name not found in fwd_inputs_name_pos_map nor "
                          "fwd_outputs_name_pos_map"));
     }

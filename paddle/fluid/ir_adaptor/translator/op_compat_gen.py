@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
-from typing import Dict, List, Set
 
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
@@ -48,10 +49,10 @@ def OpNameNormalizerInitialization(
 
     with open(op_compat_yaml_file, "r") as f:
         op_compat_infos = yaml.safe_load(f)
-    op_name_mappings: Dict[str, str] = {}
-    op_arg_name_mappings: Dict[str, Dict[str, str]] = {}
-    op_mutable_attributes: Dict[str, Set[str]] = {}
-    op_mutable_attribute_infos: Dict[str, Dict[str, List[str]]] = {}
+    op_name_mappings: dict[str, str] = {}
+    op_arg_name_mappings: dict[str, dict[str, str]] = {}
+    op_mutable_attributes: dict[str, set[str]] = {}
+    op_mutable_attribute_infos: dict[str, dict[str, list[str]]] = {}
 
     for op_compat_item in op_compat_infos:
 
@@ -62,7 +63,7 @@ def OpNameNormalizerInitialization(
             op_name_mappings[legacy_name] = normalized_name
             return normalized_name, legacy_name
 
-        def insert_new_arg_mappings(op_name: str, arg_mapping: Dict[str, str]):
+        def insert_new_arg_mappings(op_name: str, arg_mapping: dict[str, str]):
             if op_name is None:
                 return
             if op_name not in op_arg_name_mappings:
@@ -70,7 +71,7 @@ def OpNameNormalizerInitialization(
             op_arg_name_mappings[op_name].update(arg_mapping)
 
         def insert_new_mutable_attributes(
-            op_name: str, mutable_attribute_infos: Dict[str, Dict[str, str]]
+            op_name: str, mutable_attribute_infos: dict[str, dict[str, str]]
         ):
             if op_name not in op_mutable_attributes:
                 op_mutable_attributes[op_name] = set()
