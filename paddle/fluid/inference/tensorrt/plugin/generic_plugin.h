@@ -28,11 +28,11 @@
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
-#include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/memory/allocation/cuda_allocator.h"
 
 namespace paddle {
 namespace inference {
