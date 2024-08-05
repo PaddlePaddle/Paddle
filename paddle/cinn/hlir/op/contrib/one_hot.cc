@@ -129,7 +129,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
         << "at least one input tensor for transpose compute\n";
     PADDLE_ENFORCE_GE(pack_args.size(),
                       3U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input args size is %d, should be at least 3",
                           pack_args.size()));
     Expr indices_expr = pack_args[0];
@@ -146,8 +146,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
     PADDLE_ENFORCE_EQ(
         pack_args.size(),
         4U,
-        phi::errors::InvalidArgument("The input args size is %u, should be 4",
-                                     pack_args.size()));
+        ::common::errors::InvalidArgument(
+            "The input args size is %u, should be 4", pack_args.size()));
     std::string tensor_name = pack_args[3].operator std::string();
 
     ir::Tensor out = OneHot(indices,
