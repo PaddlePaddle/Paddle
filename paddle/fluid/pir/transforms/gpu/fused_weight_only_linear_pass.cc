@@ -20,7 +20,7 @@
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -32,9 +32,6 @@ int getSMVersion() {
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
   sm_version = paddle::platform::GetGPUComputeCapability(
       paddle::platform::GetCurrentDeviceId());
-#else
-  PADDLE_THROW(common::errors::Unavailable(
-      "fused_weight_only_linear_pass needs paddle compiled with CUDA."));
 #endif
   return sm_version;
 }
@@ -280,7 +277,7 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
         sm_version_(getSMVersion()) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    std::string algo = "weight_only_int4";
+    std::string algo = "weight_only_int8";
     if (Has("weight_only_algo")) {
       algo = Get<std::string>("weight_only_algo");
     }
@@ -314,7 +311,7 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
 
   bool CanApplyOn(pir::Operation *op) const override {
     if (sm_version_ != 70 && sm_version_ != 75 && sm_version_ != 80 &&
-        sm_version_ != 86) {
+        sm_version_ != 86 && sm_version_ != 89 && sm_version_ != 90) {
       return false;
     }
     return op->num_regions() > 0;

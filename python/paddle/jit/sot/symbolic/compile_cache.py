@@ -38,6 +38,8 @@ from .export import export
 from .interpreter import compile_sir
 
 if TYPE_CHECKING:
+    from paddle.static import InputSpec
+
     from .symbolic_context import SymbolicTraceContext
 
 
@@ -162,7 +164,13 @@ class CompileSIRCache(Cache, metaclass=Singleton):
     def __init__(self):
         super().__init__(weak=False)
 
-    def key_fn(self, context: SymbolicTraceContext, sir_name: str, **kwargs):
+    def key_fn(
+        self,
+        context: SymbolicTraceContext,
+        sir_name: str,
+        input_spec: list[InputSpec],
+        **kwargs,
+    ):
         """
         generate a hash key for a SIR
 
@@ -176,10 +184,16 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         """
         sir = context.get_sir(sir_name)
         # NOTE(dev): Is str(sir) a heavy operation ?
-        hash_key = hash((str(sir), kwargs['training']))
+        hash_key = hash((str(sir), *input_spec, kwargs['training']))
         return hash_key
 
-    def value_fn(self, context: SymbolicTraceContext, sir_name: str, **kwargs):
+    def value_fn(
+        self,
+        context: SymbolicTraceContext,
+        sir_name: str,
+        input_spec: list[InputSpec],
+        **kwargs,
+    ):
         """
         Generate static graph function
 
@@ -196,6 +210,7 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         return FallbackWrapper(
             paddle.jit.to_static(
                 compile_sir(context, sir_name),
+                input_spec=[input_spec],
                 build_strategy=build_strategy,
                 backend=backend,
                 full_graph=True,

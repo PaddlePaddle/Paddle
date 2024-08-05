@@ -156,7 +156,7 @@ struct StaticDimToDynamicConverter {
       PADDLE_ENFORCE_EQ(
           origin_shape.size(),
           target_shape.size(),
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The size of origin shape and target shape is not equal,"
               "where the size of origin shape:%d but the size of target "
               "shape:%d.",

@@ -14,20 +14,20 @@
 
 #include "paddle/fluid/distributed/ps/table/ssd_sparse_table.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/common/local_random.h"
 #include "paddle/fluid/distributed/common/topk_calculator.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/utils/string/string_helper.h"
 PD_DECLARE_bool(pserver_print_missed_key_num_every_push);
 PD_DECLARE_bool(pserver_create_value_when_push);
 PD_DECLARE_bool(pserver_enable_create_feasign_randomly);
 PD_DEFINE_bool(pserver_open_strict_check, false, "pserver_open_strict_check");
 PD_DEFINE_int32(pserver_load_batch_size, 5000, "load batch size for ssd");
-PADDLE_DEFINE_EXPORTED_string(rocksdb_path,
-                              "database",
-                              "path of sparse table rocksdb file");
+PHI_DEFINE_EXPORTED_string(rocksdb_path,
+                           "database",
+                           "path of sparse table rocksdb file");
 
 namespace paddle {
 namespace distributed {
@@ -193,7 +193,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
     std::vector<std::future<int>> tasks;
     RocksDBItem* cur_ctx = context.switch_item();
     cur_ctx->reset();
-    FixedFeatureValue* ret = NULL;
+    FixedFeatureValue* ret = nullptr;
     auto& local_shard = _local_shards[shard_id];
     float data_buffer[value_size];  // NOLINT
     float* data_buffer_ptr = data_buffer;
@@ -588,6 +588,15 @@ int64_t SSDSparseTable::LocalSize() {
 
 int32_t SSDSparseTable::Save(const std::string& path,
                              const std::string& param) {
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  // gpu graph mode
+  if (_use_gpu_graph) {
+    auto* save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
+    if (save_filtered_slots != nullptr && (save_filtered_slots->size()) > 0) {
+      return Save_v2(path, param);
+    }
+  }
+#endif
   std::lock_guard<std::mutex> guard(_table_mutex);
 #ifdef PADDLE_WITH_HETERPS
   int save_param = atoi(param.c_str());
@@ -604,13 +613,9 @@ int32_t SSDSparseTable::Save(const std::string& path,
 #endif
 }
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
 int32_t SSDSparseTable::Save_v2(const std::string& path,
                                 const std::string& param) {
-  auto* save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
-  if (save_filtered_slots && (save_filtered_slots->size()) <= 0) {
-    return Save(path, param);
-  }
   std::lock_guard<std::mutex> guard(_table_mutex);
 #ifdef PADDLE_WITH_HETERPS
   int save_param = atoi(param.c_str());
@@ -659,7 +664,7 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
   std::string table_path = TableDir(path);
   _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -715,7 +720,7 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
         std::stringstream ss;
         ss << "SSDSparseTable save failed, retry it! path:"
            << channel_config.path;
-        PADDLE_THROW(phi::errors::Fatal(ss.str()));
+        PADDLE_THROW(common::errors::Fatal(ss.str()));
       }
     }
     write_channel->close();
@@ -833,7 +838,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
   std::string table_path = TableDir(path);
   _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -1124,7 +1129,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
   _afs_client.remove(paddle::string::format_string(
       "%s/slot_feature/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -1575,7 +1580,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
   std::string table_path = TableDir(path);
   _afs_client.remove(paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -1658,7 +1663,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           std::stringstream ss;
           ss << "DownpourSparseSSDTable save failed, retry it! path:"
              << channel_config.path;
-          PADDLE_THROW(phi::errors::Fatal(ss.str()));
+          PADDLE_THROW(common::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region->reset();
@@ -1701,7 +1706,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
             std::stringstream ss;
             ss << "SSDSparseTable save failed, retry it! path:"
                << channel_config.path;
-            PADDLE_THROW(phi::errors::Fatal(ss.str()));
+            PADDLE_THROW(common::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -1877,7 +1882,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
   _afs_client.remove(paddle::string::format_string(
       "%s/slot_feature/part-%03d-*", table_path.c_str(), _shard_idx));
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
@@ -1986,7 +1991,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           std::stringstream ss;
           ss << "DownpourSparseSSDTable save failed, retry it! path:"
              << channel_config.path;
-          PADDLE_THROW(phi::errors::Fatal(ss.str()));
+          PADDLE_THROW(common::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region->reset();
@@ -2018,7 +2023,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           std::stringstream ss;
           ss << "DownpourSparseSSDTable save feature failed, retry it! path:"
              << channel_config_for_slot_feature.path;
-          PADDLE_THROW(phi::errors::Fatal(ss.str()));
+          PADDLE_THROW(common::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region_for_slot_feature->reset();
@@ -2062,7 +2067,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
             std::stringstream ss;
             ss << "SSDSparseTable save failed, retry it! path:"
                << channel_config.path;
-            PADDLE_THROW(phi::errors::Fatal(ss.str()));
+            PADDLE_THROW(common::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -2114,7 +2119,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
             std::stringstream ss;
             ss << "SSDSparseTable save feature failed, retry it! path:"
                << channel_config_for_slot_feature.path;
-            PADDLE_THROW(phi::errors::Fatal(ss.str()));
+            PADDLE_THROW(common::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -2612,11 +2617,11 @@ int32_t SSDSparseTable::LoadWithString(
     ssd_values.clear();
     tmp_key.clear();
     std::string line_data;
-    char* end = NULL;
+    char* end = nullptr;
     int local_shard_id = i % _avg_local_shard_num;
     auto& shard = _local_shards[local_shard_id];
-    float data_buffer[FLAGS_pserver_load_batch_size *
-                      feature_value_size];  // NOLINT
+    float data_buffer[FLAGS_pserver_load_batch_size *  // NOLINT
+                      feature_value_size];
     float* data_buffer_ptr = data_buffer;
     uint64_t mem_count = 0;
     uint64_t ssd_count = 0;

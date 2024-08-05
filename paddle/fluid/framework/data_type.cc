@@ -16,16 +16,15 @@
 
 #include <string>
 
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/pstring.h"
 
-using float16 = paddle::platform::float16;
-using bfloat16 = paddle::platform::bfloat16;
+using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
 using pstring = phi::dtype::pstring;
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 struct DataTypeMap {
   std::unordered_map<std::type_index, proto::VarType::Type> cpp_to_proto_;
@@ -62,6 +61,8 @@ static DataTypeMap* InitDataTypeMap() {
   _ForEachDataType_(RegType);
   // Register pstring individually
   RegType(pstring, proto::VarType::PSTRING);
+  RegType(::phi::dtype::float8_e5m2, proto::VarType::FP8_E5M2);
+  RegType(::phi::dtype::float8_e4m3fn, proto::VarType::FP8_E4M3FN);
 #undef RegType
   return retv;
 }
@@ -71,8 +72,8 @@ proto::VarType::Type ToDataType(std::type_index type) {
   if (it != gDataTypeMap().cpp_to_proto_.end()) {
     return it->second;
   }
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Not support %s as tensor data type.", platform::demangle(type.name())));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Not support %s as tensor data type.", common::demangle(type.name())));
 }
 
 std::type_index ToTypeIndex(proto::VarType::Type type) {
@@ -80,7 +81,7 @@ std::type_index ToTypeIndex(proto::VarType::Type type) {
   if (it != gDataTypeMap().proto_to_cpp_.end()) {
     return it->second;
   }
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support proto::VarType::Type(%d) as tensor type.",
       static_cast<int>(type)));
 }
@@ -94,7 +95,7 @@ std::string DataTypeToString(const proto::VarType::Type type) {
   if (type == proto::VarType::RAW) {
     return "RAW(runtime decided type)";
   }
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support proto::VarType::Type(%d) as tensor type.",
       static_cast<int>(type)));
 }
@@ -104,8 +105,8 @@ size_t SizeOfType(proto::VarType::Type type) {
   if (it != gDataTypeMap().proto_to_size_.end()) {
     return it->second;
   }
-  PADDLE_THROW(platform::errors::Unimplemented("Not support %s as tensor type.",
-                                               DataTypeToString(type)));
+  PADDLE_THROW(common::errors::Unimplemented("Not support %s as tensor type.",
+                                             DataTypeToString(type)));
 }
 
 // Now only supports promotion of complex type
@@ -122,7 +123,7 @@ int DataTypeNumAlign(const proto::VarType::Type t) {
              t == proto::VarType::COMPLEX128) {
     cast_type_num = static_cast<int>(t) - 21;
   } else {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Only supports to align data type include float32, float64, complex64 "
         "and complex128, but received data type is `s`.",
         DataTypeToString(t)));
@@ -163,5 +164,4 @@ proto::VarType::Type PromoteTypesIfComplexExists(
   return promote_types_table[type_an][type_bn];
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

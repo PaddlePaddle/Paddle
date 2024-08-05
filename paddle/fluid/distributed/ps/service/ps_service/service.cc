@@ -25,8 +25,7 @@
 
 using namespace std;  // NOLINT
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 ::paddle::distributed::PSParameter load_from_prototxt(
     const std::string& filename) {
@@ -58,7 +57,7 @@ void PSCore::InitGFlag(const std::string& gflags) {
   }
   auto it = flags.begin();
   flags.insert(it, "exe default");
-  char* flags_ptr[flags.size()];
+  std::vector<char*> flags_ptr(flags.size());
   for (size_t i = 0; i < flags.size(); ++i) {
     flags_ptr[i] = (char*)(flags[i].c_str());  // NOLINT
   }
@@ -83,7 +82,8 @@ int PSCore::InitServer(
   _server_ptr = std::shared_ptr<::paddle::distributed::PSServer>(
       ::paddle::distributed::PSServerFactory::Create(_ps_param));
   ret = _server_ptr->Configure(_ps_param, _ps_env, index, server_sub_program);
-  CHECK(ret == 0) << "failed to configure server";
+  PADDLE_ENFORCE_EQ(
+      ret, 0UL, phi::errors::PreconditionNotMet("Failed to configure server."));
   return ret;
 }
 
@@ -134,5 +134,4 @@ int PSCore::StopServer() {
   return 0;
 }
 ::paddle::distributed::PSParameter* PSCore::GetParam() { return &_ps_param; }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

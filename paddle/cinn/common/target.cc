@@ -19,13 +19,16 @@
 
 #include <glog/logging.h>
 
+#include <regex>
 #include <sstream>
 
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/arch_util.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/common/enforce.h"
+using cinn::runtime::BackendAPI;
 
 namespace cinn {
 namespace common {
@@ -35,7 +38,24 @@ Target::Target(OS o,
                Bit b,
                const std::vector<Feature> &features,
                const std::vector<Lib> &libs)
-    : os(o), arch(a), bits(b), features(features), libs(libs) {}
+    : os(o), arch(a), bits(b), features(features), libs(libs) {
+  // check compile option
+  arch.Match([&](UnknownArch) {},
+             [&](X86Arch) {},
+             [&](ARMArch) {},
+             [&](NVGPUArch) {
+#ifndef CINN_WITH_CUDA
+               PADDLE_THROW(phi::errors::Unimplemented(
+                   "Please recompile with flag WITH_GPU and WITH_CINN."));
+#endif
+             },
+             [&](HygonDCUArchHIP) {
+#ifndef CINN_WITH_HIP
+               PADDLE_THROW(phi::errors::Unimplemented(
+                   "Please recompile with flag WITH_ROCM and WITH_CINN."));
+#endif
+             });
+}
 
 bool Target::operator==(const Target &other) const {
   return os == other.os &&      //
@@ -51,7 +71,12 @@ int GetRuntimeArchImpl(X86Arch) { return cinn_x86_device; }
 int GetRuntimeArchImpl(ARMArch) { return cinn_arm_device; }
 
 int GetRuntimeArchImpl(NVGPUArch) {
-  PADDLE_THROW(phi::errors::InvalidArgument("Not supported arch"));
+  PADDLE_THROW(::common::errors::InvalidArgument("Not supported arch"));
+}
+
+int GetRuntimeArchImpl(HygonDCUArchHIP) {
+  PADDLE_THROW(::common::errors::InvalidArgument(
+      "HygonDCUArchHIP not supported GetRuntimeArch!"));
 }
 
 int GetRuntimeArch(Arch arch) {
@@ -74,6 +99,8 @@ int GetMaxNumThreadsImpl(ARMArch arch) {
 }
 
 int GetMaxNumThreadsImpl(NVGPUArch arch) { return 1024; }
+
+int GetMaxNumThreadsImpl(HygonDCUArchHIP arch) { return 1024; }
 
 int GetMaxNumThreads(Arch arch) {
   return std::visit([](const auto &impl) { return GetMaxNumThreadsImpl(impl); },
@@ -101,6 +128,11 @@ int GetMultiProcessCountImpl(NVGPUArch arch) {
       &num_sm, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, 0);
 #endif
   return num_sm;
+}
+
+int GetMultiProcessCountImpl(HygonDCUArchHIP arch) {
+  return BackendAPI::get_backend(arch)->get_device_property(
+      BackendAPI::DeviceProperty::MultiProcessorCount);
 }
 
 int GetMultiProcessCount(Arch arch) {
@@ -137,6 +169,11 @@ int GetMaxThreadsPerSmImpl(NVGPUArch arch) {
   return max_thread;
 }
 
+int GetMaxThreadsPerSmImpl(HygonDCUArchHIP arch) {
+  return BackendAPI::get_backend(arch)->get_device_property(
+      BackendAPI::DeviceProperty::MaxThreadsPerSM);
+}
+
 int GetMaxThreadsPerSm(Arch arch) {
   return std::visit(
       [](const auto &impl) { return GetMaxThreadsPerSmImpl(impl); },
@@ -169,6 +206,11 @@ int GetMaxBlocksPerSmImpl(NVGPUArch) {
   return max_blocks;
 }
 
+int GetMaxBlocksPerSmImpl(HygonDCUArchHIP arch) {
+  return BackendAPI::get_backend(arch)->get_device_property(
+      BackendAPI::DeviceProperty::MaxBlocksPerSM);
+}
+
 int GetMaxBlocksPerSm(Arch arch) {
   return std::visit(
       [](const auto &impl) { return GetMaxBlocksPerSmImpl(impl); },
@@ -188,7 +230,7 @@ int Target::get_target_bits() const {
     case Bit::Unk:
       return 0;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Not supported Bit"));
+      PADDLE_THROW(::common::errors::InvalidArgument("Not supported Bit"));
   }
   return -1;
 }
@@ -197,6 +239,32 @@ std::string Target::arch_str() const {
   std::ostringstream oss;
   oss << arch;
   return oss.str();
+}
+
+std::string Target::device_name_str() const {
+  int device_idx = 0;
+  cudaError_t result = cudaGetDevice(&device_idx);
+  if (result != cudaSuccess) {
+    // Call cudaGetLastError() to clear the error bit
+    result = cudaGetLastError();
+    PADDLE_THROW(::common::errors::Unavailable(
+        " cudaGetDevice() returned error %s", cudaGetErrorString(result)));
+    return 0;
+  }
+
+  cudaDeviceProp properties;
+  result = cudaGetDeviceProperties(&properties, device_idx);
+  if (result != cudaSuccess) {
+    // Call cudaGetLastError() to clear the error bit
+    result = cudaGetLastError();
+    PADDLE_THROW(::common::errors::Unavailable(
+        " cudaGetDeviceProperties() returned error %s",
+        cudaGetErrorString(result)));
+    return 0;
+  }
+  std::string device_name = properties.name;
+  device_name = std::regex_replace(device_name, std::regex(" "), "_");
+  return std::regex_replace(device_name, std::regex("-"), "_");
 }
 
 std::ostream &operator<<(std::ostream &os, const Target &target) {
@@ -249,9 +317,17 @@ const Target &DefaultNVGPUTarget() {
   return target;
 }
 
+const Target &DefaultHygonDcuHipTarget() {
+  static Target target(
+      Target::OS::Linux, HygonDCUArchHIP{}, Target::Bit::k64, {}, {});
+  return target;
+}
+
 const Target &DefaultDeviceTarget() {
 #ifdef CINN_WITH_CUDA
   return DefaultNVGPUTarget();
+#elif defined(CINN_WITH_HIP)
+  return DefaultHygonDcuHipTarget();
 #endif
 }
 
@@ -289,6 +365,8 @@ int GetMaxBlocks() {
 const Target &DefaultTarget() {
 #ifdef CINN_WITH_CUDA
   return DefaultNVGPUTarget();
+#elif defined(CINN_WITH_HIP)
+  return DefaultHygonDcuHipTarget();
 #else
   return DefaultHostTarget();
 #endif

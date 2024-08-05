@@ -12,12 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import (
+    TYPE_CHECKING,
+    TypedDict,
+)
+
+from typing_extensions import NotRequired, Unpack
+
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
 from paddle.base.param_attr import ParamAttr
 from paddle.nn import AdaptiveAvgPool2D, Conv2D, Dropout, MaxPool2D
 from paddle.utils.download import get_weights_path_from_url
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import Size2
+
+    class _SqueezeNetOptions(TypedDict):
+        num_classes: NotRequired[int]
+        with_pool: NotRequired[bool]
+
 
 __all__ = []
 
@@ -34,7 +52,13 @@ model_urls = {
 
 
 class MakeFireConv(nn.Layer):
-    def __init__(self, input_channels, output_channels, filter_size, padding=0):
+    def __init__(
+        self,
+        input_channels: int,
+        output_channels: int,
+        filter_size: Size2,
+        padding: Size2 = 0,
+    ) -> None:
         super().__init__()
         self._conv = Conv2D(
             input_channels,
@@ -45,7 +69,7 @@ class MakeFireConv(nn.Layer):
             bias_attr=ParamAttr(),
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = self._conv(x)
         x = F.relu(x)
         return x
@@ -54,11 +78,11 @@ class MakeFireConv(nn.Layer):
 class MakeFire(nn.Layer):
     def __init__(
         self,
-        input_channels,
-        squeeze_channels,
-        expand1x1_channels,
-        expand3x3_channels,
-    ):
+        input_channels: int,
+        squeeze_channels: int,
+        expand1x1_channels: int,
+        expand3x3_channels: int,
+    ) -> None:
         super().__init__()
         self._conv = MakeFireConv(input_channels, squeeze_channels, 1)
         self._conv_path1 = MakeFireConv(squeeze_channels, expand1x1_channels, 1)
@@ -66,7 +90,7 @@ class MakeFire(nn.Layer):
             squeeze_channels, expand3x3_channels, 3, padding=1
         )
 
-    def forward(self, inputs):
+    def forward(self, inputs: Tensor) -> Tensor:
         x = self._conv(inputs)
         x1 = self._conv_path1(x)
         x2 = self._conv_path2(x)
@@ -106,7 +130,13 @@ class SqueezeNet(nn.Layer):
             [1, 1000]
     """
 
-    def __init__(self, version, num_classes=1000, with_pool=True):
+    version: str
+    num_classes: int
+    with_pool: bool
+
+    def __init__(
+        self, version: str, num_classes: int = 1000, with_pool: bool = True
+    ) -> None:
         super().__init__()
         self.version = version
         self.num_classes = num_classes
@@ -161,7 +191,7 @@ class SqueezeNet(nn.Layer):
         )
         self._avg_pool = AdaptiveAvgPool2D(1)
 
-    def forward(self, inputs):
+    def forward(self, inputs: Tensor) -> Tensor:
         x = self._conv(inputs)
         x = F.relu(x)
         x = self._pool(x)
@@ -198,7 +228,12 @@ class SqueezeNet(nn.Layer):
         return x
 
 
-def _squeezenet(arch, version, pretrained, **kwargs):
+def _squeezenet(
+    arch: str,
+    version: str,
+    pretrained: bool,
+    **kwargs: Unpack[_SqueezeNetOptions],
+) -> SqueezeNet:
     model = SqueezeNet(version, **kwargs)
     if pretrained:
         assert (
@@ -213,7 +248,9 @@ def _squeezenet(arch, version, pretrained, **kwargs):
     return model
 
 
-def squeezenet1_0(pretrained=False, **kwargs):
+def squeezenet1_0(
+    pretrained: bool = False, **kwargs: Unpack[_SqueezeNetOptions]
+) -> SqueezeNet:
     """SqueezeNet v1.0 model from
     `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
     <https://arxiv.org/pdf/1602.07360.pdf>`_.
@@ -247,7 +284,9 @@ def squeezenet1_0(pretrained=False, **kwargs):
     return _squeezenet('squeezenet1_0', '1.0', pretrained, **kwargs)
 
 
-def squeezenet1_1(pretrained=False, **kwargs):
+def squeezenet1_1(
+    pretrained: bool = False, **kwargs: Unpack[_SqueezeNetOptions]
+) -> SqueezeNet:
     """SqueezeNet v1.1 model from
     `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
     <https://arxiv.org/pdf/1602.07360.pdf>`_.

@@ -37,7 +37,7 @@ PADDLE_API {} {}({}) {{
 }}
 """
 DISPATCH_END_GUARD_TEMPLATE = """
-PADDLE_THROW(phi::errors::Unimplemented(
+PADDLE_THROW(common::errors::Unimplemented(
           "The kernel of ({}) for input tensors is unimplemented, please check the type of input tensors."));
 """
 
@@ -295,7 +295,7 @@ VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE = """
     }}
     std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}.size());
     for (size_t i = 0; i < {name}_meta_vec.size(); ++i) {{
-      {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
+      {name}_meta_ptr_vec[i] = {name}[i] ? &{name}_meta_vec[i] : nullptr;
     }}
 """
 INFER_GLOBAL_SHAPE_TEMPLATE = """
@@ -400,7 +400,7 @@ VECTOR_META_OUT_DECL_TEMPLATE = """
       std::vector<phi::MetaTensor> {name}_meta_vec = MakeMetaTensor({name});
       std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}_meta_vec.size());
       for (size_t i = 0; i < {name}_meta_vec.size(); ++i) {{
-        {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
+        {name}_meta_ptr_vec[i] = {name}[i] ? &{name}_meta_vec[i] : nullptr;
       }}
 """
 INFER_META_TEMPLATE = """
@@ -508,7 +508,7 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
           int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
           // TODO: Support aliquant condition.
           PADDLE_ENFORCE(shape_i % mesh_dim == 0,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "{op_name} only support local shape dim is divisible "
                     "by the mesh dim, however local_shape[%lld] is %lld "
                     "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
@@ -1106,9 +1106,7 @@ class DistForwardAPI(ForwardAPI):
                         )
                     else:
                         if (
-                            self.need_to_generate_code_for_inplace_or_view_impl(
-                                i
-                            )
+                            self.need_to_generate_code_for_inplace_impl(i)
                             and self.generate_general_infer_spmd
                         ):
                             output_creation_code += (

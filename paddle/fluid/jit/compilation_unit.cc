@@ -18,15 +18,14 @@
 
 #include "paddle/fluid/jit/engine/base_engine.h"
 
-namespace paddle {
-namespace jit {
+namespace paddle::jit {
 
 std::shared_ptr<BaseEngine> CompilationUnit::GetEngine(
     const std::string &name) const {
   PADDLE_ENFORCE_EQ(
       engine_map_.count(name),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Function named %s is not existed in engine_map_.", name));
   return engine_map_.at(name);
 }
@@ -46,5 +45,4 @@ std::shared_ptr<CompilationUnit> CompilationUnit::Clone(void *stream) {
   return x;
 }
 
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit

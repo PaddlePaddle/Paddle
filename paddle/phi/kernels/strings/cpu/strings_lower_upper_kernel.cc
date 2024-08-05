@@ -17,8 +17,7 @@ limitations under the License. */
 
 using pstring = ::phi::dtype::pstring;
 
-namespace phi {
-namespace strings {
+namespace phi::strings {
 
 template <typename ContextT>
 void StringLowerKernel(const ContextT& dev_ctx,
@@ -40,8 +39,7 @@ void StringUpperKernel(const ContextT& dev_ctx,
                           ContextT>()(dev_ctx, x, use_utf8_encoding, out);
 }
 
-}  // namespace strings
-}  // namespace phi
+}  // namespace phi::strings
 
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     strings_lower,

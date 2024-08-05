@@ -21,11 +21,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 static void CopyXCCLIDToVar(const std::vector<phi::ccl::CCLRootId>& xccl_ids,
@@ -36,8 +35,8 @@ static void CopyXCCLIDToVar(const std::vector<phi::ccl::CCLRootId>& xccl_ids,
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::NotFound("Variable with name %s is not found",
-                              var_name.c_str()));
+        common::errors::NotFound("Variable with name %s is not found",
+                                 var_name.c_str()));
     auto xccl_id = var->GetMutable<phi::ccl::CCLRootId>();
     *xccl_id = xccl_ids[i];
   }
@@ -97,8 +96,7 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

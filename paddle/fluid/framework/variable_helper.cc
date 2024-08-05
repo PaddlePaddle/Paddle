@@ -22,10 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/string_array.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
@@ -41,13 +40,13 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
-    var->GetMutable<LoDTensorArray>();
+    var->GetMutable<phi::TensorArray>();
   } else if (var_type == proto::VarType::STRINGS) {
     var->GetMutable<Strings>();
   } else if (var_type == proto::VarType::VOCAB) {
     var->GetMutable<Vocab>();
   } else if (var_type == proto::VarType::PLACE_LIST) {
-    var->GetMutable<platform::PlaceList>();
+    var->GetMutable<phi::PlaceList>();
   } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
   } else if (var_type == proto::VarType::RAW) {
@@ -55,7 +54,7 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::SPARSE_COO) {
     var->GetMutable<phi::SparseCooTensor>();
   } else {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
         "LOD_RANK_TABLE, PLACE_LIST, READER, RAW].",
@@ -65,7 +64,7 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
 
 void CopyVariable(const Variable &src_var, Variable *dst_var) {
   // only support cpu now
-  auto cpu_place = platform::CPUPlace();
+  auto cpu_place = phi::CPUPlace();
 
   if (src_var.IsType<phi::DenseTensor>()) {
     auto *tmp_grad_tensor = dst_var->GetMutable<phi::DenseTensor>();
@@ -81,10 +80,8 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
     auto *dst_t = tmp_grad_slr->mutable_value();
     framework::TensorCopy(src_t, cpu_place, dst_t);
   } else {
-    PADDLE_THROW(
-        platform::errors::Unavailable("Unknown variable type to copy."));
+    PADDLE_THROW(common::errors::Unavailable("Unknown variable type to copy."));
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

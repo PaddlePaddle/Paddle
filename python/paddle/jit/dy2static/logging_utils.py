@@ -180,7 +180,7 @@ class TranslatorLogger:
 _TRANSLATOR_LOGGER = TranslatorLogger()
 
 
-def set_verbosity(level=0, also_to_stdout=False):
+def set_verbosity(level: int = 0, also_to_stdout: bool = False) -> None:
     """
     Sets the verbosity level of log for dygraph to static graph. Logs can be output to stdout by setting `also_to_stdout`.
 
@@ -215,11 +215,13 @@ def set_verbosity(level=0, also_to_stdout=False):
     _TRANSLATOR_LOGGER.need_to_echo_log_to_stdout = also_to_stdout
 
 
-def get_verbosity():
+def get_verbosity() -> int:
     return _TRANSLATOR_LOGGER.verbosity_level
 
 
-def set_code_level(level=LOG_AllTransformer, also_to_stdout=False):
+def set_code_level(
+    level: int = LOG_AllTransformer, also_to_stdout: bool = False
+) -> None:
     """
     Sets the level to print code from specific level Ast Transformer. Code can be output to stdout by setting `also_to_stdout`.
 

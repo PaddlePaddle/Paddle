@@ -361,7 +361,7 @@ class CompileTimeStrategy:
             pass
         else:
             raise ValueError(
-                "Not supported optimizer for distributed training: %s" % op_type
+                f"Not supported optimizer for distributed training: {op_type}"
             )
         return related_var_names
 

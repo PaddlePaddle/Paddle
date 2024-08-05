@@ -253,6 +253,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     std::vector<Expr> functions;
     std::vector<Expr> submodules;
     std::vector<Expr> predicates;
+    std::vector<int> priorities;
     Expr infer_shape_func;
     for (auto& expr : op->buffers) {
       buffers.push_back(Visit(&expr));
@@ -269,6 +270,11 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     for (auto& expr : op->predicates) {
       predicates.push_back(Visit(&expr));
     }
+
+    for (int priority : op->priorities) {
+      priorities.push_back(priority);
+    }
+
     if (op->infer_shape_func.defined()) {
       infer_shape_func = Visit(&op->infer_shape_func);
     }
@@ -278,6 +284,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     res->functions = functions;
     res->submodules = submodules;
     res->predicates = predicates;
+    res->priorities = priorities;
     res->infer_shape_func = infer_shape_func;
 
     return Expr(res);
@@ -339,8 +346,16 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
   Expr Visit(const Broadcast* op) override {
     auto value = Visit(&op->value);
     int lanes = op->lanes;
-    CHECK(value.defined());
-    CHECK(value.type().valid());
+    PADDLE_ENFORCE_EQ(
+        value.defined(),
+        true,
+        phi::errors::InvalidArgument("Broadcasting value is not defined."));
+    PADDLE_ENFORCE_EQ(
+        value.type().valid(),
+        true,
+        phi::errors::InvalidArgument("Broadcasting value type is invalid. "
+                                     "Expected a valid type, but got: %s",
+                                     value.type()));
 
     auto* n = make_shared<Broadcast>();
     n->value = value;
@@ -351,8 +366,14 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
   Expr Visit(const FracOp* op) override {
     auto a = Visit(&op->a());
     auto b = Visit(&op->b());
-    CHECK(a.defined());
-    CHECK(b.defined());
+    PADDLE_ENFORCE_EQ(a.defined(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The first operand of FracOp is not defined."));
+    PADDLE_ENFORCE_EQ(b.defined(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The second operand of FracOp is not defined."));
 
     auto* n = make_shared<FracOp>();
     n->a() = a;
@@ -402,7 +423,11 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     std::vector<Var> iter_vars;
     for (auto iter_var : op->iter_vars) {
       auto* var = iter_var.As<_Var_>();
-      CHECK(var);
+      PADDLE_ENFORCE_NE(
+          var,
+          nullptr,
+          phi::errors::InvalidArgument(
+              "ScheduleBlock iter_var is not a valid _Var_ type."));
       iter_vars.push_back(Visit(var));
     }
     std::vector<Expr> read_buffers;

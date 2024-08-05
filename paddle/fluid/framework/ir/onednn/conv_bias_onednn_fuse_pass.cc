@@ -22,9 +22,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 ConvBiasFusePass::ConvBiasFusePass() {
   AddOpCompat(OpCompat("conv2d"))
@@ -296,7 +294,7 @@ phi::DenseTensor tensor_apply_eltwise(const phi::DenseTensor& vec_a,
                                       BinaryOperation f) {
   PADDLE_ENFORCE_EQ(vec_a.dims(),
                     vec_b.dims(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input two tensors must have same shape, but they are "
                         "different: %s, %s.",
                         vec_a.dims(),
@@ -324,12 +322,12 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
                                     const std::string& conv_type,
                                     const std::string& fused_conv) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+      scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -358,7 +356,7 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
     PADDLE_ENFORCE_NE(
         subgraph.count(conv_input),
         0,
-        platform::errors::NotFound("Detector did not find conv input."));
+        common::errors::NotFound("Detector did not find conv input."));
 
     // check compat
     if (!IsCompat(subgraph, g)) {
@@ -385,13 +383,13 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
       // add eltwise bias to existing conv bias
       PADDLE_ENFORCE_EQ(conv_bias_names.size(),
                         1,
-                        platform::errors::NotFound("Can not find var Bias."));
+                        common::errors::NotFound("Can not find var Bias."));
       auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
       auto* conv_bias_tensor = conv_bias_var->GetMutable<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
           conv_bias_tensor->dims(),
           eltwise_bias_tensor->dims(),
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Conv bias tensor and eltwise bias tensor "
               "must have same shape, but they are different: %s, %s.",
               conv_bias_tensor->dims(),
@@ -445,9 +443,7 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 REGISTER_PASS(conv_bias_onednn_fuse_pass,
               paddle::framework::ir::ConvBiasFusePass);
 REGISTER_PASS_CAPABILITY(conv_bias_onednn_fuse_pass)

@@ -105,7 +105,7 @@ void MergedMomentumInnerCompute(
   size_t n = params.size();
   PADDLE_ENFORCE_EQ(n,
                     params_out.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of Output(ParamOut) must be equal to "
                         "Input(Param), but got the size of Output(ParamOut) "
                         "is %d, the size of Input(Param) is %d.",
@@ -115,14 +115,14 @@ void MergedMomentumInnerCompute(
     PADDLE_ENFORCE_EQ(
         params[i],
         params_out[i],
-        phi::errors::InvalidArgument("Input(Param) and Output(ParamOut) "
-                                     "must be the same Tensors."));
+        common::errors::InvalidArgument("Input(Param) and Output(ParamOut) "
+                                        "must be the same Tensors."));
   }
 
   PADDLE_ENFORCE_EQ(
       n,
       grads.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of Input(Grad) must be equal to Input(Param), but got "
           "the size of Input(Grad) is %d, the size of Input(Param) is %d.",
           grads.size(),
@@ -130,7 +130,7 @@ void MergedMomentumInnerCompute(
 
   PADDLE_ENFORCE_EQ(n,
                     velocities.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of Input(Velocity) must be equal to "
                         "Input(Param), but got the size of Input(Velocity) "
                         "is %d, the size of Input(Param) is %d.",
@@ -140,7 +140,7 @@ void MergedMomentumInnerCompute(
   PADDLE_ENFORCE_EQ(
       n,
       velocities_out.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of Output(VelocityOut) must be "
           "equal to Input(Param), but got the size of Output(VelocityOut) is "
           "%d, the size of Input(Param) is %d.",
@@ -149,7 +149,7 @@ void MergedMomentumInnerCompute(
   for (size_t i = 0; i < n; ++i) {
     PADDLE_ENFORCE_EQ(velocities[i],
                       velocities_out[i],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input(Velocity) and Output(VelocityOut) must be "
                           "the same Tensors."));
   }
@@ -159,7 +159,7 @@ void MergedMomentumInnerCompute(
     PADDLE_ENFORCE_EQ(
         n,
         master_params.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of Input(MasterParam) must be "
             "equal to Input(Param), but got the size of Input(MasterParam) "
             "is %d, the size of Input(Param) is %d.",
@@ -168,7 +168,7 @@ void MergedMomentumInnerCompute(
     PADDLE_ENFORCE_EQ(
         n,
         master_params_out.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of Output(MasterParamOut) must be equal to "
             "Input(MasterParam), but got the size of Output(MasterParamOut) "
             "is %d, the size of Input(Param) is %d.",
@@ -177,11 +177,11 @@ void MergedMomentumInnerCompute(
     for (size_t i = 0; i < n; ++i) {
       PADDLE_ENFORCE_EQ(master_params[i],
                         master_params_out[i],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Input(MasterParam) and Output(MasterParamOut) "
                             "must be the same Tensors."));
       PADDLE_ENFORCE_NOT_NULL(master_params[i],
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "Input(MasterParam) must be provided when "
                                   "multi_precision=True."));
     }
@@ -193,7 +193,7 @@ void MergedMomentumInnerCompute(
     PADDLE_ENFORCE_EQ(
         n,
         lrs.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "If the size of Input(LearningRate) is not 1, the size of "
             "Input(LearningRate) must be "
             "equal to Input(Param), but got the size of Input(LearningRate) "
@@ -205,7 +205,7 @@ void MergedMomentumInnerCompute(
     PADDLE_ENFORCE_EQ(
         n,
         regularization_methods.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of Attr(regularization_method) must be equal "
             "to Input(Param), but got the size of "
             "Attr(regularization_method) is %d, the size of Input(Param) is "
@@ -215,7 +215,7 @@ void MergedMomentumInnerCompute(
     PADDLE_ENFORCE_EQ(
         n,
         regularization_coeffs.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of Attr(regularization_coeff) must be equal "
             "to Input(Param), but got the size of Attr(regularization_coeff) "
             "is %d, the size of Input(Param) is %d.",

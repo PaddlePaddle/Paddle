@@ -16,8 +16,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T>
 struct EigenErf<Eigen::DefaultDevice, T> {
@@ -56,5 +55,4 @@ INSTANTIATION(EigenErf);
 INSTANTIATION(EigenErfGrad);
 #undef INSTANTIATION
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

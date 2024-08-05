@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CReduceScatterOp : public framework::OperatorWithKernel {
  public:
@@ -32,7 +31,7 @@ class CReduceScatterOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           dim[0] % nranks,
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "dim[0] (%d) is not divisible by nranks(%d)", dim[0], nranks));
       dim[0] /= nranks;
     }
@@ -63,8 +62,7 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

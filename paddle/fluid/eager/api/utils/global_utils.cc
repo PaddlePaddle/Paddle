@@ -23,7 +23,7 @@ thread_local std::shared_ptr<paddle::imperative::Tracer> Controller::tracer_ =
 
 Controller& Controller::Instance() { return *controller_; }
 
-void Controller::SetExpectedPlace(const paddle::platform::Place& place) {
+void Controller::SetExpectedPlace(const phi::Place& place) {
   tracer_->SetExpectedPlace(place);
 }
 
@@ -36,7 +36,7 @@ bool Controller::UseLayoutAutoTune() {
   bool use_autotune = false;
 #if defined(PADDLE_WITH_CUDA)
   auto place = tracer_->ExpectedPlace();
-  bool is_gpu_place = paddle::platform::is_gpu_place(place);
+  bool is_gpu_place = phi::is_gpu_place(place);
   if (is_gpu_place) {
     use_autotune = tracer_->UseLayoutAutoTune();
   }

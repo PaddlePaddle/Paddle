@@ -180,7 +180,7 @@ class FusedMatmulOneDNNHandler
       auto residual_data_tz = vectorize(residual_data->dims());
       auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
       dnnl::memory::desc residual_data_md;
-      if (out_ddims.size() > 0 && out_ddims[0] > 1 &&
+      if (!out_ddims.empty() && out_ddims[0] > 1 &&
           residual_data_tz.size() == 4 && residual_data_tz[0] == 1 &&
           residual_data_tz[1] > 1 && residual_data_tz[2] > 1 &&
           residual_data_tz[3] > 1) {

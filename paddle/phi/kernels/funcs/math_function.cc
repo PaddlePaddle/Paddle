@@ -34,6 +34,8 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -42,11 +44,12 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #endif
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 using float16 = phi::dtype::float16;
 
+template struct SetConstant<phi::CPUContext, phi::dtype::float8_e4m3fn>;
+template struct SetConstant<phi::CPUContext, phi::dtype::float8_e5m2>;
 template struct SetConstant<phi::CPUContext, phi::dtype::float16>;
 template struct SetConstant<phi::CPUContext, phi::dtype::bfloat16>;
 template struct SetConstant<phi::CPUContext, float>;
@@ -75,20 +78,22 @@ template struct SetConstant<phi::XPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::XPUContext, phi::dtype::complex<double>>;
 #endif
 
-#define DEFINE_CPU_TRANS(RANK)                                            \
-  template struct Transpose<phi::CPUContext, phi::dtype::float16, RANK>;  \
-  template struct Transpose<phi::CPUContext, phi::dtype::bfloat16, RANK>; \
-  template struct Transpose<phi::CPUContext, float, RANK>;                \
-  template struct Transpose<phi::CPUContext, double, RANK>;               \
-  template struct Transpose<phi::CPUContext, int, RANK>;                  \
-  template struct Transpose<phi::CPUContext, int64_t, RANK>;              \
-  template struct Transpose<phi::CPUContext, bool, RANK>;                 \
-  template struct Transpose<phi::CPUContext, int16_t, RANK>;              \
-  template struct Transpose<phi::CPUContext, uint8_t, RANK>;              \
-  template struct Transpose<phi::CPUContext, int8_t, RANK>;               \
-  template struct Transpose<phi::CPUContext,                              \
-                            phi::dtype::complex<float>,                   \
-                            RANK>;                                        \
+#define DEFINE_CPU_TRANS(RANK)                                                 \
+  template struct Transpose<phi::CPUContext, phi::dtype::float16, RANK>;       \
+  template struct Transpose<phi::CPUContext, phi::dtype::bfloat16, RANK>;      \
+  template struct Transpose<phi::CPUContext, phi::dtype::float8_e4m3fn, RANK>; \
+  template struct Transpose<phi::CPUContext, phi::dtype::float8_e5m2, RANK>;   \
+  template struct Transpose<phi::CPUContext, float, RANK>;                     \
+  template struct Transpose<phi::CPUContext, double, RANK>;                    \
+  template struct Transpose<phi::CPUContext, int, RANK>;                       \
+  template struct Transpose<phi::CPUContext, int64_t, RANK>;                   \
+  template struct Transpose<phi::CPUContext, bool, RANK>;                      \
+  template struct Transpose<phi::CPUContext, int16_t, RANK>;                   \
+  template struct Transpose<phi::CPUContext, uint8_t, RANK>;                   \
+  template struct Transpose<phi::CPUContext, int8_t, RANK>;                    \
+  template struct Transpose<phi::CPUContext,                                   \
+                            phi::dtype::complex<float>,                        \
+                            RANK>;                                             \
   template struct Transpose<phi::CPUContext, phi::dtype::complex<double>, RANK>;
 
 DEFINE_CPU_TRANS(1);
@@ -129,7 +134,8 @@ void TransposeNormal<DeviceContext, T>::operator()(
 // define transpose normal
 #define DEFINE_CPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<phi::CPUContext, TYPE>
-
+DEFINE_CPU_TRANS_NORMAL(phi::dtype::float8_e4m3fn);
+DEFINE_CPU_TRANS_NORMAL(phi::dtype::float8_e5m2);
 DEFINE_CPU_TRANS_NORMAL(phi::dtype::float16);
 DEFINE_CPU_TRANS_NORMAL(phi::dtype::bfloat16);
 DEFINE_CPU_TRANS_NORMAL(float);
@@ -165,7 +171,7 @@ void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context,
       tensor->dtype(),
       TensorSetConstantXPU<float>(tensor, value, tensor->place()));
 #else
-  PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with XPU!"));
+  PADDLE_THROW(common::errors::PreconditionNotMet("Not compiled with XPU!"));
 #endif
 }
 
@@ -173,7 +179,7 @@ template <>
 void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
                                             phi::DenseTensor* tensor,
                                             float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("IPUPlace is not supported"));
+  PADDLE_THROW(common::errors::Unimplemented("IPUPlace is not supported"));
 }
 
 template <>
@@ -198,7 +204,7 @@ void set_constant_with_place<phi::CustomPlace>(
                tensor->dtype(),
                tensor);
 #else
-  PADDLE_THROW(phi::errors::Unimplemented("CustomPlace is not supported"));
+  PADDLE_THROW(common::errors::Unimplemented("CustomPlace is not supported"));
 #endif
 }
 
@@ -278,7 +284,7 @@ struct RowwiseAdd<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         vector.numel(),
         size,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input vector size"
             " should be equal to the size of each row of input tensor."
             " Expected vector size=%d, but received %d",
@@ -286,7 +292,7 @@ struct RowwiseAdd<phi::CPUContext, T> {
             vector.numel()));
     PADDLE_ENFORCE_EQ(out_dims,
                       in_dims,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The output tensor shape should be same as the input"
                           " tensor shape. Expected output tensor shape: %s,"
                           " but received %s",
@@ -306,5 +312,4 @@ struct RowwiseAdd<phi::CPUContext, T> {
 template struct RowwiseAdd<phi::CPUContext, float>;
 template struct RowwiseAdd<phi::CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

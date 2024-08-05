@@ -39,7 +39,8 @@ paddle::dialect::PyLayerOp
 namespace paddle {
 namespace dialect {
 
-const char *PyLayerOp::attributes_name[1] = {kBackwardFunctionIdAttrName};
+const char *PyLayerOp::attributes_name[1] = {
+    kBackwardFunctionIdAttrName};  // NOLINT
 
 void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
                       pir::OperationArgument &argument,  // NOLINT

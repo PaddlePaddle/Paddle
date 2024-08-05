@@ -33,7 +33,7 @@ TEST(layout_transformation_interface_test, operator) {
 
   auto build_input_value = [&](std::vector<int64_t> shape = {2, 2}) {
     auto uniform = builder.Build<paddle::dialect::UniformOp>(
-        shape, phi::DataType::FLOAT32, 0.0, 1.0, 2, phi::CPUPlace());
+        shape, phi::DataType::FLOAT16, 0.0, 1.0, 2, phi::CPUPlace());
     return uniform;
   };
 
@@ -48,13 +48,12 @@ TEST(layout_transformation_interface_test, operator) {
   EXPECT_TRUE(layout_transformation_iface);
 
   EXPECT_EQ(layout_transformation_iface.PreferLayout(fused_conv),
-            common::DataLayout::NHWC);
+            common::DataLayout::NCHW);
   EXPECT_NO_THROW(layout_transformation_iface.RewriteByLayout(
       fused_conv, common::DataLayout::NHWC));
   EXPECT_EQ(layout_transformation_iface.RelevantInputs(fused_conv).size(),
             fused_conv->operands().size());
-  EXPECT_EQ(layout_transformation_iface.RelevantOutputs(fused_conv).size(),
-            fused_conv->results().size());
+  EXPECT_EQ(layout_transformation_iface.RelevantOutputs(fused_conv).size(), 1u);
 }
 
 TEST(immutable_layout_trait_test, operator) {

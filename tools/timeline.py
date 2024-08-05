@@ -148,7 +148,7 @@ class Timeline:
                         self._devices[(k, event.device_id, "CPU")] = pid
                         # -1 device id represents CUDA API(RunTime) call.(e.g. cudaLaunch, cudaMemcpy)
                         if event.device_id == -1:
-                            self._chrome_trace.emit_pid("%s:cuda_api" % k, pid)
+                            self._chrome_trace.emit_pid(f"{k}:cuda_api", pid)
                         else:
                             self._chrome_trace.emit_pid(
                                 "%s:cpu:block:%d" % (k, event.device_id), pid

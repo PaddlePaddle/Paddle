@@ -93,7 +93,7 @@ class IR_API Pass {
   AttrType& Get(const std::string& attr_name) const {
     PADDLE_ENFORCE_EQ(attrs_.find(attr_name) != attrs_.end(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Attribute %s not registered for pass.", attr_name));
     try {
       return *std::any_cast<AttrType*>(attrs_.at(attr_name));
@@ -151,7 +151,7 @@ class IR_API Pass {
   void SetNotOwned(const std::string& attr_name, AttrType* attr) {
     PADDLE_ENFORCE_EQ(!Has(attr_name),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Attribute %s already set in the pass.", attr_name));
     attrs_[attr_name] = attr;
   }
@@ -167,9 +167,9 @@ class IR_API Pass {
     Set<int64_t>("__match_count__", new int64_t{match_count});
   }
 
-  void AddStatistics(int64_t match_count, int64_t all_count) {
-    Set<int64_t>("__match_count__", new int64_t{match_count});
-    Set<int64_t>("__all_count__", new int64_t{all_count});
+  void AddStatistics(int64_t match_count_1, int64_t match_count_2) {
+    Set<int64_t>("__match_count_1__", new int64_t{match_count_1});
+    Set<int64_t>("__match_count_2__", new int64_t{match_count_2});
   }
 
   void AddStatistics(const std::string& custom_log) {

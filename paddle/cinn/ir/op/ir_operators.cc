@@ -28,17 +28,27 @@ namespace ir {
 using attr_t = absl::variant<int, float, bool, std::string>;
 
 Expr operator<<(Expr a, Expr b) {
-  CHECK(a.type().is_int() || a.type().is_uint());
-  CHECK(b.type().is_int() || b.type().is_uint());
+  PADDLE_ENFORCE_EQ(
+      a.type().is_int() || a.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(
+      b.type().is_int() || b.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
   Type t_a = a.type();
   Type t_b = b.type();
   if (t_a.is_index_type() && t_b.is_index_type()) {
     if (int_b) {
-      CHECK(int_b->value >= 0 && int_b->value < t_a.bits())
-          << "Shift amount must be non-negative and less than " << t_a.bits()
-          << " for type " << t_a << std::endl;
+      PADDLE_ENFORCE_EQ(
+          int_b->value >= 0 && int_b->value < t_a.bits(),
+          true,
+          phi::errors::InvalidArgument(
+              "Shift amount must be non-negative and less than %d for type %s.",
+              t_a.bits(),
+              t_a));
       if (int_b->value == 0) return a;
     }
     if (int_a && int_b) {
@@ -49,17 +59,27 @@ Expr operator<<(Expr a, Expr b) {
 }
 
 Expr operator>>(Expr a, Expr b) {
-  CHECK(a.type().is_int() || a.type().is_uint());
-  CHECK(b.type().is_int() || b.type().is_uint());
+  PADDLE_ENFORCE_EQ(
+      a.type().is_int() || a.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(
+      b.type().is_int() || b.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
   Type t_a = a.type();
   Type t_b = b.type();
   if (t_a.is_index_type() && t_b.is_index_type()) {
     if (int_b) {
-      CHECK(int_b->value >= 0 && int_b->value < t_a.bits())
-          << "Shift amount must be non-negative and less than " << t_a.bits()
-          << " for type " << t_a << std::endl;
+      PADDLE_ENFORCE_EQ(
+          int_b->value >= 0 && int_b->value < t_a.bits(),
+          true,
+          phi::errors::InvalidArgument(
+              "Shift amount must be non-negative and less than %d for type %s.",
+              t_a.bits(),
+              t_a));
       if (int_b->value == 0) return a;
     }
     if (int_a && int_b) {
@@ -75,7 +95,7 @@ Expr BitwiseOrCallImpl(common::UnknownArch,
                        Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_or.";
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 }
 
 Expr BitwiseOrCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
@@ -85,10 +105,19 @@ Expr BitwiseOrCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
 Expr BitwiseOrCallImpl(common::ARMArch, const Target& target, Expr a, Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_or.";
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 }
 
 Expr BitwiseOrCallImpl(common::NVGPUArch,
+                       const Target& target,
+                       Expr a,
+                       Expr b) {
+  Type t_a = a.type();
+  auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_or");
+  return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
+}
+
+Expr BitwiseOrCallImpl(common::HygonDCUArchHIP,
                        const Target& target,
                        Expr a,
                        Expr b) {
@@ -104,8 +133,14 @@ Expr BitwiseOrCall(const Target& target, Expr a, Expr b) {
 }
 
 Expr operator|(Expr a, Expr b) {
-  CHECK(a.type().is_int() || a.type().is_uint());
-  CHECK(b.type().is_int() || b.type().is_uint());
+  PADDLE_ENFORCE_EQ(
+      a.type().is_int() || a.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(
+      b.type().is_int() || b.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
   Type t_a = a.type();
@@ -125,7 +160,7 @@ Expr BitwiseAndCallImpl(common::UnknownArch,
                         Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_and.";
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 }
 
 Expr BitwiseAndCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
@@ -135,10 +170,19 @@ Expr BitwiseAndCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
 Expr BitwiseAndCallImpl(common::ARMArch, const Target& target, Expr a, Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_and.";
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 }
 
 Expr BitwiseAndCallImpl(common::NVGPUArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
+  Type t_a = a.type();
+  auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_and");
+  return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
+}
+
+Expr BitwiseAndCallImpl(common::HygonDCUArchHIP,
                         const Target& target,
                         Expr a,
                         Expr b) {
@@ -154,8 +198,14 @@ Expr BitwiseAndCall(const Target& target, Expr a, Expr b) {
 }
 
 Expr operator&(Expr a, Expr b) {
-  CHECK(a.type().is_int() || a.type().is_uint());
-  CHECK(b.type().is_int() || b.type().is_uint());
+  PADDLE_ENFORCE_EQ(
+      a.type().is_int() || a.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(
+      b.type().is_int() || b.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
   Type t_a = a.type();
@@ -175,7 +225,7 @@ Expr BitwiseXorCallImpl(common::UnknownArch,
                         Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_xor.";
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 }
 
 Expr BitwiseXorCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
@@ -185,10 +235,19 @@ Expr BitwiseXorCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
 Expr BitwiseXorCallImpl(common::ARMArch, const Target& target, Expr a, Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_xor.";
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 }
 
 Expr BitwiseXorCallImpl(common::NVGPUArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
+  Type t_a = a.type();
+  auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_xor");
+  return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
+}
+
+Expr BitwiseXorCallImpl(common::HygonDCUArchHIP,
                         const Target& target,
                         Expr a,
                         Expr b) {
@@ -204,8 +263,14 @@ Expr BitwiseXorCall(const Target& target, Expr a, Expr b) {
 }
 
 Expr operator^(Expr a, Expr b) {
-  CHECK(a.type().is_int() || a.type().is_uint());
-  CHECK(b.type().is_int() || b.type().is_uint());
+  PADDLE_ENFORCE_EQ(
+      a.type().is_int() || a.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(
+      b.type().is_int() || b.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
   Type t_a = a.type();
@@ -222,7 +287,7 @@ Expr operator^(Expr a, Expr b) {
 Expr BitwiseNotCallImpl(common::UnknownArch, const Target& target, Expr a) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_not.";
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 }
 
 Expr BitwiseNotCallImpl(common::X86Arch, const Target& target, Expr a) {
@@ -232,10 +297,15 @@ Expr BitwiseNotCallImpl(common::X86Arch, const Target& target, Expr a) {
 Expr BitwiseNotCallImpl(common::ARMArch, const Target& target, Expr a) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_not.";
-  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
 }
 
 Expr BitwiseNotCallImpl(common::NVGPUArch, const Target& target, Expr a) {
+  auto func_name = hlir::GetExternFuncName(target, a->type(), "bitwise_not");
+  return lang::CallExtern(func_name, {a}, {{"vectorizable", false}});
+}
+
+Expr BitwiseNotCallImpl(common::HygonDCUArchHIP, const Target& target, Expr a) {
   auto func_name = hlir::GetExternFuncName(target, a->type(), "bitwise_not");
   return lang::CallExtern(func_name, {a}, {{"vectorizable", false}});
 }
@@ -247,7 +317,10 @@ Expr BitwiseNotCall(const Target& target, Expr a) {
 }
 
 Expr operator~(Expr a) {
-  CHECK(a.type().is_int() || a.type().is_uint());
+  PADDLE_ENFORCE_EQ(
+      a.type().is_int() || a.type().is_uint(),
+      true,
+      phi::errors::InvalidArgument("The input's type should be int or uint."));
   auto target = cinn::runtime::CurrentTarget::GetCurrentTarget();
   return BitwiseNotCall(target, a);
 }

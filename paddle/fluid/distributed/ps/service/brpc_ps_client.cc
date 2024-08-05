@@ -972,7 +972,8 @@ std::future<int32_t> BrpcPsClient::PushDenseParam(const Region *regions,
   closure->add_promise(promise);
   std::future<int> fut = promise->get_future();
   static const int REGION_ASSIGN_BUFFER_SIZE = 1024 * 10;
-  static char region_assign_buffer[REGION_ASSIGN_BUFFER_SIZE];  // 用于数据补齐
+  // 用于数据补齐
+  static char region_assign_buffer[REGION_ASSIGN_BUFFER_SIZE];  // NOLINT
   // 开始多shard并行拷贝&请求
   for (size_t i = 0; i < request_call_num; ++i) {
     closure->request(i)->set_cmd_id(PS_PUSH_DENSE_PARAM);
@@ -1460,7 +1461,7 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   PADDLE_ENFORCE_NE(
       var_name,
       "",
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Cannot find table id %d to save variables.", table_id));
 
   std::string var_store = string::Sprintf("%s", path);
@@ -1497,8 +1498,8 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   // create lod tensor
   std::shared_ptr<framework::Scope> scope;
   scope.reset(new framework::Scope());
-  auto place = platform::CPUPlace();
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto place = phi::CPUPlace();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(place);
 
   framework::Variable *var = scope->Var(var_name);
@@ -1516,7 +1517,7 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   std::ofstream fout(file_name, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
                     true,
-                    platform::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Cannot open %s to save variables.", file_name));
 
   framework::SerializeToStream(fout, *var_tensor, dev_ctx);
@@ -1731,13 +1732,13 @@ void sparse_local_merge(ValueAccessor *accessor,
                         float *merge_data,
                         const float *another_data) {
   size_t col_num = accessor->GetAccessorInfo().update_dim;
-  float *merge_data_shell[col_num];
-  const float *another_data_shell[col_num];
+  std::vector<float *> merge_data_shell(col_num);
+  std::vector<const float *> another_data_shell(col_num);
   for (size_t i = 0; i < col_num; ++i) {
     merge_data_shell[i] = merge_data + i;
     another_data_shell[i] = another_data + i;
   }
-  accessor->Merge(merge_data_shell, another_data_shell, 1);
+  accessor->Merge(merge_data_shell.data(), another_data_shell.data(), 1);
 }
 
 int BrpcPsClient::PushSparseAsyncShardMerge(
@@ -1797,13 +1798,13 @@ int BrpcPsClient::PushSparseAsyncShardMerge(
   // 去重 本地merge
   uint64_t last_key = sorted_kv_list[0].first;
   const float *last_value_data = sorted_kv_list[0].second;
-  float *last_merge_data = NULL;
+  float *last_merge_data = nullptr;
   std::shared_ptr<char> merger_buffer(new char[value_size],
                                       array_deleter<char>());
   for (size_t kv_idx = 1; kv_idx < sorted_kv_size; ++kv_idx) {
     while (kv_idx < sorted_kv_size &&
            last_key == sorted_kv_list[kv_idx].first) {
-      if (last_merge_data == NULL) {
+      if (last_merge_data == nullptr) {
         last_merge_data = reinterpret_cast<float *>(merger_buffer.get());
         memcpy(last_merge_data, last_value_data, value_size);
       }
@@ -1811,10 +1812,10 @@ int BrpcPsClient::PushSparseAsyncShardMerge(
           accessor, last_merge_data, sorted_kv_list[kv_idx].second);
       ++kv_idx;
     }
-    if (last_merge_data != NULL) {
+    if (last_merge_data != nullptr) {
       shard_kv_data.value_list[merged_kv_count].assign(
           (const char *)last_merge_data, value_size);
-      last_merge_data = NULL;
+      last_merge_data = nullptr;
     } else {
       shard_kv_data.value_list[merged_kv_count].assign(
           (const char *)sorted_kv_list[kv_idx - 1].second, value_size);
@@ -1914,9 +1915,17 @@ std::future<int32_t> BrpcPsClient::PushDense(const Region *regions,
   uint32_t pos = 0;
   for (size_t i = 0; i < region_num; ++i) {
     uint32_t data_num = regions[i].size / sizeof(float);
-    CHECK(pos + data_num <= data_size)
-        << "invalid dense size, cur pos[" << pos << "]"
-        << " data_num[" << data_num << "] size[" << data_size << "]";
+    PADDLE_ENFORCE_LE((pos + data_num),
+                      data_size,
+                      phi::errors::InvalidArgument(
+                          "Invalid dense size."
+                          "Expect the sum of current position and data number "
+                          "to be equal to or smaller than the size."
+                          "But recieved current position = %lu, data number = "
+                          "%lu, size = %lu.",
+                          pos,
+                          data_num,
+                          data_size));
     const float *region_data = (const float *)(regions[i].data);
     memcpy(data + pos, region_data, regions[i].size);
     pos += data_num;

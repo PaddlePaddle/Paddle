@@ -18,8 +18,7 @@
 
 #include "paddle/phi/core/generator.h"
 
-namespace phi {
-namespace math {
+namespace phi::math {
 
 Sampler::~Sampler() = default;
 
@@ -93,5 +92,4 @@ int64_t CustomSampler::Sample() const {
 
 float CustomSampler::Probability(int64_t value) const { return probs_[value]; }
 
-}  // namespace math
-}  // namespace phi
+}  // namespace phi::math

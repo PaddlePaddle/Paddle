@@ -16,8 +16,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 const phi::IntArray &IntArrayAttribute::data() const {
   return storage()->GetAsKey();
 }
@@ -50,7 +49,7 @@ phi::Scalar ScalarAttribute::data() const {
   } else if (isa<pir::Complex128Attribute>()) {
     return phi::Scalar(dyn_cast<pir::Complex128Attribute>().data());
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported ir attribute when casting it into "
         "phi scalar."));
   }
@@ -130,8 +129,7 @@ DataLayoutAttribute DataLayoutAttribute::Parse(
       parser.ctx, StringToDataLayoutMap().at(datalayout_token_val));
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IntArrayAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ScalarAttribute)

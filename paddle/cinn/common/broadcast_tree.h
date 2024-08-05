@@ -15,7 +15,10 @@
 #pragma once
 
 #include "paddle/cinn/adt/tree.h"
+#include "paddle/common/flags.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+
+COMMON_DECLARE_int64(pir_broadcast_tree_limit);
 
 namespace cinn::common {
 
@@ -29,7 +32,8 @@ using BroadcastLeaf = adt::List<std::vector<symbol::DimExpr>>;
 
 using BroadcastTree = adt::Tree<BroadcastBranch, BroadcastLeaf>;
 
-BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves);
+BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves,
+                                     int* num_of_leaves);
 
 std::string ToTxtString(const BroadcastTree&);
 

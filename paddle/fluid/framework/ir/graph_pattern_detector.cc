@@ -20,9 +20,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 size_t PDPattern::id_ = 0UL;
 
@@ -37,7 +35,7 @@ PDNode *PDPattern::NewNode(const std::string &name) {
     PADDLE_ENFORCE_EQ(
         node_map_.count(name),
         0UL,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "PDNode's name should be unique, get duplicate [%s]", name));
   }
 
@@ -52,7 +50,7 @@ PDNode *PDPattern::NewNode(PDNode::teller_t &&teller, const std::string &name) {
     PADDLE_ENFORCE_EQ(
         node_map_.count(name),
         0UL,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "PDNode's name should be unique, get duplicate [%s]", name));
   }
 
@@ -73,14 +71,14 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
   PADDLE_ENFORCE_NOT_NULL(a,
-                          platform::errors::NotFound("PDNode %s is not found.",
-                                                     a->name()));  // NOLINT
+                          common::errors::NotFound("PDNode %s is not found.",
+                                                   a->name()));  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(b,
-                          platform::errors::NotFound("PDNode %s is not found.",
-                                                     b->name()));  // NOLINT
+                          common::errors::NotFound("PDNode %s is not found.",
+                                                   b->name()));  // NOLINT
   PADDLE_ENFORCE_NE(a,
                     b,
-                    platform::errors::PermissionDenied(
+                    common::errors::PermissionDenied(
                         "Cannot connect the same node in the graph."));
   edges_.emplace_back(a, b);
 }
@@ -722,12 +720,12 @@ bool IsNthInput(Node *var, Node *op, const std::string &argument, size_t nth) {
   PADDLE_ENFORCE_EQ(
       var->IsVar(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function IsNthInput must be Node::Var"));
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Second parameter of function IsNthInput must be Node::Op"));
   if (!HasInput(op, argument) || op->Op()->Input(argument).size() <= nth)
     return false;
@@ -738,7 +736,7 @@ bool HasInput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function HasInput must be Node::Op"));
   auto const &names = op->Op()->InputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
@@ -750,7 +748,7 @@ bool HasOutput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function HasOutput must be Node::Op"));
   auto const &names = op->Op()->OutputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
@@ -762,12 +760,12 @@ bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
   PADDLE_ENFORCE_EQ(
       var->IsVar(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function IsNthOutput must be Node::Var"));
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Second parameter of function IsNthOutput must be Node::Op"));
   if (!HasOutput(op, argument) || op->Op()->Output(argument).size() <= nth)
     return false;
@@ -2512,40 +2510,8 @@ PDNode *patterns::DotProductAttention::operator()(bool with_dropout) {
   attn_qk_matmul->LinksFrom({attn_q_scale_out_var, attn_k_transpose_out_var})
       .LinksTo({attn_qk_matmul_out_var});
 
-  auto *attn_mask_var =
-      pattern->NewNode(attn_mask_repr())->assert_is_op_input("cast", "X");
-  auto *attn_mask_cast1 =
-      pattern->NewNode(attn_mask_cast1_repr())->assert_is_op("cast");
-  auto *attn_mask_cast1_out_var = pattern->NewNode(attn_mask_cast1_out_repr())
-                                      ->assert_is_op_output("cast", "Out")
-                                      ->assert_is_op_input("cast", "X");
-  attn_mask_cast1->LinksFrom({attn_mask_var})
-      .LinksTo({attn_mask_cast1_out_var});
-
-  auto *attn_mask_cast2 =
-      pattern->NewNode(attn_mask_cast2_repr())->assert_is_op("cast");
-  auto *attn_mask_cast2_out_var = pattern->NewNode(attn_mask_cast2_out_repr())
-                                      ->assert_is_op_output("cast", "Out")
-                                      ->assert_is_op_input("scale", "X");
-  attn_mask_cast2->LinksFrom({attn_mask_cast1_out_var})
-      .LinksTo({attn_mask_cast2_out_var});
-
-  auto *attn_mask_scale1 =
-      pattern->NewNode(attn_mask_scale1_repr())->assert_is_op("scale");
-  auto *attn_mask_scale1_out_var = pattern->NewNode(attn_mask_scale1_out_repr())
-                                       ->assert_is_op_output("scale", "Out")
-                                       ->assert_is_op_input("scale", "X");
-  attn_mask_scale1->LinksFrom({attn_mask_cast2_out_var})
-      .LinksTo({attn_mask_scale1_out_var});
-
-  auto *attn_mask_scale2 =
-      pattern->NewNode(attn_mask_scale2_repr())->assert_is_op("scale");
-  auto *attn_mask_scale2_out_var =
-      pattern->NewNode(attn_mask_scale2_out_repr())
-          ->assert_is_op_output("scale", "Out")
-          ->assert_is_op_input("elementwise_add", "Y");
-  attn_mask_scale2->LinksFrom({attn_mask_scale1_out_var})
-      .LinksTo({attn_mask_scale2_out_var});
+  auto *attn_mask_var = pattern->NewNode(attn_mask_repr())
+                            ->assert_is_op_input("elementwise_add", "Y");
 
   auto *attn_mask_eleadd = pattern->NewNode(attn_mask_eleadd_repr())
                                ->assert_is_op("elementwise_add");
@@ -2553,8 +2519,7 @@ PDNode *patterns::DotProductAttention::operator()(bool with_dropout) {
       pattern->NewNode(attn_mask_eleadd_out_repr())
           ->assert_is_op_output("elementwise_add", "Out")
           ->assert_is_op_input("softmax", "X");
-  attn_mask_eleadd
-      ->LinksFrom({attn_mask_scale2_out_var, attn_qk_matmul_out_var})
+  attn_mask_eleadd->LinksFrom({attn_mask_var, attn_qk_matmul_out_var})
       .LinksTo({attn_mask_eleadd_out_var});
 
   auto *attn_softmax =
@@ -5467,6 +5432,4 @@ void patterns::SparseConvOptimPartern::operator()() {
       .LinksTo({sp_conv3d_out});
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

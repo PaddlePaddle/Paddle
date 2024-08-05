@@ -32,7 +32,7 @@ class TrtConvertBitwiseOrTest(TrtLayerAutoScanTest):
             if self.dims == 4:
                 return np.random.random([batch, 3, 3, 24]).astype(np.int32)
             elif self.dims == 3:
-                return np.random.random([batch, 3, 24]).astype(np.bool8)
+                return np.random.random([batch, 3, 24]).astype(np.bool_)
             elif self.dims == 2:
                 return np.random.random([batch, 24]).astype(np.bool_)
 

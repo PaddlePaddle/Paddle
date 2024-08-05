@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle.pir_utils import test_with_pir_api
+
+
+def get_ref_api():
+    return (
+        np.trapezoid
+        if np.lib.NumpyVersion(np.__version__) >= "2.0.0"
+        else np.trapz  # noqa: NPY201
+    )
 
 
 class TestTrapezoidAPI(unittest.TestCase):
@@ -38,14 +47,20 @@ class TestTrapezoidAPI(unittest.TestCase):
             )
 
     def set_api(self):
-        self.ref_api = np.trapz
+        self.ref_api = get_ref_api()
         self.paddle_api = paddle.trapezoid
 
     def setUp(self):
         self.set_api()
         self.set_args()
         self.get_output()
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if paddle.device.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -67,7 +82,13 @@ class TestTrapezoidAPI(unittest.TestCase):
     @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.device.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
@@ -227,7 +248,7 @@ class TestTrapezoidError(unittest.TestCase):
 class Testfp16Trapezoid(TestTrapezoidAPI):
     def set_api(self):
         self.paddle_api = paddle.trapezoid
-        self.ref_api = np.trapz
+        self.ref_api = get_ref_api()
 
     @test_with_pir_api
     def test_fp16_with_gpu(self):

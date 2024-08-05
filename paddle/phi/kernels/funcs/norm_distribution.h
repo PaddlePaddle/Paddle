@@ -55,4 +55,34 @@ inline void NormalDistribution(phi::dtype::bfloat16* data,
   }
 }
 
+template <>
+inline void NormalDistribution(phi::dtype::complex<float>* data,
+                               const int64_t& size,
+                               const float& mean,
+                               const float& std,
+                               std::shared_ptr<std::mt19937_64> engine) {
+  float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
+  std::normal_distribution<float> dist(mean, std_of_real_or_imag);
+  for (int64_t i = 0; i < size; ++i) {
+    float real = dist(*engine);
+    float imag = dist(*engine);
+    data[i] = phi::dtype::complex<float>(real, imag);
+  }
+}
+
+template <>
+inline void NormalDistribution(phi::dtype::complex<double>* data,
+                               const int64_t& size,
+                               const float& mean,
+                               const float& std,
+                               std::shared_ptr<std::mt19937_64> engine) {
+  float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
+  std::normal_distribution<double> dist(mean, std_of_real_or_imag);
+  for (int64_t i = 0; i < size; ++i) {
+    double real = dist(*engine);
+    double imag = dist(*engine);
+    data[i] = phi::dtype::complex<double>(real, imag);
+  }
+}
+
 }  // namespace phi

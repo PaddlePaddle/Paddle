@@ -332,6 +332,10 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(spatial_transformer_resblock_xpu_fuse_pass inference DIR xpu
                DEPS ${XPU_PASS_DEPS})
+  pass_library(weight_only_linear_xpu_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(block_multihead_attention_xpu_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(

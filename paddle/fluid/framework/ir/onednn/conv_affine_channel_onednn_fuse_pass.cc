@@ -23,15 +23,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -64,7 +60,7 @@ void recompute_bias_and_weights(const Scope* scope,
   // Re-compute bias of conv2d from AffineChannel
   PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(),
                     ac_bias_tensor.dims(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "phi::DenseTensor elementwise y(%d) and activation "
                         "bias(%d) must have same "
                         "dimension.",
@@ -222,12 +218,12 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 void ConvAffineChannelFusePass::FuseConvAffineChannel(
     ir::Graph* graph, const std::string& conv_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+      scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -309,9 +305,7 @@ void ConvAffineChannelFusePass::FuseConvAffineChannel(
   AddStatis(found_conv_ac_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(conv_affine_channel_onednn_fuse_pass,
               paddle::framework::ir::ConvAffineChannelFusePass);

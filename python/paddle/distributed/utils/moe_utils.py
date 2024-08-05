@@ -124,7 +124,7 @@ def global_scatter(
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'global_scatter',
         )
         check_variable_and_dtype(
@@ -249,7 +249,7 @@ def global_gather(
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'global_gather',
         )
 

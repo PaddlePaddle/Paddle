@@ -52,7 +52,7 @@ class DependencyBuilder {
     PADDLE_ENFORCE_GE(
         op_happens_before_->size(),
         0,
-        phi::errors::Unavailable("op_happen_before is not yet built"));
+        common::errors::Unavailable("op_happen_before is not yet built"));
     return op_happens_before_->at(prior_op_idx).at(posterior_op_idx);
   }
 
@@ -62,6 +62,8 @@ class DependencyBuilder {
     return &((*instructions_)[op1].DeviceContext()) ==
            &((*instructions_)[op2].DeviceContext());
   }
+
+  virtual const std::string& GetInstructionName(size_t op_idx) const;
 
  protected:
   void AddDependencyForCoalesceTensorOp();
@@ -127,6 +129,8 @@ class PirDependencyBuilder : public DependencyBuilder {
            &((instructions_)[op2]->DeviceContext());
   }
 
+  const std::string& GetInstructionName(size_t op_idx) const override;
+
  private:
   void AddDependencyForCommunicationOp() override;
 
@@ -156,7 +160,7 @@ class DependencyBuilderSimplify {
     PADDLE_ENFORCE_GE(
         op_happens_before_.size(),
         0,
-        phi::errors::Unavailable("op_happen_before is not yet built"));
+        common::errors::Unavailable("op_happen_before is not yet built"));
     return op_happens_before_.at(prior_op_idx).at(posterior_op_idx);
   }
   std::vector<size_t> get_new_executor_order();

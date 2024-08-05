@@ -25,22 +25,26 @@ namespace phi {
 #define _PhiForEachDataTypeHelper_(callback, cpp_type, data_type) \
   callback(cpp_type, data_type);
 
-#define _PhiForEachDataType_(callback)                              \
-  _PhiForEachDataTypeHelper_(callback, float, DataType::FLOAT32);   \
-  _PhiForEachDataTypeHelper_(                                       \
-      callback, ::phi::dtype::float16, DataType::FLOAT16);          \
-  _PhiForEachDataTypeHelper_(                                       \
-      callback, ::phi::dtype::bfloat16, DataType::BFLOAT16);        \
-  _PhiForEachDataTypeHelper_(callback, double, DataType::FLOAT64);  \
-  _PhiForEachDataTypeHelper_(callback, int, DataType::INT32);       \
-  _PhiForEachDataTypeHelper_(callback, int64_t, DataType::INT64);   \
-  _PhiForEachDataTypeHelper_(callback, bool, DataType::BOOL);       \
-  _PhiForEachDataTypeHelper_(callback, uint8_t, DataType::UINT8);   \
-  _PhiForEachDataTypeHelper_(callback, int16_t, DataType::INT16);   \
-  _PhiForEachDataTypeHelper_(callback, int8_t, DataType::INT8);     \
-  _PhiForEachDataTypeHelper_(                                       \
-      callback, ::phi::dtype::complex<float>, DataType::COMPLEX64); \
-  _PhiForEachDataTypeHelper_(                                       \
+#define _PhiForEachDataType_(callback)                                 \
+  _PhiForEachDataTypeHelper_(callback, float, DataType::FLOAT32);      \
+  _PhiForEachDataTypeHelper_(                                          \
+      callback, ::phi::dtype::float16, DataType::FLOAT16);             \
+  _PhiForEachDataTypeHelper_(                                          \
+      callback, ::phi::dtype::bfloat16, DataType::BFLOAT16);           \
+  _PhiForEachDataTypeHelper_(                                          \
+      callback, ::phi::dtype::float8_e4m3fn, DataType::FLOAT8_E4M3FN); \
+  _PhiForEachDataTypeHelper_(                                          \
+      callback, ::phi::dtype::float8_e5m2, DataType::FLOAT8_E5M2);     \
+  _PhiForEachDataTypeHelper_(callback, double, DataType::FLOAT64);     \
+  _PhiForEachDataTypeHelper_(callback, int, DataType::INT32);          \
+  _PhiForEachDataTypeHelper_(callback, int64_t, DataType::INT64);      \
+  _PhiForEachDataTypeHelper_(callback, bool, DataType::BOOL);          \
+  _PhiForEachDataTypeHelper_(callback, uint8_t, DataType::UINT8);      \
+  _PhiForEachDataTypeHelper_(callback, int16_t, DataType::INT16);      \
+  _PhiForEachDataTypeHelper_(callback, int8_t, DataType::INT8);        \
+  _PhiForEachDataTypeHelper_(                                          \
+      callback, ::phi::dtype::complex<float>, DataType::COMPLEX64);    \
+  _PhiForEachDataTypeHelper_(                                          \
       callback, ::phi::dtype::complex<double>, DataType::COMPLEX128);
 
 #define _PhiForEachDataTypeTiny_(callback)                    \
@@ -59,7 +63,7 @@ inline void VisitDataType(phi::DataType type, Visitor visitor) {
 
   _PhiForEachDataType_(PhiVisitDataTypeCallback);
 #undef PhiVisitDataTypeCallback
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
 }
 
@@ -75,7 +79,7 @@ inline void VisitDataTypeTiny(phi::DataType type, Visitor visitor) {
 
   _PhiForEachDataTypeTiny_(PhiVisitDataTypeCallbackTiny);
 #undef PhiVisitDataTypeCallbackTiny
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
 }
 
@@ -131,7 +135,9 @@ enum ProtoDataType {
   BF16 = 22,
   COMPLEX64 = 23,
   COMPLEX128 = 24,
-  PSTRING = 29
+  PSTRING = 29,
+  FP8_E4M3FN = 32,
+  FP8_E5M2 = 33
 };
 
 inline DataType TransToPhiDataType(const int& dtype) {
@@ -156,6 +162,10 @@ inline DataType TransToPhiDataType(const int& dtype) {
       return DataType::COMPLEX64;
     case ProtoDataType::COMPLEX128:
       return DataType::COMPLEX128;
+    case ProtoDataType::FP8_E4M3FN:
+      return DataType::FLOAT8_E4M3FN;
+    case ProtoDataType::FP8_E5M2:
+      return DataType::FLOAT8_E5M2;
     case ProtoDataType::FP16:
       return DataType::FLOAT16;
     case ProtoDataType::BF16:
@@ -193,6 +203,10 @@ inline int TransToProtoVarType(const DataType& dtype) {
       return ProtoDataType::COMPLEX64;
     case DataType::COMPLEX128:
       return ProtoDataType::COMPLEX128;
+    case DataType::FLOAT8_E4M3FN:
+      return ProtoDataType::FP8_E4M3FN;
+    case DataType::FLOAT8_E5M2:
+      return ProtoDataType::FP8_E5M2;
     case DataType::FLOAT16:
       return ProtoDataType::FP16;
     case DataType::BFLOAT16:
@@ -204,7 +218,7 @@ inline int TransToProtoVarType(const DataType& dtype) {
     case DataType::UNDEFINED:
       return ProtoDataType::RAW;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported data type `%s` when casting it into "
           "paddle data type.",
           dtype));
@@ -229,7 +243,8 @@ inline ncclDataType_t ToNCCLDataType(DataType type) {
     return ncclInt8;
   } else if (type == DataType::BOOL) {
     return ncclUint8;
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
   } else if (type == DataType::BFLOAT16) {
     return ncclBfloat16;
 #endif

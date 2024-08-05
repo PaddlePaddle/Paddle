@@ -240,18 +240,32 @@ def lm_model(
         init_cell, shape=[num_layers, -1, hidden_size]
     )
 
-    x_emb = paddle.static.nn.embedding(
-        input=x,
-        size=[vocab_size, hidden_size],
-        dtype='float32',
-        is_sparse=False,
-        param_attr=base.ParamAttr(
-            name='embedding_para',
-            initializer=paddle.nn.initializer.Uniform(
-                low=-init_scale, high=init_scale
+    if paddle.framework.in_pir_mode():
+        Emb = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            sparse=False,
+            weight_attr=base.ParamAttr(
+                name='embedding_para',
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-init_scale, high=init_scale
+                ),
             ),
-        ),
-    )
+        )
+        x_emb = Emb(x)
+    else:
+        x_emb = paddle.static.nn.embedding(
+            input=x,
+            size=[vocab_size, hidden_size],
+            dtype='float32',
+            is_sparse=False,
+            param_attr=base.ParamAttr(
+                name='embedding_para',
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-init_scale, high=init_scale
+                ),
+            ),
+        )
 
     x_emb = paddle.reshape(x_emb, shape=[-1, num_steps, hidden_size])
     if dropout is not None and dropout > 0.0:
@@ -448,9 +462,9 @@ class PaddingRNNTestBase(unittest.TestCase):
                 self.train_program,
                 feed=input_data_feed,
                 fetch_list=[
-                    self.loss.name,
-                    self.last_hidden.name,
-                    self.last_cell.name,
+                    self.loss,
+                    self.last_hidden,
+                    self.last_cell,
                 ],
                 use_program_cache=use_program_cache,
             )

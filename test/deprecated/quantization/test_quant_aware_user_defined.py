@@ -13,10 +13,15 @@
 # limitations under the License.
 import logging
 import os
+import sys
 import unittest
 
+sys.path.append(".")
 import numpy as np
-from test_quant_aware import MobileNet, StaticCase
+from test_quant_aware_deprecated import (
+    MobileNet,
+    StaticCase,
+)
 
 import paddle
 from paddle.static.quantization.quanter import convert, quant_aware

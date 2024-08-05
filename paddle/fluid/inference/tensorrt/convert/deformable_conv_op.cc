@@ -58,7 +58,7 @@ class DeformableConvOpConverter : public OpConverter {
         PADDLE_GET_CONST(int, op_desc.GetAttr("deformable_groups"));
     auto im2col_step = PADDLE_GET_CONST(int, op_desc.GetAttr("im2col_step"));
 
-    nvinfer1::Weights weights;
+    nvinfer1::Weights weights = {};
     weights.count = filter_tensor->numel();
     // TODO(bukejiyu): deformable_conv currently does not support fp16
     // mode,will be supported in the future.

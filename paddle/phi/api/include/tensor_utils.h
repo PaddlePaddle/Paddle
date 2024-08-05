@@ -62,7 +62,7 @@ PADDLE_API Tensor from_blob(void* data,
  * @note Input of `Reshard` should be a `paddle::Tensor` whose impl is
  * shared_ptr of DistTensor. According to the given DistAttr, input will be
  * reshard to wanted distributed state. And it will return shared_ptr of a new
- * DistTensor as outptut.
+ * DistTensor as output.
  *
  * @param input The input tensor to be resharded.
  * @param dist_attr The dist_attr to be resharded.

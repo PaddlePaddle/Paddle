@@ -494,7 +494,7 @@ class AutoParallelForwardChecker:
             # check eager auto parallel forward
             if len(actual_ret) != len(self.eager_forward_desire):
                 msg = (
-                    f"The eager auto parallel out tensor nums is different with eager out tensor nums on {str(self.place)}."
+                    f"The eager auto parallel out tensor nums is different with eager out tensor nums on {self.place}."
                     f'eager auto parallel out tensor nums = {len(actual_ret)}, eager out tensor nums = {len(self.eager_forward_desire)}. \n'
                 )
                 raise RuntimeError(msg)
@@ -713,7 +713,7 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
             # check eager auto parallel forward
             if len(actual_forward_res) != len(self.eager_forward_desire):
                 msg = (
-                    f"The eager auto parallel out tensor nums is different with eager out tensor nums on {str(self.place)}."
+                    f"The eager auto parallel out tensor nums is different with eager out tensor nums on {self.place}."
                     f'eager auto parallel out tensor nums = {len(actual_forward_res)}, eager out tensor nums = {len(self.eager_forward_desire)}. \n'
                 )
                 raise RuntimeError(msg)
@@ -739,7 +739,7 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
             # check eager auto parallel grad
             if len(actual_grad_res) != len(self.eager_grad_desire):
                 msg = (
-                    f"The eager auto parallel grad out tensor nums is different with eager grad out tensor nums on {str(self.place)}."
+                    f"The eager auto parallel grad out tensor nums is different with eager grad out tensor nums on {self.place}."
                     f'eager auto parallel grad out tensor nums = {len(actual_grad_res)}, eager grad out tensor nums = {len(self.eager_grad_desire)}. \n'
                 )
                 raise RuntimeError(msg)

@@ -101,7 +101,11 @@ class TileOpConverter : public OpConverter {
       layer->setInput(1, *start_tensor);
       layer->setInput(2, *output_shape_tensor);
       layer->setInput(3, *stride_tensor);
+#if IS_TRT_VERSION_GE(8600)
+      layer->setMode(nvinfer1::SampleMode::kWRAP);
+#else
       layer->setMode(nvinfer1::SliceMode::kWRAP);
+#endif
       ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
 
     } else {
@@ -114,7 +118,7 @@ class TileOpConverter : public OpConverter {
       PADDLE_ENFORCE_GE(
           rank + 1,
           repeat_times.size(),
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Can't change batchsize, please check repeat_times"));
       int32_t diff = rank + 1 - repeat_times.size();
       if (diff > 0) repeat_times.insert(repeat_times.begin(), diff, 1);
@@ -123,7 +127,7 @@ class TileOpConverter : public OpConverter {
       PADDLE_ENFORCE_EQ(
           repeat_times[0],
           1,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Can't expand on batchsize, please check repeat_times"));
       output_stride.nbDims = rank;
       for (int32_t i = 0; i < rank; i++) {
@@ -132,7 +136,11 @@ class TileOpConverter : public OpConverter {
       }
       auto layer = TRT_ENGINE_ADD_LAYER(
           engine_, Slice, *input, input_shape, output_dim, output_stride);
+#if IS_TRT_VERSION_GE(8600)
+      layer->setMode(nvinfer1::SampleMode::kWRAP);
+#else
       layer->setMode(nvinfer1::SliceMode::kWRAP);
+#endif
       ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
     }
 

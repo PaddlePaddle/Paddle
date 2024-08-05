@@ -8,5 +8,6 @@ foreach(src ${TEST_OPS})
   py_test(${src} SRCS ${src}.py)
 endforeach()
 
-set_tests_properties(test_faster_tokenizer_op PROPERTIES LABELS
-                                                         "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_faster_tokenizer_op_deprecated
+                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_faster_tokenizer_op_deprecated PROPERTIES TIMEOUT 120)

@@ -19,7 +19,7 @@ import sys
 
 def classify_cases_by_mem(rootPath):
     """classify cases by mem"""
-    case_filename = '%s/build/classify_case_by_cardNum.txt' % rootPath
+    case_filename = f'{rootPath}/build/classify_case_by_cardNum.txt'
     case_exec_100 = [
         'test_conv_eltwiseadd_bn_fuse_pass',
         'test_trt_convert_pool2d',
@@ -124,14 +124,14 @@ def classify_cases_by_mem(rootPath):
             else:
                 case_mem_1[case] = new_lastest_mem[case]["mem_nvidia"]
 
-        with open('/pre_test/%s_mem0' % cardType, 'w') as f:
+        with open(f'/pre_test/{cardType}_mem0', 'w') as f:
             f.write(case_mem_0)
             f.close()
 
         case_mem_1_sort = sorted(case_mem_1.items(), key=lambda x: x[1])
         case_mem_1_line = '^job$'
         mem_1_sum = 0
-        with open('/pre_test/%s' % cardType, 'w') as f_not_0:
+        with open(f'/pre_test/{cardType}', 'w') as f_not_0:
             for index in case_mem_1_sort:
                 if mem_1_sum < 14 * 1024 * 2:
                     mem_1_sum += index[1]
@@ -150,7 +150,7 @@ def classify_cases_by_mem(rootPath):
                     f_not_0.write(case_mem_1_line + '\n')
             f_not_0.close()
 
-    os.system('cp %s/build/nightly_case /pre_test/' % rootPath)
+    os.system(f'cp {rootPath}/build/nightly_case /pre_test/')
 
 
 if __name__ == '__main__':

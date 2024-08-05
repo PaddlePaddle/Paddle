@@ -204,7 +204,7 @@ def make_hashable(x, error_msg=None):
             return tuple(map(make_hashable, x.values()))
 
         error_msg = error_msg or "Requires a hashable object."
-        raise ValueError(error_msg + " But received type: %s" % type_name(x))
+        raise ValueError(f"{error_msg} But received type: {type_name(x)}")
 
     return x
 
@@ -327,8 +327,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         callable_func = getattr(module, func_name)
     else:
         raise ValueError(
-            'Function: %s doesn\'t exist in the Module transformed from AST.'
-            % func_name
+            f'Function: {func_name} doesn\'t exist in the Module transformed from AST.'
         )
     # After transform dygraph function into callable_func saved in tmp file,
     # it lost the global variables from imported statements or defined in source file.
@@ -545,6 +544,12 @@ def cinn_is_enabled(build_strategy, backend):
     return False
 
 
+def cse_is_enabled():
+    return paddle.get_flags(["FLAGS_enable_cse_in_dy2st"])[
+        "FLAGS_enable_cse_in_dy2st"
+    ]
+
+
 def prim_is_enabled():
     core.check_and_set_prim_all_enabled()
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
@@ -588,8 +593,8 @@ def backend_guard(backend):
 
 def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):
     grad_var_names = {}
-    fn = (
-        lambda grad_var: grad_var.name
+    fn = lambda grad_var: (
+        grad_var.name
         if isinstance(grad_var, framework.Variable)
         else framework.EMPTY_VAR_NAME
     )

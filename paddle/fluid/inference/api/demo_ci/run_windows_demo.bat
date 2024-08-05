@@ -65,12 +65,12 @@ if /i "%use_gpu%"=="Y" (
   set use_gpu=N
 )
 
-rem set_path_vs_command_prompt 
+rem set_path_vs_command_prompt
 :set_vcvarsall_dir
 SET /P vcvarsall_dir="Please input the path of visual studio command Prompt, such as C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat   =======>"
 set tmp_var=!vcvarsall_dir!
 call:remove_space
-set vcvarsall_dir=!tmp_var!   
+set vcvarsall_dir=!tmp_var!
 IF NOT EXIST "%vcvarsall_dir%" (
     echo "------------%vcvarsall_dir% not exist------------"
     goto set_vcvarsall_dir
@@ -104,18 +104,18 @@ if EXIST "%source_path%\%model_name%.tar.gz" (
     SET /P python_path="Please input the path of python.exe, such as C:\Python37\python.exe =======>"
     set tmp_var=!python_path!
     call:remove_space
-    set python_path=!tmp_var!   
+    set python_path=!tmp_var!
     if "!python_path!"=="" (
       set python_path=python.exe
     ) else (
       if NOT exist "!python_path!" (
-        echo "------------!python_path! not exist------------" 
+        echo "------------!python_path! not exist------------"
         goto:eof
-      )  
+      )
     )
     md %source_path%\%model_name%
     !python_path! %source_path%\untar_model.py %source_path%\%model_name%.tar.gz %source_path%\%model_name%
-    
+
     SET error_code=N
     if "%model_name%"=="mobilenet" (
       if NOT EXIST "%source_path%\%model_name%\model" set error_code=Y
@@ -127,7 +127,7 @@ if EXIST "%source_path%\%model_name%.tar.gz" (
        del /f /s /q "%source_path%\%model_name%\*.*" >nul 2>&1
        rd /s /q  "%source_path%\%model_name%" >nul 2>&1
        goto:eof
-    )  
+    )
   )
 )
 
@@ -201,7 +201,7 @@ if /i "%use_gpu%"=="Y" (
 )
 
 if exist "%build_path%\Release\%demo_name%.exe" (
-  cd %build_path%\Release 
+  cd %build_path%\Release
   set GLOG_v=4
   if "%demo_name%"=="simple_on_word2vec" (
       %demo_name%.exe --dirname="%source_path%\%model_name%\%model_name%" --use_gpu="%use_gpu%"

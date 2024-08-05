@@ -17,9 +17,9 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
@@ -34,8 +34,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int numel = x->numel();
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
+    ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
 
     int nranks = ctx.Attr<int>("nranks");
     int root_id = ctx.Attr<int>("root");
@@ -47,13 +46,13 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         root_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The root_id (%d) for c_scatter_op must be non-negative.",
             root_id));
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for c_scatter_op must be non-negative.",
             ring_id));
 
@@ -62,7 +61,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -73,12 +72,12 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       PADDLE_ENFORCE_EQ(nranks,
                         comm_ctx->GetSize(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The number of ranks (%d) you set of must "
                             "be equal to comm_ctx->GetSize() (%d).",
                             nranks,
@@ -90,7 +89,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
       comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
       PADDLE_ENFORCE_EQ(nranks,
                         comm->nranks(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The number of ranks (%d) you set of must "
                             "be equal to comm->nranks (%d).",
                             nranks,
@@ -113,11 +112,10 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
       if (root_id == comm_ctx->GetRank()) {
         comm_ctx->Broadcast(
             const_cast<phi::DenseTensor*>(x), *x, root_id, stream);
-        framework::TensorCopy(
-            *static_cast<const phi::DenseTensor*>(x),
-            place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<phi::DenseTensor*>(&temp));
+        framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
+                              place,
+                              *phi::DeviceContextPool::Instance().Get(place),
+                              static_cast<phi::DenseTensor*>(&temp));
       } else {
         comm_ctx->Broadcast(&temp, temp, root_id, stream);
       }
@@ -131,11 +129,10 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
             comm->comm(),
             stream));
 
-        framework::TensorCopy(
-            *static_cast<const phi::DenseTensor*>(x),
-            place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<phi::DenseTensor*>(&temp));
+        framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
+                              place,
+                              *phi::DeviceContextPool::Instance().Get(place),
+                              static_cast<phi::DenseTensor*>(&temp));
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
             out_ptr, numel, dtype, root_id, comm->comm(), stream));
@@ -158,7 +155,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         true,
         false,
-        phi::errors::Unavailable("PaddlePaddle should compile with GPU."));
+        common::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };

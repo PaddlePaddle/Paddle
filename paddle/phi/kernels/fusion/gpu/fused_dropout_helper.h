@@ -24,6 +24,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #include "paddle/phi/kernels/funcs/functors.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_act_bias.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_common.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_layernorm_residual_dropout_bias.h"
@@ -230,31 +231,31 @@ class FusedDropoutHelper {
             quant_max_bound,
             quant_min_bound);
       } else {
-        phi::fusion::GeluFunctor<T> gelu;
-        phi::fusion::LaunchDropoutActBias<T,
-                                          MaskType,
-                                          phi::fusion::GeluFunctor<T>,
-                                          InType,
-                                          OutType>(
-            gelu,
-            dropout_param_.seed,
-            rows_,
-            cols_,
-            dropout_param_.increment,
-            dropout_param_.dropout_prob,
-            dropout_param_.is_upscale_in_train,
-            dropout_param_.is_test,
-            src,
-            bias,
-            out,
-            mask,
-            ctx,
-            quant_last_in_scale,
-            dequant_out_scale_data,
-            quant_next_in_scale,
-            quant_round_type,
-            quant_max_bound,
-            quant_min_bound);
+        phi::fusion::LayerNormParamTypeGeluFunctor<T> gelu;
+        phi::fusion::LaunchDropoutActBias<
+            T,
+            MaskType,
+            phi::fusion::LayerNormParamTypeGeluFunctor<T>,
+            InType,
+            OutType>(gelu,
+                     dropout_param_.seed,
+                     rows_,
+                     cols_,
+                     dropout_param_.increment,
+                     dropout_param_.dropout_prob,
+                     dropout_param_.is_upscale_in_train,
+                     dropout_param_.is_test,
+                     src,
+                     bias,
+                     out,
+                     mask,
+                     ctx,
+                     quant_last_in_scale,
+                     dequant_out_scale_data,
+                     quant_next_in_scale,
+                     quant_round_type,
+                     quant_max_bound,
+                     quant_min_bound);
       }
     } else if (act_method == "relu") {
       phi::funcs::ReluFunctor<T> relu;

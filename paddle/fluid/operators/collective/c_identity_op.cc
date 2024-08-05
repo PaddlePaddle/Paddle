@@ -17,8 +17,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/unary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CIdentityOp : public framework::OperatorWithKernel {
  public:
@@ -31,7 +30,7 @@ class CIdentityOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for c_identity must be non-negative.", ring_id));
     phi::DDim dim = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", dim);
@@ -78,8 +77,7 @@ class CIdentityOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetAttrMap(this->Attrs());
   }
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

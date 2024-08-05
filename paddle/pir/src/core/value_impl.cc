@@ -23,13 +23,12 @@ uint64_t GenerateId() {
   return ++uid;
 }
 }  // namespace
-namespace pir {
 
-namespace detail {
+namespace pir::detail {
 void ValueImpl::set_first_use(OpOperandImpl *first_use) {
   uint32_t offset = kind();
-  first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(
-      reinterpret_cast<uintptr_t>(first_use) + offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(first_use) + offset;
+  first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(ptr);
   VLOG(10) << "The index of this value is: " << offset
            << ". The address of this value is: " << this
            << ". This value first use is: " << first_use << ".";
@@ -58,11 +57,10 @@ ValueImpl::ValueImpl(Type type, uint32_t kind) : id_(GenerateId()) {
           "The kind of value_impl[%u] must not bigger than BLOCK_ARG_IDX(7)",
           kind));
   type_ = type;
-  first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(
-      reinterpret_cast<uintptr_t>(nullptr) + kind);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(nullptr) + kind;
+  first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(ptr);
   VLOG(10) << "Construct a ValueImpl whose's kind is " << kind
            << ". The value_impl address is: " << this;
 }
 
-}  // namespace detail
-}  // namespace pir
+}  // namespace pir::detail

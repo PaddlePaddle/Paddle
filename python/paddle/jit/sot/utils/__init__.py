@@ -17,7 +17,6 @@ from .envs import (  # noqa: F401
     ENV_CLEAN_CODE,
     ENV_COST_MODEL,
     ENV_MIN_GRAPH_SIZE,
-    ENV_SHOW_TRACKERS,
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_EXPORT,
     ENV_SOT_LOG_LEVEL,
@@ -39,10 +38,10 @@ from .exceptions import (  # noqa: F401
 )
 from .magic_methods import magic_method_builtin_dispatch  # noqa: F401
 from .paddle_api_config import (  # noqa: F401
+    get_tensor_methods,
     is_break_graph_tensor_methods,
     is_inplace_api,
     is_not_supported_paddle_layer,
-    paddle_tensor_methods,
 )
 from .utils import (  # noqa: F401
     Cache,

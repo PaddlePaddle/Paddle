@@ -20,9 +20,18 @@ from paddle.static.amp import AutoMixedPrecisionLists, fp16_lists
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
 )
 class TestAMPList(unittest.TestCase):
     def setUp(self):
@@ -132,14 +141,28 @@ class TestAMPList(unittest.TestCase):
             self.assertEqual(
                 fp16_lists.get_low_precision_dtypestr(dtype), dtype
             )
-        self.assertEqual(
-            fp16_lists.get_low_precision_dtypestr(core.VarDesc.VarType.FP16),
-            "float16",
-        )
-        self.assertEqual(
-            fp16_lists.get_low_precision_dtypestr(core.VarDesc.VarType.BF16),
-            "bfloat16",
-        )
+        if paddle.framework.use_pir_api():
+            self.assertEqual(
+                fp16_lists.get_low_precision_dtypestr(core.DataType.FLOAT16),
+                "float16",
+            )
+            self.assertEqual(
+                fp16_lists.get_low_precision_dtypestr(core.DataType.BFLOAT16),
+                "bfloat16",
+            )
+        else:
+            self.assertEqual(
+                fp16_lists.get_low_precision_dtypestr(
+                    core.VarDesc.VarType.FP16
+                ),
+                "float16",
+            )
+            self.assertEqual(
+                fp16_lists.get_low_precision_dtypestr(
+                    core.VarDesc.VarType.BF16
+                ),
+                "bfloat16",
+            )
 
         def _run_get_dtypestr():
             fp16_lists.get_low_precision_dtypestr(dtype="int64")

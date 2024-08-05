@@ -19,21 +19,17 @@
 
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class OpDesc;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 
 void InterpolateOneDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
     VLOG(3) << "Do not handle interpolate_onednn_pass";
@@ -65,9 +61,7 @@ void InterpolateOneDNNPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(interpolate_onednn_pass,
               paddle::framework::ir::InterpolateOneDNNPass);

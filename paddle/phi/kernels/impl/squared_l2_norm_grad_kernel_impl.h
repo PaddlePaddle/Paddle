@@ -28,7 +28,7 @@ void SquaredL2NormGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       dout.numel(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(GRAD@Out) of SquaredL2NormGradOP should be a scalar."));
 
   auto input = phi::EigenVector<T>::Flatten(x);

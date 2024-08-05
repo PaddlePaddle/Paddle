@@ -37,18 +37,18 @@ phi::Place GetPlaceFromPtr(void* data) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
-  cudaPointerAttributes attr;
+  cudaPointerAttributes attr = {};
   cudaError_t status = cudaPointerGetAttributes(&attr, data);
   if (status == cudaSuccess && attr.type == cudaMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
   }
 #else
   PADDLE_THROW(
-      phi::errors::Unimplemented("The GetPlaceFromPtr() method is only "
-                                 "supported when CUDA version >= 10.0."));
+      common::errors::Unimplemented("The GetPlaceFromPtr() method is only "
+                                    "supported when CUDA version >= 10.0."));
 #endif
 #else
-  hipPointerAttribute_t attr;
+  hipPointerAttribute_t attr = {};
   hipError_t status = hipPointerGetAttributes(&attr, data);
   if (status == hipSuccess && attr.memoryType == hipMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
@@ -67,11 +67,11 @@ PADDLE_API Tensor from_blob(void* data,
                             const phi::Place& place,
                             const Deleter& deleter) {
   PADDLE_ENFORCE_NOT_NULL(
-      data, phi::errors::InvalidArgument("data can not be nullptr."));
+      data, common::errors::InvalidArgument("data can not be nullptr."));
 
   PADDLE_ENFORCE_EQ(shape.FromTensor(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "shape cannot be constructed from a Tensor."));
 
   phi::Place data_place;
@@ -82,7 +82,7 @@ PADDLE_API Tensor from_blob(void* data,
     if (place.GetType() != phi::AllocationType::UNDEFINED) {
       PADDLE_ENFORCE_EQ(data_place,
                         place,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Specified place does not match place of data. ",
                             "Specified: %s, Expected: %s.",
                             data_place.DebugString(),
@@ -117,14 +117,14 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     const phi::distributed::TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE_EQ(input.is_dist_tensor(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input tensor of ReshardFunction should be "
                         "``phi::distributed::DistTensor``. "
                         "However it's %s",
                         typeid(input.impl().get()).name()));
   auto dev_ctx = phi::distributed::GetDistTensorDeviceContext(
       static_cast<phi::distributed::DistTensor*>(input.impl().get()));
-  auto input_tensor_impl = input.impl();
+  const auto& input_tensor_impl = input.impl();
   std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
   if (input_tensor_impl) {
     phi::distributed::DistTensor* dist_tensor =
@@ -135,7 +135,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
       PADDLE_ENFORCE_EQ(
           dist_tensor->initialized(),
           false,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Only "
               "uninitialized ``phi::distributed::DistTensor`` is allowed. "));
       VLOG(4) << "reshard tensor which is not in current mesh, just set its "
@@ -152,7 +152,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     }
 
     if (dist_tensor->dist_attr() != dist_attr) {
-      auto tensor_name = (input.name() == "" ? "None" : input.name());
+      auto tensor_name = (input.name().empty() ? "None" : input.name());
       VLOG(4) << "Reshard func: tensor(" << tensor_name << ") "
               << paddle::experimental::ReshardDebugInfo(*dist_tensor,
                                                         dist_attr);

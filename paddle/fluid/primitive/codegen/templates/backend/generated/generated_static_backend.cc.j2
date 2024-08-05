@@ -117,20 +117,20 @@ pir::Value {{attr.name}}_res = std::static_pointer_cast<LazyTensor>({{attr.name~
     {% endif %}
   {% endfor %}
   {%- set input_names = [] -%}
-  {%- for i in inputs -%} 
-    {%- do input_names.append(i.name~'_res') -%} 
+  {%- for i in inputs -%}
+    {%- do input_names.append(i.name~'_res') -%}
   {%- endfor -%}
   {%- if mutable_attribute_as_inputs -%}
-    {%- for i in attrs -%} 
+    {%- for i in attrs -%}
       {%- if i is mutable_attribute -%}
-        {%- do input_names.append(i.name~'_res') -%} 
+        {%- do input_names.append(i.name~'_res') -%}
       {%- endif -%}
     {%- endfor -%}
   {%- endif -%}
   {%- set attr_names = [] -%}
-  {%- for i in attrs -%} 
+  {%- for i in attrs -%}
     {%- if  not mutable_attribute_as_inputs or mutable_attribute_as_inputs and i is not mutable_attribute -%}{#- do nothing -#}
-      {%- do attr_names.append(common.phi2ir_attr(i)) -%} 
+      {%- do attr_names.append(common.phi2ir_attr(i)) -%}
     {%- endif -%}
   {% endfor %}
 auto op_res = paddle::dialect::{{name}}({{common.args(input_names, attr_names)}});
@@ -145,14 +145,14 @@ auto op_res = paddle::dialect::{{name}}({{common.args(input_names, attr_names)}}
   {% set api_outputs = api.outputs | trip_intermediate %}
 {{sig(api.name, api.inputs, api_outputs, api.attrs)}} {
   {% filter indent(2, True) %}
-{{body(api.name, api.inputs, api_outputs, api.attrs)}} 
+{{body(api.name, api.inputs, api_outputs, api.attrs)}}
   {% endfilter %}
 }
 
     {% if api.attrs is exist_mutable_attribute %}
 {{sig(api.name, api.inputs, api_outputs, api.attrs, True)}} {
   {% filter indent(2, True) %}
-{{body(api.name, api.inputs, api_outputs, api.attrs, True)}} 
+{{body(api.name, api.inputs, api_outputs, api.attrs, True)}}
   {% endfilter %}
 }
 

@@ -27,11 +27,15 @@
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn::fusion {
 
@@ -50,11 +54,13 @@ static size_t GetCompitableRank(pir::Value value) {
   size_t rank = GetRank(value);
   return rank == 0 ? 1 : rank;
 }
-
 static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
-  const auto& attr_val = reduce_op->attributes().at("dim");
-  CHECK(attr_val.isa<::pir::ArrayAttribute>());
+  const auto& attr_val = reduce_op->attributes().at("axis");
+  PADDLE_ENFORCE_EQ(
+      attr_val.isa<::pir::ArrayAttribute>(),
+      true,
+      phi::errors::InvalidArgument("The axis attribute should be an array."));
   const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
   if (axis_attr.empty()) {
     // dim: [] means reduce_all.
@@ -70,8 +76,21 @@ static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
     if (axis < 0) {
       axis += input_rank;
     }
-    CHECK_GE(axis, 0);
-    CHECK_LT(axis, input_rank);
+    PADDLE_ENFORCE_GE(
+        axis,
+        0,
+        phi::errors::InvalidArgument(
+            "The 'axis' must be greater than or equal to 0, but received %d.",
+            axis));
+
+    PADDLE_ENFORCE_LT(axis,
+                      input_rank,
+                      phi::errors::InvalidArgument(
+                          "The 'axis' must be less than 'input_rank', but "
+                          "received axis = %d and input_rank = %d.",
+                          axis,
+                          input_rank));
+
     reduce_axis_idx.push_back(axis);
   }
   VLOG(4) << "GetReduceAxisIdx: " << utils::Join(reduce_axis_idx, ",");
@@ -79,9 +98,45 @@ static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
 }
 
 static bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
-  const auto& attr_val = reduce_op->attributes().at("keep_dim");
-  CHECK(attr_val.isa<::pir::BoolAttribute>());
+  const auto& attr_val = reduce_op->attributes().at("keepdim");
+  PADDLE_ENFORCE_EQ(
+      attr_val.isa<::pir::BoolAttribute>(),
+      true,
+      phi::errors::InvalidArgument("The keepdim attribute should be a bool."));
   return attr_val.dyn_cast<::pir::BoolAttribute>().data();
+}
+
+std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
+    pir::Operation* op);
+
+static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
+    pir::Operation* op) {
+  std::vector<std::pair<size_t, size_t>> res;
+  auto* shape_analysis =
+      &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+  const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
+  CHECK(broad_cast_value.has_value());
+
+  const auto& [input_value, output_value] = broad_cast_value.value();
+  const int input_rank = GetRank(input_value);
+  const int output_rank = GetRank(output_value);
+  CHECK_GE(output_rank, input_rank);
+
+  // Compare axis one by one, from back to front.
+  // The rule of broadcasting:
+  // https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/beginner/tensor_cn.html#id7
+  for (int i = 1; i <= input_rank; ++i) {
+    int input_axis = input_rank - i;
+    int output_axis = output_rank - i;
+    if (input_axis < 0 || output_axis < 0) break;
+    if (shape_analysis->IsProductEqual(
+            input_value, {input_axis}, output_value, {output_axis})) {
+      res.emplace_back(input_axis, output_axis);
+    }
+  }
+
+  return res;
 }
 
 static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
@@ -89,24 +144,10 @@ static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
   pir::IrPrinter printer(ss);
   for (const auto* op : ops) {
     printer.PrintOperation(const_cast<pir::Operation*>(op));
-    ss << "\n";
+    ss << "(" << op << ")"
+       << "\n";
   }
   return ss.str();
-}
-
-static std::optional<std::pair<pir::Value, pir::Value>>
-GetBroadcastOpInputOuputValue(pir::Operation* op) {
-  auto* mut_op = const_cast<pir::Operation*>(op);
-  if (op->isa<paddle::dialect::ExpandOp>()) {
-    auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
-    return std::make_pair(expand_op.x(), expand_op.out());
-  } else if (op->isa<cinn::dialect::BroadcastOp>()) {
-    auto broadcast_op = mut_op->dyn_cast<cinn::dialect::BroadcastOp>();
-    return std::make_pair(broadcast_op.x(), broadcast_op.out());
-  } else {
-    CHECK(false) << "Unsupported broadcast op: " << op->name();
-  }
-  return std::nullopt;
 }
 
 template <typename T>
@@ -162,6 +203,12 @@ std::set<T> ToSet(const std::vector<T>& input) {
 }
 
 template <typename T>
+std::unordered_set<T> ToUnorderedSet(const std::vector<T>& input) {
+  std::unordered_set<T> result(input.begin(), input.end());
+  return result;
+}
+
+template <typename T>
 bool IsAnyFirstInSecond(const std::vector<T>& first,
                         const std::vector<T>& second) {
   const auto& second_set = ToSet(second);
@@ -175,7 +222,7 @@ bool IsAnyFirstInSecond(const std::vector<T>& first,
 
 template <typename T>
 std::vector<T> UniqueVectorBySet(const std::vector<T>& v) {
-  std::set<T> unique(v.begin(), v.end());
+  std::unordered_set<T> unique(v.begin(), v.end());
   return std::vector<T>(unique.begin(), unique.end());
 }
 
@@ -201,7 +248,7 @@ std::vector<T> UniqueConcatVector(const std::vector<T>& first,
 
 struct ValueDim {
   pir::Value v_;
-  size_t idx_;
+  size_t idx_ = -1;
   std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
   ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {
     // Just get a related op to get the shape analysis. It can be value's
@@ -215,7 +262,7 @@ struct ValueDim {
       // as the related op.
       PADDLE_ENFORCE_EQ(v.use_empty(),
                         false,
-                        phi::errors::PreconditionNotMet(
+                        ::common::errors::PreconditionNotMet(
                             "Value is an input value, it should have a use."));
       return v.first_use().owner();
     };
@@ -233,6 +280,8 @@ struct ValueDim {
     PADDLE_ENFORCE_NOT_NULL(v_.impl(), "Empty value is not expected.");
     return shape_analysis().GetProductDimExpr(v_, {static_cast<int>(idx_)});
   }
+
+  bool empty() const { return idx_ == -1; }
 
   bool SymbolicEqualTo(const ValueDim& other) const {
     return shape_analysis().IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
@@ -277,6 +326,7 @@ struct ValueDimHash {
 
 static std::vector<symbol::DimExpr> GetDimExprsFromValue(pir::Value value) {
   const auto& value_dims = GetAllValueDimFromValue(value);
+
   VLOG(4) << "Start Print:";
   std::function<symbol::DimExpr(ValueDim)> func =
       [](const ValueDim& value_dim) {
@@ -345,4 +395,121 @@ std::vector<U> VectorFlatMap(
   }
   return result;
 }
+
+template <typename T>
+bool AnyTargetInCandidate(const std::vector<T>& targets,
+                          const std::vector<T>& candidate) {
+  std::unordered_set<T> pool = ToUnorderedSet(candidate);
+  for (const auto& item : targets) {
+    if (pool.find(item) != pool.end()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static std::vector<pir::Operation*> FindDownstreamOps(pir::Operation* op) {
+  std::vector<pir::Operation*> result;
+  for (int i = 0; i < op->num_results(); i++) {
+    auto v = op->result(i);
+    for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
+         ++consumer_it) {
+      result.emplace_back(consumer_it->owner());
+    }
+  }
+  return result;
+}
+
+static const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
+  size_t i = 0;
+  for (auto consumer_it = v.use_begin(); consumer_it != v.use_end();
+       ++consumer_it, ++i) {
+    if (consumer_it->owner() == op) {
+      return i;
+    }
+  }
+  PADDLE_THROW(phi::errors::NotFound(
+      "Can not find the usage of value %s in op %s", v.impl(), op->name()));
+}
+
+static const size_t GetOperandIdx(const pir::Value& v, pir::Operation* op) {
+  for (size_t i = 0; i < op->num_operands(); i++) {
+    if (op->operand(i).source() == v) {
+      return i;
+    }
+  }
+  PADDLE_THROW(phi::errors::NotFound(
+      "Can not find the value %s as operand of op %s", v.impl(), op->name()));
+}
+
+static const size_t GetResultIdx(const pir::Value& v, pir::Operation* op) {
+  size_t i = 0;
+  for (size_t i = 0; i < op->num_results(); i++) {
+    if (op->result(i) == v) {
+      return i;
+    }
+  }
+  PADDLE_THROW(phi::errors::NotFound(
+      "Can not find the value %s as result of op %s", v.impl(), op->name()));
+}
+
+static bool IsDirectUpstream(const pir::Operation* upstream,
+                             const pir::Operation* downstream) {
+  for (const auto& value : downstream->results()) {
+    for (const auto& operand : upstream->operands()) {
+      if (value == operand.source()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+inline std::vector<pir::Value> GetInputsValue(
+    const std::vector<pir::Operation*>& ops) {
+  // include middle value.
+  std::function<std::vector<pir::Value>(pir::Operation* const&)> get_inputs =
+      [](const pir::Operation* const& in) { return in->operands_source(); };
+  const auto& all_inputs =
+      VectorFlatMap<pir::Operation*, pir::Value>(ops, get_inputs);
+  return UniqueVectorBySet(all_inputs);
+}
+
+inline std::vector<pir::Value> GetOutputsValue(
+    const std::vector<pir::Operation*>& ops) {
+  // include middle value.
+  std::function<std::vector<pir::Value>(pir::Operation* const&)> get_outputs =
+      [](const pir::Operation* const& in) { return in->results(); };
+  const auto& all_outputs =
+      VectorFlatMap<pir::Operation*, pir::Value>(ops, get_outputs);
+  return UniqueVectorBySet(all_outputs);
+}
+
+template <typename T>
+std::vector<T> VectorDiff(const std::vector<T>& left,
+                          const std::vector<T>& right) {
+  const auto& set = ToSet(right);
+  std::vector<T> res;
+  for (const auto& v : left) {
+    if (!set.count(v)) res.push_back(v);
+  }
+  return res;
+}
+
+inline bool All(const std::vector<bool> a) {
+  bool res = true;
+  for (bool i : a) {
+    res &= i;
+  }
+  return res;
+}
+
+inline bool Any(const std::vector<bool> a) {
+  bool res = false;
+  for (bool i : a) {
+    res |= i;
+  }
+  return res;
+}
+
 }  // namespace cinn::fusion

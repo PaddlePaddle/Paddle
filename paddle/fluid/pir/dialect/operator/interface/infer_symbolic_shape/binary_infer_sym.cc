@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/binary_infer_sym.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
+
+COMMON_DECLARE_bool(manually_trans_conv_filter);
 
 namespace {
 
@@ -64,6 +67,96 @@ inline void UpdatePaddingAndDilation(
 }  // namespace
 namespace paddle::dialect {
 
+bool AllcloseOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    y_shape.size(),
+                    common::errors::PreconditionNotMet(
+                        "Input(X) and Input(Y) must have the same "
+                        "dimension size. but got %d vs %d",
+                        x_shape.size(),
+                        y_shape.size()));
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{})});
+  return true;
+}
+
+bool Atan2OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    y_shape.size(),
+                    common::errors::PreconditionNotMet(
+                        "Input(X) and Input(Y) must have the same "
+                        "dimension size. but got %d vs %d",
+                        x_shape.size(),
+                        y_shape.size()));
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  return true;
+}
+
+bool BceLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &label_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  int rank = input_shape.shape().size();
+  PADDLE_ENFORCE_EQ(rank,
+                    label_shape.shape().size(),
+                    common::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        rank,
+                        label_shape.shape().size()));
+
+  for (int i = 0; i < rank; ++i) {
+    infer_context->AddEqualCstr(input_shape.shape()[i], label_shape.shape()[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
+
+  return true;
+}
+
+bool BceLoss_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BceLossOpInferSymbolicShape(op, infer_context);
+}
+
+bool CtcAlignOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> out_shape = {input_shape.shape()[0], 1};
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
+  infer_context->SetShapeOrDataForValue(op->result(1), shape_data);
+  return true;
+}
+
 bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<int> strides =
@@ -96,9 +189,15 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                    : std::vector<symbol::DimExpr>(in_s_or_d.shape().begin() + 2,
                                                   in_s_or_d.shape().end());
 
-  const std::vector<symbol::DimExpr> filter_data_dims =
-      std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
-                                   filter_s_or_d.shape().end());
+  const std::vector<symbol::DimExpr> filter_data_dims = [&]() {
+    if (channel_last && FLAGS_manually_trans_conv_filter) {  // NHWC
+      return std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 1,
+                                          filter_s_or_d.shape().end() - 1);
+    } else {
+      return std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
+                                          filter_s_or_d.shape().end());
+    }
+  }();
 
   std::vector<symbol::DimExpr> ksize = filter_data_dims;
 
@@ -151,31 +250,48 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
 
+bool CrossOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  size_t x_dim = x_shape.shape().size();
+  size_t y_dim = y_shape.shape().size();
+
+  PADDLE_ENFORCE_EQ(x_dim,
+                    y_dim,
+                    common::errors::InvalidArgument(
+                        "The 'shape' of Input(X) should be equal to "
+                        "the 'shape' of Input(Y). But received "
+                        "Input(X).dimensions = [%d], "
+                        "Input(Y).dimensions = [%d]",
+                        x_dim,
+                        y_dim));
+
+  for (size_t i = 0; i < x_dim; i++) {
+    infer_context->AddEqualCstr(x_shape.shape()[i], y_shape.shape()[i]);
+  }
+
+  const int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  if (axis != common::DDim::kMaxRank) {
+    const int dim = axis < 0 ? axis + x_dim : axis;
+    infer_context->AddEqualCstr(x_shape.shape()[dim], symbol::DimExpr{3});
+    infer_context->AddEqualCstr(y_shape.shape()[dim], symbol::DimExpr{3});
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+
+  return true;
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto weight_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const std::vector<symbol::DimExpr> &x_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
-    return dims;
-  }();
-
-  const std::vector<symbol::DimExpr> &weight_dims = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (weight_shape_or_data.data().has_value()) {
-      dims = weight_shape_or_data.data().value();
-    } else {
-      dims = weight_shape_or_data.shape();
-    }
-    return dims;
-  }();
+  const std::vector<symbol::DimExpr> &x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const std::vector<symbol::DimExpr> &weight_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
     std::vector<symbol::DimExpr> out_dims = x_dims;
@@ -193,7 +309,7 @@ bool EmbeddingOpInferSymbolicShape(
 
 bool SparseWeightEmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
@@ -203,6 +319,11 @@ bool ExpandAsOpInferSymbolicShape(
   std::vector<int> target_shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
   const std::vector<symbol::DimExpr> &output_dims = [&] {
+    const auto &input_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    if (!input_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+      return input_shape_or_data.shape();
+    }
     std::vector<symbol::DimExpr> output_dims;
     output_dims.reserve(target_shape.size());
     for (int shape : target_shape) {
@@ -215,6 +336,24 @@ bool ExpandAsOpInferSymbolicShape(
       op->result(0), symbol::TensorShapeOrDataDimExprs(output_dims));
 
   return true;
+}
+
+bool FillDiagonalTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+
+  return true;
+}
+
+bool FillDiagonalTensor_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FillDiagonalTensorOpInferSymbolicShape(op, infer_context);
 }
 
 bool GatherOpInferSymbolicShape(pir::Operation *op,
@@ -240,7 +379,7 @@ bool GatherOpInferSymbolicShape(pir::Operation *op,
     PADDLE_ENFORCE_EQ(
         op->num_operands() == 3,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "in GatherOpInferSymbolicShape: The number of operands should be "
             "3 when the axis is not set."));
     const auto &axis_shape_or_data =
@@ -320,7 +459,7 @@ bool GatherNdOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       index_sym_shape[index_dims_size - 1].Has<std::int64_t>(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "in GatherNdOpInferSymbolicShape: index[-1] should be unknown"));
 
   for (int i = static_cast<int>(
@@ -384,7 +523,25 @@ bool MaskedSelectOpInferSymbolicShape(
     out_dims.push_back(out_shape);
     return out_dims;
   }();
-  // TODO(fty1777): Add constrains between the shapes of x and mask
+  // Add constrains between the shapes of x and mask
+  const std::vector<symbol::DimExpr> &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const std::vector<symbol::DimExpr> &mask_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  size_t ndims_x = x_shape.size();
+  size_t ndims_mask = mask_shape.size();
+  if (ndims_x >= ndims_mask) {
+    size_t diff = ndims_x - ndims_mask;
+    for (size_t i = 0; i < ndims_mask; i++) {
+      infer_context->AddBroadcastableCstr(x_shape[i + diff], mask_shape[i]);
+    }
+  } else {
+    size_t diff = ndims_mask - ndims_x;
+    for (size_t i = 0; i < ndims_x; i++) {
+      infer_context->AddBroadcastableCstr(x_shape[i], mask_shape[i + diff]);
+    }
+  }
+
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
   return true;
@@ -397,11 +554,7 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
     std::vector<symbol::DimExpr> dims;
     const auto &x_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(0));
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
+    dims = x_shape_or_data.shape();
     return dims;
   }();
 
@@ -410,11 +563,7 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
     std::vector<symbol::DimExpr> dims;
     const auto y_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    if (y_shape_or_data.data().has_value()) {
-      dims = y_shape_or_data.data().value();
-    } else {
-      dims = y_shape_or_data.shape();
-    }
+    dims = y_shape_or_data.shape();
     return dims;
   }();
 
@@ -505,6 +654,23 @@ bool IscloseOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
+bool AccuracyCheckOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // The shape of output is the same as input `values` (op->operand_source(1))
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
+bool ReduceAsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &target_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  infer_context->SetShapeOrDataForValue(op->result(0), target_shape);
   return true;
 }
 

@@ -27,8 +27,7 @@
 #include "paddle/phi/kernels/p_send_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 bool RToXExpandReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
@@ -71,14 +70,14 @@ void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   DenseTensor result_value;
 
   if (root_rank == cur_global_rank) {
-    for (size_t i = 0; i < out_process_ids.size(); ++i) {
-      if (out_process_ids[i] != root_rank) {
+    for (const auto& out_process_id : out_process_ids) {
+      if (out_process_id != root_rank) {
         RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                                   PSendKernel,
                                   dtype,
                                   all_process_ids,
                                   in.value(),
-                                  out_process_ids[i],
+                                  out_process_id,
                                   dynamic_shape);
       }
     }
@@ -134,5 +133,4 @@ void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

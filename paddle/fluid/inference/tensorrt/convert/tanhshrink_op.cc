@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class TanhshrinkOpConverter : public OpConverter {
  public:
@@ -31,7 +29,7 @@ class TanhshrinkOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         input_num,
         1,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input X's size must equal to 1 in TRT Tanhshrink op."
             " But received X's size %d.",
             input_num));
@@ -41,7 +39,7 @@ class TanhshrinkOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         output_num,
         1UL,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output Out's size must equal to 1 in TRT Tanhshrink op. "
             "But received Out's size %u.",
             output_num));
@@ -59,8 +57,6 @@ class TanhshrinkOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(tanh_shrink, TanhshrinkOpConverter);

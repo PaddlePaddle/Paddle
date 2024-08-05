@@ -70,7 +70,7 @@ bool ReduceInferDim(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(x);
   std::vector<symbol::DimExpr> input_shapes;
   if (x_shape_or_data.data() == std::nullopt ||
-      x_shape_or_data.data()->size() == 0) {
+      x_shape_or_data.data()->empty()) {
     input_shapes = x_shape_or_data.shape();
   } else {
     input_shapes = *x_shape_or_data.data();
@@ -97,6 +97,83 @@ bool ReduceInferDim(pir::Operation *op,
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
+}
+
+symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
+    const symbol::ShapeOrDataDimExprs &x_dim_exprs) {
+  const auto InsertZeros =
+      [](const std::vector<symbol::DimExpr> &dims) -> decltype(auto) {
+    auto out_dims = dims;
+    out_dims.insert(out_dims.begin(), 0);
+    return out_dims;
+  };
+  const auto &x_dims = x_dim_exprs.shape();
+  return symbol::TensorShapeOrDataDimExprs(InsertZeros(x_dims));
+}
+
+ExprVec GetOrCreateExprVecFromData(
+    const ShapeOrData &shapeordata,
+    pir::InferSymbolicShapeContext *infer_context) {
+  if (!HasCompleteData(shapeordata)) {
+    LOG(WARNING) << "ShapeOrDataDimExprs with incomplete data info. Need to "
+                    "create new DimExpr symbol.";
+  }
+
+  const auto &GetTensorItemNumFromShape =
+      [](const std::vector<symbol::DimExpr> &shape) -> int64_t {
+    const auto &optional_int64_shape = VecExpr2Int64(shape);
+    PADDLE_ENFORCE_EQ(
+        optional_int64_shape.has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "The shape of tensor should be known when GetExprVecFromData."));
+    return std::accumulate(optional_int64_shape->begin(),
+                           optional_int64_shape->end(),
+                           1,
+                           std::multiplies<int64_t>());
+  };
+
+  const auto &GetNewDataDimExpr = [&]() -> symbol::DimExpr {
+    return symbol::DimExpr{infer_context->GetNextSymName()};
+  };
+
+  ExprVec result;
+  const auto &GetTensorData =
+      [&](const symbol::TensorShapeOrDataDimExprs &tensor_shape_or_data) {
+        if (tensor_shape_or_data.data().has_value()) {
+          for (const auto &expr : tensor_shape_or_data.data().value()) {
+            result.emplace_back(expr);
+          }
+        } else {
+          for (int i = 0;
+               i < GetTensorItemNumFromShape(tensor_shape_or_data.shape());
+               ++i) {
+            result.emplace_back(GetNewDataDimExpr());
+          }
+        }
+      };
+
+  shapeordata.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        GetTensorData(impl);
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        for (const auto &tensor_shape_or_data : impl) {
+          GetTensorData(tensor_shape_or_data);
+        }
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, RankedTensorArrayShapeOrDataDimExprs can not get "
+            "data"));
+        return;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Dead code, NullShapeOrDataDimExpr can not get data"));
+        return;
+      });
+  return result;
 }
 
 void BuildCstrEqForTensorListAlongAxis(

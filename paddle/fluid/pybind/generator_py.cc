@@ -29,8 +29,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindGenerator(py::module* m_ptr) {
   auto& m = *m_ptr;
   py::class_<phi::Generator::GeneratorState,
@@ -93,5 +92,4 @@ void BindGenerator(py::module* m_ptr) {
   m.def("set_random_seed_generator", &phi::SetRandomSeedGenerator);
   m.def("get_random_seed_generator", &phi::GetRandomSeedGenerator);
 }
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

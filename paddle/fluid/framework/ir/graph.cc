@@ -16,19 +16,17 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/flags.h"
-PADDLE_DEFINE_EXPORTED_bool(convert_all_blocks,
-                            true,
-                            "Convert all blocks in program into SSAgraphs");
+PHI_DEFINE_EXPORTED_bool(convert_all_blocks,
+                         true,
+                         "Convert all blocks in program into SSAgraphs");
 
-PADDLE_DEFINE_EXPORTED_bool(all_blocks_convert_trt,
-                            false,
-                            "Convert all blocks'Ops into TensorRT Ops");
+PHI_DEFINE_EXPORTED_bool(all_blocks_convert_trt,
+                         false,
+                         "Convert all blocks'Ops into TensorRT Ops");
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 Graph::Graph(const ProgramDesc &program)
     : Graph(
@@ -40,13 +38,13 @@ Graph::Graph(const ProgramDesc &program,
     : program_(program), main_graph_(nullptr) {
   PADDLE_ENFORCE_GE(start_op_index,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required start_op_index >= 0, but received "
                         "start_op_index = %d",
                         start_op_index));
   PADDLE_ENFORCE_GE(end_op_index,
                     start_op_index,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required end_op_index >= start_op_index, but received "
                         "end_op_index: %d < start_op_index: %d",
                         end_op_index,
@@ -54,14 +52,14 @@ Graph::Graph(const ProgramDesc &program,
   PADDLE_ENFORCE_GE(
       program_.Size(),
       1,
-      platform::errors::InvalidArgument("Can't construct a graph from this "
-                                        "program, it doesn't have a block"));
+      common::errors::InvalidArgument("Can't construct a graph from this "
+                                      "program, it doesn't have a block"));
 
   const int64_t block_op_size =
       static_cast<int64_t>(program_.Block(0).AllOps().size());
   PADDLE_ENFORCE_LE(end_op_index,
                     block_op_size,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required end_op_index <= block_op_size, but received "
                         "end_op_index: %d > block_op_size: %d",
                         end_op_index,
@@ -141,7 +139,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
   PADDLE_ENFORCE_LE(
       end_op_index,
       all_ops.size(),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Required end_op_index <= %d, but received end_op_index = %d",
           all_ops.size(),
           end_op_index));
@@ -180,7 +178,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
       if (each_var_name != kEmptyVarName) {
         PADDLE_ENFORCE_EQ(out_arg_set.count(each_var_name),
                           0,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The input Program is invalid. Variable %s occurs"
                               " in output of %s multiple times.",
                               each_var_name,
@@ -256,7 +254,7 @@ void Graph::ResolveHazard(
 
       PADDLE_ENFORCE_NOT_NULL(
           write_op,
-          platform::errors::NotFound(
+          common::errors::NotFound(
               "The generate operator of variable %s is null.",
               (*it_new)->Name()));
 
@@ -306,7 +304,7 @@ std::shared_ptr<Graph> Graph::Clone() {
   PADDLE_ENFORCE_EQ(
       this->IsMainGraph(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "This graph is a sub_graph, and can't be cloned individually"));
   if (FLAGS_convert_all_blocks) {
     auto cloned_graph = std::make_shared<Graph>(this->program_);
@@ -322,9 +320,9 @@ std::shared_ptr<Graph> Graph::Clone() {
     cloned_graph->block_id_ = this->block_id_;
     std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
     for (auto *n : this->node_set_) {
-      PADDLE_ENFORCE_NOT_NULL(n,
-                              platform::errors::InvalidArgument(
-                                  "The node to be cloned is nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(
+          n,
+          common::errors::InvalidArgument("The node to be cloned is nullptr."));
       ir::Node *cloned_node = nullptr;
       if (n->IsCtrlVar()) {
         cloned_node = cloned_graph->CreateControlDepVar();
@@ -337,7 +335,7 @@ std::shared_ptr<Graph> Graph::Clone() {
       }
       PADDLE_ENFORCE_NOT_NULL(
           cloned_node,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Failed to clone new node from original node in graph."));
       origin_to_cloned[n] = cloned_node;
     }
@@ -357,11 +355,10 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
   PADDLE_ENFORCE_EQ(
       this->IsMainGraph(),
       true,
-      platform::errors::InvalidArgument("This graph is not main_graph"));
-  PADDLE_ENFORCE_LT(
-      idx,
-      this->sub_graphs_.size(),
-      platform::errors::InvalidArgument("Invalid sub_graph index"));
+      common::errors::InvalidArgument("This graph is not main_graph"));
+  PADDLE_ENFORCE_LT(idx,
+                    this->sub_graphs_.size(),
+                    common::errors::InvalidArgument("Invalid sub_graph index"));
   std::unique_ptr<Graph> cloned_sub_graph =
       std::make_unique<Graph>(this->program_.Block(idx), this);
   cloned_sub_graph->ReleaseNodes();
@@ -371,7 +368,7 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
   for (auto *n : this->sub_graphs_.at(idx)->Nodes()) {
     PADDLE_ENFORCE_NOT_NULL(
         n,
-        platform::errors::InvalidArgument("The node to be cloned is nullptr."));
+        common::errors::InvalidArgument("The node to be cloned is nullptr."));
     ir::Node *cloned_node = nullptr;
     if (n->IsCtrlVar()) {
       cloned_node = cloned_sub_graph->CreateControlDepVar();
@@ -384,7 +381,7 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
     }
     PADDLE_ENFORCE_NOT_NULL(
         cloned_node,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Failed to clone new node from original node in graph."));
     origin_to_cloned[n] = cloned_node;
   }
@@ -402,6 +399,4 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
 bool IsControlDepVar(const ir::Node &var) {
   return var.Name().find(ir::Node::kControlDepVarName) != std::string::npos;
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

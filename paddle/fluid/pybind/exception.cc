@@ -15,9 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/exception.h"
 
 #include "paddle/common/exception.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
-namespace paddle {
-namespace pybind {
+#include "paddle/phi/core/memory/allocation/allocator.h"
+namespace paddle::pybind {
 
 /* Paddle Exception mapping rules:
  *   - InvalidArgumentError -> ValueError
@@ -47,33 +46,33 @@ void BindException(pybind11::module* m) {
       PyErr_SetString(PyExc_MemoryError, e.what());
     } catch (const platform::EnforceNotMet& e) {
       switch (e.code()) {
-        case paddle::platform::error::INVALID_ARGUMENT:
+        case phi::ErrorCode::INVALID_ARGUMENT:
           PyErr_SetString(PyExc_ValueError, e.what());
           break;
-        case paddle::platform::error::NOT_FOUND:
-        case paddle::platform::error::ALREADY_EXISTS:
-        case paddle::platform::error::PRECONDITION_NOT_MET:
-        case paddle::platform::error::PERMISSION_DENIED:
-        case paddle::platform::error::EXECUTION_TIMEOUT:
-        case paddle::platform::error::UNAVAILABLE:
+        case phi::ErrorCode::NOT_FOUND:
+        case phi::ErrorCode::ALREADY_EXISTS:
+        case phi::ErrorCode::PRECONDITION_NOT_MET:
+        case phi::ErrorCode::PERMISSION_DENIED:
+        case phi::ErrorCode::EXECUTION_TIMEOUT:
+        case phi::ErrorCode::UNAVAILABLE:
           PyErr_SetString(PyExc_RuntimeError, e.what());
           break;
-        case paddle::platform::error::OUT_OF_RANGE:
+        case phi::ErrorCode::OUT_OF_RANGE:
           PyErr_SetString(PyExc_IndexError, e.what());
           break;
-        case paddle::platform::error::RESOURCE_EXHAUSTED:
+        case phi::ErrorCode::RESOURCE_EXHAUSTED:
           PyErr_SetString(PyExc_MemoryError, e.what());
           break;
-        case paddle::platform::error::UNIMPLEMENTED:
+        case phi::ErrorCode::UNIMPLEMENTED:
           PyErr_SetString(PyExc_NotImplementedError, e.what());
           break;
-        case paddle::platform::error::FATAL:
+        case phi::ErrorCode::FATAL:
           PyErr_SetString(PyExc_SystemError, e.what());
           break;
-        case paddle::platform::error::EXTERNAL:
+        case phi::ErrorCode::EXTERNAL:
           PyErr_SetString(PyExc_OSError, e.what());
           break;
-        case paddle::platform::error::INVALID_TYPE:
+        case phi::ErrorCode::INVALID_TYPE:
           PyErr_SetString(PyExc_TypeError, e.what());
           break;
         default:
@@ -85,7 +84,7 @@ void BindException(pybind11::module* m) {
 
   m->def("__unittest_throw_exception__", [] {
     PADDLE_THROW(
-        platform::errors::PermissionDenied("This is a test of exception"));
+        common::errors::PermissionDenied("This is a test of exception"));
   });
 }
 
@@ -102,33 +101,33 @@ void ThrowExceptionToPython(std::exception_ptr p) {
     PyErr_SetString(PyExc_MemoryError, e.what());
   } catch (const platform::EnforceNotMet& e) {
     switch (e.code()) {
-      case paddle::platform::error::INVALID_ARGUMENT:
+      case phi::ErrorCode::INVALID_ARGUMENT:
         PyErr_SetString(PyExc_ValueError, e.what());
         break;
-      case paddle::platform::error::NOT_FOUND:
-      case paddle::platform::error::ALREADY_EXISTS:
-      case paddle::platform::error::PRECONDITION_NOT_MET:
-      case paddle::platform::error::PERMISSION_DENIED:
-      case paddle::platform::error::EXECUTION_TIMEOUT:
-      case paddle::platform::error::UNAVAILABLE:
+      case phi::ErrorCode::NOT_FOUND:
+      case phi::ErrorCode::ALREADY_EXISTS:
+      case phi::ErrorCode::PRECONDITION_NOT_MET:
+      case phi::ErrorCode::PERMISSION_DENIED:
+      case phi::ErrorCode::EXECUTION_TIMEOUT:
+      case phi::ErrorCode::UNAVAILABLE:
         PyErr_SetString(PyExc_RuntimeError, e.what());
         break;
-      case paddle::platform::error::OUT_OF_RANGE:
+      case phi::ErrorCode::OUT_OF_RANGE:
         PyErr_SetString(PyExc_IndexError, e.what());
         break;
-      case paddle::platform::error::RESOURCE_EXHAUSTED:
+      case phi::ErrorCode::RESOURCE_EXHAUSTED:
         PyErr_SetString(PyExc_MemoryError, e.what());
         break;
-      case paddle::platform::error::UNIMPLEMENTED:
+      case phi::ErrorCode::UNIMPLEMENTED:
         PyErr_SetString(PyExc_NotImplementedError, e.what());
         break;
-      case paddle::platform::error::FATAL:
+      case phi::ErrorCode::FATAL:
         PyErr_SetString(PyExc_SystemError, e.what());
         break;
-      case paddle::platform::error::EXTERNAL:
+      case phi::ErrorCode::EXTERNAL:
         PyErr_SetString(PyExc_OSError, e.what());
         break;
-      case paddle::platform::error::INVALID_TYPE:
+      case phi::ErrorCode::INVALID_TYPE:
         PyErr_SetString(PyExc_TypeError, e.what());
         break;
       default:
@@ -139,5 +138,4 @@ void ThrowExceptionToPython(std::exception_ptr p) {
     PyErr_SetString(PyExc_OSError, e.what());
   }
 }
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

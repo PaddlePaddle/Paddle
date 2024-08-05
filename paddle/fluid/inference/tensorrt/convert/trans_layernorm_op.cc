@@ -11,9 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trans_layernorm_op_plugin.h"
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class TransLayerNormOpConverter : public OpConverter {
  public:
@@ -35,11 +33,11 @@ class TransLayerNormOpConverter : public OpConverter {
                           : 1e-5f;
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Bias) of layer_norm should not be null."));
     PADDLE_ENFORCE_NOT_NULL(
         Scale_v,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Scale) of layer_norm should not be null."));
 
     auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
@@ -71,7 +69,7 @@ class TransLayerNormOpConverter : public OpConverter {
               with_fp16);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "trans_layernorm do not support static shape mode yet"));
     }
 
@@ -84,8 +82,6 @@ class TransLayerNormOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(trans_layernorm, TransLayerNormOpConverter);

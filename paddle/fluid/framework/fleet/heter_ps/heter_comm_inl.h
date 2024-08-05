@@ -273,7 +273,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::reset_table(
   PADDLE_ENFORCE_LT(
       dev_id,
       device_num_,
-      paddle::platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "dev id %d more than device num %d", dev_id, device_num_));
 #if defined(PADDLE_WITH_CUDA)
   platform::CUDADeviceGuard guard(resource_->dev_id(dev_id));
@@ -462,7 +462,8 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::create_storage(
 #elif defined(PADDLE_WITH_XPU_KP)
   auto &nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
-    platform::XPUDeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
+    phi::backends::xpu::XPUDeviceGuard guard(
+        resource_->dev_id(nodes[i].dev_num));
     auto place = DevPlace(resource_->dev_id(nodes[i].dev_num));
     if (keylen > 0) {
       auto node_keys_mem = MemoryAlloc(place, keylen);
@@ -494,7 +495,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::create_tmp_storage(
       resource_->remote_stream(end_index, start_index)));
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  platform::XPUDeviceGuard guard(resource_->dev_id(end_index));
+  phi::backends::xpu::XPUDeviceGuard guard(resource_->dev_id(end_index));
   auto place = DevPlace(resource_->dev_id(end_index));
   auto node_vals_mem = MemoryAlloc(place, vallen);
   dest = reinterpret_cast<void *>(node_vals_mem->ptr());
@@ -876,7 +877,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::build_ps(
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
 
     auto dst_place = place;
-    auto src_place = platform::CPUPlace();
+    auto src_place = phi::CPUPlace();
 
     memory_copy(dst_place,
                 reinterpret_cast<char *>(d_key_bufs[cur_stream]->ptr()),
@@ -956,7 +957,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::build_ps(
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
 
     auto dst_place = place;
-    auto src_place = platform::CPUPlace();
+    auto src_place = phi::CPUPlace();
 
     memory_copy(dst_place,
                 reinterpret_cast<char *>(d_key_bufs[cur_stream]->ptr()),
@@ -1051,7 +1052,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::merge_grad(
                                     len,
                                     stream,
                                     false);
-  auto dst_place = platform::CPUPlace();
+  auto dst_place = phi::CPUPlace();
   auto src_place = place;
   memory_copy(
       dst_place, &uniq_len, src_place, d_num_runs_out, sizeof(int), stream);
@@ -1071,7 +1072,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::dynamic_merge_grad(
     size_t &segment_len,  // NOLINT
     bool enable_segment_merge_grad) {
   int dev_id = resource_->dev_id(gpu_num);
-  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  phi::GPUPlace place = phi::GPUPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
 
@@ -1233,7 +1234,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::segment_merge_grad(
     size_t &segments_num) {  // the number of segment merged keys // NOLINT
 
   int dev_id = resource_->dev_id(gpu_num);
-  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  phi::GPUPlace place = phi::GPUPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
 
@@ -1457,7 +1458,7 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::merge_keys(
     StreamType stream) {
 #if defined(PADDLE_WITH_CUDA)
   int dev_id = resource_->dev_id(gpu_num);
-  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  phi::GPUPlace place = phi::GPUPlace(dev_id);
 
   thread_local std::shared_ptr<memory::Allocation> d_fea_num_info = nullptr;
   uint32_t *d_offset = AllocCache<uint32_t>(
@@ -1506,24 +1507,24 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_EQ(
+      r,
+      XPU_SUCCESS,
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r,
+                               XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r2,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r2,
-                        XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_EQ(
+      r2,
+      XPU_SUCCESS,
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r2,
+                               XPUAPIErrorMsg[r2]));
 #endif
 
   auto accessor_wrapper_ptr =
@@ -1562,7 +1563,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
   heter_comm_kernel_->fill_shard_key(
       d_shard_keys_ptr, d_merged_keys_ptr, d_idx_ptr, uniq_len, stream, dev_id);
 
-  auto dst_place = platform::CPUPlace();
+  auto dst_place = phi::CPUPlace();
   auto src_place = place;
 
   memory_copy(dst_place,
@@ -1686,24 +1687,24 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_EQ(
+      r,
+      XPU_SUCCESS,
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r,
+                               XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r2,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r2,
-                        XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_EQ(
+      r2,
+      XPU_SUCCESS,
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r2,
+                               XPUAPIErrorMsg[r2]));
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
@@ -1724,7 +1725,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
   heter_comm_kernel_->fill_shard_key(
       d_shard_keys_ptr, d_keys, d_idx_ptr, len, stream, dev_id);
 
-  auto dst_place = platform::CPUPlace();
+  auto dst_place = phi::CPUPlace();
   auto src_place = place;
 
   memory_copy(dst_place,
@@ -1889,24 +1890,24 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_normal_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_EQ(
+      r,
+      XPU_SUCCESS,
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r,
+                               XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r2,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r2,
-                        XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_EQ(
+      r2,
+      XPU_SUCCESS,
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r2,
+                               XPUAPIErrorMsg[r2]));
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
@@ -1953,7 +1954,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_normal_sparse(
                                              stream,
                                              gpu_accessor_);
 
-  auto dst_place = platform::CPUPlace();
+  auto dst_place = phi::CPUPlace();
   auto src_place = place;
   memory_copy(dst_place,
               h_left,
@@ -2064,24 +2065,24 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  // get XPUContext according to xpu place
+  phi::XPUContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_EQ(
+      r,
+      XPU_SUCCESS,
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r,
+                               XPUAPIErrorMsg[r]));
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(r2,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU constant kernel return wrong value[%d %s]",
-                        r2,
-                        XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_EQ(
+      r2,
+      XPU_SUCCESS,
+      common::errors::External("XPU constant kernel return wrong value[%d %s]",
+                               r2,
+                               XPUAPIErrorMsg[r2]));
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
@@ -2107,7 +2108,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
                                        (int64_t)uniq_len,
                                        stream);
 
-  auto dst_place = platform::CPUPlace();
+  auto dst_place = phi::CPUPlace();
   auto src_place = place;
   memory_copy(dst_place,
               h_left,
@@ -2247,13 +2248,18 @@ int HeterComm<KeyType, ValType, GradType, GPUAccessor>::dedup_keys_and_fillidx(
     uint32_t *d_merged_cnts,
     bool filter_zero,
     cudaStream_t stream) {
-  platform::CUDAPlace place = platform::CUDAPlace(gpu_id);
+  phi::GPUPlace place = phi::GPUPlace(gpu_id);
   platform::CUDADeviceGuard guard(gpu_id);
   if (stream == 0) {
     stream = resource_->local_stream(gpu_id, 0);
   }
 
-  CHECK_GT(total_fea_num, 0);
+  PADDLE_ENFORCE_GT(
+      total_fea_num,
+      0,
+      phi::errors::InvalidArgument(
+          "Param total feature num should be greater than 0, but got %d.",
+          total_fea_num));
   size_t merged_size = 0;
   size_t byte_size = sizeof(uint32_t) * (total_fea_num + 1);
 
@@ -2687,7 +2693,13 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::gather_inner_keys_by_copy(
       max_part_size = res.h_part_sizes[i];
     }
   }
-  CHECK_EQ(shard_send_offset, static_cast<size_t>(fea_size));
+  PADDLE_ENFORCE_EQ(
+      shard_send_offset,
+      static_cast<size_t>(fea_size),
+      phi::errors::InvalidArgument(
+          "Param shard_send_offset should be equal to %d, but got %d.",
+          static_cast<size_t>(fea_size),
+          shard_send_offset));
 
   size_t trans_need_size =
       std::max(shard_recv_offset, static_cast<size_t>(fea_size));
@@ -2867,12 +2879,17 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::send_data_by_all2all(
       cudaMemcpyDeviceToDevice,
       stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-  CHECK_EQ(send_size, h_recv_part_sizes[nccl_rank_id]);
+  PADDLE_ENFORCE_EQ(send_size,
+                    h_recv_part_sizes[nccl_rank_id],
+                    phi::errors::InvalidArgument(
+                        "Param send_size should be equal to %d, but got %d.",
+                        h_recv_part_sizes[nccl_rank_id],
+                        send_size));
 
   auto &loc = storage_[gpu_id];
   auto nccl_stream = resource_->comm_stream(gpu_id, 0);
   size_t total_fea_num = 0;
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
   for (int i = 0; i < nccl_node_size; i++) {
     if (i == nccl_rank_id) {
       continue;
@@ -2881,18 +2898,18 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::send_data_by_all2all(
     if (send_size > 0) {
       send_offset = h_send_part_offsets[i] * value_bytes;
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclSend(&d_send_buff[send_offset],
-                                      send_size * value_bytes,
-                                      ncclInt8,
-                                      i,
-                                      comm,
-                                      nccl_stream));
+          phi::dynload::ncclSend(&d_send_buff[send_offset],
+                                 send_size * value_bytes,
+                                 ncclInt8,
+                                 i,
+                                 comm,
+                                 nccl_stream));
       total_fea_num += send_size;
     }
     const size_t &recv_size = h_recv_part_sizes[i];
     if (recv_size > 0) {
       recv_offset = h_recv_part_offsets[i] * value_bytes;
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRecv(
           reinterpret_cast<void *>(&d_rev_buff[recv_offset]),
           recv_size * value_bytes,
           ncclInt8,
@@ -2902,7 +2919,7 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::send_data_by_all2all(
       total_fea_num += recv_size;
     }
   }
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupEnd());
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(nccl_stream));
 
   return total_fea_num;
@@ -2949,7 +2966,12 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
       cache.remote_keys_ += h_local_part_sizes[i];
     }
   }
-  CHECK_EQ(fea_size, h_local_part_offsets[node_size_]);
+  PADDLE_ENFORCE_EQ(fea_size,
+                    h_local_part_offsets[node_size_],
+                    phi::errors::InvalidArgument(
+                        "Param fea_size should be equal to %d, but got %d.",
+                        h_local_part_offsets[node_size_],
+                        fea_size));
 
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&res.d_node_size_ptr[rank_offset],
                                              &h_push_fea_sizes[rank_offset],
@@ -2961,13 +2983,13 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
   cache.node_barrier_.Resume();
   auto &comm = nccl_inter_comms_[gpu_id];
   auto nccl_stream = resource_->comm_stream(gpu_id, 0);
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
-      &res.d_node_size_ptr[rank_offset],
-      reinterpret_cast<void *>(res.d_node_size_ptr),
-      node_size_,
-      ncclInt,
-      comm,
-      nccl_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclAllGather(&res.d_node_size_ptr[rank_offset],
+                                  reinterpret_cast<void *>(res.d_node_size_ptr),
+                                  node_size_,
+                                  ncclInt,
+                                  comm,
+                                  nccl_stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(nccl_stream));
   cache.node_barrier_.Pause();
 
@@ -3598,7 +3620,7 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::merge_grad(
     void *d_out_grads,
     const cudaStream_t &stream) {
   platform::CUDADeviceGuard guard(gpu_id);
-  auto place = platform::CUDAPlace(gpu_id);
+  auto place = phi::GPUPlace(gpu_id);
   thread_local std::shared_ptr<memory::Allocation> d_fea_num_info = nullptr;
   uint32_t *d_offset =
       AllocCache<uint32_t>(&d_fea_num_info, place, sizeof(uint32_t) * len * 4);
@@ -3782,13 +3804,13 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
   my_cache.node_barrier_.Resume();
   auto &comm = nccl_inter_comms_[gpu_id];
   auto nccl_stream = resource_->comm_stream(gpu_id, 0);
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
-      &res.d_node_size_ptr[rank_id_ * node_size_],
-      reinterpret_cast<void *>(res.d_node_size_ptr),
-      node_size_,
-      ncclInt,
-      comm,
-      nccl_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::ncclAllGather(&res.d_node_size_ptr[rank_id_ * node_size_],
+                                  reinterpret_cast<void *>(res.d_node_size_ptr),
+                                  node_size_,
+                                  ncclInt,
+                                  comm,
+                                  nccl_stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(nccl_stream));
   my_cache.node_barrier_.Pause();
 
@@ -3891,7 +3913,14 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::send_keys_by_all2all_trans(
     const size_t &recv_size =
         my_cache.shard_res.h_remote_part_offsets[nccl_node_size];
     size_t need_len = std::max(fea_size, recv_size);
-    CHECK(trans.trans_keys_buff->size() >= need_len * sizeof(KeyType) * 2);
+    PADDLE_ENFORCE_EQ(
+        trans.trans_keys_buff->size() >= need_len * sizeof(KeyType) * 2,
+        true,
+        phi::errors::InvalidArgument(
+            "The size of trnas keys buffer should be greater than or equal to "
+            "%d, but got %d.",
+            need_len * sizeof(KeyType) * 2,
+            trans.trans_keys_buff->size()));
 
     // p2p copy
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyPeerAsync(trans.d_merged_trans_keys,
@@ -4079,7 +4108,14 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
     const size_t &recv_total_size =
         my_cache.shard_res.h_remote_part_offsets[nccl_node_size];
     size_t need_len = std::max(fea_size, recv_total_size);
-    CHECK(trans.trans_keys_buff->size() >= need_len * sizeof(KeyType) * 2);
+    PADDLE_ENFORCE_EQ(
+        trans.trans_keys_buff->size() >= need_len * sizeof(KeyType) * 2,
+        true,
+        phi::errors::InvalidArgument(
+            "The size of trans keys buffer should be greater than or equal to "
+            "%d, but got %d.",
+            need_len * sizeof(KeyType) * 2,
+            trans.trans_keys_buff->size()));
 
     // p2p copy
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyPeerAsync(trans.d_merged_trans_keys,

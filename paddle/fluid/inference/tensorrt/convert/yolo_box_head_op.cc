@@ -12,18 +12,14 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/yolo_box_head_op_plugin.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-namespace proto {
+}  // namespace paddle::framework
+namespace paddle::framework::proto {
 class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::proto
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class YoloBoxHeadOpConverter : public OpConverter {
  public:
@@ -50,8 +46,6 @@ class YoloBoxHeadOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(yolo_box_head, YoloBoxHeadOpConverter);

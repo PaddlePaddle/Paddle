@@ -11,9 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 /*
  * flatten_contiguous_range trt converter
  */
@@ -43,7 +41,7 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
           int dim_i = input_dim.d[i];
           PADDLE_ENFORCE_GT(dim_i,
                             0,
-                            platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "flatten_contiguous_range input dim "
                                 "should be > 0, but got %d.",
                                 dim_i));
@@ -174,9 +172,7 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(flatten_contiguous_range,
                           FlattenContiguousRangeOpConverter);

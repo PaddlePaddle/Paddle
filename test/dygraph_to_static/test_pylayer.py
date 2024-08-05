@@ -746,7 +746,6 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @to_legacy_ir_test
     def train_and_save_model(self, model_path=None):
         layer = SimpleNet_1(784, 20)
         example_inputs, layer, _ = train(layer)
@@ -767,7 +766,14 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
         loaded_layer = paddle.jit.load(self.model_path)
         self.load_and_inference(train_layer, loaded_layer)
 
-    @to_legacy_ir_test
+    @to_pir_test
+    def test_pir_save_load(self):
+        # train and save model
+        train_layer = self.train_and_save_model()
+        # load model
+        loaded_layer = paddle.jit.load(self.model_path)
+        self.load_and_inference(train_layer, loaded_layer)
+
     def load_and_inference(self, train_layer, infer_layer):
         train_layer.eval()
         infer_layer.eval()

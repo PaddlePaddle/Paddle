@@ -32,8 +32,7 @@
 
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace drr {
+namespace paddle::drr {
 
 void OperationFactory::RegisterManualOpCreator() {
   RegisterOperationCreator(
@@ -91,7 +90,7 @@ void OperationFactory::RegisterManualOpCreator() {
         if (inputs.size() == 3) {
           PADDLE_ENFORCE_NE(attrs.find("axes"),
                             attrs.end(),
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'axes' Attribute is expected for SliceOp. "));
           std::vector<int64_t> axes;
           for (size_t i = 0;
@@ -107,7 +106,7 @@ void OperationFactory::RegisterManualOpCreator() {
           PADDLE_ENFORCE_NE(
               attrs.find("infer_flags"),
               attrs.end(),
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "'infer_flags' Attribute is expected for SliceOp. "));
           std::vector<int64_t> infer_flags;
           for (size_t i = 0;
@@ -124,7 +123,7 @@ void OperationFactory::RegisterManualOpCreator() {
           PADDLE_ENFORCE_NE(
               attrs.find("decrease_axis"),
               attrs.end(),
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "'decrease_axis' Attribute is expected for SliceOp. "));
           std::vector<int64_t> decrease_axis;
           for (size_t i = 0;
@@ -156,8 +155,8 @@ void OperationFactory::RegisterManualOpCreator() {
           PADDLE_ENFORCE_EQ(
               attrs.find("strides") != attrs.end(),
               true,
-              phi::errors::InvalidArgument("'strides' Attribute is expected "
-                                           "for Conv2dTransposeBiasOp. "));
+              common::errors::InvalidArgument("'strides' Attribute is expected "
+                                              "for Conv2dTransposeBiasOp. "));
           std::vector<int> strides;
           for (size_t i = 0;
                i < attrs.at("strides").dyn_cast<pir::ArrayAttribute>().size();
@@ -169,11 +168,11 @@ void OperationFactory::RegisterManualOpCreator() {
                                   .data());
           }
 
-          PADDLE_ENFORCE_EQ(
-              attrs.find("paddings") != attrs.end(),
-              true,
-              phi::errors::InvalidArgument("'paddings' Attribute is expected "
-                                           "for Conv2dTransposeBiasOp. "));
+          PADDLE_ENFORCE_EQ(attrs.find("paddings") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'paddings' Attribute is expected "
+                                "for Conv2dTransposeBiasOp. "));
           std::vector<int> paddings;
           for (size_t i = 0;
                i < attrs.at("paddings").dyn_cast<pir::ArrayAttribute>().size();
@@ -187,7 +186,7 @@ void OperationFactory::RegisterManualOpCreator() {
 
           PADDLE_ENFORCE_EQ(attrs.find("output_padding") != attrs.end(),
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'output_padding' Attribute is expected for "
                                 "Conv2dTransposeBiasOp. "));
           std::vector<int> output_padding;
@@ -204,26 +203,26 @@ void OperationFactory::RegisterManualOpCreator() {
 
           PADDLE_ENFORCE_EQ(attrs.find("padding_algorithm") != attrs.end(),
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'padding_algorithm' Attribute is expected for "
                                 "Conv2dTransposeBiasOp. "));
           std::string padding_algorithm = attrs.at("padding_algorithm")
                                               .dyn_cast<pir::StrAttribute>()
                                               .AsString();
 
-          PADDLE_ENFORCE_EQ(
-              attrs.find("groups") != attrs.end(),
-              true,
-              phi::errors::InvalidArgument("'groups' Attribute is expected for "
-                                           "Conv2dTransposeBiasOp. "));
+          PADDLE_ENFORCE_EQ(attrs.find("groups") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'groups' Attribute is expected for "
+                                "Conv2dTransposeBiasOp. "));
           int groups =
               attrs.at("groups").dyn_cast<pir::Int32Attribute>().data();
 
-          PADDLE_ENFORCE_EQ(
-              attrs.find("dilations") != attrs.end(),
-              true,
-              phi::errors::InvalidArgument("'dilations' Attribute is expected "
-                                           "for Conv2dTransposeBiasOp. "));
+          PADDLE_ENFORCE_EQ(attrs.find("dilations") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'dilations' Attribute is expected "
+                                "for Conv2dTransposeBiasOp. "));
           std::vector<int> dilations;
           for (size_t i = 0;
                i < attrs.at("dilations").dyn_cast<pir::ArrayAttribute>().size();
@@ -237,7 +236,7 @@ void OperationFactory::RegisterManualOpCreator() {
 
           PADDLE_ENFORCE_EQ(attrs.find("data_format") != attrs.end(),
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'data_format' Attribute is expected for "
                                 "Conv2dTransposeBiasOp. "));
           std::string data_format =
@@ -246,8 +245,8 @@ void OperationFactory::RegisterManualOpCreator() {
           PADDLE_ENFORCE_EQ(
               attrs.find("is_test") != attrs.end(),
               true,
-              phi::errors::InvalidArgument("'is_test' Attribute is expected "
-                                           "for Conv2dTransposeBiasOp. "));
+              common::errors::InvalidArgument("'is_test' Attribute is expected "
+                                              "for Conv2dTransposeBiasOp. "));
           bool is_test =
               attrs.at("is_test").dyn_cast<pir::BoolAttribute>().data();
 
@@ -279,7 +278,7 @@ void OperationFactory::RegisterManualOpCreator() {
         if (inputs.size() == 2) {
           PADDLE_ENFORCE_NE(attrs.find("keepdim"),
                             attrs.end(),
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'keepdim' Attribute is expected for MaxOp. "));
           bool keepdim =
               attrs.at("keepdim").dyn_cast<pir::BoolAttribute>().data();
@@ -300,6 +299,8 @@ pir::Attribute CreateIrAttribute(const std::any& obj) {
       return IrAttributeCreator<int64_t>()(std::any_cast<int64_t>(obj));
     } else if (obj.type() == typeid(float)) {
       return IrAttributeCreator<float>()(std::any_cast<float>(obj));
+    } else if (obj.type() == typeid(double)) {
+      return IrAttributeCreator<double>()(std::any_cast<double>(obj));
     } else if (obj.type() == typeid(std::string)) {
       return IrAttributeCreator<std::string>()(std::any_cast<std::string>(obj));
     } else if (obj.type() == typeid(const char*)) {
@@ -325,13 +326,13 @@ pir::Attribute CreateIrAttribute(const std::any& obj) {
       return IrAttributeCreator<phi::IntArray>()(
           std::any_cast<phi::IntArray>(obj));
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Type error. CreateIrAttribute for type(%s) "
           "is unimplemented CreateInCurrently.",
           obj.type().name()));
     }
   } catch (const std::bad_any_cast& e) {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "%s: CreateIrAttribute for type(%s) not successfully.",
         e.what(),
         obj.type().name()));
@@ -383,10 +384,14 @@ std::vector<pir::Value> GetIrValuesByDrrTensors(
 void BindIrOutputsWithDrrOutputs(const std::vector<const Tensor*>& tensors,
                                  pir::Operation* op,
                                  MatchContextImpl* match_ctx) {
+  if (op->isa<paddle::dialect::ReshapeOp>()) {
+    match_ctx->BindIrValue(tensors[0]->name(), op->result(0));
+    return;
+  }
   PADDLE_ENFORCE_LE(
       tensors.size(),
       op->num_results(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of drr outputs should less equal the size of pir outputs"));
   for (size_t i = 0; i < tensors.size(); ++i) {
     match_ctx->BindIrValue(tensors[i]->name(), op->result(i));
@@ -413,5 +418,4 @@ pir::Operation* CreateOperation(const OpCall& op_call,
   return op;
 }
 
-}  // namespace drr
-}  // namespace paddle
+}  // namespace paddle::drr

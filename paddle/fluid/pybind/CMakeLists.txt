@@ -14,7 +14,6 @@ set(PYBIND_DEPS
     pass
     generate_pass
     pass_builder
-    parallel_executor
     compiled_program
     profiler
     layer
@@ -54,6 +53,7 @@ set(PYBIND_DEPS
 if(WITH_CINN)
   set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
                   sub_graph_checker add_cinn_pass)
+  list(REMOVE_ITEM PYBIND_DEPS imperative_flag)
 endif()
 
 if(WITH_PSCORE)
@@ -66,10 +66,6 @@ if(WITH_RPC)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
                   common)
 endif()
-if(WITH_GPU OR WITH_ROCM)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
-  set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
-endif()
 
 if(WITH_GPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_profiler)
@@ -81,10 +77,6 @@ endif()
 if(WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-endif()
-
-if(WITH_XPU)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_xpti)
 endif()
 
 if(WITH_XPU_BKCL)
@@ -123,13 +115,13 @@ set(PYBIND_SRCS
     inference_api.cc
     control_flow_api.cc
     pir.cc
+    pir_utils.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc
     protobuf.cc
     exception.cc
     op_function_common.cc
-    parallel_executor.cc
     compiled_program.cc
     tensor.cc
     place.cc
@@ -178,7 +170,7 @@ endif()
 if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl async_load)
   endif()
   if(WITH_XPU_BKCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl)
@@ -309,18 +301,12 @@ if(WITH_PYTHON)
     list(REMOVE_ITEM GENERATOR_DEPS python)
   endif()
   target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
-  if(NOT WIN32)
-    add_executable(kernel_signature_generator kernel_signature_generator.cc)
-    target_link_libraries(kernel_signature_generator
-                          ${OP_FUNCTION_GENERATOR_DEPS})
-  endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(eager_legacy_op_function_generator
                         ${os_dependency_modules})
   if(WITH_ROCM)
     target_link_libraries(eager_legacy_op_function_generator ${ROCM_HIPRTC_LIB})
-    target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
   set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
@@ -370,6 +356,16 @@ if(WITH_PYTHON)
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
         DEPENDS phi)
+      add_custom_command(
+        OUTPUT ${op_impl_path}/phi_core.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${op_impl_path}
+        DEPENDS phi)
+      if(WITH_GPU OR WITH_ROCM)
+        add_custom_command(
+          OUTPUT ${op_impl_path}/phi_gpu.dll
+          COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB} ${op_impl_path}
+          DEPENDS phi)
+      endif()
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
     endif()
 

@@ -49,7 +49,6 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'grad_',
         'grad_fn',
         'gradient',
-        'indices',
         'inplace_version',
         'is_dense',
         'is_dist',
@@ -62,26 +61,21 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'layout',
         'nnz',
         'num_shard',
-        'numpy',
         'offset',
         'pin_memory',
         'placements',
         'process_mesh',
         'reconstruct_from_',
-        'register_hook',
         'retain_grads',
         'rows',
         'set_string_list',
         'set_value',
         'set_vocab',
         'strides',
-        'to',
-        'to_dense',
         'to_sparse_coo',
         'to_sparse_csr',
         'tolist',
         'value',
-        'values',
         'zero_',
     ]
 )
@@ -120,6 +114,8 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'optimize_attr',
         'regularizer',
         'trainable',
+        'is_sparse_coo_tensor_type',
+        'is_sparse_csr_tensor_type',
     ]
 )
 

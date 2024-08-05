@@ -14,8 +14,7 @@
 
 #include "paddle/phi/kernels/funcs/jit/kernel_pool.h"
 
-namespace phi {
-namespace jit {
+namespace phi::jit {
 
 std::map<size_t, std::shared_ptr<void>>& GetJITCodesMap() {
   static thread_local std::map<size_t, std::shared_ptr<void>> g_jit_codes_map;
@@ -37,5 +36,4 @@ ReferKernelPool& ReferKernelPool::Instance() {
   return g_refer_kernel_pool;
 }
 
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit

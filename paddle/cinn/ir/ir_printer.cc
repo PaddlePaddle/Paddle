@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include <algorithm>
+#include <cfenv>
 #include <iomanip>
 #include <limits>
 #include <vector>
-
-#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
@@ -62,7 +63,7 @@ void IrPrinter::Visit(const IntImm *x) {
   } else {
     std::stringstream ss;
     ss << "Not support int type: " << x->type();
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 }
 void IrPrinter::Visit(const UIntImm *x) {
@@ -86,9 +87,34 @@ void IrPrinter::Visit(const UIntImm *x) {
   } else {
     std::stringstream ss;
     ss << "Not support uint type: " << x->type();
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 }
+
+namespace {
+template <typename T>
+bool IsCloseEqualBoundValue(T value) {
+  T max_value = std::numeric_limits<T>::max();
+  T min_value = std::numeric_limits<T>::lowest();
+  T tol = std::numeric_limits<T>::denorm_min();
+  return (max_value - value) < tol || (value - min_value) < tol;
+}
+
+template <typename T>
+T TruncateInfinity(T value) {
+  T max_value = std::numeric_limits<T>::max();
+  T min_value = std::numeric_limits<T>::lowest();
+  if (value > max_value) {
+    return max_value;
+  }
+  if (value < min_value) {
+    return min_value;
+  }
+  return value;
+}
+
+}  // namespace
+
 void IrPrinter::Visit(const FloatImm *x) {
   std::ostringstream ss;
   if (x->type().is_float16()) {
@@ -112,10 +138,12 @@ void IrPrinter::Visit(const FloatImm *x) {
       ss << static_cast<bfloat16>(x->value) << "f";
     }
   } else if (x->type().is_float(32)) {
+    float v = TruncateInfinity<float>(x->value);
+    if (IsCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
     ss << std::setprecision(std::numeric_limits<float>::max_digits10);
     ss << std::showpoint;
-    ss << x->value;
-    if (std::isfinite(x->value)) {
+    ss << v;
+    if (std::isfinite(v)) {
       ss << "f";
     }
   } else if (x->type().is_float(64)) {
@@ -125,7 +153,7 @@ void IrPrinter::Visit(const FloatImm *x) {
   } else {
     std::stringstream ss;
     ss << "Not support float type: " << x->type();
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   str_ += ss.str();
 }
@@ -293,7 +321,11 @@ void IrPrinter::Visit(const _Module_ *x) {}
 void IrPrinter::Visit(const _Var_ *x) { str_ += x->name; }
 void IrPrinter::Visit(const Alloc *x) {
   auto *buffer = x->destination.As<ir::_Buffer_>();
-  CHECK(buffer);
+  PADDLE_ENFORCE_NOT_NULL(
+      buffer,
+      phi::errors::InvalidArgument("The destination is not a valid buffer. "
+                                   "Please ensure that `x->destination` is "
+                                   "properly assigned to a buffer."));
   str_ += "alloc(";
   str_ += buffer->name;
   str_ += ", ";
@@ -312,7 +344,11 @@ void IrPrinter::Visit(const Select *x) {
 void IrPrinter::Visit(const Load *x) {
   if (x->is_addr_tensor()) {
     auto *tensor = x->tensor.As<ir::_Tensor_>();
-    CHECK(tensor);
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor,
+        phi::errors::InvalidArgument("The tensor is not valid. "
+                                     "Please ensure that `x->tensor` is "
+                                     "properly assigned to a tensor."));
     str_ += tensor->name;
   } else if (x->is_addr_scalar()) {
     Visit(x->tensor);
@@ -331,7 +367,12 @@ void IrPrinter::Visit(const Load *x) {
 void IrPrinter::Visit(const Store *x) {
   if (x->is_addr_tensor()) {
     auto *tensor_node = x->tensor.As<ir::_Tensor_>();
-    CHECK(tensor_node);
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_node,
+        phi::errors::InvalidArgument("The tensor node is not valid. "
+                                     "Please ensure that `x->tensor` is "
+                                     "properly assigned to a tensor node."));
+
     str_ += tensor_node->name;
   } else if (x->is_addr_scalar()) {
     Visit(x->tensor);
@@ -350,7 +391,12 @@ void IrPrinter::Visit(const Store *x) {
 }
 void IrPrinter::Visit(const Free *x) {
   auto *buffer = x->destination.As<ir::_Buffer_>();
-  CHECK(buffer);
+  PADDLE_ENFORCE_NOT_NULL(
+      buffer,
+      phi::errors::InvalidArgument("The destination is not a valid buffer. "
+                                   "Please ensure that `x->destination` is "
+                                   "properly assigned to a buffer."));
+
   str_ += "free(";
   str_ += buffer->name;
   str_ += ")";
@@ -406,7 +452,13 @@ void IrPrinter::Visit(const _LoweredFunc_ *f) {
   Visit(f->body);
 }
 void IrPrinter::Visit(const Let *f) {
-  CHECK(f->type().valid());
+  PADDLE_ENFORCE_EQ(
+      f->type().valid(),
+      true,
+      phi::errors::InvalidArgument(
+          "The type of `f` is not valid. "
+          "Please ensure that `f->type()` returns a valid type."));
+
   str_ += f->type().to_string();
   str_ += " ";
   Visit(f->symbol);
@@ -515,7 +567,11 @@ void IrPrinter::Visit(const PrimitiveNode *x) {
 
 void IrPrinter::Visit(const _BufferRange_ *x) {
   auto *buffer = x->buffer.As<ir::_Buffer_>();
-  CHECK(buffer);
+  PADDLE_ENFORCE_NOT_NULL(
+      buffer,
+      phi::errors::InvalidArgument(
+          "The buffer is not valid. "
+          "Please ensure that `x->buffer` is properly assigned to a buffer."));
   str_ += buffer->name;
   str_ += "[";
   for (std::size_t i = 0; i < x->ranges.size(); i++) {
@@ -552,7 +608,10 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
   // print block vars and bindings
   auto iter_vars = schedule_block->iter_vars;
   auto iter_values = x->iter_values;
-  CHECK_EQ(iter_vars.size(), iter_values.size());
+  PADDLE_ENFORCE_EQ(iter_vars.size(),
+                    iter_values.size(),
+                    ::common::errors::InvalidArgument(
+                        "iter_vars.size() != iter_values.size()"));
   IncIndent();
   if (!iter_vars.empty()) DoIndent();
   for (std::size_t i = 0; i < iter_vars.size(); i++) {

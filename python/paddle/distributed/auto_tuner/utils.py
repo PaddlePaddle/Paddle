@@ -1068,7 +1068,10 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                         prefix + str(cfg[arg]) if prefix else cfg[arg]
                     )
                 json.dump(cmd_cfg, open(cmd[arg][0], "w"))
-                if tuner_cfg["run_cmd"].get("generate_launch_cfg", True):
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
                     new_cmd_apth = (
                         os.path.splitext(cmd[arg][0])[0]
                         + "_"
@@ -1107,7 +1110,10 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                         prefix + str(cfg[arg]) if prefix else cfg[arg]
                     )
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
-                if tuner_cfg["run_cmd"].get("generate_launch_cfg", True):
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
                     new_cmd_apth = (
                         os.path.splitext(cmd[arg][0])[0]
                         + cfg["log_dir_name"]
@@ -1157,7 +1163,10 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 else:
                     cmd_cfg[keys[-1]] = rr_values
                 json.dump(cmd_cfg, open(cmd[arg][0], "w"))
-                if tuner_cfg["run_cmd"].get("generate_launch_cfg", True):
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
                     new_cmd_apth = (
                         os.path.splitext(cmd[arg][0])[0]
                         + cfg["log_dir_name"]
@@ -1198,7 +1207,10 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 else:
                     cmd_cfg[keys[-1]] = rr_values
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
-                if tuner_cfg["run_cmd"].get("generate_launch_cfg", True):
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
                     new_cmd_apth = (
                         os.path.splitext(cmd[arg][0])[0]
                         + cfg["log_dir_name"]

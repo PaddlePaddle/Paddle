@@ -14,12 +14,12 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/single_op_fallback_to_phi.h"
 
-#include "build/paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
-#include "build/paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 namespace cinn {
@@ -43,12 +43,12 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     PADDLE_ENFORCE_EQ(
         fusion_op.GetOperators().size(),
         2,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "fusion_op should have two operators inside, but got %d",
             fusion_op.GetOperators().size()));
     PADDLE_ENFORCE(
         fusion_op.GetOperators()[1]->isa<::pir::YieldOp>(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The last operator of fusion_op must be YieldOp, but got %s",
             fusion_op.GetOperators()[1]->name()));
 
@@ -64,9 +64,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(fusion_op.result(i),
                                   paddle_op.value()->result(i));
-      shape_analysis.SetShapeOrDataForValue(
-          paddle_op.value()->result(i),
-          shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
     }
 
     rewriter.EraseOp(fusion_op);
@@ -81,7 +78,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       pir::Operation* op,
       pir::PatternRewriter& rewriter) const {  // NOLINT
     PADDLE_ENFORCE(op->isa<cinn::dialect::ReshapeOp>(),
-                   phi::errors::InvalidArgument(
+                   ::common::errors::InvalidArgument(
                        "Input should be cinn::dialect::ReshapeOp, but got %s",
                        op->name()));
     auto reshape_op = op->dyn_cast<cinn::dialect::ReshapeOp>();
@@ -92,7 +89,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
                                 .AsVector();
       PADDLE_ENFORCE_GT(out_shape_attr.size(),
                         0,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The shape attribute should not be empty"));
 
       std::vector<int64_t> ret;

@@ -13,7 +13,6 @@ gather_srcs(
   profiler.cc
   event.cc
   multi_threading.cc
-  data_util.cc
   random_engine.cc
   external_func_names.cc)
 
@@ -29,4 +28,4 @@ cinn_cc_test(
   DEPS
   absl
   Threads::Threads)
-cinn_cc_test(test_profiler SRCS profiler_test.cc DEPS cinncore)
+cinn_cc_test(test_profiler_cinn SRCS profiler_test.cc DEPS cinncore)

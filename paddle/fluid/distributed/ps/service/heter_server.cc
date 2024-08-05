@@ -169,8 +169,8 @@ int SendAndRecvVariableHandler::SaveInSwitchWithScope(
     PsResponseMessage* response,
     brpc::Controller* cntl) {
   VLOG(4) << "entering SaveInSwitchWithScope";
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::CPUPlace cpu_place;
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  phi::CPUPlace cpu_place;
   auto& cpu_dev_ctx = *pool.Get(cpu_place);
   auto message_name = request->message_name();
   VLOG(4) << "message_name in heter server: " << message_name;
@@ -211,8 +211,8 @@ int SendAndRecvVariableHandler::QueryInSwitchWithScope(
   if (!local_scope) {
     LOG(INFO) << "local_scope is null";
   }
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::CPUPlace cpu_place;
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  phi::CPUPlace cpu_place;
   auto& cpu_dev_ctx = *pool.Get(cpu_place);
 
   // get req message_name & req_var_names

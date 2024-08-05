@@ -37,17 +37,11 @@ namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
     LoadCombineOp::name(),
-    BatchFcOp::name(),
-    BatchFcGradOp::name(),
     CConcatOp::name(),
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
     CSyncCommStream_Op::name(),
     DistributedPushSparseOp::name(),
-    FtrlOp::name(),
-    FusedElemwiseAddActivationOp::name(),
-    FusedElemwiseAddActivationGradOp::name(),
-    DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
     CAllreduceProd_Op::name(),
@@ -57,39 +51,18 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceAvg_Op::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
-    CReducescatterOp::name(),
     CAllreduceMax_Op::name(),
+    CAllreduceMaxOp::name(),
     CAllreduceMin_Op::name(),
     CAllgatherOp::name(),
     CSoftmaxWithCrossEntropyOp::name(),
     CSoftmaxWithCrossEntropyGradOp::name(),
     CSplitOp::name(),
     PushDenseOp::name(),
-    SeedOp::name(),
-    ShareData_Op::name(),
-    SparseMomentumOp::name(),
-    GetTensorFromSelectedRowsOp::name(),
-    RankAttentionOp::name(),
-    RankAttentionGradOp::name(),
-    RowConvOp::name(),
-    RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
-    MatchMatrixTensorOp::name(),
-    MatchMatrixTensorGradOp::name(),
-    NceOp::name(),
-    NceGradOp::name(),
-    LrnOp::name(),
-    LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
     MovingAverageAbsMaxScale_Op::name(),
-#ifdef PADDLE_WITH_DNNL
-    paddle::onednn::dialect::LrnOp::name(),
-    paddle::onednn::dialect::LrnGradOp::name(),
-    paddle::onednn::dialect::QuantizeOp::name(),
-    paddle::onednn::dialect::MultiGruOp::name(),
-    paddle::onednn::dialect::FusionLstmOp::name(),
-#endif
     CReduceAvgOp::name(),
     CReduceAvg_Op::name(),
     CReduceMaxOp::name(),
@@ -147,7 +120,7 @@ static inline AttrType GetAttributeType(const pir::Attribute& attr) {
   } else if (attr.isa<paddle::dialect::PlaceAttribute>()) {
     return AttrType::PLACE;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported ir Attribute type when casting it into "
         "AttrType."));
   }
@@ -254,7 +227,7 @@ static std::function<T(const pir::Attribute& attr)> GetAttrCast(
                }
                return T{vec_string};
              } else {
-               PADDLE_THROW(phi::errors::Unimplemented(
+               PADDLE_THROW(common::errors::Unimplemented(
                    "Unsupported ir Attribute type when casting it into "
                    "vector."));
              }
@@ -282,7 +255,7 @@ bool IsEmptyValue(const pir::Value& value) {
 std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr) {
   PADDLE_ENFORCE_EQ(attr.isa<pir::ArrayAttribute>(),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "attribute MUST be a pir::ArrayAttribute"));
   auto attr_vec = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
 
@@ -291,7 +264,7 @@ std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr) {
     PADDLE_ENFORCE_EQ(
         vec_element.isa<pir::Int64Attribute>(),
         true,
-        phi::errors::PreconditionNotMet("element MUST be a Int64Attribute"));
+        common::errors::PreconditionNotMet("element MUST be a Int64Attribute"));
     vec_int64.push_back(vec_element.dyn_cast<pir::Int64Attribute>().data());
   }
 
@@ -347,11 +320,11 @@ phi::DataType GetValueDataType(const pir::Type& type) {
       return phi::DataType::UNDEFINED;
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidType(
+    PADDLE_THROW(common::errors::InvalidType(
         "Not support op type %s in ConvertOpTypeToKernelType.", type));
     PADDLE_THROW(
-        phi::errors::InvalidType("Currently, we can only get dtype for "
-                                 "DenseTensorType and SelectedRowsType."));
+        common::errors::InvalidType("Currently, we can only get dtype for "
+                                    "DenseTensorType and SelectedRowsType."));
   }
 }
 
@@ -372,7 +345,7 @@ void DoValueCheck(const pir::Value& value,
     std::copy(expected_dtype.begin(),
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
-    PADDLE_THROW(phi::errors::InvalidType(
+    PADDLE_THROW(common::errors::InvalidType(
         "Check data type error for op: %s, input: %s, %s.dtype: %s, and "
         "expected_dtype: %s",
         op_name,
@@ -413,7 +386,7 @@ void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
     return;
   }
   if (!IsSameDataTypeForValues(vector_value)) {
-    PADDLE_THROW(phi::errors::InvalidType(
+    PADDLE_THROW(common::errors::InvalidType(
         "All the Values in the input must have the same data type."));
   }
   std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
@@ -432,7 +405,7 @@ void CheckDataType(const phi::DataType& dtype,
     std::copy(expected_dtype.begin(),
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
-    PADDLE_THROW(phi::errors::InvalidType(
+    PADDLE_THROW(common::errors::InvalidType(
         "Check data type error for op: %s, dtype: %s, and "
         "expected_dtype: %s",
         op_name,
@@ -467,11 +440,34 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
     auto shape_item = shape.defining_op()
                           ->dyn_cast<paddle::dialect::FullOp>()
                           .attribute("value")
-                          .dyn_cast<pir::FloatAttribute>()
-                          .data();
+                          .dyn_cast<paddle::dialect::ScalarAttribute>()
+                          .data()
+                          .to<double>();
     vec_shape = {static_cast<int64_t>(shape_item)};
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::StackOp>()) {
+    std::vector<pir::Value> inputs =
+        shape.defining_op()->operand_source(0).defining_op()->operands_source();
+    for (auto item : inputs) {
+      auto tmp = ParseValueShape(item, is_from_tensor);
+      vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
+    }
+  } else if (shape.isa<pir::OpResult>() &&
+             shape.defining_op()->isa<paddle::dialect::ShapeOp>() &&
+             shape.type().isa<paddle::dialect::DenseTensorType>()) {
+    // tensor_shape may come from shape op
+    // x0.shape = [-1,3]
+    // tensor_shape = shape(x0)
+    // y = reshape(x, tensor_shape)
+    pir::Value inputs = shape.defining_op()->operand_source(0);
+    vec_shape = common::vectorize(
+        inputs.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+    *is_from_tensor = true;
+  } else if (shape.isa<pir::OpResult>() &&
+             shape.defining_op()->isa<paddle::dialect::ConcatOp>()) {
+    // tensor_shape may come from concat
+    // tensor_shape = concat([full(1), full(2)])
+    // y = reshape(x, tensor_shape)
     std::vector<pir::Value> inputs =
         shape.defining_op()->operand_source(0).defining_op()->operands_source();
     for (auto item : inputs) {
@@ -492,9 +488,9 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
     vec_shape = std::vector<int64_t>(shape_size, -1);
     *is_from_tensor = true;
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
-                                   "or AllocatedDenseTensorType"));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Only support VectorType or DenseTensorType "
+        "or AllocatedDenseTensorType"));
   }
   return vec_shape;
 }

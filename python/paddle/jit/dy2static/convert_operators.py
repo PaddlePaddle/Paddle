@@ -493,11 +493,11 @@ def _run_paddle_cond(
             "Unsupported return type of true_fn and false_fn in cond", str(e)
         ):
             raise Dygraph2StaticException(
-                f"Your if/else have different return type. TODO: add link to modifty. {str(e)}"
+                f"Your if/else have different return type. TODO: add link to modifty. {e}"
             )
         if re.search("Incompatible return values of", str(e)):
             raise Dygraph2StaticException(
-                f"Your if/else have different number of return value. TODO: add link to modifty. {str(e)}"
+                f"Your if/else have different number of return value. TODO: add link to modifty. {e}"
             )
         raise e
     get_args = lambda: helper.get(union_name)
@@ -615,8 +615,7 @@ def convert_len(var):
             return paddle.tensor.array_length(var)
         else:
             raise TypeError(
-                'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
-                % type(var)
+                f'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received {type(var)}.'
             )
     elif isinstance(var, Value):
         if var.is_dense_tensor_type() or var.is_selected_row_type():
@@ -645,7 +644,7 @@ def convert_zip(*args):
         if isinstance(arg, (Variable, Value)) and arg.shape[0] == -1:
             raise RuntimeError(
                 "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
-                f"but found args[{str(i)}].shape[0] == -1 in 'zip'"
+                f"but found args[{i}].shape[0] == -1 in 'zip'"
             )
     return zip(*args)
 

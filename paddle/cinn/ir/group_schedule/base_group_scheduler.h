@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
@@ -64,6 +65,10 @@ class GroupScheduler {
   virtual void Schedule() = 0;
 
   virtual std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() = 0;
+  virtual std::vector<int> GetPriorities() = 0;
+  virtual std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetCX86IRs() {
+    CINN_NOT_IMPLEMENTED;
+  }
 
   std::unordered_set<std::string> OutputTensorNames() const;
 

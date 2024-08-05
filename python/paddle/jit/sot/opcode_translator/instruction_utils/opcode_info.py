@@ -13,10 +13,9 @@
 # limitations under the License.
 from __future__ import annotations
 
+import opcode
 import sys
 from enum import Enum
-
-import opcode
 
 REL_JUMP = {opcode.opname[x] for x in opcode.hasjrel}
 REL_BWD_JUMP = {opname for opname in REL_JUMP if "BACKWARD" in opname}

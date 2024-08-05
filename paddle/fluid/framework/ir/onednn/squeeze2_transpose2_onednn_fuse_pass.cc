@@ -17,16 +17,14 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
 void FuseSqueeze2Transpose2OneDNNPass::ApplyImpl(Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input graph pointer argument should not be nullptr."));
 
   FusePassBase::Init("squeeze2_transpose2_onednn_fuse_pass", graph);
@@ -77,9 +75,7 @@ void FuseSqueeze2Transpose2OneDNNPass::ApplyImpl(Graph *graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(squeeze2_transpose2_onednn_fuse_pass,
               paddle::framework::ir::FuseSqueeze2Transpose2OneDNNPass);

@@ -37,9 +37,12 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
   void Schedule() override;
 
   std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() override;
+  std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetCX86IRs() override;
+  std::vector<int> GetPriorities() override;
 
   struct BucketContext {
     SymbolicPredicate predicate;
+    int priority;
     std::unique_ptr<ir::IRSchedule> ir_sch;
     std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph;
     ScheduleContext schedule_context;

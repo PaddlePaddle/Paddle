@@ -12,25 +12,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/run_program_op.h"
-
 #include <string>
 
-namespace paddle {
-namespace operators {
+#include "paddle/fluid/framework/op_registry.h"
+
+namespace paddle::operators {
+
+using BlockDesc = framework::BlockDesc;
 
 class RunProgramOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInputs("X"),
-        true,
-        phi::errors::NotFound("Input(X) of RunProgramOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"),
+                      true,
+                      common::errors::NotFound(
+                          "Input(X) of RunProgramOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutputs("Out"),
                       true,
-                      phi::errors::NotFound(
+                      common::errors::NotFound(
                           "Output(Out) of RunProgramOp should not be null."));
   }
 
@@ -173,12 +174,12 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInputs("X"),
                       true,
-                      phi::errors::NotFound(
+                      common::errors::NotFound(
                           "Input(X) of RunProgramGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInputs(framework::GradVarName("Out")),
         true,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Input(Out@GRAD) of RunProgramGradOp should not be null."));
     // NOTE: The X@GRAD and Params@GRAD may not exist,
     // because they can be set stop_gradient = True
@@ -253,8 +254,7 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(run_program,
@@ -263,9 +263,3 @@ REGISTER_OPERATOR(run_program,
                   ops::RunProgramGradOpMaker<paddle::framework::OpDesc>,
                   ops::RunProgramGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(run_program_grad, ops::RunProgramGradOp);
-
-/* see [Why use single type kernel] */
-PD_REGISTER_STRUCT_KERNEL(
-    run_program, CPU, ALL_LAYOUT, ops::RunProgramOpKernel, float) {}
-PD_REGISTER_STRUCT_KERNEL(
-    run_program_grad, CPU, ALL_LAYOUT, ops::RunProgramGradOpKernel, float) {}

@@ -16,7 +16,7 @@
 
 #include "glog/logging.h"
 #include "jitify.hpp"  // NOLINT
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace backends {
 namespace nvrtc {
@@ -27,8 +27,10 @@ HeaderGeneratorBase& JitSafeHeaderGenerator::GetInstance() {
 }
 
 const size_t JitSafeHeaderGenerator::size() const {
-  CHECK_EQ(include_names_.size(), headers_.size())
-      << "Internal error in size of header files.";
+  PADDLE_ENFORCE_EQ(include_names_.size(),
+                    headers_.size(),
+                    ::common::errors::InvalidArgument(
+                        "Internal error in size of header files."));
   return include_names_.size();
 }
 

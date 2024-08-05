@@ -80,6 +80,7 @@ set_field_default_config(AMP, "custom_black_varnames", [])
 set_field_default_config(AMP, "use_fp16_guard", False)
 set_field_default_config(AMP, "use_bf16_guard", False)
 set_field_default_config(AMP, "use_master_grad", False)
+set_field_default_config(AMP, "use_promote", False)
 
 #########################################
 # sharding configuration
@@ -120,6 +121,7 @@ set_field_default_config(PIPELINE, "generation_batch_size", 1)
 set_field_default_config(PIPELINE, "enable_send_recv_overlap", False)
 set_field_default_config(PIPELINE, "job_schedule_profiler_start", -1)
 set_field_default_config(PIPELINE, "job_schedule_profiler_stop", -1)
+set_field_default_config(PIPELINE, "split_backward", False)
 
 #########################################
 # quantization configuration

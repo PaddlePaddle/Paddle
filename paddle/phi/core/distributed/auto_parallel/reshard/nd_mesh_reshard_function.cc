@@ -27,8 +27,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 namespace {
 ProcessMesh GetSubProcessMesh(const ProcessMesh& mesh, int64_t axis) {
@@ -307,7 +306,7 @@ void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
     SameNdMeshReshardFunction same_nd_reshard_func;
     PADDLE_ENFORCE(
         same_nd_reshard_func.IsSuitable(in, in_dist_attr_shard),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invoke the same nd reshard function is not valid from %s to %s.",
             in_dist_attr,
             in_dist_attr_shard));
@@ -319,12 +318,11 @@ void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
   SameStatusReshardFunction same_status_func;
   PADDLE_ENFORCE(
       same_status_func.IsSuitable(tmp_result, out_dist_attr),
-      phi::errors::InvalidArgument("Invoke the same status reshard function "
-                                   "is not valid from %s to %s.",
-                                   tmp_result.dist_attr(),
-                                   out_dist_attr));
+      common::errors::InvalidArgument("Invoke the same status reshard function "
+                                      "is not valid from %s to %s.",
+                                      tmp_result.dist_attr(),
+                                      out_dist_attr));
   same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

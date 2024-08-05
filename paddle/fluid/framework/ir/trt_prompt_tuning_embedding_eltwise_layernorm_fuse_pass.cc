@@ -18,18 +18,11 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 static PDNode* create_emb_vars(PDPattern* pattern,
                                const std::string& name,
@@ -201,7 +194,8 @@ void TrtPromptTuningSkipLayerNorm::operator()() {
       .LinksTo({layer_norm_out});
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int TrtPromptTuningEmbeddingEltwiseLayerNormFusePass::BuildFusion(
     Graph* graph, const std::string& name_scope
@@ -580,9 +574,7 @@ void TrtPromptTuningEmbeddingEltwiseLayerNormFusePass::ApplyImpl(
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(
     trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass,

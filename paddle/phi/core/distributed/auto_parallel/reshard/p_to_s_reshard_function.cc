@@ -26,8 +26,7 @@
 #include "paddle/phi/kernels/split_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 bool PToSReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
@@ -211,7 +210,7 @@ void PToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
     PToSReshardFunction p_to_s_func;
     PADDLE_ENFORCE(
         p_to_s_func.IsSuitable(in, in_dist_attr_shard),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invoke the p to s reshard function is not valid from %s to %s.",
             in_dist_attr,
             in_dist_attr_shard));
@@ -224,12 +223,11 @@ void PToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
   SameStatusReshardFunction same_status_func;
   PADDLE_ENFORCE(
       same_status_func.IsSuitable(tmp_result, out_dist_attr),
-      phi::errors::InvalidArgument("Invoke the same status reshard function "
-                                   "is not valid from %s to %s.",
-                                   tmp_result.dist_attr(),
-                                   out_dist_attr));
+      common::errors::InvalidArgument("Invoke the same status reshard function "
+                                      "is not valid from %s to %s.",
+                                      tmp_result.dist_attr(),
+                                      out_dist_attr));
   same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

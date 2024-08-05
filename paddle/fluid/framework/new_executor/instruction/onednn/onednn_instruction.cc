@@ -62,10 +62,23 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
     if (array_list.size() > 0) {
       PADDLE_ENFORCE_EQ(array_list[0].isa<pir::Int32Attribute>(),
                         true,
-                        phi::errors::Unimplemented(
+                        common::errors::Unimplemented(
                             "the 0th elementwise MUST be pir::Int32Attribute"));
       for (size_t i = 0; i < array_list.size(); ++i) {
         vec_res.push_back(array_list[i].dyn_cast<pir::Int32Attribute>().data());
+      }
+    }
+    return vec_res;
+  } else if (attr_type_name == "pir::ArrayAttribute<pir::Int64Attribute>") {
+    auto array_list = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
+    std::vector<int64_t> vec_res;
+    if (array_list.size() > 0) {
+      PADDLE_ENFORCE_EQ(array_list[0].isa<pir::Int64Attribute>(),
+                        true,
+                        common::errors::Unimplemented(
+                            "the 0th elementwise MUST be pir::Int64Attribute"));
+      for (size_t i = 0; i < array_list.size(); ++i) {
+        vec_res.push_back(array_list[i].dyn_cast<pir::Int64Attribute>().data());
       }
     }
     return vec_res;
@@ -80,7 +93,7 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
         }
 
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
             attr_type_name));
       }
@@ -97,7 +110,7 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
   } else if (attr_type_name == "paddle::dialect::ScalarAttribute") {
     return attr.dyn_cast<dialect::ScalarAttribute>().data();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
         attr_type_name));
   }
@@ -127,7 +140,7 @@ void TensorNameMap(pir::Operation* op,
     PADDLE_ENFORCE_EQ(
         name2id.count(name),
         true,
-        phi::errors::NotFound("param [%s] MUST in name2id map", name));
+        common::errors::NotFound("param [%s] MUST in name2id map", name));
     auto index = name2id.at(name);
     pir::Value ptr = op->operand_source(index);
 
@@ -138,7 +151,7 @@ void TensorNameMap(pir::Operation* op,
     auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
     auto in_var_name = value_exec_info.GetVarName(ptr);
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
 
     auto type = ptr.type();
@@ -157,7 +170,7 @@ void TensorNameMap(pir::Operation* op,
       }
       inputs_tensor_name_map[legacy_arg_name] = vec_tmp;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
           "pir::vector type"));
     }
@@ -176,7 +189,7 @@ void TensorNameMap(pir::Operation* op,
     auto out_var_name = value_exec_info.GetVarName(ptr);
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(out_var_name),
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", out_var_name));
 
     auto type = ptr.type();
@@ -195,7 +208,7 @@ void TensorNameMap(pir::Operation* op,
       }
       outputs_tensor_name_map[legacy_arg_name] = vec_tmp;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
           "pir::vector type"));
     }
@@ -204,7 +217,7 @@ void TensorNameMap(pir::Operation* op,
 
 OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {
@@ -229,7 +242,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
   PADDLE_ENFORCE_NOT_NULL(
       yaml_interface,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(op_name),
@@ -388,15 +401,16 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
 }
 
 OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
-  if (phi_kernel_ != nullptr) {
-    delete phi_kernel_;
-  }
+  delete phi_kernel_;
 }
 
 void OneDNNPhiKernelInstruction::Run() {
+  std::vector<std::shared_ptr<phi::DenseTensor>> tmp_holders;
+  auto tmp_kernel_context = kernel_context_;
+  auto tmp_infer_meta_context_ = infer_meta_context_;
   // Step1. TransLayout
-  auto inputs = kernel_context_.InputsBetween<phi::DenseTensor>(
-      size_t(0), kernel_context_.InputsSize());
+  auto inputs = tmp_kernel_context.InputsBetween<phi::DenseTensor>(
+      size_t(0), tmp_kernel_context.InputsSize());
   for (size_t i = 0; i < inputs.size(); ++i) {
     auto input = inputs[i];
     if (input == nullptr) {
@@ -408,10 +422,12 @@ void OneDNNPhiKernelInstruction::Run() {
     if (skip_format_tensors_.count(i)) {
       continue;
     }
-    VLOG(6) << "input[" << i << "].layout() = " << input->layout();
+    VLOG(6) << "input[" << i << "].layout() = " << input->layout()
+            << ", shape = " << input->dims();
     if (input->layout() != phi::DataLayout::ONEDNN) {
       phi::DataLayout from_layout = input->layout();
-      auto transed_tensor = const_cast<phi::DenseTensor*>(input);
+      tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>(*input));
+      auto transed_tensor = tmp_holders.back().get();
 
       std::set<std::string> elementwise_kernels = {
           "add", "subtract", "multiply", "divide"};
@@ -450,8 +466,24 @@ void OneDNNPhiKernelInstruction::Run() {
       }
 
       dnnl::memory::desc out_mem_desc =
-          phi::funcs::make_memory_desc(*input, from_layout);
+          phi::funcs::make_memory_desc(*transed_tensor, from_layout);
       transed_tensor->set_mem_desc(out_mem_desc);
+      tmp_kernel_context.UpdataInput(i, transed_tensor);
+      auto meta_tensor = phi::MetaTensor(transed_tensor);
+      auto input_meta_tensor = phi::MetaTensor(input);
+      if (tmp_infer_meta_context_.InputsSize() > i &&
+          tmp_infer_meta_context_.InputAt(i).is_same_tensor(
+              input_meta_tensor)) {
+        tmp_infer_meta_context_.UpdataInput(i, meta_tensor);
+      } else {
+        for (size_t j = 0; j < tmp_infer_meta_context_.InputsSize(); ++j) {
+          if (tmp_infer_meta_context_.InputAt(j).is_same_tensor(
+                  input_meta_tensor)) {
+            tmp_infer_meta_context_.UpdataInput(j, meta_tensor);
+            break;
+          }
+        }
+      }
     }
   }
 
@@ -459,7 +491,7 @@ void OneDNNPhiKernelInstruction::Run() {
   // SetDnnAttrIntoDeviceContext
   // SetInputsName SetOutputsName
   auto one_dnn_ctx = const_cast<phi::OneDNNContext*>(
-      &kernel_context_.GetDeviceContext<phi::OneDNNContext>());
+      &tmp_kernel_context.GetDeviceContext<phi::OneDNNContext>());
   for (auto& attr : extra_attr_) {
     one_dnn_ctx->SetDnnAttr(attr.first, attr.second);
   }
@@ -471,12 +503,12 @@ void OneDNNPhiKernelInstruction::Run() {
 
   // Step3. InferMeta
   if (infer_meta_interface_) {
-    infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+    infer_meta_interface_->infer_meta_(&(tmp_infer_meta_context_));
   }
 
   // Step4. Run kernel
   VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
-  (*(phi_kernel_))(&(kernel_context_));
+  (*(phi_kernel_))(&(tmp_kernel_context));
   VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
 
   // Step5. ClearDnnAttr

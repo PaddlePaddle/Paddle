@@ -18,9 +18,7 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/phi/common/place.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 namespace {
 struct Data {
   Data() = default;
@@ -29,10 +27,10 @@ struct Data {
       : shape(std::move(data_shape)), data(std::move(raw_data)) {
     auto size_from_shape = std::accumulate(
         shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
-    PADDLE_ENFORCE_EQ(size_from_shape,
-                      data.size(),
-                      platform::errors::InvalidArgument(
-                          "Shape size doesn't match data size."));
+    PADDLE_ENFORCE_EQ(
+        size_from_shape,
+        data.size(),
+        common::errors::InvalidArgument("Shape size doesn't match data size."));
   }
 
   const std::vector<int64_t>& getShape() const { return shape; }
@@ -380,8 +378,6 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1ws) {
 }
 
 }  // namespace
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(params_quantization_onednn_pass);

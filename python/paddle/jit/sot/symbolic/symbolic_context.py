@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, Callable
+
 from ..utils import log
 from .compile_cache import CompileSIRCache
 from .statement_ir import (
@@ -26,6 +28,9 @@ from .statement_ir import (
     StatementIRFactory,
     Symbol,
 )
+
+if TYPE_CHECKING:
+    from paddle.static import InputSpec
 
 
 class SymbolicTraceContext:
@@ -126,7 +131,15 @@ class SymbolicTraceContext:
         self.sir_stack.append(sir)
         self.statement_factory.update(sir)
 
-    def compile_do_nothing(self, ret_vals):
+    def return_TOS(self, ret_vals):
+        cur_sir: StatementIR = self.TOS
+        cur_sir.inputs = cur_sir.analyse_inputs()
+        cur_sir.outputs = ret_vals
+        log(2, "start subgraph compile and execution.\n")
+        log(2, self.TOS, "\n")
+        return cur_sir
+
+    def compile_do_nothing(self) -> Callable[[...], Any]:
         """
         Return a dummy function, which will return an empty list.
 
@@ -141,29 +154,12 @@ class SymbolicTraceContext:
             def graph_size(self):
                 return 0
 
-        # return None function
-        dummy_stmt_ir = StatementIR("dummy_func")
-        dummy_stmt_ir.outputs = []
-        dummy_stmt_ir.inputs = []
-        return DummyFunc(), dummy_stmt_ir
+        return DummyFunc()
 
-    def compile_fn(self, ret_vals, **kwargs):
+    def compile_fn(self, sir_name: str, input_spec: list[InputSpec], **kwargs):
         """
         start compile and return the python function, which must can be to_static without errors.
         """
-        cur_sir: StatementIR = self.TOS
-        # step0: if no statement, return a dummy function
-        if len(cur_sir.statements) == 0:
-            return self.compile_do_nothing(ret_vals)
-        # step1: analyse sir inputs and outputs
-        cur_sir.inputs = cur_sir.analyse_inputs()
-        # TODO: output analysis
-        cur_sir.outputs = ret_vals
-        log(2, "start subgraph compile and execution.\n")
-        log(2, self.TOS, "\n")
-        # step2: call compile_sir and get python function, third cache is triggered here.
-        static_func = CompileSIRCache()(self, cur_sir.name, **kwargs)
-        # step3: GC and reset TOS
-        # self.reset_TOS()
+        static_func = CompileSIRCache()(self, sir_name, input_spec, **kwargs)
 
-        return static_func, cur_sir
+        return static_func

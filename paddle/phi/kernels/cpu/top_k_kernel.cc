@@ -244,12 +244,32 @@ void TopkKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void TopkV1Kernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const Scalar& k_scalar,
+                  DenseTensor* out,
+                  DenseTensor* indices) {
+  TopkKernel<T, Context>(dev_ctx, x, k_scalar, -1, true, true, out, indices);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(topk,
                    CPU,
                    ALL_LAYOUT,
                    phi::TopkKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}
+
+PD_REGISTER_KERNEL(topk_v1,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TopkV1Kernel,
                    float,
                    double,
                    int32_t,

@@ -16,10 +16,10 @@
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int CtrDoubleAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
@@ -343,7 +343,12 @@ int CtrDoubleAccessor::ParseFromString(const std::string& str, float* value) {
       data_buff_ptr + CtrDoubleFeatureValue::EmbedxWIndex(),
       data_buff_ptr + CtrDoubleFeatureValue::EmbedxG2SumIndex());
   auto str_len = paddle::string::str_to_float(str.data(), data_buff_ptr);
-  CHECK(str_len >= 6) << "expect more than 6 real:" << str_len;
+  PADDLE_ENFORCE_GE(
+      str_len,
+      6UL,
+      phi::errors::InvalidArgument(
+          "Invalid string length. Expect more than 6. But recieved %d.",
+          str_len));
   int show_index = CtrDoubleFeatureValue::ShowIndex();
   int click_index = CtrDoubleFeatureValue::ClickIndex();
   int embed_w_index = CtrDoubleFeatureValue::EmbedWIndex();
@@ -385,5 +390,4 @@ int CtrDoubleAccessor::ParseFromString(const std::string& str, float* value) {
   return str_len + 2;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

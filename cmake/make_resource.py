@@ -24,7 +24,7 @@ open(out, "w").write(
     "const unsigned char "
     + var
     + "[] = {"
-    + ",".join(["0x%02x" % ord(c) for c in open(res).read()])
+    + ",".join([f"0x{ord(c):02x}" for c in open(res).read()])
     + ",0};\n"
     + "const unsigned "
     + var

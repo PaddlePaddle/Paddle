@@ -19,15 +19,14 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 template <>
 ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
     : dtype_(tensor_in.dtype()) {  // NOLINT
   PADDLE_ENFORCE_EQ(tensor_in.numel(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Scalar only supports Tensor with 1 element, but "
                         "now Tensor has `%d` elements",
                         tensor_in.numel()));
@@ -46,12 +45,11 @@ ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
     GetDataFromTensor(dst_tensor);
 #endif
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Now, it is not supported to construct Scalar using tensor that its "
         "Place is (%s)",
         tensor_in.place()));
   }
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental

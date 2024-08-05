@@ -18,7 +18,7 @@
 
 namespace pir::shape {
 
-const char SymbolAttribute::attr_name[] = "sym_shape_str";
+const char SymbolAttribute::attr_name[] = "sym_shape_str";  // NOLINT
 
 symbol::ShapeOrDataDimExprs SymbolAttribute::data() const {
   return storage()->data();

@@ -67,8 +67,8 @@ def initialize_p2p_groups(
     ) = _hcg.get_p2p_groups()
 
     debug_str = (
-        f"P2pInfo: send_next_group: {repr(send_next_group)}, send_prev_group: {repr(send_prev_group)}, "
-        f"recv_next_group: {repr(recv_next_group)}, recv_prev_group: {repr(recv_prev_group)}"
+        f"P2pInfo: send_next_group: {send_next_group!r}, send_prev_group: {send_prev_group!r}, "
+        f"recv_next_group: {recv_next_group!r}, recv_prev_group: {recv_prev_group!r}"
     )
     logger.info(debug_str)
 
@@ -160,7 +160,7 @@ class SendRecvMeta:
     def send_meta(self, tensor, group):
         dst_rank = _hcg._get_p2p_next_rank()
 
-        if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
+        if isinstance(tensor, paddle.Tensor):
             tensor_type = paddle.to_tensor([0])
             # send tensor type
             paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
@@ -175,13 +175,11 @@ class SendRecvMeta:
             paddle.distributed.send(nums, dst=dst_rank, group=group)
 
             for d in tensor:
-                assert isinstance(
-                    d, (paddle.Tensor, framework.core.eager.Tensor)
-                )
+                assert isinstance(d, paddle.Tensor)
                 self._send_dims_shape_dtype(d, group=group)
 
     def set_send_message(self, tensor):
-        if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
+        if isinstance(tensor, paddle.Tensor):
             self.send_shape_message = tensor.shape
             self.send_dtype_message = paddle_2_number(tensor.dtype)
         elif isinstance(tensor, tuple):

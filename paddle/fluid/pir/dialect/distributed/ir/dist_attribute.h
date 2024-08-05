@@ -15,13 +15,13 @@
 #pragma once
 
 #include "paddle/phi/common/reduce_type.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_attribute_storage.h"
 #include "paddle/pir/include/core/utils.h"
 #include "paddle/utils/flat_hash_map.h"
-
 namespace paddle {
 namespace dialect {
 class ProcessMeshAttrStorage;
@@ -75,6 +75,8 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
   std::set<int64_t> partial_dims() const;
 
   const flat_hash_map<int64_t, phi::ReduceType>& partial_status() const;
+
+  phi::distributed::Placements placements() const;
 
   // construct a new attribute with new mesh attribute.
   TensorDistAttribute CopyWithNewMesh(ProcessMeshAttribute mesh) const {

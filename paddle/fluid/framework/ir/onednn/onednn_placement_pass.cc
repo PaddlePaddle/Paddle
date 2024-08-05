@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 inline bool FoundOneDNNKernelWithCorrectDataType(
     const framework::ir::Node* op) {
@@ -27,7 +25,7 @@ inline bool FoundOneDNNKernelWithCorrectDataType(
   auto it = all_kernels.find(op_type);
   if (it != all_kernels.end()) {
     for (auto& kernel_pair : it->second) {
-      if (platform::is_cpu_place(kernel_pair.first.place_) &&
+      if (phi::is_cpu_place(kernel_pair.first.place_) &&
           (kernel_pair.first.library_type_ ==
            framework::LibraryType::kMKLDNN)) {
         if (!op->inputs.empty()) {
@@ -90,9 +88,7 @@ bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
   return false;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(onednn_placement_pass, paddle::framework::ir::MKLDNNPlacementPass)
     .RequirePassAttr("mkldnn_enabled_op_types");

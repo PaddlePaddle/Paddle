@@ -26,8 +26,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 namespace {
 
@@ -210,7 +209,7 @@ void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
     SToRReshardFunction s_to_r_func;
     PADDLE_ENFORCE(
         s_to_r_func.IsSuitable(tmp_result, out_dist_attr),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invoke the s to r reshard function is not valid from %s to %s.",
             tmp_result.dist_attr(),
             out_dist_attr));
@@ -221,5 +220,4 @@ void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

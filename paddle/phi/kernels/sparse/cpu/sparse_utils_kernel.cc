@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/sparse/common_shape.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T>
 inline bool IsZero(const T* data, const size_t n) {
@@ -43,7 +42,7 @@ inline int64_t GetNonZeroNum(const DenseTensor& dense,
   PADDLE_ENFORCE_GE(
       dims.size(),
       sparse_dim,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "sparse_dim(%d) should be less than or equal to dense.dim(%d)",
           sparse_dim,
           dims.size()));
@@ -71,10 +70,10 @@ void DenseToCooKernel(const Context& dev_ctx,
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_LE(sparse_dim,
                     x_dims.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "sparse_dim must be less than the size of x.dims()"));
   PADDLE_ENFORCE_GT(
-      sparse_dim, 0, phi::errors::InvalidArgument("sparse_dim must be >0"));
+      sparse_dim, 0, common::errors::InvalidArgument("sparse_dim must be >0"));
 
   int64_t non_zero_num = GetNonZeroNum<T>(x, sparse_dim);
 
@@ -178,7 +177,7 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
 
@@ -262,9 +261,9 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
                          const SparseCooTensor& x,
                          DenseTensor* out) {
   const auto non_zero_num = x.nnz();
-  const auto dense_dims = x.dims();
-  const auto indices = x.indices();
-  const auto values = x.values();
+  const auto& dense_dims = x.dims();
+  const auto& indices = x.indices();
+  const auto& values = x.values();
   const auto indices_dims = common::vectorize<int>(indices.dims());
   int64_t sparse_dim = indices_dims[0];
   if (indices_dims.size() == 1) {
@@ -314,8 +313,7 @@ void CooToDenseKernel(const Context& dev_ctx,
       }));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(dense_to_coo,
                    CPU,

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.18)
 
 if(NOT DEFINED PYTHON_EXECUTABLE)
   message(
@@ -31,9 +31,9 @@ execute_process(
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 
 find_package(CUDA)
-# you can append -std=c++17 in CUDA_NVCC_FLAGS for compiling cutlass 3.0
 set(CUDA_NVCC_FLAGS
-    -gencode arch=compute_${COMPUTE_CAPABILITY},code=sm_${COMPUTE_CAPABILITY};)
+    -std=c++17 -gencode
+    arch=compute_${COMPUTE_CAPABILITY},code=sm_${COMPUTE_CAPABILITY};)
 #set(CMAKE_CXX_FLAGS -fvisibility=hidden)
 set(CMAKE_BUILD_TYPE "Release")
 file(GLOB all_cutlass_conv2d_cu

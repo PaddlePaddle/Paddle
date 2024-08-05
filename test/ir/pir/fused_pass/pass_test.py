@@ -69,7 +69,7 @@ class PassTest(unittest.TestCase):
                 fetches = executor.run(
                     main_program,
                     feed=self.feeds,
-                    fetch_list=self.fetch_list,
+                    fetch_list=main_program.list_vars()[-1],
                 )
                 return fetches
 

@@ -31,12 +31,6 @@ def program_scope_guard():
             yield main_program
 
 
-def apply_cse(program):
-    pm = paddle.base.libpaddle.pir.PassManager()
-    paddle.base.libpaddle.pir.common_subexpression_elimination_pass(pm, program)
-    pm.run(program)
-
-
 def walk_block(block, fn):
     for op in block.ops:
         fn(op)
@@ -81,7 +75,7 @@ class TestCSEBasic(unittest.TestCase, AssertOpCountEqualMixin):
             b = x1 + x2
 
             self.assert_op_count_equal(main_program, {"pd_op.add": 2})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.add": 1})
 
     def test_basic2(self):
@@ -100,7 +94,7 @@ class TestCSEBasic(unittest.TestCase, AssertOpCountEqualMixin):
             out2 = expr(x1, x2, x3)
 
             self.assert_op_count_equal(main_program, {"pd_op.add": 4})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.add": 2})
 
     def test_replace_full_with_same_attr(self):
@@ -110,7 +104,7 @@ class TestCSEBasic(unittest.TestCase, AssertOpCountEqualMixin):
             x2 = paddle.full([2, 2], 0, dtype="float32")
 
             self.assert_op_count_equal(main_program, {"pd_op.full": 2})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.full": 1})
 
     def test_skip_replace_full_with_different_value(self):
@@ -120,7 +114,7 @@ class TestCSEBasic(unittest.TestCase, AssertOpCountEqualMixin):
             x2 = paddle.full([2, 2], 1, dtype="float32")
 
             self.assert_op_count_equal(main_program, {"pd_op.full": 2})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.full": 2})
 
     def test_skip_replace_full_with_different_dtype(self):
@@ -130,7 +124,7 @@ class TestCSEBasic(unittest.TestCase, AssertOpCountEqualMixin):
             x2 = paddle.full([2, 2], 0, dtype="int32")
 
             self.assert_op_count_equal(main_program, {"pd_op.full": 2})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.full": 2})
 
     def test_skip_replace_full_with_different_shape(self):
@@ -140,7 +134,7 @@ class TestCSEBasic(unittest.TestCase, AssertOpCountEqualMixin):
             x2 = paddle.full([3, 3], 0, dtype="float32")
 
             self.assert_op_count_equal(main_program, {"pd_op.full": 2})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.full": 2})
 
     def test_complex_computation(self):
@@ -172,7 +166,7 @@ class TestCSEBasic(unittest.TestCase, AssertOpCountEqualMixin):
                     "pd_op.subtract": repeat_n,
                 },
             )
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(
                 main_program,
                 {
@@ -199,7 +193,7 @@ class TestCSECommutative(unittest.TestCase, AssertOpCountEqualMixin):
             b = x2 + x1
 
             self.assert_op_count_equal(main_program, {"pd_op.add": 2})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.add": 1})
 
     def test_complex_computation_commutative(self):
@@ -247,7 +241,7 @@ class TestCSECommutative(unittest.TestCase, AssertOpCountEqualMixin):
                     "pd_op.bitwise_and": repeat_n * expr_per_repeat,
                 },
             )
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(
                 main_program,
                 {
@@ -293,7 +287,7 @@ class TestCSESubBlock(unittest.TestCase, AssertOpCountEqualMixin):
             paddle.static.nn.while_loop(get_cond, loop_body, [loop_var])
 
             self.assert_op_count_equal(main_program, {"pd_op.multiply": 2})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.multiply": 1})
 
     def test_nested_subblock(self):
@@ -334,7 +328,7 @@ class TestCSESubBlock(unittest.TestCase, AssertOpCountEqualMixin):
             )
 
             self.assert_op_count_equal(main_program, {"pd_op.multiply": 3})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.multiply": 1})
 
 
@@ -347,7 +341,7 @@ class TestCSECanNotReplace(unittest.TestCase, AssertOpCountEqualMixin):
             x2 = paddle.rand([2, 2], dtype="float32")
 
             self.assert_op_count_equal(main_program, {"pd_op.uniform": 2})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.uniform": 2})
 
     def test_can_not_replace_print(self):
@@ -360,7 +354,7 @@ class TestCSECanNotReplace(unittest.TestCase, AssertOpCountEqualMixin):
             paddle.static.Print(x1)
 
             self.assert_op_count_equal(main_program, {"pd_op.print": 2})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.print": 2})
 
     def test_can_not_replace_used_by_inplace_op(self):
@@ -376,8 +370,30 @@ class TestCSECanNotReplace(unittest.TestCase, AssertOpCountEqualMixin):
             paddle.assign(paddle.full([2, 2], 0, dtype="float32"), b)
 
             self.assert_op_count_equal(main_program, {"pd_op.add": 2})
-            apply_cse(main_program)
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.add": 2})
+
+    def test_can_not_replace_op_with_subblocks(self):
+        with program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.static.data("x1", [2, 2], dtype="float32")
+            x2 = paddle.static.data("x2", [2, 2], dtype="float32")
+            cond = paddle.static.data("cond", [], dtype="bool")
+            loop_var = paddle.static.data("i", [], dtype="int32")
+
+            def loop_body(loop_var):
+                tmp_var = x1 * x2
+                return [loop_var + 1]
+
+            def get_cond(loop_var):
+                return cond
+
+            paddle.static.nn.while_loop(get_cond, loop_body, [loop_var])
+            paddle.static.nn.while_loop(get_cond, loop_body, [loop_var])
+
+            self.assert_op_count_equal(main_program, {"pd_op.while": 2})
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.while": 2})
 
 
 if __name__ == "__main__":

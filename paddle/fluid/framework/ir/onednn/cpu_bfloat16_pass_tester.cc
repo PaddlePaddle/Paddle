@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/ir/onednn/cpu_bfloat16_pass.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void SetOp(ProgramDesc* prog,
            const std::string& type,
@@ -230,8 +228,6 @@ TEST(CpuBfloat16Pass, double_outputs_ops) {
            added_nodes);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(cpu_bfloat16_pass);

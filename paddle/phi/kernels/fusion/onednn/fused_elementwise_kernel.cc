@@ -15,8 +15,7 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename T, dnnl::algorithm BINARY_OP>
 void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
@@ -177,8 +176,7 @@ DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedSubtract, dnnl::algorithm::binary_sub)
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedMultiply, dnnl::algorithm::binary_mul)
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedDivide, dnnl::algorithm::binary_div)
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fused_elementwise_add,
                    OneDNN,

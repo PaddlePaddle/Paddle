@@ -40,7 +40,7 @@
     param : [x, kernel_size, stride_size, padding_size, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
 
 - op : reduce_max
-  args : (Tensor x, int64_t[] dim,  bool keep_dim)
+  args : (Tensor x, int64_t[] axis, bool keepdim)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -49,7 +49,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_min
-  args : (Tensor x, int64_t[] dim,  bool keep_dim)
+  args : (Tensor x, int64_t[] axis, bool keepdim)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -58,25 +58,25 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_prod
-  args : (Tensor x, int64_t[] dim,  bool keep_dim, bool reduce_all)
+  args : (Tensor x, int64_t[] axis, bool keepdim, bool reduce_all)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
-    param : [x, dim, keep_dim]
+    param : [x, axis, keepdim]
   kernel :
     func : frobenius_norm
-    param : [x, dim, keep_dim]
+    param : [x, axis, keepdim]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_sum
-  args : (Tensor x, int64_t[] dim,  bool keep_dim, DataType dtype=DataType::UNDEFINED)
+  args : (Tensor x, int64_t[] axis, bool keepdim, DataType dtype=DataType::UNDEFINED)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
-    param : [x, dim, keep_dim]
+    param : [x, axis, keepdim]
   kernel :
     func : frobenius_norm
-    param : [x, dim, keep_dim]
+    param : [x, axis, keepdim]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reshape

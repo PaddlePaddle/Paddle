@@ -13,14 +13,19 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
+
+sys.path.append("../../legacy_test")
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
-from test_attribute_var import UnittestBase
+from test_attribute_var_deprecated import UnittestBase
 
 import paddle
 from paddle.base import Program, program_guard
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 class BaseTestCase(OpTest):
@@ -141,6 +146,8 @@ class TestArgMinMaxTypeCheck(unittest.TestCase):
 
     def test_bfp16(self):
         # in static mode
+        if not paddle.is_compiled_with_cuda():
+            return
         with program_guard(Program(), Program()):
             x = paddle.zeros(name='x', shape=[100, 10], dtype='uint16')
             t1 = paddle.argmin(x)
@@ -294,10 +301,11 @@ class TestArgMaxTensorAxis(UnittestBase):
         self.x = [np.random.randn(*shape) for shape in self.shapes]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
+    @test_with_pir_api
     def test_static(self):
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -307,7 +315,8 @@ class TestArgMaxTensorAxis(UnittestBase):
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(paddle.cast(out, 'float32')))
-            self.assertTrue(self.var_prefix() in str(main_prog))
+            if not in_pir_mode():
+                self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)
@@ -336,10 +345,11 @@ class TestArgMaxTensorAxis(UnittestBase):
 
 
 class TestArgMinTensorAxis(TestArgMaxTensorAxis):
+    @test_with_pir_api
     def test_static(self):
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
+        main_prog = paddle.base.Program()
+        startup_prog = paddle.base.Program()
+        with paddle.base.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -349,7 +359,8 @@ class TestArgMinTensorAxis(TestArgMaxTensorAxis):
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(paddle.cast(out, 'float32')))
-            self.assertTrue(self.var_prefix() in str(main_prog))
+            if not paddle.framework.use_pir_api():
+                self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)

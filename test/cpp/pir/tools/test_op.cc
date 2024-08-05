@@ -14,7 +14,7 @@
 
 #include "test/cpp/pir/tools/test_op.h"
 #include "paddle/common/enforce.h"
-#include "paddle/fluid/platform/errors.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 namespace test {
@@ -35,13 +35,13 @@ void BranchOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
       (*this)->num_successors(),
       1u,
-      phi::errors::InvalidArgument("successors number must equal to 1."));
+      common::errors::InvalidArgument("successors number must equal to 1."));
   PADDLE_ENFORCE_NOT_NULL(
       (*this)->successor(0),
-      phi::errors::InvalidArgument("successor[0] can't be nullptr"));
+      common::errors::InvalidArgument("successor[0] can't be nullptr"));
 }
 
-const char *Operation1::attributes_name[2] = {"op1_attr1",
+const char *Operation1::attributes_name[2] = {"op1_attr1",   // NOLINT
                                               "op1_attr2"};  // NOLINT
 
 void Operation1::Build(pir::Builder &builder,               // NOLINT
@@ -56,12 +56,12 @@ void Operation1::VerifySig() const {
   auto &attributes = this->attributes();
   if (attributes.count("op1_attr1") == 0 ||
       !attributes.at("op1_attr1").isa<pir::StrAttribute>()) {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op1_attr2") == 0 ||
       !attributes.at("op1_attr2").isa<pir::StrAttribute>()) {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Type of attribute: parameter_name is not right."));
   }
 }

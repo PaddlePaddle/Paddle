@@ -25,11 +25,11 @@
 #include "extern_pocketfft/pocketfft_hdronly.h"
 #endif
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 #if defined(PADDLE_WITH_ONEMKL)
 
-namespace detail {
+}  // namespace phi::funcs
+namespace phi::funcs::detail {
 // Execute a general fft operation (can be c2c, onesided r2c or onesided c2r)
 template <typename Ti, typename To>
 void exec_fft(const phi::CPUContext& ctx,
@@ -141,7 +141,8 @@ void exec_fft(const phi::CPUContext& ctx,
   TransposeKernel<To, phi::CPUContext>(
       ctx, transposed_output, reverse_dim_permute, out);
 }
-}  // namespace detail
+}  // namespace phi::funcs::detail
+namespace phi::funcs {
 
 template <typename Ti, typename To>
 struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
@@ -192,7 +193,8 @@ struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
 };
 
 #elif defined(PADDLE_WITH_POCKETFFT)
-namespace detail {
+}  // namespace phi::funcs
+namespace phi::funcs::detail {
 template <typename T>
 static T compute_factor(size_t size, FFTNormMode normalization) {
   constexpr auto one = static_cast<T>(1);
@@ -204,9 +206,11 @@ static T compute_factor(size_t size, FFTNormMode normalization) {
     case FFTNormMode::by_sqrt_n:
       return one / std::sqrt(static_cast<T>(size));
   }
-  PADDLE_THROW(phi::errors::InvalidArgument("Unsupported normalization type"));
+  PADDLE_THROW(
+      common::errors::InvalidArgument("Unsupported normalization type"));
 }
-}  // namespace detail
+}  // namespace phi::funcs::detail
+namespace phi::funcs {
 
 template <typename Ti, typename To>
 struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
@@ -374,5 +378,4 @@ template struct FFTC2RFunctor<phi::CPUContext, complex64_t, float>;
 template struct FFTC2RFunctor<phi::CPUContext, complex128_t, double>;
 template struct FFTR2CFunctor<phi::CPUContext, float, complex64_t>;
 template struct FFTR2CFunctor<phi::CPUContext, double, complex128_t>;
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

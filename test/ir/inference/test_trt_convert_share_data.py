@@ -64,12 +64,14 @@ class TrtConvertShareDataTest(TrtLayerAutoScanTest):
                         "op_inputs": {"X": ["input_data"]},
                         "op_outputs": {"Out": ["output_data0"]},
                         "op_attrs": {},
+                        "outputs_dtype": {"output_data0": dtype},
                     },
                     {
                         "op_type": "share_data",
                         "op_inputs": {"X": ["output_data0"]},
                         "op_outputs": {"Out": ["output_data1"]},
                         "op_attrs": {},
+                        "outputs_dtype": {"output_data1": dtype},
                     },
                 ]
 

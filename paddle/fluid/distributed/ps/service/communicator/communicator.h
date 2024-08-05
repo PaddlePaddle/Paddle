@@ -39,7 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
@@ -66,7 +66,7 @@ class BlockingQueue {
   explicit BlockingQueue(size_t capacity) : capacity_(capacity) {
     PADDLE_ENFORCE_GT(capacity_,
                       0,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The capacity must be greater than 0."));
   }
 
@@ -161,11 +161,10 @@ inline void MergeVars(const std::string &var_name,
                       const std::vector<std::shared_ptr<Variable>> &vars,
                       Scope *scope,
                       bool merge_add = true) {
-  PADDLE_ENFORCE_NE(
-      vars.empty(),
-      true,
-      platform::errors::InvalidArgument("vector vars are empty."));
-  auto cpu_place = platform::CPUPlace();
+  PADDLE_ENFORCE_NE(vars.empty(),
+                    true,
+                    common::errors::InvalidArgument("vector vars are empty."));
+  auto cpu_place = phi::CPUPlace();
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
 
@@ -182,7 +181,7 @@ inline void MergeVars(const std::string &var_name,
       PADDLE_ENFORCE_EQ(
           var_t.dims(),
           dims,
-          platform::errors::InvalidArgument("vars should have the same dims."));
+          common::errors::InvalidArgument("vars should have the same dims."));
     }
 
     // set output tensor to 0.
@@ -222,8 +221,8 @@ inline void MergeVars(const std::string &var_name,
     VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
             << " dims: " << slr0.value().dims() << "; merge add: " << merge_add;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument("unsupported var type: %s!",
-                                                   var0->Type()));
+    PADDLE_THROW(common::errors::InvalidArgument("unsupported var type: %s!",
+                                                 var0->Type()));
   }
 }
 
@@ -323,7 +322,7 @@ class Communicator {
     int status = rets.get();
     PADDLE_ENFORCE_EQ(status,
                       0,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The ret status must be 0 when barrier with table"));
   }
 
@@ -482,7 +481,7 @@ class AsyncCommunicator : public Communicator {
       const uint64_t table_id,
       int fea_dim,
       uint64_t padding_id,
-      platform::Place place,
+      phi::Place place,
       bool is_training,
       std::vector<const phi::DenseTensor *> *inputs,  // NOLINT
       std::vector<phi::DenseTensor *> *outputs);      // NOLINT
@@ -490,7 +489,7 @@ class AsyncCommunicator : public Communicator {
   void PushSparseFromTensorAsync(const uint64_t table_id,
                                  int fea_dim,
                                  uint64_t padding_id,
-                                 platform::Place place,
+                                 phi::Place place,
                                  std::vector<const phi::DenseTensor *> *inputs,
                                  const phi::DenseTensor *shows,
                                  const phi::DenseTensor *clicks,

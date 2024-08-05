@@ -29,7 +29,12 @@ void ReduceAsGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
                         DenseTensor* x_grad) {
   auto reduce_dim = phi::funcs::GetReduceDims(x, target);
-  bool reduce_all = recompute_reduce_all(x, reduce_dim);
+  dev_ctx.Alloc(x_grad, x.dtype());
+
+  if (reduce_dim.size() == 0) {
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
   auto update_dims = common::vectorize(x.dims());
   for (auto i : reduce_dim) {
     update_dims[i] = 1;
@@ -39,7 +44,6 @@ void ReduceAsGradKernel(const Context& dev_ctx,
   new_out_grad.ShareDataWith(out_grad);
   new_out_grad.Resize(common::make_ddim(update_dims));
 
-  dev_ctx.Alloc(x_grad, x.dtype());
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   phi::ReduceGrad<phi::kps::IdentityFunctor<T, MPType>>(
       dev_ctx,

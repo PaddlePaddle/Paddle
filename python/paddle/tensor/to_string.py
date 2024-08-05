@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import numpy as np
 
 import paddle
@@ -34,20 +36,20 @@ DEFAULT_PRINT_OPTIONS = PrintOptions()
 
 
 def set_printoptions(
-    precision=None,
-    threshold=None,
-    edgeitems=None,
-    sci_mode=None,
-    linewidth=None,
-):
+    precision: int | None = None,
+    threshold: int | None = None,
+    edgeitems: int | None = None,
+    sci_mode: bool | None = None,
+    linewidth: int | None = None,
+) -> None:
     """Set the printing options for Tensor.
 
     Args:
-        precision (int, optional): Number of digits of the floating number, default 8.
-        threshold (int, optional): Total number of elements printed, default 1000.
-        edgeitems (int, optional): Number of elements in summary at the beginning and ending of each dimension, default 3.
-        sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
-        linewidth (int, optional): Number of characters each line, default 80.
+        precision (int|None, optional): Number of digits of the floating number, default 8.
+        threshold (int|None, optional): Total number of elements printed, default 1000.
+        edgeitems (int|None, optional): Number of elements in summary at the beginning and ending of each dimension, default 3.
+        sci_mode (bool|None, optional): Format the floating number with scientific notation or not, default False.
+        linewidth (int|None, optional): Number of characters each line, default 80.
 
 
     Returns:
@@ -281,7 +283,12 @@ def to_string(var, prefix='Tensor'):
 
 
 def _format_dense_tensor(tensor, indent):
-    if tensor.dtype == paddle.bfloat16:
+    if (
+        tensor.dtype == paddle.bfloat16
+        or tensor.dtype == core.VarDesc.VarType.BF16
+        or tensor.dtype == core.VarDesc.VarType.FP8_E4M3FN
+        or tensor.dtype == core.VarDesc.VarType.FP8_E5M2
+    ):
         tensor = tensor.astype('float32')
 
     # TODO(zhouwei): will remove 0-D Tensor.numpy() hack

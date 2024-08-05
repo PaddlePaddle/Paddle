@@ -25,8 +25,7 @@ extern "C" {
 #include "paddle/fluid/framework/program_converter.h"
 #include "paddle/fluid/framework/version.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 BlockDesc *ProgramDesc::AppendBlock(const BlockDesc &parent) {
   auto *b = desc_.add_blocks();
@@ -149,7 +148,7 @@ void ProgramDesc::CopyFrom(const proto::ProgramDesc &desc) {
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
   PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Failed to parse program_desc from binary string."));
   InitFromProto();
   scalar::ConvertProgram(this);
@@ -287,5 +286,4 @@ bool ProgramDesc::NeedUpdate() const {
   return need;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

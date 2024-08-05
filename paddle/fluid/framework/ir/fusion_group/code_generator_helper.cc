@@ -44,7 +44,7 @@ static std::string ExpandMultivariateTemplate(const std::string& rhs,
   for (size_t i = 1; i < input_size; i++) {
     std::string append_str = repeated_component;
     append_str.replace(replace_pos, 1, std::to_string(i));
-    sum_rhs = sum_rhs + append_str;
+    sum_rhs += append_str;
   }
   return sum_rhs;
 }
@@ -138,7 +138,7 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
         int index = StringTo<int>(index_str);
         PADDLE_ENFORCE_LT(index,
                           input_ids_.size(),
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Only %d inputs are provided, but need %d for "
                               "operation < %s >.",
                               input_ids_.size(),
@@ -146,7 +146,7 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
                               op_type_));
         PADDLE_ENFORCE_GE(input_ids_[index],
                           0,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Expected %d-th input id > 0 for operation < %s "
                               ">. Received %d.",
                               index,
@@ -171,8 +171,12 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
         length++;
       }
       std::string number_str = rhs.substr(pos + 2, length);
-      if (rhs_type_ == "__half")
-        number_str = "__float2half(" + number_str + ")";
+      if (rhs_type_ == "__half") {
+        std::string temp_str = "__float2half(";
+        temp_str += number_str;
+        temp_str += ")";
+        number_str = temp_str;
+      }
       rhs.replace(pos, length + 3, number_str);
       pos = pos + number_str.length();
     }

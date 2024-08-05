@@ -33,8 +33,7 @@
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 void NaiveExecutor::Prepare(Scope *scope,
                             const ProgramDesc &program_desc,
                             int block_id) {
@@ -46,6 +45,14 @@ void NaiveExecutor::Prepare(Scope *scope,
 
   VLOG(3) << "NaiveExecutor init with scope " << scope;
   CreateOps(program_desc, block_id);
+}
+
+void NaiveExecutor::Prepare(Scope *scope) {
+  if (!scope) {
+    scope_ = new framework::Scope;
+  } else {
+    scope_ = scope;
+  }
 }
 
 void NaiveExecutor::PrepareInterpreterCore(
@@ -154,7 +161,7 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
                                     bool persistable,
                                     Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(scope,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The Scope to hold variables is nullptr."));
 
   auto &global_block = desc.Block(block_id);
@@ -163,7 +170,7 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
   PADDLE_ENFORCE_NE(
       anc->parent(),
       anc,
-      platform::errors::InvalidArgument("Input scope should be child scope."));
+      common::errors::InvalidArgument("Input scope should be child scope."));
   while (anc->parent()) {
     anc = anc->parent();
   }
@@ -207,12 +214,12 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id) {
 
 phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(scope_,
-                          platform::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "Need to init scope in NaiveExecutor firstly."));
   auto *var = scope_->FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
       var,
-      platform::errors::NotFound("No variable [%s] in current scope.", name));
+      common::errors::NotFound("No variable [%s] in current scope.", name));
   auto *tensor = const_cast<phi::DenseTensor *>(&var->Get<phi::DenseTensor>());
   return tensor;
 }
@@ -331,5 +338,4 @@ void NaiveExecutor::ResetTrtOps(int num) {
 #endif
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

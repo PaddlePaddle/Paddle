@@ -11,12 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import paddle
+from paddle.base.data_feeder import convert_dtype
 from paddle.distribution import distribution
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 
 class MultivariateNormal(distribution.Distribution):
@@ -40,11 +47,11 @@ class MultivariateNormal(distribution.Distribution):
     Args:
         loc(int|float|Tensor): The mean of Multivariate Normal distribution. If the input data type is int or float, the data type of `loc` will be
             convert to a 1-D Tensor the paddle global default dtype.
-        covariance_matrix(Tensor): The covariance matrix of Multivariate Normal distribution. The data type of `covariance_matrix` will be convert
+        covariance_matrix(Tensor|None): The covariance matrix of Multivariate Normal distribution. The data type of `covariance_matrix` will be convert
             to be the same as the type of loc.
-        precision_matrix(Tensor): The inverse of the covariance matrix. The data type of `precision_matrix` will be convert to be the same as the
+        precision_matrix(Tensor|None): The inverse of the covariance matrix. The data type of `precision_matrix` will be convert to be the same as the
             type of loc.
-        scale_tril(Tensor): The cholesky decomposition (lower triangular matrix) of the covariance matrix. The data type of `scale_tril` will be
+        scale_tril(Tensor|None): The cholesky decomposition (lower triangular matrix) of the covariance matrix. The data type of `scale_tril` will be
             convert to be the same as the type of loc.
 
     Examples:
@@ -85,18 +92,24 @@ class MultivariateNormal(distribution.Distribution):
             1.55541301)
     """
 
+    loc: Tensor
+    covariance_matrix: Tensor | None
+    precision_matrix: Tensor | None
+    scale_tril: Tensor | None
+    dtype: _DTypeLiteral
+
     def __init__(
         self,
-        loc,
-        covariance_matrix=None,
-        precision_matrix=None,
-        scale_tril=None,
+        loc: float | Tensor,
+        covariance_matrix: Tensor | None = None,
+        precision_matrix: Tensor | None = None,
+        scale_tril: Tensor | None = None,
     ):
         self.dtype = paddle.get_default_dtype()
         if isinstance(loc, (float, int)):
             loc = paddle.to_tensor([loc], dtype=self.dtype)
         else:
-            self.dtype = loc.dtype
+            self.dtype = convert_dtype(loc.dtype)
         if loc.dim() < 1:
             loc = loc.reshape((1,))
         self.covariance_matrix = None
@@ -150,7 +163,6 @@ class MultivariateNormal(distribution.Distribution):
                 batch_shape
                 + [precision_matrix.shape[-2], precision_matrix.shape[-1]]
             )
-        self._check_constraints()
         self.loc = loc.expand(
             batch_shape
             + [
@@ -172,93 +184,8 @@ class MultivariateNormal(distribution.Distribution):
 
         super().__init__(batch_shape, event_shape)
 
-    def _check_lower_triangular(self, value):
-        """Check whether the input is a lower triangular matrix
-
-        Args:
-            value (Tensor): input matrix
-
-        Return:
-            Tensor: indicator for lower triangular matrix
-        """
-        tril = paddle.tril(value)
-        is_lower_triangular = paddle.cast(
-            (tril == value).reshape(
-                value.shape[:-2]
-                + [
-                    -1,
-                ]
-            ),
-            dtype=self.dtype,
-        ).min(-1, keepdim=True)[0]
-        is_positive_diag = paddle.cast(
-            (value.diagonal(axis1=-2, axis2=-1) > 0), dtype=self.dtype
-        ).min(-1, keepdim=True)[0]
-        return is_lower_triangular and is_positive_diag
-
-    def _check_positive_definite(self, value):
-        """Check whether the input is a positive definite matrix
-
-        Args:
-            value (Tensor): input matrix
-
-        Return:
-            Tensor: indicator for positive definite matrix
-        """
-        is_square = paddle.full(
-            shape=value.shape[:-2],
-            fill_value=(value.shape[-2] == value.shape[-1]),
-            dtype="bool",
-        ).all()
-        if not is_square:
-            raise ValueError(
-                "covariance_matrix or precision_matrix must be a square matrix"
-            )
-        new_perm = list(range(len(value.shape)))
-        new_perm[-1], new_perm[-2] = new_perm[-2], new_perm[-1]
-        is_symmetric = paddle.isclose(
-            value, value.transpose(new_perm), atol=1e-6
-        ).all()
-        if not is_symmetric:
-            raise ValueError(
-                "covariance_matrix or precision_matrix must be a symmetric matrix"
-            )
-        is_positive_definite = (
-            paddle.cast(paddle.linalg.eigvalsh(value), dtype=self.dtype) > 0
-        ).all()
-        return is_positive_definite
-
-    def _check_constraints(self):
-        """Check whether the matrix satisfy corresponding constraint
-
-        Return:
-            Tensor: indicator for the pass of constraints check
-        """
-        if self.scale_tril is not None:
-            check = self._check_lower_triangular(self.scale_tril)
-            if not check:
-                raise ValueError(
-                    "scale_tril matrix must be a lower triangular matrix with positive diagonals"
-                )
-        elif self.covariance_matrix is not None:
-            is_positive_definite = self._check_positive_definite(
-                self.covariance_matrix
-            )
-            if not is_positive_definite:
-                raise ValueError(
-                    "covariance_matrix must be a symmetric positive definite matrix"
-                )
-        else:
-            is_positive_definite = self._check_positive_definite(
-                self.precision_matrix
-            )
-            if not is_positive_definite:
-                raise ValueError(
-                    "precision_matrix must be a symmetric positive definite matrix"
-                )
-
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of Multivariate Normal distribution.
 
         Returns:
@@ -267,7 +194,7 @@ class MultivariateNormal(distribution.Distribution):
         return self.loc
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of Multivariate Normal distribution.
 
         Returns:
@@ -279,7 +206,7 @@ class MultivariateNormal(distribution.Distribution):
             .expand(self._batch_shape + self._event_shape)
         )
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate Multivariate Normal samples of the specified shape. The final shape would be ``sample_shape + batch_shape + event_shape``.
 
         Args:
@@ -291,7 +218,7 @@ class MultivariateNormal(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape=()):
+    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate Multivariate Normal samples of the specified shape. The final shape would be ``sample_shape + batch_shape + event_shape``.
 
         Args:
@@ -308,7 +235,7 @@ class MultivariateNormal(distribution.Distribution):
             self._unbroadcasted_scale_tril, eps.unsqueeze(-1)
         ).squeeze(-1)
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log probability density function.
 
         Args:
@@ -331,7 +258,7 @@ class MultivariateNormal(distribution.Distribution):
             - half_log_det
         )
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         """Probability density function.
 
         Args:
@@ -342,7 +269,7 @@ class MultivariateNormal(distribution.Distribution):
         """
         return paddle.exp(self.log_prob(value))
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Shannon entropy in nats.
 
         The entropy is
@@ -372,7 +299,7 @@ class MultivariateNormal(distribution.Distribution):
         else:
             return H.expand(self._batch_shape)
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: MultivariateNormal) -> Tensor:
         r"""The KL-divergence between two poisson distributions with the same `batch_shape` and `event_shape`.
 
         The probability density function (pdf) is
@@ -430,7 +357,7 @@ class MultivariateNormal(distribution.Distribution):
         )
 
 
-def precision_to_scale_tril(P):
+def precision_to_scale_tril(P: Tensor) -> Tensor:
     """Convert precision matrix to scale tril matrix
 
     Args:
@@ -449,7 +376,7 @@ def precision_to_scale_tril(P):
     return L
 
 
-def batch_mahalanobis(bL, bx):
+def batch_mahalanobis(bL: Tensor, bx: Tensor) -> Tensor:
     r"""
     Computes the squared Mahalanobis distance of the Multivariate Normal distribution with cholesky decomposition of the covariance matrix.
     Accepts batches for both bL and bx.

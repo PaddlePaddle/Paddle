@@ -38,7 +38,7 @@ def convert_to_unicode(text):
     elif isinstance(text, bytes):
         return text.decode("utf-8", "ignore")
     else:
-        raise ValueError("Unsupported string type: %s" % (type(text)))
+        raise ValueError(f"Unsupported string type: {type(text)}")
 
 
 def whitespace_tokenize(text):
@@ -484,7 +484,7 @@ class PretrainedTokenizer:
                 continue
             path = os.path.join(default_root, file_path.split('/')[-1])
             if os.path.exists(path):
-                print("Already cached %s" % path)
+                print(f"Already cached {path}")
                 resolved_vocab_files[file_id] = path
             else:
                 print(f"Downloading {file_path} and saved to {default_root}")

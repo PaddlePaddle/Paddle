@@ -28,6 +28,7 @@ from paddle.base.core import (
 )
 from paddle.base.libpaddle.pir import Block, Operation
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
+from paddle.decomposition.recompute import auto_recompute
 from paddle.framework import core
 
 from . import register
@@ -850,18 +851,63 @@ def decompose_dist_program(pir_program):
     decompose(pir_program, [])
 
     # decomp backward ops
+    blacklist = core.prim_config["backward_blacklist"]
+
     block = pir_program.global_block()
+    pre_combine_op = None
     with paddle.pir.core.program_guard(pir_program):
         ops = pir_program.global_block().ops
         for op in ops:
             bwd_op_name = op.name()
+            if bwd_op_name.split(".")[-1] in blacklist:
+                continue
+            skip_decomp = False
             if has_decomp_vjp(op):
-                pir.set_insertion_point(op)
-                orig_outs = op.results()
-                decomp_outs = call_decomp_vjp(op)
-                new_outs = _analyse_decomp_results(orig_outs, decomp_outs, op)
-                op.replace_all_uses_with(new_outs)
-                block.remove_op(op)
+                if (
+                    not core._enable_prim_dynamic_shape()
+                ) and _check_prim_dynamic(op):
+                    skip_decomp = True
+                if not skip_decomp:
+                    pir.set_insertion_point(op)
+                    orig_outs = op.results()
+
+                    is_next_split = False
+                    decomp_outs = call_decomp_vjp(op)
+                    for i in range(len(orig_outs)):
+                        if orig_outs[i].has_one_use():
+                            next_op = orig_outs[i].first_use().owner()
+                            if next_op.name() == "builtin.split":
+                                is_next_split = True
+                                _check_op_results(
+                                    next_op.name(),
+                                    next_op.results(),
+                                    decomp_outs[i],
+                                )
+                                next_op.replace_all_uses_with(decomp_outs[i])
+                                block.remove_op(next_op)
+
+                    if not is_next_split:
+                        new_outs = _analyse_decomp_results(
+                            orig_outs, decomp_outs, op
+                        )
+                        _check_op_results(op.name(), orig_outs, new_outs)
+                        op.replace_all_uses_with(new_outs)
+
+                    block.remove_op(op)
+
+                if op.name() == "builtin.combine":
+                    pre_combine_op = op
+
+                if pre_combine_op is not None:
+                    remove_op = True
+                    for item in pre_combine_op.results():
+                        if item.has_one_use():
+                            remove_op = False
+                            break
+                    if remove_op:
+                        block.remove_op(pre_combine_op)
+                    pre_combine_op = None
+    paddle.pir.set_insertion_point_to_block_end(block)
 
 
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
@@ -884,3 +930,90 @@ def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
     _decomp_fwd_program(pir_program, pir_grad_var_to_var)
     # reset prim flags and pir_api flags
     _reset_prim_state(state)
+    return pir_grad_var_to_var
+
+
+def get_inputs_from_data_and_parameter(pir_program):
+    results = []
+    for op in pir_program.global_block().ops:
+        if op.name() == "pd_op.data":
+            results.append(op.results()[0])
+        if op.name() == "builtin.parameter":
+            results.append(op.results()[0])
+    return results
+
+
+def get_outputs_from_fetch_op(pir_program):
+    results = []
+    for op in pir_program.global_block().ops:
+        if op.name() == "pd_op.fetch":
+            results.append(op.operand(0).source())
+    return results
+
+
+def get_grad_var_for_list(outputs, pir_grad_var_to_var):
+    results = []
+    var2grad_var = ValueDict()
+    for k, v in pir_grad_var_to_var.items():
+        var2grad_var[v] = k
+    for output in outputs:
+        results.append(var2grad_var[output])
+    return results
+
+
+def get_defining_op_indices(program, output_values):
+    def getIdx(op):
+        for idx, op_iter in enumerate(program.global_block().ops):
+            if op == op_iter:
+                return idx
+        raise RuntimeError("op not found in program")
+
+    results = []
+    for output in output_values:
+        results.append(getIdx(output.get_defining_op()))
+    return results
+
+
+def auto_recompute_pir_program(pir_program, outputs=None):
+    print("Start Recompute Pir Program:")
+    print("Before Recompute: ", pir_program)
+    # prepare essential inputs for auto_recompute
+    inputs = get_inputs_from_data_and_parameter(pir_program)
+    if outputs is None:
+        outputs = get_outputs_from_fetch_op(pir_program)
+    if not len(outputs):
+        print("Skip Recompute!")
+        return pir_program
+    fwd_op_end_idx = max(get_defining_op_indices(pir_program, outputs))
+    backward_op_start_idx = fwd_op_end_idx + 1
+
+    # print("Information is:")
+    # print(f"inputs: {len(inputs)}", inputs)
+    # print(f"outputs: {len(outputs)}", outputs)
+
+    # def getIdx(op):
+    #     for idx, op_iter in enumerate(pir_program.global_block().ops):
+    #         if op == op_iter:
+    #             return idx
+    #     raise RuntimeError("op not found in program")
+
+    # for grad_output in grad_outputs:
+    #     print(
+    #         "Grad_outputs: ",
+    #         grad_output,
+    #         getIdx(grad_output.get_defining_op()),
+    #     )
+
+    # print("fwd_op_end_idx: ", fwd_op_end_idx)
+    # print("backward_op_start_idx: ", backward_op_start_idx)
+    # do auto recompute pass
+    program, _ = auto_recompute(
+        pir_program,
+        inputs,
+        outputs,
+        [],
+        fwd_op_end_idx,
+        backward_op_start_idx,
+    )
+
+    return program

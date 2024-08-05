@@ -19,9 +19,7 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d"))
@@ -108,7 +106,7 @@ void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
     ir::Graph* graph, const std::string& conv_type) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init("int8_scale_calculation_onednn_pass", graph);
   GraphPatternDetector gpd;
@@ -210,9 +208,7 @@ void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
   AddStatis(found_int8_scales_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(int8_scale_calculation_onednn_pass,
               paddle::framework::ir::Int8ScaleCalculationMkldnnPass);

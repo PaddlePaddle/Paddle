@@ -17,10 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/ir/fusion_group/cuda_resources.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace fusion_group {
+namespace paddle::framework::ir::fusion_group {
 
 std::string ExtractDataType(const std::vector<Node*>& nodes) {
   std::string dtype_str = "";
@@ -59,7 +56,7 @@ std::string CodeGenerator::Generate(SubGraph* subgraph) {
 static bool HasInput(Node* n, std::string name) {
   PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected node %p to be an operator node.", n));
   std::vector<std::string> input_names = n->Op()->InputNames();
   std::unordered_set<std::string> input_names_set(input_names.begin(),
@@ -70,7 +67,7 @@ static bool HasInput(Node* n, std::string name) {
 static Node* GetInputVar(Node* n, const std::string& name) {
   PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected node %p to be an operator node.", n));
   for (auto* in : n->inputs) {
     if (in->Name() == name) {
@@ -83,7 +80,7 @@ static Node* GetInputVar(Node* n, const std::string& name) {
 static Node* GetOutputVar(Node* n, const std::string& name) {
   PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected node %p to be an operator node.", n));
   for (auto* out : n->outputs) {
     if (out->Name() == name) {
@@ -121,7 +118,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
             PADDLE_ENFORCE_NE(
                 var_ids.find(input_var),
                 var_ids.end(),
-                platform::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "Input(%s) of operation %s is not set.", name, op->Type()));
             input_ids.push_back(var_ids[input_var]);
           }
@@ -142,7 +139,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
         PADDLE_ENFORCE_NE(
             var_ids.find(output_var),
             var_ids.end(),
-            platform::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Output(%s) of operation %s is not set.", name, op->Type()));
         output_ids.push_back(var_ids[output_var]);
         if (!subgraph->SaveIntermediateOut() &&
@@ -255,7 +252,7 @@ std::unordered_map<int, std::string> CodeGenerator::DistilDtypes(
         PADDLE_ENFORCE_EQ(
             dtypes[id],
             dtype,
-            platform::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "In fusion group, Same Node id must have same date type"));
       }
     }
@@ -267,7 +264,7 @@ std::unordered_map<int, std::string> CodeGenerator::DistilDtypes(
         PADDLE_ENFORCE_EQ(
             dtypes[id],
             dtype,
-            platform::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "In fusion group, Same Node id must have same date type"));
       }
     }
@@ -373,7 +370,4 @@ std::unordered_map<Node*, int> CodeGenerator::EncodeVarNodes(
   return var_ids;
 }
 
-}  // namespace fusion_group
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fusion_group

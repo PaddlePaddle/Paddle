@@ -19,9 +19,7 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
@@ -46,7 +44,7 @@ void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
 void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
                                             const std::string &op_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(op_type + "_scale_onednn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
@@ -108,9 +106,7 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
         "---    fused %d %s with scale", found_operator_scale_count, op_type);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(operator_scale_onednn_fuse_pass,
               paddle::framework::ir::FuseOperatorScaleOneDNNPass);

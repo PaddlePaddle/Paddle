@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -105,7 +104,7 @@ void FillMatmulOperandNotation(const int x_ndim,
       *out_axes = y_broadcast_axes + "mn";
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "MatmulSPMDRule Receive Unsupported x_dim [%d] and y_dim [%d].",
         x_ndim,
         y_ndim));
@@ -130,17 +129,17 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
   PADDLE_ENFORCE_EQ(
       y_ndim,
       y_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Y's rank [%d] and Y's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   y_ndim,
-                                   y_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Y's rank [%d] and Y's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      y_ndim,
+                                      y_dims_mapping.size()));
 
   VLOG(6) << "MatmulSPMDRule InferForward Inputs: "
           << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
@@ -161,7 +160,7 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   if (trans_x) {
     PADDLE_ENFORCE_GE(x_ndim,
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "When trans_x is True, the size of X "
                           "tensor should be greater than 2,  but got [%d].",
                           x_ndim));
@@ -170,7 +169,7 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   if (trans_y) {
     PADDLE_ENFORCE_GE(y_ndim,
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "When trans_y is True, the size of Y "
                           "tensor should be greater than 2,  but got [%d].",
                           y_ndim));
@@ -236,7 +235,7 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
   int max_ndim = std::max(x_ndim, y_ndim);
   PADDLE_ENFORCE_EQ(max_ndim,
                     out_ndim,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The max ndim of inputs should be equal out_ndim in "
                         "Matmul, but got max ndim: [%d] and out_ndim: [%d].",
                         max_ndim,
@@ -286,11 +285,12 @@ static bool DistAttrsAreBasicallyEqual(
           in_dist_attr.partial_status() == out_dist_attr.partial_status());
 }
 
-SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
-                             const DistMetaTensor& y,
+SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x_,
+                             const DistMetaTensor& y_,
                              const DistMetaTensor& out_grad,
                              bool trans_x,
                              bool trans_y) {
+  DistMetaTensor x = x_, y = y_;
   auto get_attr = [](const ArgDistAttr& attr) -> const TensorDistAttr& {
     return paddle::get<TensorDistAttr>(attr);
   };
@@ -302,12 +302,12 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
     PADDLE_ENFORCE_EQ(
         DistAttrsAreBasicallyEqual(x_single_dist_attr, y.dist_attr()),
         true,
-        phi::errors::Unavailable("The matmul grad infer spmd `%s` verify "
-                                 "error: left dist attr is %s, "
-                                 "right dist attr is %s.",
-                                 debug_msg,
-                                 x_single_dist_attr,
-                                 y.dist_attr()));
+        common::errors::Unavailable("The matmul grad infer spmd `%s` verify "
+                                    "error: left dist attr is %s, "
+                                    "right dist attr is %s.",
+                                    debug_msg,
+                                    x_single_dist_attr,
+                                    y.dist_attr()));
   };
 
   auto confirm_dist_attr_with_arg_same_fn = [&](const ArgDistAttr& x_dist_attr,
@@ -318,12 +318,12 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
     PADDLE_ENFORCE_EQ(
         DistAttrsAreBasicallyEqual(x_single_dist_attr, y_single_dist_attr),
         true,
-        phi::errors::Unavailable("The matmul grad infer spmd `%s` verify "
-                                 "error: left dist attr is %s, "
-                                 "right dist attr is %s.",
-                                 debug_msg,
-                                 x_single_dist_attr,
-                                 y_single_dist_attr));
+        common::errors::Unavailable("The matmul grad infer spmd `%s` verify "
+                                    "error: left dist attr is %s, "
+                                    "right dist attr is %s.",
+                                    debug_msg,
+                                    x_single_dist_attr,
+                                    y_single_dist_attr));
   };
 
   // TODO(chenweihang): Now for the case where the forward input generates
@@ -336,22 +336,18 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
   auto fwd_spmd_info = MatmulInferSpmd(x, y, trans_x, trans_y);
   auto infer_x_dist_attr = get_attr(fwd_spmd_info.first[0]);
   auto infer_y_dist_attr = get_attr(fwd_spmd_info.first[1]);
-  auto is_dist_attr_equal = [&](const TensorDistAttr& dist_attr,
-                                const ArgDistAttr& arg_dist_attr) -> bool {
-    const auto& infer_dist_attr = get_attr(arg_dist_attr);
+  auto is_dist_attr_not_equal =
+      [&](const TensorDistAttr& dist_attr,
+          const TensorDistAttr& infer_dist_attr) -> bool {
     return (dist_attr.process_mesh() != infer_dist_attr.process_mesh() ||
             dist_attr.dims_mapping() != infer_dist_attr.dims_mapping() ||
             dist_attr.partial_status() != infer_dist_attr.partial_status());
   };
-
-  if (is_dist_attr_equal(x.dist_attr(), fwd_spmd_info.first[0]) ||
-      is_dist_attr_equal(y.dist_attr(), fwd_spmd_info.first[1])) {
-    auto x_r_dist_attr = GetReplicatedDistAttr(x.dist_attr());
-    auto y_r_dist_attr = GetReplicatedDistAttr(y.dist_attr());
-    return {{x_r_dist_attr,
-             y_r_dist_attr,
-             GetReplicatedDistAttr(out_grad.dist_attr())},
-            {x_r_dist_attr, y_r_dist_attr}};
+  if (is_dist_attr_not_equal(x.dist_attr(), infer_x_dist_attr)) {
+    x = DistMetaTensor(x.dims(), infer_x_dist_attr);
+  }
+  if (is_dist_attr_not_equal(y.dist_attr(), infer_y_dist_attr)) {
+    y = DistMetaTensor(y.dims(), infer_y_dist_attr);
   }
 
   SpmdInfo dx_spmd_info;
@@ -438,5 +434,4 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

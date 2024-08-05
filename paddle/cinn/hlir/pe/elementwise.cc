@@ -18,11 +18,11 @@
 #include <string>
 
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/utils/functional.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pe {
@@ -45,8 +45,11 @@ using lang::Compute;
 #define HLIR_MKL_IMP_UNARY_PE(name__, ex_name__)                           \
   std::vector<ir::Tensor> name__##MKL(const Tensor& A,                     \
                                       const std::string& output_name) {    \
-    CHECK(A->type().is_float())                                            \
-        << "type should be float or double but get " << A->type();         \
+    PADDLE_ENFORCE_EQ(A->type().is_float(),                                \
+                      true,                                                \
+                      ::common::errors::InvalidArgument(                   \
+                          "The type should be float or double. "           \
+                          "Please provide a valid type."));                \
     std::string fn_name =                                                  \
         "cinn_mkl_" #ex_name__ "_v_fp" + std::to_string(A->type().bits()); \
     auto call = Compute(                                                   \
@@ -140,7 +143,10 @@ ir::Tensor Squeeze(const ir::Tensor& A,
         output_shape.push_back(A->shape[idx]);
         position.push_back(idx);
       } else {
-        CHECK_EQ(A->shape[idx], Expr(1));
+        PADDLE_ENFORCE_EQ(A->shape[idx],
+                          Expr(1),
+                          ::common::errors::InvalidArgument(
+                              "The dimension to squeeze must be 1."));
       }
     }
   } else {
@@ -183,8 +189,10 @@ ir::Tensor ExpandDims(const ir::Tensor& A,
             idx.push_back(indice[i]);
           }
         }
-        CHECK_EQ(idx.size(), A->shape.size())
-            << "The index size not equal with the input rank.";
+        PADDLE_ENFORCE_EQ(idx.size(),
+                          A->shape.size(),
+                          ::common::errors::InvalidArgument(
+                              "The index size not equal with the input rank."));
         return A(idx);
       },
       UniqName(output_name));
@@ -341,7 +349,7 @@ ir::Tensor Tril(const ir::Tensor& A,
       [=](const std::vector<Expr>& indice) {
         PADDLE_ENFORCE_GE(indice.size(),
                           size_t(2),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The Tril op input tensor must have a rank "
                               "greater than or equal to 2."));
         std::vector<Expr> new_indice(indice.end() - 2, indice.end());
@@ -349,6 +357,29 @@ ir::Tensor Tril(const ir::Tensor& A,
         return ir::Select::Make(new_indice[0] >= new_indice[1] - diagonal,
                                 A(indice),
                                 ir::Zero(A->type()));
+      },
+      name);
+  return res;
+}
+
+ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
+                         const cinn::dialect::SymbolBindings& symbol_bindings,
+                         const std::vector<symbol::DimExpr>& output_dim_exprs,
+                         const std::string& name) {
+  if (output_dim_exprs.size() != 1) {
+    VLOG(4) << "pe::GenerateShape will return a meaningless tensor when "
+               "output_dim_exprs.size() != 1";
+    return Compute(
+        {Expr(1)},
+        [=](const std::vector<Expr>& indice) { return Expr(1); },
+        name);
+  }
+  cinn::common::DimExprConverterWithSymbolBindings converter(inputs,
+                                                             symbol_bindings);
+  auto res = Compute(
+      {Expr(1)},
+      [=, &converter](const std::vector<Expr>& indice) {
+        return converter.ConvertToIrExpr(output_dim_exprs[0]);
       },
       name);
   return res;
@@ -400,7 +431,11 @@ ir::Tensor IsClose(const ir::Tensor& x,
         check_x_nan || check_y_nan, check_nan_same, check_diff);
   };
   auto fn = [=](const std::vector<Expr>& indice) {
-    CHECK_EQ(indice.size(), y->shape.size());
+    PADDLE_ENFORCE_EQ(
+        indice.size(),
+        y->shape.size(),
+        ::common::errors::InvalidArgument(
+            "The indice size should be equal to y's shape size."));
     return fnop(x(indice), y(indice));
   };
   auto res = Compute(x->shape, fn, out_name);

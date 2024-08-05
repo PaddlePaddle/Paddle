@@ -35,7 +35,7 @@ void MeanAllGradKernel(const Context& dev_ctx,
                        DenseTensor* x_grad) {
   PADDLE_ENFORCE_EQ(out_grad.numel(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Mean Gradient Input Tensor len should be 1. But "
                         "received Out@Grad's elements num is %d.",
                         out_grad.numel()));

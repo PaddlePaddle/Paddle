@@ -35,12 +35,11 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/string_helper.h"
@@ -76,7 +75,7 @@ static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
   PADDLE_ENFORCE_EQ(
       model_input_shape == runtime_input_shape,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input shapes are inconsistent with the model. Expect [%s] in "
           "model description, but got [%s] in runtime. TRT 5 "
           "or lower version "
@@ -102,7 +101,7 @@ static phi::DataType TRT2FluidDataType(nvinfer1::DataType type) {
       return phi::DataType::BOOL;
 #endif
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
       return phi::DataType::FLOAT32;
   }
@@ -115,7 +114,7 @@ static void RuntimeDynamicShapeCheck(
     const std::vector<int32_t> &max_input_shape) {
   // PADDLE_ENFORCE_EQ(
   //     runtime_input_shape.size(), min_input_shape.size(),
-  //     phi::errors::InvalidArgument(
+  //     common::errors::InvalidArgument(
   //         "TRT engine runtime input %s dims size(%d) inconsistent "
   //         "with the dynamic shape size(%d)",
   //         x, runtime_input_shape.size(), min_input_shape.size()));
@@ -140,7 +139,7 @@ static void RuntimeDynamicShapeCheck(
   PADDLE_ENFORCE_EQ(is_input_shape_valid(
                         runtime_input_shape, min_input_shape, max_input_shape),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT runtime input shape of %s is invalid. Expect "
                         "runtime input shape to be within min/max input shape "
                         "configured in SetTRTDynamicShapeInfo(),"
@@ -297,8 +296,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto is_shape_tensor = true;
         if (trt_engine->engine()) {
           auto *engine = trt_engine->engine();
+#if IS_TRT_VERSION_GE(8600)
+          is_shape_tensor = engine->isShapeInferenceIO(name.c_str());
+#else
           is_shape_tensor =
               engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
+#endif
           if (!is_shape_tensor) {
             runtime_shape_tensor.erase(name);
             VLOG(4) << "trt engine runtime delete shape name(" << name
@@ -309,8 +312,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
              t.dtype() == phi::DataType::INT64) &&
             is_shape_tensor) {
           std::vector<int> int32_host(t.numel());
-          paddle::platform::DeviceContextPool &pool =
-              paddle::platform::DeviceContextPool::Instance();
+          phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
 
           if (t.place().GetType() == phi::AllocationType::CPU) {
             auto &int32_tensor = t;
@@ -363,12 +365,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
           PADDLE_ENFORCE_EQ(
               min_input_shape.count(x),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Input %s not found in TRT engine min_input_shape.", x));
           PADDLE_ENFORCE_EQ(
               max_input_shape.count(x),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Input %s not found in TRT engine max_input_shape.", x));
           RuntimeDynamicShapeCheck(x,
                                    runtime_input_shape[x],
@@ -500,7 +502,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               const phi::Place &dev_place,
               TensorRTEngine *engine) const {
     int runtime_batch = -1;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     auto stream = reinterpret_cast<const phi::GPUContext &>(dev_ctx).stream();
     std::vector<std::string> output_maps =
@@ -518,6 +520,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
       binding_offset = engine->GetBindingsOffset();
     }
     // Bind input tensor to TRT.
+#if IS_TRT_VERSION_GE(8600)
+    std::unordered_map<std::string, int> tensor_index;
+    for (int i = 0; i < engine->engine()->getNbIOTensors(); ++i) {
+      auto tensor_name = engine->engine()->getIOTensorName(i);
+      tensor_index[std::string(tensor_name)] = i;
+    }
+#endif
     for (auto x : runtime_input_names_) {
       // NOTE(liuyuanle): It is a trick. If you need a [x], then you need
       // to use [x.substr(0, idx)].
@@ -538,7 +547,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PADDLE_ENFORCE_GT(
           t.numel(),
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The input tensor named %s of trt-subgraph must "
               "have >0 elements, but now have %d elements. "
               "It's likely that this tensor is connected to a Concat op inside "
@@ -561,18 +570,23 @@ class TensorRTEngineOp : public framework::OperatorBase {
         PADDLE_ENFORCE_EQ(
             t.numel(),
             1UL,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "This tensor must have one element, but got %ld.", t.numel()));
         t_shape.push_back(1);
       }
 
       // Get index of profile 0 first, then plus binding offset
+#if IS_TRT_VERSION_GE(8600)
+      const int bind_index =
+          tensor_index[std::string(x.c_str())] + binding_offset;
+#else
       const int bind_index =
           engine->engine()->getBindingIndex(x.c_str()) + binding_offset;
+#endif
       PADDLE_ENFORCE_LT(
           bind_index,
           num_bindings,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Wrong TRT engine input binding index. Expected The "
               "binding index of TRT engine input to be less than "
               "the number of inputs and outputs. Received binding "
@@ -593,7 +607,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             PADDLE_ENFORCE_EQ(
                 runtime_batch,
                 t_shape[0],
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "Inputs of trt subgraphs has different batchsize. "
                     "It's not allowed in static shape mode. "
                     "Check whether the model you are running has multiple trt "
@@ -616,8 +630,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else {
 #if IS_TRT_VERSION_GE(6000)
 #if IS_TRT_VERSION_GE(8500)
-        if (engine->engine()->isShapeBinding(bind_index) &&
-            engine->engine()->bindingIsInput(bind_index)) {
+        if (engine->engine()->isShapeInferenceIO(x.c_str()) &&
+            engine->engine()->getTensorIOMode(x.c_str()) ==
+                nvinfer1::TensorIOMode::kINPUT) {
           std::vector<int> shape_v(t.numel());
           if (t.dtype() == phi::DataType::INT32) {
             phi::memory_utils::Copy(phi::CPUPlace(),
@@ -690,11 +705,15 @@ class TensorRTEngineOp : public framework::OperatorBase {
       VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
 
       auto indata_type = inference::tensorrt::PhiType2NvType(t.dtype());
+#if IS_TRT_VERSION_GE(8600)
+      auto intrt_type = engine->engine()->getTensorDataType(x.c_str());
+#else
       auto intrt_index = engine->engine()->getBindingIndex(x.c_str());
       auto intrt_type = engine->engine()->getBindingDataType(intrt_index);
+#endif
       PADDLE_ENFORCE_EQ(indata_type,
                         intrt_type,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The TRT Engine OP's input type [%d] should equal "
                             "to the input data type [%d].",
                             static_cast<int>(intrt_type),
@@ -734,7 +753,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<bool>());
 #endif
       } else {
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "The TRT Engine OP only support "
             "float/double/int32_t/int64_t/float16/bool input."));
       }
@@ -746,20 +765,31 @@ class TensorRTEngineOp : public framework::OperatorBase {
         Attr<std::vector<int>>("origin_output_rank");
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
+#if IS_TRT_VERSION_GE(8600)
+      const int bind_index =
+          tensor_index[std::string(output_maps[output_index].c_str())] +
+          binding_offset;
+#else
       const int bind_index =
           engine->engine()->getBindingIndex(output_maps[output_index].c_str()) +
           binding_offset;
+#endif
       std::vector<int> ddim;
 
       if (!engine->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(8600)
+        auto dims =
+            engine->engine()->getTensorShape(output_maps[output_index].c_str());
+#else
         auto dims = engine->engine()->getBindingDimensions(bind_index);
+#endif
         ddim.push_back(runtime_batch);
         for (int i = 0; i < dims.nbDims; i++) {
           ddim.push_back(dims.d[i]);
         }
       } else {
 #if IS_TRT_VERSION_GE(8500)
-        auto x_name = engine->engine()->getBindingName(bind_index);
+        auto x_name = engine->engine()->getIOTensorName(bind_index);
         auto dims = trt_context->getTensorShape(x_name);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
@@ -788,20 +818,25 @@ class TensorRTEngineOp : public framework::OperatorBase {
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(
           fluid_v,
-          phi::errors::NotFound(
+          common::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
       fluid_t->Resize(common::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index,
                         num_bindings,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The binding index in TRT engine should be less "
                             "than the number of bindings, but got binding "
                             "index = %d, number of bindings = %d.",
                             bind_index,
                             num_bindings));
+#if IS_TRT_VERSION_GE(8600)
+      auto trt_tensor_name = engine->engine()->getIOTensorName(bind_index);
+      auto trt_type = engine->engine()->getTensorDataType(trt_tensor_name);
+#else
       auto trt_type = engine->engine()->getBindingDataType(bind_index);
+#endif
       // get adr and set type
       VLOG(1) << "trt output [" << y << "] dtype is "
               << TRT2FluidDataType(trt_type);
@@ -814,7 +849,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PADDLE_ENFORCE_LE(
           runtime_batch,
           max_batch_size_,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The runtime batch size (%d) is greater than the max batch "
               "size(%d).\n"
               "There are two possible causes for this problem: \n"
@@ -984,7 +1019,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE_NOT_NULL(
         trt_engine_,
-        phi::errors::Fatal(
+        common::errors::Fatal(
             "The pointer to tensorrt engine should not be null."));
     return trt_engine_;
   }

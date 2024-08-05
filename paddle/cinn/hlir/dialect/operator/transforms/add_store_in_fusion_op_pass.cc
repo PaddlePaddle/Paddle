@@ -32,22 +32,12 @@ class AddYieldStoreInFusionOpPattern
 
   bool MatchAndRewrite(::pir::YieldOp op,
                        pir::PatternRewriter& rewriter) const override {
-    auto& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     for (auto i = 0; i < op->num_operands(); ++i) {
-      if (op->operand_source(i).use_count() == 1) {
-        continue;
-      }
-
       rewriter.SetInsertionPointAfter(op->operand_source(i).defining_op());
       auto store_op = rewriter.Build<cinn::dialect::YieldStoreOp>(
           op->operand_source(i), op->operand_source(i).type());
       auto orignal_base = op->operand_source(i);
       op->operand(i).set_source(store_op.result(0));
-
-      shape_analysis.SetShapeOrDataForValue(
-          store_op.result(0),
-          shape_analysis.GetShapeOrDataForValue(orignal_base));
     }
 
     return true;
@@ -75,13 +65,6 @@ class AddStoreInFusionOpPass : public pir::Pass {
       for (auto& block : op->region(i)) {
         for (auto& op : block) {
           if (op.isa<cinn::dialect::FusionOp>()) {
-            auto fusion_op = op.dyn_cast<cinn::dialect::FusionOp>();
-            if (fusion_op.GetOperators().size() == 2 &&
-                fusion_op.GetOperators()
-                    .front()
-                    ->isa<cinn::dialect::ReshapeOp>()) {
-              continue;
-            }
             auto [_, num_rewrites] =
                 pir::ApplyPatternsGreedily(&op, patterns_, cfg);
             AddStatistics(num_rewrites);

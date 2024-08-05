@@ -24,7 +24,7 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/error.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 
@@ -64,7 +64,9 @@ class ReduceBlockCreater {
         is_rf_block_(is_rf_block) {
     const ScheduleBlockRealize* block_real =
         original_block_.As<ir::ScheduleBlockRealize>();
-    CHECK_NOTNULL(block_real);
+    PADDLE_ENFORCE_NOT_NULL(block_real,
+                            ::common::errors::InvalidArgument(
+                                "The block is not a ScheduleBlockRealize"));
     num_block_iters_ = block_real->iter_values.size();
   }
 
@@ -308,7 +310,11 @@ class RFBlockCreater : public ReduceBlockCreater {
       new_iter_values_.push_back(original_iter_value);
       return;
     }
-    CHECK(original_iter_var->is_reduce_axis);
+    PADDLE_ENFORCE_EQ(
+        original_iter_var->is_reduce_axis,
+        true,
+        phi::errors::InvalidArgument(
+            "The original_iter_var is expected to be a reduce axis."));
 
     // This iter is a reduction iter and touches the rfactor loop. So we try to
     // create a new iter for each loop var that appear in the original iter
@@ -442,12 +448,15 @@ class RBBlockCreater : public ReduceBlockCreater {
     std::string original_store_name =
         original_update_stmt_.As<ir::Store>()->tensor.as_tensor()->name;
 
-#define REPLACE_RF_TENSOR(Op)                                    \
-  if (new_store_body.As<Op>()) {                                 \
-    auto* node = new_store_body.As<Op>();                        \
-    CHECK(node);                                                 \
-    auto& operand = node->b();                                   \
-    operand = Load::Make(rf_tensor_, rf_tensor_access_indices_); \
+#define REPLACE_RF_TENSOR(Op)                                               \
+  if (new_store_body.As<Op>()) {                                            \
+    auto* node = new_store_body.As<Op>();                                   \
+    PADDLE_ENFORCE_NOT_NULL(                                                \
+        node,                                                               \
+        phi::errors::InvalidArgument("The conversion of new_store_body to " \
+                                     "Op* failed, node is nullptr."));      \
+    auto& operand = node->b();                                              \
+    operand = Load::Make(rf_tensor_, rf_tensor_access_indices_);            \
   }
 
     REPLACE_RF_TENSOR(Add)

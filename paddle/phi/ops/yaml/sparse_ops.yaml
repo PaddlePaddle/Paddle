@@ -173,6 +173,7 @@
     func : isnan_coo{sparse_coo -> sparse_coo},
       isnan_csr{sparse_csr -> sparse_csr}
     layout : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : leaky_relu
   args : (Tensor x, float alpha)
@@ -474,6 +475,7 @@
            full_like_csr{sparse_csr -> sparse_csr}
     layout : x
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op: fused_attention
   args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask)
@@ -496,6 +498,18 @@
   kernel :
     func : indices_coo{sparse_coo -> dense}
     layout : x
+
+- op: mask_as
+  args : (Tensor x, Tensor mask)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : mask_as_coo{dense, sparse_coo -> sparse_coo},
+           mask_as_csr{dense, sparse_csr -> sparse_csr}
+    layout : x
+  backward: mask_as_grad
 
 - op: masked_matmul
   args : (Tensor x, Tensor y, Tensor mask)

@@ -17,8 +17,8 @@ limitations under the License. */
 #include <random>
 #include <vector>
 
-#include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_residual_dropout_bias.h"
 #include "test/cpp/fluid/fused/fused_dropout_test.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -57,7 +57,7 @@ struct FusedResidualDropoutBiasTester {
   std::vector<T> correct_out, correct_dsrc, correct_dbias;
   std::vector<uint8_t> correct_mask;
 
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   phi::GPUContext *ctx;
 
   FusedResidualDropoutBiasTester() {
@@ -67,7 +67,7 @@ struct FusedResidualDropoutBiasTester {
     dropout_prob = 0.0;
     is_upscale_in_train = false;
     is_test = false;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto device_ctx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(device_ctx);
   }
@@ -84,7 +84,7 @@ struct FusedResidualDropoutBiasTester {
         dropout_prob(dropout_prob),
         is_upscale_in_train(is_upscale_in_train),
         is_test(is_test) {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto device_ctx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(device_ctx);
   }
@@ -197,10 +197,10 @@ struct FusedResidualDropoutBiasTester {
   void FusedForward() {
     const int VecSize = MAX_CACHE_BYTES / sizeof(T);
     auto config =
-        paddle::operators::Get1DBlocksAnd2DGrids(*ctx,
-                                                 static_cast<uint64_t>(rows),
-                                                 static_cast<uint64_t>(cols),
-                                                 VecSize);
+        phi::fusion::Get1DBlocksAnd2DGrids(*ctx,
+                                           static_cast<uint64_t>(rows),
+                                           static_cast<uint64_t>(cols),
+                                           VecSize);
 
     const int increment = ((cols - 1) / (config.thread_per_block.x *
                                          config.block_per_grid.x * VecSize) +
@@ -209,20 +209,19 @@ struct FusedResidualDropoutBiasTester {
 
     T *bias_ptr = has_bias ? bias.data<T>() : nullptr;
     T *residual_ptr = add_residual ? residual.data<T>() : nullptr;
-    paddle::operators::LaunchResidualDropoutBias<T, uint8_t>(
-        rows,
-        cols,
-        increment,
-        seed,
-        dropout_prob,
-        is_test,
-        is_upscale_in_train,
-        src.data<T>(),
-        residual_ptr,
-        bias_ptr,
-        mask.data<uint8_t>(),
-        out.data<T>(),
-        *ctx);
+    phi::fusion::LaunchResidualDropoutBias<T, uint8_t>(rows,
+                                                       cols,
+                                                       increment,
+                                                       seed,
+                                                       dropout_prob,
+                                                       is_test,
+                                                       is_upscale_in_train,
+                                                       src.data<T>(),
+                                                       residual_ptr,
+                                                       bias_ptr,
+                                                       mask.data<uint8_t>(),
+                                                       out.data<T>(),
+                                                       *ctx);
     ctx->Wait();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
   }
@@ -233,16 +232,15 @@ struct FusedResidualDropoutBiasTester {
     }
 
     T *bias_ptr = has_bias ? dbias.data<T>() : nullptr;
-    paddle::operators::LaunchResidualDropoutBiasGrad<T, uint8_t>(
-        out.data<T>(),
-        mask.data<uint8_t>(),
-        dropout_prob,
-        is_upscale_in_train,
-        rows,
-        cols,
-        dsrc.data<T>(),
-        bias_ptr,
-        *ctx);
+    phi::fusion::LaunchResidualDropoutBiasGrad<T, uint8_t>(out.data<T>(),
+                                                           mask.data<uint8_t>(),
+                                                           dropout_prob,
+                                                           is_upscale_in_train,
+                                                           rows,
+                                                           cols,
+                                                           dsrc.data<T>(),
+                                                           bias_ptr,
+                                                           *ctx);
   }
 
   void Run() {
@@ -301,7 +299,7 @@ template <typename T>
 static void BaseTest() {
   const int rows = 16;
   T max_diff = static_cast<T>(0);
-  if (std::is_same<T, paddle::platform::float16>::value) {
+  if (std::is_same<T, phi::dtype::float16>::value) {
     max_diff = static_cast<T>(1e-1);
   } else {
     max_diff = static_cast<T>(1e-5);
@@ -322,7 +320,7 @@ TEST(FusedDropout, GPUFusedResidualDropoutBias) { BaseTest<float>(); }
 TEST(FusedDropout, GPUFusedResidualDropoutBiasDouble) { BaseTest<double>(); }
 
 TEST(FusedDropout, GPUFusedResidualDropoutBiasFp16) {
-  BaseTest<platform::float16>();
+  BaseTest<phi::dtype::float16>();
 }
 
 TEST(FusedDropout, GPUFusedResidualDropoutBiasIsUpscaleInTrain) {
@@ -390,9 +388,9 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasLargeShapeFp16) {
   if (std::getenv("_cols") != nullptr) {
     cols = atoi(std::getenv("_cols"));
   }
-  FusedResidualDropoutBiasTester<platform::float16> test(
+  FusedResidualDropoutBiasTester<phi::dtype::float16> test(
       rows, cols, 0, 0.0, true, true);
   test.Run();
-  test.CheckOut(static_cast<platform::float16>(1e-1));
-  test.CheckGrad(static_cast<platform::float16>(1e-1));
+  test.CheckOut(static_cast<phi::dtype::float16>(1e-1));
+  test.CheckGrad(static_cast<phi::dtype::float16>(1e-1));
 }

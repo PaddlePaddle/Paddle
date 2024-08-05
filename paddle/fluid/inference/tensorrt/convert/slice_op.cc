@@ -77,7 +77,7 @@ class SliceOpConverter : public OpConverter {
       } else {
         PADDLE_ENFORCE_EQ(starts.size(),
                           axes.size(),
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The size of this starts: %d must be "
                               "equal to the axes: %d.",
                               starts.size(),
@@ -110,13 +110,13 @@ class SliceOpConverter : public OpConverter {
               engine_->GetITensor(op_desc.Input("EndsTensorList")[i]);
         }
       } else {
-        PADDLE_ENFORCE_EQ(ends.size(),
-                          axes.size(),
-                          platform::errors::InvalidArgument(
-                              "The size of this ends: %d must be "
-                              "equal to the axes: %d.",
-                              ends.size(),
-                              axes.size()));
+        PADDLE_ENFORCE_EQ(
+            ends.size(),
+            axes.size(),
+            common::errors::InvalidArgument("The size of this ends: %d must be "
+                                            "equal to the axes: %d.",
+                                            ends.size(),
+                                            axes.size()));
         for (size_t i = 0; i < axes.size(); i++) {  // same as ends.size()
           if (ends[i] < 0) {
             ends_tensor[axes[i]] =
@@ -161,16 +161,18 @@ class SliceOpConverter : public OpConverter {
       input_dims.d[0] = 1;  // fake batchsize, not useful here
       for (size_t i = 0; i < axes.size(); i++) {
         if (starts[i] < 0) {
-          starts[i] = std::max(starts[i] + input_dims.d[axes[i]], 0);
+          starts[i] =
+              std::max(starts[i] + static_cast<int>(input_dims.d[axes[i]]), 0);
         }
         if (ends[i] < 0) {
-          ends[i] = std::max(ends[i] + input_dims.d[axes[i]], 0);
+          ends[i] =
+              std::max(ends[i] + static_cast<int>(input_dims.d[axes[i]]), 0);
         }
-        ends[i] = std::min(ends[i], input_dims.d[axes[i]]);
+        ends[i] = std::min(ends[i], static_cast<int>(input_dims.d[axes[i]]));
         PADDLE_ENFORCE_GT(
             ends[i],
             starts[i],
-            platform::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Attr(ends) should be greater than attr(starts) in "
                 "slice op. But received ends = %d, starts = %d.",
                 ends[i],

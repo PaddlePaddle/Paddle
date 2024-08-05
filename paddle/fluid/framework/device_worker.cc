@@ -93,7 +93,7 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
                                char separator,
                                bool need_leading_separator,
                                int num_decimals) {
-  char buf[MAX_FLOAT_BUFF_SIZE];
+  char buf[MAX_FLOAT_BUFF_SIZE];  // NOLINT
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -245,7 +245,8 @@ bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
 
 void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
   std::ostringstream os;
-  int device_id = static_cast<int>(place_.GetDeviceId());
+  int device_id =
+      static_cast<int>(static_cast<unsigned char>(place_.GetDeviceId()));
   for (auto& param : *dump_param_) {
     os.str("");
     Variable* var = scope.FindVar(param);
@@ -260,8 +261,8 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
       continue;
     }
     phi::DenseTensor cpu_tensor;
-    if (platform::is_gpu_place(tensor->place())) {
-      TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    if (phi::is_gpu_place(tensor->place())) {
+      TensorCopySync(*tensor, phi::CPUPlace(), &cpu_tensor);
       tensor = &cpu_tensor;
     }
     int64_t len = tensor->numel();
@@ -373,8 +374,8 @@ void DeviceWorker::DumpField(const Scope& scope,
         continue;
       }
       phi::DenseTensor cpu_tensor;
-      if (platform::is_gpu_place(tensor->place())) {
-        TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+      if (phi::is_gpu_place(tensor->place())) {
+        TensorCopySync(*tensor, phi::CPUPlace(), &cpu_tensor);
         cpu_tensor.set_lod(tensor->lod());
         tensor = &cpu_tensor;
       }
@@ -461,8 +462,8 @@ void DeviceWorker::DumpField(const Scope& scope,
       continue;
     }
     phi::DenseTensor cpu_tensor;
-    if (platform::is_gpu_place(tensor->place())) {
-      TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    if (phi::is_gpu_place(tensor->place())) {
+      TensorCopySync(*tensor, phi::CPUPlace(), &cpu_tensor);
       cpu_tensor.set_lod(tensor->lod());
       tensor = &cpu_tensor;
     }

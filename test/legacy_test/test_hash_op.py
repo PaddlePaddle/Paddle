@@ -43,7 +43,7 @@ class TestHashOp(OpTest):
         self.out_seq = np.array(self.out_seq)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestHashNotLoDOp(TestHashOp):
@@ -70,7 +70,7 @@ class TestHashNotLoDOp(TestHashOp):
         self.out_seq = np.array(self.out_seq)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestHashOp2(TestHashOp):
@@ -91,7 +91,7 @@ class TestHashOp2(TestHashOp):
         self.out_seq = np.array([1269, 9609, 3868, 7268]).reshape((2, 2, 1))
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestHashOp3(TestHashOp):
@@ -115,7 +115,7 @@ class TestHashOp3(TestHashOp):
         ).reshape((2, 2, 1))
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == "__main__":

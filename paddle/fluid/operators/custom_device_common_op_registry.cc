@@ -16,15 +16,14 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/operators/collective/c_concat_op.h"
 #include "paddle/fluid/operators/load_combine_op.h"
-#include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/operators/save_combine_op.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 
 #define REGISTER_OP_CUSTOM_DEVICE_KERNEL(op_type, dev_type, ...)             \
@@ -65,19 +64,19 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GE(rank,
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "greater than or equal to 0.",
                           rank));
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_concat must be "
                           "greater than or equal to 2.",
                           nranks));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "less than that of nranks (%d).",
                           rank,
@@ -107,7 +106,7 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           nranks,
           comm->GetSize(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "nranks: %s should equal to %s", nranks, comm->GetSize()));
 
       int64_t send_numel = x->numel();
@@ -160,7 +159,7 @@ class CIdentityOpCustomDeviceKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rid,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for c_identity op must be non-negative.", rid));
     ctx.device_context().Alloc<T>(out);
 
@@ -180,19 +179,19 @@ class CSplitOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GE(rank,
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_split must be "
                           "greater than or equal to 0.",
                           rank));
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_split must be "
                           "greater than or equal to 2.",
                           nranks));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_split must be "
                           "less than that of nranks (%d).",
                           rank,
@@ -259,7 +258,7 @@ class CEmbeddingOpCustomDeviceKernel : public framework::OpKernel<T> {
               *reinterpret_cast<phi::DenseTensor*>(out_tensor.impl().get()))
           .Resize(out_dims);
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "CustomDevice c_embedding ids only support int32 or int64."));
     }
   }
@@ -319,7 +318,7 @@ class CEmbeddingGradOpCustomDeviceKernel : public framework::OpKernel<T> {
       table_grad_t->ShareDataWith(
           *reinterpret_cast<phi::DenseTensor*>(table_grad_tensor.impl().get()));
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "CustomDevice c_embedding ids only support int32 or int64."));
     }
   }
@@ -439,9 +438,9 @@ class CSoftmaxWithCrossEntropyOpCustomDeviceKernel
               *reinterpret_cast<phi::DenseTensor*>(loss_out.impl().get()))
           .Resize(loss_dims);
     } else {
-      PADDLE_THROW(
-          phi::errors::Unavailable("CustomDevice c_softmax_with_cross_entropy "
-                                   "only support ProcessGroup"));
+      PADDLE_THROW(common::errors::Unavailable(
+          "CustomDevice c_softmax_with_cross_entropy "
+          "only support ProcessGroup"));
     }
   }
 };
@@ -516,7 +515,7 @@ class CSoftmaxWithCrossEntropyGradCustomDeviceKernel
               logits_grad_out_tensor2.impl().get()))
           .Resize(softmax_dims);
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "CustomDevice c_softmax_with_cross_entropy_grad "
           "label_type only support int32/int64"));
     }
@@ -529,7 +528,7 @@ class CSyncCalcStreamCustomDeviceKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
     auto dev_ctx = static_cast<DeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
+        phi::DeviceContextPool::Instance().Get(place));
     dev_ctx->GetStream()->Synchronize();
   }
 };
@@ -543,11 +542,11 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
       auto place = cond->place();
       PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
       PADDLE_ENFORCE_EQ(cond->numel(),
                         1,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The input `cond` should be shape [1]"));
       if (!cond->data<bool>()[0]) {
         VLOG(4) << "Skip all reduce Op since cond is 0";
@@ -594,8 +593,8 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
           break;
 
         default:
-          PADDLE_THROW(phi::errors::InvalidArgument("Invalid reduce type: %d",
-                                                    red_type));
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Invalid reduce type: %d", red_type));
       }
 
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
@@ -609,9 +608,8 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
-                   ->GetStream();
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
     } else {
       stream = comm->GetStream();
     }
@@ -643,9 +641,8 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
-                   ->GetStream();
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
     } else {
       stream = comm->GetStream();
     }
@@ -663,11 +660,10 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
       VLOG(3) << "rank " << comm->GetRank() << " invoke Bcast. sent "
               << x->numel();
       if (out != x) {
-        framework::TensorCopy(
-            *static_cast<const phi::DenseTensor*>(x),
-            place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<phi::DenseTensor*>(out));
+        framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
+                              place,
+                              *phi::DeviceContextPool::Instance().Get(place),
+                              static_cast<phi::DenseTensor*>(out));
       }
     } else {
       phi::DeviceManager::CCLBroadcast(place.GetDeviceType(),
@@ -702,9 +698,8 @@ class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
-                   ->GetStream();
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
     } else {
       stream = comm->GetStream();
     }
@@ -909,14 +904,14 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
     const auto& dev_ctx = ctx.template device_context<phi::CustomContext>();
     auto place = ctx.GetPlace();
 
-    PADDLE_ENFORCE_EQ(
-        local_count->dtype(),
-        phi::DataType::INT64,
-        phi::errors::InvalidArgument("Please use int64 type in local_count."));
-    PADDLE_ENFORCE_EQ(
-        global_count->dtype(),
-        phi::DataType::INT64,
-        phi::errors::InvalidArgument("Please use int64 type in global_count."));
+    PADDLE_ENFORCE_EQ(local_count->dtype(),
+                      phi::DataType::INT64,
+                      common::errors::InvalidArgument(
+                          "Please use int64 type in local_count."));
+    PADDLE_ENFORCE_EQ(global_count->dtype(),
+                      phi::DataType::INT64,
+                      common::errors::InvalidArgument(
+                          "Please use int64 type in global_count."));
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     const int64_t* cpu_local_count_data;
@@ -1020,10 +1015,8 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
 
       std::shared_ptr<phi::stream::Stream> stream;
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx =
-            paddle::platform::DeviceContextPool::Instance().Get(place);
-        stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
-                     ->GetStream();
+        auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+        stream = static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
       } else {
         stream = comm->GetStream();
       }
@@ -1123,14 +1116,14 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
-    PADDLE_ENFORCE_EQ(
-        local_count->dtype(),
-        phi::DataType::INT64,
-        phi::errors::InvalidArgument("Please use int64 type in local_count."));
-    PADDLE_ENFORCE_EQ(
-        global_count->dtype(),
-        phi::DataType::INT64,
-        phi::errors::InvalidArgument("Please use int64 type in global_count."));
+    PADDLE_ENFORCE_EQ(local_count->dtype(),
+                      phi::DataType::INT64,
+                      common::errors::InvalidArgument(
+                          "Please use int64 type in local_count."));
+    PADDLE_ENFORCE_EQ(global_count->dtype(),
+                      phi::DataType::INT64,
+                      common::errors::InvalidArgument(
+                          "Please use int64 type in global_count."));
 
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
@@ -1232,10 +1225,8 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
 
       std::shared_ptr<phi::stream::Stream> stream;
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx =
-            paddle::platform::DeviceContextPool::Instance().Get(place);
-        stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
-                     ->GetStream();
+        auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+        stream = static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
       } else {
         stream = comm->GetStream();
       }
@@ -1328,258 +1319,221 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
   auto device_type = dev_type.c_str();
   /* see [Why use single type kernel] */
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      run_program,
-      device_type,
-      paddle::operators::
-          RunProgramOpKernel<float, paddle::platform::CustomDeviceContext>);
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      run_program_grad,
-      device_type,
-      paddle::operators ::
-          RunProgramGradOpKernel<float, paddle::platform::CustomDeviceContext>);
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       save_combine,
       device_type,
-      paddle::operators ::
-          SaveCombineOpKernel<paddle::platform::CustomDeviceContext, float>,
-      paddle::operators ::
-          SaveCombineOpKernel<paddle::platform::CustomDeviceContext, double>,
-      paddle::operators ::
-          SaveCombineOpKernel<paddle::platform::CustomDeviceContext, int>,
-      paddle::operators ::
-          SaveCombineOpKernel<paddle::platform::CustomDeviceContext, int64_t>);
+      paddle::operators ::SaveCombineOpKernel<phi::CustomContext, float>,
+      paddle::operators ::SaveCombineOpKernel<phi::CustomContext, double>,
+      paddle::operators ::SaveCombineOpKernel<phi::CustomContext, int>,
+      paddle::operators ::SaveCombineOpKernel<phi::CustomContext, int64_t>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       load_combine,
       device_type,
-      paddle::operators::
-          LoadCombineOpKernel<float, paddle::platform::CustomDeviceContext>,
-      paddle::operators::
-          LoadCombineOpKernel<double, paddle::platform::CustomDeviceContext>,
-      paddle::operators::
-          LoadCombineOpKernel<int, paddle::platform::CustomDeviceContext>,
-      paddle::operators::
-          LoadCombineOpKernel<int8_t, paddle::platform::CustomDeviceContext>,
-      paddle::operators::
-          LoadCombineOpKernel<int64_t, paddle::platform::CustomDeviceContext>);
+      paddle::operators::LoadCombineOpKernel<float, phi::CustomContext>,
+      paddle::operators::LoadCombineOpKernel<double, phi::CustomContext>,
+      paddle::operators::LoadCombineOpKernel<int, phi::CustomContext>,
+      paddle::operators::LoadCombineOpKernel<int8_t, phi::CustomContext>,
+      paddle::operators::LoadCombineOpKernel<int64_t, phi::CustomContext>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_concat,
       device_type,
-      paddle::operators::CConcatOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          float>,
-      paddle::operators::CConcatOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          phi::dtype::float16>);
+      paddle::operators::CConcatOpCustomDeviceKernel<phi::CustomContext, float>,
+      paddle::operators::CConcatOpCustomDeviceKernel<phi::CustomContext,
+                                                     phi::dtype::float16>,
+      paddle::operators::CConcatOpCustomDeviceKernel<phi::CustomContext,
+                                                     phi::dtype::bfloat16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_split,
       device_type,
-      paddle::operators::CSplitOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          float>,
-      paddle::operators::CSplitOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          int>,
-      paddle::operators::CSplitOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          phi::dtype::float16>);
+      paddle::operators::CSplitOpCustomDeviceKernel<phi::CustomContext, float>,
+      paddle::operators::CSplitOpCustomDeviceKernel<phi::CustomContext, int>,
+      paddle::operators::CSplitOpCustomDeviceKernel<phi::CustomContext,
+                                                    phi::dtype::float16>,
+      paddle::operators::CSplitOpCustomDeviceKernel<phi::CustomContext,
+                                                    phi::dtype::bfloat16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_embedding,
       device_type,
-      paddle::operators::CEmbeddingOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          float>,
-      paddle::operators::CEmbeddingOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          phi::dtype::float16>);
+      paddle::operators::CEmbeddingOpCustomDeviceKernel<phi::CustomContext,
+                                                        float>,
+      paddle::operators::CEmbeddingOpCustomDeviceKernel<phi::CustomContext,
+                                                        phi::dtype::float16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_embedding_grad,
       device_type,
+      paddle::operators::CEmbeddingGradOpCustomDeviceKernel<phi::CustomContext,
+                                                            float>,
       paddle::operators::CEmbeddingGradOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          float>,
-      paddle::operators::CEmbeddingGradOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           phi::dtype::float16>);
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_softmax_with_cross_entropy,
       device_type,
       paddle::operators::CSoftmaxWithCrossEntropyOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           float>,
       paddle::operators::CSoftmaxWithCrossEntropyOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           double>,
       paddle::operators::CSoftmaxWithCrossEntropyOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           phi::dtype::float16>) {}
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_softmax_with_cross_entropy_grad,
       device_type,
       paddle::operators::CSoftmaxWithCrossEntropyGradCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           float>,
       paddle::operators::CSoftmaxWithCrossEntropyGradCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           double>,
       paddle::operators::CSoftmaxWithCrossEntropyGradCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           phi::dtype::float16>) {}
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_identity,
       device_type,
-      paddle::operators::CIdentityOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          float>,
-      paddle::operators::CIdentityOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          double>,
-      paddle::operators::CIdentityOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          int>,
-      paddle::operators::CIdentityOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          int64_t>,
-      paddle::operators::CIdentityOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          phi::dtype::float16>) {}
+      paddle::operators::CIdentityOpCustomDeviceKernel<phi::CustomContext,
+                                                       float>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<phi::CustomContext,
+                                                       double>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<phi::CustomContext, int>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<phi::CustomContext,
+                                                       int64_t>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<phi::CustomContext,
+                                                       phi::dtype::float16>) {}
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_sync_calc_stream,
       device_type,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<phi::CustomContext,
+                                                           int16_t>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<phi::CustomContext,
+                                                           int32_t>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<phi::CustomContext,
+                                                           int64_t>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<phi::CustomContext,
+                                                           float>,
+      paddle::operators::CSyncCalcStreamCustomDeviceKernel<phi::CustomContext,
+                                                           double>,
       paddle::operators::CSyncCalcStreamCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          int16_t>,
-      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          int32_t>,
-      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          int64_t>,
-      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          float>,
-      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
-          double>,
-      paddle::operators::CSyncCalcStreamCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           phi::dtype::float16>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_allreduce_sum,
       device_type,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           float,
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           double,
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           phi::dtype::float16,
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           int32_t,
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           int64_t,
           phi::ccl::CCLReduceOp::SUM>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       mp_allreduce_sum,
       device_type,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           float,
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           double,
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           phi::dtype::float16,
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           int32_t,
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           int64_t,
           phi::ccl::CCLReduceOp::SUM>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_allreduce_min,
       device_type,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           float,
           phi::ccl::CCLReduceOp::MIN>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           double,
           phi::ccl::CCLReduceOp::MIN>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           phi::dtype::float16,
           phi::ccl::CCLReduceOp::MIN>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           int32_t,
           phi::ccl::CCLReduceOp::MIN>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           int64_t,
           phi::ccl::CCLReduceOp::MIN>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_allreduce_max,
       device_type,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           float,
           phi::ccl::CCLReduceOp::MAX>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           double,
           phi::ccl::CCLReduceOp::MAX>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           phi::dtype::float16,
           phi::ccl::CCLReduceOp::MAX>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           int32_t,
           phi::ccl::CCLReduceOp::MAX>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           int64_t,
           phi::ccl::CCLReduceOp::MAX>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_allreduce_prod,
       device_type,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           float,
           phi::ccl::CCLReduceOp::PRODUCT>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           double,
           phi::ccl::CCLReduceOp::PRODUCT>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           phi::dtype::float16,
           phi::ccl::CCLReduceOp::PRODUCT>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           int32_t,
           phi::ccl::CCLReduceOp::PRODUCT>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
-          paddle::platform::CustomDeviceContext,
+          phi::CustomContext,
           int64_t,
           phi::ccl::CCLReduceOp::PRODUCT>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(

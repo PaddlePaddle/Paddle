@@ -20,14 +20,13 @@
 
 REGISTER_FILE_SYMBOLS(op_compatible_info);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 inline std::vector<int> ConvertStr2Int(const std::string& str_text) {
   auto vec_text = string::split_string<std::string>(str_text, ".");
   PADDLE_ENFORCE(
       (vec_text.size() == 2 || vec_text.size() == 3),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input[%s] is not a right version format [1.6 or 1.6.0].", str_text));
 
   std::vector<int> vec_res;
@@ -53,7 +52,7 @@ inline bool CompareVersion(const std::string& str_first,
   // first version id
   PADDLE_ENFORCE_EQ(vec_first_version.size(),
                     vec_second_version.size(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Version information size is not equal, the first is "
                         "[%d], the second is [%d].",
                         vec_first_version.size(),
@@ -184,5 +183,4 @@ OpCompatibleType OpCompatibleMap::IsRequireMiniVersion(
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

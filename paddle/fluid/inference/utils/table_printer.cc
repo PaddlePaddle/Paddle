@@ -30,8 +30,7 @@
 #include <string>
 #include <vector>
 
-namespace paddle {
-namespace inference {
+namespace paddle::inference {
 
 std::string TablePrinter::PrintTable() {
   std::stringstream ss;
@@ -65,7 +64,7 @@ TablePrinter::TablePrinter(const std::vector<std::string>& header) {
     terminal_width = csbi.dwSize.X;
   }
 #else
-  struct winsize terminal_size;
+  struct winsize terminal_size = {};
   int status = ioctl(STDOUT_FILENO, TIOCGWINSZ, &terminal_size);
   if (status == 0 && terminal_size.ws_col != 0) {
     terminal_width = terminal_size.ws_col;
@@ -211,5 +210,4 @@ void TablePrinter::AddRow(std::stringstream& ss, size_t row_idx) {
   }
 }
 
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference

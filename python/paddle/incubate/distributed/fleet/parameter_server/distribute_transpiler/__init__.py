@@ -252,7 +252,7 @@ class FleetTranspiler(Fleet):
 
         if model_dir:
             if not os.path.isdir(model_dir):
-                raise ValueError("There is no directory named '%s'", model_dir)
+                raise ValueError(f"There is no directory named '{model_dir}'")
 
             sparse_varnames = self.compiled_config.get_sparse_varname_on_ps(
                 True
@@ -818,7 +818,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
         super().__init__(optimizer, strategy)
         self._mode = mode
         if self._mode == PSMode.PSLIB:
-            self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
+            self._optimizer_name = f"Distributed{optimizer.type.capitalize()}"
             if optimizer.type != "adam":
                 print(
                     "Currently, distributed optimizer only support Adam"

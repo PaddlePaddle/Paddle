@@ -35,15 +35,15 @@ def function(x: A) -> A:
 
 def fn_annotation_assign_with_value(x: paddle.Tensor):
     if x:
-        y: List["paddle.Tensor"] = [x + 1]
+        y: List[paddle.Tensor] = [x + 1]
     else:
-        y: List["paddle.Tensor"] = [x - 1]
+        y: List[paddle.Tensor] = [x - 1]
     return y
 
 
 def fn_annotation_assign_without_value(x: paddle.Tensor):
     if x:
-        y: List["paddle.Tensor"]
+        y: List[paddle.Tensor]
         y = [x + 1]
     else:
         y = [x - 1]

@@ -21,4 +21,6 @@ bool ReduceCheckIfOneDNNSupport(const KernelContext* ctx);
 
 bool ReduceGradCheckIfOneDNNSupport(const KernelContext* ctx);
 
+bool ReduceMeanCheckIfOneDNNSupport(const KernelContext* ctx);
+
 }  // namespace phi

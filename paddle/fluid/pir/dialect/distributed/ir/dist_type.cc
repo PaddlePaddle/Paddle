@@ -16,8 +16,7 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/type_storage.h"
 #include "paddle/pir/include/core/ir_context.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::DenseTensorType DistDenseTensorType::dense_tensor_type() const {
   return storage()->dense_tensor_type;
@@ -41,6 +40,9 @@ DistDenseTensorType DistDenseTensorType::get(
 
 common::DDim InferLocalDDim(const common::DDim& global_ddim,
                             TensorDistAttribute dist_attr) {
+  if (global_ddim.size() == -1 || global_ddim.size() == 0) {
+    return global_ddim;
+  }
   auto& mesh_dim = dist_attr.process_mesh_attr().shape();
   auto& dim_mapping = dist_attr.dims_mapping();
   PADDLE_ENFORCE_EQ(global_ddim.size(),
@@ -69,7 +71,6 @@ pir::DenseTensorType DistDenseTensorType::local_type() const {
                                    offset());
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DistDenseTensorType)

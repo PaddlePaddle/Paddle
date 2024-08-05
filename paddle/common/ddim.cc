@@ -20,7 +20,7 @@ namespace common {
 
 DDim::DDim() : rank_(-1) { dim_[0] = 0; }
 
-DDim::DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
+DDim::DDim(const DDim& ddim) : dim_(), rank_(-1) { CopyFrom(ddim); }
 
 DDim::DDim(const int* d, int n) : rank_(n) {
   dynamic_dim_assign(d, dim_.GetMutable(), n);

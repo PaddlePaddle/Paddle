@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 from paddle import sparse
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
@@ -214,6 +215,7 @@ class TestSparseConvImplicitGemm(unittest.TestCase):
 
 
 class TestStatic(unittest.TestCase):
+    @test_with_pir_api
     def test3d(self):
         paddle.enable_static()
         main = paddle.static.Program()

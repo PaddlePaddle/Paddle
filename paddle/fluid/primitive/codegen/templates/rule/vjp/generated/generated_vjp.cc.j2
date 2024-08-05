@@ -79,11 +79,11 @@ auto {{i.name}} = phi::IntArray(paddle::dialect::GetInt64Vector({{i.name}}_defin
   {%- for api in apis -%} {%- do api_map.update({api.name: api}) -%} {%- endfor -%}
   {%- for i in api.inputs -%} {%- do input_names.append(i.name) -%} {%- endfor -%}
   {%- set attr_names=[] -%}
-  {%- for i in api.attrs -%} 
+  {%- for i in api.attrs -%}
     {%- if i is mutable_attribute -%}
-      {%- do input_names.append(i.name~'_') -%} 
+      {%- do input_names.append(i.name~'_') -%}
     {%- else -%}
-      {%- do attr_names.append(i.name) -%} 
+      {%- do attr_names.append(i.name) -%}
     {%- endif -%}
   {%- endfor %}
   {% if 'invoke' in api and api.invoke.func in api_map %}
@@ -116,7 +116,7 @@ FLAGS_tensor_operants_mode = "static";
 VLOG(4) << "Call Pir Decomposed backward op {{api.name}}";
   {% for i in range(api.outputs|length) %}
     {% if api.outputs[i].typename=='Tensor' %}
-paddle::Tensor* {{api.outputs[i].name}} = !stop_gradients[{{i}}][0] ? &vjp_res[{{i}}][0] : nullptr; 
+paddle::Tensor* {{api.outputs[i].name}} = !stop_gradients[{{i}}][0] ? &vjp_res[{{i}}][0] : nullptr;
     {% else %}
 std::vector<paddle::Tensor*> {{api.outputs[i].name}}(stop_gradients[{{i}}].size(), nullptr);
 for (size_t i=0; i< stop_gradients[{{i}}].size(); i++ ) {

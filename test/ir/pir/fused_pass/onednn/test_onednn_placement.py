@@ -146,5 +146,42 @@ class TestConv3dAddFusePass(PassTest):
         self.check_pass_correct()
 
 
+class TestPlacementSlicePass(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[2, 5, 5, 5], dtype='float32'
+                )
+                out_1 = x[0, :, :, :]
+                out_2 = x[0, :, :, :]
+                out_1 = paddle.assign(out_1)
+                out_2 = paddle.assign(out_2)
+                self.pass_attr_list = [{'onednn_placement_pass': {}}]
+                self.feeds = {
+                    "x": np.random.random((2, 5, 5, 5)).astype("float32"),
+                }
+                self.fetch_list = [out_1, out_2]
+                self.valid_op_map = {
+                    "onednn_op.slice": 2,
+                    "pd_op.slice": 0,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
 if __name__ == "__main__":
     unittest.main()

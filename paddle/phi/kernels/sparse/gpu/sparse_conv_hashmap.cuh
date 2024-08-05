@@ -65,7 +65,7 @@ class GPUHashTable {
   key_type* table_keys;
   val_type* table_vals;
   void insert_many_coords(const phi::GPUContext& dev_ctx, const int *coords, const int n);
-  void lookup_many_coords(const phi::GPUContext& dev_ctx, const int *coords, val_type *results, 
+  void lookup_many_coords(const phi::GPUContext& dev_ctx, const int *coords, val_type *results,
     const int* kernel_sizes, const int* tensor_strides,
     const int n, const int kernel_volume);
  public:
@@ -112,8 +112,8 @@ __global__ void insert_coords_kernel(key_type* table_keys, val_type* table_vals,
 
 template <typename key_type=int64_t, typename val_type=int, bool odd>
 __global__ void lookup_coords_kernel(
-  key_type* table_keys, val_type* table_vals, const int* coords, val_type* vals, 
-  const int* kernel_sizes, const int* strides, 
+  key_type* table_keys, val_type* table_vals, const int* coords, val_type* vals,
+  const int* kernel_sizes, const int* strides,
   int n, int _capacity, int kernel_volume, int _width)
 {
     int tidx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -125,8 +125,8 @@ __global__ void lookup_coords_kernel(
     //coords_out[2] = in_coords[2];
     //coords_out[3] = in_coords[3];
     coords_out[0] = in_coords[0];
-    
-    if constexpr (odd) 
+
+    if constexpr (odd)
     {
       #pragma unroll
       for(int i = 0; i <= _width-2; i++){
@@ -146,7 +146,7 @@ __global__ void lookup_coords_kernel(
         _kernel_idx /= kernel_sizes[i];
       }
     }
-    
+
     if (idx < n)
     {
         key_type key = (key_type)(hash_func_64b(coords_out, _width));
@@ -156,7 +156,7 @@ __global__ void lookup_coords_kernel(
         {
             key_type cur_key = table_keys[slot];
             if (key == cur_key)
-            { 
+            {
                 vals[idx * kernel_volume + kernel_idx] = table_vals[slot] - 1; // need to subtract 1 to avoid extra operations in python
             }
             if (table_keys[slot] == EMPTY_CELL)
@@ -181,7 +181,7 @@ void GPUHashTable<key_type, val_type>::insert_coords(const phi::GPUContext& dev_
 template <typename key_type, typename val_type>
 void GPUHashTable<key_type, val_type>::lookup_many_coords(
   const phi::GPUContext& dev_ctx,
-  const int* coords, val_type* results, 
+  const int* coords, val_type* results,
   const int* kernel_sizes, const int* strides,
   const int n, const int kernel_volume){
   if (kernel_volume % 2)

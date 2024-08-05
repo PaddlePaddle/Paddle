@@ -324,7 +324,7 @@ def _compute_analytical_jacobian_pir(
     filted_idx, filted_dx = zip(*filted)
 
     # get the name in feeds of dyi
-    name = 'dys_%s' % i
+    name = f'dys_{i}'
     np_t = np.array(feeds[name]).astype(np_type)
     shape = np_t.shape
     np_t = np_t.flatten()
@@ -392,7 +392,7 @@ def grad_check(
     if in_pir_mode():
         analytical = []
         for i in range(len(y)):
-            name = 'dys_%s' % i
+            name = f'dys_{i}'
             feeds.update(
                 {
                     name: np.zeros(
@@ -447,7 +447,7 @@ def grad_check(
         if not np.allclose(a, n, rtol, atol):
             msg = (
                 f'Jacobian mismatch for output {y_idx} in y '
-                f'with respect to input {x_idx} in x on {str(place)},\n'
+                f'with respect to input {x_idx} in x on {place},\n'
                 f'numerical:{n}\nanalytical:{a}\n'
             )
             return fail_test(msg)
@@ -780,7 +780,7 @@ def get_pir_static_double_grad(
             yi.persistable = True
             np_type = dtype_to_np_dtype(yi.dtype)
             dy = paddle.static.data(
-                name='Dgrad_%s' % i,
+                name=f'Dgrad_{i}',
                 shape=yi.shape,
                 dtype=np_type,
             )
@@ -797,7 +797,7 @@ def get_pir_static_double_grad(
             yi.persistable = True
             np_type = dtype_to_np_dtype(yi.dtype)
             dy = paddle.static.data(
-                name='Dgrad_%s' % i,
+                name=f'Dgrad_{i}',
                 shape=yi.shape,
                 dtype=np_type,
             )
@@ -851,12 +851,12 @@ def get_pir_static_double_grad(
         yi = y[i]
         np_type = dtype_to_np_dtype(yi.dtype)
         dy = paddle.static.data(
-            name='dys_%s' % i,
+            name=f'dys_{i}',
             shape=yi.shape,
             dtype=np_type,
         )
         value = np.ones(yi.shape, dtype=np_type)
-        feeds.update({'dys_%s' % i: value})
+        feeds.update({f'dys_{i}': value})
         dys.append(dy)
 
     # append second order backward
@@ -1130,7 +1130,7 @@ def get_pir_static_triple_grad(
             yi.persistable = True
             np_type = dtype_to_np_dtype(yi.dtype)
             dy = paddle.static.data(
-                name='Tgrad_%s' % i,
+                name=f'Tgrad_{i}',
                 shape=yi.shape,
                 dtype=np_type,
             )
@@ -1147,7 +1147,7 @@ def get_pir_static_triple_grad(
             yi.persistable = True
             np_type = dtype_to_np_dtype(yi.dtype)
             dy = paddle.static.data(
-                name='Tgrad_%s' % i,
+                name=f'Tgrad_{i}',
                 shape=yi.shape,
                 dtype=np_type,
             )

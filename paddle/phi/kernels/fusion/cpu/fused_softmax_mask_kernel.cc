@@ -16,8 +16,7 @@
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/softmax_kernel.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename T, typename Context>
 void FusedSoftmaxMaskKernel(const Context& dev_ctx,
@@ -29,7 +28,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(mask_dim[1],
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input mask's second dim must be 1 "
                         "received the second dimension of mask is %d",
                         mask_dim[1]));
@@ -40,7 +39,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         x_dim[idx],
         mask_dim[idx],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input x's %dth dim should be equal with input mask's %dth dim "
             "but "
             "received the %dth dimension of x and mask are not equal "
@@ -57,8 +56,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
   SoftmaxKernel<T, Context>(dev_ctx, t, 3, out);  // axis for softmax
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fused_softmax_mask,
                    CPU,

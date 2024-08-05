@@ -101,9 +101,9 @@ def prune_phi_kernels():
 def apply_patches():
     work_path = os.path.dirname(os.path.abspath(__file__)) + "/../"
     ret = os.system(
-        "cd %s && rm -f paddle/fluid/inference/api/tensorrt_predictor.* "
+        f"cd {work_path} && rm -f paddle/fluid/inference/api/tensorrt_predictor.* "
         " && rm -f paddle/fluid/inference/api/paddle_tensorrt_predictor.h "
-        " && git apply tools/infer_prune_patches/*.patch && cd -" % work_path
+        " && git apply tools/infer_prune_patches/*.patch && cd -"
     )
     return ret == 0
 
@@ -120,7 +120,7 @@ def append_fluid_kernels():
     for op in op_white_list:
         append_str = (
             append_str
-            + "file(APPEND ${pybind_file} \"USE_OP__(%s);\\n\")\n" % op
+            + f"file(APPEND ${{pybind_file}} \"USE_OP__({op});\\n\")\n"
         )
 
     with open(file_name, 'r', encoding='utf-8') as f:
@@ -154,11 +154,9 @@ def append_fluid_kernels():
 
         for op in op_white_list:
             patterns = {
-                "REGISTER_OPERATOR": r"REGISTER_OPERATOR\(\s*%s\s*," % op,
-                "REGISTER_OP_CPU_KERNEL": r"REGISTER_OP_CPU_KERNEL\(\s*%s\s*,"
-                % op,
-                "REGISTER_OP_CUDA_KERNEL": r"REGISTER_OP_CUDA_KERNEL\(\s*%s\s*,"
-                % op,
+                "REGISTER_OPERATOR": rf"REGISTER_OPERATOR\(\s*{op}\s*,",
+                "REGISTER_OP_CPU_KERNEL": rf"REGISTER_OP_CPU_KERNEL\(\s*{op}\s*,",
+                "REGISTER_OP_CUDA_KERNEL": rf"REGISTER_OP_CUDA_KERNEL\(\s*{op}\s*,",
             }
             for k, p in patterns.items():
                 matches = re.findall(p, content, flags=re.DOTALL)

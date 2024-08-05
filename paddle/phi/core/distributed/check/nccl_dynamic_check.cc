@@ -42,14 +42,13 @@
 #define gpuFree cudaFree
 #endif
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 void NCCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
                                      int64_t dtype) {
   PADDLE_ENFORCE_EQ(
       static_cast<int64_t>(tensor.dtype()),
       dtype,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Tensors in communication are expected to have the same data type."));
 }
 
@@ -88,7 +87,7 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
   PADDLE_ENFORCE_EQ(
       tensor.numel(),
       shape,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Tensors in communication are expected to have matching sizes."));
 }
 
@@ -197,5 +196,4 @@ void NCCLDynamicCheck::CheckGatherShape(
     }
   }
 }
-}  //  namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

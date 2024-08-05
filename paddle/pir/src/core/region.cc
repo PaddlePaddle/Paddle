@@ -40,7 +40,7 @@ Region::Iterator Region::erase(ConstIterator position) {
   PADDLE_ENFORCE_EQ(
       position->GetParent(),
       this,
-      phi::errors::InvalidArgument("iterator not own this region."));
+      common::errors::InvalidArgument("iterator not own this region."));
   delete position;
   return blocks_.erase(position);
 }
@@ -107,8 +107,8 @@ std::unique_ptr<pir::Block> Region::TakeBack() {
 void Region::TakeBody(Region &&other) {
   clear();
   blocks_.swap(other.blocks_);
-  for (auto iter = blocks_.begin(); iter != blocks_.end(); ++iter) {
-    (*iter)->SetParent(this);
+  for (auto &block : blocks_) {
+    block->SetParent(this);
   }
 }
 
@@ -145,9 +145,9 @@ Program *Region::parent_program() const {
   return parent_ ? parent_->GetParentProgram() : nullptr;
 }
 IrContext *Region::ir_context() const {
-  PADDLE_ENFORCE_NOT_NULL(
-      parent_,
-      phi::errors::InvalidArgument("Region is not attached to a operation."));
+  PADDLE_ENFORCE_NOT_NULL(parent_,
+                          common::errors::InvalidArgument(
+                              "Region is not attached to a operation."));
   return parent_->ir_context();
 }
 }  // namespace pir

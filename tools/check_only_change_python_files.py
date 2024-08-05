@@ -52,7 +52,7 @@ class PRChecker:
             for f in files:
                 file_dict[PADDLE_ROOT + f.filename] = f.status
             page += 1
-        print("pr modify files: %s" % file_dict)
+        print(f"pr modify files: {file_dict}")
         return file_dict
 
     def check_only_change_python_file(self):

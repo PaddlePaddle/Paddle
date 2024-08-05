@@ -22,6 +22,7 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
 #include "paddle/pir/include/core/operation.h"
@@ -42,15 +43,21 @@ class OpLoweringGroup {
   OpLoweringGroup(const OpLoweringGroup&) = delete;
   OpLoweringGroup(OpLoweringGroup&&) = delete;
 
-  explicit OpLoweringGroup(const std::vector<::pir::Operation*>& group_ops)
-      : ops_(group_ops) {
-    fn_name_ = CompatibleInfo::GroupOpsName(ops_);
-  }
+  explicit OpLoweringGroup(
+      const std::vector<::pir::Operation*>& group_ops,
+      const std::string& fn_name,
+      cinn::fusion::FusionTrackerPtr fusion_tracker_ptr = nullptr)
+      : ops_(group_ops),
+        fn_name_(fn_name),
+        fusion_tracker_ptr(fusion_tracker_ptr) {}
 
-  explicit OpLoweringGroup(std::initializer_list<::pir::Operation*> group_ops)
-      : ops_(group_ops) {
-    fn_name_ = CompatibleInfo::GroupOpsName(ops_);
-  }
+  explicit OpLoweringGroup(
+      std::initializer_list<::pir::Operation*> group_ops,
+      const std::string& fn_name,
+      cinn::fusion::FusionTrackerPtr fusion_tracker_ptr = nullptr)
+      : ops_(group_ops),
+        fn_name_(fn_name),
+        fusion_tracker_ptr(fusion_tracker_ptr) {}
 
   const std::string& FuncName() const { return this->fn_name_; }
   ::pir::Block* GetParentBlock() const;
@@ -77,6 +84,17 @@ class OpLoweringGroup {
   bool IsBroadcastLeaf() const { return is_broadcast_leaf_; }
   void SetIsBroadcastLeaf(bool is_broadcast_leaf) {
     is_broadcast_leaf_ = is_broadcast_leaf;
+  }
+
+  enum class BranchType { LHS_EQ_RHS, LHS_EQ_ONE, RHS_EQ_ONE };
+  using BroadcastCond =
+      std::pair<symbol::Broadcastable<symbol::DimExpr>, BranchType>;
+  const std::vector<BroadcastCond>& GetBroadcastConditions() {
+    return broadcast_conditions_;
+  }
+  void SetBroadcastConditions(
+      const std::vector<BroadcastCond>& broadcast_conditions) {
+    broadcast_conditions_ = broadcast_conditions;
   }
 
   const std::vector<::pir::Operation*>& ops() const { return ops_; }
@@ -188,8 +206,7 @@ class OpLoweringGroup {
     this->alignment_schedule_info_ = alignment_schedule_info;
   }
 
-  std::shared_ptr<OpLoweringGroup> Clone(::pir::Block* target_block,
-                                         ::pir::IrMapping* ir_mapping) const;
+  std::shared_ptr<OpLoweringGroup> Clone(const std::string name_suffix) const;
 
  private:
   friend std::ostream& operator<<(std::ostream&, const OpLoweringGroup&);
@@ -207,6 +224,7 @@ class OpLoweringGroup {
   // from local and global ShapeAnalysis. It will be removed after
   // refactoring logic of OpLoweringGroup.
   bool is_broadcast_leaf_{false};
+  std::vector<BroadcastCond> broadcast_conditions_;
 
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;
@@ -221,6 +239,9 @@ class OpLoweringGroup {
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_exprs_;
+
+ public:
+  cinn::fusion::FusionTrackerPtr fusion_tracker_ptr;
 };
 
 std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group);

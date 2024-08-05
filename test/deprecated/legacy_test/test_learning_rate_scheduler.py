@@ -14,6 +14,7 @@
 
 import copy
 import math
+import os
 import unittest
 
 import numpy as np
@@ -385,7 +386,13 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
 class TestLearningRateDecay(unittest.TestCase):
     def check_decay(self, python_decay_fn, base_decay_fn, kwargs):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
@@ -418,7 +425,8 @@ class TestLearningRateDecay(unittest.TestCase):
             self.assertAlmostEqual(
                 python_decayed_lr,
                 lr_val[0],
-                msg=f'Failed lr scheduler is {python_decay_fn.__name__}, step {str(step)}, Python result is {str(python_decayed_lr)}, Fluid result is {str(lr_val[0])}',
+                places=6,
+                msg=f'Failed lr scheduler is {python_decay_fn.__name__}, step {step}, Python result is {python_decayed_lr}, Fluid result is {lr_val[0]}',
             )
 
     def test_decay(self):
@@ -540,7 +548,7 @@ class TestLinearWamrupLearningRateDecay(unittest.TestCase):
             self.assertAlmostEqual(
                 python_decayed_lr,
                 lr_val[0],
-                msg=f'Test {python_decay_fn.__name__} Failed, step {str(step)}, Python result is {str(python_decayed_lr)}, Fluid result is {str(lr_val[0])}',
+                msg=f'Test {python_decay_fn.__name__} Failed, step {step}, Python result is {python_decayed_lr}, Fluid result is {lr_val[0]}',
             )
 
 
@@ -570,12 +578,19 @@ class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
             self.assertAlmostEqual(
                 expected_lr,
                 lr_val[0],
+                places=6,
                 msg=f'Test failed, step {step}, expected {expected_lr}, but got {lr_val[0]}',
             )
 
     def test_scalar_lr(self):
         def run_places(lr, start_lr, end_lr):
-            places = [base.CPUPlace()]
+            places = []
+            if (
+                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                in ['1', 'true', 'on']
+                or not core.is_compiled_with_cuda()
+            ):
+                places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for p in places:

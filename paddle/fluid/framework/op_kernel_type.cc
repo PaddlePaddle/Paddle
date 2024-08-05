@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
   int cur_loc = 0;
@@ -37,7 +36,7 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
   int customized_value = key.customized_type_value_;
   PADDLE_ENFORCE_LT(customized_value,
                     (1 << OpKernelType::kCustomizeBits),
-                    platform::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Too many custom OpKernel attribute values, expected "
                         "maximum value is %d, received value is %d.",
                         (1 << OpKernelType::kCustomizeBits),
@@ -46,7 +45,7 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
   cur_loc += OpKernelType::kCustomizeBits;
   PADDLE_ENFORCE_LT(cur_loc,
                     64,
-                    platform::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Too many OpKernel attribute values, expected maximum "
                         "value is 64, received value is %d.",
                         cur_loc));
@@ -54,7 +53,7 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
   std::hash<int> hasher;
   size_t seed =
       hasher(place + data_type + data_layout + library_type + customized_value);
-  if (platform::is_custom_place(key.place_)) {
+  if (phi::is_custom_place(key.place_)) {
     seed ^= std::hash<std::string>{}(key.place_.GetDeviceType()) + 0x9e3779b9 +
             (seed << 6) + (seed >> 2) + 4;
   }
@@ -67,11 +66,10 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
 }
 
 bool OpKernelType::operator==(const OpKernelType& o) const {
-  return platform::places_are_same_class(place_, o.place_) &&
+  return phi::places_are_same_class(place_, o.place_) &&
          data_type_ == o.data_type_ && data_layout_ == o.data_layout_ &&
          library_type_ == o.library_type_ &&
          customized_type_value_ == o.customized_type_value_;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

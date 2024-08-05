@@ -14,10 +14,12 @@
 
 import logging
 import random
+import sys
 import unittest
 
+sys.path.append(".")
 import numpy as np
-from test_quant_aware import StaticCase
+from test_quant_aware_deprecated import StaticCase
 
 import paddle
 from paddle.static.quantization.quanter import convert, quant_aware

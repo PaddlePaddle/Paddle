@@ -97,7 +97,7 @@ def _all_to_all_in_static_mode(
     data_feeder.check_variable_and_dtype(
         in_tensor,
         'in_tensor',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'all_to_all',
     )
     helper.append_op(
@@ -157,7 +157,7 @@ def alltoall(
             >>> import paddle.distributed as dist
 
             >>> dist.init_parallel_env()
-            >>> out_tensor_list = []
+            >>> out_tensor_list = [] # type: ignore[var-annotated]
             >>> if dist.get_rank() == 0:
             ...     data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
             ...     data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])

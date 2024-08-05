@@ -17,6 +17,8 @@
 #include "paddle/fluid/pir/serialize_deserialize/include/serialize_utils.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 namespace pir {
 
@@ -55,26 +57,64 @@ Json ProgramWriter::WriteRegion(const pir::Region* region,
   return region_json;
 }
 
-Json ProgramWriter::WriteBlock(const pir::Block* block,
+Json ProgramWriter::WriteBlock(pir::Block* block,
                                const std::string& block_name) {
   Json block_json;
   block_json[ID] = block_name;
-
+  VLOG(4) << "Begin write " << block_name << ".";
   Json args_json = Json::array();
   for (auto arg : block->args()) {
     auto arg_json = WriteBlockArg(arg);
     args_json.emplace_back(arg_json);
   }
   block_json[BLOCKARGS] = args_json;
+  VLOG(6) << "Finish Write blockarguments .";
+
+  if (block->kwargs_size() > 0) {
+    VLOG(6) << "Block has kwargs.";
+    Json kwargs_json = Json::array();
+    for (auto item : block->kwargs()) {
+      auto arg_json = WriteBlockArg(item.second);
+      arg_json[KEYWORDNAME] = item.first;
+      kwargs_json.emplace_back(arg_json);
+    }
+    block_json[KEYWORDBLOCKARGS] = args_json;
+    VLOG(6) << "Finish Write keyword blockarguments. ";
+  }
 
   Json ops_json = Json::array();
+
+  /* delete cf.stack_create / cf.tuple_push */
+  std::vector<pir::Operation*> delete_ops;
+  for (auto op : block->ops()) {
+    if (op->isa<pir::StackCreateOp>()) {
+      delete_ops.push_back(op);
+    }
+  }
+  VLOG(6) << "program before delete stack op :" << *(block->parent_program());
+  for (auto op : delete_ops) {
+    VLOG(0) << "Delete cf.stack_create / cf.tuple_push.";
+    auto stack_op = op->dyn_cast<pir::StackCreateOp>();
+    if (stack_op.inlet().HasOneUse()) {
+      auto tuple_push_op = stack_op.tuple_push_op();
+      auto block_in = tuple_push_op->GetParent();
+      block_in->erase(*tuple_push_op);
+    }
+    if (stack_op.outlet().HasOneUse()) {
+      auto tuple_pop_op = stack_op.tuple_pop_op();
+      auto block_in = tuple_pop_op->GetParent();
+      block_in->erase(*tuple_pop_op);
+    }
+    block->erase(*op);
+  }
+  VLOG(6) << "program after delete stack op :" << *(block->parent_program());
   for (auto op : block->ops()) {
     auto op_json = WriteOp(*op);
     ops_json.emplace_back(op_json);
   }
   block_json[BLOCKOPS] = ops_json;
 
-  VLOG(6) << "Finish write " << block_name;
+  VLOG(4) << "Finish write " << block_name << ".";
   return block_json;
 }
 
@@ -85,7 +125,7 @@ Json ProgramWriter::WriteBlockArg(const pir::Value& value) {
   arg_json[ID] = blockarg_id_;
   arg_json[TYPE_TYPE] = var;
 
-  VLOG(6) << "Finish write blockargument " << blockarg_id_;
+  VLOG(6) << "Finish write blockargument " << blockarg_id_ << ".";
   blockarg_id_--;
 
   return arg_json;
@@ -95,11 +135,11 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
   Json var_json;
   if (value) {
     value_id_map[value] = value_id_;
-    var_json[ID] = value_id_;
-    VLOG(6) << "Finish write value " << value_id_;
+    var_json[VALUE_ID] = value_id_;
+    VLOG(6) << "Finish write value " << value_id_ << ".";
     value_id_++;
   } else {
-    var_json[ID] = 0;  // NULL_TYPE
+    var_json[VALUE_ID] = 0;  // NULL_TYPE
     VLOG(6) << "Finish write NULL_TYPE value.";
   }
 
@@ -108,18 +148,100 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
 
   return var_json;
 }
+#define OPTIONAL_CHECK(array_json, attr_name, int)          \
+  if (op.attributes().count(attr_name) > 0) {               \
+    array_json.emplace_back(                                \
+        ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE(attr_name)); \
+  } else {                                                  \
+    array_json.emplace_back(int);                           \
+  }
 
-Json ProgramWriter::WriteOp(const pir::Operation& op) {
+#define ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE(attr_name)   \
+  static_cast<int32_t>(op.attributes()                      \
+                           .at(attr_name)                   \
+                           .dyn_cast<pir::ArrayAttribute>() \
+                           .at(0)                           \
+                           .dyn_cast<pir::BoolAttribute>()  \
+                           .data())
+Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
+  std::vector<std::string> AttrsNameList = {"is_distributed",
+                                            "is_parameter",
+                                            "need_clip",
+                                            "parameter_name",
+                                            "persistable",
+                                            "stop_gradient",
+                                            "trainable",
+                                            "op_callstack" /*no need*/};
+
+  for (auto attr : op.attributes()) {
+    auto attr_name = attr.first;
+    auto it = std::find(AttrsNameList.begin(), AttrsNameList.end(), attr_name);
+    if (it == AttrsNameList.end()) {
+      PADDLE_ENFORCE(
+          false,
+          common::errors::InvalidArgument(
+              "attr name %s not supposed be serialized in WriteParameterOP, "
+              "please add it in order and add deserialization code in "
+              "ReadParameterOP.",
+              attr_name));
+    }
+  }
+  // attr_name ; type
+  // is_distributed; array(bool)
+  // is_parameter; array(bool)
+  // need_clip; array(bool)
+  // parameter_name; string
+  // persistable; array(bool)
+  // stop_gradient; array(bool)
+  // trainable; array(bool)
   Json op_json = Json::object();
-  op_json[ID] = op.name();
+  op_json[ID] = PARAMETEROP;
   // serialize opoperands
+  VLOG(4) << "Begin write Operation " << op.name() << ".";
+  op_json[OPRESULTS] = WriteValue(op.result(0));
+  Json attrs_json = Json::array();
+  OPTIONAL_CHECK(attrs_json, "is_distributed", 0)
+  OPTIONAL_CHECK(attrs_json, "is_parameter", 1)
+  OPTIONAL_CHECK(attrs_json, "need_clip", 0)
+
+  if (op.attributes().count("parameter_name") > 0) {
+    attrs_json.emplace_back(op.attributes()
+                                .at("parameter_name")
+                                .dyn_cast<pir::StrAttribute>()
+                                .AsString());
+  } else {
+    PADDLE_ENFORCE(false,
+                   common::errors::InvalidArgument(
+                       "parameter_name not found in ParameterOp"));
+  }
+  op_json[ATTRS] = attrs_json;
+
+  Json other_attrs_json = Json::array();
+  OPTIONAL_CHECK(other_attrs_json, "persistable", 1)
+  OPTIONAL_CHECK(other_attrs_json, "stop_gradient", 1)
+  OPTIONAL_CHECK(other_attrs_json, "trainable", 1)
+  if (trainable_) {
+    op_json[OPRESULTS_ATTRS] = other_attrs_json;
+  }
+  return op_json;
+}
+Json ProgramWriter::WriteOp(const pir::Operation& op) {
+  if (op.isa<pir::ParameterOp>()) {
+    return WriteParameterOP(op);
+  }
+  Json op_json = Json::object();
+  auto op_name = op.name();
+  GetCompressOpName(&op_name);
+  op_json[ID] = op_name;
+  // serialize opoperands
+  VLOG(4) << "Begin write Operation " << op.name() << ".";
   Json operands_json = Json::array();
   for (auto operand : op.operands()) {
     auto operand_json = WriteOpOperand(operand);
     operands_json.emplace_back(operand_json);
   }
   op_json[OPOPERANDS] = operands_json;
-
+  VLOG(6) << "Finish write OP's OpOperand.";
   // serialize opresults
   Json opresults_json = Json::array();
   for (auto& opresult : op.results()) {
@@ -127,7 +249,18 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
     opresults_json.emplace_back(opresult_json);
   }
   op_json[OPRESULTS] = opresults_json;
+  VLOG(6) << "Finish write OP's OpOpresult.";
 
+  if (op.num_regions() > 0) {
+    VLOG(4) << "OP has " << op.num_regions() << " regions ...";
+    for (size_t i = 0; i < op.num_regions(); ++i) {
+      std::string region_name = "region_" + std::to_string(region_id_++);
+      auto& region = op.region(i);
+      auto region_json = WriteRegion(&region, region_name);
+      op_json[REGIONS].emplace_back(region_json);
+    }
+    VLOG(4) << "Finish write OP's regions.";
+  }
   // serialize attributes
   op_json[ATTRS] = WriteAttributesMapOpinfo(const_cast<pir::Operation*>(&op),
                                             op.attributes());
@@ -135,7 +268,7 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
     op_json[OPRESULTS_ATTRS] = WriteAttributesMapOther(op.attributes());
   }
 
-  VLOG(6) << "Finish write Operation " << op.name();
+  VLOG(4) << "Finish write Operation " << op.name() << ".";
   return op_json;
 }
 
@@ -143,10 +276,10 @@ Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
   Json operand_json = Json::object();
   if (op_operand.source()) {
     int64_t id = value_id_map[op_operand.source()];
-    operand_json[ID] = id;
-    VLOG(6) << "Finish write OpOperand " << id;
+    operand_json[VALUE_ID] = id;
+    VLOG(6) << "Finish write OpOperand " << id << ".";
   } else {
-    operand_json[ID] = 0;  // NULL_VALUE
+    operand_json[VALUE_ID] = 0;  // NULL_VALUE
     VLOG(6) << "Finish write NULL_VALUE OpOperand.";
   }
 
@@ -156,22 +289,18 @@ Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
 Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
                                              const AttributeMap& attr_map) {
   Json attrs_json = Json::array();
-
-  if (op->dialect()->name() == "pd_op") {
-    if (op->dyn_cast<paddle::dialect::OpYamlInfoInterface>() != nullptr) {
-      auto [_1, attr_info, _3, _4, _5] =
-          op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
-      if (attr_info.size() != 0) {
-        for (auto it = attr_info.begin(); it != attr_info.end(); it++) {
-          if (attr_map.find(it->name) != attr_map.end()) {
-            attrs_json.emplace_back(
-                WriteAttribute(it->name, attr_map.at(it->name)));
-          }
+  VLOG(6) << "Start write Opinfo AttributeMap ...";
+  if (op->dialect()->name() == "pd_op" &&
+      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()) {
+    auto [_1, attr_info, _3, _4, _5] =
+        op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+    if (attr_info.size() != 0) {
+      for (const auto& val : attr_info) {
+        if (attr_map.find(val.name) != attr_map.end()) {
+          attrs_json.emplace_back(
+              WriteAttribute(val.name, attr_map.at(val.name)));
         }
       }
-    } else {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "the %s do not has OpYamlInfoInterface", op->name()));
     }
   } else {
     for (auto& attr : attr_map) {
@@ -182,7 +311,7 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
     }
   }
 
-  VLOG(6) << "Finish write Opinfo AttributeMap ";
+  VLOG(6) << "Finish write Opinfo AttributeMap. ";
   return attrs_json;
 }
 
@@ -195,7 +324,7 @@ Json ProgramWriter::WriteAttributesMapOther(const AttributeMap& attr_map) {
     }
   }
 
-  VLOG(6) << "Finish write Other AttributeMap ";
+  VLOG(6) << "Finish write Other AttributeMap. ";
   return operesult_attrs_json;
 }
 

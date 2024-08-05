@@ -125,7 +125,9 @@ class TestCollectiveAPIRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        if args["use_comm_context"] or args["dynamic_static_unified_comm"]:
+        if args['static_mode'] and (
+            args["use_comm_context"] or args["dynamic_static_unified_comm"]
+        ):
             paddle.distributed.collective._init_parallel_env(args["backend"])
         else:
             paddle.distributed.init_parallel_env()
@@ -152,13 +154,7 @@ class TestCollectiveAPIRunnerBase:
                     reduce_type=args['reduce_type'],
                 )
                 if args["use_comm_context"]
-                else (
-                    self.get_model_new_comm(
-                        train_prog, startup_prog, rank, dtype=args['dtype']
-                    )
-                    if args["dynamic_static_unified_comm"]
-                    else self.get_model(train_prog, startup_prog, rank)
-                )
+                else (self.get_model(train_prog, startup_prog, rank))
             )
             exe = base.Executor(place)
             exe.run(startup_prog)
@@ -189,8 +185,7 @@ def runtime_main(test_class, col_type):
     args["reduce_type"] = os.getenv("REDUCE_TYPE")
     args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
     args["dynamic_static_unified_comm"] = bool(
-        os.getenv("FLAGS_dynamic_static_unified_comm", "false").lower()
-        == "true"
+        os.getenv("FLAGS_dynamic_static_unified_comm", "true").lower() == "true"
     )
     model.run_trainer(args)
 
@@ -201,7 +196,7 @@ class TestDistBase(unittest.TestCase):
         self._trainers = 2
         self._ps_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
         self._python_interp = sys.executable
-        self._master_endpoints = "127.0.0.1:%s" % (self._find_free_port())
+        self._master_endpoints = f"127.0.0.1:{self._find_free_port()}"
 
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -305,15 +300,15 @@ class TestDistBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
-        sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
-        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
+        sys.stderr.write(f'trainer 0 stderr: {tr0_err}\n')
+        sys.stderr.write(f'trainer 1 stderr: {tr1_err}\n')
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
         with open(path0, "r") as f:
-            sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
+            sys.stderr.write(f'trainer 0 stderr file: {f.read()}\n')
         with open(path1, "r") as f:
-            sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
+            sys.stderr.write(f'trainer 1 stderr file: {f.read()}\n')
 
         def load_and_remove(path):
             with open(path, 'rb') as f:
@@ -357,7 +352,6 @@ class TestDistBase(unittest.TestCase):
             "PATH_ID": path_id,
             "DTYPE": dtype,
             "REDUCE_TYPE": str(reduce_type),
-            "FLAGS_dynamic_static_unified_comm": "0",
         }
         required_envs.update(additional_envs)
         required_envs.update(need_envs)

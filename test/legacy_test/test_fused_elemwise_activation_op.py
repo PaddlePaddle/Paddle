@@ -18,8 +18,6 @@ from functools import partial
 import numpy as np
 from op_test import OpTest
 
-from paddle.base import core
-
 #   TestFusedElementwiseActivationOp
 #   TestFusedElementwiseActivationOp_scalar
 #   TestFusedElementwiseActivationOp_scalar2
@@ -32,6 +30,25 @@ from paddle.base import core
 #   TestFusedElementwiseActivationOp_rowwise_add_0
 #   TestFusedElementwiseActivationOp_rowwise_add_1
 #   TestFusedElementwiseActivationOp_channelwise_add
+import paddle
+from paddle.base import core
+
+
+def api_wrapper(
+    x, y, functor_list=[], axis=-1, scale=0.0, save_intermediate_out=False
+):
+    return paddle._legacy_C_ops.fused_elemwise_activation(
+        x,
+        y,
+        "axis",
+        axis,
+        "scale",
+        scale,
+        "save_intermediate_out",
+        save_intermediate_out,
+        "functor_list",
+        functor_list,
+    )
 
 
 def create_test_class(
@@ -40,6 +57,8 @@ def create_test_class(
     class TestFusedElementwiseActivationOp_base(OpTest):
         def setUp(self):
             self.op_type = "fused_elemwise_activation"
+            self.python_api = api_wrapper
+            self.python_out_sig = ['Out']
             self.dtype = dtype
             self.axis = -1
 

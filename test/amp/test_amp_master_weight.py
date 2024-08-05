@@ -40,9 +40,18 @@ class SimpleNet(paddle.nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
 )
 class TestMasterWeight(AmpTestBase):
     def run_dygraph(self, dtype, level, use_promote, max_iters, x_data):
@@ -94,8 +103,6 @@ class TestMasterWeight(AmpTestBase):
                     optimizers=optimizer,
                     level=level,
                     dtype=dtype,
-                    master_weight=False,
-                    master_grad=False,
                 )
                 with paddle.amp.auto_cast(
                     enable=True,
@@ -108,7 +115,12 @@ class TestMasterWeight(AmpTestBase):
                     loss = paddle.mean(out)
                 scaled = scaler.scale(loss)
                 scaler.minimize(optimizer, scaled)
-            place = paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            elif paddle.device.is_compiled_with_xpu():
+                place = paddle.device.XPUPlace(0)
+            else:
+                raise ValueError("Only support CUDA or XPU Place.")
             exe = paddle.static.Executor(place)
             exe.run(startup)
             for iter_id in range(max_iters):
@@ -124,43 +136,51 @@ class TestMasterWeight(AmpTestBase):
 
     def run_static(self, dtype, level, use_promote, max_iters, x_data):
         paddle.enable_static()
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        losses = []
-        with paddle.utils.unique_name.guard():
-            with paddle.static.program_guard(main_program, startup_program):
-                model = SimpleNet(100, 100)
-                optimizer = paddle.optimizer.AdamW(learning_rate=0.01)
-                optimizer = paddle.static.amp.decorate(
-                    optimizer,
-                    level=level,
-                    dtype=dtype,
-                    use_promote=use_promote,
-                    master_weight=True,
-                )
-                x = paddle.static.data(
-                    name='input', shape=[100, 100], dtype='float16'
-                )
-                out = model(x)
-                loss = paddle.mean(out)
-                optimizer.minimize(loss)
+        with paddle.pir_utils.OldIrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            losses = []
+            with paddle.utils.unique_name.guard():
+                with paddle.static.program_guard(main_program, startup_program):
+                    model = SimpleNet(100, 100)
+                    optimizer = paddle.optimizer.AdamW(learning_rate=0.01)
+                    optimizer = paddle.static.amp.decorate(
+                        optimizer,
+                        level=level,
+                        dtype=dtype,
+                        use_promote=use_promote,
+                        master_weight=True,
+                    )
+                    x = paddle.static.data(
+                        name='input', shape=[100, 100], dtype='float16'
+                    )
+                    out = model(x)
+                    loss = paddle.mean(out)
+                    optimizer.minimize(loss)
 
-        place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        exe.run(startup_program)
-        optimizer.amp_init(
-            place,
-            scope=paddle.static.global_scope(),
-            rewrite_master_weight=True,
-        )
-        for iter_id in range(max_iters):
-            results = exe.run(
-                program=main_program,
-                feed={x.name: x_data},
-                fetch_list=[loss],
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            elif paddle.device.is_compiled_with_xpu():
+                place = paddle.device.XPUPlace(0)
+            else:
+                raise ValueError("Only support CUDA or XPU Place.")
+            exe = paddle.static.Executor(place)
+            exe.run(startup_program)
+            optimizer.amp_init(
+                place,
+                scope=paddle.static.global_scope(),
+                rewrite_master_weight=True,
             )
-            print(f"-- [AMP {dtype} {level}] iter={iter_id}, loss={results[0]}")
-            losses.append(results[0])
+            for iter_id in range(max_iters):
+                results = exe.run(
+                    program=main_program,
+                    feed={x.name: x_data},
+                    fetch_list=[loss],
+                )
+                print(
+                    f"-- [AMP {dtype} {level}] iter={iter_id}, loss={results[0]}"
+                )
+                losses.append(results[0])
 
         paddle.disable_static()
         return losses

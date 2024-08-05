@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import os
 from functools import wraps
 
 import paddle
@@ -23,7 +24,7 @@ def _switch_to_pir_():
     paddle.base.framework.global_var._use_pir_api_ = True
     paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": True})
     paddle.pir.register_paddle_dialect()
-    # TODO find a better place to init the registion of dist dialect.
+    # TODO find a better place to init the registration of dist dialect.
     paddle.pir.register_dist_dialect()
 
     paddle.base.Program = paddle.pir.Program
@@ -185,10 +186,14 @@ class DygraphOldIrGuard:
 def test_with_pir_api(func):
     @wraps(func)
     def impl(*args, **kwargs):
-        with OldIrGuard():
-            func(*args, **kwargs)
-        with IrGuard():
-            func(*args, **kwargs)
+        skip_old_ir = os.environ.get("FLAGS_CI_skip_old_ir", "False")
+        skip_pir = os.environ.get("FLAGS_CI_skip_pir", "False")
+        if skip_old_ir == "False" or not skip_old_ir:
+            with OldIrGuard():
+                func(*args, **kwargs)
+        if skip_pir == "False" or not skip_pir:
+            with IrGuard():
+                func(*args, **kwargs)
 
     return impl
 
@@ -212,3 +217,40 @@ def test_with_dygraph_pir(func):
             func(*args, **kwargs)
 
     return impl
+
+
+def get_memory(value):
+    from paddle.base.core import DataType
+
+    numel = value.numel()
+    mapping = {
+        DataType.BOOL: 1,
+        DataType.INT8: 1,
+        DataType.INT16: 2,
+        DataType.INT32: 4,
+        DataType.INT64: 8,
+        DataType.UINT8: 1,
+        DataType.UINT16: 2,
+        DataType.UINT32: 4,
+        DataType.UINT64: 8,
+        DataType.FLOAT32: 4,
+        DataType.FLOAT64: 8,
+    }
+    dtype = mapping[value.type().dtype]
+    return dtype * numel
+
+
+def analysis_io(program: paddle.pir.Program):
+    # 1. don't support control flow now
+    # 2. each op is consider read all inputs and write all outputs once.
+    # 3. unit is "GByte"
+    total_io = 0.0
+    for op in program.global_block().ops:
+        for operand in op.operands():
+            value = operand.source()
+            total_io += get_memory(value)
+
+        for value in op.results():
+            total_io += get_memory(value)
+
+    return total_io / 1024 / 1024 / 1024

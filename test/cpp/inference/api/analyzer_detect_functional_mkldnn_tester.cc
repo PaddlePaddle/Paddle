@@ -30,6 +30,7 @@ namespace analysis {
 struct Record {
   std::vector<float> data;
   std::vector<int32_t> shape;
+  Record() : data(), shape() {}
 };
 
 Record ProcessALine(const std::string &line, const std::string &shape_line) {
@@ -76,7 +77,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 
 #ifdef PADDLE_WITH_DNNL
 int GetNumCachedObjects() {
-  auto &pool = platform::DeviceContextPool::Instance();
+  auto &pool = phi::DeviceContextPool::Instance();
   phi::CPUPlace place;
   auto onednn_dev_ctx = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
   return onednn_dev_ctx->GetCachedObjectsNumber();  // NOLINT
@@ -143,8 +144,8 @@ void validate_cache_onednn(int cache_capacity = 1) {
   PADDLE_ENFORCE_EQ(
       cache_filling[0],
       cache_filling[cache_filling.size() - 1],
-      platform::errors::Fatal("Cache size before execution and after "
-                              "releasing Executor do not match"));
+      common::errors::Fatal("Cache size before execution and after "
+                            "releasing Executor do not match"));
 
   // Iterate to check if cache is not increasing
   // over exceeding cache capacity
@@ -153,8 +154,8 @@ void validate_cache_onednn(int cache_capacity = 1) {
       PADDLE_ENFORCE_EQ(
           cache_filling[cache_capacity],
           cache_filling[i],
-          platform::errors::Fatal("Cache capacity should not increase "
-                                  "after full capacity is used"));
+          common::errors::Fatal("Cache capacity should not increase "
+                                "after full capacity is used"));
     }
   }
 }

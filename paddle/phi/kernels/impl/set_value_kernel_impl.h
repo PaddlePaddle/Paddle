@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -24,6 +26,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 namespace phi {
 
@@ -278,6 +281,22 @@ void SetValueKernel(const Context& dev_ctx,
   for (const auto& val : values) {
     assign_values.push_back(val.to<T>());
   }
+
+  bool is_full_set_one_value = false;
+  std::vector<int64_t> starts_local = starts.GetData();
+  std::vector<int64_t> ends_local = ends.GetData();
+  std::vector<int64_t> steps_local = steps.GetData();
+  if (starts_local.empty() && ends_local.empty() && steps_local.empty() &&
+      shape.size() == 1 && shape[0] == 1 && assign_values.size() == 1) {
+    is_full_set_one_value = true;
+  }
+  if (is_full_set_one_value && std::is_same<T, float>::value) {
+    dev_ctx.template Alloc<T>(out);
+    phi::funcs::set_constant(
+        dev_ctx, out, static_cast<float>(assign_values[0]));
+    return;
+  }
+
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
   phi::TensorFromVector(assign_values, dev_ctx, &value_tensor);
   value_tensor.Resize(common::make_ddim(shape));

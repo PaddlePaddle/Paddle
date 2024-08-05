@@ -22,9 +22,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -32,7 +30,7 @@ TrtMapOpsToMatrixMultiplyPass::TrtMapOpsToMatrixMultiplyPass() = default;
 
 void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "trt_map_ops_to_matrix_multiply_pass";
   FusePassBase::Init(name_scope, graph);
 
@@ -118,9 +116,7 @@ void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trt_map_ops_to_matrix_multiply_pass,
               paddle::framework::ir::TrtMapOpsToMatrixMultiplyPass);

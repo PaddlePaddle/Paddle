@@ -15,9 +15,7 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
-namespace paddle {
-namespace operators {
-namespace reader {
+namespace paddle::operators::reader {
 class CreateDoubleBufferReaderOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
@@ -35,9 +33,9 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
           dynamic_cast<framework::DecoratedReader*>(out->Get().get());
       PADDLE_ENFORCE_NOT_NULL(
           decorated_reader,
-          phi::errors::NotFound("The inited reader should be a "
-                                "DecoratedReader when running "
-                                "create_double_buffer_reader op."));
+          common::errors::NotFound("The inited reader should be a "
+                                   "DecoratedReader when running "
+                                   "create_double_buffer_reader op."));
       if (decorated_reader->UnderlyingReader() == underlying_reader.Get()) {
         return;
       }
@@ -89,9 +87,7 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
   }
 };
 
-}  // namespace reader
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators::reader
 
 namespace ops = paddle::operators::reader;
 REGISTER_DECORATED_READER_OPERATOR(create_double_buffer_reader,

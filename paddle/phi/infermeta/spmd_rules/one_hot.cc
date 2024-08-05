@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -36,10 +35,10 @@ SpmdInfo OneHotInferSpmd(const DistMetaTensor& x, int num_classes) {
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping_src.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping_src.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping_src.size()));
 
   std::vector<int64_t> out_dims_mapping(x_dims_mapping_src);
   out_dims_mapping.emplace_back(-1);
@@ -90,5 +89,4 @@ SpmdInfo OneHotInferSpmdDynamic(const DistMetaTensor& x,
   return OneHotInferSpmd(x, num_classes.to<int32_t>());
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

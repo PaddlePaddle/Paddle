@@ -16,7 +16,10 @@
 # model: ppcls^configs^ImageNet^ShuffleNet^ShuffleNetV2_x2_0
 # api:paddle.tensor.manipulation.concat||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape
 import os
-import unittest
+
+from base import *  # noqa: F403
+
+from paddle.static import InputSpec
 
 os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
 os.environ['FLAGS_group_schedule_tiling_first'] = '1'
@@ -26,9 +29,6 @@ os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 os.environ['FLAGS_cinn_bucket_compile'] = '1'
 # os.environ['GLOG_vmodule'] = 'op_lowering_impl=4'
-import numpy as np
-
-import paddle
 
 
 class LayerCase(paddle.nn.Layer):
@@ -51,38 +51,28 @@ class LayerCase(paddle.nn.Layer):
         return var_5
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+        ]
         self.inputs = (
             paddle.rand(shape=[10, 122, 28, 28], dtype=paddle.float32),
             paddle.rand(shape=[10, 122, 28, 28], dtype=paddle.float32),
         )
-        self.net = LayerCase()
-
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
-
-    def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+        self.net = LayerCase
+        self.with_train = False
 
 
 if __name__ == '__main__':

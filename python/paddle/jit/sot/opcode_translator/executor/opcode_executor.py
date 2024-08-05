@@ -17,6 +17,7 @@ from __future__ import annotations
 import dis
 import functools
 import inspect
+import opcode
 import operator
 import sys
 import traceback
@@ -24,8 +25,6 @@ import types
 from dataclasses import dataclass
 from itertools import chain
 from typing import Any, Callable
-
-import opcode
 
 from paddle.jit.utils import OrderedSet
 
@@ -88,6 +87,7 @@ from .variables import (
     NullVariable,
     SequenceIterVariable,
     SliceVariable,
+    SymbolicVariable,
     TensorVariable,
     TupleVariable,
     UserDefinedFunctionVariable,
@@ -204,7 +204,7 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
                     fn, graph=self._graph, tracker=DanglingTracker()
                 )(res)
 
-            assert isinstance(res, ConstantVariable)
+            assert isinstance(res, (ConstantVariable, SymbolicVariable))
             is_jump = res.get_py_value()
             assert isinstance(is_jump, bool)
             if is_jump:
@@ -1736,11 +1736,12 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return self.compile_return(ret_const)
 
     def compile_return(self, ret_val):
-        compile_fn = self._graph.get_compiled_fn(ret_val)
-        if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
+        compile_graph_result = self._graph.compile_graph(ret_val)
+        graph_fn, _ = compile_graph_result
+        if graph_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             self.new_code = None
         else:
-            self._graph.start_compile(ret_val)
+            self._graph.compile_function(compile_graph_result, [ret_val])
             self._graph.pycode_gen.gen_return()
             self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
@@ -1774,15 +1775,16 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 store_vars.append(_var)
             store_var_info[_var.id] = name
 
-        compile_fn = self._graph.get_compiled_fn(*store_vars)
+        compile_graph_result = self._graph.compile_graph(*store_vars)
+        graph_fn, _ = compile_graph_result
 
-        if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
+        if graph_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             return self._graph._restore_origin_opcode(
                 list(stack), store_var_info, end_idx
             )
         else:
             return self._graph._build_compile_fn_with_name_store(
-                store_vars, store_var_info
+                compile_graph_result, store_vars, store_var_info
             )
 
     @fallback_when_occur_error

@@ -16,7 +16,7 @@ import itertools
 import math
 import unittest
 
-import gym
+import gymnasium as gym
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,

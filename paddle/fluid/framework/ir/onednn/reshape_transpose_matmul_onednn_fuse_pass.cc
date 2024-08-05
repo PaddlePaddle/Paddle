@@ -18,9 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph) const {
   auto matmul_types = {"matmul", "matmul_v2", "fused_matmul"};
@@ -51,7 +49,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     bool with_reshape_xshape,
     bool with_transpose_xshape) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init("reshape_transpose_" + matmul_type + "_onednn_fuse_pass",
                      graph);
@@ -99,7 +97,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     } else if (matmul_desc->Inputs().at("Y").at(0) == input_var_name) {
       matmul_input_name = "Y";
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unexpected input to %s encountered.", matmul_type));
     }
 
@@ -264,9 +262,7 @@ ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
       .End();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(reshape_transpose_matmul_onednn_fuse_pass,
               paddle::framework::ir::ReshapeTransposeMatmulMkldnnFusePass);

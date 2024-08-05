@@ -11,8 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
 import functools
 import warnings
+from typing import TYPE_CHECKING, Callable, TypeVar
 
 import paddle
 from paddle.distribution.bernoulli import Bernoulli
@@ -35,12 +39,17 @@ from paddle.distribution.poisson import Poisson
 from paddle.distribution.uniform import Uniform
 from paddle.framework import in_dynamic_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+    _T = TypeVar('_T')
+
 __all__ = ["register_kl", "kl_divergence"]
 
 _REGISTER_TABLE = {}
 
 
-def kl_divergence(p, q):
+def kl_divergence(p: Distribution, q: Distribution) -> Tensor:
     r"""
     Kullback-Leibler divergence between distribution p and q.
 
@@ -72,7 +81,9 @@ def kl_divergence(p, q):
     return _dispatch(type(p), type(q))(p, q)
 
 
-def register_kl(cls_p, cls_q):
+def register_kl(
+    cls_p: type[Distribution], cls_q: type[Distribution]
+) -> Callable[[_T], _T]:
     """Decorator for register a KL divergence implementation function.
 
     The ``kl_divergence(p, q)`` function will search concrete implementation
@@ -82,8 +93,8 @@ def register_kl(cls_p, cls_q):
     implementation function by the decorator.
 
     Args:
-        cls_p (Distribution): The Distribution type of Instance p. Subclass derived from ``Distribution``.
-        cls_q (Distribution): The Distribution type of Instance q. Subclass derived from ``Distribution``.
+        cls_p (type[Distribution]): The Distribution type of Instance p. Subclass derived from ``Distribution``.
+        cls_q (type[Distribution]): The Distribution type of Instance q. Subclass derived from ``Distribution``.
 
     Examples:
         .. code-block:: python

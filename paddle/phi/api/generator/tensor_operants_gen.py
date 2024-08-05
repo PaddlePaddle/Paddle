@@ -489,9 +489,9 @@ class OperantsAPI(ForwardAPI):
     def get_declare_args_without_first_tensor(self, inplace_flag=False):
         func_name = self.get_api_func_name()
         declare_args = self.get_input_tensor_args(inplace_flag)
-        assert len(declare_args) >= 1, (
-            "Error! Api %s has no Tensor inputs" % func_name
-        )
+        assert (
+            len(declare_args) >= 1
+        ), f"Error! Api {func_name} has no Tensor inputs"
         first_input_type = " ".join(declare_args[0].split(" ")[:-1])
         # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
         assert (
@@ -510,9 +510,9 @@ class OperantsAPI(ForwardAPI):
     def get_define_args_without_first_tensor(self, inplace_flag=False):
         func_name = self.get_api_func_name()
         define_args = self.get_input_tensor_args(inplace_flag)
-        assert len(define_args) >= 1, (
-            "Error! Api %s has no Tensor inputs" % func_name
-        )
+        assert (
+            len(define_args) >= 1
+        ), f"Error! Api {func_name} has no Tensor inputs"
         first_input_type = " ".join(define_args[0].split(" ")[:-1])
         # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
         assert (
@@ -525,9 +525,9 @@ class OperantsAPI(ForwardAPI):
 
     def gene_tensor_api_implementation(self):
         func_name = self.get_api_func_name()
-        assert len(self.inputs['names']) >= 1, (
-            "Error! Api %s has no Tensor inputs" % func_name
-        )
+        assert (
+            len(self.inputs['names']) >= 1
+        ), f"Error! Api {func_name} has no Tensor inputs"
         # remove first Tensor argument
         func_args = self.inputs['names'][1:] + self.attrs['names']
         if len(func_args) > 0:
@@ -590,7 +590,7 @@ class OperantsAPI(ForwardAPI):
     PADDLE_ENFORCE_NE(
         this->eager_operants.get(),
         nullptr,
-        phi::errors::Unavailable("The eager_operants pointer of "
+        common::errors::Unavailable("The eager_operants pointer of "
                                  "OperantsManager is not initialized"));
     VLOG(4) << "OperantsManager reusing eager mode API ::{func_name}_ad_func";
     return this->eager_operants->{func_name}({func_args_code});
@@ -598,7 +598,7 @@ class OperantsAPI(ForwardAPI):
     PADDLE_ENFORCE_NE(
         this->static_operants.get(),
         nullptr,
-        phi::errors::Unavailable("The static_operants pointer of "
+        common::errors::Unavailable("The static_operants pointer of "
                                  "OperantsManager is not initialized"));
     VLOG(4) << "OperantsManager reusing static mode API paddle::prim::{func_name}<DescTensor>";
     return this->static_operants->{func_name}({func_args_code});
@@ -606,12 +606,12 @@ class OperantsAPI(ForwardAPI):
     PADDLE_ENFORCE_NE(
         this->phi_operants.get(),
         nullptr,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "The phi_operants pointer of OperantsManager is not initialized"));
     VLOG(4) << "OperantsManager reusing phi mode API paddle::experimental::{func_name}";
     return this->phi_operants->{func_name}({func_args_code});
   }} else {{
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "FLAGS_tensor_operants_mode is not nitialized, please set "
         "FLAGS_tensor_operants_mode first, which currently supports eager, "
         "phi, and static mode"));

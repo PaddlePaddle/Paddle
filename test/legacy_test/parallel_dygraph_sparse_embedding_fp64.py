@@ -18,12 +18,11 @@ import numpy as np
 
 sys.path.append("..")
 
+import paddle
 from legacy_test.test_dist_base import (
     TestParallelDyGraphRunnerBase,
     runtime_main,
 )
-
-import paddle
 from paddle.nn import Embedding, Layer
 
 paddle.set_default_dtype("float64")

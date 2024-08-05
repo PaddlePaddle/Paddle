@@ -65,12 +65,14 @@ class TestReshardSToRCrossMesh:
         ops = [op.name() for op in main_program.global_block().ops]
         if self._shard == 0:
             if paddle.distributed.get_rank() == 0:
-                np.testing.assert_equal(main_program.num_ops(), 4)
+                np.testing.assert_equal(main_program.num_ops(), 6)
                 std_ops = [
                     'builtin.parameter',
                     'pd_op.data',
                     'dist_op.shard_tensor',
                     'pd_op.send_v2',
+                    'dist_op.reshard',
+                    'pd_op.all_gather',
                 ]
                 np.testing.assert_equal(
                     ops,
@@ -83,7 +85,7 @@ class TestReshardSToRCrossMesh:
                     'pd_op.data',
                     'dist_op.shard_tensor',
                     'pd_op.recv_v2',
-                    'pd_op.c_allgather',
+                    'pd_op.all_gather',
                 ]
                 np.testing.assert_equal(
                     ops,
@@ -91,30 +93,34 @@ class TestReshardSToRCrossMesh:
                 )
         elif self._shard == 1:
             if paddle.distributed.get_rank() == 0:
-                np.testing.assert_equal(main_program.num_ops(), 4)
+                np.testing.assert_equal(main_program.num_ops(), 10)
                 std_ops = [
                     'builtin.parameter',
                     'pd_op.data',
                     'dist_op.shard_tensor',
                     'pd_op.send_v2',
+                    'dist_op.reshard',
+                    'pd_op.all_gather',
+                    'pd_op.full',
+                    'pd_op.split_with_num',
+                    'pd_op.full',
+                    'pd_op.concat',
                 ]
                 np.testing.assert_equal(
                     ops,
                     std_ops,
                 )
             elif paddle.distributed.get_rank() == 1:
-                np.testing.assert_equal(main_program.num_ops(), 11)
+                np.testing.assert_equal(main_program.num_ops(), 9)
                 std_ops = [
                     'builtin.parameter',
                     'pd_op.data',
                     'dist_op.shard_tensor',
                     'pd_op.recv_v2',
-                    'pd_op.c_allgather',
+                    'pd_op.all_gather',
                     'pd_op.full',
                     'pd_op.split_with_num',
-                    'builtin.split',
                     'pd_op.full',
-                    'builtin.combine',
                     'pd_op.concat',
                 ]
 
@@ -153,7 +159,7 @@ class TestReshardSToRCrossMesh:
                 elif self._shard == 1:
                     assert op_result_dist_attr.dims_mapping == [-1, 0]
                 assert op_result_dist_attr.partial_status == {}
-            elif op.name() == 'pd_op.c_allgather':
+            elif op.name() == 'pd_op.all_gather':
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 1

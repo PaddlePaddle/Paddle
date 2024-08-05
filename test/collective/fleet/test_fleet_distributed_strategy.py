@@ -454,7 +454,6 @@ class TestStrategyConfig(unittest.TestCase):
         localsgd_configs = {"k_steps": 5, "begin_step": 1}
         strategy.localsgd_configs = localsgd_configs
         build_strategy = paddle.base.BuildStrategy()
-        build_strategy.enable_sequential_execution = True
         build_strategy.nccl_comm_num = 10
         build_strategy.use_hierarchical_allreduce = True
         build_strategy.hierarchical_allreduce_inter_nranks = 1
@@ -477,7 +476,6 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_build_strategy(self):
         build_strategy = paddle.base.BuildStrategy()
-        build_strategy.enable_sequential_execution = True
         build_strategy.nccl_comm_num = 10
         build_strategy.use_hierarchical_allreduce = True
         build_strategy.hierarchical_allreduce_inter_nranks = 1

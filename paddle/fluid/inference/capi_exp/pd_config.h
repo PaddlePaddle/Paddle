@@ -721,13 +721,6 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigSetInvalid(
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigIsValid(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief Partially release the memory
-///
-/// \param[in] pd_config config
-///
-PADDLE_CAPI_EXPORT extern void PD_ConfigPartiallyRelease(
-    __pd_keep PD_Config* pd_config);
-///
 /// \brief Delete all passes that has a certain type 'pass'.
 ///
 /// \param[in] pass the certain pass type to be deleted.

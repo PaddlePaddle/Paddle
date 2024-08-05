@@ -17,9 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_varseqlen_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class EmbEltwiseLayerNormOpConverter : public OpConverter {
  public:
@@ -29,7 +27,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     VLOG(4) << "convert EmbEltwiseLayerNorm op to tensorrt layer";
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
-                         framework::DDim* dim) -> TensorRTEngine::Weight {
+                         phi::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       *dim = temp_tensor->dims();
@@ -50,8 +48,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     std::vector<nvinfer1::Weights> input_embs;
     std::vector<int> emb_sizes;
     TensorRTEngine::Weight weight;
-    framework::DDim emb_dims;
-    framework::DDim bias_dims, scale_dims;
+    phi::DDim emb_dims;
+    phi::DDim bias_dims, scale_dims;
     TensorRTEngine::Weight bias_weight, scale_weight;
 
     int64_t bias_size = common::product(bias_dims);
@@ -93,7 +91,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       PADDLE_ENFORCE_EQ(
           output_fp16,
           1,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Only Precision::KHalf(fp16) is supported when infering "
               "ernie(bert) model with config.EnableVarseqlen(). "
               "But Precision::KFloat32 is setted."));
@@ -119,10 +117,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                             static_cast<int32_t>(emb_sizes[i]));
       }
 
-      nvinfer1::PluginFieldCollection* plugin_ptr =
-          static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(*plugin_ptr) +
-                     fields.size() * sizeof(nvinfer1::PluginField)));
+      std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_ptr(
+          new nvinfer1::PluginFieldCollection);
       plugin_ptr->nbFields = static_cast<int>(fields.size());
       plugin_ptr->fields = fields.data();
 
@@ -132,7 +128,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       auto creator = GetPluginRegistry()->getPluginCreator(
           "ManyEmbLayerNormVarlenPluginDynamic", "1");
       auto plugin_obj = creator->createPlugin(
-          "ManyEmbLayerNormVarlenPluginDynamic", plugin_ptr);
+          "ManyEmbLayerNormVarlenPluginDynamic", plugin_ptr.get());
 
       auto plugin_layer = engine_->network()->addPluginV2(
           plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
@@ -140,7 +136,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       plugin_layer->setName(("ManyEmbLayerNormVarlenPluginDynamicV1(Output: " +
                              op_desc.Output("Out")[0] + ")")
                                 .c_str());
-      free(plugin_ptr);
+      plugin_ptr.reset();
       if (enable_int8) {
         float out_scale =
             PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -156,7 +152,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                    "with_interleaved";
         if (!enable_int8) {
           PADDLE_THROW(
-              platform::errors::Fatal("use with_interleaved must be int8."));
+              common::errors::Fatal("use with_interleaved must be int8."));
         }
         auto* shuffler_embed = TRT_ENGINE_ADD_LAYER(
             engine_, Shuffle, *(plugin_layer->getOutput(0)));
@@ -218,10 +214,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                             static_cast<int32_t>(emb_sizes[i]));
       }
 
-      nvinfer1::PluginFieldCollection* plugin_ptr =
-          static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(*plugin_ptr) +
-                     fields.size() * sizeof(nvinfer1::PluginField)));
+      std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_ptr(
+          new nvinfer1::PluginFieldCollection);
       plugin_ptr->nbFields = static_cast<int>(fields.size());
       plugin_ptr->fields = fields.data();
 
@@ -229,8 +223,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
 
       auto creator = GetPluginRegistry()->getPluginCreator(
           "ManyEmbLayerNormPluginDynamic", "1");
-      auto plugin_obj =
-          creator->createPlugin("ManyEmbLayerNormPluginDynamic", plugin_ptr);
+      auto plugin_obj = creator->createPlugin("ManyEmbLayerNormPluginDynamic",
+                                              plugin_ptr.get());
 
       auto plugin_layer = engine_->network()->addPluginV2(
           plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
@@ -238,7 +232,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       plugin_layer->setName(("ManyEmbLayerNormPluginDynamicV1(Output: " +
                              op_desc.Output("Out")[0] + ")")
                                 .c_str());
-      free(plugin_ptr);
+      plugin_ptr.reset();
       if (enable_int8) {
         float out_scale =
             PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -253,9 +247,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(fused_embedding_eltwise_layernorm,
                           EmbEltwiseLayerNormOpConverter);

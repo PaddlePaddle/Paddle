@@ -45,7 +45,7 @@ class SelectOutputOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const phi::Place &dev_place) const override {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
     auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();
@@ -55,7 +55,7 @@ class SelectOutputOp : public framework::OperatorBase {
     PADDLE_ENFORCE_LT(
         output_branch,
         out_names.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input 'Mask' in SelectOutputOp is invalid. "
             "'Mask' must be less than the size of output vector 'Out'. "
             "But received Mask = %d, Out's size = %d.",

@@ -36,7 +36,7 @@ ThreadPool* ThreadPool::GetInstance() {
 }
 
 void ThreadPool::Init() {
-  if (threadpool_.get() == nullptr) {
+  if (threadpool_ == nullptr) {
     // TODO(Yancey1989): specify the max threads number
     int num_threads = static_cast<int>(std::thread::hardware_concurrency());
     if (FLAGS_dist_threadpool_size > 0) {
@@ -46,7 +46,7 @@ void ThreadPool::Init() {
     PADDLE_ENFORCE_GT(
         num_threads,
         0,
-        phi::errors::InvalidArgument("The number of threads is 0."));
+        common::errors::InvalidArgument("The number of threads is 0."));
     threadpool_ = std::make_unique<ThreadPool>(num_threads);
   }
 }
@@ -88,7 +88,7 @@ void ThreadPool::TaskLoop() {
 
       if (tasks_.empty()) {
         PADDLE_THROW(
-            phi::errors::Unavailable("Current thread has no task to Run."));
+            common::errors::Unavailable("Current thread has no task to Run."));
       }
 
       // pop a task from the task queue
@@ -109,7 +109,7 @@ ThreadPool* ThreadPoolIO::GetInstanceIO() {
 }
 
 void ThreadPoolIO::InitIO() {
-  if (io_threadpool_.get() == nullptr) {
+  if (io_threadpool_ == nullptr) {
     // TODO(typhoonzero1986): make this configurable
     io_threadpool_ = std::make_unique<ThreadPool>(FLAGS_io_threadpool_size);
   }

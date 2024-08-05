@@ -58,10 +58,27 @@ class OperationInfo {
   std::vector<AttributeInfo> attr_infos_;
 };
 
+class OpDepInfo {
+ public:
+  OpDepInfo(size_t upstream_index, size_t upstream_hash)
+      : upstream_index_(upstream_index), upstream_hash_(upstream_hash) {}
+  bool operator==(const OpDepInfo &other) {
+    return this->upstream_index_ == other.upstream_index_ &&
+           this->upstream_hash_ == other.upstream_hash_;
+  }
+
+  std::size_t hash() const;
+  friend std::ostream &operator<<(std::ostream &os, const OpDepInfo &info);
+
+ private:
+  size_t upstream_index_;
+  size_t upstream_hash_;
+};
+
 class FusionOpInfo {
  public:
   FusionOpInfo(const ::pir::Operation &op,
-               const std::unordered_map<size_t, size_t> &deps)
+               const std::map<size_t, OpDepInfo> &deps)
       : op_info_(op), inner_deps_(deps) {}
 
   std::size_t hash() const;
@@ -70,7 +87,7 @@ class FusionOpInfo {
  private:
   OperationInfo op_info_;
   // oprand_source id : OperationInfo hash
-  std::unordered_map<size_t, size_t> inner_deps_;
+  std::map<size_t, OpDepInfo> inner_deps_;
 };
 
 class FusionInfo {
@@ -105,6 +122,7 @@ class FusionInfo {
 std::ostream &operator<<(std::ostream &os, const AttributeInfo &info);
 std::ostream &operator<<(std::ostream &os, const ValueInfo &info);
 std::ostream &operator<<(std::ostream &os, const OperationInfo &info);
+std::ostream &operator<<(std::ostream &os, const OpDepInfo &info);
 std::ostream &operator<<(std::ostream &os, const FusionOpInfo &info);
 std::ostream &operator<<(std::ostream &os, const FusionInfo &info);
 
@@ -134,6 +152,7 @@ namespace std {
 REGISTER_STD_HASH(AttributeInfo);
 REGISTER_STD_HASH(ValueInfo);
 REGISTER_STD_HASH(OperationInfo);
+REGISTER_STD_HASH(OpDepInfo)
 REGISTER_STD_HASH(FusionOpInfo);
 REGISTER_STD_HASH(FusionInfo)
 }  // namespace std

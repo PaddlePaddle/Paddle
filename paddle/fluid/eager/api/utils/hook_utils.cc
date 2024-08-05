@@ -40,15 +40,15 @@ void RegisterReduceHookForTensor(const paddle::Tensor& tensor,
     std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
     PADDLE_ENFORCE(
         grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node,"
-                                        "Leaf tensor should have had grad_node "
-                                        "with type: GradNodeAccumulation"));
+        common::errors::Fatal("Detected NULL grad_node,"
+                              "Leaf tensor should have had grad_node "
+                              "with type: GradNodeAccumulation"));
     auto accumulation_grad_node =
         std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);
     accumulation_grad_node->RegisterReduceHook(
         std::make_shared<CppVoidHook>(hook));
   } else {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Only can register reduce hook for leaf Tensor."));
   }
 }

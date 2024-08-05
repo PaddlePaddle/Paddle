@@ -140,8 +140,8 @@ class IPUController(CollectiveController):
         print("-----------  PopRun Command -----------")
         print("poprun \\")
         for i in range(len(poprun_command) - 1):
-            print("%s \\" % (poprun_command[i]))
-        print("%s" % (poprun_command[len(poprun_command) - 1]))
+            print(f"{poprun_command[i]} \\")
+        print(f"{poprun_command[len(poprun_command) - 1]}")
         print("---------------------------------------")
 
         # replace training_script_args

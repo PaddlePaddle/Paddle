@@ -31,7 +31,7 @@
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace google {
 namespace protobuf {
@@ -100,7 +100,7 @@ class PSServer {
       int msg_type UNUSED,
       int to_pserver_id UNUSED,
       const std::string &msg UNUSED) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "NotImplementError: PSServer::send_pserver2pserver_msg"));
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -131,7 +131,7 @@ class PSServer {
   virtual int32_t ReceiveFromPServer(int msg_type UNUSED,
                                      int pserver_id UNUSED,
                                      const std::string &msg UNUSED) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "NotImplementError::PSServer::ReceiveFromPServer"));
     return -1;
   }
@@ -150,7 +150,7 @@ class PSServer {
 
  protected:
   std::shared_ptr<framework::Scope> scope_;
-  platform::Place place_ = platform::CPUPlace();
+  phi::Place place_ = phi::CPUPlace();
 };
 
 REGISTER_PSCORE_REGISTERER(PSServer);

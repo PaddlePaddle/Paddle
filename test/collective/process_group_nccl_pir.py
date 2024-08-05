@@ -321,6 +321,58 @@ class TestProcessGroupFp32(unittest.TestCase):
                         np.multiply(x_np, y_np), y_out
                     )
 
+    def test_broadcast(self):
+        # to_tensor dose not support float16 input
+        if self.dtype == "float16":
+            return
+        pg = self.pg
+        # rank 0
+        x_np = np.random.random(self.shape).astype(self.dtype)
+        # rank 1
+        y_np = np.random.random(self.shape).astype(self.dtype)
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                if pg.rank() == 0:
+                    data = paddle.to_tensor(x_np)
+                else:
+                    data = paddle.to_tensor(y_np)
+                dist.broadcast(data, 1)
+                exe = paddle.static.Executor()
+                (data,) = exe.run(
+                    main_program,
+                    feed={},
+                    fetch_list=[data],
+                )
+                np.testing.assert_array_equal(y_np, data)
+
+    def test_broadcast_with_0d_input(self):
+        # to_tensor dose not support float16 input
+        if self.dtype == "float16":
+            return
+        pg = self.pg
+        # rank 0
+        x_np = np.random.random([]).astype(self.dtype)
+        # rank 1
+        y_np = np.random.random([]).astype(self.dtype)
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                if pg.rank() == 0:
+                    data = paddle.to_tensor(x_np)
+                else:
+                    data = paddle.to_tensor(y_np)
+                dist.broadcast(data, 1)
+                exe = paddle.static.Executor()
+                (data,) = exe.run(
+                    main_program,
+                    feed={},
+                    fetch_list=[data],
+                )
+                np.testing.assert_array_equal(y_np, data)
+
 
 class TestProcessGroupFp16(TestProcessGroupFp32):
     def setUp(self):

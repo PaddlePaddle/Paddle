@@ -48,6 +48,13 @@ void AddmmInferMeta(const MetaTensor& input,
                     float alpha,
                     MetaTensor* out);
 
+void AffineChannelInferMeta(const MetaTensor& x,
+                            const MetaTensor& scale,
+                            const MetaTensor& bias,
+                            const std::string& data_layout,
+                            MetaTensor* out,
+                            MetaConfig config = MetaConfig());
+
 void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& end,
                            const MetaTensor& step,
@@ -72,6 +79,16 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const std::vector<float>& variance,
                        MetaTensor* output_box,
                        MetaConfig config = MetaConfig());
+
+void CollectFpnProposalsInferMeta(
+    const std::vector<const MetaTensor*>& multi_level_rois,
+    const std::vector<const MetaTensor*>& multi_level_scores,
+    const paddle::optional<std::vector<const MetaTensor*>>&
+        multi_level_rois_num,
+    int post_nms_topn,
+    MetaTensor* fpn_rois,
+    MetaTensor* rois_num,
+    MetaConfig config = MetaConfig());
 
 void DistributedPushSparseInferMeta(
     const std::vector<const MetaTensor*>& ids,
@@ -121,6 +138,11 @@ void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
                                  MetaTensor* softmax_lse,
                                  MetaTensor* seed_offset);
 
+void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
+                                    const MetaTensor& k,
+                                    const MetaTensor& softmax_lse,
+                                    MetaTensor* reduced_scores);
+
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
@@ -143,6 +165,19 @@ void GlobalScatterInferMeta(const MetaTensor& x,
                             int ring_id,
                             bool use_calc_stream,
                             MetaTensor* out);
+
+void AddGroupNormSiluInferMeta(const MetaTensor& x,
+                               const MetaTensor& residual,
+                               const MetaTensor& scale,
+                               const MetaTensor& bias,
+                               float epsilon,
+                               int groups,
+                               const std::string& data_layout,
+                               const std::string& activation,
+                               MetaTensor* y,
+                               MetaTensor* residual_out,
+                               MetaTensor* mean,
+                               MetaTensor* variance);
 
 void GroupNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,
@@ -294,12 +329,15 @@ void SendURecvInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* dst_count);
 
-void SparseMomentumInferMeta(const MetaTensor& param,
-                             const MetaTensor& learning_rate,
-                             const MetaTensor& velocity,
-                             MetaTensor* param_out,
-                             MetaTensor* velocity_out,
-                             MetaTensor* master_param_out);
+void SequenceConvInferMeta(const MetaTensor& x,
+                           const MetaTensor& padding_data,
+                           const MetaTensor& filter,
+                           int context_length,
+                           bool padding_trainable,
+                           int context_start,
+                           int context_stride,
+                           MetaTensor* out);
+
 void SpectralNormInferMeta(const MetaTensor& weight,
                            const MetaTensor& u,
                            const MetaTensor& v,

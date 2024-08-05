@@ -23,12 +23,10 @@
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
 
-namespace google {
-namespace protobuf {
+namespace google::protobuf {
 class Closure;
 class RpcController;
-}  // namespace protobuf
-}  // namespace google
+}  // namespace google::protobuf
 
 PD_DEFINE_int32(pserver_timeout_ms_s2s,
                 10000,
@@ -40,8 +38,7 @@ PD_DEFINE_string(pserver_connection_type_s2s,
                  "pooled",
                  "pserver connection_type[pooled:single]");
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int32_t BrpcPsServer::Initialize() {
   auto &service_config = _config.downpour_server_param().service_param();
@@ -51,7 +48,7 @@ int32_t BrpcPsServer::Initialize() {
   }
   auto *service =
       CREATE_PSCORE_CLASS(PsBaseService, service_config.service_class());
-  if (service == NULL) {
+  if (service == nullptr) {
     LOG(ERROR) << "service is unregistered, service_name:"
                << service_config.service_class();
     return -1;
@@ -143,7 +140,7 @@ std::future<int32_t> BrpcPsServer::SendPServer2PServerMsg(
     std::stringstream ss;
     ss << "to_pserver_id is out of range pservers, which size is "
        << _pserver_channels.size();
-    PADDLE_THROW(phi::errors::Fatal(ss.str()));
+    PADDLE_THROW(common::errors::Fatal(ss.str()));
     promise->set_value(-1);
     return fut;
   }
@@ -181,7 +178,11 @@ int32_t BrpcPsServer::ReceiveFromPServer(int msg_type,
   while (ar.Cursor() < ar.Finish()) {
     data.push_back(ar.Get<std::pair<uint64_t, std::string>>());
   }
-  CHECK(ar.Cursor() == ar.Finish());
+  PADDLE_ENFORCE_EQ(ar.Cursor(),
+                    ar.Finish(),
+                    phi::errors::InvalidArgument(
+                        "Expected 'ar.Cursor()' to be equal to 'ar.Finish()', "
+                        "but found they are not equal."));
   this->_shuffled_ins->Write(std::move(data));
   return 0;
 }
@@ -898,5 +899,4 @@ int32_t BrpcPsService::PushGlobalStep(Table *table,
   return 0;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

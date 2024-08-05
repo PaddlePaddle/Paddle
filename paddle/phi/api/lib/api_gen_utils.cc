@@ -630,7 +630,8 @@ phi::distributed::DistTensor* SetKernelDistOutput(
   PADDLE_ENFORCE_EQ(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
       true,
-      phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+      common::errors::PreconditionNotMet(
+          "Arg must be a single TensorDistAttr"));
   if (out) {
     if (out->impl() == nullptr) {
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
@@ -667,7 +668,7 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
       paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
           dist_attr),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Arg must be a vector of TensorDistAttr"));
   const std::vector<phi::distributed::TensorDistAttr>& dist_attrs =
       PADDLE_GET_CONST(std::vector<phi::distributed::TensorDistAttr>,
@@ -677,12 +678,19 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
   // TODO(GhostScreaming): Inplace outputs are initialized, just set their
   // dist_attr.
   if (out->size() == out_size) {
-    VLOG(3) << "Outputs are inplace vector Tensors, just set their dist_attrs "
-            << "according to InferSPMD output result.";
+    VLOG(3) << "Outputs are inplace vector Tensors, SKIP set dist_attr for out "
+            << "to avoid changing the inplaced input";
     for (size_t i = 0; i < out_size; ++i) {
       results[i] =
           static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
-      results[i]->unsafe_set_dist_attr(dist_attrs[i]);
+      continue;
+      // auto t =
+      //     static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+      // auto dist_t = std::make_shared<phi::distributed::DistTensor>(
+      //     t->shared_value(), t->dims(), dist_attrs[i]);
+      // out->at(i) = Tensor();
+      // out->at(i).set_impl(dist_t);
+      // results[i] = dist_t.get();
     }
   } else {
     out->reserve(out_size);
@@ -736,6 +744,7 @@ std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     }
     return dist_output;
   }
+  VLOG(4) << "CreateKernelDistOutput with NULL out";
   return nullptr;
 }
 
@@ -765,7 +774,7 @@ CreateKernelDistOutput(std::vector<Tensor*> out,
   PADDLE_ENFORCE_EQ(
       out.size(),
       tensor_dist_attrs.size(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "out.size() [%d] and tensor_dist_attrs.size() [%d] not match",
           out.size(),
           tensor_dist_attrs.size()));

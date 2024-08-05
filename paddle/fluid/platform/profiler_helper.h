@@ -38,9 +38,9 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/profiler/profiler_helper.h"
+#include "paddle/phi/core/memory/memory.h"
 
 namespace paddle {
 namespace platform {
@@ -117,7 +117,7 @@ void SynchronizeAllDevice() {
   for (const auto &dev_type : dev_types) {
     int pre_device_id = phi::DeviceManager::GetDevice(dev_type);
     for (auto &dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
-      auto place = paddle::platform::CustomPlace(dev_type, dev_id);
+      auto place = phi::CustomPlace(dev_type, dev_id);
       phi::DeviceManager::SetDevice(place);
       phi::DeviceManager::SynchronizeDevice(place);
     }
@@ -625,7 +625,7 @@ void PrintProfiler(
     } else if (phi::ProfilerHelper::g_state == ProfilerState::kAll) {
       place = "All";
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Except profiler state must to be one of ['CPU', 'GPU' 'ALL'], but "
           "received Invalid profiler state."));
     }

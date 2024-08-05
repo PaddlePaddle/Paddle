@@ -53,7 +53,7 @@ class ConditionalOp : public framework::OperatorBase {
         [&scope](const std::string &var_name) -> const phi::DenseTensor * {
           auto *var = scope.FindVar(var_name);
           PADDLE_ENFORCE_NOT_NULL(var,
-                                  phi::errors::InvalidArgument(
+                                  common::errors::InvalidArgument(
                                       "Cannot find variable %s", var_name));
           return &var->Get<phi::DenseTensor>();
         });
@@ -64,14 +64,14 @@ class ConditionalOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(
         ips.size() == 1UL && ips[0]->IsInitialized(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "condition should have one initialized input as condition"));
 
     PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(ips[0]->dtype()) ==
                               framework::proto::VarType::BOOL &&
                           ips[0]->numel() == 1,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "condition input's data type should be bool, "
                           "numel should be 1, actual numel is %d",
                           ips[0]->numel()));
@@ -80,21 +80,21 @@ class ConditionalOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::DenseTensor cpu_tensor;
       framework::TensorCopy(*ips[0], phi::CPUPlace(), &cpu_tensor);
-      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      phi::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];
 #endif
     } else if (ips[0]->place().GetType() == phi::AllocationType::XPU) {
 #ifdef PADDLE_WITH_XPU
       phi::DenseTensor cpu_tensor;
       framework::TensorCopy(*ips[0], phi::CPUPlace(), &cpu_tensor);
-      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      phi::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];
 #endif
     } else if (ips[0]->place().GetType() == phi::AllocationType::CUSTOM) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
       framework::TensorCopy(*ips[0], phi::CPUPlace(), &cpu_tensor);
-      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      phi::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];
 #endif
     } else {

@@ -74,6 +74,19 @@ class ConvElementwiseAddPattern : public paddle::drr::DrrPatternBase {
       }
       return true;
     });
+
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      auto conv2d_out_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("conv2d_out"));
+      auto residual_param_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("residual_param"));
+      // conv_elementwise_add_onednn_fuse_pass does not support broadcast
+      if (conv2d_out_shape != residual_param_shape) {
+        return false;
+      }
+      return true;
+    });
+
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv2d_add =
@@ -154,6 +167,19 @@ class ConvElementwiseAddAsYPattern : public paddle::drr::DrrPatternBase {
       }
       return true;
     });
+
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      auto conv2d_out_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("conv2d_out"));
+      auto residual_param_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("residual_param"));
+      // conv_elementwise_add_onednn_fuse_pass does not support broadcast
+      if (conv2d_out_shape != residual_param_shape) {
+        return false;
+      }
+      return true;
+    });
+
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv2d_add =
@@ -250,6 +276,29 @@ class FusedConvBiasElementwiseAddPattern : public paddle::drr::DrrPatternBase {
       }
       return true;
     });
+
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      auto fuse_activation = match_ctx.Attr<std::string>("fuse_activation");
+      auto fuse_residual_connection =
+          match_ctx.Attr<bool>("fuse_residual_connection");
+      if (!fuse_activation.empty() || fuse_residual_connection) {
+        return false;
+      }
+      return true;
+    });
+
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      auto conv2d_out_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("conv2d_out"));
+      auto residual_param_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("residual_param"));
+      // conv_elementwise_add_onednn_fuse_pass does not support broadcast
+      if (conv2d_out_shape != residual_param_shape) {
+        return false;
+      }
+      return true;
+    });
+
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv2d_add =
@@ -348,6 +397,29 @@ class FusedConvBiasElementwiseAddAsYPattern
       }
       return true;
     });
+
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      auto fuse_activation = match_ctx.Attr<std::string>("fuse_activation");
+      auto fuse_residual_connection =
+          match_ctx.Attr<bool>("fuse_residual_connection");
+      if (!fuse_activation.empty() || fuse_residual_connection) {
+        return false;
+      }
+      return true;
+    });
+
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      auto conv2d_out_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("conv2d_out"));
+      auto residual_param_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("residual_param"));
+      // conv_elementwise_add_onednn_fuse_pass does not support broadcast
+      if (conv2d_out_shape != residual_param_shape) {
+        return false;
+      }
+      return true;
+    });
+
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_conv2d_add =

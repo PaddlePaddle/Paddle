@@ -14,22 +14,25 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 /**
- * @brief This kernel is used to fetch tensor from scope
+ * @brief This kernel is used to compare the input tensor with the target tensor
  * @param  ctx     device context
  * @param  x       the input tensor of fetch
  * @param  out     the output tensor of fetch
  */
 template <typename T, typename Context>
-void AccuracyCheckKernel(const Context& ctx,
+void AccuracyCheckKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const std::string& fn_name,
-                         int64_t res_index,
+                         const double rtol,
+                         const double atol,
+                         bool equal_nan,
                          DenseTensor* out);
 
 }  // namespace phi

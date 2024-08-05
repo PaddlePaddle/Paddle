@@ -17,9 +17,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class ExprWrapper {
  public:
@@ -41,13 +39,16 @@ class ExprWrapper {
   friend ExprWrapper BinaryOp(const ExprWrapper& a,
                               const ExprWrapper& b,
                               nvinfer1::DimensionOperation op) {
-    ExprWrapper result;
+    ExprWrapper result = {};
+    assert(a.expr);
+    assert(b.expr);
     if (a.expr_builder) {
       result.expr_builder = a.expr_builder;
     }
     if (b.expr_builder) {
       result.expr_builder = b.expr_builder;
     }
+    assert(result.expr_builder);
     assert(result.expr);
     result.expr = result.expr_builder->operation(op, *a.expr, *b.expr);
     return result;
@@ -57,7 +58,7 @@ class ExprWrapper {
                               int b_value,
                               nvinfer1::DimensionOperation op) {
     assert(a.expr_builder);
-    ExprWrapper b;
+    ExprWrapper b = {};
     b.expr_builder = a.expr_builder;
     b.expr = b.expr_builder->constant(b_value);
     return BinaryOp(a, b, op);
@@ -121,6 +122,7 @@ static std::vector<ExprWrapper> DimsExprs2VecExprWrapper(
     nvinfer1::IExprBuilder& expr_builder  // NOLINT
 ) {
   std::vector<ExprWrapper> x_dims_wrap;
+  x_dims_wrap.reserve(x_dims.nbDims);
   for (int i = 0; i < x_dims.nbDims; i++) {
     x_dims_wrap.emplace_back(x_dims.d[i], &expr_builder);
   }
@@ -129,7 +131,7 @@ static std::vector<ExprWrapper> DimsExprs2VecExprWrapper(
 
 static nvinfer1::DimsExprs VecExprWrapper2DimsExprs(
     const std::vector<ExprWrapper>& output_dims_wrapper) {
-  nvinfer1::DimsExprs output_dims;
+  nvinfer1::DimsExprs output_dims = {};
   output_dims.nbDims = output_dims_wrapper.size();
   for (int i = 0; i < output_dims.nbDims; i++) {
     output_dims.d[i] = output_dims_wrapper[i].extract_expr();
@@ -151,6 +153,7 @@ nvinfer1::DimsExprs GatherNdInferMeta(
   std::vector<const nvinfer1::IDimensionExpr*> result_dims;
   // The result dims is
   //   Index.shape[:-1] + X.shape[Index.shape[-1]:]
+  result_dims.reserve(index_dims_size - 1);
   for (int i = 0; i < index_dims_size - 1; ++i) {
     result_dims.emplace_back(index_dims.d[i]);
   }
@@ -163,7 +166,7 @@ nvinfer1::DimsExprs GatherNdInferMeta(
     }
   }
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = result_dims.size();
   for (int i = 0; i < output.nbDims; i++) {
     output.d[i] = result_dims[i];
@@ -177,12 +180,12 @@ nvinfer1::DimsExprs YoloBoxInferMeta(
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
-  PADDLE_ENFORCE_EQ(
-      nb_inputs,
-      2,
-      phi::errors::InvalidArgument("inputs of yolo_box should be equal to 2, "
-                                   "But received (%s)",
-                                   nb_inputs));
+  PADDLE_ENFORCE_EQ(nb_inputs,
+                    2,
+                    common::errors::InvalidArgument(
+                        "inputs of yolo_box should be equal to 2, "
+                        "But received (%s)",
+                        nb_inputs));
 
   const nvinfer1::DimsExprs dim_x = inputs[0];
 
@@ -196,7 +199,7 @@ nvinfer1::DimsExprs YoloBoxInferMeta(
           nvinfer1::DimensionOperation::kPROD, *dim_x.d[2], *dim_x.d[3]),
       *expr_builder.constant(anchor_num));
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = 3;
   if (output_index == 0) {
     output.d[0] = dim_x.d[0];
@@ -268,9 +271,9 @@ nvinfer1::DimsExprs UnfoldInferMeta(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       1,
-      phi::errors::InvalidArgument("inputs of unfold should be equal to 1, "
-                                   "But received (%s)",
-                                   nb_inputs));
+      common::errors::InvalidArgument("inputs of unfold should be equal to 1, "
+                                      "But received (%s)",
+                                      nb_inputs));
 
   const nvinfer1::DimsExprs in_dims = inputs[0];
   std::vector<const nvinfer1::IDimensionExpr*> out_dims;
@@ -314,7 +317,7 @@ nvinfer1::DimsExprs UnfoldInferMeta(
       nvinfer1::DimensionOperation::kPROD, *output_height, *output_width);
 
   out_dims.push_back(output_col_length);
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = out_dims.size();
   for (size_t i = 0; i < out_dims.size(); i++) output.d[i] = out_dims[i];
   return output;
@@ -328,7 +331,7 @@ nvinfer1::DimsExprs ScatterNdAddInferMeta(
     const framework::OpDesc& op_desc) {
   PADDLE_ENFORCE_EQ(nb_inputs,
                     3,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "inputs of scatter_nd_add should be equal to 3, "
                         "But received (%s)",
                         nb_inputs));
@@ -344,7 +347,7 @@ nvinfer1::DimsExprs UnchangedInferMeta(
     const framework::OpDesc& op_desc) {
   PADDLE_ENFORCE_EQ(nb_inputs,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "inputs of UnchangedInferMeta should be equal to 1, "
                         "But received (%s)",
                         nb_inputs));
@@ -368,7 +371,7 @@ nvinfer1::DimsExprs Pad3dInferMeta(
     const framework::OpDesc& op_desc) {
   const nvinfer1::DimsExprs x_dim = inputs[0];
 
-  nvinfer1::DimsExprs out_dims;
+  nvinfer1::DimsExprs out_dims = {};
   out_dims.nbDims = x_dim.nbDims;
 
   out_dims.d[0] = x_dim.d[0];
@@ -447,7 +450,7 @@ nvinfer1::DimsExprs PNormInferMeta(
 
   PADDLE_ENFORCE_GE(axis,
                     -x_rank,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Attr(axis) value should be in range [-R, R-1], R is "
                         "the rank of Input(X). But received axis: %d, R: %d. "
                         "Current Input(X)'s shape is=[%s].",
@@ -456,7 +459,7 @@ nvinfer1::DimsExprs PNormInferMeta(
                         x_dim.d));
   PADDLE_ENFORCE_LT(axis,
                     x_rank,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Attr(axis) value should be in range [-R, R-1], R is "
                         "the rank of Input(X). But received axis: %d, R: %d. "
                         "Current Input(X)'s shape is=[%s].",
@@ -468,7 +471,7 @@ nvinfer1::DimsExprs PNormInferMeta(
   PADDLE_ENFORCE_EQ(
       asvector,
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "p_norm only support asvector=false, but received asvector: %d.",
           asvector));
 
@@ -496,7 +499,7 @@ nvinfer1::DimsExprs PNormInferMeta(
   }
   x_dim.d[axis] = expr_builder.constant(1);
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   if (keepdim) {
     output = x_dim;
   } else {
@@ -515,7 +518,7 @@ nvinfer1::DimsExprs GridSamplerInferMeta(
   const nvinfer1::DimsExprs x_dims = inputs[0];
   const nvinfer1::DimsExprs grid_dims = inputs[1];
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   if (grid_dims.nbDims == 4) {
     output.nbDims = 4;
     output.d[0] = x_dims.d[0];
@@ -548,7 +551,14 @@ inline const void UpdatePaddingAndDilation(
       paddings_wrap->insert(paddings_wrap->begin() + 2 * i + 1, copy_pad);
     }
   } else {
-    CHECK_EQ(hw_dims.size() == paddings_wrap->size(), true);
+    PADDLE_ENFORCE_EQ(
+        hw_dims.size(),
+        paddings_wrap->size(),
+        phi::errors::InvalidArgument(
+            "Required hw_dims.size() should be equal to paddings_wrap->size(), "
+            "But received hw_dims.size() = %d, paddings_wrap->size() = %d",
+            hw_dims.size(),
+            paddings_wrap->size()));
   }
 
   // when padding_algorithm is "VALID" or "SAME"
@@ -568,8 +578,8 @@ inline const void UpdatePaddingAndDilation(
     }
 
   } else if (padding_algorithm == "VALID") {
-    for (auto it = paddings_wrap->begin(); it != paddings_wrap->end(); it++) {
-      *it = ExprWrapper(0, &expr_builder);
+    for (auto& val : *paddings_wrap) {
+      val = ExprWrapper(0, &expr_builder);
     }
   }
 }
@@ -605,8 +615,8 @@ nvinfer1::DimsExprs FusedConv2dAddActInferMeta(
     padding_algorithm =
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
   if (padding_algorithm == "VALID") {
-    for (size_t i = 0; i < paddings.size(); i++) {
-      paddings[i] = 0;
+    for (auto& padding : paddings) {
+      padding = 0;
     }
   }
 
@@ -642,8 +652,8 @@ nvinfer1::DimsExprs FusedConv2dAddActInferMeta(
   }
 
   std::vector<ExprWrapper> paddings_wrap;
-  for (size_t i = 0; i < paddings.size(); ++i) {
-    paddings_wrap.emplace_back(paddings[i], &expr_builder);
+  for (const auto& padding : paddings) {
+    paddings_wrap.emplace_back(padding, &expr_builder);
   }
 
   UpdatePaddingAndDilation(&paddings_wrap,
@@ -684,7 +694,7 @@ nvinfer1::DimsExprs LookupTableV2InferMeta(
   const auto x_dims = inputs[0];
   const auto weight_dims = inputs[1];
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = x_dims.nbDims + 1;
   for (int i = 0; i < x_dims.nbDims; ++i) {
     output.d[i] = x_dims.d[i];
@@ -699,28 +709,28 @@ nvinfer1::DimsExprs MemoryEfficientAttentionInferMeta(
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
-  PADDLE_ENFORCE_LE(
-      output_index,
-      2,
-      phi::errors::InvalidArgument("memory_efficient_attention only has three "
-                                   "output, but received asvector: %d.",
-                                   output_index));
+  PADDLE_ENFORCE_LE(output_index,
+                    2,
+                    common::errors::InvalidArgument(
+                        "memory_efficient_attention only has three "
+                        "output, but received asvector: %d.",
+                        output_index));
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       8,
-      phi::errors::InvalidArgument("memory_efficient_attention has three "
-                                   "input, but received asvector: %d.",
-                                   nb_inputs));
+      common::errors::InvalidArgument("memory_efficient_attention has three "
+                                      "input, but received asvector: %d.",
+                                      nb_inputs));
   if (output_index == 0) {
     return inputs[0];
   } else if (output_index == 1) {
-    nvinfer1::DimsExprs output;
+    nvinfer1::DimsExprs output = {};
     output.nbDims = 2;
     output.d[0] = inputs[0].d[0];
     output.d[1] = inputs[0].d[2];
     return output;
   } else {
-    nvinfer1::DimsExprs output;
+    nvinfer1::DimsExprs output = {};
     output.nbDims = 1;
     output.d[0] = expr_builder.constant(2);
     return output;
@@ -759,28 +769,85 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
   }
 
-  CHECK_EQ(padding_algorithm == "EXPLICIT", true);
-  CHECK_EQ(data_format == "NCHW", true);
-  CHECK_EQ(output_size.empty(), true);
-  CHECK_EQ(paddings.size() == 2, true);
-  CHECK_EQ(x_dims.nbDims == 4, true);
-  CHECK_EQ(x_dims.nbDims == filter_dims.nbDims, true);
-  CHECK_EQ(output_padding.empty(), true);
+  PADDLE_ENFORCE_EQ(padding_algorithm,
+                    "EXPLICIT",
+                    phi::errors::InvalidArgument(
+                        "Required padding_algorithm should be 'EXPLICIT', "
+                        "but received padding_algorithm: %s.",
+                        padding_algorithm));
+  PADDLE_ENFORCE_EQ(
+      data_format,
+      "NCHW",
+      phi::errors::InvalidArgument("Required data_format should be 'NCHW', "
+                                   "but received data_format: %s.",
+                                   data_format));
+  PADDLE_ENFORCE_EQ(
+      output_size.empty(),
+      true,
+      phi::errors::InvalidArgument("output_size is not empty! Please Check!"));
+  PADDLE_ENFORCE_EQ(paddings.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Required paddings.size() should be equal to 2, "
+                        "but received paddings.size() =  %d.",
+                        paddings.size()));
+  PADDLE_ENFORCE_EQ(x_dims.nbDims,
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Required x_dims.nbDims should be equal to 4, "
+                        "but received x_dims.nbDims =  %d.",
+                        x_dims.nbDims));
+  PADDLE_ENFORCE_EQ(
+      x_dims.nbDims,
+      filter_dims.nbDims,
+      phi::errors::InvalidArgument(
+          "Required x_dims.nbDims should be equal to filter_dims.nbDims, "
+          "but received x_dims.nbDims =  %d, filter_dims.nbDims = %d",
+          x_dims.nbDims,
+          filter_dims.nbDims));
+  PADDLE_ENFORCE_EQ(output_padding.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "output_padding is not empty! Please Check!"));
 
   int stride_size = strides.size();
   for (int i = 0; i < stride_size; ++i) {
-    CHECK_EQ(strides[i] > 0, true);
+    PADDLE_ENFORCE_EQ(strides[i] > 0,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Required strides[i] should be greater than 0",
+                          "but received strides[i] = %d",
+                          strides[i]));
   }
 
   int in_sub_stride_size = x_dims.nbDims - stride_size;
-  CHECK_EQ(in_sub_stride_size == 2, true);
+  PADDLE_ENFORCE_EQ(in_sub_stride_size,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Required in_sub_stride_size should be equal to 2, "
+                        "but received in_sub_stride_size =  %d",
+                        in_sub_stride_size));
 
   if (!output_size.empty()) {
-    CHECK_EQ(output_size.size() == strides.size(), true);
+    PADDLE_ENFORCE_EQ(
+        output_size.size(),
+        strides.size(),
+        phi::errors::InvalidArgument(
+            "Required output_size.size() should be equal to strides.size(), "
+            "but received output_size.size() =  %d, strides.size() = %d",
+            output_size.size(),
+            strides.size()));
   }
 
   if (!output_padding.empty()) {
-    CHECK_EQ(strides.size() == output_padding.size(), true);
+    PADDLE_ENFORCE_EQ(
+        strides.size(),
+        output_padding.size(),
+        phi::errors::InvalidArgument(
+            "Required strides.size should be equal to output_padding.size, "
+            "but received strides.size() =  %d,  output_padding.size() = %d",
+            strides.size(),
+            output_padding.size()));
   }
 
   std::vector<ExprWrapper> output_dims_wrap(x_dims.nbDims);
@@ -815,7 +882,7 @@ nvinfer1::DimsExprs PadInferMeta(
   auto paddings =
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
 
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = x_dims.nbDims;
   for (int i = 0; i < x_dims.nbDims; ++i) {
     output.d[i] = expr_builder.operation(
@@ -838,9 +905,9 @@ nvinfer1::DimsExprs ScatterInferMeta(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       3,
-      phi::errors::InvalidArgument("inputs of scatter should be equal to 3, "
-                                   "But received (%s)",
-                                   nb_inputs));
+      common::errors::InvalidArgument("inputs of scatter should be equal to 3, "
+                                      "But received (%s)",
+                                      nb_inputs));
   const nvinfer1::DimsExprs ref_dims = inputs[0];
   return ref_dims;
 }
@@ -852,7 +919,7 @@ nvinfer1::DimsExprs ArgsortInferMeta(
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
   const nvinfer1::DimsExprs input_dims = inputs[0];
-  nvinfer1::DimsExprs output;
+  nvinfer1::DimsExprs output = {};
   output.nbDims = input_dims.nbDims;
   for (int i = 0; i < input_dims.nbDims; ++i) {
     output.d[i] = input_dims.d[i];
@@ -869,9 +936,9 @@ nvinfer1::DimsExprs SolveInferMeta(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       2,
-      phi::errors::InvalidArgument("inputs of solve should be equal to 2, "
-                                   "But received (%s)",
-                                   nb_inputs));
+      common::errors::InvalidArgument("inputs of solve should be equal to 2, "
+                                      "But received (%s)",
+                                      nb_inputs));
   const nvinfer1::DimsExprs ref_dims = inputs[1];
   return ref_dims;
 }
@@ -896,6 +963,4 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(argsort, ArgsortInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter, ScatterInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(solve, SolveInferMeta);
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

@@ -1005,12 +1005,16 @@ template class MaxPool2dGradFunctor<phi::GPUContext, dtype::bfloat16>;
 
 template class Pool2dFunctor<phi::GPUContext, MaxPool<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<float>, float>;
+template class Pool2dFunctor<phi::GPUContext, LPPool<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<float>, float>;
+template class Pool2dGradFunctor<phi::GPUContext, LPPoolGrad<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, MaxPool<double>, double>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<double>, double>;
+template class Pool2dFunctor<phi::GPUContext, LPPool<double>, double>;
 template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<double>, double>;
+template class Pool2dGradFunctor<phi::GPUContext, LPPoolGrad<double>, double>;
 
 template class Pool2dFunctor<phi::GPUContext,
                              MaxPool<dtype::float16>,
@@ -1018,11 +1022,17 @@ template class Pool2dFunctor<phi::GPUContext,
 template class Pool2dFunctor<phi::GPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
+template class Pool2dFunctor<phi::GPUContext,
+                             LPPool<dtype::float16>,
+                             dtype::float16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  AvgPoolGrad<dtype::float16>,
+                                 dtype::float16>;
+template class Pool2dGradFunctor<phi::GPUContext,
+                                 LPPoolGrad<dtype::float16>,
                                  dtype::float16>;
 template class Pool2dFunctor<phi::GPUContext,
                              MaxPool<dtype::bfloat16>,
@@ -1030,11 +1040,17 @@ template class Pool2dFunctor<phi::GPUContext,
 template class Pool2dFunctor<phi::GPUContext,
                              AvgPool<dtype::bfloat16>,
                              dtype::bfloat16>;
+template class Pool2dFunctor<phi::GPUContext,
+                             LPPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  MaxPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  AvgPoolGrad<dtype::bfloat16>,
+                                 dtype::bfloat16>;
+template class Pool2dGradFunctor<phi::GPUContext,
+                                 LPPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;
 
 template <typename PoolProcess, typename T>
@@ -2745,14 +2761,14 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
     PADDLE_ENFORCE_GE(
         input_height,
         output_height - 1 + pool_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_height [%d] is less than valid output_height [%d]",
             input_height,
             output_height - 1 + pool_height));
     PADDLE_ENFORCE_GE(
         input_width,
         output_width - 1 + pool_width,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_width [%d] is less than valid output_width [%d]",
             input_width,
             output_width - 1 + pool_width));
@@ -3076,21 +3092,21 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
     PADDLE_ENFORCE_GE(
         input_depth,
         output_depth - 1 + pool_depth,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_depth [%d] is less than valid output_depth [%d]",
             input_depth,
             output_depth - 1 + pool_depth));
     PADDLE_ENFORCE_GE(
         input_height,
         output_height - 1 + pool_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_height [%d] is less than valid output_height [%d]",
             input_height,
             output_height - 1 + pool_height));
     PADDLE_ENFORCE_GE(
         input_width,
         output_width - 1 + pool_width,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_width [%d] is less than valid output_width [%d]",
             input_width,
             output_width - 1 + pool_width));

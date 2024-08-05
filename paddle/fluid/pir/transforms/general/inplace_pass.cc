@@ -179,8 +179,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
 }
 
 bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
-  if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
-      0) {
+  if (op->dialect()->name() != paddle::dialect::KernelDialect::name()) {
     VLOG(8) << op->name()
             << "is not a kernel_dialect op, no need buffer is false";
     return false;
@@ -212,14 +211,17 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
 std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
   std::unordered_set<pir::Value> skip_dels;
   for (auto& op : block) {
-    if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
-        0) {
+    if (op.name() == "builtin.shadow_output") {
+      skip_dels.insert(op.operand_source(0));
+      continue;
+    }
+    if (op.dialect()->name() != paddle::dialect::KernelDialect::name()) {
       continue;
     }
     PADDLE_ENFORCE_GT(
         op.attributes().count("op_name"),
         0UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "kernel_dialect op should own an 'op_name' attribute."));
     auto upper_op_name =
         op.attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
@@ -230,8 +232,7 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
       continue;
     }
     // TODO(chenxi67) add logic for shadow_feed_tensors op
-    if (upper_op_name == "pd_op.fetch" ||
-        upper_op_name == "builtin.shadow_output") {
+    if (upper_op_name == "pd_op.fetch") {
       skip_dels.insert(op.operand_source(0));
       continue;
     }
@@ -248,12 +249,11 @@ void GetEagerDelValueOfOp(
     std::unordered_map<pir::Value, pir::Operation*>* del_value_2_op) {
   for (auto& op : block) {
     std::string upper_op_name = op.name();
-    if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
-        0) {
+    if (op.dialect()->name() == paddle::dialect::KernelDialect::name()) {
       PADDLE_ENFORCE_GT(
           op.attributes().count("op_name"),
           0UL,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "kernel_dialect op should own an 'op_name' attribute."));
       upper_op_name = op.attributes()
                           .at("op_name")
@@ -329,8 +329,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       use_count_map[op.operand_source(i)]--;
     }
 
-    if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
-        0) {
+    if (op.dialect()->name() != paddle::dialect::KernelDialect::name()) {
       VLOG(6) << op.name()
               << "is not a kernel_dialect op, inplace only support "
                  "kernel_dialect operators";
@@ -419,7 +418,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
             .GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
     PADDLE_ENFORCE_NOT_NULL(
         upper_inplace_op_interface,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "can not find OpYamlInfoInterface from [%s]", upper_op_name + "_"));
     paddle::dialect::OpYamlInfoParser upper_inplace_op_info_parser(
         upper_inplace_op_interface->get_op_info_(upper_op_name + "_"));
@@ -514,8 +513,8 @@ class InplacePass : public pir::Pass {
           PADDLE_ENFORCE_NE(
               insert_pos,
               block.end(),
-              phi::errors::InvalidArgument("Operator %s not found in block.",
-                                           kv.first->name()));
+              common::errors::InvalidArgument("Operator %s not found in block.",
+                                              kv.first->name()));
 
           kv.first->set_attribute(
               "op_name",

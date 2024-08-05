@@ -21,12 +21,12 @@
 #include <string>
 
 #include "Eigen/Dense"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/common_table.h"
 #include "paddle/fluid/distributed/ps/table/depends/dense.h"
 #include "paddle/fluid/distributed/ps/table/depends/initializers.h"
 #include "paddle/utils/string/string_helper.h"
-
 namespace paddle {
 namespace distributed {
 
@@ -53,7 +53,7 @@ class MemoryDenseTable : public Table {
 
   int32_t Load(const std::string& path, const std::string& param) override;
   int32_t Save(const std::string& path, const std::string& param) override;
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   int32_t Save_v2(const std::string& path, const std::string& param) override {
     return 0;
   }

@@ -49,13 +49,15 @@ void DealWithCpuIntrinsics(ir::Call *node, Expr *expr) {
     PADDLE_ENFORCE_GE(
         node->read_args.size(),
         1UL,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of node's read args is incorrect."
             "Expected size is greater than or equal to 1, but receive %d.",
             node->read_args.size()));
-    CHECK(node->read_args.front().type().is_float())
-        << "CPU extern call intrinsics only support float now! Please "
-           "check.";
+    PADDLE_ENFORCE_EQ(
+        node->read_args.front().type().is_float(),
+        true,
+        phi::errors::InvalidArgument("CPU extern call intrinsics only support "
+                                     "float now! Please check."));
     if (node->read_args.front().type().is_float(32)) {
       auto out_type = node->type();
       *expr = lang::CallExtern(node->name + "f", node->read_args);
@@ -74,8 +76,7 @@ void DealWithIntrinsicsImpl(common::X86Arch, ir::Call *node, Expr *expr) {
 void DealWithIntrinsicsImpl(common::ARMArch, ir::Call *node, Expr *expr) {
   DealWithCpuIntrinsics(node, expr);
 }
-
-void DealWithIntrinsicsImpl(common::NVGPUArch, ir::Call *node, Expr *expr) {
+void DealWithIntrinsicsNvHygon(ir::Call *node, Expr *expr) {
   auto arg_size = node->read_args.size();
   if (arg_size == 0UL) {
     // some node like __syncthreads hasn't arguments
@@ -93,6 +94,16 @@ void DealWithIntrinsicsImpl(common::NVGPUArch, ir::Call *node, Expr *expr) {
   std::string extern_func =
       hlir::GetExternFuncName(cinn::common::DefaultDeviceTarget(), dtype, name);
   *expr = lang::CallExtern(extern_func, node->read_args, node->attrs);
+}
+
+void DealWithIntrinsicsImpl(common::NVGPUArch, ir::Call *node, Expr *expr) {
+  DealWithIntrinsicsNvHygon(node, expr);
+}
+
+void DealWithIntrinsicsImpl(common::HygonDCUArchHIP,
+                            ir::Call *node,
+                            Expr *expr) {
+  DealWithIntrinsicsNvHygon(node, expr);
 }
 
 void DealWithIntrinsics(common::Arch arch, ir::Call *node, Expr *expr) {
@@ -113,7 +124,11 @@ void MapExternCall(Expr *e, Target target) {
 
     void Visit(const ir::Call *op, Expr *expr) override {
       auto *node = expr->As<ir::Call>();
-      CHECK(node);
+      PADDLE_ENFORCE_NOT_NULL(
+          node,
+          phi::errors::InvalidArgument(
+              "The expression could not be cast to ir::Call. Please check the "
+              "expression type."));
       OptimizeConstantPow(node);
       DealWithIntrinsics(target.arch, node, expr);
     }

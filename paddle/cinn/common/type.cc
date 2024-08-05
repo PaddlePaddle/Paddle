@@ -137,7 +137,10 @@ Type Type::ElementOf() const {
 }
 
 void Type::CheckTypeValid() const {
-  CHECK_NE(GetStorage().type_, type_t::Unk);
+  PADDLE_ENFORCE_NE(
+      GetStorage().type_,
+      type_t::Unk,
+      ::common::errors::InvalidArgument("The type is not initialized."));
   if (GetStorage().type_ == type_t::Float && GetStorage().bits_ == 16) {
     CHECK(GetStorage().specific_type_ == specific_type_t::FP16 ||
           GetStorage().specific_type_ == specific_type_t::BF16)
@@ -602,7 +605,7 @@ std::string Type2Str(const Type &type) {
     default:
       std::stringstream ss;
       ss << "Not support type [" << type << "] ! Please Check.\n";
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return "unk";
 }

@@ -14,7 +14,16 @@
 
 """ Define stub used in quantization."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from ..layer.layers import Layer
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.quantization import QuantConfig
+    from paddle.quantization.factory import QuanterFactory
 
 
 class Stub(Layer):
@@ -66,11 +75,11 @@ class Stub(Layer):
             )
     """
 
-    def __init__(self, observer=None):
+    def __init__(self, observer: QuanterFactory | None = None) -> None:
         super().__init__()
         self._observer = observer
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return input
 
 
@@ -86,7 +95,7 @@ class QuanterStub(Layer):
         q_config(QuantConfig): The quantization configuration for the current stub layer.
     """
 
-    def __init__(self, layer: Stub, q_config):
+    def __init__(self, layer: Stub, q_config: QuantConfig) -> None:
         super().__init__()
         self._observer = None
         if layer._observer is not None:
@@ -94,5 +103,5 @@ class QuanterStub(Layer):
         elif q_config.activation is not None:
             self._observer = q_config.activation._instance(layer)
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return self._observer(input) if self._observer is not None else input

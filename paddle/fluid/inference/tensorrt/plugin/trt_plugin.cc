@@ -14,10 +14,7 @@
 
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
-namespace plugin {
+namespace paddle::inference::tensorrt::plugin {
 
 inline void Serialize(void*& buffer,  // NOLINT
                       const std::vector<nvinfer1::Dims>& input_dims,
@@ -139,7 +136,4 @@ const char* TensorRTPluginCreator::getPluginNamespace() const TRT_NOEXCEPT {
   return plugin_namespace_.c_str();
 }
 
-}  // namespace plugin
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt::plugin

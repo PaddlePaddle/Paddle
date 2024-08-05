@@ -20,9 +20,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                      \
@@ -212,7 +210,7 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
     PADDLE_ENFORCE_NE(
         subgraph.count(x),
         0,
-        platform::errors::NotFound("Detector did not find input x of conv2d."));
+        common::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 
     IR_NODE_LINK_TO(conv_in_node, new_conv_op);            // Input
@@ -236,9 +234,7 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(conv_elementwise_add2_act_fuse_pass,
               paddle::framework::ir::ConvElementwiseAdd2ActFusePass);

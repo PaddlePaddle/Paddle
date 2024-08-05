@@ -16,8 +16,11 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -27,6 +30,11 @@ void IndexSelectStridedKernel(const Context& ctx,
                               int64_t index,
                               int dim,
                               DenseTensor* output) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
   auto input_dim = x.dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
 
@@ -44,7 +52,8 @@ void IndexSelectStridedKernel(const Context& ctx,
   auto tmp_dim = DDim(shape.data(), static_cast<int>(shape.size()));
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
-  //       phi::errors::Fatal("Index_select kernel stride compute diff, infer "
+  //       common::errors::Fatal("Index_select kernel stride compute diff, infer
+  //       "
   //                          "shape is %s, but compute is %s.",
   //                          meta.dims,
   //                          tmp_dim));

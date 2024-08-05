@@ -24,8 +24,7 @@
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 #define CHECK_TABLE_EXIST(table, request, response)        \
   if (table == NULL) {                                     \
@@ -43,7 +42,7 @@ int32_t GraphBrpcServer::Initialize() {
   }
   auto *service =
       CREATE_PSCORE_CLASS(PsBaseService, service_config.service_class());
-  if (service == NULL) {
+  if (service == nullptr) {
     LOG(ERROR) << "service is unregistered, service_name:"
                << service_config.service_class();
     return -1;
@@ -446,7 +445,7 @@ int32_t GraphBrpcService::graph_random_sample_nodes(
           type_id, idx_, size, buffer, actual_size) == 0) {
     cntl->response_attachment().append(buffer.get(), actual_size);
   } else {
-    cntl->response_attachment().append(NULL, 0);
+    cntl->response_attachment().append(nullptr, 0);
   }
 
   return 0;
@@ -598,9 +597,9 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
       if (fail_num > 0 && failed[seq[i]]) {
         continue;
       } else if (static_cast<size_t>(request2server[seq[i]]) != rank) {
-        char temp[actual_size[i] + 1];
-        res[seq[i]]->copy_and_forward(temp, actual_size[i]);
-        cntl->response_attachment().append(temp, actual_size[i]);
+        std::vector<char> temp(actual_size[i] + 1);
+        res[seq[i]]->copy_and_forward(temp.data(), actual_size[i]);
+        cntl->response_attachment().append(temp.data(), actual_size[i]);
       } else {
         char *temp = local_buffers[local_index++].get();
         cntl->response_attachment().append(temp, actual_size[i]);
@@ -704,5 +703,4 @@ int32_t GraphBrpcService::graph_set_node_feat(Table *table,
   return 0;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

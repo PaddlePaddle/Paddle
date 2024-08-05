@@ -34,14 +34,14 @@ def conv2d_forward_naive(
 ):
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
-            "Unknown Attr(padding_algorithm): '%s'. "
-            "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            f"Unknown Attr(padding_algorithm): '{padding_algorithm}'. "
+            "It can only be 'SAME' or 'VALID'."
         )
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
-            "Unknown Attr(data_format): '%s' ."
-            "It can only be 'NCHW' or 'NHWC'." % str(data_format)
+            f"Unknown Attr(data_format): '{data_format}' ."
+            "It can only be 'NCHW' or 'NHWC'."
         )
 
     channel_last = data_format == "NHWC"
@@ -738,7 +738,7 @@ class TestConv2DOpError(unittest.TestCase):
                 x1 = base.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
                 )
-                paddle.static.nn.conv2d(x1, 1, 1)
+                paddle.nn.Conv2D(x1.shape[1], 1, 1)(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
@@ -748,7 +748,7 @@ class TestConv2DOpError(unittest.TestCase):
                 x2 = paddle.static.data(
                     name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                 )
-                paddle.static.nn.conv2d(x2, 1, 1)
+                paddle.nn.Conv2D(x2.shape[1], 1, 1)(x2)
 
             self.assertRaises(TypeError, test_dtype)
 

@@ -33,8 +33,6 @@ class IrSparseCooTensor
                     const common::DDim& dims,
                     common::DDim non_zero_dims,
                     common::DataLayout layout,
-                    pir::DenseTensorType non_zero_indices,
-                    pir::DenseTensorType non_zero_elements,
                     bool coalesced = false);
   IrSparseCooTensor(IrSparseCooTensor&& other) = default;
 
@@ -71,18 +69,6 @@ class IrSparseCooTensor
 
   void SetLayout(common::DataLayout layout) { layout_ = layout; }
 
-  pir::DenseTensorType non_zero_indices() const { return non_zero_indices_; }
-
-  void SetNonZeroIndices(pir::DenseTensorType non_zero_indices) {
-    non_zero_indices_ = non_zero_indices;
-  }
-
-  pir::DenseTensorType non_zero_elements() const { return non_zero_elements_; }
-
-  void SetNonZeroElements(pir::DenseTensorType non_zero_elements) {
-    non_zero_elements_ = non_zero_elements;
-  }
-
   bool coalesced() const { return coalesced_; }
 
   void SetCoalesced(bool coalesced) { coalesced_ = coalesced; }
@@ -101,8 +87,6 @@ class IrSparseCooTensor
   common::DDim non_zero_dims_;
   phi::DataType dtype_{phi::DataType::FLOAT32};
   common::DataLayout layout_{common::DataLayout::ANY};
-  pir::DenseTensorType non_zero_indices_;
-  pir::DenseTensorType non_zero_elements_;
   bool coalesced_ = false;
 };
 
@@ -185,13 +169,25 @@ class IrSparseCsrTensor
 
 inline SparseCooTensorType CvtToSparseCooTensorType(
     const IrSparseCooTensor& ir_tensor) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  phi::DataLayout data_layout = phi::DataLayout::UNDEFINED;
+  phi::LoD lod = {};
+  phi::DDim dims = {};
+  size_t offset = 0;
+  pir::DenseTensorType non_zero_indices = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+
+  pir::DenseTensorType non_zero_elements = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+
   return SparseCooTensorType::get(pir::IrContext::Instance(),
                                   TransToIrDataType(ir_tensor.dtype()),
                                   ir_tensor.dims(),
                                   ir_tensor.non_zero_dims(),
                                   ir_tensor.layout(),
-                                  ir_tensor.non_zero_indices(),
-                                  ir_tensor.non_zero_elements(),
+                                  non_zero_indices,
+                                  non_zero_elements,
                                   ir_tensor.coalesced());
 }
 

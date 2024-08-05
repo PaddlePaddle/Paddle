@@ -55,13 +55,14 @@ class TestLayer(TestBase):
                 shape=(-1, -1, -1, -1),
                 dtype=paddle.float32,
                 name=None,
-                stop_gradient=True,
+                stop_gradient=False,
             )
         ]
         self.inputs = (
             paddle.rand(shape=[10, 512, 7, 7], dtype=paddle.float32),
         )
-        self.net = LayerCase()
+        self.net = LayerCase
+        self.with_train = False
 
 
 if __name__ == '__main__':

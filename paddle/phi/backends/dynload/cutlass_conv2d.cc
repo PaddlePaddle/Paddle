@@ -16,8 +16,7 @@
 #include <string>
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace dynload {
+namespace phi::dynload {
 
 std::once_flag cutlass_dso_flag;
 void* cutlass_dso_handle;
@@ -36,7 +35,7 @@ void* GetCutlassConv2dHandle() {
 
     PADDLE_ENFORCE_NOT_NULL(
         cutlass_dso_handle,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "libCutlassConv2d.so is needed, "
             "but libCutlassConv2d.so is not found.\n"
             "  Suggestions:\n"
@@ -53,5 +52,4 @@ void* GetCutlassConv2dHandle() {
   return cutlass_dso_handle;
 }
 
-}  // namespace dynload
-}  // namespace phi
+}  // namespace phi::dynload

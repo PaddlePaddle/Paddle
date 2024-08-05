@@ -72,6 +72,17 @@ void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
              tensor_list) {
           VisitEachDimExprFromTensorShapeOrData(tensor_shape_or_data, DoEach);
         }
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs& tensor_array) {
+        PADDLE_THROW(::common::errors::Fatal(
+            "Dead code, TensorArray should not be handled in backend."));
+        for (const symbol::DimExpr& dim_expr : tensor_array.GetShapeHint()) {
+          DoEach(dim_expr);
+        }
+        return;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
+        return;
       }};
   return std::visit(lambdas, shape_or_data.variant());
 }
@@ -149,7 +160,7 @@ void InferSymbolicShapeForOperation(
   if (infer_symbolic_shape_interface) {
     infer_symbolic_shape_interface.InferSymbolicShape(infer_context);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(::common::errors::Unimplemented(
         op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   }
 }

@@ -38,8 +38,7 @@ limitations under the License. */
 
 COMMON_DECLARE_int32(low_precision_op_list);
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 ////////////////// Forward api impls //////////////////////
 
@@ -175,7 +174,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
                             std::vector<phi::distributed::TensorDistAttr>>(
                             spmd_info.first[0]),
                         true,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Arg must be a vector of TensorDistAttr"));
 
       auto current_process_mesh =
@@ -560,5 +559,4 @@ void embedding_grad_impl(const Tensor& x,
   }
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental
