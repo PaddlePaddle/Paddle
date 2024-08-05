@@ -219,9 +219,10 @@ Json serializeAttrToJson<paddle::dialect::TensorDistAttribute>(
       attr.process_mesh_attr()));
   content.push_back(attr.dims_mapping());
 
-  Json map_json;
+  Json map_json = Json::array();
   for (const auto& [key, value] : attr.partial_status()) {
-    map_json[key] = value;
+    map_json.push_back(
+        std::vector<int64_t>({key, static_cast<int64_t>(value)}));
   }
   content.push_back(map_json);
 
