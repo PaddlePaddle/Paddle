@@ -47,7 +47,7 @@ DrrRewritePattern::DrrRewritePattern(
       drr_pattern_owner_(std::move(drr_pattern_owner)) {
   PADDLE_ENFORCE_NE(source_pattern_graph_->owned_op_call().empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Source pattern graph is empty. Suggested fix: please "
                         "check the drr source pattern definition code."));
   if (VLOG_IS_ON(4)) {
@@ -427,7 +427,7 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     PADDLE_ENFORCE_EQ(
         step,
         source_pattern_graph.CountOfOpCalls(),
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Pattern matching failed. The number of successful matches and the "
             "number of OpCalls in the source pattern graph are not equal."));
   } else {
@@ -477,7 +477,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     PADDLE_ENFORCE_NE(
         result_pattern_graph.id2owned_tensor().count(in_tensor),
         0,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Not found the input tensor. Drr input tensor [%s] must exist in "
             "the result pattern graph to be obtained.",
             in_tensor));

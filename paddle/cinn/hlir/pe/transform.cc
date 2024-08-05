@@ -45,8 +45,14 @@ std::vector<std::vector<int>> GetMatmulNewShapes(
                     ::common::errors::InvalidArgument(
                         "The matmul should only have two inputs."));
   const auto &x_shape = inputs_shape[0], &y_shape = inputs_shape[1];
-  CHECK(!x_shape.empty()) << "The shape of matmul input 'x' should not empty.";
-  CHECK(!y_shape.empty()) << "The shape of matmul input 'y' should not empty.";
+  PADDLE_ENFORCE_EQ(!x_shape.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The shape of matmul input 'x' should not empty."));
+  PADDLE_ENFORCE_EQ(!y_shape.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The shape of matmul input 'y' should not empty."));
 
   auto matmul_info = [&]() {
     std::stringstream ss;
@@ -85,10 +91,12 @@ std::vector<std::vector<int>> GetMatmulNewShapes(
 
   if (max_dim == 1) {
     // vector * vector
-    CHECK(x_shape[0] == y_shape[0])
-        << "The matmul input X's numbers must be equal to Y's numbers,when "
-           "X/Y's dims =1. But here "
-        << matmul_info();
+    PADDLE_ENFORCE_EQ(x_shape[0] == y_shape[0],
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The matmul input X's numbers must be equal to Y's "
+                          "numbers,when X/Y's dims =1. But here %s.",
+                          matmul_info()));
 
     new_x_shape = trans_x ? std::vector<int>{x_shape[0], 1}
                           : std::vector<int>{1, x_shape[0]};
@@ -181,10 +189,13 @@ std::vector<std::vector<int>> GetMatmulNewShapes(
     // get the batch dimension after broadcast
     int x_pos = x_dim - 3, y_pos = y_dim - 3, out_pos = max_dim - 3;
     while (x_pos >= 0 && y_pos >= 0) {
-      CHECK(x_shape[x_pos] == y_shape[y_pos] || x_shape[x_pos] == 1 ||
-            y_shape[y_pos] == 1)
-          << "Input X and Y's batch dimension should be same or 1. But here "
-          << matmul_info();
+      PADDLE_ENFORCE_EQ(
+          x_shape[x_pos] == y_shape[y_pos] || x_shape[x_pos] == 1 ||
+              y_shape[y_pos] == 1,
+          true,
+          ::common::errors::InvalidArgument("Input X and Y's batch dimension "
+                                            "should be same or 1. But here %s.",
+                                            matmul_info()));
 
       out_shape[out_pos] =
           (x_shape[x_pos] == 1) ? y_shape[y_pos] : x_shape[x_pos];
@@ -215,8 +226,14 @@ std::vector<std::vector<int>> GetMulNewShapes(
                     ::common::errors::InvalidArgument(
                         "The mul should only have two inputs."));
   const auto &x_shape = inputs_shape[0], &y_shape = inputs_shape[1];
-  CHECK(!x_shape.empty()) << "The shape of mul input 'x' should not empty.";
-  CHECK(!y_shape.empty()) << "The shape of mul input 'y' should not empty.";
+  PADDLE_ENFORCE_EQ(!x_shape.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The shape of matmul input 'x' should not empty."));
+  PADDLE_ENFORCE_EQ(!y_shape.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The shape of matmul input 'y' should not empty."));
 
   auto mul_info = [&]() {
     std::stringstream ss;
@@ -294,10 +311,16 @@ std::vector<Tensor> Matmul(const Tensor& A,
   std::vector<Expr> shape_B = B->shape;
   int a_dim = shape_A.size();
   int b_dim = shape_B.size();
-  CHECK(a_dim == 3U || a_dim == 2U)
-      << "tensor_A's dim should be 2 or 3 while current dim is " << a_dim;
-  CHECK(b_dim == 3U || b_dim == 2U)
-      << "tensor_B's dim should be 2 or 3 while current dim is " << b_dim;
+  PADDLE_ENFORCE_EQ(
+      a_dim == 3U || a_dim == 2U,
+      true,
+      ::common::errors::InvalidArgument(
+          "Tensor_A's dim should be 2 or 3 while current dim is %d.", a_dim));
+  PADDLE_ENFORCE_EQ(
+      b_dim == 3U || b_dim == 2U,
+      true,
+      ::common::errors::InvalidArgument(
+          "Tensor_B's dim should be 2 or 3 while current dim is %d.", b_dim));
   PADDLE_ENFORCE_EQ(a_dim,
                     b_dim,
                     ::common::errors::InvalidArgument(
@@ -307,8 +330,11 @@ std::vector<Tensor> Matmul(const Tensor& A,
   Expr y_height = trans_b ? shape_B.back() : shape_B[b_dim - 2];
   Expr M = trans_a ? shape_A.back() : shape_A[a_dim - 2];
   Expr N = trans_b ? shape_B[b_dim - 2] : shape_B.back();
-  CHECK(is_zero(x_width - y_height))
-      << "matrix multiplication requires x_width to be same with y_height";
+  PADDLE_ENFORCE_EQ(
+      is_zero(x_width - y_height),
+      true,
+      ::common::errors::InvalidArgument(
+          "Matrix multiplication requires x_width to be same with y_height."));
   std::vector<Expr> output_shape;
   std::vector<ir::Tensor> out;
   if (a_dim == 3) {
@@ -324,8 +350,12 @@ std::vector<Tensor> Matmul(const Tensor& A,
         int out_dim = indice.size();
         std::vector<Expr> A_indice;
         std::vector<Expr> B_indice;
-        CHECK(out_dim == 3U || out_dim == 2U)
-            << "indice size should be 2 or 3 while current dim is " << out_dim;
+        PADDLE_ENFORCE_EQ(
+            out_dim == 3U || out_dim == 2U,
+            true,
+            ::common::errors::InvalidArgument(
+                "Indice size should be 2 or 3 while current dim is %d.",
+                out_dim));
         if (out_dim == 3U) {
           // batch
           A_indice.push_back(indice[0]);
@@ -435,9 +465,13 @@ ir::Tensor Concat(const std::vector<ir::Tensor>& input_tensors,
                         "Concat should have at least 1 input tensors"));
   std::vector<Expr> output_shape = input_tensors[0]->shape;
   int input_dim = output_shape.size();
-  CHECK(axis >= -input_dim && axis < input_dim)
-      << "Concat's axis should be in [-R, R)"
-      << ", but get axis: " << axis << ", R: " << input_dim;
+  PADDLE_ENFORCE_EQ(
+      axis >= -input_dim && axis < input_dim,
+      true,
+      ::common::errors::InvalidArgument(
+          "Concat's axis should be in [-R, R), but get axis: %d, R: %d.",
+          axis,
+          input_dim));
   if (axis < 0) axis += output_shape.size();
 
   for (int i = 1; i < input_size; i++) {
@@ -482,10 +516,16 @@ std::vector<Tensor> MatmulV2(const Tensor& A,
   std::vector<Expr> shape_B = B->shape;
   int a_dim = shape_A.size();
   int b_dim = shape_B.size();
-  CHECK(a_dim == 3U || a_dim == 2U)
-      << "tensor_A's dim should be 2 or 3 while current dim is " << a_dim;
-  CHECK(b_dim == 3U || b_dim == 2U)
-      << "tensor_B's dim should be 2 or 3 while current dim is " << b_dim;
+  PADDLE_ENFORCE_EQ(
+      a_dim == 3U || a_dim == 2U,
+      true,
+      ::common::errors::InvalidArgument(
+          "Tensor_A's dim should be 2 or 3 while current dim is %d.", a_dim));
+  PADDLE_ENFORCE_EQ(
+      b_dim == 3U || b_dim == 2U,
+      true,
+      ::common::errors::InvalidArgument(
+          "Tensor_B's dim should be 2 or 3 while current dim is %d.", b_dim));
   PADDLE_ENFORCE_EQ(a_dim,
                     b_dim,
                     ::common::errors::InvalidArgument(
@@ -495,8 +535,11 @@ std::vector<Tensor> MatmulV2(const Tensor& A,
   Expr y_height = trans_b ? shape_B.back() : shape_B[b_dim - 2];
   Expr M = trans_a ? shape_A.back() : shape_A[a_dim - 2];
   Expr N = trans_b ? shape_B[b_dim - 2] : shape_B.back();
-  CHECK(is_zero(x_width - y_height))
-      << "matrix multiplication requires x_width to be same with y_height";
+  PADDLE_ENFORCE_EQ(
+      is_zero(x_width - y_height),
+      true,
+      ::common::errors::InvalidArgument(
+          "Matrix multiplication requires x_width to be same with y_height."));
   Var reduce_k(x_width, UniqName("reduce_k"));
   std::vector<Expr> output_shape;
   std::vector<ir::Tensor> out;
@@ -544,8 +587,12 @@ std::vector<Tensor> MatmulV2(const Tensor& A,
         std::vector<Expr> indice_a;
         std::vector<Expr> indice_b;
         int out_dim = indice.size();
-        CHECK(out_dim == 3U || out_dim == 2U)
-            << "indice size should be 2 or 3 while current dim is " << out_dim;
+        PADDLE_ENFORCE_EQ(
+            out_dim == 3U || out_dim == 2U,
+            true,
+            ::common::errors::InvalidArgument(
+                "Indice size should be 2 or 3 while current dim is %d.",
+                out_dim));
         if (out_dim == 3) {
           // batch
           indice_a.push_back(indice[0]);
@@ -578,16 +625,24 @@ std::vector<Tensor> MatmulMKL(const Tensor& A,
                               float alpha,
                               const std::string& name,
                               const cinn::common::Target& target) {
-  CHECK(std::holds_alternative<common::X86Arch>(target.arch))
-      << "mkl should be used in the cpu environment";
+  PADDLE_ENFORCE_EQ(std::holds_alternative<common::X86Arch>(target.arch),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Mkl should be used in the cpu environment."));
   std::vector<Expr> shape_A = A->shape;
   std::vector<Expr> shape_B = B->shape;
   int a_dim = shape_A.size();
   int b_dim = shape_B.size();
-  CHECK(a_dim == 3U || a_dim == 2U)
-      << "tensor_A's dim should be 2 or 3 while current dim is " << a_dim;
-  CHECK(b_dim == 3U || b_dim == 2U)
-      << "tensor_B's dim should be 2 or 3 while current dim is " << b_dim;
+  PADDLE_ENFORCE_EQ(
+      a_dim == 3U || a_dim == 2U,
+      true,
+      ::common::errors::InvalidArgument(
+          "Tensor_A's dim should be 2 or 3 while current dim is %d.", a_dim));
+  PADDLE_ENFORCE_EQ(
+      b_dim == 3U || b_dim == 2U,
+      true,
+      ::common::errors::InvalidArgument(
+          "Tensor_B's dim should be 2 or 3 while current dim is %d.", b_dim));
   PADDLE_ENFORCE_EQ(a_dim,
                     b_dim,
                     ::common::errors::InvalidArgument(
@@ -603,8 +658,11 @@ std::vector<Tensor> MatmulMKL(const Tensor& A,
   Expr y_height = trans_b ? shape_B.back() : shape_B[b_dim - 2];
   Expr M = trans_a ? shape_A.back() : shape_A[a_dim - 2];
   Expr N = trans_b ? shape_B[b_dim - 2] : shape_B.back();
-  CHECK(is_zero(x_width - y_height))
-      << "matrix multiplication requires x_width to be same with y_height";
+  PADDLE_ENFORCE_EQ(
+      is_zero(x_width - y_height),
+      true,
+      ::common::errors::InvalidArgument(
+          "Matrix multiplication requires x_width to be same with y_height."));
 
   ir::Tensor call;
   if (a_dim == 2U) {
@@ -854,8 +912,10 @@ std::vector<Tensor> MulMKL(const Tensor& A,
                            const Tensor& B,
                            const std::string& name,
                            const cinn::common::Target& target) {
-  CHECK(std::holds_alternative<cinn::common::X86Arch>(target.arch))
-      << "mkl should be used in the cpu environment";
+  PADDLE_ENFORCE_EQ(std::holds_alternative<cinn::common::X86Arch>(target.arch),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Mkl should be used in the cpu environment."));
   std::vector<Expr> shape_A = A->shape;
   std::vector<Expr> shape_B = B->shape;
   int a_dim = shape_A.size();
@@ -877,8 +937,11 @@ std::vector<Tensor> MulMKL(const Tensor& A,
   Expr y_height = shape_B[1];
   Expr M = shape_A[0];
   Expr N = shape_B[0];
-  CHECK(is_zero(x_width - y_height))
-      << "matrix multiplication requires x_width to be same with y_height";
+  PADDLE_ENFORCE_EQ(
+      is_zero(x_width - y_height),
+      true,
+      ::common::errors::InvalidArgument(
+          "Matrix multiplication requires x_width to be same with y_height."));
   PADDLE_ENFORCE_EQ(A->shape[1],
                     B->shape[1],
                     ::common::errors::InvalidArgument(
@@ -937,14 +1000,26 @@ void GetLayoutTransformInfo(
                             "sub-axis factor should be larger than 0"));
       int src_primal_index = src_layout.axis_names().find(prim_axis_name);
       int dst_primal_index = dst_layout.axis_names().find(prim_axis_name);
-      CHECK(src_primal_index != src_layout.axis_names().npos);
-      CHECK(dst_primal_index != dst_layout.axis_names().npos);
+      PADDLE_ENFORCE_EQ(
+          src_primal_index != src_layout.axis_names().npos,
+          true,
+          ::common::errors::InvalidArgument(
+              "Src primal index should not be equal to src layout npos."));
+      PADDLE_ENFORCE_EQ(
+          dst_primal_index != dst_layout.axis_names().npos,
+          true,
+          ::common::errors::InvalidArgument(
+              "Dst primal index should not be equal to dst layout npos."));
       (*split_index_map)[src_primal_index] = {dst_primal_index, i, factor};
     } else {
       int src_primal_index = src_layout.axis_names().find(prim_axis_name);
       if (split_index_map->find(src_primal_index) != split_index_map->end())
         continue;
-      CHECK(src_primal_index != src_layout.axis_names().npos);
+      PADDLE_ENFORCE_EQ(
+          src_primal_index != src_layout.axis_names().npos,
+          true,
+          ::common::errors::InvalidArgument(
+              "Src primal index should not be equal to src layout npos."));
       (*split_index_map)[src_primal_index] = {i};
     }
   }
@@ -972,7 +1047,11 @@ std::vector<Expr> InferShapeLayoutTransform(
   } else if (src_dim < dst_dim) {
     GetLayoutTransformInfo(old_layout, new_layout, split_index_map);
     for (int i = 0; i < src_dim; i++) {
-      CHECK(split_index_map->find(i) != split_index_map->end());
+      PADDLE_ENFORCE_EQ(
+          split_index_map->find(i) != split_index_map->end(),
+          true,
+          ::common::errors::InvalidArgument(
+              "Spilt index map found should not be equal to end."));
       if ((*split_index_map)[i].size() == 3) {
         int dst_prim_index = (*split_index_map)[i][0];
         int dst_sub_index = (*split_index_map)[i][1];
@@ -989,7 +1068,11 @@ std::vector<Expr> InferShapeLayoutTransform(
   } else {
     GetLayoutTransformInfo(new_layout, old_layout, split_index_map);
     for (int i = 0; i < dst_dim; i++) {
-      CHECK(split_index_map->find(i) != split_index_map->end());
+      PADDLE_ENFORCE_EQ(
+          split_index_map->find(i) != split_index_map->end(),
+          true,
+          ::common::errors::InvalidArgument(
+              "Spilt index map found should not be equal to end."));
       if ((*split_index_map)[i].size() == 3) {
         int src_prim_index = (*split_index_map)[i][0];
         int src_sub_index = (*split_index_map)[i][1];
@@ -1020,8 +1103,11 @@ ir::Tensor LayoutTransform(const Tensor& input,
                            const std::string& src_layout,
                            const std::string& dst_layout,
                            const std::string& name) {
-  CHECK(src_layout != dst_layout)
-      << "dst_layout is same with src_layout, should not do layout transform";
+  PADDLE_ENFORCE_EQ(
+      src_layout != dst_layout,
+      true,
+      ::common::errors::InvalidArgument("Dst layout is same with src_layout, "
+                                        "should not do layout transform."));
   // NCHW -> NCHWxc
   // NCHWxc -> NCHW
   // OIHW -> OIHWxixo
@@ -1055,7 +1141,11 @@ ir::Tensor LayoutTransform(const Tensor& input,
         std::vector<Expr> new_indice(src_dim);
         int min_dim = std::min(src_dim, dst_dim);
         for (int i = 0; i < min_dim; i++) {
-          CHECK(split_index_map.find(i) != split_index_map.end());
+          PADDLE_ENFORCE_EQ(
+              split_index_map.find(i) != split_index_map.end(),
+              true,
+              ::common::errors::InvalidArgument(
+                  "Spilt index map found should not be equal to end."));
           std::vector<int> split_infos = split_index_map.at(i);
           if (split_infos.size() == 3) {
             int prim_index = split_infos[0];
@@ -1092,8 +1182,10 @@ ir::Tensor Reverse(const ir::Tensor& input,
                    const std::vector<int>& axis,
                    const std::string& output_name) {
   for (auto& val : axis) {
-    CHECK(val >= 0 && val < static_cast<int>(input->shape.size()))
-        << "axis should be [0,n_dim)";
+    PADDLE_ENFORCE_EQ(
+        val >= 0 && val < static_cast<int>(input->shape.size()),
+        true,
+        ::common::errors::InvalidArgument("Axis should be [0,n_dim)."));
   }
   std::vector<Expr> shape = input->shape;
   return lang::Compute(
@@ -1116,8 +1208,10 @@ ir::Tensor Transpose(const ir::Tensor& input,
                     ::common::errors::InvalidArgument(
                         "input shape size and axis size is not equal!"));
   for (int idx = 0; idx < axis.size(); ++idx) {
-    CHECK(axis[idx] >= 0 && axis[idx] < axis.size())
-        << "axis value should be among [0,axis.size())";
+    PADDLE_ENFORCE_EQ(axis[idx] >= 0 && axis[idx] < axis.size(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Axis value should be among [0,axis.size())."));
     for (int idy = idx + 1; idy < axis.size(); ++idy) {
       PADDLE_ENFORCE_NE(
           axis[idx],

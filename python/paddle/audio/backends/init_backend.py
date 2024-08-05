@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import sys
 import warnings
-from typing import List
 
 import paddle
 
@@ -34,11 +35,11 @@ def _check_version(version: str) -> bool:
     return True
 
 
-def list_available_backends() -> List[str]:
+def list_available_backends() -> list[str]:
     """List available backends, the backends in paddleaudio and the default backend.
 
     Returns:
-        List[str]: The list of available backends.
+        list[str]: The list of available backends.
 
     Examples:
         .. code-block:: python
@@ -136,7 +137,7 @@ def get_current_backend() -> str:
     return "wave_backend"
 
 
-def set_backend(backend_name: str):
+def set_backend(backend_name: str) -> None:
     """Set the backend by one of the list_audio_backend return.
 
     Args:
@@ -188,7 +189,7 @@ def set_backend(backend_name: str):
         setattr(paddle.audio, func, getattr(module, func))
 
 
-def _init_set_audio_backend():
+def _init_set_audio_backend() -> None:
     # init the default wave_backend.
     for func in ["save", "load", "info"]:
         setattr(backend, func, getattr(wave_backend, func))

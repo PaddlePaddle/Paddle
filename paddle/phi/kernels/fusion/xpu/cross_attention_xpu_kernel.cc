@@ -224,7 +224,7 @@ void CrossAttentionXPUKernel(
         float, int16_t, phi::dtype::float16, int16_t);
     return;
   }
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s"
       "and qkv_dtype is %s.",
       DataTypeToString(input_q.dtype()),

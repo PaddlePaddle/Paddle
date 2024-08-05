@@ -78,13 +78,13 @@ void Atan2Kernel(const Context& ctx,
   auto x_data = x.data<T>();
   auto y_data = y.data<T>();
 
-  PADDLE_ENFORCE_LE(
-      numel,
-      y.numel(),
-      phi::errors::InvalidArgument("The count (%d) of elements of X shall not "
-                                   "greater than count (%d) of elements of Y.",
-                                   numel,
-                                   y.numel()));
+  PADDLE_ENFORCE_LE(numel,
+                    y.numel(),
+                    common::errors::InvalidArgument(
+                        "The count (%d) of elements of X shall not "
+                        "greater than count (%d) of elements of Y.",
+                        numel,
+                        y.numel()));
 
   auto* out_data = ctx.template Alloc<typename Atan2Out<T>::type>(
       out, size_t(x.numel() * sizeof(typename Atan2Out<T>::type)));

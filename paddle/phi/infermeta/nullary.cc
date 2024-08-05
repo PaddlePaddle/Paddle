@@ -52,7 +52,7 @@ void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
       PADDLE_ENFORCE_GE(
           data[i],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Each value of attribute 'shape' is expected to be no less "
               "than 0. But received: shape[%u] = %d; shape = [%s].",
               i,

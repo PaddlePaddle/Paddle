@@ -161,8 +161,8 @@ phi::KernelKey GetAssignExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   const framework::Variable* var = ctx.InputVar("X");
-  if (var->IsType<framework::LoDTensorArray>()) {
-    auto t_arr = var->Get<framework::LoDTensorArray>();
+  if (var->IsType<phi::TensorArray>()) {
+    auto t_arr = var->Get<phi::TensorArray>();
     // NOTE(liym27): Support an empty tensor array as Input.
     // And set the kernel type is float.
     if (t_arr.empty()) {
@@ -265,9 +265,9 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   auto* in_var = ctx.InputVar("Input");
-  auto is_in_var_array = in_var->IsType<framework::LoDTensorArray>();
+  auto is_in_var_array = in_var->IsType<phi::TensorArray>();
   if (is_in_var_array) {
-    auto& tensor_array = in_var->Get<framework::LoDTensorArray>();
+    auto& tensor_array = in_var->Get<phi::TensorArray>();
     for (auto& tensor : tensor_array) {
       if (!(tensor.place().GetType() == phi::AllocationType::GPUPINNED)) {
         PADDLE_ENFORCE_EQ(

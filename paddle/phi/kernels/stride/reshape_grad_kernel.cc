@@ -27,9 +27,9 @@ void ReshapeGradStridedKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad,
                               DenseTensor* x_grad) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   ReshapeStridedKernel<Context>(
       dev_ctx,
@@ -45,9 +45,9 @@ void ReshapeDoubleGradStridedKernel(const Context& dev_ctx,
                                     const DenseTensor& x_grad_grad,
                                     DenseTensor* out_grad_grad) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   ReshapeGradStridedKernel<Context>(dev_ctx, x_grad_grad, out_grad_grad);
 }

@@ -161,12 +161,12 @@ void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
                                       const ir::Expr& dest,
                                       ir::Expr* body) {
   VLOG(4) << "SubstitideExpr Start";
-  VLOG(4) << "Substitide Body : " << *body;
+  VLOG(5) << "Substitide Body : " << *body;
   VLOG(4) << "Substitide From : " << source;
   VLOG(4) << "Substitide To   : " << dest;
   MappingTargetExprToDestExprMutator mapper(source, dest);
   mapper(body);
-  VLOG(4) << "SubstitideExpr Result: " << *body;
+  VLOG(5) << "SubstitideExpr Result: " << *body;
 }
 
 ir::Expr SubstitudeIndexVector(const Expr& source,

@@ -293,7 +293,7 @@ DeviceInterface* DeviceManager::GetDeviceInterfaceWithType(
   PADDLE_ENFORCE_NE(
       dev_impl_map.find(device_type),
       dev_impl_map.end(),
-      phi::errors::NotFound("%s interface not found.", device_type));
+      common::errors::NotFound("%s interface not found.", device_type));
   return dev_impl_map.at(device_type).get();
 }
 
@@ -303,15 +303,15 @@ Device* DeviceManager::GetDeviceWithPlace(const Place& place) {
   auto& dev_map = Instance().device_map_;
   auto dev_type = place.GetDeviceType();
   auto dev_id = place.GetDeviceId();
-  PADDLE_ENFORCE_NE(
-      dev_map.find(dev_type),
-      dev_map.end(),
-      phi::errors::NotFound("Unable to find Device with type %s.", dev_type));
+  PADDLE_ENFORCE_NE(dev_map.find(dev_type),
+                    dev_map.end(),
+                    common::errors::NotFound(
+                        "Unable to find Device with type %s.", dev_type));
   auto& dev_vec = dev_map[dev_type];
   PADDLE_ENFORCE_LT(
       dev_id,
       dev_vec.size(),
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "The visible devices count of type %s is %d, but dev_id is %d.",
           dev_type,
           dev_vec.size(),
