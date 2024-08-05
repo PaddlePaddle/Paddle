@@ -866,11 +866,6 @@ class DistForwardAPI(ForwardAPI):
         if kernel_params is None:
             kernel_params = input_names + attr_names
 
-        # TODO(GhostScreaming): specialized case for reshape_grad
-        # xshape is not kernel params, but inferspmd needs it.
-        # if "reshape_grad" in self.kernel['func'][0]:
-        #     kernel_params = ["x"] + kernel_params
-
         input_decl_code = ""
         input_args_code = ""
         for param in kernel_params:
