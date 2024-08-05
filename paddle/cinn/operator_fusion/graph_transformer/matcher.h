@@ -164,7 +164,7 @@ struct LEOneElementWiseDownstreamMatcher {
         count += is_elementwise;
       }
     }
-    return (count <= 1);
+    return (count < node->downstream().size());
   }
 };
 
