@@ -18,6 +18,7 @@ from typing import List
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
+ORIGIN_PREFIX_TENSOR_NAME = 'origin_input_'
 
 
 def parse_plain_list(s: str, sep=",") -> List[str]:
@@ -91,6 +92,12 @@ class BaseAPI:
 
     def get_api_func_name(self):
         return self.api
+
+    def is_inplace_input(self, input_name):
+        is_inplace_api = (
+            self.get_api_func_name()[-1] == "_" or len(self.inplace_map) > 0
+        )
+        return is_inplace_api and input_name in self.inplace_map.values()
 
     def get_input_tensor_args(self, inplace_flag=False):
         input_args = []
@@ -598,13 +605,25 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         for param in infer_meta_params:
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
-                    param_code = (
-                        param_code
-                        + "MakeMetaTensor(*"
-                        + PREFIX_TENSOR_NAME
-                        + param
-                        + "), "
-                    )
+                    if self.is_inplace_input(param):
+                        meta_tensor_code += f"""
+{code_indent}  auto {ORIGIN_PREFIX_TENSOR_NAME}{param} = *{PREFIX_TENSOR_NAME}{param};
+"""
+                        param_code = (
+                            param_code
+                            + "MakeMetaTensor("
+                            + ORIGIN_PREFIX_TENSOR_NAME
+                            + param
+                            + "), "
+                        )
+                    else:
+                        param_code = (
+                            param_code
+                            + "MakeMetaTensor(*"
+                            + PREFIX_TENSOR_NAME
+                            + param
+                            + "), "
+                        )
                 elif (
                     self.inputs['input_info'][param]
                     == "const std::vector<Tensor>&"
@@ -1165,7 +1184,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     kernel_args.append(PREFIX_TENSOR_NAME + param)
                 else:
                     if self.inputs['input_info'][param] == "const Tensor&":
-                        kernel_args.append("*" + PREFIX_TENSOR_NAME + param)
+                        if self.is_inplace_input(param):
+                            kernel_args.append(
+                                ORIGIN_PREFIX_TENSOR_NAME + param
+                            )
+                        else:
+                            kernel_args.append("*" + PREFIX_TENSOR_NAME + param)
                     elif (
                         self.inputs['input_info'][param]
                         == "const std::vector<Tensor>&"
