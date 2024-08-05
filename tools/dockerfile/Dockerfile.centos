@@ -42,11 +42,6 @@ RUN wget --no-check-certificate -qO- https://paddle-ci.gz.bcebos.com/go1.15.12.l
     mkdir /root/gopath/src
 
 
-# protobuf 3.6.1
-RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/protobuf-cpp-3.6.1.tar.gz && \
-    tar xzf protobuf-cpp-3.6.1.tar.gz && \
-    cd protobuf-3.6.1 && ./configure && make -j4 && make install && cd .. && rm -f protobuf-cpp-3.6.1.tar.gz
-
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
 
 
