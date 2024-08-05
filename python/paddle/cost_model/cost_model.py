@@ -15,15 +15,17 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
 import paddle
 from paddle import static
 from paddle.base import core
-from paddle.base.compiler import CompiledProgram
-from paddle.base.framework import Program
+
+if TYPE_CHECKING:
+    from paddle.base.compiler import CompiledProgram
+    from paddle.base.framework import Program
 
 
 class CostModel:
