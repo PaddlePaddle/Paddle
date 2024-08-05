@@ -1294,7 +1294,8 @@ bool ReshapeOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> out_dims = [&] {
     const auto &original_shape =
         infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-    ExprVec target_shape = details::GetExprVecFromData(shape_dim_expr);
+    ExprVec target_shape =
+        details::GetOrCreateExprVecFromData(shape_dim_expr, infer_context);
 
     // replace '0' with original shape
     for (size_t i = 0; i < target_shape.size(); i++) {
