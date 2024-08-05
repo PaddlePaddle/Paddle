@@ -429,19 +429,22 @@ for stype in support_types:
 
 class TestSeqConvApi(unittest.TestCase):
     def test_api(self):
-        from paddle import base
+        with paddle.pir_utils.OldIrGuard():
+            from paddle import base
 
-        x = paddle.static.data('x', shape=[-1, 32], lod_level=1)
-        y = paddle.static.nn.sequence_lod.sequence_conv(
-            input=x, num_filters=2, filter_size=3, padding_start=None
-        )
-        place = base.CPUPlace()
-        x_tensor = base.create_lod_tensor(
-            np.random.rand(10, 32).astype("float32"), [[2, 3, 1, 4]], place
-        )
-        exe = base.Executor(place)
-        exe.run(base.default_startup_program())
-        ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
+            x = paddle.static.data('x', shape=[-1, 32], lod_level=1)
+            y = paddle.static.nn.sequence_lod.sequence_conv(
+                input=x, num_filters=2, filter_size=3, padding_start=None
+            )
+            place = base.CPUPlace()
+            x_tensor = base.create_lod_tensor(
+                np.random.rand(10, 32).astype("float32"), [[2, 3, 1, 4]], place
+            )
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
+            ret = exe.run(
+                feed={'x': x_tensor}, fetch_list=[y], return_numpy=False
+            )
 
 
 if __name__ == '__main__':

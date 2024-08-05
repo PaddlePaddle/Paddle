@@ -98,9 +98,9 @@ class SumOp : public framework::OperatorWithKernel {
       }
       // if input sparse vars are not initialized, use an default kernel type.
       return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
-    } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
+    } else if (x_vars[0]->IsType<phi::TensorArray>()) {
       for (auto& x_var : x_vars) {
-        auto& array = x_var->Get<framework::LoDTensorArray>();
+        auto& array = x_var->Get<phi::TensorArray>();
         for (auto& each : array) {
           if (each.numel() != 0 && each.IsInitialized()) {
             return phi::KernelKey(framework::TransToProtoVarType(each.dtype()),

@@ -113,15 +113,13 @@ void PsGraphClient::FinalizeWorker() {
       auto it = keys2rank_vec[shard].find(k);
       if (it != keys2rank_vec[shard].end()) {
         rank = it->second;
-        /*
-        int real = rank;
-        int expect = (k / 8) % 2;
-        CHECK(real == expect);
-        */
       } else {
         // Should not happen
         VLOG(0) << "PullSparsePtr, miss key " << k << " rank=" << _rank_id;
-        CHECK(it != keys2rank_vec[shard].end());
+        PADDLE_ENFORCE_NE(it,
+                          keys2rank_vec[shard].end(),
+                          phi::errors::InvalidArgument(
+                              "The key was not found in the expected shard."));
       }
     } else {
       rank = ps_wrapper->PartitionKeyForRank(k);
@@ -216,7 +214,11 @@ void PsGraphClient::FinalizeWorker() {
         rank = it->second;
       } else {
         VLOG(0) << "PullSparseKey, miss key " << k << " rank=" << _rank_id;
-        CHECK(it != keys2rank_vec[shard].end());
+        PADDLE_ENFORCE_NE(
+            it,
+            keys2rank_vec[shard].end(),
+            phi::errors::InvalidArgument(
+                "The key was not found in the expected shard.", k));
       }
     } else {
       rank = ps_wrapper->PartitionKeyForRank(k);

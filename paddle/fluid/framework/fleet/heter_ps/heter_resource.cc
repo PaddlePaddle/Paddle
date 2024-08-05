@@ -148,7 +148,13 @@ GpuRDMAChecker *GpuRDMAChecker::get(int device_num) {
     g_checker = std::make_shared<GpuRDMAChecker>(device_num);
   }
   // check gpu num
-  CHECK(device_num == g_checker->device_num());
+  PADDLE_ENFORCE_EQ(
+      device_num,
+      g_checker->device_num(),
+      phi::errors::InvalidArgument(
+          "Invalid number of device. Should be %d. But received %d.",
+          device_num,
+          g_checker->device_num()));
   return g_checker.get();
 }
 GpuRDMAChecker::GpuRDMAChecker(int device_num) {

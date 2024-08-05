@@ -114,7 +114,7 @@ Json GetAttrJson(const YAML::Node &action) {
       json[ID] = dialect + paddle::dialect::PlaceAttribute::name();
     }
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Attr %s in the OpPatches.", at_name));
   }
   return json;
@@ -320,7 +320,7 @@ Json YamlParser(const std::string &yaml_file) {
   VLOG(8) << yaml_file;
   fin.open(yaml_file);
   if (!fin) {
-    // PADDLE_THROW(phi::errors::Unavailable("File %s is not available.",
+    // PADDLE_THROW(common::errors::Unavailable("File %s is not available.",
     //                                       yaml_file.c_str()));
     fin.open("../patch/patch.yaml");
   }

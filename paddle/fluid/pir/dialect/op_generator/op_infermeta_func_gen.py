@@ -52,7 +52,7 @@ CREATE_INPUT_VALUE_TEMPLATE = """
   pir::Value {input_name}_ = input_values[{index}]; (void){input_name}_;"""
 
 ENFORCE_INPUT_NUM_TEMPLATE = """
-  PADDLE_ENFORCE_EQ(input_values.size() == {op_input_name_list_size}, true, phi::errors::InvalidArgument(
+  PADDLE_ENFORCE_EQ(input_values.size() == {op_input_name_list_size}, true, common::errors::InvalidArgument(
       "Num of inputs is expected to be {op_input_name_list_size} but got %d.", input_values.size()));
 """
 
@@ -61,7 +61,7 @@ GET_INPUT_TYPE_TEMPLATE = """
   if ({name}_.type().isa<{type}>()) {{
     {name} = {name}_.type().dyn_cast<{type}>(); (void){name};
   }} else {{
-    PADDLE_THROW(phi::errors::Unimplemented("Only support {type} or {allocated_type}"));
+    PADDLE_THROW(common::errors::Unimplemented("Only support {type} or {allocated_type}"));
   }}
 """
 
@@ -195,7 +195,7 @@ def GenBuildOutputsPart2(
     if ({name}_.type().isa<{type}>()) {{
       {name} = {name}_.type().dyn_cast<{type}>();
     }} else {{
-      PADDLE_THROW(phi::errors::Unimplemented("Only support {type} or {allocated_type}"));
+      PADDLE_THROW(common::errors::Unimplemented("Only support {type} or {allocated_type}"));
     }}
     ir_tensor_{name} = paddle::dialect::IrTensor(paddle::dialect::TransToPhiDataType({name}.dtype()),
                                                         {name}.dims(),
@@ -217,7 +217,7 @@ def GenBuildOutputsPart2(
     if ({name}_.type().isa<{type}>()) {{
       {name} = {name}_.type().dyn_cast<{type}>();
     }} else {{
-      PADDLE_THROW(phi::errors::Unimplemented("Only support {type}"));
+      PADDLE_THROW(common::errors::Unimplemented("Only support {type}"));
     }}
     ir_tensor_{name} = paddle::dialect::IrSparseCooTensor(paddle::dialect::TransToPhiDataType({name}.dtype()),
                                                         {name}.dims(),
@@ -239,7 +239,7 @@ def GenBuildOutputsPart2(
     if ({name}_.type().isa<{type}>()) {{
       {name} = {name}_.type().dyn_cast<{type}>();
     }} else {{
-      PADDLE_THROW(phi::errors::Unimplemented("Only support {type}"));
+      PADDLE_THROW(common::errors::Unimplemented("Only support {type}"));
     }}
     ir_tensor_{name} = paddle::dialect::IrSparseCsrTensor(paddle::dialect::TransToPhiDataType({name}.dtype()),
                                                         {name}.dims(),
@@ -262,7 +262,7 @@ def GenBuildOutputsPart2(
                                                                     {name}_type.lod(),
                                                                     {name}_type.offset()));
     }} else {{
-        PADDLE_THROW(phi::errors::Unimplemented("Only support DenseTensorType or AllocatedDenseTensorType"));
+        PADDLE_THROW(common::errors::Unimplemented("Only support DenseTensorType or AllocatedDenseTensorType"));
     }}
   }}
   std::vector<paddle::dialect::IrMetaTensor> vec_meta_{name};
@@ -289,7 +289,7 @@ def GenBuildOutputsPart2(
                                                                         {name}_type.lod(),
                                                                         {name}_type.offset()));
         }} else {{
-            PADDLE_THROW(phi::errors::Unimplemented("Only support DenseTensorType or AllocatedDenseTensorType"));
+            PADDLE_THROW(common::errors::Unimplemented("Only support DenseTensorType or AllocatedDenseTensorType"));
         }}
     }}
   }}
@@ -341,7 +341,7 @@ def GenBuildOutputsPart2(
     }}
     {name} = std::vector<int64_t>({name}_size, -1);
   }}else {{
-    PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType or AllocatedDenseTensorType"));
+    PADDLE_THROW(common::errors::Unimplemented("Only support VectorType or DenseTensorType or AllocatedDenseTensorType"));
   }}\n"""
 
     CREATE_SCALAR_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  phi::Scalar {name};
@@ -669,7 +669,7 @@ def GetAttributes(
   PADDLE_ENFORCE_NE(
       attributes.find("{attribute_name}"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<{attr_ir_type}>().data();
 """
@@ -677,7 +677,7 @@ def GetAttributes(
   PADDLE_ENFORCE_NE(
       attributes.find("{attribute_name}"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<pir::StrAttribute>().AsString();
 """
@@ -685,7 +685,7 @@ def GetAttributes(
   PADDLE_ENFORCE_NE(
       attributes.find("{attribute_name}"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name};
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
@@ -696,7 +696,7 @@ def GetAttributes(
   PADDLE_ENFORCE_NE(
       attributes.find("{attribute_name}"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
 """
@@ -704,7 +704,7 @@ def GetAttributes(
   PADDLE_ENFORCE_NE(
       attributes.find("{attribute_name}"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{attr_type}>();
 """

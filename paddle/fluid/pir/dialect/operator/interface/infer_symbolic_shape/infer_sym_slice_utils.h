@@ -91,7 +91,7 @@ inline void CheckAndUpdateSliceAttrs(
     } else if (start_positive_end_negative) {
       starts.at(i) = starts.at(i) - in_dims.at(axis);
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Dead code"));
+      PADDLE_THROW(common::errors::Fatal("Dead code"));
     }
   }
 }
@@ -105,7 +105,7 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
   PADDLE_ENFORCE_EQ(
       (axes.size() == starts.size() && axes.size() == ends.size()),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of axes must equal size of starts and ends."));
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes.at(i);
@@ -199,7 +199,7 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         vec_int64.has_value(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "for slice op, all the elements in `starts` must be int64_t"));
     std::vector<int64_t> starts_int = vec_int64.value();
 
@@ -207,7 +207,7 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         vec_int64.has_value(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "for slice op, all the elements in `ends` must be int64_t"));
     std::vector<int64_t> ends_int = vec_int64.value();
 

@@ -41,7 +41,7 @@ static ::DLDataType GetDLDataTypeCode() {
     PADDLE_THROW(common::errors::Unavailable(
         "Unsupported data type (%s), only supports float16, float, unsigned "
         "int and int.",
-        platform::demangle(typeid(T).name())));
+        common::demangle(typeid(T).name())));
   }
   dtype.bits = 8 * sizeof(T);
   dtype.lanes = 1;

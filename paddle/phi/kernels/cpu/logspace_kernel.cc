@@ -41,9 +41,9 @@ void LogspaceKernel(const Context& ctx,
   PADDLE_ENFORCE_GT(
       num,
       0,
-      phi::errors::InvalidArgument("The num of logspace op should be larger "
-                                   "than 0, but received num is %d",
-                                   num));
+      common::errors::InvalidArgument("The num of logspace op should be larger "
+                                      "than 0, but received num is %d",
+                                      num));
 
   out->Resize(common::make_ddim({num}));
   T* out_data = ctx.template Alloc<T>(out);

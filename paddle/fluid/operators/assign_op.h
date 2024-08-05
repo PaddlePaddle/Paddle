@@ -41,8 +41,8 @@ class AssignFunctor {
     copy_tensor(lod_tensor, &out_tensor);
   }
 
-  void operator()(const framework::LoDTensorArray &array) const {
-    auto &out_array = *out_->GetMutable<framework::LoDTensorArray>();
+  void operator()(const phi::TensorArray &array) const {
+    auto &out_array = *out_->GetMutable<phi::TensorArray>();
     out_array.resize(array.size());
     for (size_t i = 0; i < array.size(); ++i) {
       copy_tensor(array[i], &out_array[i]);
