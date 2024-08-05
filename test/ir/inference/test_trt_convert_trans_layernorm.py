@@ -17,7 +17,10 @@ from __future__ import annotations
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Generator
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
