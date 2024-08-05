@@ -18,7 +18,6 @@
 #include "paddle/fluid/inference/tensorrt/pir/dynamic_shape_infermeta_factory.h"
 #include "paddle/fluid/inference/tensorrt/pir/dynamic_shape_infermeta_registry.h"
 #include "paddle/fluid/inference/tensorrt/pir/generic_plugin.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -32,6 +31,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/pir/include/core/op_info.h"
 
