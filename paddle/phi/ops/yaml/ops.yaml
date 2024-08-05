@@ -1270,6 +1270,7 @@
   kernel :
     func : dequantize_abs_max
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dequantize_log
   args: (Tensor x, Tensor dict)
