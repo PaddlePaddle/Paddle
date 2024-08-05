@@ -68,16 +68,14 @@ class HorizontalFusePattern : public pir::RewritePattern {
             << "] op";
 
     /// 至少有一个出边被多个op使用才能横向融合
-    bool has_multi_uses = false;
     /// 假定只有一个出边被多个op使用。如果有多个，只处理最后一个（- -！）
     int multi_use_res_idx = -1;
     for (uint32_t i = 0; i < op->num_results(); i++) {
       if (op->result(i).use_count() > 1) {
-        has_multi_uses = true;
         multi_use_res_idx = i;
       }
     }
-    if (!has_multi_uses) {
+    if (multi_use_res_idx < 0) {
       return false;
     }
 
