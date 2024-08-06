@@ -19,6 +19,7 @@
 - c_concat
 - c_identity
 - c_reduce_sum
+- c_sync_calc_stream
 - c_sync_comm_stream
 - cast
 - conv2d_transpose
