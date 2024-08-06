@@ -209,7 +209,6 @@ def get_r50_v2_program(model_dir, prefix):
                 feed={"_jst.0.inputs.0": x},
                 fetch_list=fetch_targets,
             )
-            # print("fetches:",fetches)
         params = pir_program.global_block().all_parameters()
         param_dict = {}
         for v in params:
