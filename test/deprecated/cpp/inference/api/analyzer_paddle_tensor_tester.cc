@@ -34,7 +34,7 @@ Record ProcessALine(const std::string &line) {
   split(line, '\t', &columns);
   PADDLE_ENFORCE_EQ(columns.size(),
                     2UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Data format error, should be <data>\\t<shape>. "
                         "Received columns size: %d.",
                         columns.size()));
