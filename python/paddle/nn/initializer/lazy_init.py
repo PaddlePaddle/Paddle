@@ -14,9 +14,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from ...base import framework
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
 
 __all__ = ["LazyGuard"]
 
@@ -133,5 +137,10 @@ class LazyGuard:
         """
         lazy_init_helper().enable()
 
-    def __exit__(self, *args: object, **kwargs: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         lazy_init_helper().disable()
