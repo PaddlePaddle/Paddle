@@ -100,14 +100,11 @@ class HorizontalFusePattern : public pir::RewritePattern {
   }
 
   int getOpCntUseX(const pir::Value& x) const {
-    /// 使用该出边的op中至少得有两个完全相同的MatmulOp/GemmEpilogueOp/FcOp
-    /// 属性也应该完全相等，如果不完全相等，则不进行横向融合
+    // At least two same MatmulOp/GemmEpilogueOp/FcOp using x
+    // MatmulOp/GemmEpilogueOp/FcOp mutually exclusive and don't appear at the
+    // same time All ops'attrs should also be exactly equal. if not, fusion is
+    // not performed
     int op_cnt_useX = 0;
-    // 我们假定，使用x的多个op的种类里，MatmulOp GemmEpilogueOp FcOp两两互斥
-    // 即，最多有一种Op会出现。如果同时出现两种，则匹配失败。
-    // 我们假定，该种类的多个op的属性会完全相同
-    // 即不会出现某几个op属性相同，且和其他op的属性不一样的情况
-    // 如果出现这个情况，直接匹配失败，不进行融合。
     pir::Operation* op_example = nullptr;
     std::string op_example_name;
     pir::AttributeMap op_example_attrs;
