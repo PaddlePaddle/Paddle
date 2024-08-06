@@ -94,9 +94,7 @@ bool BoxClipOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &im_info_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-
+  
   // Set output shape to be the same as input shape
   std::vector<symbol::DimExpr> output_shape = input_shape.shape();
   infer_context->SetShapeOrDataForValue(
