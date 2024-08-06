@@ -37,7 +37,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
       PADDLE_ENFORCE_EQ(
           data_dims.size() * 2,
           origin_paddings.size(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Paddings size %d should be the same or twice as the "
               "pooling size %d.",
               origin_paddings.size(),
@@ -96,14 +96,14 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       x_dims.size() == 4 || x_dims.size() == 5,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the input of Op(pool) should be 4-D or 5-D Tensor. But "
           "received: %u-D Tensor.",
           x_dims.size()));
 
   PADDLE_ENFORCE_EQ(x_dims.size() - kernel_size.size(),
                     2U,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "the rank of input minus the size of kernel_size "
                         "must be equal to 2 in Op(pool). "
                         "But received: the rank of input is %d and the "
@@ -125,7 +125,7 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       kernel_size.size(),
       strides.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the rank of kernel_size and strides in Op(pool) must be equal. "
           "But received: the rank of kernel_size is %d and the rank of stride "
           "is %d.",
@@ -370,7 +370,7 @@ bool BipartiteMatchOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       dims.size(),
       2,
-      phi::errors::InvalidArgument("The rank of Input(DistMat) must be 2."));
+      common::errors::InvalidArgument("The rank of Input(DistMat) must be 2."));
 
   infer_context->SetShapeOrDataForValue(op->result(0), dist_mat_shape_or_data);
 
@@ -421,9 +421,9 @@ bool ClipByNormOpInferSymbolicShape(
   PADDLE_ENFORCE_GT(
       max_norm,
       0,
-      phi::errors::InvalidArgument("max_norm should be greater than 0. "
-                                   "Received max_norm is %f.",
-                                   max_norm));
+      common::errors::InvalidArgument("max_norm should be greater than 0. "
+                                      "Received max_norm is %f.",
+                                      max_norm));
 
   infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
   return true;
@@ -498,22 +498,22 @@ bool ChannelShuffleOpInferSymbolicShape(
   std::string data_format =
       op->attribute<pir::StrAttribute>("data_format").AsString();
 
-  PADDLE_ENFORCE_EQ(
-      input_dims.size(),
-      4,
-      phi::errors::InvalidArgument("Input should be a 4-D tensor of format [N, "
-                                   "C, H, W] or [N, H, W, C], but got %u.",
-                                   input_dims.size()));
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, "
+                        "C, H, W] or [N, H, W, C], but got %u.",
+                        input_dims.size()));
   PADDLE_ENFORCE_GE(
       groups,
       1,
-      phi::errors::InvalidArgument("groups should be larger than 0."));
-  PADDLE_ENFORCE_EQ(
-      data_format == "NCHW" || data_format == "NHWC",
-      true,
-      phi::errors::InvalidArgument("data_format must be one of NCHW and NHWC. "
-                                   "But received data_format: %s",
-                                   data_format));
+      common::errors::InvalidArgument("groups should be larger than 0."));
+  PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
+                    true,
+                    common::errors::InvalidArgument(
+                        "data_format must be one of NCHW and NHWC. "
+                        "But received data_format: %s",
+                        data_format));
 
   const bool channel_last = (data_format == "NHWC");
 
@@ -1035,8 +1035,8 @@ bool MeanAllOpInferSymbolicShape(
   PADDLE_ENFORCE_GT(
       x_dims.size(),
       0,
-      phi::errors::InvalidArgument("Input(x) of MeanAllOp must have rank "
-                                   "greater than 0, but received rank 0."));
+      common::errors::InvalidArgument("Input(x) of MeanAllOp must have rank "
+                                      "greater than 0, but received rank 0."));
 
   std::vector<symbol::DimExpr> output_shape = {};
 
@@ -1294,7 +1294,8 @@ bool ReshapeOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> out_dims = [&] {
     const auto &original_shape =
         infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-    ExprVec target_shape = details::GetExprVecFromData(shape_dim_expr);
+    ExprVec target_shape =
+        details::GetOrCreateExprVecFromData(shape_dim_expr, infer_context);
 
     // replace '0' with original shape
     for (size_t i = 0; i < target_shape.size(); i++) {
