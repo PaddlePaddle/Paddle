@@ -141,7 +141,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, list[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             input_groups = attrs[0]['groups'] * 3
             self.dynamic_shape.min_input_shape = {
@@ -332,7 +332,7 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, list[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}

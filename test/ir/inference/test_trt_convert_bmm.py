@@ -67,7 +67,7 @@ class TrtConvertBmmTest_dynamic(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, list[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input1_data": [10, 350, 75],
