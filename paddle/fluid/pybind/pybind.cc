@@ -2490,7 +2490,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_variable_tensor", framework::GetVariableTensor);
 
   m.def("_is_program_version_supported", IsProgramVersionSupported);
-
+#if defined(PADDLE_WITH_CUDA)
   m.def("alloctor_dump", [](const phi::GPUPlace &place) {
     auto allocator = std::dynamic_pointer_cast<
         paddle::memory::allocation::AutoGrowthBestFitAllocator>(
@@ -2498,7 +2498,7 @@ All parameter, weight, gradient are variables in Paddle.
             .GetAutoGrowthAllocator(place));
     allocator->DumpInfo();
   });
-
+#endif
   BindProgramDesc(&m);
   BindBlockDesc(&m);
   BindVarDesc(&m);
