@@ -174,15 +174,6 @@
     func : reduce_scatter
     param: [x, nranks]
 
-- op : c_scatter
-  args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
-  output : Tensor(out)
-  infer_meta :
-    func : CScatterInferMeta
-    param : [x, nranks]
-  kernel :
-    func : c_scatter
-
 - op : c_split
   args : (Tensor x, int rank = 0, int nranks = 1, int ring_id = 0, bool use_calc_stream = false, bool use_model_parallel = true)
   output : Tensor(out)

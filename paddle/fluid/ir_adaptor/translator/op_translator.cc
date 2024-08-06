@@ -3629,7 +3629,7 @@ struct Reshape2GradOpTranscriber : public OpTranscriber {
 
     PADDLE_ENFORCE_EQ(param_map->Has(input_outgrad_name),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Reshape2_Grad op does not have input Out@GRAD"));
     auto& input_outgrad_value = param_map->at(input_outgrad_name).value;
 

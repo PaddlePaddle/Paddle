@@ -64,8 +64,9 @@ TEST(IROpFusionPass, ElementWise_Fusion_0) {
 
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
 
-  PADDLE_ENFORCE_EQ(
-      pm.Run(&program), true, phi::errors::Fatal("Pass manager run failed."));
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::Fatal("Pass manager run failed."));
   ASSERT_EQ(program.block()->size(), 2u);
 }
 
@@ -96,8 +97,9 @@ TEST(IROpFusionPass, Broadcast_Test_0) {
 
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
 
-  PADDLE_ENFORCE_EQ(
-      pm.Run(&program), true, phi::errors::Fatal("Pass manager run failed."));
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::Fatal("Pass manager run failed."));
 
   ASSERT_EQ(program.block()->size(), 2u);
 }
@@ -130,8 +132,9 @@ TEST(IROpFusionPass, Broadcast_Test_1) {
 
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
 
-  PADDLE_ENFORCE_EQ(
-      pm.Run(&program), true, phi::errors::Fatal("Pass manager run failed."));
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::Fatal("Pass manager run failed."));
 
   ASSERT_EQ(program.block()->size(), 4u);
 }
@@ -177,7 +180,8 @@ TEST(IROpFusionPass, softmax) {
 
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
 
-  PADDLE_ENFORCE_EQ(
-      pm.Run(&program), true, phi::errors::Fatal("Pass manager run failed."));
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::Fatal("Pass manager run failed."));
   ASSERT_EQ(program.block()->size(), 2u);
 }
