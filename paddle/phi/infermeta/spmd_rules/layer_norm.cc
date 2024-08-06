@@ -66,14 +66,14 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       scale_ndim,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The ndim of scale in layer_norm should be 1, but got [%d].",
           scale_ndim));
 
   PADDLE_ENFORCE_EQ(
       bias_ndim,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The ndim of bias in layer_norm should be 1, but got [%d].",
           bias_ndim));
 
@@ -196,20 +196,20 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping.size()));
   PADDLE_ENFORCE_EQ(
       mean_ndim,
       mean_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Mean's rank [%d] and Mean's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   mean_ndim,
-                                   mean_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Mean's rank [%d] and Mean's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      mean_ndim,
+                                      mean_dims_mapping.size()));
   PADDLE_ENFORCE_EQ(variance_ndim,
                     variance_dims_mapping.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor Variance's rank [%d] and Variance's "
                         "dims_mapping size [%d] are not matched.",
                         variance_ndim,
@@ -334,33 +334,33 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_GE(
       x_shape.size(),
       begin_norm_axis,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Tensor x's rank [%d] and begin_norm_axis [%d] are not matched.",
           x_shape.size(),
           begin_norm_axis));
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       out_grad_shape.size(),
-      phi::errors::InvalidArgument("The Tensor x's rank [%d] and Tensor "
-                                   "out_grad's rank [%d] are not matched.",
-                                   x_shape.size(),
-                                   out_grad_shape.size()));
+      common::errors::InvalidArgument("The Tensor x's rank [%d] and Tensor "
+                                      "out_grad's rank [%d] are not matched.",
+                                      x_shape.size(),
+                                      out_grad_shape.size()));
 
   PADDLE_ENFORCE_EQ(
       scale_shape.size(),
       bias_shape.size(),
-      phi::errors::InvalidArgument("The Tensor scale's rank [%d] and Tensor "
-                                   "bias's rank [%d] are not matched.",
-                                   scale_shape.size(),
-                                   bias_shape.size()));
+      common::errors::InvalidArgument("The Tensor scale's rank [%d] and Tensor "
+                                      "bias's rank [%d] are not matched.",
+                                      scale_shape.size(),
+                                      bias_shape.size()));
 
   PADDLE_ENFORCE_EQ(
       mean_shape.size(),
       variance_shape.size(),
-      phi::errors::InvalidArgument("The Tensor mean's rank [%d] and Tensor "
-                                   "variance's rank [%d] are not matched.",
-                                   mean_shape.size(),
-                                   variance_shape.size()));
+      common::errors::InvalidArgument("The Tensor mean's rank [%d] and Tensor "
+                                      "variance's rank [%d] are not matched.",
+                                      mean_shape.size(),
+                                      variance_shape.size()));
 
   // 2、align sharding
   TensorDistAttr x_dist_attr;

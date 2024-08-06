@@ -88,13 +88,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
     const Target& target) {
   std::string op_name("lookup_table");
   const auto& attr_store = attrs.attr_store;
-  CHECK(attr_store.count("padding_idx")) << "find no attr of axis";
+  PADDLE_ENFORCE_EQ(attr_store.count("padding_idx"),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The padding_idx should be set in lookup_table."));
   auto padding_idx = absl::get<int64_t>(attr_store.at("padding_idx"));
 
   framework::CINNCompute lookup_table_compute([=](lang::Args args,
                                                   lang::RetValue* ret) {
-    CHECK(!args.empty()) << "The input arguments of " << op_name
-                         << " compute is empty! Please check.\n";
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument("The input arguments of lookup_table "
+                                     "compute is empty! Please check."));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
                       2U,
@@ -103,9 +109,18 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
                           "than 2"));
     Expr A = pack_args[0];
     Expr B = pack_args[1];
-    CHECK(A.as_tensor());
-    CHECK(B.as_tensor());
-    CHECK(!output_shapes.empty());
+    PADDLE_ENFORCE_NOT_NULL(A.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The input argument of lookup_table compute "
+                                "is not tensor."));
+    PADDLE_ENFORCE_NOT_NULL(B.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The input argument of lookup_table compute "
+                                "is not tensor."));
+    PADDLE_ENFORCE_EQ(
+        !output_shapes.empty(),
+        true,
+        phi::errors::InvalidArgument("The output_shapes should not be empty."));
     auto tensor_A = A.as_tensor_ref();
     auto tensor_B = B.as_tensor_ref();
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
@@ -120,8 +135,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
     ir::Tensor out = LookupTable(tensor_A, tensor_B, padding_idx, tensor_name);
     std::vector<CINNValue> res;
     res.push_back(CINNValue(out));
-    CHECK(!out_type.empty())
-        << "Output type of " << op_name << " is empty! Please check.\n";
+    PADDLE_ENFORCE_EQ(!out_type.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The output type of lookup_table is empty."));
     *ret = CINNValuePack{res};
   });
 

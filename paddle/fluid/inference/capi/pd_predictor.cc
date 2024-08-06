@@ -168,7 +168,10 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
     }
   }
   VLOG(3) << "Run ZeroCopyRun() in CAPI encapsulation. ";
-  CHECK(predictor->ZeroCopyRun());
+  PADDLE_ENFORCE_EQ(
+      predictor->ZeroCopyRun(),
+      true,
+      phi::errors::PermissionDenied("Predictor is not in Zero Copy Run!!!"));
   auto output_names = predictor->GetOutputNames();
   int osize = output_names.size();
   *out_size = osize;

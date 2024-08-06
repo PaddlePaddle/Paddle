@@ -24,14 +24,14 @@ namespace cinn {
 namespace backends {
 
 /**
- * CodeGenCUDA_Host takes a CINN Module with CUDA host functions and output a
+ * CodeGenCudaHost takes a CINN Module with CUDA host functions and output a
  * LLVM module.
  */
-class CodeGenCUDA_Host : public CodeGenHost {
+class CodeGenCudaHost : public CodeGenHost {
  public:
-  explicit CodeGenCUDA_Host(llvm::Module *m,
-                            llvm::IRBuilder<> *b,
-                            const std::shared_ptr<SymbolTable> &vars = nullptr)
+  explicit CodeGenCudaHost(llvm::Module *m,
+                           llvm::IRBuilder<> *b,
+                           const std::shared_ptr<SymbolTable> &vars = nullptr)
       : CodeGenHost(m, b, vars) {}
 
   // TODO(Hongqing-work): remove this after we clear some old codes.

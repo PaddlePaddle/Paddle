@@ -21,7 +21,6 @@
 #include <utility>
 
 #include "paddle/common/errors.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -30,6 +29,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "paddle/fluid/platform/enforce.h"

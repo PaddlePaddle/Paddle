@@ -600,7 +600,7 @@ void DispatchWithDtype(
           &softmax_lse,
           &seed_offset);
 #else
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Not supports MultiHeadAttentionVariableForwardKernel."));
 #endif
       InvokeTransposeRemovePadding<T>(dev_ctx,

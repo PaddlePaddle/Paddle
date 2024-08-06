@@ -43,9 +43,9 @@ namespace backends {
  * which finally similar to `__global__ void myadd(float* __restrict__ A, float*
  * __restrict__ B, int n);`
  */
-class CodeGenGPU_Dev : public CodeGenC {
+class CodeGenGpuDev : public CodeGenC {
  public:
-  explicit CodeGenGPU_Dev(Target target);
+  explicit CodeGenGpuDev(Target target);
 
   /**
    * Compile the \p module to \p outputs.

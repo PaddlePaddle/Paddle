@@ -27,9 +27,9 @@ namespace backends {
  * which finally similar to `__global__ void myadd(float* __restrict__ A, float*
  * __restrict__ B, int n);`
  */
-class CodeGenCUDA_Dev : public CodeGenGPU_Dev {
+class CodeGenCudaDev : public CodeGenGpuDev {
  public:
-  explicit CodeGenCUDA_Dev(Target target);
+  explicit CodeGenCudaDev(Target target);
   static const std::string& GetSourceHeader();
   void PrintIncludes() override;
 

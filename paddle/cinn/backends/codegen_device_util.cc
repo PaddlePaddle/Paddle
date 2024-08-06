@@ -17,7 +17,7 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(cinn_bucket_compile);
 namespace cinn {
 namespace backends {
@@ -194,7 +194,11 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
     ir::Expr func, ir::Expr predicate) {
   VLOG(4) << "Process Lowered Func" << func;
   ir::_LoweredFunc_ *func_node = func.as_lowered_func();
-  CHECK(func_node);
+  PADDLE_ENFORCE_NOT_NULL(
+      func_node,
+      ::common::errors::InvalidArgument(
+          "The provided function could not be cast to a lowered function. "
+          "Please ensure the function is valid."));
   if (!func_node->cuda_axis_info.valid()) {
     func_node->cuda_axis_info.set_valid(true);
   }

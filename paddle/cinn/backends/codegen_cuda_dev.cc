@@ -17,7 +17,7 @@
 namespace cinn {
 namespace backends {
 
-const std::string CodeGenCUDA_Dev::source_header_ =  // NOLINT
+const std::string CodeGenCudaDev::source_header_ =  // NOLINT
     R"(#include <cstdint>
 
 #define CINN_WITH_CUDA
@@ -32,11 +32,11 @@ using cinn::common::float8;
 #include "cinn_cuda_runtime_source.cuh"
 )";
 
-const std::string &CodeGenCUDA_Dev::GetSourceHeader() { return source_header_; }
+const std::string &CodeGenCudaDev::GetSourceHeader() { return source_header_; }
 
-CodeGenCUDA_Dev::CodeGenCUDA_Dev(Target target) : CodeGenGPU_Dev(target) {}
+CodeGenCudaDev::CodeGenCudaDev(Target target) : CodeGenGpuDev(target) {}
 
-void CodeGenCUDA_Dev::PrintIncludes() { str_ += GetSourceHeader(); }
+void CodeGenCudaDev::PrintIncludes() { str_ += GetSourceHeader(); }
 
 }  // namespace backends
 }  // namespace cinn
