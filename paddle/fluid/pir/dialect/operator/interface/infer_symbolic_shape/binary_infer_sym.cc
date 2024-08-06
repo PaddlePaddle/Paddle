@@ -151,21 +151,20 @@ bool BinomialOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   const auto &prob_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
-  size_t ndims_count = count_shape.size();
-  size_t ndims_prob = prob_shape.size();
-  if (ndims_count >= ndims_prob) {
-    size_t diff = ndims_count - ndims_prob;
-    for (size_t i = 0; i < ndims_prob; i++) {
-      infer_context->AddBroadcastableCstr(count_shape[i + diff], prob_shape[i]);
-    }
-  } else {
-    size_t diff = ndims_prob - ndims_count;
-    for (size_t i = 0; i < ndims_count; i++) {
-      infer_context->AddBroadcastableCstr(count_shape[i], prob_shape[i + diff]);
-    }
+  PADDLE_ENFORCE_EQ(count_shape.size(),
+                    prob_shape.size(),
+                    common::errors::PreconditionNotMet(
+                        "Input(count) and Input(prob) must have the same "
+                        "dimension size. but got %d vs %d",
+                        count_shape.size(),
+                        prob_shape.size()));
+  for (size_t i = 0; i < count_shape.size(); ++i) {
+    infer_context->AddEqualCstr(count_shape[i], prob_shape[i]);
   }
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs{count_shape});
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(count_shape)});
   return true;
 }
 
