@@ -49,6 +49,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceSum_Op::name(),
     CAllreduceAvgOp::name(),
     CAllreduceAvg_Op::name(),
+    CReducescatterOp::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
     CAllreduceMax_Op::name(),
