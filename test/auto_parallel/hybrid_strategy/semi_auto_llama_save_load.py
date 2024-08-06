@@ -16,6 +16,7 @@ import hashlib
 import os
 import random
 import tempfile
+import time
 from functools import reduce
 
 import numpy as np
@@ -181,6 +182,8 @@ class TestLlamaAuto:
 
             if step >= 9:
                 break
+
+        time.sleep(5)
 
         loss_after_load = []
         for step, inputs in enumerate(dist_loader()):
