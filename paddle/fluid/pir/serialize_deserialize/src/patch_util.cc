@@ -250,7 +250,6 @@ Json ParseOpPatches(const YAML::Node &root) {
   for (size_t i = 0; i < root.size(); i++) {
     // parse op_name
     YAML::Node node = root[i];
-    YAML::Node node = root[i];
     auto op_name = node["op_name"].as<std::string>();
     if (op_name == pir::ParameterOp::name()) {
       op_name = PARAMETEROP;
