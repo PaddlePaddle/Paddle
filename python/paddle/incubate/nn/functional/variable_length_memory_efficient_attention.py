@@ -36,8 +36,8 @@ def variable_length_memory_efficient_attention(
     value: Tensor,
     seq_lens: Tensor,
     kv_seq_lens: Tensor,
-    mask: Tensor = None,
-    scale: float = None,
+    mask: Tensor | None = None,
+    scale: float | None = None,
     causal: bool = False,
     pre_cache_length: int = 0,
 ) -> Tensor:
