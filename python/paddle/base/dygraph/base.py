@@ -298,7 +298,7 @@ def _switch_tracer_mode_guard_(
 
 
 @overload
-def no_grad(func: None = ...) -> AbstractAsyncContextManager:
+def no_grad(func: None = ...) -> AbstractContextManager:
     ...
 
 
