@@ -885,26 +885,110 @@ bool TopPSamplingOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool GammainccOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+bool GammainccOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Get the symbolic shape of the input tensors
+  auto x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto y_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
-// bool HeavisideOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  int x_offset = max_dim - x_dims.size();
+  int y_offset = max_dim - y_dims.size();
 
-// bool NextafterOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+  std::vector<symbol::DimExpr> out_dims(max_dim);
+
+  // Iterate through each dimension and determine the output shape
+  for (int i = 0; i < max_dim; ++i) {
+    // Use 1 for padding dimensions in the shorter tensor
+    auto x_dim = (i < x_offset) ? symbol::DimExpr(1) : x_dims[i - x_offset];
+    auto y_dim = (i < y_offset) ? symbol::DimExpr(1) : y_dims[i - y_offset];
+
+    // Determine the broadcasted dimension
+    out_dims[i] = symbol::DimExprBuilder::Broadcast(x_dim, y_dim);
+
+    // Add constraint to ensure dimensions are broadcastable
+    infer_context->AddBroadcastableCstr(x_dim, y_dim);
+  }
+
+  // Set the symbolic shape of the output tensor
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
+bool HeavisideOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Get the symbolic shape of the input tensors
+  auto x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto y_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  int x_offset = max_dim - x_dims.size();
+  int y_offset = max_dim - y_dims.size();
+
+  std::vector<symbol::DimExpr> out_dims(max_dim);
+
+  // Iterate through each dimension and determine the output shape
+  for (int i = 0; i < max_dim; ++i) {
+    // Use 1 for padding dimensions in the shorter tensor
+    auto x_dim = (i < x_offset) ? symbol::DimExpr(1) : x_dims[i - x_offset];
+    auto y_dim = (i < y_offset) ? symbol::DimExpr(1) : y_dims[i - y_offset];
+
+    // Determine the broadcasted dimension
+    out_dims[i] = symbol::DimExprBuilder::Broadcast(x_dim, y_dim);
+
+    // Add constraint to ensure dimensions are broadcastable
+    infer_context->AddBroadcastableCstr(x_dim, y_dim);
+  }
+
+  // Set the symbolic shape of the output tensor
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
+bool NextafterOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Get the symbolic shape of the input tensors
+  auto x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto y_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  int x_offset = max_dim - x_dims.size();
+  int y_offset = max_dim - y_dims.size();
+
+  std::vector<symbol::DimExpr> out_dims(max_dim);
+
+  // Iterate through each dimension and determine the output shape
+  for (int i = 0; i < max_dim; ++i) {
+    // Use 1 for padding dimensions in the shorter tensor
+    auto x_dim = (i < x_offset) ? symbol::DimExpr(1) : x_dims[i - x_offset];
+    auto y_dim = (i < y_offset) ? symbol::DimExpr(1) : y_dims[i - y_offset];
+
+    // Determine the broadcasted dimension
+    out_dims[i] = symbol::DimExprBuilder::Broadcast(x_dim, y_dim);
+
+    // Add constraint to ensure dimensions are broadcastable
+    infer_context->AddBroadcastableCstr(x_dim, y_dim);
+  }
+
+  // Set the symbolic shape of the output tensor
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
 
 }  // namespace paddle::dialect
 
