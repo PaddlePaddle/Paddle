@@ -85,6 +85,13 @@ std::vector<symbol::DimExpr> GetRealPadding(
   return real_padding;
 }
 
+// bool AffineGridOpInferSymbolicShape(pir::Operation *op,
+//                                     pir::InferSymbolicShapeContext
+//                                     *infer_context) {
+//   // pass
+//   return true;
+// }
+
 symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
     pir::Operation *op,
     const std::vector<symbol::DimExpr> &kernel_size,
@@ -356,6 +363,26 @@ bool AssignOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+// bool AllReduceOpInferSymbolicShape(pir::Operation *op,
+//                                    pir::InferSymbolicShapeContext
+//                                    *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool AllReduce_OpInferSymbolicShape(pir::Operation *op,
+//                                     pir::InferSymbolicShapeContext
+//                                     *infer_context) {
+//   return AllReduceOpInferSymbolicShape(op, infer_context);
+// }
+
+// bool BarrierOpInferSymbolicShape(pir::Operation *op,
+//                                  pir::InferSymbolicShapeContext
+//                                  *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool Assign_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return AssignOpInferSymbolicShape(op, infer_context);
@@ -534,6 +561,27 @@ bool ChannelShuffleOpInferSymbolicShape(
   return true;
 }
 
+// bool CropOpInferSymbolicShape(pir::Operation *op,
+//                               pir::InferSymbolicShapeContext *infer_context)
+//                               {
+//   // pass
+//   return true;
+// }
+
+// bool DecodeJpegOpInferSymbolicShape(pir::Operation *op,
+//                                     pir::InferSymbolicShapeContext
+//                                     *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool DiagOpInferSymbolicShape(pir::Operation *op,
+//                               pir::InferSymbolicShapeContext *infer_context)
+//                               {
+//   // pass
+//   return true;
+// }
+
 bool DiagEmbedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
@@ -691,6 +739,20 @@ bool EigvalshOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return EighOpInferSymbolicShape(op, infer_context);
 }
+
+// bool FractionalMaxPool2DOpInferSymbolicShape(pir::Operation *op,
+//                                              pir::InferSymbolicShapeContext
+//                                              *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool FractionalMaxPool3DOpInferSymbolicShape(pir::Operation *op,
+//                                              pir::InferSymbolicShapeContext
+//                                              *infer_context) {
+//   // pass
+//   return true;
+// }
 
 bool FakeChannelWiseQuantizeAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -903,6 +965,12 @@ bool IdentityLossOpInferSymbolicShape(
 
   return true;
 }
+// bool GumbelSoftmaxOpInferSymbolicShape(pir::Operation *op,
+//                                        pir::InferSymbolicShapeContext
+//                                        *infer_context) {
+//   // pass
+//   return true;
+// }
 
 bool IdentityLoss_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -1048,6 +1116,55 @@ bool MeanAllOpInferSymbolicShape(
   return true;
 }
 
+// bool MatrixPowerOpInferSymbolicShape(pir::Operation *op,
+//                                      pir::InferSymbolicShapeContext
+//                                      *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool MatrixRankOpInferSymbolicShape(pir::Operation *op,
+//                                     pir::InferSymbolicShapeContext
+//                                     *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool MaxPool2DWithIndexOpInferSymbolicShape(pir::Operation *op,
+//                                             pir::InferSymbolicShapeContext
+//                                             *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool MaxPool3DWithIndexOpInferSymbolicShape(pir::Operation *op,
+//                                             pir::InferSymbolicShapeContext
+//                                             *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool MultinomialOpInferSymbolicShape(pir::Operation *op,
+//                                      pir::InferSymbolicShapeContext
+//                                      *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool NanmedianOpInferSymbolicShape(pir::Operation *op,
+//                                    pir::InferSymbolicShapeContext
+//                                    *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool NormOpInferSymbolicShape(pir::Operation *op,
+//                               pir::InferSymbolicShapeContext *infer_context)
+//                               {
+//   // pass
+//   return true;
+// }
+
 bool NonzeroOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -1081,6 +1198,19 @@ bool NumelOpInferSymbolicShape(pir::Operation *op,
 
   return true;
 }
+// bool P_NormOpInferSymbolicShape(pir::Operation *op,
+//                                 pir::InferSymbolicShapeContext
+//                                 *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool PartialSumOpInferSymbolicShape(pir::Operation *op,
+//                                     pir::InferSymbolicShapeContext
+//                                     *infer_context) {
+//   // pass
+//   return true;
+// }
 
 bool PadOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
@@ -1598,6 +1728,19 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
 
   return true;
 }
+// bool SetValueWithTensorOpInferSymbolicShape(pir::Operation *op,
+//                                             pir::InferSymbolicShapeContext
+//                                             *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool TraceOpInferSymbolicShape(pir::Operation *op,
+//                                pir::InferSymbolicShapeContext *infer_context)
+//                                {
+//   // pass
+//   return true;
+// }
 
 bool TileOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
@@ -2117,5 +2260,19 @@ bool Unsqueeze_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return UnsqueezeOpInferSymbolicShape(op, infer_context);
 }
+
+// bool UnfoldOpInferSymbolicShape(pir::Operation *op,
+//                                 pir::InferSymbolicShapeContext
+//                                 *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool UnstackOpInferSymbolicShape(pir::Operation *op,
+//                                  pir::InferSymbolicShapeContext
+//                                  *infer_context) {
+//   // pass
+//   return true;
+// }
 
 }  // namespace paddle::dialect

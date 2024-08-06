@@ -357,6 +357,13 @@ bool RandintOpInferSymbolicShape(
   }
 }
 
+// bool ReadFileOpInferSymbolicShape(pir::Operation *op,
+//                                   pir::InferSymbolicShapeContext
+//                                   *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool TrilIndicesOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &attributes = op->attributes();
