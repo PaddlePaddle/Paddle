@@ -102,7 +102,7 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
     PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
         "LoDTensor and SelectedRows are supported.",
-        platform::demangle(framework::ToTypeName(src.Type()))));
+        common::demangle(framework::ToTypeName(src.Type()))));
   }
 }
 

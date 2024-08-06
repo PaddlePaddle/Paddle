@@ -123,8 +123,6 @@ DEFAULT_RECOMPUTABLE_OPS: List[str] = [
     "pd_op.bitwise_xor",
     "pd_op.isinf",
     "pd_op.isnan",
-    # "pd_op.gather",
-    "pd_op.sigmoid",
 ]
 
 VIEW_OPS: List[str] = []
@@ -137,9 +135,6 @@ COMPUTE_INTENSIVE_OPS: List[str] = [
     "pd_op.layer_norm",
     "pd_op.batchnorm",
     "pd_op.softmax",
-    "pd_op.c_allreduce_sum_",
-    "pd_op.c_broadcast_",
-    "pd_op.c_reduce_sum_",
 ]
 
 
@@ -364,27 +359,18 @@ def auto_recompute(
         if value_node.get_defining_op().name() == "builtin.combine":
             continue
 
-        if len(value_node.all_used_ops()) == 1 and value_node.all_used_ops()[
-            0
-        ].name() in ["builtin.split", "builtin.slice"]:
+        if (
+            len(value_node.all_used_ops()) == 1
+            and value_node.all_used_ops()[0].name() == "builtin.split"
+        ):
             continue
 
         if value_node in required_bw_value_nodes:
-            print(
-                "add edge link from: ", value_node.id, " -> ", "sink", " (inf) "
-            )
             nx_graph.add_edge(value_node.id + "_in", "sink", capacity=math.inf)
             value_id_dict[value_node.id] = value_node
             continue
 
         if value_node in inputs:
-            print(
-                "add edge link from: ",
-                " source ",
-                " -> ",
-                value_node.id,
-                " (inf)",
-            )
             nx_graph.add_edge(
                 "source", value_node.id + "_in", capacity=math.inf
             )
@@ -397,13 +383,6 @@ def auto_recompute(
             _ban_recomputation(value_node)
             and value_node in required_fw_value_nodes
         ):
-            print(
-                "add edge link from: ",
-                " source ",
-                " -> ",
-                value_node.id,
-                "(inf)",
-            )
             nx_graph.add_edge(
                 "source", value_node.id + "_in", capacity=math.inf
             )
@@ -425,22 +404,11 @@ def auto_recompute(
 
         users = find_value_node_users(value_node)
         for user in users:
-            print(
-                "add edge link from: ",
-                value_node.id,
-                " -> ",
-                user.id,
-                " (inf) ",
-            )
-            # if user.get_defining_op().name() == "pd_op.adamw_":
-            #     continue
             nx_graph.add_edge(
                 value_node.id + "_out", user.id + "_in", capacity=math.inf
             )
-
     # 1.5  find saved values by minimum cut.
-    cut_value, partition = nx.minimum_cut(nx_graph, "source", "sink")
-    print("Cut Value:", cut_value)
+    _, partition = nx.minimum_cut(nx_graph, "source", "sink")
     reachable, non_reachable = partition
     cutset = set()
     for u, nbrs in ((n, nx_graph[n]) for n in reachable):
@@ -454,10 +422,7 @@ def auto_recompute(
 
     saved_values = cut_value_nodes
     # (TODO: wanghao107): remove it and fix model
-    # saved_values = cut_value_nodes | inputs
-    saved_values = cut_value_nodes
-    # breakpoint()
-    print("program before recompute:", program)
+    saved_values = cut_value_nodes | inputs
     # 2.patition the joint graph by saved values.
     (
         program_after_recompute,
@@ -470,7 +435,6 @@ def auto_recompute(
         fwd_op_end_idx,
         backward_op_start_idx,
     )
-    print("program after recompute:", program_after_recompute)
     return program_after_recompute, fwd_op_end_idx_after_recompute
 
 
@@ -512,28 +476,6 @@ def partition_joint_graph(
         fwd_op_end_idx,
         backward_op_start_idx,
     )
-    mem = 0
-    for mid in mid_hold_values:
-        mem += cal_value_node_size(mid)
-    print(mem / 1024 / 1024 / 1024, "GB")
-
-    # print(
-    #     "Saved_Values:",
-    # )
-
-    def getIdx(program, op):
-        for idx, op_iter in enumerate(program.global_block().ops):
-            if op == op_iter:
-                return idx
-        raise RuntimeError("op not found in program")
-
-    # for value in saved_values:
-    #     print(
-    #         "Saved Values:",
-    #         value,
-    #         getIdx(program, value.get_defining_op()),
-    #         value.id,
-    #     )
 
     # 2. Extract the recompute subgraph and replace forward mid hold values with recompute subgraph's outputs
     program, fwd_op_end_idx = replace_mid_values_with_forward_subgraph(
@@ -558,28 +500,8 @@ def replace_mid_values_with_forward_subgraph(
             saved_values,
             marked_recompute_ops,
             needed_saved_values,
-            chain,
         ):
-            def getIdx(program, op):
-                for idx, op_iter in enumerate(program.global_block().ops):
-                    if op == op_iter:
-                        return idx
-                raise RuntimeError("op not found in program")
-
-            new_chain = list(chain)
-            new_chain.append(recompute_value)
             define_op = recompute_value.get_defining_op()
-            # if (define_op.name() == "pd_op.matmul"):
-            #     print("Matmul Chain is: {")
-            #     for value in new_chain:
-            #         print(
-            #             "Matmul Chain is:",
-            #             value,
-            #             value.get_defining_op(),
-            #             getIdx(program, value.get_defining_op()),
-            #             value.id,
-            #         )
-            #     print("}")
             if define_op in marked_recompute_ops:
                 return
             op_inputs = define_op.operands_source()
@@ -587,23 +509,6 @@ def replace_mid_values_with_forward_subgraph(
                 "pd_op.full",
                 "pd_op.full_int_array",
             ]:
-
-                def getIdx(program, op):
-                    for idx, op_iter in enumerate(program.global_block().ops):
-                        if op == op_iter:
-                            return idx
-                    raise RuntimeError("op not found in program")
-
-                # for value in new_chain:
-                #     print(
-                #         "Error Chain is:",
-                #         value,
-                #         getIdx(program, value.get_defining_op()),
-                #         value.id,
-                #     )
-                # print(
-                #     f"Every path to recompute value {recompute_value} must have saved value or starting point of the path is one of op in [pd_op.full, pd_op.full_int_array], but find {define_op.name()} op"
-                # )
                 raise Exception(
                     f"Every path to recompute value {recompute_value} must have saved value or starting point of the path is one of op in [pd_op.full, pd_op.full_int_array], but find {define_op.name()} op"
                 )
@@ -617,7 +522,6 @@ def replace_mid_values_with_forward_subgraph(
                     saved_values,
                     marked_recompute_ops,
                     needed_saved_values,
-                    new_chain,
                 )
             marked_recompute_ops.add(define_op)
             return
@@ -626,24 +530,13 @@ def replace_mid_values_with_forward_subgraph(
         recompute_subgraph_ops = set()
         recompute_subgraph_inputs = backward_utils.ValueSet()
         recompute_subgraph_outputs_backward_needed = mid_values
-
-        def getIdx(program, op):
-            for idx, op_iter in enumerate(program.global_block().ops):
-                if op == op_iter:
-                    return idx
-            raise RuntimeError("op not found in program")
-
         for recompute_value in mid_values:
             _find_recompute_ops(
                 recompute_value,
                 saved_values,
                 recompute_subgraph_ops,
                 recompute_subgraph_inputs,
-                [],
             )
-        print("Recompute Ops: ", len(recompute_subgraph_ops))
-        for op in recompute_subgraph_ops:
-            print(op, getIdx(program, op))
         recompute_subgraph = {
             "inputs": recompute_subgraph_inputs,
             "recompute_ops": recompute_subgraph_ops,
@@ -689,7 +582,6 @@ def replace_mid_values_with_forward_subgraph(
                     if cloned_op in parent_ops and cloned_op not in reseted_ops:
                         cloned_op.move_before(op)
                         reseted_ops.add(cloned_op)
-    # print("recompute program", program)
     return program, fwd_op_end_idx
 
 
@@ -725,8 +617,8 @@ def classify_value_node(program, grad_outputs, fwd_op_end_idx):
         )
     return (
         required_fw_value_nodes,
-        required_bw_value_nodes | unclaimed_value_nodes,
-        backward_utils.ValueSet(),
+        required_bw_value_nodes,
+        unclaimed_value_nodes,
     )
 
 
@@ -741,12 +633,10 @@ def find_value_node_users(value_node):
             for combine_res_used_op in combine_result.all_used_ops():
                 results = combine_res_used_op.results()
                 for result in results:
-                    if len(
-                        result.all_used_ops()
-                    ) == 1 and result.all_used_ops()[0].name() in [
-                        "builtin.split",
-                        "builtin.slice",
-                    ]:
+                    if (
+                        len(result.all_used_ops()) == 1
+                        and result.all_used_ops()[0].name() == "builtin.split"
+                    ):
                         split_results = result.all_used_ops()[0].results()
                         users |= backward_utils.ValueSet(split_results)
                     else:
@@ -754,9 +644,10 @@ def find_value_node_users(value_node):
         else:
             results = op.results()
             for result in results:
-                if len(result.all_used_ops()) == 1 and result.all_used_ops()[
-                    0
-                ].name() in ["builtin.split", "builtin.slice"]:
+                if (
+                    len(result.all_used_ops()) == 1
+                    and result.all_used_ops()[0].name() == "builtin.split"
+                ):
                     split_results = result.all_used_ops()[0].results()
                     users |= backward_utils.ValueSet(split_results)
                 else:
@@ -767,7 +658,7 @@ def find_value_node_users(value_node):
 def get_real_input_nodes(output_value_node):
     real_input_nodes = backward_utils.ValueSet()
     define_op = output_value_node.get_defining_op()
-    if define_op.name() in ["builtin.split", "builtin.slice"]:
+    if define_op.name() == "builtin.split":
         op_input = define_op.operands_source()[0]
         real_define_op = op_input.get_defining_op()
         input_value_nodes = real_define_op.operands_source()
@@ -785,7 +676,7 @@ def get_real_input_nodes(output_value_node):
 
 def get_real_define_op_name(value_node):
     define_op = value_node.get_defining_op()
-    if define_op.name() in ["builtin.split", "builtin.slice"]:
+    if define_op.name() == "builtin.split":
         op_input = define_op.operands_source()[0]
         return op_input.get_defining_op().name()
     else:
@@ -793,11 +684,7 @@ def get_real_define_op_name(value_node):
 
 
 def is_dynamic_value_node(value_node):
-    try:
-        return -1 in value_node.shape
-    except:
-        print("=============sb===============", value_node)
-        return -1
+    return -1 in value_node.shape
 
 
 def cal_value_node_size(value_node):
@@ -816,10 +703,7 @@ def cal_value_nodes_dist_to_backward(all_ops, required_fw_value_nodes):
         op_results = op.results()
         for op_result in op_results:
             used_ops = op_result.all_used_ops()
-            if len(used_ops) == 1 and used_ops[0].name() in [
-                "builtin.split",
-                "builtin.slice",
-            ]:
+            if len(used_ops) == 1 and used_ops[0].name() == "builtin.split":
                 continue
             real_users = find_value_node_users(op_result)
             if op_result not in required_fw_value_nodes:
@@ -831,18 +715,6 @@ def cal_value_nodes_dist_to_backward(all_ops, required_fw_value_nodes):
                         dist_from_bw[op_result], dist_from_bw[user] + 1
                     )
     return dist_from_bw
-
-
-def all_used_op_consider_combine(program, value):
-    def filter_unused_combine(op):
-        if (
-            op.name() == "builtin.combine"
-            and len(op.result(0).all_used_ops()) == 0
-        ):
-            return False
-        return True
-
-    return list(filter(filter_unused_combine, value.all_used_ops()))
 
 
 def analyze_mid_hold_values(
@@ -858,7 +730,7 @@ def analyze_mid_hold_values(
     mid_hold_values = backward_utils.ValueSet()
     for op in forward_ops:
         for result in op.results():
-            all_used_ops = all_used_op_consider_combine(program, result)
+            all_used_ops = result.all_used_ops()
             if (
                 any(op in backward_ops for op in all_used_ops)
                 and result not in saved_values
@@ -877,13 +749,8 @@ def clone_graph(program, origin_ops, graph_inputs, clone_insertion_op):
     cloned_ops = []
     for input_value in graph_inputs:
         value_map.add(input_value, input_value)
-    # for op in origin_ops:
-    #     if(op.name() == "pd_op.full" or op.name() == "pd_op.full_int_array"):
-    #         value_map.add(op.results()[0], op.results()[0])
     for op in all_ops:
         if op in origin_ops:
-            # if(op.name() == "pd_op.full" or op.name() == "pd_op.full_int_array"):
-            #     continue
             cloned_ops.append(
                 op.clone(value_map, paddle.pir.CloneOptions(False, True, True))
             )
@@ -900,14 +767,9 @@ def find_parent_ops(value):
             return parent_ops
         visited.add(value)
         parent_op = value.get_defining_op()
-        if parent_op is not None:
-            parent_ops.add(parent_op)
-        else:
-            return parent_ops
+        parent_ops.add(parent_op)
         op_inputs = parent_op.operands_source()
         for op_input in op_inputs:
-            if not value.initialized():
-                continue
             parent_ops = parent_ops | _find_parent_ops(op_input)
         return parent_ops
 
@@ -928,8 +790,6 @@ def find_child_ops(value):
         for used_op in used_ops:
             op_results = op_results | backward_utils.ValueSet(used_op.results())
         for op_result in op_results:
-            if not op_result.initialized():
-                continue
             child_ops = child_ops | _find_child_ops(op_result)
         return child_ops
 
