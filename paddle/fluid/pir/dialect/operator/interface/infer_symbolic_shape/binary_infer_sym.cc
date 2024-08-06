@@ -962,8 +962,8 @@ bool IndexSelectOpInferSymbolicShape(
 
 bool IndexSelect_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-      return IndexSelectOpInferSymbolicShape(op, infer_context);
-    }
+  return IndexSelectOpInferSymbolicShape(op, infer_context);
+}
 
 }  // namespace paddle::dialect
 
