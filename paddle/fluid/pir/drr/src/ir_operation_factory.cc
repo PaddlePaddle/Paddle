@@ -489,7 +489,7 @@ void OperationFactory::RegisterManualOpCreator() {
           bool keepdim =
               attrs.at("keepdim").dyn_cast<pir::BoolAttribute>().data();
 
-          const auto& dtype =
+          ::phi::DataType dtype =
               attrs.at("dtype")
                   .dyn_cast<paddle::dialect::DataTypeAttribute>()
                   .data();
