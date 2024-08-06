@@ -60,18 +60,27 @@ bool AssignValueOpInferSymbolicShape(
     sym_dims.emplace_back(symbol::DimExpr(static_cast<int64_t>(dim)));
   }
 
-  const auto &attributes = op->attributes();
+  bool result_is_int_type = [&]() {
+    const auto &dtype =
+        op->result(0).type().dyn_cast<pir::DenseTensorType>().dtype();
+    return dtype.isa<pir::Int32Type>() || dtype.isa<pir::Int64Type>();
+  }();
+
   std::vector<int64_t> values;
-  for (size_t i = 0;
-       i < attributes.at("values").dyn_cast<pir::ArrayAttribute>().size();
-       i++) {
-    values.push_back(attributes.at("values")
-                         .dyn_cast<pir::ArrayAttribute>()
-                         .at(i)
-                         .dyn_cast<paddle::dialect::ScalarAttribute>()
-                         .data()
-                         .to<int64_t>());
+  if (result_is_int_type) {
+    const auto &attributes = op->attributes();
+    for (size_t i = 0;
+         i < attributes.at("values").dyn_cast<pir::ArrayAttribute>().size();
+         i++) {
+      values.push_back(attributes.at("values")
+                           .dyn_cast<pir::ArrayAttribute>()
+                           .at(i)
+                           .dyn_cast<paddle::dialect::ScalarAttribute>()
+                           .data()
+                           .to<int64_t>());
+    }
   }
+
   if (values.size() > 0 && sym_dims.size() <= 1) {
     std::vector<symbol::DimExpr> data;
     for (const auto &value : values) {

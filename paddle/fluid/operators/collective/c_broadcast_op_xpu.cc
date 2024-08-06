@@ -36,8 +36,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<phi::DenseTensor>("Out");
     size_t numel = x->numel();
 
-    BKCLDataType dtype =
-        platform::ToBKCLDataType(framework::TransToProtoVarType(x->dtype()));
+    BKCLDataType dtype = phi::ToBKCLDataType(x->dtype());
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
     int root = ctx.Attr<int>("root");

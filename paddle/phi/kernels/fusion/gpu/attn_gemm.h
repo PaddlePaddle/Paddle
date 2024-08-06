@@ -71,7 +71,7 @@ class AttnMatMul {
       PADDLE_ENFORCE_EQ(
           !output || output == bias_out,
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The output (= input * weight) is expected to be nullptr or the "
               "same as bias_out when fused is true."));
 
@@ -234,7 +234,7 @@ class AttnMatMul {
         }
       }
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "AttnMatMul wrapper do not support (transA=T, transB=T/N)"
           "parameters."));
     }
@@ -267,7 +267,7 @@ class AttnMatMul {
         phi::SumKernel<T, phi::GPUContext>(
             dev_ctx_, *d_output, {0, 1, 2}, d_output->dtype(), false, d_bias);
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Only support reduce when the input dims are [0,1,2,3,4] and "
             "output is [2,3,4]"
             "or input is [0,1,2] and output is [2]."));

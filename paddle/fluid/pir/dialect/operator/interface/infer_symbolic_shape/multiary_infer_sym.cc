@@ -246,7 +246,7 @@ bool BatchNormOpInferSymbolicShape(
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: the dimension of input "
           "X must greater than or equal to 2. But received: the shape of input "
           "X = [%s], the dimension of input X =[%d]",
@@ -255,7 +255,7 @@ bool BatchNormOpInferSymbolicShape(
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: the dimension of input X "
           "must smaller than or equal to 5. But received: the shape of input X "
           "= [%s], the dimension of input X = [%d]",
@@ -270,7 +270,7 @@ bool BatchNormOpInferSymbolicShape(
     std::vector<symbol::DimExpr> scale_dims = scale_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(scale_dims.size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the dimension of scale must equal to 1."
                           "But received: the dimension of scale is [%d]",
                           scale_dims.size()));
@@ -281,7 +281,7 @@ bool BatchNormOpInferSymbolicShape(
     std::vector<symbol::DimExpr> bias_dims = bias_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(bias_dims.size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the dimension of bias must equal to 1."
                           "But received: the dimension of bias is [%d]",
                           bias_dims.size()));
@@ -316,7 +316,8 @@ bool BatchNormOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(param_dims)});
   }
   if (op->result(5) && op->result(5).type()) {
-    std::vector<symbol::DimExpr> reserve_space_dims = {symbol::DimExpr{-1}};
+    std::vector<symbol::DimExpr> reserve_space_dims{
+        symbol::DimExpr{infer_context->GetNextSymName()}};
     infer_context->SetShapeOrDataForValue(
         op->result(5),
         symbol::ShapeOrDataDimExprs{
@@ -448,6 +449,15 @@ bool BicubicInterpOpInferSymbolicShape(
       }
       // has out_size tensor
       if (op->operand_source(1)) {
+        const auto &out_size_shape_or_data =
+            infer_context->GetShapeOrDataForValue(op->operand_source(1));
+        PADDLE_ENFORCE_EQ(
+            out_size_shape_or_data.shape().size(),
+            1,
+            common::errors::InvalidArgument(
+                "The rank of input out_size tensor should be 1."));
+        infer_context->AddEqualCstr(out_size_shape_or_data.shape()[0],
+                                    symbol::DimExpr{2});
         const auto &out_size_data = GetOutSizeDataExpr(op->operand_source(1));
         return std::make_tuple(symbol::DimExpr{out_size_data[0]},
                                symbol::DimExpr{out_size_data[1]});
@@ -834,6 +844,64 @@ bool GroupNormOpInferSymbolicShape(
     infer_context->SetShapeOrDataForValue(op->result(2), mean_shape);
   }
   return true;
+}
+
+bool LerpOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &w_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> y_shape = y_shape_or_data.shape();
+  std::vector<symbol::DimExpr> w_shape = w_shape_or_data.shape();
+  int x_ndims = x_shape.size();
+  int y_ndims = y_shape.size();
+  int w_ndims = w_shape.size();
+  std::vector<symbol::DimExpr> out1_shape;
+  std::vector<symbol::DimExpr> out2_shape;
+  int diffxy = x_ndims - y_ndims;
+  if (diffxy > 0) {
+    for (int i = 0; i < diffxy; ++i) {
+      y_shape.emplace(y_shape.begin(), 1);
+    }
+  } else {
+    for (int i = 0; i < -diffxy; ++i) {
+      x_shape.emplace(x_shape.begin(), 1);
+    }
+  }
+  symbol::DimExprBuilder builder;
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    out1_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
+    infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
+  }
+  int out1_ndims = out1_shape.size();
+  int diffxyw = w_ndims - out1_ndims;
+  if (diffxyw > 0) {
+    for (int i = 0; i < diffxyw; ++i) {
+      out1_shape.emplace(out1_shape.begin(), 1);
+    }
+  } else {
+    for (int i = 0; i < -diffxyw; ++i) {
+      w_shape.emplace(w_shape.begin(), 1);
+    }
+  }
+  for (size_t i = 0; i < w_shape.size(); ++i) {
+    out2_shape.emplace_back(builder.Broadcast(w_shape[i], out1_shape[i]));
+    infer_context->AddBroadcastableCstr(w_shape[i], out1_shape[i]);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out2_shape)});
+  return true;
+}
+
+bool Lerp_OpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  return LerpOpInferSymbolicShape(op, infer_context);
 }
 
 bool LayerNormOpInferSymbolicShape(
