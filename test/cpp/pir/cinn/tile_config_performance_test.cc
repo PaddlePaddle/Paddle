@@ -531,7 +531,8 @@ void TestPerformanceForTileConfig(int spatial_left_bound,
                                   int reduce_left_bound,
                                   int reduce_right_bound,
                                   bool is_spatial_dynamic,
-                                  bool is_reduce_dynamic) {
+                                  bool is_reduce_dynamic,
+                                  bool test_single_large) {
   FLAGS_enable_cinn_compile_cache = false;
   FLAGS_cinn_measure_kernel_time = true;
 
@@ -621,71 +622,74 @@ void TestPerformanceForTileConfig(int spatial_left_bound,
                             iter_space_type);
     }  // end of r_dimension_lower loop
   }    // end of s_dimention_lower loop
+  if (test_single_large) {
+    // (II) Test in the single large areas,
+    // i.e., S:[4096-32768]*R:[2-1024], S:[2-1024]*R:[4096-32768]
+    for (int s_dimension_lower = 2; s_dimension_lower < 1024;
+         s_dimension_lower += spatial_tile_config) {
+      // adjust the tile size for the spatial dimension dymaically
+      spatial_tile_config =
+          get_tile_size_config_in_large_area(s_dimension_lower);
+      spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
 
-  // (II) Test in the single large areas,
-  // i.e., S:[4096-32768]*R:[2-1024], S:[2-1024]*R:[4096-32768]
-  for (int s_dimension_lower = 2; s_dimension_lower < 1024;
-       s_dimension_lower += spatial_tile_config) {
-    // adjust the tile size for the spatial dimension dymaically
-    spatial_tile_config = get_tile_size_config_in_large_area(s_dimension_lower);
-    spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
+      for (int r_dimension_lower = 4096; r_dimension_lower < 32768;
+           r_dimension_lower += reduce_tile_config) {
+        // adjust the tile size for the reduce dimension dymaically
+        reduce_tile_config =
+            get_tile_size_config_in_large_area(r_dimension_lower);
+        reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
 
-    for (int r_dimension_lower = 4096; r_dimension_lower < 32768;
-         r_dimension_lower += reduce_tile_config) {
-      // adjust the tile size for the reduce dimension dymaically
-      reduce_tile_config =
-          get_tile_size_config_in_large_area(r_dimension_lower);
-      reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-
-      TestWindowPerformance(os,
-                            perf_test_config,
-                            kGraphNum,
-                            s_dimension_lower,
-                            spatial_tile_width,
-                            r_dimension_lower,
-                            reduce_tile_width,
-                            is_spatial_dynamic,
-                            is_reduce_dynamic,
-                            s_weight,
-                            r_weight,
-                            sampling_prob,
-                            kMaxSamplingTimes,
-                            kRepeats,
-                            best_tile_config_map,
-                            iter_space_type);
+        TestWindowPerformance(os,
+                              perf_test_config,
+                              kGraphNum,
+                              s_dimension_lower,
+                              spatial_tile_width,
+                              r_dimension_lower,
+                              reduce_tile_width,
+                              is_spatial_dynamic,
+                              is_reduce_dynamic,
+                              s_weight,
+                              r_weight,
+                              sampling_prob,
+                              kMaxSamplingTimes,
+                              kRepeats,
+                              best_tile_config_map,
+                              iter_space_type);
+      }
     }
-  }
 
-  for (int s_dimension_lower = 4096; s_dimension_lower < 32768;
-       s_dimension_lower += spatial_tile_config) {
-    // adjust the tile size for the spatial dimension dymaically
-    spatial_tile_config = get_tile_size_config_in_large_area(s_dimension_lower);
-    spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
+    for (int s_dimension_lower = 4096; s_dimension_lower < 32768;
+         s_dimension_lower += spatial_tile_config) {
+      // adjust the tile size for the spatial dimension dymaically
+      spatial_tile_config =
+          get_tile_size_config_in_large_area(s_dimension_lower);
+      spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
 
-    for (int r_dimension_lower = 2; r_dimension_lower < 1024;
-         r_dimension_lower += reduce_tile_config) {
-      // adjust the tile size for the reduce dimension dymaically
-      reduce_tile_config =
-          get_tile_size_config_in_large_area(r_dimension_lower);
-      reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-      // Run performance test and write measure results to csv file.
+      for (int r_dimension_lower = 2; r_dimension_lower < 1024;
+           r_dimension_lower += reduce_tile_config) {
+        // adjust the tile size for the reduce dimension dymaically
+        reduce_tile_config =
+            get_tile_size_config_in_large_area(r_dimension_lower);
+        reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
+        // Run performance test and write measure results to csv file.
 
-      TestWindowPerformance(os,
-                            perf_test_config,
-                            kGraphNum,
-                            s_dimension_lower,
-                            spatial_tile_width,
-                            r_dimension_lower,
-                            reduce_tile_width,
-                            is_spatial_dynamic,
-                            is_reduce_dynamic,
-                            s_weight,
-                            r_weight,
-                            sampling_prob,
-                            kMaxSamplingTimes,
-                            kRepeats,
-                            best_tile_config_map,
-                            iter_space_type);
+        TestWindowPerformance(os,
+                              perf_test_config,
+                              kGraphNum,
+                              s_dimension_lower,
+                              spatial_tile_width,
+                              r_dimension_lower,
+                              reduce_tile_width,
+                              is_spatial_dynamic,
+                              is_reduce_dynamic,
+                              s_weight,
+                              r_weight,
+                              sampling_prob,
+                              kMaxSamplingTimes,
+                              kRepeats,
+                              best_tile_config_map,
+                              iter_space_type);
+      }
     }
   }
   os.close();
@@ -709,12 +713,14 @@ TEST(ConfigSearcher, TestPerfDynamicDynamic) {
   constexpr int reduce_right_bound = 2;   // for full test, set it to 4096
   constexpr bool is_spatial_dynamic = true;
   constexpr bool is_reduce_dynamic = true;
+  bool test_single_large = false;  // To test single large area, set it to true
   TestPerformanceForTileConfig(spatial_left_bound,
                                spatial_right_bound,
                                reduce_left_bound,
                                reduce_right_bound,
                                is_spatial_dynamic,
-                               is_reduce_dynamic);
+                               is_reduce_dynamic,
+                               test_single_large);
 }
 
 TEST(ConfigSearcher, TestPerfStaticDynamic) {
@@ -724,12 +730,14 @@ TEST(ConfigSearcher, TestPerfStaticDynamic) {
   constexpr int reduce_right_bound = 2;   // for full test, set it to 4096
   constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
+  bool test_single_large = false;  // To test single large area, set it to true
   TestPerformanceForTileConfig(spatial_left_bound,
                                spatial_right_bound,
                                reduce_left_bound,
                                reduce_right_bound,
                                is_spatial_dynamic,
-                               is_reduce_dynamic);
+                               is_reduce_dynamic,
+                               test_single_large);
 }
 
 TEST(ConfigSearcher, TestPerfDynamicStatic) {
@@ -739,10 +747,12 @@ TEST(ConfigSearcher, TestPerfDynamicStatic) {
   constexpr int reduce_right_bound = 2;   // for full test, set it to 4096
   constexpr bool is_spatial_dynamic = true;
   constexpr bool is_reduce_dynamic = false;
+  bool test_single_large = false;  // To test single large area, set it to true
   TestPerformanceForTileConfig(spatial_left_bound,
                                spatial_right_bound,
                                reduce_left_bound,
                                reduce_right_bound,
                                is_spatial_dynamic,
-                               is_reduce_dynamic);
+                               is_reduce_dynamic,
+                               test_single_large);
 }
