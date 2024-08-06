@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops
+from paddle.framework import in_dynamic_or_pir_mode
 from paddle.nn.functional.pooling import _update_padding_nd
 from paddle.utils import convert_to_list
 
@@ -75,7 +76,9 @@ def max_pool3d(
             [1, 2, 2, 2, 3]
     """
 
-    assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     assert (
         x.is_sparse_coo()
     ), "Currently, sparse.relu only support the input of SparseCooTensor"
