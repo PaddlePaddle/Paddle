@@ -224,6 +224,14 @@ bool ArgsortOpInferSymbolicShape(
   return true;
 }
 
+bool FakeDequantizeMaxAbsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {}  // namespace cinn::dialect

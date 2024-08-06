@@ -1693,6 +1693,7 @@
   kernel :
     func : fake_dequantize_max_abs
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
@@ -1702,6 +1703,7 @@
   kernel :
     func : fake_quantize_abs_max
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_dequantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
@@ -1746,6 +1748,7 @@
     data_type : x
   optional : iter, out_scales
   inplace: (in_scale -> out_scale)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
