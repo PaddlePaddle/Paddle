@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
-
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/shardable_axes_base.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
@@ -136,7 +136,7 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
       axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
       return axes;
     }
-    for (size_t i = 0; i < input_rank; i++) {
+    for (int64_t i = 0; i < input_rank; i++) {
       if (!reduce_axis_idx.count(i)) {
         axes.emplace_back(input_axes[i]);
       } else if (keep_dim) {
@@ -273,7 +273,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
 
   const auto CombineAxes = [&](const ShardableAxes& root,
                                const ShardableAxes& non_root) {
-    VLOG(4) << "start CombineAxes: " << root.DebugStr() << " with "
+    VLOG(5) << "start CombineAxes: " << root.DebugStr() << " with "
             << non_root.DebugStr();
     PADDLE_ENFORCE_EQ(
         root.axis_names.size(),
@@ -303,7 +303,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     for (int i = 0; i < op->num_operands(); ++i) {
       auto value = op->operand_source(i);
       auto axes = axes_signature.inputs[i];
-      VLOG(4) << op->name() << " " << i << "-th input " << value.impl()
+      VLOG(5) << op->name() << " " << i << "-th input " << value.impl()
               << " axes: " << axes.DebugStr();
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
@@ -314,7 +314,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     for (int i = 0; i < op->num_results(); ++i) {
       auto value = op->result(i);
       auto axes = axes_signature.outputs[i];
-      VLOG(4) << op->name() << " " << i << "-th output " << value.impl()
+      VLOG(5) << op->name() << " " << i << "-th output " << value.impl()
               << " axes: " << axes.DebugStr();
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;

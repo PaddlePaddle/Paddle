@@ -175,7 +175,7 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
     PADDLE_THROW(common::errors::InvalidArgument(
         "XPU unsupported variable type %s for imperative allreduce, only "
         "LoDTensor are supported.",
-        platform::demangle(framework::ToTypeName(src.Type()))));
+        common::demangle(framework::ToTypeName(src.Type()))));
   }
 }
 

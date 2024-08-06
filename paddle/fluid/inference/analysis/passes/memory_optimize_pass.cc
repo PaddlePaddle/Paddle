@@ -94,7 +94,7 @@ void MemoryOptimizePass::CollectLifeCycle(
           for (auto i : in_shape) {
             PADDLE_ENFORCE_GE(i,
                               0,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "The shape of node shouldn't be negative. "));
           }
           auto var_bytes = std::accumulate(in_shape.begin(),
