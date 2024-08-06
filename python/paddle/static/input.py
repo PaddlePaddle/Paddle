@@ -55,7 +55,7 @@ def data(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
     lod_level: int = 0,
-) -> paddle.Tensor:
+) -> Tensor:
     """
 
     This function creates a variable on the global block. The global variable
@@ -70,7 +70,7 @@ def data(
         shape (list|tuple): List|Tuple of integers declaring the shape. You can
             set None or -1 at a dimension to indicate the dimension can be of any
             size. For example, it is useful to set changeable batch size as None or -1.
-        dtype (np.dtype|str, optional): The type of the data. Supported
+        dtype (np.dtype|str|None, optional): The type of the data. Supported
             dtype: bool, float16, float32, float64, int8, int16, int32, int64,
             uint8. Default: None. When `dtype` is not set, the dtype will get
             from the global dtype by `paddle.get_default_dtype()`.
@@ -206,7 +206,7 @@ class InputSpec:
         dtype (np.dtype|str, optional): The type of the data. Supported
             dtype: bool, float16, float32, float64, int8, int16, int32, int64,
             uint8. Default: float32.
-        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
+        name (str|None): The name/alias of the variable, see :ref:`api_guide_Name`
             for more details.
         stop_gradient (bool, optional): A boolean that mentions whether gradient should flow. Default is False, means don't stop calculate gradients.
 
@@ -419,7 +419,7 @@ class InputSpec:
         return not self == other
 
 
-def setitem(x, index, value):
+def setitem(x, index: float | ShapeLike, value: float | Tensor) -> Tensor:
     """
     x(Tensor): input Tensor.
     index(Scalar|Tuple|List|Tensor): Where should be set value.
