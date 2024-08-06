@@ -317,8 +317,10 @@ void Compiler::RegisterCudaModuleSymbol() {
   std::string source_code =
       CodeGenCUDA_Dev::GetSourceHeader() + device_fn_code_;
   auto ptx = compiler(source_code);
-  CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n"
-                      << source_code;
+  PADDLE_ENFORCE_EQ(
+      !ptx.empty(),
+      true,
+      phi::errors::InvalidArgument("Compile PTX failed from source code\n"));
   using runtime::cuda::CUDAModule;
   cuda_module_.reset(new CUDAModule(ptx,
                                     compiler.compile_to_cubin()
@@ -328,7 +330,9 @@ void Compiler::RegisterCudaModuleSymbol() {
   RuntimeSymbols symbols;
   for (const auto& kernel_fn_name : device_fn_name_) {
     auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
-    CHECK(fn_kernel) << "Fail to get CUfunction kernel_fn_name";
+    PADDLE_ENFORCE_NOT_NULL(
+        fn_kernel,
+        phi::errors::InvalidArgument("Fail to get CUfunction kernel_fn_name"));
     fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
     symbols.RegisterVar(kernel_fn_name + "_ptr_",
                         reinterpret_cast<void*>(fn_kernel));
@@ -361,9 +365,10 @@ void Compiler::CompileCudaModule(const Module& module,
     source_code = code;
   }
 
-  CHECK(!source_code.empty())
-      << "Compile CUDA C code failed from device module:\n"
-      << device_module;
+  PADDLE_ENFORCE_EQ(!source_code.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Compile CUDA C code failed from device module"));
   VLOG(3) << "[CUDA] C:\n" << source_code;
   SourceCodePrint::GetInstance()->write(source_code);
   device_fn_code_ += source_code;
@@ -393,7 +398,8 @@ void Compiler::ExportObject(const std::string& path) {
 }
 
 void* Compiler::Lookup(absl::string_view fn_name) {
-  CHECK(engine_);
+  PADDLE_ENFORCE_NOT_NULL(
+      engine_, phi::errors::InvalidArgument("Sorry, engine_ is nullptr"));
   if (engine_->Lookup(fn_name) != nullptr) {
     return engine_->Lookup(fn_name);
   }

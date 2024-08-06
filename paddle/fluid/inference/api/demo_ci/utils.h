@@ -55,10 +55,9 @@ Record ProcessALine(const std::string& line) {
   VLOG(3) << "process a line";
   std::vector<std::string> columns;
   split(line, '\t', &columns);
-  PADDLE_ENFORCE_EQ(columns.size(),
-                    2UL,
-                    phi::errors::InvalidArgument(
-                        "data format error, should be <data>\t<shape>"));
+  CHECK_EQ(columns.size(), 2UL)
+      << "data format error, should be <data>\t<shape>";
+
   Record record;
   std::vector<std::string> data_strs;
   split(columns[0], ' ', &data_strs);
@@ -90,38 +89,25 @@ void CheckOutput(const std::string& referfile,
   size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
   VLOG(3) << "predictor output numel " << numel;
   VLOG(3) << "reference output numel " << refer.data.size();
-  PADDLE_ENFORCE_EQ(
-      numel,
-      refer.data.size(),
-      phi::errors::InvalidArgument(
-          "predictor shape size should be equal to reference shape size"));
+  CHECK_EQ(numel, refer.data.size());
   switch (output.dtype) {
     case PaddleDType::INT64: {
       for (size_t i = 0; i < numel; ++i) {
-        PADDLE_ENFORCE_EQ(
-            static_cast<int64_t*>(output.data.data())[i],
-            refer.data[i],
-            phi::errors::InvalidArgument(
-                "predictor output should be equal to reference output"));
+        CHECK_EQ(static_cast<int64_t*>(output.data.data())[i], refer.data[i]);
       }
       break;
     }
     case PaddleDType::FLOAT32: {
       for (size_t i = 0; i < numel; ++i) {
-        PADDLE_ENFORCE_LT(
+        CHECK_LT(
             fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]),
-            threshold,
-            phi::errors::InvalidArgument("diff should be less than threshold"));
+            threshold);
       }
       break;
     }
     case PaddleDType::INT32: {
       for (size_t i = 0; i < numel; ++i) {
-        PADDLE_ENFORCE_EQ(
-            static_cast<int32_t*>(output.data.data())[i],
-            refer.data[i],
-            phi::errors::InvalidArgument(
-                "predictor output should be equal to reference output"));
+        CHECK_EQ(static_cast<int32_t*>(output.data.data())[i], refer.data[i]);
       }
       break;
     }
