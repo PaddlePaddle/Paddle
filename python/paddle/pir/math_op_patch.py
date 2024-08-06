@@ -369,7 +369,7 @@ def monkey_patch_value():
                     self = paddle.cast(self, DataType.FLOAT32)
                 # bool(tensor) + int(scalar) will do type promotion to int64
                 if self.dtype == paddle.bool:
-                    self = astype(self, 'int64')
+                    self = paddle.cast(self, DataType.INT64)
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
                 if scalar_method is not None:
@@ -450,12 +450,12 @@ def monkey_patch_value():
                 other_var = tmp
 
             if (
-                (op_type == "divide" or op_type == "elementwise_div")
+                (python_api == paddle.divide)
                 and self.dtype in _supported_int_dtype_
                 and self.dtype == other_var.dtype
             ):
-                self = astype(self, 'float32')
-                other_var = astype(other_var, 'float32')
+                self = paddle.cast(self, DataType.FLOAT32)
+                other_var = paddle.cast(other_var, DataType.FLOAT32)
 
             out = python_api(self, other_var)
             return out
