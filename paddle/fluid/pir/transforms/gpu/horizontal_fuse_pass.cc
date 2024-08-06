@@ -73,7 +73,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
     for (size_t i = 0; i < op->num_results(); i++) {
       if (getOpCntUseX(op->result(i)) > 1) {
         match_flag = true;
-        rewriteOpsbyValue(op, rewriter, i);
+        rewriteOpsbyValue(op, &rewriter, i);
       }
     }
 
@@ -83,6 +83,15 @@ class HorizontalFusePattern : public pir::RewritePattern {
   }
 
  private:
+  bool isValidOp(pir::Operation* curr_op) const {
+    if (curr_op->isa<paddle::dialect::MatmulOp>() ||
+        curr_op->isa<paddle::dialect::GemmEpilogueOp>() ||
+        curr_op->isa<paddle::dialect::FcOp>()) {
+      return true;
+    }
+    return false;
+  }
+
   bool areAttributeMapsEqual(const pir::AttributeMap& attrs1,
                              const pir::AttributeMap& attrs2) const {
     if (attrs1.size() != attrs2.size()) {
@@ -104,46 +113,44 @@ class HorizontalFusePattern : public pir::RewritePattern {
     // MatmulOp/GemmEpilogueOp/FcOp mutually exclusive and don't appear at the
     // same time. All ops'attrs should also be exactly equal. if not, fusion is
     // not performed.
-    int op_cnt_useX = 0;
+    int op_cnt_use_x = 0;
     pir::Operation* op_example = nullptr;
     std::string op_example_name;
     pir::AttributeMap op_example_attrs;
     for (auto it = x.use_begin(); it != x.use_end(); ++it) {
       pir::Operation* curr_op = it.owner();
-      if (!(curr_op->isa<paddle::dialect::MatmulOp>() ||
-            curr_op->isa<paddle::dialect::GemmEpilogueOp>() ||
-            curr_op->isa<paddle::dialect::FcOp>())) {
+      if (!isValidOp(curr_op)) {
         continue;
       }
       if (op_example == nullptr) {
         op_example = curr_op;
         op_example_name = curr_op->name();
         op_example_attrs = curr_op->attributes();
-        op_cnt_useX++;
+        op_cnt_use_x++;
       } else {
         if (curr_op->name() == op_example_name &&
             areAttributeMapsEqual(op_example_attrs, curr_op->attributes())) {
-          op_cnt_useX++;
+          op_cnt_use_x++;
         } else {
           return 0;
         }
       }
     }
-    return op_cnt_useX;
+    return op_cnt_use_x;
   }
 
   template <typename OpTy, typename... Args>
-  pir::Value insertOpAfter(pir::Operation*& prev_op,
-                           pir::PatternRewriter& rewriter,
+  pir::Value insertOpAfter(pir::Operation** prev_op_ptr,
+                           pir::PatternRewriter* rewriter,
                            Args&&... args) const {
-    rewriter.SetInsertionPointAfter(prev_op);
-    pir::Operation* new_op = rewriter.Build<OpTy>(std::forward<Args>(args)...);
-    prev_op = new_op;
+    rewriter->SetInsertionPointAfter(*prev_op_ptr);
+    pir::Operation* new_op = rewriter->Build<OpTy>(std::forward<Args>(args)...);
+    *prev_op_ptr = new_op;
     return new_op->result(0);
   }
 
   void rewriteOpsbyValue(pir::Operation* op,
-                         pir::PatternRewriter& rewriter,
+                         pir::PatternRewriter* rewriter,
                          size_t idx) const {
     /// x is used by the op, which belongs to a kind of
     /// MatmulOp/GemmEpilogueOp/FcOp
@@ -166,9 +173,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
 
     for (auto it = x.use_begin(); it != x.use_end(); ++it) {
       pir::Operation* curr_op = it.owner();
-      if (!(curr_op->isa<paddle::dialect::MatmulOp>() ||
-            curr_op->isa<paddle::dialect::GemmEpilogueOp>() ||
-            curr_op->isa<paddle::dialect::FcOp>())) {
+      if (!isValidOp(curr_op)) {
         continue;
       }
       fused_matmul_ops.push_back(curr_op);
@@ -194,44 +199,44 @@ class HorizontalFusePattern : public pir::RewritePattern {
     /// insert new ops
     pir::Operation* prev_op = op;
     auto weight_combined = insertOpAfter<pir::CombineOp>(
-        prev_op, rewriter, combine_op_inputs_weight);
+        &prev_op, rewriter, combine_op_inputs_weight);
     auto w_qkv = insertOpAfter<paddle::dialect::ConcatOp>(
-        prev_op, rewriter, weight_combined, 1);
+        &prev_op, rewriter, weight_combined, 1);
 
     pir::Value bias_qkv;
     if (with_bias) {
       auto bias_combined = insertOpAfter<pir::CombineOp>(
-          prev_op, rewriter, combine_op_inputs_bias);
+          &prev_op, rewriter, combine_op_inputs_bias);
       bias_qkv = insertOpAfter<paddle::dialect::ConcatOp>(
-          prev_op, rewriter, bias_combined, 0);
+          &prev_op, rewriter, bias_combined, 0);
     }
 
     pir::Value xw_fused;
     if (fused_matmul_op_name == paddle::dialect::MatmulOp::name()) {
       xw_fused = insertOpAfter<paddle::dialect::MatmulOp>(
-          prev_op, rewriter, x, w_qkv, fused_matmul_op_attrs);
+          &prev_op, rewriter, x, w_qkv, fused_matmul_op_attrs);
     } else if (fused_matmul_op_name ==
                paddle::dialect::GemmEpilogueOp::name()) {
       xw_fused = insertOpAfter<paddle::dialect::GemmEpilogueOp>(
-          prev_op, rewriter, x, w_qkv, bias_qkv, fused_matmul_op_attrs);
+          &prev_op, rewriter, x, w_qkv, bias_qkv, fused_matmul_op_attrs);
     } else {
       xw_fused = insertOpAfter<paddle::dialect::FcOp>(
-          prev_op, rewriter, x, w_qkv, bias_qkv, fused_matmul_op_attrs);
+          &prev_op, rewriter, x, w_qkv, bias_qkv, fused_matmul_op_attrs);
     }
 
     auto xw_splitted = insertOpAfter<paddle::dialect::SplitOp>(
-        prev_op, rewriter, xw_fused, w_shapes, x_last_axis);
-    rewriter.SetInsertionPointAfter(prev_op);
-    auto split_builtin_op = rewriter.Build<pir::SplitOp>(xw_splitted);
+        &prev_op, rewriter, xw_fused, w_shapes, x_last_axis);
+    rewriter->SetInsertionPointAfter(prev_op);
+    auto split_builtin_op = rewriter->Build<pir::SplitOp>(xw_splitted);
     std::vector<pir::Value> xw = split_builtin_op.outputs();
 
     /// replace res Value
     for (size_t k = 0; k < src_outs.size(); k++) {
-      rewriter.ReplaceAllUsesWith(src_outs[k], xw[k]);
+      rewriter->ReplaceAllUsesWith(src_outs[k], xw[k]);
     }
     /// del old ops
     for (auto fused_matmul_op : fused_matmul_ops)
-      rewriter.EraseOp(fused_matmul_op);
+      rewriter->EraseOp(fused_matmul_op);
   }
 };
 
