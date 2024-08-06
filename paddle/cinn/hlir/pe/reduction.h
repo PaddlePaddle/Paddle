@@ -474,6 +474,9 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
 std::string DiscreteReduceExternalFuncName(const ir::Expr& op,
                                            const ir::Expr& tensor);
 
+std::string IntervalReduceExternalFuncName(const ir::Expr& op,
+                                           const ir::Expr& tensor);
+
 std::string Type2StrForReduce(cinn::common::Type type);
 }  // namespace pe
 }  // namespace hlir
