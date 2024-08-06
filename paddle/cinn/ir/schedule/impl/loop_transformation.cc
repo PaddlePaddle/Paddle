@@ -482,7 +482,6 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
       test_block, [&](const Expr* x) { return x->As<ir::Store>(); });
 
   std::cerr << "before update !!!!\n";
-  this->UpdateMergeOffset(block_name, loops_index, fused_expr);
 
   for (auto j = 0; j < consumer.size(); ++j) {
     std::cerr << "consumer jj " << consumer[j] << std::endl;
@@ -491,8 +490,9 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
   }
 
   std::cerr << "test block " << test_block << std::endl;
-
-  return this->Fuse(loops_expr);
+  auto out = this->Fuse(loops_expr);
+  this->UpdateMergeOffset(block_name, loops_index, fused_expr);
+  return out;
 
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }

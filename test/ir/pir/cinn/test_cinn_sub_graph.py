@@ -90,6 +90,15 @@ class CINNSumSubGraphNet(paddle.nn.Layer):
         return out
 
 
+class CINNBroadCastSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        out = x + y
+        return out
+
+
 # class CINNLayerNormSubGraphNet(paddle.nn.Layer):
 #     def __init__(self, hidden_size):
 #         super().__init__()
@@ -153,6 +162,8 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.axis = -1
         self.x = paddle.uniform(self.shape, dtype="float32", min=-0.5, max=0.5)
         self.x.stop_gradient = False
+        self.y = paddle.uniform([128, 1], dtype="float32", min=-0.5, max=0.5)
+        self.y.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
@@ -163,7 +174,9 @@ class TestCinnSin(TestCinnSubGraphBase):
     def train(self, use_cinn):
         paddle.seed(2022)
         # net = CINNSinSubGraphNet()
-        net = CINNSumSubGraphNet()
+        # net = CINNSumSubGraphNet()
+        # net = CINNBroadCastSubGraphNet()
+        net = CINNSoftmaxSubGraphNet()
 
         input_specs = [
             paddle.static.InputSpec(
@@ -171,10 +184,17 @@ class TestCinnSin(TestCinnSubGraphBase):
                 dtype=paddle.float32,
                 name=None,
                 stop_gradient=False,
-            )
+            ),
+            # paddle.static.InputSpec(
+            #     shape=(128, 1),
+            #     dtype=paddle.float32,
+            #     name=None,
+            #     stop_gradient=False,
+            # )
         ]
 
         net = utils.apply_to_static(net, use_cinn, input_spec=input_specs)
+        # out = net(self.x, self.y)
         out = net(self.x)
 
         return out

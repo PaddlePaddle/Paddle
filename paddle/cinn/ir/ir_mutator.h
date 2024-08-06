@@ -155,8 +155,8 @@ void IRMutator<T>::Visit(const Load *expr, T op) {
   auto *node = op->template As<Load>();
   for (auto &idx : node->indices)
     IRVisitorRequireReImpl<void, T>::Visit(&idx, &idx);
-  for (auto &loop_var : node->loop_vars)
-    IRVisitorRequireReImpl<void, T>::Visit(&loop_var, &loop_var);
+  // for (auto &loop_var : node->loop_vars)
+  //   IRVisitorRequireReImpl<void, T>::Visit(&loop_var, &loop_var);
   IRVisitorRequireReImpl<void, T>::Visit(&node->tensor, &node->tensor);
 }
 template <typename T>

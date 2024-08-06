@@ -161,6 +161,11 @@ void ScheduleBase::UpdateMergeOffset(const std::string& block_name,
       view_shape->swap(new_shape);
       loop_vars->swap(new_loop_var);
       stride_info->swap(new_stride_info);
+
+      std::cerr << "after merge loop vars !!! " << std::endl;
+      for (auto& var : *loop_vars) {
+        std::cerr << "loop var " << var << std::endl;
+      }
     }
 
     void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) {
@@ -249,6 +254,7 @@ void ScheduleBase::UpdateSplitOffset(const std::string& block_id,
 
       int split_index = -1;
       for (int i = 0; i < loop_vars->size(); ++i) {
+        std::cerr << "loop var " << i << "\t" << loop_vars[i] << std::endl;
         if ((*loop_vars)[i].As<ir::_Var_>()->name == base_loop_var_->name) {
           split_index = i;
           break;
@@ -258,6 +264,7 @@ void ScheduleBase::UpdateSplitOffset(const std::string& block_id,
       if (split_index == -1) {
         return;
       }
+      std::cerr << "split index " << split_index << std::endl;
 
       std::vector<Expr> new_shape;
       std::vector<Expr> new_loop_var;
@@ -272,6 +279,7 @@ void ScheduleBase::UpdateSplitOffset(const std::string& block_id,
         base = base * Expr(split_factors_[i]);
       }
 
+      std::cerr << "split index 11" << std::endl;
       for (int i = 0; i < view_shape->size(); ++i) {
         if (i == split_index) {
           for (size_t j = 0; j < new_loop_vars_.size(); ++j) {
@@ -312,10 +320,12 @@ void ScheduleBase::UpdateSplitOffset(const std::string& block_id,
       auto* node = expr->As<ir::Store>();
       auto* tensor = node->tensor.as_tensor();
 
+      std::cerr << "before  store split schedule !!!!!!!!  " << node->offset()
+                << "\t" << node->tensor << std::endl;
       UpdateInnerInfo(
           &(node->loop_vars), &(node->view_shape), &(node->stride_info));
 
-      std::cerr << "after split schedule !!!!!!!!  " << node->offset()
+      std::cerr << "after store split schedule !!!!!!!!  " << node->offset()
                 << std::endl;
 
       ir::IRMutator<>::Visit(op, expr);
@@ -324,12 +334,10 @@ void ScheduleBase::UpdateSplitOffset(const std::string& block_id,
     void Visit(const ir::Load* op, Expr* expr) override {
       auto* node = expr->As<ir::Load>();
       auto* tensor = node->tensor.as_tensor();
-
+      std::cerr << "before load split schedule !!!!!!!!  " << node->offset()
+                << "\t" << node->tensor << std::endl;
       UpdateInnerInfo(
           &(node->loop_vars), &(node->view_shape), &(node->stride_info));
-
-      std::cerr << "before load split schedule !!!!!!!!  " << node->offset()
-                << std::endl;
 
       std::cerr << "after load split schedule !!!!!!!!" << node->offset()
                 << std::endl;
@@ -379,8 +387,8 @@ void ScheduleBase::UpdateReorderOffset(
       int split_index = -1;
       std::vector<int> pos_idx;
       for (int i = 0; i < loop_vars->size(); ++i) {
-        std::cerr << " !!!!!!!! loop vars "
-                  << (*loop_vars)[i].As<ir::_Var_>()->name << std::endl;
+        std::cerr << " !!!!!!!! loop vars " << (*loop_vars)[i] << std::endl;
+        //<< (*loop_vars)[i].As<ir::_Var_>()->name << std::endl;
         if (var_set.count((*loop_vars)[i].As<ir::_Var_>()->name)) {
           reorder_map[(*loop_vars)[i].As<ir::_Var_>()->name] = i;
           pos_idx.push_back(i);

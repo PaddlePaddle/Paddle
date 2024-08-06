@@ -250,14 +250,14 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         tensor_indices.push_back(new_indice);
       }
 
-      for (auto& loop_var : node->loop_vars) {
-        std::cerr << "before loop var " << loop_var << std::endl;
-        for (const auto& [var, sb_expr] : var_to_sb_expr_) {
-          std::cerr << "replace var " << var << "\t" << sb_expr << std::endl;
-          ReplaceVarWithExpr(&loop_var, var, ir::ir_utils::IRCopy(sb_expr));
-        }
-        std::cerr << "after loop var " << loop_var << std::endl;
-      }
+      // for (auto& loop_var : node->loop_vars) {
+      //   std::cerr << "before loop var " << loop_var << std::endl;
+      //   for (const auto& [var, sb_expr] : var_to_sb_expr_) {
+      //     std::cerr << "replace var " << var << "\t" << sb_expr << std::endl;
+      //     ReplaceVarWithExpr(&loop_var, var, ir::ir_utils::IRCopy(sb_expr));
+      //   }
+      //   std::cerr << "after loop var " << loop_var << std::endl;
+      // }
       buffer_to_indice_and_extent_[load_buffer->name].push_back(
           {tensor_indices, for_var_extents_});
     }

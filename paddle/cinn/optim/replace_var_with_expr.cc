@@ -85,9 +85,9 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
     ir::IRMutator<>::Visit(&node->value, &node->value);
 
-    for (auto& loop_var : node->loop_vars) {
-      ir::IRMutator<>::Visit(&loop_var, &loop_var);
-    }
+    // for (auto& loop_var : node->loop_vars) {
+    //   ir::IRMutator<>::Visit(&loop_var, &loop_var);
+    // }
   }
 
   void Visit(const ir::Load* expr, Expr* op) override {
@@ -102,9 +102,9 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
     do_replace_ = false;
     ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
 
-    for (auto& loop_var : node->loop_vars) {
-      ir::IRMutator<>::Visit(&loop_var, &loop_var);
-    }
+    // for (auto& loop_var : node->loop_vars) {
+    //   ir::IRMutator<>::Visit(&loop_var, &loop_var);
+    // }
   }
 
  private:
