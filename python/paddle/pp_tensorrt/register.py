@@ -37,7 +37,7 @@ class ConverterOpRegistry:
     def _version_match(self, trt_version, version_range):
         if version_range is None:
             return True
-        
+
         trt_major, trt_minor = map(int, trt_version.split('.')[:2])
         if version_range.startswith('trt_version_gt='):
             min_version = float(version_range.split('=')[1])
