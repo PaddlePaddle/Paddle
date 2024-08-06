@@ -97,7 +97,7 @@ TEST(Analyzer_Text_Classification, profile) {
       PADDLE_ENFORCE_EQ(
           output.lod.size(),
           0UL,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The 'lod' size of 'output' should be 0, but received size %d.",
               output.lod.size()));
       LOG(INFO) << "output.dtype: " << output.dtype;

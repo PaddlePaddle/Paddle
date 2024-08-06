@@ -75,7 +75,7 @@ TEST(xpu_config, inference) {
   CHECK_EQ(xpu_config_test.l3_size, l3_size);
   PADDLE_ENFORCE_GT(xpu_config_test.l3_size,
                     l3_size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "xpu_config_test.l3_size %d is different from our "
                         "expected value l3_size %d.",
                         xpu_config_test.l3_size,

@@ -60,13 +60,13 @@ void RmspropDenseKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_EQ(
           mg_tensor->Holder(),
           mean_grad_out->Holder(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "MeanGrad and MeanGradOut must be the same Tensor"));
     } else {
       PADDLE_ENFORCE_EQ(
           mg_tensor,
           mean_grad_out,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "MeanGrad and MeanGradOut must be the same Tensor"));
     }
     int r = xpu::rmsprop(dev_ctx.x_context(),

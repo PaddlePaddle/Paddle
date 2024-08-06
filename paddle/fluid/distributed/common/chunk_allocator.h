@@ -27,7 +27,7 @@ class ChunkAllocator {
     PADDLE_ENFORCE_EQ(
         sizeof(Node),
         std::max(sizeof(void*), sizeof(T)),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of Node is invalid. Expected sizeof(Node) == "
             "max(sizeof(void*), sizeif(T)).\nBut recieved sizeof(Node) = %u "
             "and max(sizeof(void*), sizeif(T)) = %u.",
@@ -92,7 +92,7 @@ class ChunkAllocator {
                                alloc_size);
     PADDLE_ENFORCE_EQ(error,
                       0,
-                      phi::errors::ResourceExhausted(
+                      common::errors::ResourceExhausted(
                           "Fail to alloc memory of %ld size, error code is %d.",
                           alloc_size,
                           error));

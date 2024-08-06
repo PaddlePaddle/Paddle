@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 
 #include "paddle/cinn/adt/generate_map_expr.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
@@ -107,6 +108,7 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
                           : group_op_kind;
     }
   }
+
   PADDLE_ENFORCE_GT(fusion_op.attributes().count("group_info"),
                     0UL,
                     ::common::errors::InvalidArgument(
@@ -117,7 +119,12 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
                         .data();
 
   const auto& fn_name = attr.fn_name;
-  auto group = std::make_shared<OpLoweringGroup>(ops, fn_name);
+  auto group = std::make_shared<OpLoweringGroup>(
+      ops,
+      fn_name,
+      fusion_op_ptr->attribute("fusion_tracker")
+          .dyn_cast<cinn::dialect::FusionTrackerPtrAttribute>()
+          .data());
 
   group_op_kind =
       static_cast<int>(attr.op_pattern_kind) > static_cast<int>(group_op_kind)
