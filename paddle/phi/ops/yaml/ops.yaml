@@ -2481,6 +2481,7 @@
     data_type : x
   inplace : (x -> out)
   backward : index_add_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_put
   args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
@@ -2492,6 +2493,7 @@
     data_type : x
   inplace : (x -> out)
   backward : index_put_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_sample
   args : (Tensor x, Tensor index)
@@ -2517,6 +2519,7 @@
   backward : index_select_grad
   data_transform :
     skip_transform : index
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_select_strided
   args : (Tensor x, int64_t index, int axis = 0)
