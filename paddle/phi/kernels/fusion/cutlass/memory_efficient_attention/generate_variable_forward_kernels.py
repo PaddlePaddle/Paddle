@@ -398,7 +398,7 @@ void dispatch_{family_name}(const ::phi::GPUContext &ctx, T cb) {{
     PADDLE_ENFORCE_GE(
         cc,
         70,
-        phi::errors::InvalidArgument("the Nvidia GPU's Compute Capability must be greater or equal than 70"));
+        common::errors::InvalidArgument("the Nvidia GPU's Compute Capability must be greater or equal than 70"));
 
     using DT = typename ::phi::CutlassTrait<PaddleT>::Type;
 {dispatch_all}
