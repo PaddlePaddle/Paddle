@@ -66,27 +66,36 @@ class HorizontalFusePattern : public pir::RewritePattern {
   bool MatchAndRewrite(
       pir::Operation* op,
       pir::PatternRewriter& rewriter) const override {  // NOLINT
-    VLOG(4) << "horizontal_fuse_pass applies matchAndRewrite on [" << op->name()
-            << "] op";
-
     bool match_flag = false;
     for (size_t i = 0; i < op->num_results(); i++) {
       if (getOpCntUseX(op->result(i)) > 1) {
         match_flag = true;
         rewriteOpsbyValue(op, &rewriter, i);
+        VLOG(4) << "horizontal_fuse_pass applied rewrite on [" << op->name()
+                << "] op";
       }
     }
-
-    VLOG(4) << "horizontal_fuse_pass applied matchAndRewrite on [" << op->name()
-            << "] op";
     return match_flag;
   }
 
  private:
   bool isValidOp(pir::Operation* curr_op) const {
-    if (curr_op->isa<paddle::dialect::MatmulOp>() ||
-        curr_op->isa<paddle::dialect::GemmEpilogueOp>() ||
+    if (curr_op->isa<paddle::dialect::GemmEpilogueOp>() ||
         curr_op->isa<paddle::dialect::FcOp>()) {
+      return true;
+    }
+
+    if (curr_op->isa<paddle::dialect::MatmulOp>()) {
+      if (curr_op->HasAttribute("transpose_x") &&
+          curr_op->attribute<pir::BoolAttribute>("transpose_x").data() ==
+              true) {
+        return false;
+      }
+      if (curr_op->HasAttribute("transpose_y") &&
+          curr_op->attribute<pir::BoolAttribute>("transpose_y").data() ==
+              true) {
+        return false;
+      }
       return true;
     }
     return false;
