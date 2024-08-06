@@ -775,11 +775,12 @@ bool SwigluOpInferSymbolicShape(pir::Operation *op,
   } else {
     const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(
-        x_shape[rank - 1] % 2,
+        (x_shape.value()[rank - 1].Get<int32_t>() % 2),
         0,
         common::errors::InvalidArgument(
             "The last dim of Input(X) should be exactly divided by 2."));
-    x_shape[rank - 1] = symbol::DimExpr{x_shape[rank - 1] / 2};
+    x_shape[rank - 1] =
+        symbol::DimExpr{x_shape.value()[rank - 1].Get<int32_t>() / 2};
     infer_context->SetShapeOrDataForValue(
         op->result(0),
         symbol::ShapeOrDataDimExprs{
