@@ -722,7 +722,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReshapeInferMeta
-    spmd_rule : ReshapeInferSpmdDynamic
+    spmd_rule : ReshapeInferSpmd
   kernel :
     func : reshape
   inplace : (x -> out)
