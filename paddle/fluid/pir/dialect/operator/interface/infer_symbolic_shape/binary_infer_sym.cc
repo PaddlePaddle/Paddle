@@ -965,8 +965,6 @@ bool IndexSelect_OpInferSymbolicShape(
       return IndexSelectOpInferSymbolicShape(op, infer_context);
     }
 
-}
-
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {
