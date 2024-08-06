@@ -304,7 +304,7 @@ class PaddleToTensorRTConverter:
 
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:
-            if op.name() == "cinn_op.group":
+            if op.name() == "cinn_op.group" or op.name() == "builtin.group":
                 _logger.info(f"start process {op.name()}")
                 new_out = self.convert_subgraph_to_trt(self.program, op)
                 orin_out_values = op.results()

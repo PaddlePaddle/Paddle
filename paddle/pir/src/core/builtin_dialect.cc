@@ -68,7 +68,8 @@ void BuiltinDialect::initialize() {
               CombineOp,
               SliceOp,
               SplitOp,
-              ConstantOp>();
+              ConstantOp,
+              GroupOp>();
 }
 
 pir::Type BuiltinDialect::ParseType(pir::IrParser& parser) {  // NOLINT

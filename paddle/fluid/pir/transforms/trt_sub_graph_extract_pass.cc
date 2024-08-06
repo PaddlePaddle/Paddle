@@ -20,8 +20,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -29,8 +27,6 @@
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
-
-#include "paddle/cinn/hlir/framework/pir/utils.h"
 
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
 
@@ -64,7 +60,7 @@ class TrtSubGraphExtractPass : public pir::Pass {
         ::pir::SubgraphDetector(&block, IsSupportedByTRT)();
     AddStatistics(groups.size());
     for (auto& group_ops : groups) {
-      if (group_ops.size() < FLAGS_trt_min_group_size) {
+      if (group_ops.size() < static_cast<size_t>(FLAGS_trt_min_group_size)) {
         VLOG(4) << "current group_ops.size(): " << group_ops.size()
                 << ", will fallback to paddle original graph";
         continue;

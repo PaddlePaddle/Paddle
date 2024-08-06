@@ -638,7 +638,8 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
 
     auto inputs = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto inputs_shape = inputs.dims();
-    if (axes.size() != inputs_shape.size()) {
+    if (axes.size() !=
+        static_cast<std::vector<int64_t>::size_type>(inputs_shape.size())) {
       VLOG(3) << "The shape of attributes of the slice operator axes "
                  "and starts are not equal.";
       return false;
@@ -745,7 +746,6 @@ class CastOpPattern : public pir::OpRewritePattern<paddle::dialect::CastOp> {
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
-
   }
 };
 
@@ -809,7 +809,8 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
 class SplitWithNumOpPattern
     : public pir::OpRewritePattern<paddle::dialect::SplitWithNumOp> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::SplitWithNumOp>::OpRewritePattern;
+  using pir::OpRewritePattern<
+      paddle::dialect::SplitWithNumOp>::OpRewritePattern;
   bool MatchAndRewrite(paddle::dialect::SplitWithNumOp op,
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
@@ -817,7 +818,7 @@ class SplitWithNumOpPattern
       return false;
     }
     paddle::dialect::FullOp full_op =
-        pir::GetDefiningOpForInput(op, 1)->dyn_cast<paddle::dialect::FullOp>(); 
+        pir::GetDefiningOpForInput(op, 1)->dyn_cast<paddle::dialect::FullOp>();
     if (!full_op) {
       VLOG(3) << "Can not find full op";
       return false;
@@ -837,8 +838,8 @@ class SplitWithNumOpPattern
         return false;
       }
 
-      if (!op->HasAttribute("num") ) {
-        VLOG(3)<< "split_with_num op must has num attributes";
+      if (!op->HasAttribute("num")) {
+        VLOG(3) << "split_with_num op must has num attributes";
         return false;
       }
       int num = op->attribute<pir::Int32Attribute>("num").data();
@@ -846,10 +847,10 @@ class SplitWithNumOpPattern
       if (num > 0) {
         int64_t in_axis_dim = x_shape[axis];
         if (in_axis_dim % num != 0) {
-              VLOG(3) << "Invalid number to split. Tensor split does not result"
-                        " in an equal division of dimensions. Axis dim = "
-                      << in_axis_dim << " num = " << num << "!= 0";
-              return false;
+          VLOG(3) << "Invalid number to split. Tensor split does not result"
+                     " in an equal division of dimensions. Axis dim = "
+                  << in_axis_dim << " num = " << num << "!= 0";
+          return false;
         }
         size_t out_axis_dim = in_axis_dim / num;
         for (int i = 0; i < num; ++i) {
@@ -857,19 +858,20 @@ class SplitWithNumOpPattern
         }
       }
 
-      if(out_vector_type.size() != output_lengths.size()){
-          VLOG(3) << "The output_length should be equal to the output size.";
-          return false;
+      if (out_vector_type.size() != output_lengths.size()) {
+        VLOG(3) << "The output_length should be equal to the output size.";
+        return false;
       }
       op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
       return true;
     }
-                       
   }
 };
-class GreaterEqualOpPattern : public pir::OpRewritePattern<paddle::dialect::GreaterEqualOp> {
+class GreaterEqualOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GreaterEqualOp> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::GreaterEqualOp>::OpRewritePattern;
+  using pir::OpRewritePattern<
+      paddle::dialect::GreaterEqualOp>::OpRewritePattern;
   bool MatchAndRewrite(paddle::dialect::GreaterEqualOp op,
                        pir::PatternRewriter &rewriter) const override {
     if (op->HasAttribute(kCanRunTrtAttr) &&
@@ -877,15 +879,15 @@ class GreaterEqualOpPattern : public pir::OpRewritePattern<paddle::dialect::Grea
       return false;
     }
 #if IS_TRT_VERSION_LT(8400)
-  VLOG(3) << "GreaterEqualOp is not supported when TensorRT < 8.4";
-  return false;
+    VLOG(3) << "GreaterEqualOp is not supported when TensorRT < 8.4";
+    return false;
 #else
     pir::Value x = op.operand_source(0);
     pir::Value y = op.operand_source(1);
     auto x_dtype = pir::GetDataTypeFromValue(x);
     auto y_dtype = pir::GetDataTypeFromValue(y);
-    if(x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()){
-      VLOG(3)<< "Greate_equal op do not support bool datatype";
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "Greate_equal op do not support bool datatype";
       return false;
     }
 #endif
@@ -893,7 +895,8 @@ class GreaterEqualOpPattern : public pir::OpRewritePattern<paddle::dialect::Grea
     return true;
   }
 };
-class MultiplyOpPattern : public pir::OpRewritePattern<paddle::dialect::MultiplyOp> {
+class MultiplyOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::MultiplyOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::MultiplyOp>::OpRewritePattern;
   bool MatchAndRewrite(paddle::dialect::MultiplyOp op,
@@ -906,16 +909,15 @@ class MultiplyOpPattern : public pir::OpRewritePattern<paddle::dialect::Multiply
     pir::Value y = op.operand_source(1);
     auto x_dtype = pir::GetDataTypeFromValue(x);
     auto y_dtype = pir::GetDataTypeFromValue(y);
-    if(x_dtype.isa<pir::BoolType>()){
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
       VLOG(3) << "elementwise_mul do not support boolean datatype.";
       return false;
     }
-    
+
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
 };
-
 
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
