@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorrt as trt
 import numpy as np
+import tensorrt as trt
+
 import paddle
 import paddle.nn.functional as F
 
@@ -22,7 +23,7 @@ import paddle.nn.functional as F
 
 class PaddlePhiPlugin(trt.IPluginV2):
     def __init__(self, op_name):
-        super(PaddlePhiPlugin, self).__init__()
+        super().__init__()
         self.op_name = op_name
 
     def get_plugin_type(self):
@@ -89,7 +90,7 @@ class PaddlePhiPlugin(trt.IPluginV2):
 
 class PaddlePhiPluginCreator(trt.IPluginCreator):
     def __init__(self):
-        super(PaddlePhiPluginCreator, self).__init__()
+        super().__init__()
 
     def get_plugin_name(self):
         return "PaddlePhiPlugin"
