@@ -23,8 +23,8 @@ limitations under the License. */
 #include <thread>  //NOLINT
 
 #include "gflags/gflags.h"
-#include "paddle/common/enforce.h"
 #include "utils.h"  // NOLINT
+
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
 
@@ -58,11 +58,7 @@ void Main(bool use_gpu) {
 
     //# 3. Run
     std::vector<PaddleTensor> outputs;
-    PADDLE_ENFORCE_EQ(predictor->Run(slots, &outputs),
-                      true,
-                      common::errors::InvalidArgument(
-                          "Failed to run the predictor. Please check the input "
-                          "data and model configuration."));
+    CHECK(predictor->Run(slots, &outputs));
 
     //# 4. Get output.
     CHECK_EQ(outputs.size(), 1UL);
@@ -108,11 +104,7 @@ void MainThreads(int num_threads, bool use_gpu) {
         std::vector<PaddleTensor> inputs(4, tensor);
         std::vector<PaddleTensor> outputs;
         // 3. Run
-        PADDLE_ENFORCE_EQ(predictor->Run(slots, &outputs),
-                          true,
-                          common::errors::InvalidArgument(
-                              "Failed to run the predictor. Please check the "
-                              "input data and model configuration."));
+        CHECK(predictor->Run(inputs, &outputs));
 
         // 4. Get output.
         CHECK_EQ(outputs.size(), 1UL);
