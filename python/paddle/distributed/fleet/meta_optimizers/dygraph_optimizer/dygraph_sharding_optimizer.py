@@ -715,7 +715,13 @@ class DygraphShardingOptimizerV2:
     def _build_comm_buffers(self, acc_steps, group_size=256 * 1024 * 1024):
         if self.pp_overlap:
             return
-
+        # NOTE(lijin23): for XPU, we fuse all params to a single comm buffer to
+        # improve the communication bandwidth of BKCL.
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_PADDLE_FUSE_SHARDING_BUFFER") is not None
+        ):
+            group_size = 2**62
         comm_group = self._hcg.get_sharding_parallel_group()
         var_groups = assign_group_by_size(self._parameter_list, group_size)
         for group_idx, parameters in var_groups.items():
