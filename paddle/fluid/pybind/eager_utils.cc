@@ -786,8 +786,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
     }
   } else if (PyObject_TypeCheck(obj,
                                 g_framework_lodtensorarray_pytype)) {  // NOLINT
-    for (auto& tensor :
-         (::pybind11::handle(obj).cast<framework::LoDTensorArray>())) {
+    for (auto& tensor : (::pybind11::handle(obj).cast<phi::TensorArray>())) {
       result.emplace_back(tensor);
     }
   } else if (obj == Py_None) {
