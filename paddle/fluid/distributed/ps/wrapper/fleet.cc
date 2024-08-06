@@ -504,7 +504,7 @@ void FleetWrapper::PushSparseVarsAsync(
   PADDLE_ENFORCE_EQ(
       communicator->Check(table_id),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "can not find table: %s, please check your config", table_id));
   communicator->Send(varnames, scope);
 }
@@ -813,7 +813,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
   push_status.wait();
   auto status = push_status.get();
   if (status != 0) {
-    // PADDLE_THROW(phi::errors::Fatal(
+    // PADDLE_THROW(common::errors::Fatal(
     //    "push shrink dense param failed, status is [%d].", status));
     sleep(sleep_seconds_before_fail_exit_);
     exit(-1);

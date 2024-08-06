@@ -55,7 +55,7 @@ void QuantizeKernel(const Context& ctx,
       QuantizeKernelImpl<T, int8_t, Context>(ctx, x, scale, y);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "Not supported quantize data type from %d -> %d ",
           x.dtype(),
           out_dtype));

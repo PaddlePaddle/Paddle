@@ -123,7 +123,7 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS fluid_memory data_type device_context phi common)
+  DEPS data_type device_context phi common)
 
 cc_library(
   lod_tensor
@@ -133,7 +133,7 @@ cc_library(
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context allocator phi common glog)
+  DEPS device_context phi common glog)
 
 cc_library(
   reader

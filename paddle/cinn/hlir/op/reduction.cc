@@ -211,8 +211,11 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
 
   framework::CINNSchedule reduction_schedule([=](lang::Args args,
                                                  lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of " << op_name
-                         << " schedule is empty! Please check.";
+    PADDLE_ENFORCE_EQ(!args.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The input argument of schedule is empty! Please "
+                          "check."));
 
     CINNValuePack arg_pack = args[0];
     CHECK_GE(arg_pack.size(), 2UL);
@@ -235,7 +238,11 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         vec_tensor.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_EQ(!vec_ast.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The input argument of schedule is empty! Please "
+                          "check."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -436,31 +443,42 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
     keepdim = absl::get<bool>(attrs.attr_store.at("keepdim"));
   }
 
-  framework::CINNCompute reduction_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of " << op_name
-                             << " compute is empty! Please check.";
-        CINNValuePack arg_packs = args[0];
-        CHECK_EQ(arg_packs.size(), 2U)
-            << "There should be 2 input args for " << op_name << " compute";
-        CHECK(arg_packs[1].is_string());
-        std::string tensor_name = arg_packs[1].operator std::string();
-        Expr x_expr = arg_packs[0];
-        CHECK(x_expr.as_tensor());
-        ir::Tensor x = x_expr.as_tensor_ref();
+  framework::CINNCompute reduction_compute([=](lang::Args args,
+                                               lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of compute is empty! Please check."));
+    CINNValuePack arg_packs = args[0];
+    CHECK_EQ(arg_packs.size(), 2U)
+        << "There should be 2 input args for " << op_name << " compute";
+    PADDLE_ENFORCE_EQ(arg_packs[1].is_string(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The arg_packs[1] is not empty! Please check."));
+    std::string tensor_name = arg_packs[1].operator std::string();
+    Expr x_expr = arg_packs[0];
+    PADDLE_ENFORCE_NOT_NULL(x_expr.as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The x_expr can not as tensor! Please check."));
 
-        std::unordered_set<std::string> bool_reduce_op = {"reduce_all",
-                                                          "reduce_any"};
-        CHECK(!bool_reduce_op.count(op_name) || x->type().is_bool())
-            << "The type of input argument " << x->name << " of " << op_name
-            << " should be bool, but get " << x->type() << "! Please check.";
+    ir::Tensor x = x_expr.as_tensor_ref();
 
-        VLOG(3) << "Do Reduce Compute!";
-        auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
+    std::unordered_set<std::string> bool_reduce_op = {"reduce_all",
+                                                      "reduce_any"};
+    PADDLE_ENFORCE_EQ(!bool_reduce_op.count(op_name) || x->type().is_bool(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The type of input argument should be bool, "
+                          "Please check."));
 
-        std::vector<CINNValue> cinn_values{CINNValue(out)};
-        *ret = CINNValuePack{cinn_values};
-      });
+    VLOG(3) << "Do Reduce Compute!";
+    auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
+
+    std::vector<CINNValue> cinn_values{CINNValue(out)};
+    *ret = CINNValuePack{cinn_values};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(

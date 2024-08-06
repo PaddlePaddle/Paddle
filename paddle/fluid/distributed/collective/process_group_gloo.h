@@ -222,7 +222,7 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
     PADDLE_ENFORCE_NE(
         use_calc_stream,
         true,
-        phi::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
+        common::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
     return GetDeviceContext(place);
   }
 

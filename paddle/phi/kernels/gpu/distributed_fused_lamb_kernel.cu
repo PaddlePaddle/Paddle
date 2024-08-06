@@ -904,7 +904,7 @@ static bool CreatePreMulScaleOpIfSupported(
 #if NCCL_VERSION_CODE >= 21100
   PADDLE_ENFORCE_NOT_NULL(
       comm_ctx,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "You choose to use new communication library by "
           "setting environment "
           "variable FLAGS_dynamic_static_unified_comm True. "
@@ -930,7 +930,7 @@ static void DestoryOpIfSupported(
 
   PADDLE_ENFORCE_NOT_NULL(
       comm_ctx,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "You choose to use new communication library by "
           "setting environment "
           "variable FLAGS_dynamic_static_unified_comm True. "
@@ -975,7 +975,7 @@ static void NCCLSumWithScaleBase(const T *sendbuff,
                                  const T *scale = nullptr) {
   PADDLE_ENFORCE_NOT_NULL(
       comm_ctx,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "You choose to use new communication library by "
           "setting environment "
           "variable FLAGS_dynamic_static_unified_comm True. "
@@ -1752,7 +1752,7 @@ void DistributedFusedLambKernel(
       comm_context_manager.Get(std::to_string(ring_ids[0])));
   PADDLE_ENFORCE_NE(comm_ctx,
                     nullptr,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "NCCLCommContext is nullptr, collective op should "
                         "has ring_id attr."));
 

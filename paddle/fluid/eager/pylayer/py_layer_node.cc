@@ -49,7 +49,7 @@ GradNodePyLayer::operator()(
 
   PADDLE_ENFORCE_EQ(ctx->forward_output_tensor_is_duplicable.size(),
                     grads.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "%s's grad input size(%s) must be equal with it's "
                         "forward's output size(%s).",
                         name(),
@@ -149,7 +149,8 @@ GradNodePyLayer::operator()(
   auto backward_fn =
       PyObject_GetAttrString(reinterpret_cast<PyObject*>(ctx), "backward");
   if (!backward_fn) {
-    PADDLE_THROW(phi::errors::InvalidArgument("Get backward function failed."));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("Get backward function failed."));
   }
   bool need_grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(create_graph && need_grad_tmp);
@@ -157,7 +158,7 @@ GradNodePyLayer::operator()(
   egr::Controller::Instance().SetHasGrad(need_grad_tmp);
   if (!outputs) {
     PADDLE_THROW(
-        phi::errors::External(pybind11::detail::error_string().c_str()));
+        common::errors::External(pybind11::detail::error_string().c_str()));
   }
 
   VLOG(6) << "PyLayer backward function finish...";
@@ -174,7 +175,7 @@ GradNodePyLayer::operator()(
   size_t outputs_size = PyTuple_GET_SIZE(outputs_tuple);
 
   if (outputs_size > ctx->forward_input_tensor_is_duplicable.size()) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The number of outputs of `PyLayer.backward` should be %d, but "
         "received %d.",
         ctx->forward_input_tensor_is_duplicable.size(),
@@ -191,7 +192,7 @@ GradNodePyLayer::operator()(
         PADDLE_ENFORCE_EQ(
             obj,
             Py_None,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "%s's backward function should return None at %d position, "
                 "because it's forward Tensor's stopgradient is true.",
                 name(),
@@ -209,7 +210,7 @@ GradNodePyLayer::operator()(
             VLOG(4) << "Got None for Tensor with pos: " << i;
             grad_out.push_back({paddle::Tensor()});
           } else {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "We can only support Tensor or None for backward output, "
                 ", but got %s, please check your PyLayer code and make it fits",
                 reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
@@ -220,7 +221,7 @@ GradNodePyLayer::operator()(
       PADDLE_ENFORCE_EQ(
           this->OutputMeta()[i][0].IsStopGradient(),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "%s's backward function should not return empty at %d position.",
               name(),
               i));

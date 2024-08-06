@@ -37,7 +37,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
     PADDLE_ENFORCE_EQ(
         data_dims.size() * 2,
         paddings->size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Attribute padding's size should be the same or twice as the "
             "input's dimension. "
             "But received: padding's size is %d, padding is [%s]; input's "
@@ -84,7 +84,7 @@ inline int ConvOutSize(int input_size,
   PADDLE_ENFORCE_GT(
       output_size,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The output's size is expected to be greater than 0. "
           "But received: output's size is %d. The output's size is computed by "
           "((input_size + pad_left + pad_right - (dilation * (filter_size - "
@@ -121,7 +121,7 @@ inline std::vector<int64_t> ComputeOutputShape(
     PADDLE_ENFORCE_GT(
         dilations[i],
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
@@ -130,7 +130,7 @@ inline std::vector<int64_t> ComputeOutputShape(
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of Op(Conv) should be a 4-D or 5-D Tensor. But "
           "received: input's dimension is %u, input's shape is [%s].",
           in_dims.size(),
@@ -139,7 +139,7 @@ inline std::vector<int64_t> ComputeOutputShape(
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
       filter_dims.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input's dimension and filter's dimension of "
           "Op(Conv) should be equal. But received: the input's shape is "
           "[%s], "
@@ -155,7 +155,7 @@ inline std::vector<int64_t> ComputeOutputShape(
     PADDLE_ENFORCE_GT(
         strides[i],
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
@@ -164,7 +164,7 @@ inline std::vector<int64_t> ComputeOutputShape(
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
       strides.size() + 2U,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The difference of input's dimension and Attr(strides)'s "
           "length must be equal to 2 for Op(Conv). "
           "But received: input's dimension is %d, input's shape is [%s]; "
@@ -183,7 +183,7 @@ inline std::vector<int64_t> ComputeOutputShape(
       input_channels,
       (channel_last ? filter_dims[filter_dims.size() - 1] : filter_dims[1]) *
           groups,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of input's channels should be equal to filter's "
           "channels "
           "* groups for Op(Conv). But received: the input's channels is %d, "
@@ -199,7 +199,7 @@ inline std::vector<int64_t> ComputeOutputShape(
   PADDLE_ENFORCE_EQ(
       filter_dims[0] % groups,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of output's channels (filter's first dimension) of "
           "Op(Conv) should be divided by groups. But received: "
           "the output channels is %d, the filter's shape is [%s], "
@@ -212,7 +212,7 @@ inline std::vector<int64_t> ComputeOutputShape(
     PADDLE_ENFORCE_GT(
         filter_dims[0],
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "the size of filter at axis 0 should be greater than 0"));
   }
 
