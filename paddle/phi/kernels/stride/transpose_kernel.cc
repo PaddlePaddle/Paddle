@@ -27,9 +27,9 @@ void TransposeStridedKernel(const Context& ctx,
                             const std::vector<int>& axis,
                             DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   size_t x_rank = x.dims().size();
   std::vector<int> formatted_axis = axis;

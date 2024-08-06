@@ -96,9 +96,9 @@ void PaddingFunctor(int rank,
       PadFunction<DeviceContext, T, 6>(context, pads, src, pad_value, out);
       break;
     default:
-      PADDLE_THROW(
-          phi::errors::Unimplemented("PadOp only support tensors with no more"
-                                     " than 6 dimensions currently."));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "PadOp only support tensors with no more"
+          " than 6 dimensions currently."));
   }
 }
 
@@ -128,9 +128,9 @@ void PaddingGradFunctor(int rank,
       PadGradFunction<DeviceContext, T, 6>(context, pads, src, out);
       break;
     default:
-      PADDLE_THROW(
-          phi::errors::Unimplemented("PadOp only support tensors with no more"
-                                     " than 6 dimensions currently."));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "PadOp only support tensors with no more"
+          " than 6 dimensions currently."));
   }
 }
 

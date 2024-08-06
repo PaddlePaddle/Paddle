@@ -60,18 +60,27 @@ bool AssignValueOpInferSymbolicShape(
     sym_dims.emplace_back(symbol::DimExpr(static_cast<int64_t>(dim)));
   }
 
-  const auto &attributes = op->attributes();
+  bool result_is_int_type = [&]() {
+    const auto &dtype =
+        op->result(0).type().dyn_cast<pir::DenseTensorType>().dtype();
+    return dtype.isa<pir::Int32Type>() || dtype.isa<pir::Int64Type>();
+  }();
+
   std::vector<int64_t> values;
-  for (size_t i = 0;
-       i < attributes.at("values").dyn_cast<pir::ArrayAttribute>().size();
-       i++) {
-    values.push_back(attributes.at("values")
-                         .dyn_cast<pir::ArrayAttribute>()
-                         .at(i)
-                         .dyn_cast<paddle::dialect::ScalarAttribute>()
-                         .data()
-                         .to<int64_t>());
+  if (result_is_int_type) {
+    const auto &attributes = op->attributes();
+    for (size_t i = 0;
+         i < attributes.at("values").dyn_cast<pir::ArrayAttribute>().size();
+         i++) {
+      values.push_back(attributes.at("values")
+                           .dyn_cast<pir::ArrayAttribute>()
+                           .at(i)
+                           .dyn_cast<paddle::dialect::ScalarAttribute>()
+                           .data()
+                           .to<int64_t>());
+    }
   }
+
   if (values.size() > 0 && sym_dims.size() <= 1) {
     std::vector<symbol::DimExpr> data;
     for (const auto &value : values) {
@@ -353,12 +362,19 @@ bool RandintOpInferSymbolicShape(
     return true;
 
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Currently shape must comes from FullIntArrayOp in RandintOp's "
         "InferSymbolicShape."));
     return true;
   }
 }
+
+// bool ReadFileOpInferSymbolicShape(pir::Operation *op,
+//                                   pir::InferSymbolicShapeContext
+//                                   *infer_context) {
+//   // pass
+//   return true;
+// }
 
 bool TrilIndicesOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

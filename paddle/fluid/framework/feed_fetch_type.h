@@ -34,7 +34,7 @@ struct PhiVectorType<FeedType> {
 using FeedList = paddle::framework::PhiVector<FeedType>;
 
 using FetchType = paddle::variant<phi::DenseTensor,
-                                  LoDTensorArray,
+                                  phi::TensorArray,
                                   framework::Vocab,
                                   phi::SparseCooTensor>;
 using FetchList = std::vector<FetchType>;
@@ -50,7 +50,7 @@ inline bool data_is_lod_tensor(const FetchType &data) {
 }
 
 inline bool data_is_lod_tensor_array(const FetchType &data) {
-  if (data.type() == typeid(LoDTensorArray)) {
+  if (data.type() == typeid(phi::TensorArray)) {
     return true;
   }
   return false;

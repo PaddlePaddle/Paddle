@@ -53,9 +53,11 @@ void DealWithCpuIntrinsics(ir::Call *node, Expr *expr) {
             "The size of node's read args is incorrect."
             "Expected size is greater than or equal to 1, but receive %d.",
             node->read_args.size()));
-    CHECK(node->read_args.front().type().is_float())
-        << "CPU extern call intrinsics only support float now! Please "
-           "check.";
+    PADDLE_ENFORCE_EQ(
+        node->read_args.front().type().is_float(),
+        true,
+        phi::errors::InvalidArgument("CPU extern call intrinsics only support "
+                                     "float now! Please check."));
     if (node->read_args.front().type().is_float(32)) {
       auto out_type = node->type();
       *expr = lang::CallExtern(node->name + "f", node->read_args);
@@ -122,7 +124,11 @@ void MapExternCall(Expr *e, Target target) {
 
     void Visit(const ir::Call *op, Expr *expr) override {
       auto *node = expr->As<ir::Call>();
-      CHECK(node);
+      PADDLE_ENFORCE_NOT_NULL(
+          node,
+          phi::errors::InvalidArgument(
+              "The expression could not be cast to ir::Call. Please check the "
+              "expression type."));
       OptimizeConstantPow(node);
       DealWithIntrinsics(target.arch, node, expr);
     }
