@@ -133,7 +133,8 @@ std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
     const std::string name_suffix) const {
   const auto new_fn_name = this->fn_name_ + "_cloned_" + name_suffix;
   // Construct Base information for new Group
-  auto new_group = std::make_shared<OpLoweringGroup>(this->ops_, new_fn_name);
+  auto new_group = std::make_shared<OpLoweringGroup>(
+      this->ops_, new_fn_name, this->fusion_tracker_ptr);
 
   new_group->output_ops_ = this->output_ops_;
   new_group->output_values_ = this->output_values_;

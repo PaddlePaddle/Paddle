@@ -39,7 +39,7 @@ void AssertKernel(const Context& ctx,
     formatter.Print(*(data[i]), name);
   }
 
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "The condition of  must be true, but received false"));
 }
 

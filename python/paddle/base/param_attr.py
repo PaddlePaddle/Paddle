@@ -13,14 +13,19 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, overload
+from typing import TYPE_CHECKING, Any, ClassVar, overload
 
 import paddle
 from paddle.base.data_feeder import check_type
 from paddle.regularizer import WeightDecayRegularizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor
     from paddle._typing import ParamAttrLike
+    from paddle.nn.initializer import Initializer
+
 
 __all__ = []
 
@@ -58,7 +63,7 @@ class ParamAttr:
         need_clip (bool, optional): Whether the parameter gradient need to be clipped in optimizer. Default is True.
 
     Returns:
-       ParamAttr Object.
+        ParamAttr Object.
 
     Examples:
 
@@ -66,30 +71,40 @@ class ParamAttr:
 
             >>> import paddle
 
-            >>> weight_attr = paddle.ParamAttr(name="weight",
-            ...                                 learning_rate=0.5,
-            ...                                 regularizer=paddle.regularizer.L2Decay(1.0),
-            ...                                 trainable=True)
+            >>> weight_attr = paddle.ParamAttr(
+            ...     name="weight",
+            ...     learning_rate=0.5,
+            ...     regularizer=paddle.regularizer.L2Decay(1.0),
+            ...     trainable=True,
+            ... )
             >>> print(weight_attr.name)
             weight
             >>> paddle.nn.Linear(3, 4, weight_attr=weight_attr)
     """
 
+    name: str | None
+    initializer: Initializer | None
+    learning_rate: float
+    regularizer: WeightDecayRegularizer | None
+    trainable: bool
+    do_model_average: bool
+    need_clip: bool
+
     def __init__(
         self,
-        name=None,
-        initializer=None,
-        learning_rate=1.0,
-        regularizer=None,
-        trainable=True,
-        do_model_average=True,
-        need_clip=True,
-    ):
+        name: str | None = None,
+        initializer: Initializer | None = None,
+        learning_rate: float = 1.0,
+        regularizer: WeightDecayRegularizer | None = None,
+        trainable: bool = True,
+        do_model_average: bool = True,
+        need_clip: bool = True,
+    ) -> None:
         check_type(name, "name", (str, type(None)), "ParamAttr")
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
-        check_type(trainable, "trainable", (bool), "ParamAttr")
-        check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
-        check_type(need_clip, "need_clip", (bool), "ParamAttr")
+        check_type(trainable, "trainable", bool, "ParamAttr")
+        check_type(do_model_average, "do_model_average", bool, "ParamAttr")
+        check_type(need_clip, "need_clip", bool, "ParamAttr")
         check_type(
             initializer,
             "initializer",
@@ -114,7 +129,7 @@ class ParamAttr:
         self.do_model_average = do_model_average
         self.need_clip = need_clip
 
-    def _set_default_initializer(self, initializer):
+    def _set_default_initializer(self, initializer: Initializer | None) -> None:
         """
         Set the default initializer, the initializer should be Constant,
         Uniform, Normal, Xavier, MSRA.
@@ -135,7 +150,7 @@ class ParamAttr:
 
         self.initializer = initializer
 
-    def _set_default_param_initializer(self):
+    def _set_default_param_initializer(self) -> None:
         """
         Set the default initializer for the parameter with Xavier.
 
@@ -147,7 +162,7 @@ class ParamAttr:
         """
         self._set_default_initializer(paddle.nn.initializer.XavierUniform())
 
-    def _set_default_bias_initializer(self):
+    def _set_default_bias_initializer(self) -> None:
         """
         Set the default initializer for the bias with Constant(0.0).
 
@@ -207,7 +222,7 @@ class ParamAttr:
         else:
             raise TypeError(f"{type(arg)} cast to ParamAttr")
 
-    def _to_kwargs(self, with_initializer=False):
+    def _to_kwargs(self, with_initializer: bool = False) -> dict[str, Any]:
         """
         Returns the attributes of this parameter.
 
@@ -284,36 +299,41 @@ class WeightNormParamAttr(ParamAttr):
 
             >>> data = paddle.static.data(name="data", shape=[3, 32, 32], dtype="float32")
 
-            >>> fc = paddle.static.nn.fc(x=data,
-            ...                             size=1000,
-            ...                             weight_attr=paddle.static.WeightNormParamAttr(
-            ...                                 dim=None,
-            ...                                 name='weight_norm_param',
-            ...                                 initializer=paddle.nn.initializer.Constant(1.0),
-            ...                                 learning_rate=1.0,
-            ...                                 regularizer=paddle.regularizer.L2Decay(0.1),
-            ...                                 trainable=True,
-            ...                                 do_model_average=False,
-            ...                                 need_clip=True))
-            ...
+            >>> fc = paddle.static.nn.fc(
+            ...     x=data,
+            ...     size=1000,
+            ...     weight_attr=paddle.static.WeightNormParamAttr(
+            ...         dim=None,
+            ...         name='weight_norm_param',
+            ...         initializer=paddle.nn.initializer.Constant(1.0),
+            ...         learning_rate=1.0,
+            ...         regularizer=paddle.regularizer.L2Decay(0.1),
+            ...         trainable=True,
+            ...         do_model_average=False,
+            ...         need_clip=True,
+            ...     ),
+            ... )
     """
+
     # List to record the parameters reparameterized by weight normalization.
     # If these parameters are treated as Variable rather than Parameter,
     # it can be used to discriminate these parameters and help to serialize
     # these parameters for inference.
-    params_with_weight_norm = []
+    params_with_weight_norm: ClassVar[list[Tensor]] = []
+
+    dim: int | None
 
     def __init__(
         self,
-        dim=None,
-        name=None,
-        initializer=None,
-        learning_rate=1.0,
-        regularizer=None,
-        trainable=True,
-        do_model_average=False,
-        need_clip=True,
-    ):
+        dim: int | None = None,
+        name: str | None = None,
+        initializer: Initializer | None = None,
+        learning_rate: float = 1.0,
+        regularizer: WeightDecayRegularizer | None = None,
+        trainable: bool = True,
+        do_model_average: bool = False,
+        need_clip: bool = True,
+    ) -> None:
         super().__init__(
             name=name,
             initializer=initializer,

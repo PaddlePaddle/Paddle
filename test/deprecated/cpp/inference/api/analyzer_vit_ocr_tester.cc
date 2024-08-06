@@ -32,7 +32,7 @@ Record ProcessALine(const std::string &line) {
   split(line, '\t', &columns);
   PADDLE_ENFORCE_EQ(columns.size(),
                     2UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Data format is invalid, should be <data>\t<shape>"));
 
   Record record;
@@ -107,12 +107,12 @@ TEST(Analyzer_vit_ocr, fuse_status) {
 
   PADDLE_ENFORCE_EQ(fuse_statis.at("fc_onednn_pass"),
                     33,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fuse status %d is illegal, expected value is 33.",
                         fuse_statis.at("fc_onednn_pass")));
   PADDLE_ENFORCE_EQ(fuse_statis.at("fused_conv2d_gelu_onednn_fuse_pass"),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fuse status %d is illegal, expected value is 2.",
                         fuse_statis.at("fused_conv2d_gelu_onednn_fuse_pass")));
 }

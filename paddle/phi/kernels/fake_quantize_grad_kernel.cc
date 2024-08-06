@@ -23,7 +23,7 @@ void QuantizeGradFunc(const Context& dev_ctx,
                       const DenseTensor& dout,
                       DenseTensor* dx) {
   PADDLE_ENFORCE_NOT_NULL(dx,
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "The QuantizeGradFunc output dx is nullptr"));
   // Initialize dx as same as d_out
   dev_ctx.template Alloc<T>(dx);

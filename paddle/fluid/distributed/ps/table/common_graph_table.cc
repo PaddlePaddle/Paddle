@@ -1233,7 +1233,7 @@ void GraphTable::fennel_graph_edge_partition() {
     PADDLE_ENFORCE_GT(
         max_score,
         0,
-        phi::errors::InvalidArgument("max_score should be greater than 0"));
+        common::errors::InvalidArgument("max_score should be greater than 0"));
     return index;
   };
   // 查找关系最远点作为起点
@@ -1274,10 +1274,10 @@ void GraphTable::fennel_graph_edge_partition() {
         break;
       }
     }
-    PADDLE_ENFORCE_NE(
-        key,
-        0xffffffffffffffffL,
-        phi::errors::InvalidArgument("key should not be 0xffffffffffffffffL"));
+    PADDLE_ENFORCE_NE(key,
+                      0xffffffffffffffffL,
+                      common::errors::InvalidArgument(
+                          "key should not be 0xffffffffffffffffL"));
     return key;
   };
   // 其它结点都添加完成，剩余的点就直接放到这个机器上面

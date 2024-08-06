@@ -37,7 +37,7 @@ PADDLE_API {} {}({}) {{
 }}
 """
 DISPATCH_END_GUARD_TEMPLATE = """
-PADDLE_THROW(phi::errors::Unimplemented(
+PADDLE_THROW(common::errors::Unimplemented(
           "The kernel of ({}) for input tensors is unimplemented, please check the type of input tensors."));
 """
 
@@ -508,7 +508,7 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
           int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
           // TODO: Support aliquant condition.
           PADDLE_ENFORCE(shape_i % mesh_dim == 0,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "{op_name} only support local shape dim is divisible "
                     "by the mesh dim, however local_shape[%lld] is %lld "
                     "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
