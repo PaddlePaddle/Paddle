@@ -104,14 +104,14 @@ bool BoxClipOpInferSymbolicShape(
     const auto &im_info_dims = im_info_shape.shape();
     const auto three = symbol::DimExpr{3};
     const auto four = symbol::DimExpr{4};
-    infer_contex->AddEqualCstr(input_dims[input_dims.size() - 1], four);
+    infer_context->AddEqualCstr(input_dims[input_dims.size() - 1], four);
     PADDLE_ENFORCE_EQ(im_info_dims.size(),
                       2,
                       common::errors::InvalidArgument(
                           "The rank of Input(im_info) in BoxClipOp must be 2. "
                           "But received rank = %d",
                           im_info_dims.size()));
-    infer_contex->AddEqualCstr(im_info_dims[1], three);
+    infer_context->AddEqualCstr(im_info_dims[1], three);
   }
 
   std::vector<symbol::DimExpr> output_shape = input_shape.shape();
