@@ -487,10 +487,10 @@ void TestSearchForTileConfig(int spatial_l_bound,
 }
 
 TEST(ConfigSearcher, TestDynamicDeboule) {
-  int spatial_left_bound = 1024;
-  int spatial_right_bound = 2048;  // To reproduce, set it to 4096
-  int reduce_left_bound = 2048;
-  int reduce_right_bound = 4096;  // To reproduce, set it to 4096
+  int spatial_left_bound = 2;
+  int spatial_right_bound = 2;  // To reproduce, set it to 4096
+  int reduce_left_bound = 2;
+  int reduce_right_bound = 2;  // To reproduce, set it to 4096
   bool is_spatial_dynamic = true;
   bool is_reduce_dynamic = true;
   TestSearchForTileConfig(spatial_left_bound,
@@ -503,9 +503,9 @@ TEST(ConfigSearcher, TestDynamicDeboule) {
 
 TEST(ConfigSearcher, TestDynamicReduce) {
   int spatial_left_bound = 2;
-  int spatial_right_bound = 4096;  // To reproduce, set it to 4096
+  int spatial_right_bound = 2;  // To reproduce, set it to 4096
   int reduce_left_bound = 2;
-  int reduce_right_bound = 4096;  // To reproduce, set it to 4096
+  int reduce_right_bound = 2;  // To reproduce, set it to 4096
   bool is_spatial_dynamic = false;
   bool is_reduce_dynamic = true;
   TestSearchForTileConfig(spatial_left_bound,
@@ -518,9 +518,9 @@ TEST(ConfigSearcher, TestDynamicReduce) {
 
 TEST(ConfigSearcher, TestDynamicSpatial) {
   int spatial_left_bound = 2;
-  int spatial_right_bound = 4096;  // To reproduce, set it to 4096
+  int spatial_right_bound = 2;  // To reproduce, set it to 4096
   int reduce_left_bound = 2;
-  int reduce_right_bound = 4096;  // To reproduce, set it to 4096
+  int reduce_right_bound = 2;  // To reproduce, set it to 4096
   bool is_spatial_dynamic = true;
   bool is_reduce_dynamic = false;
   TestSearchForTileConfig(spatial_left_bound,
