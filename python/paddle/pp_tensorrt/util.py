@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import os
+
 import numpy as np
 
 import paddle
@@ -131,6 +133,25 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
                 )
 
 
+def warmup_shape_infer_v2(
+    program, min_shape_feed, max_shape_feed, fetch_var_list
+):
+    with paddle.pir_utils.IrGuard():
+        with paddle.static.program_guard(program):
+            executor = paddle.static.Executor()
+            # Run the program with input_data
+            for _ in range(1):
+                output_original = executor.run(
+                    program, feed=min_shape_feed, fetch_list=fetch_var_list
+                )
+
+            # Run the program with input_data_max_shape (fake max_shape input)
+            for _ in range(1):
+                executor.run(
+                    program, feed=max_shape_feed, fetch_list=fetch_var_list
+                )
+
+
 def get_r50_program():
     paddle.enable_static()
     # static_resnet50 = StaticResNet50()
@@ -160,6 +181,41 @@ def get_r50_program():
         param_dict.update({name: np.array(scope.var(name).get_tensor())})
 
     return infer_program, scope, param_dict
+
+
+def get_r50_v2_program(model_dir, prefix):
+    paddle.enable_static()
+    with paddle.pir_utils.IrGuard():
+        startup_program = static.default_startup_program()
+        scope = paddle.static.global_scope()
+        place = paddle.CUDAPlace(0)
+        exe = static.Executor(place)
+        [
+            pir_program,
+            feed_target_names,
+            fetch_targets,
+        ] = paddle.static.io.load_inference_model_pir(
+            model_dir,
+            executor=exe,
+            model_filename=os.path.join(model_dir, prefix + ".json"),
+            params_filename=os.path.join(model_dir, prefix + ".pdiparams"),
+        )
+
+        with paddle.static.program_guard(pir_program, startup_program):
+            x = np.ones([2, 3, 224, 224]).astype("float32")
+            print("feed_target_names:", feed_target_names)
+            fetches = exe.run(
+                pir_program,
+                feed={"_jst.0.inputs.0": x},
+                fetch_list=fetch_targets,
+            )
+            # print("fetches:",fetches)
+        params = pir_program.global_block().all_parameters()
+        param_dict = {}
+        for v in params:
+            name = v.get_defining_op().attrs()["parameter_name"]
+            param_dict.update({name: np.array(scope.var(name).get_tensor())})
+        return pir_program, scope, param_dict, feed_target_names, fetch_targets
 
 
 def get_dummy_program():
@@ -284,26 +340,6 @@ def get_bert_program():
         name = v.get_defining_op().attrs()["parameter_name"]
         param_dict.update({name: np.array(scope.var(name).get_tensor())})
     return pir_program, scope, param_dict
-
-
-if __name__ == "__main__":
-    pir_program, scope, param_dict = get_bert_program()
-    pir_program = run_pir_pass(pir_program)
-    x = np.ones([1, 768]).astype('int64')
-    place = (
-        paddle.CUDAPlace(0)
-        if paddle.is_compiled_with_cuda()
-        else paddle.CPUPlace()
-    )
-    executor = paddle.static.Executor(place)
-    with paddle.pir_utils.IrGuard():
-        with paddle.static.program_guard(pir_program):
-            fetches = executor.run(
-                pir_program,
-                feed={"input_ids": x},
-                fetch_list=pir_program.list_vars()[-1],
-            )
-            print(fetches)
 
 
 class SimpleGatherNet(nn.Layer):
