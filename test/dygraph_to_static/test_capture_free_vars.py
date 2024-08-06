@@ -74,18 +74,32 @@ class UserDefinedSuperCallWithoutArgument(BaseLayer):
         return super().add_one(x)
 
 
-class TestCaptureFreeVars(Dy2StTestBase):
+class SuperCallWithArgument(BaseLayer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        y = super(__class__, self).add_one(x)
+        z = super(SuperCallWithArgument, self).add_one(y)  # noqa: UP008
+        return z
+
+
+class CheckDy2StWithDygraphMixin:
     def check_fn(self, fn, *inputs):
         dyres = fn(*inputs)
         stres = paddle.jit.to_static(fn)(*inputs)
         np.testing.assert_allclose(dyres.numpy(), stres.numpy())
 
+
+class TestClosure(Dy2StTestBase, CheckDy2StWithDygraphMixin):
     @test_legacy_and_pt_and_pir
     def test_simple_closure(self):
         simple_closure = create_simple_closure()
         x = paddle.to_tensor(1.0)
         self.check_fn(simple_closure, x)
 
+
+class TestSuperCall(Dy2StTestBase, CheckDy2StWithDygraphMixin):
     @test_legacy_and_pt_and_pir
     def test_super_call_without_argument_in_forward(self):
         model = SuperCallWithoutArgumentInForward()
@@ -101,6 +115,12 @@ class TestCaptureFreeVars(Dy2StTestBase):
     @test_legacy_and_pt_and_pir
     def test_user_defined_super_call_without_argument(self):
         model = UserDefinedSuperCallWithoutArgument()
+        x = paddle.to_tensor(1.0)
+        self.check_fn(model, x)
+
+    @test_legacy_and_pt_and_pir
+    def test_super_call_with_argument(self):
+        model = SuperCallWithArgument()
         x = paddle.to_tensor(1.0)
         self.check_fn(model, x)
 
