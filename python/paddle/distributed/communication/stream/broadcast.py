@@ -66,7 +66,7 @@ def _broadcast_in_static_mode(
         'broadcast',
     )
 
-    op_type = 'c_broadcast'
+    op_type = 'broadcast'
     helper = framework.LayerHelper(op_type, **locals())
     ring_id = 0 if group is None else group.id
 
@@ -76,7 +76,7 @@ def _broadcast_in_static_mode(
         return
 
     op = helper.append_op(
-        type='broadcast',
+        type=op_type,
         inputs={'x': [tensor]},
         outputs={'out': [tensor]},
         attrs={
