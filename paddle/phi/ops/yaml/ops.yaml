@@ -3250,6 +3250,7 @@
     func : multiclass_nms3
     data_type : scores
   optional : rois_num, nms_rois_num
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : multinomial
   args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
@@ -5038,6 +5039,7 @@
     func: MoeInferMeta
   kernel:
     func: moe
+  interfaces: paddle::dialect::InferSymbolicShapeInterface
 
 - op: number_count
   args: (Tensor numbers, int upper_range)

@@ -1199,18 +1199,73 @@ bool RoiAlignOpInferSymbolicShape(
 //   return MergedMomentumOpInferSymbolicShape(op, infer_context);
 // }
 
-// bool MoeOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool MoeOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  return true;
+}
 
-// bool MulticlassNMS3OpInferSymbolicShape(pir::Operation *op,
-//                                         pir::InferSymbolicShapeContext
-//                                         *infer_context) {
-//   // pass
-//   return true;
-// }
+bool MulticlassNMS3OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &bboxes_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &scores_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &rois_num_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  const auto &bboxes_shape = bboxes_shape_or_data.shape();
+  const auto &scores_shape = scores_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      scores_shape.size() == 2 || scores_shape.size() == 3,
+      true,
+      errors::InvalidArgument("The rank of Input(Scores) must be 2 or 3."));
+
+  PADDLE_ENFORCE_EQ(
+      bboxes_shape.size(),
+      3,
+      errors::InvalidArgument("The rank of Input(BBoxes) must be 3."));
+
+  if (scores_shape.size() == 3) {
+    PADDLE_ENFORCE_EQ(
+        bboxes_shape[2] == 4 || bboxes_shape[2] == 8 || bboxes_shape[2] == 16 ||
+            bboxes_shape[2] == 24 || bboxes_shape[2] == 32,
+        true,
+        errors::InvalidArgument("The last dimension of Input(BBoxes) must be "
+                                "4, 8, 16, 24, or 32."));
+    infer_context->AddEqualCstr(bboxes_shape[1], scores_shape[2]);
+  } else {
+    PADDLE_ENFORCE_EQ(bboxes_shape[2],
+                      4,
+                      errors::InvalidArgument(
+                          "The last dimension of Input(BBoxes) must be 4."));
+    infer_context->AddEqualCstr(bboxes_shape[1], scores_shape[1]);
+  }
+
+  std::vector<symbol::DimExpr> out_shape = {symbol::DimExpr(-1),
+                                            bboxes_shape[2] + 2};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  std::vector<symbol::DimExpr> index_shape = {symbol::DimExpr(-1), 1};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(index_shape)});
+
+  std::vector<symbol::DimExpr> nms_rois_num_shape = {symbol::DimExpr(-1)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(nms_rois_num_shape)});
+
+  return true;
+}
 
 bool MeshgridOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
