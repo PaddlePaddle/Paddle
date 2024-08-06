@@ -81,17 +81,6 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
             broadcast_new(tindata, src=1)
             return [tindata]
 
-    def get_model_new_comm(
-        self, main_prog, startup_program, rank, dtype='float32'
-    ):
-        with base.program_guard(main_prog, startup_program):
-            tindata = paddle.static.data(
-                name="tindata", shape=[-1, 10, 1000], dtype=dtype
-            )
-            tindata.desc.set_need_check_feed(False)
-            paddle.distributed.broadcast(tindata, src=1)
-            return [tindata]
-
 
 if __name__ == "__main__":
     runtime_main(TestCollectiveBroadcastAPI, "broadcast")
