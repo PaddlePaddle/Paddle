@@ -20,7 +20,6 @@ from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.framework import (
     convert_np_dtype_to_dtype_,
     core,
-    dygraph_only,
     in_dynamic_or_pir_mode,
 )
 from paddle.common_ops_import import Variable
@@ -38,7 +37,6 @@ _int_dtype_ = [
 ]
 
 
-@dygraph_only
 def sin(x, name=None):
     """
     Calculate elementwise sin of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -68,10 +66,12 @@ def sin(x, name=None):
                 indices=[[0, 2]],
                 values=[-0.90929741,  0.84147102])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_sin(x)
 
 
-@dygraph_only
 def tan(x, name=None):
     """
     Calculate elementwise tan of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -101,10 +101,12 @@ def tan(x, name=None):
                 indices=[[0, 2]],
                 values=[2.18503976, 1.55740774])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_tan(x)
 
 
-@dygraph_only
 def asin(x, name=None):
     """
     Calculate elementwise asin of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -134,10 +136,12 @@ def asin(x, name=None):
                 indices=[[0, 2]],
                 values=[nan       , 1.57079625])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_asin(x)
 
 
-@dygraph_only
 def transpose(x, perm, name=None):
     """
     Changes the perm order of ``x`` without changing its data, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -169,6 +173,9 @@ def transpose(x, perm, name=None):
                 values=[[-2.,  0.],
                         [ 1.,  2.]])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_transpose(x, perm)
 
 
@@ -274,7 +281,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return out
 
 
-@dygraph_only
 def atan(x, name=None):
     """
     Calculate elementwise atan of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -304,10 +310,12 @@ def atan(x, name=None):
                 indices=[[0, 2]],
                 values=[-1.10714877,  0.78539819])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_atan(x)
 
 
-@dygraph_only
 def sinh(x, name=None):
     """
     Calculate elementwise sinh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -337,10 +345,12 @@ def sinh(x, name=None):
                 indices=[[0, 2]],
                 values=[-3.62686038,  1.17520118])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_sinh(x)
 
 
-@dygraph_only
 def asinh(x, name=None):
     """
     Calculate elementwise asinh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -370,10 +380,12 @@ def asinh(x, name=None):
                 indices=[[0, 2]],
                 values=[-1.44363546,  0.88137358])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_asinh(x)
 
 
-@dygraph_only
 def atanh(x, name=None):
     """
     Calculate elementwise atanh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -403,10 +415,12 @@ def atanh(x, name=None):
                 indices=[[0, 2]],
                 values=[nan , inf.])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_atanh(x)
 
 
-@dygraph_only
 def tanh(x, name=None):
     """
     Calculate elementwise tanh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -436,10 +450,12 @@ def tanh(x, name=None):
                 indices=[[0, 2]],
                 values=[-0.96402758,  0.76159418])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_tanh(x)
 
 
-@dygraph_only
 def square(x, name=None):
     """
     Calculate elementwise square of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -469,10 +485,12 @@ def square(x, name=None):
                 indices=[[0, 2]],
                 values=[4., 1.])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_square(x)
 
 
-@dygraph_only
 def sqrt(x, name=None):
     """
     Calculate elementwise sqrt of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -502,10 +520,12 @@ def sqrt(x, name=None):
                 indices=[[0, 2]],
                 values=[nan, 1. ])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_sqrt(x)
 
 
-@dygraph_only
 def log1p(x, name=None):
     """
     Calculate the natural log of (1+x), requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -535,10 +555,12 @@ def log1p(x, name=None):
                 indices=[[0, 2]],
                 values=[nan       , 0.69314718])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_log1p(x)
 
 
-@dygraph_only
 def cast(x, index_dtype=None, value_dtype=None, name=None):
     """
     cast non-zero-index of SparseTensor to `index_dtype`, non-zero-element of SparseTensor to
@@ -569,6 +591,9 @@ def cast(x, index_dtype=None, value_dtype=None, name=None):
                 indices=[[0, 2]],
                 values=[-2.,  1.])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     if index_dtype and not isinstance(index_dtype, core.VarDesc.VarType):
         index_dtype = convert_np_dtype_to_dtype_(index_dtype)
     if value_dtype and not isinstance(value_dtype, core.VarDesc.VarType):
@@ -576,7 +601,6 @@ def cast(x, index_dtype=None, value_dtype=None, name=None):
     return _C_ops.sparse_cast(x, index_dtype, value_dtype)
 
 
-@dygraph_only
 def pow(x, factor, name=None):
     """
     Calculate elementwise pow of x, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -607,10 +631,12 @@ def pow(x, factor, name=None):
                 indices=[[0, 2]],
                 values=[4., 9.])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_pow(x, float(factor))
 
 
-@dygraph_only
 def neg(x, name=None):
     """
     Calculate elementwise negative of x, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -640,10 +666,12 @@ def neg(x, name=None):
                 indices=[[0, 2]],
                 values=[ 2., -3.])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_scale(x, -1.0, 0.0, True)
 
 
-@dygraph_only
 def abs(x, name=None):
     """
     Calculate elementwise absolute value of x, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -673,10 +701,12 @@ def abs(x, name=None):
                 indices=[[0, 2]],
                 values=[2., 3.])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_abs(x)
 
 
-@dygraph_only
 def coalesce(x, name=None):
     r"""
     the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
@@ -706,10 +736,12 @@ def coalesce(x, name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [3., 3.])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_coalesce(x)
 
 
-@dygraph_only
 def rad2deg(x, name=None):
     r"""
     Convert each of the elements of input x from radian to degree,
@@ -740,12 +772,14 @@ def rad2deg(x, name=None):
                 indices=[[0, 2]],
                 values=[ 180.02334595, -180.02334595])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     if x.dtype in _int_dtype_:
         x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
     return _C_ops.sparse_scale(x, 180.0 / np.pi, 0.0, True)
 
 
-@dygraph_only
 def deg2rad(x, name=None):
     r"""
     Convert each of the elements of input x from degree to radian,
@@ -776,12 +810,14 @@ def deg2rad(x, name=None):
                 indices=[[0, 2]],
                 values=[-3.14159274,  3.14159274])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     if x.dtype in _int_dtype_:
         x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
     return _C_ops.sparse_scale(x, np.pi / 180.0, 0.0, True)
 
 
-@dygraph_only
 def expm1(x, name=None):
     """
     Calculate elementwise `exp(x)-1` , requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -811,6 +847,9 @@ def expm1(x, name=None):
                 indices=[[0, 2]],
                 values=[-0.86466473,  1.71828187])
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_expm1(x)
 
 
