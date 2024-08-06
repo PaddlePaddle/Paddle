@@ -15,12 +15,37 @@ from __future__ import annotations
 
 import collections
 import os
-from typing import Any
+from typing import Any, Literal, NamedTuple
+
+from typing_extensions import TypeAlias
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils import download
 
 from .dataset import AudioClassificationDataset
+
+_ModeLiteral: TypeAlias = Literal[
+    'train',
+    'dev',
+]
+_FeatTypeLiteral: TypeAlias = Literal[
+    'raw',
+    'melspectrogram',
+    'mfcc',
+    'logmelspectrogram',
+    'spectrogram',
+]
+
+
+class MetaInfoState(NamedTuple):
+    filename: str
+    fold: str
+    target: str
+    category: str
+    esc10: str
+    src_file: str
+    take: str
+
 
 __all__ = []
 
@@ -152,9 +177,9 @@ class ESC50(AudioClassificationDataset):
 
     def __init__(
         self,
-        mode: str = 'train',
+        mode: _ModeLiteral = 'train',
         split: int = 1,
-        feat_type: str = 'raw',
+        feat_type: _FeatTypeLiteral = 'raw',
         archive: dict[str, str] | None = None,
         **kwargs: Any,
     ) -> None:
@@ -168,14 +193,16 @@ class ESC50(AudioClassificationDataset):
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 
-    def _get_meta_info(self) -> list[collections.namedtuple]:
+    def _get_meta_info(self) -> list[MetaInfoState]:
         ret = []
         with open(os.path.join(DATA_HOME, self.meta), 'r') as rf:
             for line in rf.readlines()[1:]:
                 ret.append(self.meta_info(*line.strip().split(',')))
         return ret
 
-    def _get_data(self, mode: str, split: int) -> tuple[list[str], list[int]]:
+    def _get_data(
+        self, mode: _ModeLiteral, split: int
+    ) -> tuple[list[str], list[int]]:
         if not os.path.isdir(
             os.path.join(DATA_HOME, self.audio_path)
         ) or not os.path.isfile(os.path.join(DATA_HOME, self.meta)):
