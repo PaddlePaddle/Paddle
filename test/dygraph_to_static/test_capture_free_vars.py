@@ -59,6 +59,21 @@ class SuperCallWithoutArgumentInControlFlow(BaseLayer):
             return x
 
 
+class UserDefinedSuperCallWithoutArgument(BaseLayer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        def super():
+            class A:
+                def add_one(self, x):
+                    return x + 1
+
+            return A()
+
+        return super().add_one(x)
+
+
 class TestCaptureFreeVars(Dy2StTestBase):
     def check_fn(self, fn, *inputs):
         dyres = fn(*inputs)
@@ -80,6 +95,12 @@ class TestCaptureFreeVars(Dy2StTestBase):
     @test_legacy_and_pt_and_pir
     def test_super_call_without_argument_in_control_flow(self):
         model = SuperCallWithoutArgumentInControlFlow()
+        x = paddle.to_tensor(1.0)
+        self.check_fn(model, x)
+
+    @test_legacy_and_pt_and_pir
+    def test_user_defined_super_call_without_argument(self):
+        model = UserDefinedSuperCallWithoutArgument()
         x = paddle.to_tensor(1.0)
         self.check_fn(model, x)
 
