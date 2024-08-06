@@ -96,7 +96,7 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
 ScoreType WeightedSamplingTrailObjectiveFunc::operator()(
     const CandidateType& candidate) {
   auto tile_config_database = std::make_shared<NaiveTileConfigDatabase>();
-  // VLOG(3) << "Bucket_info_.space.size is " << bucket_info_.space.size();
+  VLOG(3) << "Bucket_info_.space.size is " << bucket_info_.space.size();
   if (candidate.size() != 0) {
     ScheduleConfig::TileConfig config{
         candidate[0], candidate[1], candidate[2], NoneReduceMethod()};
