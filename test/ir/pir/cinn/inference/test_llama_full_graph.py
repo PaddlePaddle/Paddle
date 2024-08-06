@@ -17,23 +17,12 @@ import sys
 import unittest
 from os.path import dirname
 
-os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
-os.environ['FLAGS_group_schedule_tiling_first'] = '1'
-os.environ['FLAGS_prim_all'] = 'true'
-os.environ['FLAGS_prim_enable_dynamic'] = 'true'
-# os.environ['FLAGS_print_ir'] = '1'
-os.environ['FLAGS_enable_pir_api'] = '1'
-os.environ['FLAGS_cinn_bucket_compile'] = '1'
-os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
 os.environ['FLAGS_prim_forward_blacklist'] = 'pd_op.embedding'
-
-os.environ['FLAGS_use_cinn'] = '1'
-os.environ['FLAGS_dist_prim_all'] = '1'
-os.environ['FLAGS_enable_auto_recompute'] = '1'
 
 import numpy as np
 
 import paddle
+from paddle.decomposition import decomp
 
 sys.path.append(dirname(dirname(__file__)))
 sys.path.append("../")
@@ -109,6 +98,10 @@ class TestLlamaModel(unittest.TestCase):
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
         main_program = paddle.pir.core.default_main_program()
+        if mode == "prim":
+            with decomp.prim_guard():
+                decomp.decompose_dist_program(main_program)
+
         exe.run(paddle.static.default_startup_program())
 
         res = exe.run(
@@ -121,7 +114,7 @@ class TestLlamaModel(unittest.TestCase):
         )
         ops = {op.name() for op in main_program.global_block().ops}
         ops = list(ops)
-        assert "pd_op.einsum" in ops
+        assert "pd_op.sum" in ops
         assert "pd_op.sum_grad" not in ops
         return res[0], np.abs(res[1]).mean()
 

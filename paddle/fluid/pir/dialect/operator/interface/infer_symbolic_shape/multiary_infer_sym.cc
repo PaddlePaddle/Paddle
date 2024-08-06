@@ -228,6 +228,13 @@ bool AucOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+// bool BatchFcOpInferSymbolicShape(pir::Operation *op,
+//                                  pir::InferSymbolicShapeContext
+//                                  *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool BatchNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -246,7 +253,7 @@ bool BatchNormOpInferSymbolicShape(
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: the dimension of input "
           "X must greater than or equal to 2. But received: the shape of input "
           "X = [%s], the dimension of input X =[%d]",
@@ -255,7 +262,7 @@ bool BatchNormOpInferSymbolicShape(
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: the dimension of input X "
           "must smaller than or equal to 5. But received: the shape of input X "
           "= [%s], the dimension of input X = [%d]",
@@ -270,7 +277,7 @@ bool BatchNormOpInferSymbolicShape(
     std::vector<symbol::DimExpr> scale_dims = scale_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(scale_dims.size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the dimension of scale must equal to 1."
                           "But received: the dimension of scale is [%d]",
                           scale_dims.size()));
@@ -281,7 +288,7 @@ bool BatchNormOpInferSymbolicShape(
     std::vector<symbol::DimExpr> bias_dims = bias_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(bias_dims.size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the dimension of bias must equal to 1."
                           "But received: the dimension of bias is [%d]",
                           bias_dims.size()));
@@ -608,6 +615,20 @@ bool BilinearOpInferSymbolicShape(
   return true;
 }
 
+// bool AssignPosOpInferSymbolicShape(pir::Operation *op,
+//                                    pir::InferSymbolicShapeContext
+//                                    *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool BroadcastTensorsOpInferSymbolicShape(pir::Operation *op,
+//                                           pir::InferSymbolicShapeContext
+//                                           *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool BilinearInterpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
@@ -650,6 +671,26 @@ bool CheckFiniteAndUnscale_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return CheckFiniteAndUnscaleOpInferSymbolicShape(op, infer_context);
 }
+
+// bool CrfDecodingOpInferSymbolicShape(pir::Operation *op,
+//                                      pir::InferSymbolicShapeContext
+//                                      *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool CoalesceTensorOpInferSymbolicShape(pir::Operation *op,
+//                                         pir::InferSymbolicShapeContext
+//                                         *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool CoalesceTensor_OpInferSymbolicShape(pir::Operation *op,
+//                                          pir::InferSymbolicShapeContext
+//                                          *infer_context) {
+//   return CoalesceTensorOpInferSymbolicShape(op, infer_context);
+// }
 
 bool CrossEntropyWithSoftmaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -864,6 +905,47 @@ bool FlashAttnOpInferSymbolicShape(
   return true;
 }
 
+// bool FlashAttnUnpaddedOpInferSymbolicShape(pir::Operation *op,
+//                                            pir::InferSymbolicShapeContext
+//                                            *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool FusedBatchNormActOpInferSymbolicShape(pir::Operation *op,
+//                                            pir::InferSymbolicShapeContext
+//                                            *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool FusedBnAddActivationOpInferSymbolicShape(pir::Operation *op,
+//                                               pir::InferSymbolicShapeContext
+//                                               *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool GenerateProposalsOpInferSymbolicShape(pir::Operation *op,
+//                                            pir::InferSymbolicShapeContext
+//                                            *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool GruOpInferSymbolicShape(pir::Operation *op,
+//                              pir::InferSymbolicShapeContext *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool GruUnitOpInferSymbolicShape(pir::Operation *op,
+//                                  pir::InferSymbolicShapeContext
+//                                  *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool GroupNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape =
@@ -884,6 +966,13 @@ bool GroupNormOpInferSymbolicShape(
   return true;
 }
 
+// bool InstanceNormOpInferSymbolicShape(pir::Operation *op,
+//                                       pir::InferSymbolicShapeContext
+//                                       *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool LerpOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -892,36 +981,43 @@ bool LerpOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const auto &w_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  const auto &x_shape = x_shape_or_data.shape();
-  const auto &y_shape = y_shape_or_data.shape();
-  const auto &w_shape = w_shape_or_data.shape();
-  size_t x_ndims = x_shape.size();
-  size_t y_ndims = y_shape.size();
-  size_t w_ndims = w_shape.size();
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> y_shape = y_shape_or_data.shape();
+  std::vector<symbol::DimExpr> w_shape = w_shape_or_data.shape();
+  int x_ndims = x_shape.size();
+  int y_ndims = y_shape.size();
+  int w_ndims = w_shape.size();
   std::vector<symbol::DimExpr> out1_shape;
   std::vector<symbol::DimExpr> out2_shape;
-  if (x_ndims > y_ndims) {
-    out1_shape.assign(x_shape.begin(), x_shape.end());
-  } else if (x_ndims < y_ndims) {
-    out1_shape.assign(y_shape.begin(), y_shape.end());
+  int diffxy = x_ndims - y_ndims;
+  if (diffxy > 0) {
+    for (int i = 0; i < diffxy; ++i) {
+      y_shape.emplace(y_shape.begin(), 1);
+    }
   } else {
-    symbol::DimExprBuilder builder;
-    for (size_t i = 0; i < x_ndims; ++i) {
-      out1_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
-      infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
+    for (int i = 0; i < -diffxy; ++i) {
+      x_shape.emplace(x_shape.begin(), 1);
     }
   }
-  size_t out1_ndims = out1_shape.size();
-  if (w_ndims > out1_ndims) {
-    out2_shape.assign(w_shape.begin(), w_shape.end());
-  } else if (w_ndims < out1_ndims) {
-    out2_shape.assign(out1_shape.begin(), out1_shape.end());
-  } else {
-    symbol::DimExprBuilder builder;
-    for (size_t i = 0; i < w_ndims; ++i) {
-      out2_shape.emplace_back(builder.Broadcast(w_shape[i], out1_shape[i]));
-      infer_context->AddBroadcastableCstr(w_shape[i], out1_shape[i]);
+  symbol::DimExprBuilder builder;
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    out1_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
+    infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
+  }
+  int out1_ndims = out1_shape.size();
+  int diffxyw = w_ndims - out1_ndims;
+  if (diffxyw > 0) {
+    for (int i = 0; i < diffxyw; ++i) {
+      out1_shape.emplace(out1_shape.begin(), 1);
     }
+  } else {
+    for (int i = 0; i < -diffxyw; ++i) {
+      w_shape.emplace(w_shape.begin(), 1);
+    }
+  }
+  for (size_t i = 0; i < w_shape.size(); ++i) {
+    out2_shape.emplace_back(builder.Broadcast(w_shape[i], out1_shape[i]));
+    infer_context->AddBroadcastableCstr(w_shape[i], out1_shape[i]);
   }
   infer_context->SetShapeOrDataForValue(
       op->result(0),
@@ -1108,6 +1204,52 @@ bool RoiAlignOpInferSymbolicShape(
   return true;
 }
 
+// bool LstmOpInferSymbolicShape(pir::Operation *op,
+//                               pir::InferSymbolicShapeContext *infer_context)
+//                               {
+//   // pass
+//   return true;
+// }
+
+// bool MergedAdamOpInferSymbolicShape(pir::Operation *op,
+//                                     pir::InferSymbolicShapeContext
+//                                     *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool MergedAdam_OpInferSymbolicShape(pir::Operation *op,
+//                                      pir::InferSymbolicShapeContext
+//                                      *infer_context) {
+//   return MergedAdamOpInferSymbolicShape(op, infer_context);
+// }
+
+// bool MergedMomentumOpInferSymbolicShape(pir::Operation *op,
+//                                         pir::InferSymbolicShapeContext
+//                                         *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool MergedMomentum_OpInferSymbolicShape(pir::Operation *op,
+//                                          pir::InferSymbolicShapeContext
+//                                          *infer_context) {
+//   return MergedMomentumOpInferSymbolicShape(op, infer_context);
+// }
+
+// bool MoeOpInferSymbolicShape(pir::Operation *op,
+//                              pir::InferSymbolicShapeContext *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool MulticlassNMS3OpInferSymbolicShape(pir::Operation *op,
+//                                         pir::InferSymbolicShapeContext
+//                                         *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool MeshgridOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::TensorListShapeOrDataDimExprs &shape_data_list =
@@ -1164,6 +1306,34 @@ bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return MovingAverageAbsMaxScaleOpInferSymbolicShape(op, infer_context);
 }
+
+// bool NceOpInferSymbolicShape(pir::Operation *op,
+//                              pir::InferSymbolicShapeContext *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool PsroiPoolOpInferSymbolicShape(pir::Operation *op,
+//                                    pir::InferSymbolicShapeContext
+//                                    *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool RmsNormOpInferSymbolicShape(pir::Operation *op,
+//                                  pir::InferSymbolicShapeContext
+//                                  *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool RoiPoolOpInferSymbolicShape(pir::Operation *op,
+//                                  pir::InferSymbolicShapeContext
+//                                  *infer_context) {
+//   // pass
+//   return true;
+// }
+
 
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
@@ -1233,6 +1403,40 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+// bool SaveCombineOpInferSymbolicShape(pir::Operation *op,
+//                                      pir::InferSymbolicShapeContext
+//                                      *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(pir::Operation *op,
+//                                                        pir::InferSymbolicShapeContext
+//                                                        *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool SigmoidCrossEntropyWithLogits_OpInferSymbolicShape(pir::Operation *op,
+//                                                         pir::InferSymbolicShapeContext
+//                                                         *infer_context) {
+//   return SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(op,
+//   infer_context);
+// }
+
+// bool SyncBatchNormOpInferSymbolicShape(pir::Operation *op,
+//                                        pir::InferSymbolicShapeContext
+//                                        *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool SyncBatchNorm_OpInferSymbolicShape(pir::Operation *op,
+//                                         pir::InferSymbolicShapeContext
+//                                         *infer_context) {
+//   return SyncBatchNormOpInferSymbolicShape(op, infer_context);
+// }
+
 bool TrilinearInterpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
@@ -1293,5 +1497,19 @@ bool FakeChannelWiseDequantizeMaxAbsOpInferSymbolicShape(
 
   return true;
 }
+
+// bool UpdateLossScaling_OpInferSymbolicShape(pir::Operation *op,
+//                                             pir::InferSymbolicShapeContext
+//                                             *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool YoloBoxPostOpInferSymbolicShape(pir::Operation *op,
+//                                      pir::InferSymbolicShapeContext
+//                                      *infer_context) {
+//   // pass
+//   return true;
+// }
 
 }  // namespace paddle::dialect

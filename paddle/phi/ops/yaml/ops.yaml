@@ -758,6 +758,15 @@
     func : c_reduce_sum
   inplace : (x -> out)
 
+- op : c_scatter
+  args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
+  output : Tensor(out)
+  infer_meta :
+    func : CScatterInferMeta
+    param : [x, ring_id, root, nranks]
+  kernel :
+    func : c_scatter
+
 - op : c_sync_calc_stream
   args : (Tensor x)
   output : Tensor(out)
@@ -2113,6 +2122,7 @@
   kernel:
     func : fused_softmax_mask_upper_triangle
   backward: fused_softmax_mask_upper_triangle_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gammaincc
   args : (Tensor x, Tensor y)
@@ -2134,6 +2144,7 @@
     func : gammaln
   inplace: (x -> out)
   backward : gammaln_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gather
   args : (Tensor x, Tensor index, Scalar axis=0)
@@ -2193,6 +2204,7 @@
     backend : x
   inplace: (x -> out)
   backward: gaussian_inplace_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gelu
   args : (Tensor x,  bool approximate = false)
@@ -2203,6 +2215,7 @@
   kernel :
     func : gelu
   backward : gelu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : generate_proposals
   args : (Tensor scores, Tensor bbox_deltas, Tensor im_shape, Tensor anchors, Tensor variances, int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size, float eta, bool pixel_offset=true)
@@ -2301,6 +2314,7 @@
   kernel :
     func : hard_shrink
   backward : hardshrink_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hardsigmoid
   args : (Tensor x, float slope = 0.2, float offset = 0.5)
@@ -3151,6 +3165,7 @@
     func : UnchangedInferMeta
   kernel :
     func : merge_selected_rows {selected_rows -> selected_rows}
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : merged_adam_
   args : (Tensor[] param, Tensor[] grad, Tensor[] learning_rate, Tensor[] moment1, Tensor[] moment2, Tensor[] beta1_pow, Tensor[] beta2_pow, Tensor[] master_param, Scalar beta1 = 0.9f, Scalar beta2 = 0.999f, Scalar epsilon = 1.0e-8f, bool multi_precision = false, bool use_global_beta_pow = false)
@@ -3779,6 +3794,7 @@
     func : renorm
   inplace: (x -> out)
   backward : renorm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : repeat_interleave
   args : (Tensor x, int repeats, int axis)
@@ -4244,6 +4260,7 @@
   kernel :
     func : softplus
   backward : softplus_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softshrink
   args : (Tensor x, float threshold = 0.5)
@@ -4254,6 +4271,7 @@
   kernel :
     func : softshrink
   backward : softshrink_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softsign
   args : (Tensor x)
@@ -4264,6 +4282,7 @@
   kernel :
     func : softsign
   backward : softsign_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : solve
   args : (Tensor x, Tensor y)
@@ -4514,6 +4533,7 @@
   kernel :
     func : tanh_shrink
   backward : tanh_shrink_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tdm_child
   args: (Tensor x, Tensor tree_info, int child_nums, DataType dtype = DataType::INT32)
