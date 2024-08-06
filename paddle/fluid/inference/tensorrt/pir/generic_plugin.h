@@ -20,12 +20,52 @@
 
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/tensorrt/trt_plugin.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/include/core/operation.h"
 
 namespace paddle::inference::tensorrt::pir {
 
+class SpecialOpConfig {
+ public:
+  SpecialOpConfig(bool has_format_combination_func,
+                  bool has_get_output_data_type_func,
+                  bool has_outputs_post_process_func)
+      : has_format_combination_func_(has_format_combination_func),
+        has_get_output_data_type_func_(has_get_output_data_type_func),
+        has_outputs_post_process_func_(has_outputs_post_process_func) {}
+  virtual bool supportsFormatCombination(
+      int pos,
+      const nvinfer1::PluginTensorDesc* in_out,
+      int nb_inputs,
+      int nb_outputs,
+      bool is_fp16_supported) {
+    // return a default result
+    return false;
+  }
+
+  virtual nvinfer1::DataType getOutputDataType(
+      int index, const nvinfer1::DataType* input_types, int nb_inputs) {
+    // return a default result
+    return input_types[0];
+  }
+
+  virtual void outputsPostProcess(
+      phi::DeviceContextPool& pool,  // NOLINT
+      std::vector<phi::DenseTensor>* dense_tensor_outputs,
+      void* const* outputs) {}
+
+  bool HasFormatCombinationFunc() { return has_format_combination_func_; }
+  bool HasGetOutputDataTypeFunc() { return has_get_output_data_type_func_; }
+
+  bool HasOutputsPostProcessFunc() { return has_outputs_post_process_func_; }
+
+ protected:
+  bool has_format_combination_func_ = false;
+  bool has_get_output_data_type_func_ = false;
+  bool has_outputs_post_process_func_ = false;
+};
 class GenericPlugin : public paddle::platform::DynamicPluginTensorRT {
  public:
   GenericPlugin() {}
@@ -132,6 +172,8 @@ class GenericPlugin : public paddle::platform::DynamicPluginTensorRT {
   std::vector<::pir::Type> inputs_type_;
   std::vector<::pir::Type> outputs_type_;
   std::unique_ptr<paddle::dialect::OpYamlInfoParser> op_yaml_info_ = nullptr;
+  std::unordered_map<std::string, std::unique_ptr<SpecialOpConfig>>
+      special_op_config_;
 
  private:
   std::unordered_map<nvinfer1::DataType, std::unique_ptr<phi::Kernel>>

@@ -37,6 +37,214 @@
 
 namespace paddle::inference::tensorrt::pir {
 
+class GatherNdOpConfig : public SpecialOpConfig {
+ public:
+  GatherNdOpConfig() : SpecialOpConfig(true, false, false) {}
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* in_out,
+                                 int nb_inputs,
+                                 int nb_outputs,
+                                 bool is_fp16_supported) override {
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+              (is_fp16_supported &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // output
+    if (pos == 2)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
+  }
+};
+
+class YoloBoxOpConfig : public SpecialOpConfig {
+ public:
+  YoloBoxOpConfig() : SpecialOpConfig(true, false, false) {}
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* in_out,
+                                 int nb_inputs,
+                                 int nb_outputs,
+                                 bool is_fp16_supported) override {
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+              (is_fp16_supported &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // output
+    if (pos == 2)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
+  }
+};
+
+class ScatterNdAddOpConfig : public SpecialOpConfig {
+ public:
+  ScatterNdAddOpConfig() : SpecialOpConfig(true, false, false) {}
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* in_out,
+                                 int nb_inputs,
+                                 int nb_outputs,
+                                 bool is_fp16_supported) override {
+    // input X
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+              (is_fp16_supported &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // input Index
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // input Updates and output
+    if (pos == 2 || pos == 3)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
+  }
+};
+
+class EmbeddingOpConfig : public SpecialOpConfig {
+ public:
+  EmbeddingOpConfig() : SpecialOpConfig(true, true, false) {}
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* in_out,
+                                 int nb_inputs,
+                                 int nb_outputs,
+                                 bool is_fp16_supported) override {
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
+              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR));
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) ||
+             ((is_fp16_supported &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+                 (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // output
+    if (pos == 2)
+      return in_out[1].type == in_out[pos].type &&
+             in_out[1].format == in_out[pos].format;
+  }
+
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) override {
+    return input_types[1];
+  }
+};
+
+class ArgsortOpConfig : public SpecialOpConfig {
+ public:
+  ArgsortOpConfig() : SpecialOpConfig(true, true, true) {}
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* in_out,
+                                 int nb_inputs,
+                                 int nb_outputs,
+                                 bool is_fp16_supported) override {
+    // input x
+    if (pos == 0) {
+      return ((in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+               (is_fp16_supported &&
+                in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+              in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    }
+    // output out
+    if (pos == 1) {
+      return (in_out[pos].type == in_out[0].type &&
+              in_out[pos].format == in_out[0].format);
+    }
+    // output indices
+    if (pos == 2) {
+      return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
+              in_out[pos].format == in_out[0].format);
+    }
+  }
+
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) override {
+    if (index == 1) {
+      return nvinfer1::DataType::kINT32;
+    } else {
+      return input_types[0];
+    }
+  }
+  void outputsPostProcess(phi::DeviceContextPool& pool,  // NOLINT
+                          std::vector<phi::DenseTensor>* dense_tensor_outputs,
+                          void* const* outputs) override {
+    for (int i = 0; i < dense_tensor_outputs->size(); i++) {
+      phi::DenseTensor& output_tensor = (*dense_tensor_outputs)[i];
+      phi::DataType dtype = output_tensor.dtype();
+      if (dtype == phi::DataType::INT64) {
+        auto& int32_tensor = output_tensor;
+        auto ctx = pool.Get(output_tensor.place());
+        int32_tensor = phi::funcs::TransDataType(
+            reinterpret_cast<const phi::GPUContext&>(*ctx),
+            output_tensor,
+            phi::DataType::INT32);
+        paddle::memory::Copy(output_tensor.place(),
+                             outputs[i],
+                             output_tensor.place(),
+                             int32_tensor.data<int32_t>(),
+                             int32_tensor.numel() * sizeof(int),
+                             nullptr);
+      }
+    }
+  }
+};
+
+class ScatterOpConfig : public SpecialOpConfig {
+ public:
+  ScatterOpConfig() : SpecialOpConfig(true, false, false) {}
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* in_out,
+                                 int nb_inputs,
+                                 int nb_outputs,
+                                 bool is_fp16_supported) override {
+    // input X
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+              (is_fp16_supported &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // Ids
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // 3:output 2:input Updates
+    if (pos == 3 || pos == 2)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
+  }
+};
+
+class SolveOpConfig : public SpecialOpConfig {
+ public:
+  SolveOpConfig() : SpecialOpConfig(true, false, false) {}
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* in_out,
+                                 int nb_inputs,
+                                 int nb_outputs,
+                                 bool is_fp16_supported) override {
+    // input X
+    if (pos == 0)
+      return in_out[pos].type == nvinfer1::DataType::kFLOAT &&
+             in_out[pos].format == nvinfer1::TensorFormat::kLINEAR;
+    // input Y
+    if (pos == 1)
+      return in_out[pos].type == nvinfer1::DataType::kFLOAT &&
+             in_out[pos].format == nvinfer1::TensorFormat::kLINEAR;
+    // output
+    if (pos == 2)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
+  }
+};
+
 GenericPlugin::GenericPlugin(const std::string& op_name,
                              const std::string& attrs_map_info,
                              const std::vector<std::string>& inputs_type_info,
@@ -67,6 +275,16 @@ GenericPlugin::GenericPlugin(const std::string& op_name,
     outputs_type_.push_back(reader.RecoverType(&type_json_data));
   }
   with_fp16_ = with_fp16;
+
+  // Add special op config for deal with special situation
+  special_op_config_["pd_op.gather_nd"] = std::make_unique<GatherNdOpConfig>();
+  special_op_config_["pd_op.yolo_box"] = std::make_unique<YoloBoxOpConfig>();
+  special_op_config_["pd_op.scatter_nd_add"] =
+      std::make_unique<ScatterNdAddOpConfig>();
+  special_op_config_["pd_op.embedding"] = std::make_unique<EmbeddingOpConfig>();
+  special_op_config_["pd_op.argsort"] = std::make_unique<ArgsortOpConfig>();
+  special_op_config_["pd_op.scatter"] = std::make_unique<ScatterOpConfig>();
+  special_op_config_["pd_op.solve"] = std::make_unique<SolveOpConfig>();
 }
 
 GenericPlugin::GenericPlugin(void const* serial_data, size_t serial_length) {
@@ -213,93 +431,10 @@ bool GenericPlugin::supportsFormatCombination(
     const nvinfer1::PluginTensorDesc* in_out,
     int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
-  if (op_name_ == "pd_op.gather_nd" || op_name_ == "pd_op.yolo_box") {
-    if (pos == 0)
-      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
-              (isFp16Supported() &&
-               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    if (pos == 1)
-      return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
-             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    // output
-    if (pos == 2)
-      return in_out[0].type == in_out[pos].type &&
-             in_out[0].format == in_out[pos].format;
-  } else if (op_name_ == "pd_op.scatter_nd_add") {
-    // input X
-    if (pos == 0)
-      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
-              (isFp16Supported() &&
-               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    // input Index
-    if (pos == 1)
-      return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
-             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    // input Updates and output
-    if (pos == 2 || pos == 3)
-      return in_out[0].type == in_out[pos].type &&
-             in_out[0].format == in_out[pos].format;
-  } else if (op_name_ == "pd_op.embedding") {
-    if (pos == 0)
-      return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
-              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR));
-    if (pos == 1)
-      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) ||
-             ((isFp16Supported() &&
-               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-                 (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    // output
-    if (pos == 2)
-      return in_out[1].type == in_out[pos].type &&
-             in_out[1].format == in_out[pos].format;
-  } else if (op_name_ == "pd_op.argsort") {
-    // input x
-    if (pos == 0) {
-      return ((in_out[pos].type == nvinfer1::DataType::kFLOAT ||
-               (isFp16Supported() &&
-                in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-              in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    }
-    // output out
-    if (pos == 1) {
-      return (in_out[pos].type == in_out[0].type &&
-              in_out[pos].format == in_out[0].format);
-    }
-    // output indices
-    if (pos == 2) {
-      return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
-              in_out[pos].format == in_out[0].format);
-    }
-  } else if (op_name_ == "pd_op.scatter") {
-    // input X
-    if (pos == 0)
-      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
-              (isFp16Supported() &&
-               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    // Ids
-    if (pos == 1)
-      return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
-             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    // 3:output 2:input Updates
-    if (pos == 3 || pos == 2)
-      return in_out[0].type == in_out[pos].type &&
-             in_out[0].format == in_out[pos].format;
-  } else if (op_name_ == "pd_op.solve") {
-    // input X
-    if (pos == 0)
-      return in_out[pos].type == nvinfer1::DataType::kFLOAT &&
-             in_out[pos].format == nvinfer1::TensorFormat::kLINEAR;
-    // input Y
-    if (pos == 1)
-      return in_out[pos].type == nvinfer1::DataType::kFLOAT &&
-             in_out[pos].format == nvinfer1::TensorFormat::kLINEAR;
-    // output
-    if (pos == 2)
-      return in_out[0].type == in_out[pos].type &&
-             in_out[0].format == in_out[pos].format;
+  if (special_op_config_.find(op_name_) != special_op_config_.end() &&
+      special_op_config_[op_name_]->HasFormatCombinationFunc()) {
+    return special_op_config_[op_name_]->supportsFormatCombination(
+        pos, in_out, nb_inputs, nb_outputs, isFp16Supported());
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
@@ -313,13 +448,10 @@ nvinfer1::DataType GenericPlugin::getOutputDataType(
     int index,
     const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  if (op_name_ == "pd_op.embedding") {
-    return input_types[1];
-  }
-  if (op_name_ == "pd_op.argsort") {
-    if (index == 1) {
-      return nvinfer1::DataType::kINT32;
-    }
+  if (special_op_config_.find(op_name_) != special_op_config_.end() &&
+      special_op_config_.at(op_name_)->HasGetOutputDataTypeFunc()) {
+    return special_op_config_.at(op_name_)->getOutputDataType(
+        index, input_types, nb_inputs);
   }
   return input_types[0];
 }
@@ -697,25 +829,10 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
 
-  if (op_name_ == "pd_op.argsort") {
-    for (int i = 0; i < getNbOutputs(); i++) {
-      phi::DenseTensor& output_tensor = (*dense_tensor_outputs_)[i];
-      phi::DataType dtype = output_tensor.dtype();
-      if (dtype == phi::DataType::INT64) {
-        auto& int32_tensor = output_tensor;
-        auto ctx = pool.Get(output_tensor.place());
-        int32_tensor = phi::funcs::TransDataType(
-            reinterpret_cast<const phi::GPUContext&>(*ctx),
-            output_tensor,
-            phi::DataType::INT32);
-        paddle::memory::Copy(output_tensor.place(),
-                             outputs[i],
-                             output_tensor.place(),
-                             int32_tensor.data<int32_t>(),
-                             int32_tensor.numel() * sizeof(int),
-                             nullptr);
-      }
-    }
+  if (special_op_config_.find(op_name_) != special_op_config_.end() &&
+      special_op_config_[op_name_]->HasOutputsPostProcessFunc()) {
+    special_op_config_[op_name_]->outputsPostProcess(
+        pool, dense_tensor_outputs_, outputs);
   }
   return cudaGetLastError() != cudaSuccess;
 }
