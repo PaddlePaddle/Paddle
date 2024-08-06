@@ -49,7 +49,7 @@ MultiplyGradNode::operator()(
   //    accumulation when the output(s) of corresponding forward OP are shared
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
-  paddle::platform::RecordEvent node_execution_inner(
+  phi::RecordEvent node_execution_inner(
       "Local_MultiplyGradNode",
       paddle::platform::TracerEventType::OperatorInner,
       1);
@@ -175,7 +175,7 @@ MultiplyGradNode::operator()(
 
   if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() || need_skip) {
     if (trace_backward) {
-      paddle::platform::RecordEvent node_creation_record_event(
+      phi::RecordEvent node_creation_record_event(
           "multiply_grad node_creation",
           paddle::platform::TracerEventType::OperatorInner,
           1);
@@ -266,7 +266,7 @@ MultiplyDoubleGradNode::operator()(
   //    accumulation when the output(s) of corresponding forward OP are shared
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
-  paddle::platform::RecordEvent node_execution_inner(
+  phi::RecordEvent node_execution_inner(
       "Local_MultiplyDoubleGradNode",
       paddle::platform::TracerEventType::OperatorInner,
       1);
@@ -539,7 +539,7 @@ MultiplyGradNode::operator()(
   //    accumulation when the output(s) of corresponding forward OP are shared
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
-  paddle::platform::RecordEvent node_execution_inner(
+  phi::RecordEvent node_execution_inner(
       "Local_MultiplyGradNode",
       paddle::platform::TracerEventType::OperatorInner,
       1);

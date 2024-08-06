@@ -613,7 +613,7 @@ void SliceCsrCompute(const Context& dev_ctx,
         dev_ctx, x, new_axes, new_starts, new_ends, out_dims, out);
   } else {
     // throw exception
-    phi::errors::InvalidArgument(
+    common::errors::InvalidArgument(
         "Slice for Sparse CSR Tensor only support 2-D or 3-D, but got %d-D.",
         x_dims.size());
   }

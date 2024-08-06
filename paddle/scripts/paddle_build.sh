@@ -3475,6 +3475,11 @@ EOF
 }
 
 function distribute_test() {
+    python ${PADDLE_ROOT}/tools/get_pr_title.py skip_distribute_test && CINN_OR_BUAA_PR=1
+    if [[ "${CINN_OR_BUAA_PR}" = "1" ]];then
+        echo "PR's title with 'CINN' or 'BUAA', skip the run distribute ci test !"
+        exit 0
+    fi
     echo "Start gpups tests"
     parallel_test_base_gpups
     echo "End gpups tests"

@@ -73,6 +73,7 @@ void SetBroadcastLeafGroup(
           "ops:%d.",
           origin_group->ops().size(),
           new_group->ops().size()));
+
   UpdateGroupShapeExprs(
       new_group, origin_group, value_dim_exprs_list, value_to_dim_expr_idx);
   group_list->emplace_back(new_group);

@@ -2257,7 +2257,7 @@ int HeterComm<KeyType, ValType, GradType, GPUAccessor>::dedup_keys_and_fillidx(
   PADDLE_ENFORCE_GT(
       total_fea_num,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Param total feature num should be greater than 0, but got %d.",
           total_fea_num));
   size_t merged_size = 0;
@@ -2696,7 +2696,7 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::gather_inner_keys_by_copy(
   PADDLE_ENFORCE_EQ(
       shard_send_offset,
       static_cast<size_t>(fea_size),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Param shard_send_offset should be equal to %d, but got %d.",
           static_cast<size_t>(fea_size),
           shard_send_offset));
@@ -2881,7 +2881,7 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::send_data_by_all2all(
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   PADDLE_ENFORCE_EQ(send_size,
                     h_recv_part_sizes[nccl_rank_id],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Param send_size should be equal to %d, but got %d.",
                         h_recv_part_sizes[nccl_rank_id],
                         send_size));
@@ -2968,7 +2968,7 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
   }
   PADDLE_ENFORCE_EQ(fea_size,
                     h_local_part_offsets[node_size_],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Param fea_size should be equal to %d, but got %d.",
                         h_local_part_offsets[node_size_],
                         fea_size));
@@ -3916,7 +3916,7 @@ HeterComm<KeyType, ValType, GradType, GPUAccessor>::send_keys_by_all2all_trans(
     PADDLE_ENFORCE_EQ(
         trans.trans_keys_buff->size() >= need_len * sizeof(KeyType) * 2,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of trnas keys buffer should be greater than or equal to "
             "%d, but got %d.",
             need_len * sizeof(KeyType) * 2,
@@ -4111,7 +4111,7 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
     PADDLE_ENFORCE_EQ(
         trans.trans_keys_buff->size() >= need_len * sizeof(KeyType) * 2,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of trans keys buffer should be greater than or equal to "
             "%d, but got %d.",
             need_len * sizeof(KeyType) * 2,

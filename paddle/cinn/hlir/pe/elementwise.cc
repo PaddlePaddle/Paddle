@@ -45,8 +45,11 @@ using lang::Compute;
 #define HLIR_MKL_IMP_UNARY_PE(name__, ex_name__)                           \
   std::vector<ir::Tensor> name__##MKL(const Tensor& A,                     \
                                       const std::string& output_name) {    \
-    CHECK(A->type().is_float())                                            \
-        << "type should be float or double but get " << A->type();         \
+    PADDLE_ENFORCE_EQ(A->type().is_float(),                                \
+                      true,                                                \
+                      ::common::errors::InvalidArgument(                   \
+                          "The type should be float or double. "           \
+                          "Please provide a valid type."));                \
     std::string fn_name =                                                  \
         "cinn_mkl_" #ex_name__ "_v_fp" + std::to_string(A->type().bits()); \
     auto call = Compute(                                                   \

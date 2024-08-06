@@ -36,7 +36,7 @@ void AccuracyRawKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       inference.dims().size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Rank(Input) of AccuracyOp must be 2, with shape "
           "[sample_number, class_dim], But received rank(Input) is %d",
           inference.dims().size()));
