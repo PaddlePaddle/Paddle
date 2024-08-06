@@ -23,9 +23,10 @@ This script helps to extract the tutorial content from a C++ source file.
 #  - @ROC, the code block inside a C++ multi-line string guard `ROC()ROC`,
 #          display as a markdown code block.
 
+from __future__ import annotations
+
 import logging
 import sys
-from typing import List
 
 
 class Markdown:
@@ -34,7 +35,7 @@ class Markdown:
     '''
 
     def __init__(self):
-        self.content: List[str] = []
+        self.content: list[str] = []
 
     def h1(self, title: str):
         self.add_line('# ' + title)
@@ -45,7 +46,7 @@ class Markdown:
     def h3(self, title: str):
         self.add_line('### ' + title)
 
-    def code_block(self, lang: str, block: List[str]):
+    def code_block(self, lang: str, block: list[str]):
         # drop the precending and tailing empty lines to make code block more compact
         pre_valid_offset = 0
         tail_valid_offset = 0
