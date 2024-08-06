@@ -16,8 +16,6 @@
 
 #include <glog/logging.h>
 
-#include "paddle/common/enforce.h"
-
 namespace cinn {
 namespace hlir {
 namespace pe {
