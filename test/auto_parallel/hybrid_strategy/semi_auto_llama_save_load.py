@@ -183,7 +183,7 @@ class TestLlamaAuto:
             if step >= 9:
                 break
 
-        time.sleep(5)
+        time.sleep(10)
 
         loss_after_load = []
         for step, inputs in enumerate(dist_loader()):
