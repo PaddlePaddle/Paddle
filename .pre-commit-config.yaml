@@ -83,8 +83,7 @@ repos:
         # Exclude third-party libraries
         exclude:  |
             (?x)^(
-                paddle/utils/flat_hash_map\.h|
-                paddle/fluid/pir/transforms/gpu/horizontal_fuse_pass.cc
+                paddle/utils/flat_hash_map\.h
             )$
 -   repo: local
     hooks:
