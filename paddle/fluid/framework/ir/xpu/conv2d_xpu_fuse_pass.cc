@@ -414,7 +414,7 @@ class Conv2dXPUFusePass : public FusePassBase {
 
 void Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   int found_subgraph_count = 0;
@@ -463,16 +463,16 @@ Node* Conv2dXPUFusePass::GetNodeFromNodesMap(
   PADDLE_ENFORCE_EQ(
       iter != nodes_map.end(),
       true,
-      phi::errors::InvalidArgument("nodes_map[%s] not found in nodes_map",
-                                   pattern_node_name.c_str()));
+      common::errors::InvalidArgument("nodes_map[%s] not found in nodes_map",
+                                      pattern_node_name.c_str()));
   auto node_map = iter->second;
   auto node_iter = node_map.find(node_name);
-  PADDLE_ENFORCE_EQ(
-      node_iter != node_map.end(),
-      true,
-      phi::errors::InvalidArgument("nodes_map[%s][%s] not found in nodes_map",
-                                   pattern_node_name.c_str(),
-                                   node_name.c_str()));
+  PADDLE_ENFORCE_EQ(node_iter != node_map.end(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "nodes_map[%s][%s] not found in nodes_map",
+                        pattern_node_name.c_str(),
+                        node_name.c_str()));
   return node_iter->second;
 }
 
@@ -487,7 +487,7 @@ void Conv2dXPUFusePass::CreateTheReplicatedWeights(
   PADDLE_ENFORCE_EQ(
       conv != nullptr,
       true,
-      phi::errors::InvalidArgument("conv node ptr can not be null"));
+      common::errors::InvalidArgument("conv node ptr can not be null"));
   auto conv_filter_name = conv->Op()->Input("Filter")[0];
   std::string replicated_filter_name = conv_filter_name + "_copy_" +
                                        std::to_string(block->ID()) + "_" +
@@ -534,7 +534,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   PADDLE_ENFORCE_EQ(
       conv != nullptr,
       true,
-      phi::errors::InvalidArgument("conv node ptr can not be null"));
+      common::errors::InvalidArgument("conv node ptr can not be null"));
   auto conv_filter_name = conv->Op()->Input("Filter")[0];
   Node* conv_filter = FindNodeWithName(graph, conv_filter_name);
   CreateTheReplicatedWeights(graph, scope, block, nodes_map);
@@ -563,20 +563,20 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   if (with_conv_bias) {
     auto* ew_bias_add_y =
         GetNodeFromNodesMap(nodes_map, "ew_bias_add", "ew_bias_add_y");
-    PADDLE_ENFORCE_EQ(
-        ew_bias_add_y != nullptr,
-        true,
-        phi::errors::InvalidArgument("ew_bias_add_y node ptr can not be null"));
+    PADDLE_ENFORCE_EQ(ew_bias_add_y != nullptr,
+                      true,
+                      common::errors::InvalidArgument(
+                          "ew_bias_add_y node ptr can not be null"));
     auto* ew_bias_add_y_t =
         scope->FindVar(ew_bias_add_y->Name())->GetMutable<phi::DenseTensor>();
     auto ew_bias_add_y_dims = ew_bias_add_y_t->dims();
     PADDLE_ENFORCE_EQ(
         filter_dims[0],
         ew_bias_add_y_dims[0],
-        phi::errors::InvalidArgument("the shape[%d] of elewise bias tensor "
-                                     "must equal out_channel[%d] of conv",
-                                     ew_bias_add_y_dims[0],
-                                     filter_dims[0]));
+        common::errors::InvalidArgument("the shape[%d] of elewise bias tensor "
+                                        "must equal out_channel[%d] of conv",
+                                        ew_bias_add_y_dims[0],
+                                        filter_dims[0]));
     PrepareBias(graph, scope, block, ew_bias_add_y, &fusion_bias_node);
   }
 
@@ -585,37 +585,37 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     PADDLE_ENFORCE_EQ(
         bn != nullptr,
         true,
-        phi::errors::InvalidArgument("bn node ptr can not be null"));
+        common::errors::InvalidArgument("bn node ptr can not be null"));
     auto* bn_bias = GetNodeFromNodesMap(nodes_map, "bn", "bn_bias");
     PADDLE_ENFORCE_EQ(
         bn_bias != nullptr,
         true,
-        phi::errors::InvalidArgument("bn_bias node ptr can not be null"));
+        common::errors::InvalidArgument("bn_bias node ptr can not be null"));
     auto* bn_scale = GetNodeFromNodesMap(nodes_map, "bn", "bn_scale");
     PADDLE_ENFORCE_EQ(
         bn_scale != nullptr,
         true,
-        phi::errors::InvalidArgument("bn_scale node ptr can not be null"));
+        common::errors::InvalidArgument("bn_scale node ptr can not be null"));
     auto* bn_var = GetNodeFromNodesMap(nodes_map, "bn", "bn_var");
     PADDLE_ENFORCE_EQ(
         bn_var != nullptr,
         true,
-        phi::errors::InvalidArgument("bn_var node ptr can not be null"));
+        common::errors::InvalidArgument("bn_var node ptr can not be null"));
     auto* bn_mean = GetNodeFromNodesMap(nodes_map, "bn", "bn_mean");
     PADDLE_ENFORCE_EQ(
         bn_mean != nullptr,
         true,
-        phi::errors::InvalidArgument("bn_mean node ptr can not be null"));
+        common::errors::InvalidArgument("bn_mean node ptr can not be null"));
 
     auto bn_bias_t =
         scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         filter_dims[0],
         bn_bias_t->dims()[0],
-        phi::errors::InvalidArgument("the shape[%d] of bn bias tensor "
-                                     "must equal out_channel[%d] of conv",
-                                     bn_bias_t->dims()[0],
-                                     filter_dims[0]));
+        common::errors::InvalidArgument("the shape[%d] of bn bias tensor "
+                                        "must equal out_channel[%d] of conv",
+                                        bn_bias_t->dims()[0],
+                                        filter_dims[0]));
     auto bn_scale_t =
         scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
     auto bn_mean_t =
@@ -652,7 +652,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
       PADDLE_ENFORCE_EQ(
           weight_scale.size(),
           mean_len,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Weight max_scale size must equal batch_norm scale/mean size."));
       for (int i = 0; i < mean_len; i++) {
         weight_scale[i] *= fabs(bn_scale_ptr[i]);
@@ -684,7 +684,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     PADDLE_ENFORCE_EQ(
         scale != nullptr,
         true,
-        phi::errors::InvalidArgument("scale node ptr can not be null"));
+        common::errors::InvalidArgument("scale node ptr can not be null"));
     auto bias_len = filter_dims[0];
     float scale_val_ = 1.f;
     float bias_val_ = 0.f;
@@ -817,19 +817,19 @@ void Conv2dXPUFusePass::CreateFusionInputs(
   PADDLE_ENFORCE_EQ(
       conv != nullptr,
       true,
-      phi::errors::InvalidArgument("conv node ptr can not be null"));
+      common::errors::InvalidArgument("conv node ptr can not be null"));
   auto* input = GetNodeFromNodesMap(nodes_map, "conv", "input");
   PADDLE_ENFORCE_EQ(
       input != nullptr,
       true,
-      phi::errors::InvalidArgument("conv input node ptr can not be null"));
+      common::errors::InvalidArgument("conv input node ptr can not be null"));
   // input max
   std::string conv_input_max_name = input->Name() + "_input_max";
   Node* conv2d_xpu_input_max = nullptr;
   if (op_weights_precision == "int8") {
     PADDLE_ENFORCE_EQ(AreScalesPresentForNodes(var_quant_scales, {input}),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "When conv op is running in int8 precision, the "
                           "scales of input var should be present in!"));
     float input_scale = GetScaleValueForNode(var_quant_scales, input);
@@ -871,7 +871,7 @@ void Conv2dXPUFusePass::CreateFusionBranch(
         GetNodeFromNodesMap(nodes_map, "ew_branch_add", "ew_branch_add_in");
     PADDLE_ENFORCE_EQ(ew_branch_add_in != nullptr,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ew_branch_add_in node ptr can not be null"));
     (*fusion_nodes_map)["branch"] = ew_branch_add_in;
     // ew_branch_add_max
@@ -889,7 +889,7 @@ void Conv2dXPUFusePass::CreateFusionBranch(
       PADDLE_ENFORCE_EQ(
           AreScalesPresentForNodes(var_quant_scales, {ew_branch_add_in}),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When conv op is running in int8 precision with branch add, the "
               "scales of branch var should be present in!"));
       float ew_branch_add_scale =
@@ -898,7 +898,7 @@ void Conv2dXPUFusePass::CreateFusionBranch(
       PADDLE_ENFORCE_EQ(
           conv != nullptr,
           true,
-          phi::errors::InvalidArgument("conv node ptr can not be null"));
+          common::errors::InvalidArgument("conv node ptr can not be null"));
       auto ew_branch_add_max_tensor =
           scope->Var(ew_branch_add_max_name)->GetMutable<phi::DenseTensor>();
       ew_branch_add_max_tensor->set_type(phi::DataType::FLOAT32);
@@ -929,7 +929,7 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
   PADDLE_ENFORCE_EQ(
       conv != nullptr,
       true,
-      phi::errors::InvalidArgument("conv node ptr can not be null"));
+      common::errors::InvalidArgument("conv node ptr can not be null"));
   // output && output max
   std::string conv2d_xpu_out_name;
   Node* conv2d_out_var_node = nullptr;
@@ -945,33 +945,33 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
     PADDLE_ENFORCE_EQ(
         act_out != nullptr,
         true,
-        phi::errors::InvalidArgument("act_out node ptr can not be null"));
+        common::errors::InvalidArgument("act_out node ptr can not be null"));
     conv2d_xpu_out_name = act_out->Name();
     conv2d_out_var_node = act_out;
     auto* act = GetNodeFromNodesMap(nodes_map, "act", "act");
     PADDLE_ENFORCE_EQ(
         act != nullptr,
         true,
-        phi::errors::InvalidArgument("act node ptr can not be null"));
+        common::errors::InvalidArgument("act node ptr can not be null"));
   } else if (ew_branch_add) {
     auto* ew_branch_add_out =
         GetNodeFromNodesMap(nodes_map, "ew_branch_add", "ew_branch_add_out");
     PADDLE_ENFORCE_EQ(ew_branch_add_out != nullptr,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ew_branch_add_out node ptr can not be null"));
     conv2d_xpu_out_name = ew_branch_add_out->Name();
     conv2d_out_var_node = ew_branch_add_out;
-    PADDLE_ENFORCE_EQ(
-        ew_branch_add != nullptr,
-        true,
-        phi::errors::InvalidArgument("ew_branch_add node ptr can not be null"));
+    PADDLE_ENFORCE_EQ(ew_branch_add != nullptr,
+                      true,
+                      common::errors::InvalidArgument(
+                          "ew_branch_add node ptr can not be null"));
   } else if (scale) {
     auto* scale_out = GetNodeFromNodesMap(nodes_map, "scale", "scale_out");
     PADDLE_ENFORCE_EQ(
         scale_out != nullptr,
         true,
-        phi::errors::InvalidArgument("scale_out node ptr can not be null"));
+        common::errors::InvalidArgument("scale_out node ptr can not be null"));
     conv2d_xpu_out_name = scale_out->Name();
     conv2d_out_var_node = scale_out;
   } else if (bn) {
@@ -979,7 +979,7 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
     PADDLE_ENFORCE_EQ(
         bn_out != nullptr,
         true,
-        phi::errors::InvalidArgument("bn_out node ptr can not be null"));
+        common::errors::InvalidArgument("bn_out node ptr can not be null"));
     conv2d_xpu_out_name = bn_out->Name();
     conv2d_out_var_node = bn_out;
   } else if (ew_bias_add) {
@@ -987,7 +987,7 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
         GetNodeFromNodesMap(nodes_map, "ew_bias_add", "ew_bias_add_out");
     PADDLE_ENFORCE_EQ(ew_bias_add_out != nullptr,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ew_bias_add_out node ptr can not be null"));
     conv2d_xpu_out_name = ew_bias_add_out->Name();
     conv2d_out_var_node = ew_bias_add_out;
@@ -996,14 +996,14 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
     PADDLE_ENFORCE_EQ(
         conv_out != nullptr,
         true,
-        phi::errors::InvalidArgument("conv_out node ptr can not be null"));
+        common::errors::InvalidArgument("conv_out node ptr can not be null"));
     conv2d_xpu_out_name = conv_out->Name();
     conv2d_out_var_node = conv_out;
     auto* conv = GetNodeFromNodesMap(nodes_map, "conv", "conv");
     PADDLE_ENFORCE_EQ(
         conv != nullptr,
         true,
-        phi::errors::InvalidArgument("conv node ptr can not be null"));
+        common::errors::InvalidArgument("conv node ptr can not be null"));
   }
   (*fusion_nodes_map)["out"] = conv2d_out_var_node;
 
@@ -1065,7 +1065,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
                                      with_branch_y);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+      scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
   std::unordered_map<std::string, std::vector<float>> var_quant_scales =
       GetQuantInfoFromTheGraph(graph, "has_quant_info", "var_quant_scales");
   int found_subgraph_count = 0;
@@ -1205,7 +1205,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
       PADDLE_ENFORCE_EQ(
           fusion_nodes_map["bias"] != nullptr,
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "fusion_nodes_map['bias'] node ptr can not be null"));
       conv2d_xpu_op_desc.SetInput("bias", {fusion_nodes_map["bias"]->Name()});
     }
@@ -1214,7 +1214,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
       PADDLE_ENFORCE_EQ(
           fusion_nodes_map["branch"] != nullptr,
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "fusion_nodes_map['branch'] node ptr can not be null"));
       conv2d_xpu_op_desc.SetInput("branch",
                                   {fusion_nodes_map["branch"]->Name()});
@@ -1247,7 +1247,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     }
     PADDLE_ENFORCE_EQ(conv_paddings.size(),
                       4UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "padding length should be 4, but received %d, ",
                           conv_paddings.size()));
     conv2d_xpu_op_desc.SetAttr(

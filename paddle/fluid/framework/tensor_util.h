@@ -24,11 +24,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/memory/memory.h"
 
 namespace paddle {
 namespace framework {
@@ -142,13 +142,12 @@ void TensorFromArray(const T* src,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (phi::is_custom_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::CustomContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -157,7 +156,7 @@ void TensorFromArray(const T* src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorFromArray on %s is not supported.", dst_place));
   }
 }
@@ -188,13 +187,12 @@ void TensorFromVector(const std::vector<T>& src,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (phi::is_custom_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::CustomContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -203,7 +201,7 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorFromVector on %s is not supported.", dst_place));
   }
 }
@@ -244,8 +242,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (phi::is_custom_place(dst_place)) {  // NOLINT
-    auto stream =
-        reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const phi::CustomContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   }
 #endif
@@ -255,7 +252,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorFromVector on %s is not supported.", dst_place));
   }
   delete[] array;
@@ -326,7 +323,7 @@ void TensorToVector(const phi::DenseTensor& src,
   }
 #endif
   else {  // NOLINT
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "TensorToVector on %s is not supported.", src.place()));
   }
 }
@@ -385,7 +382,7 @@ void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst) {
   PADDLE_ENFORCE_EQ(
       phi::is_cpu_place(src.place()),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
 
@@ -407,7 +404,7 @@ inline void TensorToVector(const phi::DenseTensor& src,
   PADDLE_ENFORCE_EQ(
       phi::is_cpu_place(src.place()),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
 

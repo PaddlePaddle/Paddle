@@ -1244,7 +1244,7 @@ void weight_only_batched_gemv_launcher(
       }
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "WeightOnlyGemvKernel quant_type only support 'int4' or 'int8'."));
   }
 #endif
@@ -1270,7 +1270,7 @@ void WeightOnlyGemvWrapper(const Context& dev_ctx,
   if (weight_only_type == "per_channel") {
     PADDLE_ENFORCE_EQ(group_size,
                       -1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "group size must be -1 in per-channel mode."));
 
     weight_only_batched_gemv_launcher<DataType, WeightOnlyPerChannel>(
@@ -1313,13 +1313,13 @@ void WeightOnlyGemvWrapper(const Context& dev_ctx,
           reinterpret_cast<DataType*>(output),
           dev_ctx.stream());
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "WeightOnlyGemvKernel group_size only support 64 or 128."));
     }
   } else {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("WeightOnlyGemvKernel type only support "
-                                     "'per_channel' or 'group_wise'."));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "WeightOnlyGemvKernel type only support "
+        "'per_channel' or 'group_wise'."));
   }
 }
 
@@ -1337,7 +1337,7 @@ void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
                            const std::string& weight_only_type,
                            const std::string& act_method,
                            float* output) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "WeightOnlyGemvKernel type only support 'float16' and 'bfloa16."
       "Not support float32."));
 }

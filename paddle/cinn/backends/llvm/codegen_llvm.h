@@ -72,17 +72,26 @@ class SymbolTable {
   }
 
   void Insert(const std::string &id, llvm::Value *value) {
-    CHECK(!scopes_.empty());
+    PADDLE_ENFORCE_EQ(
+        !scopes_.empty(),
+        true,
+        phi::errors::InvalidArgument("sorry, scopes_ can't be empty"));
     scopes_.back().emplace(id, value);
   }
 
   void Erase(const std::string &id) {
-    CHECK(!scopes_.empty());
+    PADDLE_ENFORCE_EQ(
+        !scopes_.empty(),
+        true,
+        phi::errors::InvalidArgument("sorry, scopes_ can't be empty"));
     scopes_.back().erase(id);
   }
 
   void PopScope() {
-    CHECK(!scopes_.empty());
+    PADDLE_ENFORCE_EQ(
+        !scopes_.empty(),
+        true,
+        phi::errors::InvalidArgument("sorry, scopes_ can't be empty"));
     scopes_.pop_back();
   }
 

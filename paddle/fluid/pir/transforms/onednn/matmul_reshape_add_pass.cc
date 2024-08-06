@@ -56,7 +56,7 @@ class MatmulReshapeElementwiseAddFusePattern
                 {"place", pat.Attr("place")}});
     const auto &reshape1 = pat.Op(paddle::dialect::ReshapeOp::name());
     reshape1({&pat.Tensor("x"), &full_int_array1()},
-             {&pat.Tensor("reshape_x"), &pat.Tensor("reshape_x_xshape")});
+             {&pat.Tensor("reshape_x")});
 
     const auto &full_int_array2 =
         pat.Op(paddle::dialect::FullIntArrayOp::name(),
@@ -65,7 +65,7 @@ class MatmulReshapeElementwiseAddFusePattern
                 {"place", pat.Attr("place2")}});
     const auto &reshape2 = pat.Op(paddle::dialect::ReshapeOp::name());
     reshape2({&pat.Tensor("w"), &full_int_array2()},
-             {&pat.Tensor("reshape_w"), &pat.Tensor("reshape_w_xshape")});
+             {&pat.Tensor("reshape_w")});
 
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
@@ -78,7 +78,7 @@ class MatmulReshapeElementwiseAddFusePattern
     pat.Tensor("shape") = full_int_array3();
     const auto &reshape3 = pat.Op(paddle::dialect::ReshapeOp::name());
     reshape3({&pat.Tensor("matmul_out"), &pat.Tensor("shape")},
-             {&pat.Tensor("out"), &pat.Tensor("xshape")});
+             {&pat.Tensor("out")});
 
     const auto &add_ = pat.Op(paddle::dialect::AddOp::name());
     pat.Tensor("add_out") = as_x_ ? add_(pat.Tensor("out"), pat.Tensor("y"))

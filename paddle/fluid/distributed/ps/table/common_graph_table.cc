@@ -1230,7 +1230,10 @@ void GraphTable::fennel_graph_edge_partition() {
       }
       inter_cost[i] = 0;
     }
-    CHECK_GT(max_score, 0);
+    PADDLE_ENFORCE_GT(
+        max_score,
+        0,
+        common::errors::InvalidArgument("max_score should be greater than 0"));
     return index;
   };
   // 查找关系最远点作为起点
@@ -1271,7 +1274,10 @@ void GraphTable::fennel_graph_edge_partition() {
         break;
       }
     }
-    CHECK_NE(key, 0xffffffffffffffffL);
+    PADDLE_ENFORCE_NE(key,
+                      0xffffffffffffffffL,
+                      common::errors::InvalidArgument(
+                          "key should not be 0xffffffffffffffffL"));
     return key;
   };
   // 其它结点都添加完成，剩余的点就直接放到这个机器上面
@@ -2647,7 +2653,7 @@ Node *GraphTable::find_node(GraphTableType table_type, uint64_t id) {
                             : node_shards;
   for (auto &search_shard : search_shards) {
     PADDLE_ENFORCE_NOT_NULL(search_shard[index],
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "search_shard[%d] should not be null.", index));
     node = search_shard[index]->find_node(id);
     if (node != nullptr) {
@@ -2668,7 +2674,7 @@ Node *GraphTable::find_node(GraphTableType table_type, int idx, uint64_t id) {
       : table_type == GraphTableType::FEATURE_TABLE ? feature_shards[idx]
                                                     : node_shards[idx];
   PADDLE_ENFORCE_NOT_NULL(search_shards[index],
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "search_shard[%d] should not be null.", index));
   Node *node = search_shards[index]->find_node(id);
   return node;

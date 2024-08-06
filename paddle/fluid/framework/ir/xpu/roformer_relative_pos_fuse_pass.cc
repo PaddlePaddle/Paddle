@@ -200,7 +200,7 @@ class RoformerRelativePosFusePass : public FusePassBase {
 
 void RoformerRelativePosFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   GraphPatternDetector gpd;
@@ -240,7 +240,7 @@ void RoformerRelativePosFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* block = add->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
     // Generate roformer_relative_embedding_xpu fused op
     framework::OpDesc fused_op_desc(block);
     fused_op_desc.SetType("roformer_relative_embedding_xpu");

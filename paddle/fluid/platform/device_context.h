@@ -21,13 +21,13 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/phi/backends/dynload/cublas.h"
@@ -133,15 +133,10 @@ class IPUDeviceContext
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
-using XPUDeviceContext = phi::XPUContext;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 using CUDAPinnedDeviceContext = phi::GPUPinnedContext;
-#endif
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-using CustomDeviceContext = phi::CustomContext;
 #endif
 
 void EmplaceDeviceContexts(

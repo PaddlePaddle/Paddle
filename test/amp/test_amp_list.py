@@ -141,14 +141,28 @@ class TestAMPList(unittest.TestCase):
             self.assertEqual(
                 fp16_lists.get_low_precision_dtypestr(dtype), dtype
             )
-        self.assertEqual(
-            fp16_lists.get_low_precision_dtypestr(core.VarDesc.VarType.FP16),
-            "float16",
-        )
-        self.assertEqual(
-            fp16_lists.get_low_precision_dtypestr(core.VarDesc.VarType.BF16),
-            "bfloat16",
-        )
+        if paddle.framework.use_pir_api():
+            self.assertEqual(
+                fp16_lists.get_low_precision_dtypestr(core.DataType.FLOAT16),
+                "float16",
+            )
+            self.assertEqual(
+                fp16_lists.get_low_precision_dtypestr(core.DataType.BFLOAT16),
+                "bfloat16",
+            )
+        else:
+            self.assertEqual(
+                fp16_lists.get_low_precision_dtypestr(
+                    core.VarDesc.VarType.FP16
+                ),
+                "float16",
+            )
+            self.assertEqual(
+                fp16_lists.get_low_precision_dtypestr(
+                    core.VarDesc.VarType.BF16
+                ),
+                "bfloat16",
+            )
 
         def _run_get_dtypestr():
             fp16_lists.get_low_precision_dtypestr(dtype="int64")

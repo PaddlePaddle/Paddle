@@ -23,7 +23,7 @@ void NumberCountKernel(const Context& dev_ctx,
                        const DenseTensor& numbers,
                        int upper_range,
                        DenseTensor* out) {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "Do not support expert count op for cpu kernel now."));
 }
 }  // namespace phi
