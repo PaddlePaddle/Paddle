@@ -120,7 +120,7 @@ class BlockDimExprsAsserter {
     builder_.SetInsertionPointAfter(op);
     for (std::size_t i = 0; i < op->num_results(); ++i) {
       pir::Value output = op->result(i);
-      if (!output || !output.type()) continue;
+      if (!output || !output.type() || output.use_empty()) continue;
       const auto& shape_or_data_dim_expr = GraphDimExprs4Value(output);
       if (!shape_or_data_dim_expr.isa<symbol::TensorShapeOrDataDimExprs>())
         continue;
