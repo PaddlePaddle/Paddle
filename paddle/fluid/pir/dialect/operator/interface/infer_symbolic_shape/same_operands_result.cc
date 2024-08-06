@@ -224,6 +224,21 @@ bool ArgsortOpInferSymbolicShape(
   return true;
 }
 
+bool UnchangedVectorOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  size_t size = operand_shape_or_data.size();
+  std::vector<symbol::DimExpr> shape(size);
+  for (size_t i = 0; i < size; ++i) {
+    shape[i] = operand_shape_or_data.shape()[i];
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::TensorShapeOrDataDimExprs(shape, operand_shape_or_data.data()));
+  return true;
+}
+
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {}  // namespace cinn::dialect
