@@ -572,7 +572,8 @@ static StmtPattern MergePattern(const StmtPattern& first,
         return MergePatternImpl(lhs, rhs);
       },
       [&](const auto& lhs, const auto& rhs) -> StmtPattern {
-        PADDLE_THROW("Sorry! Found not support merge!");
+        PADDLE_THROW(
+            phi::errors::Unimplemented("Not support for MergePatternImpl"));
       },
   };
   return std::visit(PatternMatch, first, second);
