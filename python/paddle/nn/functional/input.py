@@ -132,7 +132,21 @@ def embedding_renorm_(
     x: Tensor, weight: Tensor, max_norm: float, norm_type: float = 2.0
 ) -> Tensor:
     r"""
-    This operator is used to update the embedding weight by renorm.
+    Renorm the weight of embedding with respect to the provided :attr:`max_norm` and :attr:`norm_type` .
+
+    Note:
+        In the dynamic graph mode, the input weight will be updated in-place, and the return value will be the changed weight.
+
+    Args:
+        x(Tensor): A Tensor with type int32/int64, which contains the id information. The value of the input id should
+            satisfy :math:`0<= id < weight.shape[0]` .
+        weight (Tensor): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
+            indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
+        max_norm(float): The maximum norm for each embedding vector.
+        norm_type(float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
+
+    Returns:
+        Tensor, The updated weight. The data type is the same as :attr:`weight`.
     """
     with paddle.set_grad_enabled(False):
         unique_x = paddle.unique(x)
@@ -201,7 +215,7 @@ def embedding(
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
             If set None, it makes no effect to output. Default: None.
         max_norm(float, optional): If provided, will renormalize the embedding vectors to have a norm larger than
-            :attr:`max\_norm` . It will inplace update the input embedding weight. Default: None.
+            :attr:`max\_norm` . It will inplace update the input embedding weight in dynamic graph mode. Default: None.
         norm_type(float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
         name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and

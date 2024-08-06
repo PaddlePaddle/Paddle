@@ -137,7 +137,7 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op);
 std::vector<FusibleOp> TransformReduceLoopRange(
     const ReduceOp& upstream,
     FusibleOp* downstream,
-    std::vector<size_t> fake_reduce_iter_idx);
+    const std::vector<size_t>& fake_reduce_iter_idx);
 
 template <typename T>
 std::vector<T> FilterWithFakeReduceIter(
@@ -178,11 +178,6 @@ struct FusionGroupInfo {
 
 FusionGroupInfo GetFusionGroupInfo(
     const std::vector<ir::Expr>& op_compute_bodies);
-
-std::vector<ir::Expr> OperationFusion(
-    const std::vector<::pir::Operation*>& ops,
-    const std::vector<ir::Expr>& op_compute_bodies,
-    const std::vector<::pir::Value>& outputs);
 
 }  // namespace pir
 }  // namespace framework

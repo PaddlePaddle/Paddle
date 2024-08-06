@@ -334,7 +334,7 @@ void SetValueGradKernel(const Context& dev_ctx,
                                       value_grad);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of set_value_grad's input should be less than 7, but "
           "received %d.",
           rank));

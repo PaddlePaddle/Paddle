@@ -105,7 +105,7 @@ void NCEKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_EQ(
           dist_probs->numel(),
           num_total_classes,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "ShapeError: The number of elements in Input(CustomDistProbs) "
               "should be equal to the number of total classes. But Received: "
               "Input(CustomDistProbs).numel() = %d, Attr(num_total_classes) "
@@ -115,7 +115,7 @@ void NCEKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_EQ(
           dist_alias->numel(),
           num_total_classes,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "ShapeError: The number of elements in Input(CustomDistAlias) "
               "should be equal to the number of total classes. But Received: "
               "Input(CustomDistAlias).numel() = %d, Attr(num_total_classes) "
@@ -125,7 +125,7 @@ void NCEKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_EQ(
           dist_alias_probs->numel(),
           num_total_classes,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "ShapeError: The number of elements in "
               "Input(CustomDistAliasProbs) "
               "should be equal to the number of total classes. But Received: "
@@ -145,7 +145,7 @@ void NCEKernel(const Context &dev_ctx,
       break;
     }
     default: {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported SamplerType. SamplerType should be 0: Uniform, "
           "1: LogUniform or 2: CustomDist. Received SamplerType: %d",
           sampler_type));
@@ -179,14 +179,14 @@ void NCEKernel(const Context &dev_ctx,
   const int64_t *sample_labels_data = sample_labels->data<int64_t>();
 
   for (int x = 0; x < sample_labels->numel(); x++) {
-    PADDLE_ENFORCE_GE(
-        sample_labels_data[x],
-        0,
-        phi::errors::InvalidArgument("ValueError: Every sample label should be "
-                                     "non-negative. But received: "
-                                     "Input(SampleLabels)[%d] = %d",
-                                     x,
-                                     sample_labels_data[x]));
+    PADDLE_ENFORCE_GE(sample_labels_data[x],
+                      0,
+                      common::errors::InvalidArgument(
+                          "ValueError: Every sample label should be "
+                          "non-negative. But received: "
+                          "Input(SampleLabels)[%d] = %d",
+                          x,
+                          sample_labels_data[x]));
   }
 
   T *sample_out_data = dev_ctx.template Alloc<T>(sample_out);

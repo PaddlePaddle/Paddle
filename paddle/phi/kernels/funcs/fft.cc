@@ -206,7 +206,8 @@ static T compute_factor(size_t size, FFTNormMode normalization) {
     case FFTNormMode::by_sqrt_n:
       return one / std::sqrt(static_cast<T>(size));
   }
-  PADDLE_THROW(phi::errors::InvalidArgument("Unsupported normalization type"));
+  PADDLE_THROW(
+      common::errors::InvalidArgument("Unsupported normalization type"));
 }
 }  // namespace phi::funcs::detail
 namespace phi::funcs {

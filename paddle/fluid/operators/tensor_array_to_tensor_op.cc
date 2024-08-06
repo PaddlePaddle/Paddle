@@ -26,8 +26,7 @@ void LodTensorArray2LodTensorVector(const framework::Scope &scope,
                                     const std::string &base_name,
                                     const std::string &lod_tensor_array_name,
                                     std::vector<std::string> *res_names) {
-  auto &inx =
-      scope.FindVar(lod_tensor_array_name)->Get<framework::LoDTensorArray>();
+  auto &inx = scope.FindVar(lod_tensor_array_name)->Get<phi::TensorArray>();
   for (size_t i = 0; i < inx.size(); i++) {
     std::string var_name = base_name + std::to_string(i);
     framework::Variable *g_feed_value =
@@ -43,8 +42,7 @@ void LodTensorVectorResizeFromLodTensorArray(
     const std::string &base_name,
     const std::string &lod_tensor_array_name,
     std::vector<std::string> *res_names) {
-  auto &inx =
-      scope.FindVar(lod_tensor_array_name)->Get<framework::LoDTensorArray>();
+  auto &inx = scope.FindVar(lod_tensor_array_name)->Get<phi::TensorArray>();
   for (size_t i = 0; i < inx.size(); i++) {
     std::string var_name = base_name + std::to_string(i);
     framework::Variable *g_feed_value =
@@ -60,10 +58,10 @@ void LodTensorArrayCreateFromLodTensorArray(
     const framework::Scope &scope,
     const std::string &input_lod_tensor_array_name,
     const std::string &output_lod_tensor_array_name) {
-  auto &inx = scope.FindVar(input_lod_tensor_array_name)
-                  ->Get<framework::LoDTensorArray>();
+  auto &inx =
+      scope.FindVar(input_lod_tensor_array_name)->Get<phi::TensorArray>();
   auto &grad_inx = *scope.FindVar(output_lod_tensor_array_name)
-                        ->GetMutable<framework::LoDTensorArray>();
+                        ->GetMutable<phi::TensorArray>();
 
   for (size_t i = 0; i < inx.size(); i++) {
     std::string var_name = output_lod_tensor_array_name + std::to_string(i);
@@ -86,7 +84,7 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
     framework::AttributeMap attrs;
     attrs["axis"] = axis;
 
-    auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
+    auto &inx = scope.FindVar(Input("X"))->Get<phi::TensorArray>();
     auto &out = *scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
 
     const size_t n = inx.size();
@@ -132,10 +130,10 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
 class LoDTensorArray2TensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input LoDTensorArray of tensor_array_to_tensor operator.");
+    AddInput("X", "Input phi::TensorArray of tensor_array_to_tensor operator.");
     AddOutput("Out", "Output tensor of tensor_array_to_tensor operator.");
     AddOutput("OutIndex",
-              "Output input LoDTensorArray items' dims of "
+              "Output input phi::TensorArray items' dims of "
               "tensor_array_to_tensor operator.");
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated.")
@@ -147,7 +145,7 @@ class LoDTensorArray2TensorOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 tensor_array_to_tensor Operator.
 
-If use concat mode, concatenate all tensors in the input LoDTensorArray along
+If use concat mode, concatenate all tensors in the input phi::TensorArray along
 axis into the output Tensor.
 
 Examples:
@@ -156,7 +154,7 @@ Examples:
   Output = [1,2,3,4,5,6]
   OutputIndex = [2,2,2]
 
-If use stack mode, stack all tensors in the input LoDTensorArray along axis into
+If use stack mode, stack all tensors in the input phi::TensorArray along axis into
 the output Tensor.
 
 Examples:
@@ -224,7 +222,7 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
     framework::AttributeMap attrs;
     attrs["axis"] = axis;
 
-    auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
+    auto &inx = scope.FindVar(Input("X"))->Get<phi::TensorArray>();
     const size_t n = inx.size();
     PADDLE_ENFORCE_GT(
         n,
@@ -267,8 +265,7 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
     grad_op->Run(scope, place);
 
     LodTensorArrayCreateFromLodTensorArray(scope, Input("X"), dx_name);
-    auto &grad_inx =
-        *scope.FindVar(dx_name)->GetMutable<framework::LoDTensorArray>();
+    auto &grad_inx = *scope.FindVar(dx_name)->GetMutable<phi::TensorArray>();
 
     for (size_t i = 0; i < grad_names.size(); i++) {
       std::string var_name = grad_names[i];

@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 
 from .data_feeder import check_type
+
+if TYPE_CHECKING:
+    from paddle.nn.initializer import Initializer
 
 __all__ = []
 
@@ -22,21 +29,23 @@ _global_weight_initializer_ = None
 _global_bias_initializer_ = None
 
 
-def _global_weight_initializer():
+def _global_weight_initializer() -> Initializer | None:
     """
     Return the global weight initializer, The user doesn't need to use it.
     """
     return _global_weight_initializer_
 
 
-def _global_bias_initializer():
+def _global_bias_initializer() -> Initializer | None:
     """
     Return the global weight initializer, The user doesn't need to use it.
     """
     return _global_bias_initializer_
 
 
-def set_global_initializer(weight_init, bias_init=None):
+def set_global_initializer(
+    weight_init: Initializer | None, bias_init: Initializer | None = None
+) -> None:
     """
     This API is used to set up global model parameter initializer in framework.
 
@@ -53,8 +62,8 @@ def set_global_initializer(weight_init, bias_init=None):
     If you want to cancel the global initializer in framework, please set global initializer to ``None`` .
 
     Args:
-        weight_init (Initializer): set the global initializer for ``weight`` of model parameters.
-        bias_init (Initializer, optional): set the global initializer for ``bias`` of model parameters.
+        weight_init (Initializer|None): set the global initializer for ``weight`` of model parameters.
+        bias_init (Initializer|None, optional): set the global initializer for ``bias`` of model parameters.
             Default: None.
 
     Returns:

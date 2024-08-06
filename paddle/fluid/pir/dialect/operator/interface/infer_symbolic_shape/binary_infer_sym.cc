@@ -145,6 +145,18 @@ bool BceLoss_OpInferSymbolicShape(
   return BceLossOpInferSymbolicShape(op, infer_context);
 }
 
+bool CtcAlignOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> out_shape = {input_shape.shape()[0], 1};
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
+  infer_context->SetShapeOrDataForValue(op->result(1), shape_data);
+  return true;
+}
+
 bool Conv2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<int> strides =
@@ -238,6 +250,42 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
 
+bool CrossOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  size_t x_dim = x_shape.shape().size();
+  size_t y_dim = y_shape.shape().size();
+
+  PADDLE_ENFORCE_EQ(x_dim,
+                    y_dim,
+                    common::errors::InvalidArgument(
+                        "The 'shape' of Input(X) should be equal to "
+                        "the 'shape' of Input(Y). But received "
+                        "Input(X).dimensions = [%d], "
+                        "Input(Y).dimensions = [%d]",
+                        x_dim,
+                        y_dim));
+
+  for (size_t i = 0; i < x_dim; i++) {
+    infer_context->AddEqualCstr(x_shape.shape()[i], y_shape.shape()[i]);
+  }
+
+  const int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  if (axis != common::DDim::kMaxRank) {
+    const int dim = axis < 0 ? axis + x_dim : axis;
+    infer_context->AddEqualCstr(x_shape.shape()[dim], symbol::DimExpr{3});
+    infer_context->AddEqualCstr(y_shape.shape()[dim], symbol::DimExpr{3});
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+
+  return true;
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<symbol::DimExpr> &x_dims =
@@ -259,9 +307,31 @@ bool EmbeddingOpInferSymbolicShape(
   return true;
 }
 
+bool EqualAllOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &y_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      y_dims.size(),
+      common::errors::InvalidArgument(
+          "The size of dim_y should not be greater than dim_x's."));
+
+  std::vector<symbol::DimExpr> out_dims =
+      {};  // Adjust the dimensions as necessary
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
 bool SparseWeightEmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
@@ -331,7 +401,7 @@ bool GatherOpInferSymbolicShape(pir::Operation *op,
     PADDLE_ENFORCE_EQ(
         op->num_operands() == 3,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "in GatherOpInferSymbolicShape: The number of operands should be "
             "3 when the axis is not set."));
     const auto &axis_shape_or_data =
@@ -411,7 +481,7 @@ bool GatherNdOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       index_sym_shape[index_dims_size - 1].Has<std::int64_t>(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "in GatherNdOpInferSymbolicShape: index[-1] should be unknown"));
 
   for (int i = static_cast<int>(

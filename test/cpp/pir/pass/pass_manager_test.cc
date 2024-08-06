@@ -49,49 +49,49 @@ TEST(pass_manager, PreservedAnalyses) {
   pir::detail::PreservedAnalyses pa;
   PADDLE_ENFORCE_EQ(pa.IsNone(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Preserved analyses not exist. Expected exist."));
 
   PADDLE_ENFORCE_EQ(pa.IsPreserved<TestAnalysis1>(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Test Analysis is preserved. Expected not."));
   pa.Preserve<TestAnalysis1>();
   PADDLE_ENFORCE_EQ(pa.IsPreserved<TestAnalysis1>(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Test Analysis not preserved. Expected preserved."));
   pa.Unpreserve<TestAnalysis1>();
   PADDLE_ENFORCE_EQ(pa.IsPreserved<TestAnalysis1>(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Test Analysis is preserved. Expected not."));
   PADDLE_ENFORCE_EQ(pa.IsPreserved<TestAnalysis2>(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Test Analysis is preserved. Expected not."));
   pa.Preserve<TestAnalysis1, TestAnalysis2>();
   PADDLE_ENFORCE_EQ(pa.IsPreserved<TestAnalysis1>(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Test Analysis not preserved. Expected preserved."));
   PADDLE_ENFORCE_EQ(pa.IsPreserved<TestAnalysis2>(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Test Analysis not preserved. Expected preserved."));
   PADDLE_ENFORCE_EQ(
       pa.IsAll(),
       false,
-      phi::errors::InvalidArgument("Test Analysis is all. Expected not."));
+      common::errors::InvalidArgument("Test Analysis is all. Expected not."));
   pa.PreserveAll();
   PADDLE_ENFORCE_EQ(
       pa.IsAll(),
       true,
-      phi::errors::InvalidArgument("Test Analysis not all. Expected all."));
+      common::errors::InvalidArgument("Test Analysis not all. Expected all."));
   PADDLE_ENFORCE_EQ(
       pa.IsNone(),
       false,
-      phi::errors::InvalidArgument("Test Analysis is none. Expected not."));
+      common::errors::InvalidArgument("Test Analysis is none. Expected not."));
 }
 #endif
 
@@ -171,7 +171,7 @@ class TestPass : public pir::Pass {
     PADDLE_ENFORCE_EQ(
         pass_state()->preserved_analyses.IsPreserved<CountOpAnalysis>(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Count op analysis not preserved. Expected preserved."));
     auto no_operation_analysis =
         analysis_manager().GetAnalysis<NoOperationAnalysis>();
@@ -179,27 +179,28 @@ class TestPass : public pir::Pass {
     PADDLE_ENFORCE_EQ(
         pass_state()->preserved_analyses.IsPreserved<NoOperationAnalysis>(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "No operation analysis not preserved. Expected preserved."));
     PADDLE_ENFORCE_EQ(count_op_analysis.count,
                       11UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Count op analysis mismatch. Expected 11."));
     no_operation_analysis.scale = 8;
     PADDLE_ENFORCE_EQ(
         no_operation_analysis.scale,
         8UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Scale of no operation analysis mismatch. Expected 8."));
 
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     PADDLE_ENFORCE_EQ(
         module_op.operation(),
         op,
-        phi::errors::InvalidArgument("module op operation mismatch."));
-    PADDLE_ENFORCE_EQ(module_op.name(),
-                      module_op->name(),
-                      phi::errors::InvalidArgument("module op name mismatch."));
+        common::errors::InvalidArgument("module op operation mismatch."));
+    PADDLE_ENFORCE_EQ(
+        module_op.name(),
+        module_op->name(),
+        common::errors::InvalidArgument("module op name mismatch."));
     LOG(INFO) << "In " << pass_info().name << ": " << module_op->name()
               << std::endl;
 
@@ -207,13 +208,13 @@ class TestPass : public pir::Pass {
     PADDLE_ENFORCE_EQ(
         pass_state()->preserved_analyses.IsPreserved<CountOpAnalysis>(),
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Count op analysis is preserved. Expected not."));
     pass_state()->preserved_analyses.Unpreserve<NoOperationAnalysis>();
     PADDLE_ENFORCE_EQ(
         pass_state()->preserved_analyses.IsPreserved<NoOperationAnalysis>(),
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "No operation analysis is preserved. Expected not."));
   }
 
@@ -309,5 +310,5 @@ TEST(pass_manager, PassManager) {
   PADDLE_ENFORCE_EQ(
       pm.Run(&program),
       true,
-      phi::errors::InvalidArgument("Program not run. Expected run."));
+      common::errors::InvalidArgument("Program not run. Expected run."));
 }

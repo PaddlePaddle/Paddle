@@ -813,8 +813,8 @@ void group_norm_grad(const Tensor& x,
   // d_bias = sum(dy, axes=(0,2,3))
   DataLayout data_layout_ = common::StringToDataLayout(data_layout);
   if (data_layout_ != DataLayout::kNCHW) {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
-                                              data_layout));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unsupported storage order: %s", data_layout));
   }
   Tensor x_data = x;
   Tensor out_grad_data = out_grad;
@@ -1630,8 +1630,8 @@ void batch_norm_grad(const Tensor& x,
     }
 
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
-                                                data_layout));
+      PADDLE_THROW(common::errors::InvalidArgument("Unknown storage order: %s",
+                                                   data_layout));
   }
 }
 
