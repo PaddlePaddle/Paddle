@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from paddle import _C_ops
@@ -29,6 +33,9 @@ from paddle.geometric.message_passing.utils import (
 )
 from paddle.utils import deprecated
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 
 @deprecated(
     since="2.4.0",
@@ -37,9 +44,14 @@ from paddle.utils import deprecated
     reason="graph_send_recv in paddle.incubate will be removed in future",
 )
 def graph_send_recv(
-    x, src_index, dst_index, pool_type="sum", out_size=None, name=None
-):
-    r"""
+    x: Tensor,
+    src_index: Tensor,
+    dst_index: Tensor,
+    pool_type: str = "sum",
+    out_size=None,
+    name: str | None = None,
+) -> Tensor:
+    """
 
     Graph Learning Send_Recv combine operator.
 

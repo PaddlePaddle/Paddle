@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 from paddle.utils import deprecated
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 @deprecated(
@@ -26,16 +33,16 @@ from paddle.utils import deprecated
     reason="paddle.incubate.graph_sample_neighbors will be removed in future",
 )
 def graph_sample_neighbors(
-    row,
-    colptr,
-    input_nodes,
-    eids=None,
-    perm_buffer=None,
-    sample_size=-1,
-    return_eids=False,
-    flag_perm_buffer=False,
-    name=None,
-):
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    eids: Tensor | None = None,
+    perm_buffer: Tensor | None = None,
+    sample_size: int = -1,
+    return_eids: bool = False,
+    flag_perm_buffer: bool = False,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
     """
 
     Graph Sample Neighbors API.
