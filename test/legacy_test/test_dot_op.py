@@ -38,7 +38,7 @@ class DotOp(OpTest):
         self.attrs = {}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_rocm():

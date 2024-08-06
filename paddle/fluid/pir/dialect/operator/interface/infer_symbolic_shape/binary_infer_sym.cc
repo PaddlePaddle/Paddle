@@ -306,11 +306,50 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool DotOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool DotOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  auto x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto x_rank = x_dims.size();
+  PADDLE_ENFORCE_EQ(
+      1 == x_rank || 2 == x_rank,
+      true,
+      common::errors::InvalidArgument(
+          "ShapeError: The dimensions of input tensor X (%u) should be 1 or 2",
+          x_rank));
+
+  auto y_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  auto y_rank = y_dims.size();
+  PADDLE_ENFORCE_EQ(x_rank == y_rank,
+                    true,
+                    common::errors::InvalidArgument(
+                        "ShapeError: The rank of input tensor Y (%u) must "
+                        "match that of input tensor X(%u).",
+                        y_rank,
+                        x_rank));
+  bool shape_match = true;
+  for (auto i = 0; i < x_rank; ++i) {
+    if (x_dims[i] != y_dims[i]) {
+      shape_match = false;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      shape_match,
+      true,
+      common::errors::InvalidArgument("ShapeError: The dimension of input "
+                                      "tensors X(%u) and Y(%u) are different",
+                                      x_rank,
+                                      y_rank));
+
+  auto x_dims_cut =
+      std::vector<symbol::DimExpr>(x_dims.begin(), x_dims.end() - 1);
+  auto output_dim = symbol::ShapeOrDataDimExprs{
+      symbol::TensorShapeOrDataDimExprs(x_dims_cut)};
+  infer_context->SetShapeOrDataForValue(op->result(0), output_dim);
+  return true;
+}
 
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

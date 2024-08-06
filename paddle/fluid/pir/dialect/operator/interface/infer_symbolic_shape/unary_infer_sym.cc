@@ -575,12 +575,45 @@ bool ChannelShuffleOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool DiagOpInferSymbolicShape(pir::Operation *op,
-//                               pir::InferSymbolicShapeContext *infer_context)
-//                               {
-//   // pass
-//   return true;
-// }
+bool DiagOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto offset = op->attribute<pir::Int32Attribute>("offset").data();
+
+  if (x_dims.size() <= 1) {
+    int64_t size_ =
+        (x_dims.size() == 1UL ? x_dims[0].dyn_cast<int64_t>() : 1L) + offset;
+    infer_context->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs({size_, size_}));
+  } else if (x_dims.size() == 2UL) {
+    int64_t size_ = 0;
+    if (offset >= 0) {
+      if (x_dims[0].dyn_cast<int64_t>() > x_dims[1].dyn_cast<int64_t>()) {
+        size_ = x_dims[0].dyn_cast<int64_t>();
+      } else {
+        size_ = x_dims[1].dyn_cast<int64_t>() - offset;
+      }
+    } else {
+      if (x_dims[0].dyn_cast<int64_t>() + offset <
+          x_dims[1].dyn_cast<int64_t>()) {
+        size_ = x_dims[0].dyn_cast<int64_t>() + offset;
+      } else {
+        size_ = x_dims[1].dyn_cast<int64_t>();
+      }
+    }
+    infer_context->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs({size_}));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        true,
+        false,
+        common::errors::InvalidArgument(
+            "diag only support 1D/2D matrix, but input has %u dims",
+            x_dims.size()));
+  }
+  return true;
+}
 
 bool DiagEmbedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -740,12 +773,35 @@ bool EigvalshOpInferSymbolicShape(
   return EighOpInferSymbolicShape(op, infer_context);
 }
 
-// bool FractionalMaxPool2DOpInferSymbolicShape(pir::Operation *op,
-//                                              pir::InferSymbolicShapeContext
-//                                              *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FractionalMaxPool2dOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  auto x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto output_size =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  PADDLE_ENFORCE_EQ(
+      (x_dims.size() == 4 || x_dims.size() == 5),
+      true,
+      common::errors::InvalidArgument(
+          "Pooling intput should be 4-D or 5-D tensor but received %dD-Tensor",
+          x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() - output_size.size(),
+      2U,
+      common::errors::InvalidArgument(
+          "The input size %d minus the output size %d should equal to 2.",
+          x_dims.size(),
+          output_size.size()));
+
+  auto output_shape = std::vector<symbol::DimExpr>{x_dims[0], x_dims[1]};
+  output_shape.insert(
+      output_shape.end(), output_size.begin(), output_size.end());
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(output_shape));
+  return true;
+}
 
 // bool FractionalMaxPool3DOpInferSymbolicShape(pir::Operation *op,
 //                                              pir::InferSymbolicShapeContext

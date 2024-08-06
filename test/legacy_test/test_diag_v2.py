@@ -52,7 +52,7 @@ class TestDiagV2Op(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
     def test_check_grad(self):
         paddle.enable_static()
