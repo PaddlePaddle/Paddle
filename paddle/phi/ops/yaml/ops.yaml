@@ -758,6 +758,15 @@
     func : c_reduce_sum
   inplace : (x -> out)
 
+- op : c_scatter
+  args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
+  output : Tensor(out)
+  infer_meta :
+    func : CScatterInferMeta
+    param : [x, ring_id, root, nranks]
+  kernel :
+    func : c_scatter
+
 - op : c_sync_calc_stream
   args : (Tensor x)
   output : Tensor(out)
@@ -2202,6 +2211,7 @@
   kernel :
     func : gelu
   backward : gelu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : generate_proposals
   args : (Tensor scores, Tensor bbox_deltas, Tensor im_shape, Tensor anchors, Tensor variances, int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size, float eta, bool pixel_offset=true)
@@ -4241,6 +4251,7 @@
   kernel :
     func : softplus
   backward : softplus_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softshrink
   args : (Tensor x, float threshold = 0.5)
@@ -4251,6 +4262,7 @@
   kernel :
     func : softshrink
   backward : softshrink_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softsign
   args : (Tensor x)
@@ -4261,6 +4273,7 @@
   kernel :
     func : softsign
   backward : softsign_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : solve
   args : (Tensor x, Tensor y)
