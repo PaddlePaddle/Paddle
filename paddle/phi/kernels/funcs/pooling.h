@@ -507,7 +507,7 @@ inline int PoolOutputSize(int input_size,
   PADDLE_ENFORCE_NE(
       stride,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The stride of PoolOutputSize shall not be 0, but received %d.",
           stride));
 
@@ -543,7 +543,7 @@ inline int MaxPoolOutputSize(
   PADDLE_ENFORCE_NE(
       stride,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The stride of MaxPool shall not be 0, but received %d.", stride));
   if (ceil_mode) {
     return (input_size - filter_size + 2 * padding + stride - 1) / stride + 1;

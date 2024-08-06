@@ -34,7 +34,7 @@ void SetVariable(Scope* scope,
                  const std::string& var_name) {
   Variable* target_var = scope->FindVar(var_name);
   if (target_var && !target_var->IsType<phi::DenseTensor>()) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The variable you want to set is not a phi::DenseTensor, but here "
         "you tried to convert its type to phi::DenseTensor."));
   }
@@ -98,12 +98,12 @@ FetchType& GetFetchVariable(const Scope& scope,
   // Since we want to fetch FetchType from a variable, the variable must
   // be created already.
   Variable* g_fetch_value = scope.FindVar(var_name);
-  PADDLE_ENFORCE_NOT_NULL(g_fetch_value,
-                          platform::errors::NotFound(
-                              "Variable %s is not found in scope.", var_name));
+  PADDLE_ENFORCE_NOT_NULL(
+      g_fetch_value,
+      common::errors::NotFound("Variable %s is not found in scope.", var_name));
   PADDLE_ENFORCE_EQ(g_fetch_value->IsType<FetchList>(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Only %s can be invoked by GetFetchVariable",
                         typeid(FetchList).name()));
   auto& fetch_outputs = *g_fetch_value->GetMutable<FetchList>();
@@ -111,7 +111,7 @@ FetchType& GetFetchVariable(const Scope& scope,
   VLOG(3) << "Fetch " << var_name << " with index " << index;
   PADDLE_ENFORCE_LT(index,
                     fetch_outputs.size(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "index must less than fetch_outputs size."));
   return tensor;
 }
@@ -119,12 +119,12 @@ FetchType& GetFetchVariable(const Scope& scope,
 phi::DenseTensor& GetVariableTensor(const Scope& scope,
                                     const std::string& var_name) {
   Variable* var = scope.FindVar(var_name);
-  PADDLE_ENFORCE_NOT_NULL(var,
-                          platform::errors::NotFound(
-                              "Variable %s is not found in scope.", var_name));
+  PADDLE_ENFORCE_NOT_NULL(
+      var,
+      common::errors::NotFound("Variable %s is not found in scope.", var_name));
   PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Only support DenseTensor in GetVariableTensor now."));
   return *var->GetMutable<phi::DenseTensor>();
 }

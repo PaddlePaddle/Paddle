@@ -49,7 +49,7 @@ TEST(MultiEncoderXPUAdaptiveSeqlenFusePass, V1) {
   PADDLE_ENFORCE_EQ(
       num,
       0,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "matmul/scale/stack ops should be removed from graph, but graph "
           "still has %d ops.",
           num));
@@ -91,7 +91,7 @@ TEST(MultiEncoderXPUAdaptiveSeqlenFusePass, V2) {
              GetNumOpNodes(graph, "tile");
   PADDLE_ENFORCE_EQ(num,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "not_equal/cast/unsqueeze2/matmul_v2/scale ops should "
                         "be removed from graph, but graph "
                         "still has %d ops.",

@@ -295,18 +295,18 @@ void FusedAdamKernel(
   for (int i = 1; i < beta1_pows.size(); i++) {
     PADDLE_ENFORCE_EQ(beta1_pow_first->place(),
                       beta1_pows[i]->place(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "All Beta1Pow must be in the same place."));
     PADDLE_ENFORCE_EQ(beta2_pow_first->place(),
                       beta2_pows[i]->place(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "All Beta2Pow must be in the same place."));
   }
 
   PADDLE_ENFORCE_EQ(
       beta1_pow_first->place(),
       beta2_pow_first->place(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(Beta1Pows) and Input(Beta2Pows) must be in the same place."));
 
   bool is_cpu_betapow = (beta1_pow_first->place() == CPUPlace());

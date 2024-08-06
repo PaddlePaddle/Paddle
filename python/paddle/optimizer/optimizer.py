@@ -215,7 +215,7 @@ class Optimizer:
             # paddle.Tensor is also iterable, so here we don't check whether
             # the input is iterable, if the input is paddle.Tensor, the
             # list(paddle.Tensor) will be a error value
-            if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
+            if isinstance(parameters, paddle.Tensor):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
                     f"an iterable of paddle Tensors, but got argument type is `{type(parameters)}`."
@@ -1511,6 +1511,7 @@ class Optimizer:
                 >>> optimizer.apply_gradients(params_grads)
 
         """
+
         # NOTE(zhaoyinglia): AutoParallel set '_sorted' attribute to skip the 'sorted' operator.
         if not hasattr(self, "_sorted"):
             params_grads = sorted(params_grads, key=lambda x: x[0].name)
@@ -2013,5 +2014,6 @@ class Optimizer:
             )
         else:
             return (
-                dtype == core.DataType.FLOAT16 or dtype == core.DataType.UINT16
+                dtype == core.DataType.FLOAT16
+                or dtype == core.DataType.BFLOAT16
             )

@@ -36,14 +36,14 @@ void StridedCopyKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(input.dims(),
                     out->dims(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input shape(%s) must be equal with out shape(%s).",
                         input.dims(),
                         out->dims()));
 
   PADDLE_ENFORCE_EQ(input.numel(),
                     out->numel(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input numel(%d) must be equal with out numel(%d).",
                         input.numel(),
                         out->numel()));
@@ -59,7 +59,7 @@ void StridedCopyKernel(const Context& dev_ctx,
 
   T* output_data = out->data<T>();
   PADDLE_ENFORCE_NOT_NULL(output_data,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "StridedCopyKernel's out tensor must complete "
                               "mutable data before call kernel."));
   int output_rank = meta.dims.size();
