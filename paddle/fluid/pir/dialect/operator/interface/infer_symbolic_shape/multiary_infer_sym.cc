@@ -676,10 +676,10 @@ bool EditDistanceOpInferSymbolicShape(
                                 refs_dims[0]);
 
   } else {
-    pir::DimExpr one_dim_expr = pir::DimExpr::CreateConstant(1);
+    symbol::DimExpr one_dim_expr = symbol::DimExpr::CreateConstant(1);
     infer_context->AddEqualCstr(hyps_dims[1], one_dim_expr);
 
-    pir::DimExpr one_dim_expr = pir::DimExpr::CreateConstant(1);
+    symbol::DimExpr one_dim_expr = symbol::DimExpr::CreateConstant(1);
     infer_context->AddEqualCstr(refs_dims[1], one_dim_expr);
   }
 
