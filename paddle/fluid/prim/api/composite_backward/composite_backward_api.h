@@ -652,6 +652,16 @@ void expand_grad(const Tensor& x,
 }
 
 template <typename T>
+void expand_as_grad(const Tensor& x,
+                    const Tensor& out_grad,
+                    const std::vector<int>& shape,
+                    Tensor* x_grad) {
+  if (x_grad) {
+    expand_grad<T>(x, out_grad, {}, x_grad);
+  }
+}
+
+template <typename T>
 void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     // dx = dout / x

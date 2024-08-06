@@ -26,7 +26,7 @@ from paddle.pir_utils import test_with_pir_api
 class TestExpandAsBasic(OpTest):
     def setUp(self):
         self.op_type = "expand_as_v2"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.expand_as
         self.public_python_api = paddle.expand_as
         self.init_dtype()
@@ -49,10 +49,10 @@ class TestExpandAsBasic(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(['X'], 'Out', check_prim_pir=True, check_pir=True)
 
 
 class TestExpandAs_ZeroDim1(TestExpandAsBasic):
@@ -109,7 +109,11 @@ class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
+            paddle.CUDAPlace(0),
+            ['X'],
+            'Out',
+            check_prim_pir=True,
+            check_pir=True,
         )
 
 

@@ -33,45 +33,53 @@ void ExpandAsKernel(const Context& ctx,
   int target_rank = static_cast<int>(target_shape.size());
   auto vec_in_dims = common::vectorize<int>(x.dims());
 
+  std::vector<int> use_target_shape = target_shape;
+  for (size_t i = 0; i < target_shape.size(); i++) {
+    if (target_shape[i] == -1) {
+      use_target_shape = common::vectorize<int>(y.get().dims());
+      break;
+    }
+  }
+
   unsigned int diff = target_rank - rank;
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
 
   for (unsigned int i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(
-        target_shape[i],
+        use_target_shape[i],
         0,
         errors::InvalidArgument("The value of target shape cannot be zero."));
     if (i < diff) {
       PADDLE_ENFORCE_GT(
-          target_shape[i],
+          use_target_shape[i],
           0,
           errors::InvalidArgument(
               "The expanded size (%d) for non-existing dimensions must be "
               "positive for expand_as_v2 op.",
-              target_shape[i]));
-    } else if (target_shape[i] > 0) {
+              use_target_shape[i]));
+    } else if (use_target_shape[i] > 0) {
       if (vec_in_dims[i] != 1) {
         PADDLE_ENFORCE_EQ(
             vec_in_dims[i],
-            target_shape[i],
+            use_target_shape[i],
             errors::InvalidArgument(
                 "The value (%d) of the non-singleton dimension does not match"
                 " the corresponding value (%d) in shape for expand_as_v2 op.",
                 vec_in_dims[i],
-                target_shape[i]));
+                use_target_shape[i]));
       }
     } else {
       PADDLE_ENFORCE_EQ(
-          target_shape[i],
+          use_target_shape[i],
           -1,
           errors::InvalidArgument(
               "When the value in shape is negative for expand_as_v2 op, "
               "only -1 is supported, but the value received is %d.",
-              target_shape[i]));
+              use_target_shape[i]));
     }
   }
 
-  ExpandKernel<T, Context>(ctx, x, target_shape, out);
+  ExpandKernel<T, Context>(ctx, x, use_target_shape, out);
 }
 
 }  // namespace phi
