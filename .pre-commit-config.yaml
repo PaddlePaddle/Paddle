@@ -84,7 +84,7 @@ repos:
         exclude:  |
             (?x)^(
                 paddle/utils/flat_hash_map\.h|
-                paddle/fluid/pir/transforms/general/horizontal_fuse_pass.cc
+                paddle/fluid/pir/transforms/gpu/horizontal_fuse_pass.cc
             )$
 -   repo: local
     hooks:

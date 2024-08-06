@@ -122,7 +122,6 @@
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/general/horizontal_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/general/remove_shadow_feed_pass.h"
@@ -913,14 +912,6 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
           }
         }
       }
-    }
-
-    auto horizontal_fuse_pass = ::pir::CreateHorizontalFusePass();
-    if (std::find(config_.deleted_passes_.begin(),
-                  config_.deleted_passes_.end(),
-                  horizontal_fuse_pass->name()) ==
-        config_.deleted_passes_.end()) {
-      pass_pm.AddPass(std::move(horizontal_fuse_pass));
     }
 
     // set attr
