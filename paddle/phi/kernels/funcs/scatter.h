@@ -80,14 +80,14 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
         1,
-        phi::errors::InvalidArgument("index.dims()[1] should be 1 when "
-                                     "index.dims().size() =2 in scatter_op."
-                                     "But received value is [%d]",
-                                     index.dims()[1]));
+        common::errors::InvalidArgument("index.dims()[1] should be 1 when "
+                                        "index.dims().size() =2 in scatter_op."
+                                        "But received value is [%d]",
+                                        index.dims()[1]));
   } else {
     PADDLE_ENFORCE_EQ(index.dims().size() == 1 || index.dims().size() == 0,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "index.dims().size() should be 0, 1 or 2 in "
                           "scatter_op. But received value is [%d]",
                           index.dims().size()));
@@ -109,7 +109,7 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
       PADDLE_ENFORCE_EQ(
           src_dims[i],
           dst_dims[i],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The dimensions of the source tensor and target tensor should"
               " match, but received source tensor's %d-th dimension is %d,"
               "target tensor's %d-th dimension is %d.",
@@ -134,7 +134,7 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
 
     PADDLE_ENFORCE_GE(index_,
                       0,
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
@@ -144,7 +144,7 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
     PADDLE_ENFORCE_LT(
         index_,
         dst_dims[0],
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "The index is out of bounds, "
             "please check whether the values of index and "
             "dimensions of input meet the requirements. each index should "
@@ -165,7 +165,7 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
       index.dims().size() == 1 || index.dims().size() == 0 ||
           (index.dims().size() == 2 && index.dims()[1] == 1),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "index's shape is error, "
           "expect index'dims shape is 0, 1, 2 (index.dims[1] should "
           "be 1), but got index'dims shape is %d",
@@ -186,7 +186,7 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
       PADDLE_ENFORCE_EQ(
           src_dims[i],
           dst_dims[i],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The dimensions of the source tensor and target tensor should"
               " match, but received source tensor's %d-th dimension is %d,"
               "target tensor's %d-th dimension is %d.",
@@ -212,7 +212,7 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
     const IndexT& index_val = p_index[i];
     PADDLE_ENFORCE_GE(index_val,
                       0,
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
@@ -220,7 +220,7 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
                           index_val));
     PADDLE_ENFORCE_LT(index_val,
                       max_index,
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
@@ -292,7 +292,7 @@ void ScatterNdAdd(const phi::CPUContext& ctx,
       PADDLE_ENFORCE_EQ(
           (index_value >= 0 && index_value < output_dims[j]),
           true,
-          phi::errors::OutOfRange(
+          common::errors::OutOfRange(
               "The index is out of bounds, "
               "please check whether the dimensions of index and "
               "input meet the requirements. It should "

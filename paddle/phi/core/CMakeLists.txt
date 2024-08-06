@@ -1,6 +1,7 @@
 # compatible utils used for fluid op system
 add_subdirectory(compat)
 add_subdirectory(distributed)
+add_subdirectory(memory)
 add_subdirectory(platform)
 
 if(WITH_GPU)

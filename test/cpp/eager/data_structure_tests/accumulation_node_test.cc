@@ -75,7 +75,7 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
           .data<float>();
   PADDLE_ENFORCE_EQ(ret_et0_ptr[0],
                     static_cast<float>(10.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
                         "should be 10.0f."));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
@@ -86,7 +86,7 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
           ->data<float>();
   PADDLE_ENFORCE_EQ(ret_et1_ptr[0],
                     static_cast<float>(20.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 20.0f"));
   // Check Retain Grad
@@ -95,7 +95,7 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
           ->value()
           .data<float>()[0],
       static_cast<float>(10.0f),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The value of the first element of the dense tensor should be "
           "10.0f"));
 
@@ -104,7 +104,7 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
       std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())->data<float>();
   PADDLE_ENFORCE_EQ(grad_ptr[0],
                     static_cast<float>(30.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 30.0f"));
 }
@@ -155,7 +155,7 @@ TEST(AccumulationNode, SelectedRowsMerge) {
           .data<float>();
   PADDLE_ENFORCE_EQ(ret_et0_ptr[0],
                     static_cast<float>(10.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
                         "should be 10.0f."));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
@@ -167,7 +167,7 @@ TEST(AccumulationNode, SelectedRowsMerge) {
           .data<float>();
   PADDLE_ENFORCE_EQ(ret_et1_ptr[0],
                     static_cast<float>(20.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
                         "should be 20.0f."));
   // Check Retain Grad
@@ -175,7 +175,7 @@ TEST(AccumulationNode, SelectedRowsMerge) {
                         ->value()
                         .data<float>()[0],
                     static_cast<float>(10.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
                         "should be 10.0f."));
   paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
@@ -184,7 +184,7 @@ TEST(AccumulationNode, SelectedRowsMerge) {
                        .data<float>();
   PADDLE_ENFORCE_EQ(grad_ptr[0],
                     static_cast<float>(30.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
                         "should be 30.0f."));
 }
@@ -237,7 +237,7 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
           .data<float>();
   PADDLE_ENFORCE_EQ(ret_et0_ptr[0],
                     static_cast<float>(10.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
                         "should be 10.0f."));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
@@ -249,7 +249,7 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
           .data<float>();
   PADDLE_ENFORCE_EQ(ret_et1_ptr[0],
                     static_cast<float>(20.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
                         "should be 20.0f"));
   // Check Retain Grad
@@ -257,7 +257,7 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
                         ->value()
                         .data<float>()[0],
                     static_cast<float>(10.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the selected rows "
                         "should be 10.0f"));
   paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
@@ -265,7 +265,7 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
       std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())->data<float>();
   PADDLE_ENFORCE_EQ(grad_ptr[0],
                     static_cast<float>(30.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 30.0f"));
 }
@@ -325,7 +325,7 @@ TEST(AccumulationNode, Tensor) {
           ->data<phi::dtype::float16>();
   PADDLE_ENFORCE_EQ(ret_et0_ptr[0],
                     phi::dtype::float16(10.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 10.0f."));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
@@ -337,14 +337,14 @@ TEST(AccumulationNode, Tensor) {
           ->data<phi::dtype::float16>();
   PADDLE_ENFORCE_EQ(ret_et1_ptr[0],
                     phi::dtype::float16(20.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 20.0f"));
   // Check Retain Grad
   PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
                         ->data<phi::dtype::float16>()[0],
                     phi::dtype::float16(10.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 10.0f"));
   paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
@@ -352,7 +352,7 @@ TEST(AccumulationNode, Tensor) {
                        ->data<phi::dtype::float16>();
   PADDLE_ENFORCE_EQ(grad_ptr[0],
                     phi::dtype::float16(30.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 30.0f"));
 
@@ -361,7 +361,7 @@ TEST(AccumulationNode, Tensor) {
   PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
                         ->data<phi::dtype::float16>()[0],
                     phi::dtype::float16(10.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 10.0f"));
   auto reduce_hook_1 = [&]() -> void {
@@ -382,7 +382,7 @@ TEST(AccumulationNode, Tensor) {
                        ->data<phi::dtype::float16>();
   PADDLE_ENFORCE_EQ(_ret_ptr[0],
                     phi::dtype::float16(10.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 10.0f"));
 
@@ -392,7 +392,7 @@ TEST(AccumulationNode, Tensor) {
           ->data<phi::dtype::float16>();
   PADDLE_ENFORCE_EQ(_ret_input_et_ptr[0],
                     phi::dtype::float16(36.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 36.0f"));
   // Reduce Hook case 2: Call RegisterReduceHook and ApplyReduceHooks directly
@@ -411,7 +411,7 @@ TEST(AccumulationNode, Tensor) {
   PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
                         ->data<phi::dtype::float16>()[0],
                     phi::dtype::float16(100.0f),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 100.0f"));
 }

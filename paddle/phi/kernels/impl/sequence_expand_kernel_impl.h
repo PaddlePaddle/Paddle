@@ -55,13 +55,13 @@ void SequenceExpandKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_LE(x_lod.size(),
                     1UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Level of Input(X)'s lod should not be "
                         "greater than 1. But received: lod level %u.",
                         x_lod.size()));
   PADDLE_ENFORCE_GT(y_lod.size(),
                     0UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Level of Input(Y)'s lod should be greater than 0. But "
                         "received: lod level %u.",
                         y_lod.size()));
@@ -69,7 +69,7 @@ void SequenceExpandKernel(const Context& dev_ctx,
       ref_level == -1 ||
           (ref_level >= 0 && ref_level < static_cast<int>(y_lod.size())),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Invalid `ref_level`, which should be either equal to -1 "
           "or in [0, %d), but received `ref_level` = %u.",
           y_lod.size(),
@@ -81,7 +81,7 @@ void SequenceExpandKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         x_lod[0].size(),
         y_lod[ref_level].size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Level number of Input(X)'s lod could be 0. Otherwise "
             "size of Input(X)'s first level lod should be equal to "
             "size of Input(Y)'s referred level lod. But received: "
@@ -93,7 +93,7 @@ void SequenceExpandKernel(const Context& dev_ctx,
   } else {
     PADDLE_ENFORCE_EQ(x_dims[0],
                       static_cast<int64_t>(y_lod[ref_level].size()) - 1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "When Input(X)'s lod is null, the dims[0] of "
                           "Input(X) should match the "
                           "size of Input(Y)'s referred level lod. But received "
@@ -125,7 +125,7 @@ void SequenceExpandKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       y_lod.empty(),
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(Y) phi::DenseTensor of SequenceExpandOp does not contain "
           "LoD information."));
 
