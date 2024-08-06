@@ -142,6 +142,11 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
     attributes.insert({"op_dist_attr", pir::parseAttr(&op_dist_attr)});
   }
 
+  if (op_json->contains("op_role")) {
+    Json& op_role_attr = op_json->at("op_role");
+    attributes.insert({"op_role", pir::parseAttr(&op_role_attr)});
+  }
+
   if (op_json->contains(OPRESULTS_ATTRS)) {
     Json& other_attrs_json = op_json->at(OPRESULTS_ATTRS);
     PADDLE_ENFORCE_EQ(other_attrs_json.size(),

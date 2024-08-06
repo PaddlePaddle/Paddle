@@ -222,6 +222,10 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
     op_json[OPDIST_ATTRS] = pir::writeAttr(op.attributes().at("op_dist_attr"));
   }
 
+  if (op.attributes().count("op_role") > 0) {
+    op_json["ROLE"] = pir::writeAttr(op.attributes().at("op_role"));
+  }
+
   Json other_attrs_json = Json::array();
   OPTIONAL_CHECK(other_attrs_json, "persistable", 1)
   OPTIONAL_CHECK(other_attrs_json, "stop_gradient", 1)
