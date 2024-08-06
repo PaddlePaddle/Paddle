@@ -611,53 +611,114 @@ std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
 
 }  // namespace trivial_fusion_detail
 
-void InitLoopTransformMap(FusionGroupInfo* group_info, const ir::Expr& body) {
-  using trivial_fusion_detail::ExprSetFinderUtils::ChildScheduleBlockRealizes;
-  using trivial_fusion_detail::ExprSetFinderUtils::ChildTensorLoads;
-  using trivial_fusion_detail::ExprSetFinderUtils::
-      ScheduleBlockRealizeIsSplitTransform;
+struct VarReplacer : public ir::IRMutator<ir::Expr*> {
+  std::unordered_set<ir::Var> iter_vars;
+  ir::Var inspecting_var;
 
-  std::vector<ir::Expr> split_transform_block =
-      (ChildScheduleBlockRealizes * ScheduleBlockRealizeIsSplitTransform)(body);
-  if (split_transform_block.empty()) {
-    return;
+  explicit VarReplacer(const std::vector<ir::Var>& _iter_vars)
+      : iter_vars(_iter_vars.begin(), _iter_vars.end()) {}
+
+  virtual void Visit(const ir::_Var_* op, ir::Expr* expr) {
+    ir::Var var = op->Copy().as_var_ref();
+    if (inspecting_var.defined() && var == inspecting_var) {
+      *expr = ir::Expr(1);
+    } else if (iter_vars.find(var) != iter_vars.end()) {
+      *expr = ir::Expr(0);
+    } else {
+      // We can replace shape variables (e.g. S0) with any constant, and here
+      // we just choose to replace them with 32.
+      *expr = ir::Expr(32);
+    }
   }
-  CHECK_EQ(split_transform_block.size(), 1);
-  VLOG(4) << "found split_transform block: " << body;
+};
 
-  auto* block = split_transform_block[0].As<ir::ScheduleBlockRealize>();
+std::vector<int64_t> GetVarStrides(ir::Expr load_offset,
+                                   const std::vector<ir::Var>& iter_vars) {
+  VarReplacer replacer(iter_vars);
+
+  const auto Evaluate = [&](const ir::Var var) {
+    ir::Expr expr = ir::ir_utils::IRCopy(load_offset);
+    replacer.inspecting_var = var;
+    replacer.IRMutator::Visit(&expr, &expr);
+    ir::Expr res = common::AutoSimplify(expr);
+    if (res.is_constant()) {
+      return res.as_int64();
+    }
+    return int64_t(0);
+  };
+
+  const int64_t base = Evaluate(ir::Var());
+
+  std::vector<int64_t> strides;
+  for (const auto& var : iter_vars) {
+    int64_t stride = Evaluate(var) - base;
+    strides.push_back(stride);
+  }
+  return strides;
+}
+
+ir::Expr GetLargestLoad(const std::vector<ir::Expr>& exprs) {
+  common::cas_intervals_t var_intervals =
+      common::CollectVarIntervalsOfExprs(exprs);
+  common::SymbolicExprAnalyzer symbolic_expr_analyzer(var_intervals);
+
+  const auto GetLoadSize = [](const ir::Expr& expr) {
+    auto* load = expr.As<ir::Load>();
+    auto* tensor = load->tensor.As<ir::_Tensor_>();
+    if (tensor->shape.size() == 0) {
+      return ir::Expr(1);
+    }
+    ir::Expr size = tensor->shape[0];
+    for (size_t i = 1; i < tensor->shape.size(); i++) {
+      size = size * tensor->shape[i];
+    }
+    return common::AutoSimplify(size);
+  };
+
+  ir::Expr res = exprs[0];
+  ir::Expr res_size = GetLoadSize(res);
+  for (size_t i = 1; i < exprs.size(); i++) {
+    ir::Expr cur_size = GetLoadSize(exprs[i]);
+    std::optional<bool> gt = symbolic_expr_analyzer.ProveGT(cur_size, res_size);
+    if (gt.has_value() && gt.value()) {
+      res = exprs[i];
+      res_size = cur_size;
+    }
+  }
+  return res;
+}
+
+std::vector<int64_t> GetLoopStrides(const ir::Expr& body,
+                                    const ir::Expr& expr_block) {
+  using trivial_fusion_detail::ExprSetFinderUtils::ChildTensorLoads;
+
+  auto* block = expr_block.As<ir::ScheduleBlockRealize>();
   auto& iter_values = block->iter_values;
   auto& iter_vars = block->schedule_block.As<ir::ScheduleBlock>()->iter_vars;
   CHECK_EQ(iter_values.size(), iter_vars.size());
+  const std::vector<ir::Var> for_iters =
+      trivial_fusion_detail::GetAllForIters(body);
 
-  // Map iter_vars (e.g. inner_block_0) to loops.
-  std::unordered_map<ir::Var, size_t> iter_var_map;
-  std::vector<ir::Var> for_iters = trivial_fusion_detail::GetAllForIters(body);
-  for (size_t i = 0; i < iter_vars.size(); i++) {
-    auto iter = std::find(
-        for_iters.begin(), for_iters.end(), iter_values[i].as_var_ref());
+  const auto GetLoopIndex = [&](size_t var_index) {
+    auto iter = std::find(for_iters.begin(),
+                          for_iters.end(),
+                          iter_values[var_index].as_var_ref());
     CHECK(iter != for_iters.end());
-    iter_var_map[iter_vars[i]] = std::distance(for_iters.begin(), iter);
-  }
+    return std::distance(for_iters.begin(), iter);
+  };
 
-  // Map loops to the load indices of the first input.
-  // TODO(liangshuhao): Choose the most appropriate input when there are
-  // multiple inputs.
-  const auto& all_loads = ChildTensorLoads(split_transform_block[0]);
-  group_info->loop_transform_map.assign(for_iters.size(), -1);
-  for (const auto& load : all_loads) {
-    const auto& indices = load.As<ir::Load>()->indices;
-    VLOG(4) << "load indices: " << utils::Join(indices, ", ");
-    for (size_t i = 0; i < indices.size(); i++) {
-      if (indices[i].as_var()) {
-        size_t loop_idx = iter_var_map[indices[i].as_var_ref()];
-        group_info->loop_transform_map[loop_idx] = i;
-      }
-    }
-    VLOG(4) << "loop_transform_map: "
-            << utils::Join(group_info->loop_transform_map, ", ");
-    break;
+  const auto& all_loads = ChildTensorLoads(expr_block);
+  std::vector<int64_t> loop_strides(for_iters.size());
+  if (all_loads.empty()) {
+    return loop_strides;
   }
+  const ir::Expr largest_load = GetLargestLoad(all_loads);
+  ir::Expr load_offset = largest_load.As<ir::Load>()->index();
+  std::vector<int64_t> var_strides = GetVarStrides(load_offset, iter_vars);
+  for (size_t i = 0; i < iter_vars.size(); i++) {
+    loop_strides[GetLoopIndex(i)] = var_strides[i];
+  }
+  return loop_strides;
 }
 
 FusionGroupInfo GetFusionGroupInfo(
@@ -667,11 +728,24 @@ FusionGroupInfo GetFusionGroupInfo(
   using trivial_fusion_detail::IsReduceBody;
   using trivial_fusion_detail::ReduceOp;
   using trivial_fusion_detail::ComposeUtils::ConcatVector;
+  using trivial_fusion_detail::ExprSetFinderUtils::ChildScheduleBlockRealizes;
+  using trivial_fusion_detail::ExprSetFinderUtils::ScheduleBlockRealizeIsInit;
+  using trivial_fusion_detail::ExprSetFinderUtils::
+      ScheduleBlockRealizeIsSplitTransform;
 
   FusionGroupInfo group_info = FusionGroupInfo();
 
+  const auto GetSplitTransformBlock = [](const ir::Expr& expr_body) {
+    return (ChildScheduleBlockRealizes *
+            ScheduleBlockRealizeIsSplitTransform)(expr_body);
+  };
+
   for (const auto& body : op_compute_bodies) {
-    InitLoopTransformMap(&group_info, body);
+    std::vector<ir::Expr> split_transform_block = GetSplitTransformBlock(body);
+    if (!split_transform_block.empty()) {
+      CHECK_EQ(split_transform_block.size(), 1);
+      group_info.loop_strides = GetLoopStrides(body, split_transform_block[0]);
+    }
 
     if (IsReduceBody(body)) {
       ReduceOp op = ReduceOp(body);

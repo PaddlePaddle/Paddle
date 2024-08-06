@@ -898,7 +898,7 @@ std::vector<std::shared_ptr<VarBase>> PartialGradTask::Run() {
 }
 
 void PartialGradTask::RunEachOp(OpBase *op) {
-  platform::RecordEvent op_type_record_event(
+  phi::RecordEvent op_type_record_event(
       op->Type() + " grad trace_op", platform::TracerEventType::Operator, 1);
   // Prepare new inputs
   NameVarMap<VarBase> tmp_ins;
