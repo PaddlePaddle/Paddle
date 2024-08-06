@@ -102,12 +102,12 @@ TEST(ProfilerTest, TestHostTracerForMem) {
   using paddle::platform::Profiler;
   using paddle::platform::ProfilerOptions;
   using paddle::platform::ProfilerResult;
-  using paddle::platform::RecordEvent;
   using paddle::platform::RecordInstantEvent;
   using paddle::platform::RecordMemEvent;
   using paddle::platform::TracerEventType;
   using paddle::platform::TracerMemEventType;
   using phi::CPUPlace;
+  using phi::RecordEvent;
   ProfilerOptions options;
   options.trace_level = 1;
   options.trace_switch = 3;
