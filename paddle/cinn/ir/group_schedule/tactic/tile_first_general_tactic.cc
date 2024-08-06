@@ -560,69 +560,6 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
           }
         }
       }
-
-      // if (is_vec) {
-      //   int vec_dim = 0;
-      //   if (is_merge_threads) {
-      //     if (!vec_flatten_axis_.empty() && sp_thread > 1) {
-      //       if (vec_reduce_axis_.empty()) {
-      //         // split the thread.x with factor
-      //         auto split_loops = sch->Split(loops[current_reduce_axis
-      //         - 1],
-      //                                       std::vector<int>({-1,
-      //                                       vec_factor}));
-
-      //        current_reduce_axis++;
-      //        vec_dim = current_reduce_axis - 1;  // the last flatten
-      //        dim
-      //      } else {
-      //        vec_dim = current_reduce_axis - 1;  // todo: reduce may
-      //        not
-      // done.
-      //      }
-      //    }
-      //    DoVec(sch->GetLoops(block_id), vec_dim, vec_factor);
-      //    if (IsReduceBlock(context_->config, block_id) &&
-      //        sch->HasBlock(block_id + "_rf")) {
-      //      DoVec(sch->GetLoops(block_id + "_rf"),
-      //            vec_dim,
-      //            vec_factor);  // todo: reduce may have bugs
-      //    }
-      //  } else {
-      //    if (!vec_flatten_axis_.empty() && sp_thread > 1) {
-      //      if (vec_reduce_axis_.empty()) {
-      //        // fuse the sp_loop and sp_threads, and resplit with
-      //        [-1, sp_thread,
-      //        // sp_loop]
-      //        sch->Fuse(block_id, std::vector<int>({1, 2}));
-      //        auto loops = sch->GetLoops(block_id);
-      //        sch->Split(loops[1], std::vector<int>({-1, sp_loop}));
-      //        loops = sch->GetLoops(block_id);
-      //        if (sp_loop > vec_factor) {
-      //          sch->Split(loops[current_reduce_axis - 1],
-      //                     std::vector<int>({-1, vec_factor}));
-      //          current_reduce_axis++;
-      //        }
-
-      //        loops = sch->GetLoops(block_id);
-      //        sch->Bind(loops[1], "threadIdx.x");
-      //        vec_dim = current_reduce_axis - 1;  // the last flatten
-      //        dim
-      //      } else {
-      //        vec_dim = current_reduce_axis - 1;  // todo: reduce may
-      //        not
-      // done.
-      //      }
-      //      DoVec(sch->GetLoops(block_id), vec_dim, vec_factor);
-      //      if (IsReduceBlock(context_->config, block_id) &&
-      //          sch->HasBlock(block_id + "_rf")) {
-      //        DoVec(sch->GetLoops(block_id + "_rf"),
-      //              vec_dim,
-      //              vec_factor);  // todo: reduce may have bugs
-      //      }
-      //    }
-      //  }
-      //}
     }
   };
 

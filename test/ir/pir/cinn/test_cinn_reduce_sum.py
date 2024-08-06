@@ -61,49 +61,49 @@ class TestReduceSumBase(unittest.TestCase):
         )
 
 
-# class TestReduceLastAxis1(TestReduceSumBase):
-#    def prepare_data(self):
-#        self.shape = [512, 64]
-#        self.axis = -1
-#
-#
-# class TestReduceLastAxis2(TestReduceSumBase):
-#    def prepare_data(self):
-#        self.shape = [512, 1024]
-#        self.axis = -1
-#
-#
-# class TestReduceLastDim3(TestReduceSumBase):
-#    def prepare_data(self):
-#        self.shape = [512, 2048]
-#        self.axis = -1
-#
-#    def prepare_atol(self):
-#        self.atol = 1e-4
-#
-#
-# class TestReduceFirstAxis1(TestReduceSumBase):
-#    def prepare_data(self):
-#        self.shape = [512, 8]
-#        self.axis = 0
-#
-#
-# class TestReduceFirstAxis2(TestReduceSumBase):
-#    def prepare_data(self):
-#        self.shape = [512, 64]
-#        self.axis = 0
-#
-#
-# class TestReduceFirstAxis3(TestReduceSumBase):
-#    def prepare_data(self):
-#        self.shape = [512, 128]
-#        self.axis = 0
-#
-#
-# class TestReduceFirstAxis4(TestReduceSumBase):
-#    def prepare_data(self):
-#        self.shape = [4, 8]
-#        self.axis = 0
+class TestReduceLastAxis1(TestReduceSumBase):
+    def prepare_data(self):
+        self.shape = [512, 64]
+        self.axis = -1
+
+
+class TestReduceLastAxis2(TestReduceSumBase):
+    def prepare_data(self):
+        self.shape = [512, 1024]
+        self.axis = -1
+
+
+class TestReduceLastDim3(TestReduceSumBase):
+    def prepare_data(self):
+        self.shape = [512, 2048]
+        self.axis = -1
+
+    def prepare_atol(self):
+        self.atol = 1e-4
+
+
+class TestReduceFirstAxis1(TestReduceSumBase):
+    def prepare_data(self):
+        self.shape = [512, 8]
+        self.axis = 0
+
+
+class TestReduceFirstAxis2(TestReduceSumBase):
+    def prepare_data(self):
+        self.shape = [512, 64]
+        self.axis = 0
+
+
+class TestReduceFirstAxis3(TestReduceSumBase):
+    def prepare_data(self):
+        self.shape = [512, 128]
+        self.axis = 0
+
+
+class TestReduceFirstAxis4(TestReduceSumBase):
+    def prepare_data(self):
+        self.shape = [4, 8]
+        self.axis = 0
 
 
 if __name__ == '__main__':

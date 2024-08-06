@@ -248,7 +248,7 @@ def overlap_add(
 
     op_type = 'overlap_add'
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         out = _C_ops.overlap_add(x, hop_length, axis)
     else:
         check_variable_and_dtype(
