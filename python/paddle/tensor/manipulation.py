@@ -1315,8 +1315,8 @@ def concat(
     The effects of concatenation along various dimensions are clearly visible.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/concat.png
-        :width: 800
-        :alt: legend of view_as API
+        :width: 500
+        :alt: legend of concat API
         :align: center
 
     Args:
