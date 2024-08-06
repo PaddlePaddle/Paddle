@@ -151,7 +151,7 @@ GpuRDMAChecker *GpuRDMAChecker::get(int device_num) {
   PADDLE_ENFORCE_EQ(
       device_num,
       g_checker->device_num(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Invalid number of device. Should be %d. But received %d.",
           device_num,
           g_checker->device_num()));

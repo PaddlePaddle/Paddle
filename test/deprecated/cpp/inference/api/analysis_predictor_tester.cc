@@ -556,7 +556,7 @@ TEST(Predictor, Streams) {
     PADDLE_ENFORCE_EQ(
         paddle::ResourceManager::Instance().RefCount(stream),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "paddle::ResourceManager::Instance().RefCount(stream) should be 0 "
             "but recieved %d.",
             paddle::ResourceManager::Instance().RefCount(stream)));
@@ -573,7 +573,7 @@ TEST(Predictor, Streams) {
     PADDLE_ENFORCE_EQ(
         paddle::ResourceManager::Instance().RefCount(stream1),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "paddle::ResourceManager::Instance().RefCount(stream1) should be 0 "
             "but recieved %d.",
             paddle::ResourceManager::Instance().RefCount(stream1)));
@@ -587,14 +587,14 @@ TEST(Predictor, Streams) {
     PADDLE_ENFORCE_EQ(
         paddle::ResourceManager::Instance().RefCount(stream2),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "paddle::ResourceManager::Instance().RefCount(stream2) should be 0 "
             "but recieved %d.",
             paddle::ResourceManager::Instance().RefCount(stream2)));
     PADDLE_ENFORCE_EQ(
         stream1,
         stream2,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "paddle::ResourceManager::Instance().RefCount(stream1) should be "
             "equal to paddle::ResourceManager::Instance().RefCount(stream2) "
             "but recieved %d and %d.",
@@ -613,7 +613,7 @@ TEST(Predictor, Streams) {
     PADDLE_ENFORCE_EQ(
         paddle::ResourceManager::Instance().RefCount(stream),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "paddle::ResourceManager::Instance().RefCount(stream) should be 0 "
             "but recieved %d.",
             paddle::ResourceManager::Instance().RefCount(stream)));
@@ -624,14 +624,14 @@ TEST(Predictor, Streams) {
     PADDLE_ENFORCE_EQ(
         paddle::ResourceManager::Instance().RefCount(stream2),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "paddle::ResourceManager::Instance().RefCount(stream) should be 0 "
             "but recieved %d.",
             paddle::ResourceManager::Instance().RefCount(stream2)));
     PADDLE_ENFORCE_EQ(
         stream,
         stream2,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "paddle::ResourceManager::Instance().RefCount(stream) should be "
             "equal to paddle::ResourceManager::Instance().RefCount(stream2) "
             "but recieved %d and %d.",
@@ -650,27 +650,28 @@ TEST(Predictor, Streams) {
     PADDLE_ENFORCE_EQ(
         config.external_stream_enabled(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "External stream of configuration should be enabled but not."));
 
     auto predictor = CreatePredictor(config);
     gpuStream_t stream =
         reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
-    PADDLE_ENFORCE_EQ(external_stream,
-                      stream,
-                      phi::errors::InvalidArgument("external_stream should be "
-                                                   "equal to stream "
-                                                   "but recieved %d and %d.",
-                                                   external_stream,
-                                                   stream));
+    PADDLE_ENFORCE_EQ(
+        external_stream,
+        stream,
+        common::errors::InvalidArgument("external_stream should be "
+                                        "equal to stream "
+                                        "but recieved %d and %d.",
+                                        external_stream,
+                                        stream));
     PADDLE_ENFORCE_NOT_NULL(
         paddle::ResourceManager::Instance().GetGPUResource(stream),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "GPU resource for the given stream was not found."));
     PADDLE_ENFORCE_EQ(
         paddle::ResourceManager::Instance().RefCount(stream),
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The reference count for the stream is expected to be 1, but got "
             "%d. This indicates that there may be an issue with resource "
             "management or stream handling.",
@@ -690,12 +691,12 @@ TEST(Predictor, Streams) {
         reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
     PADDLE_ENFORCE_NOT_NULL(
         paddle::ResourceManager::Instance().GetGPUResource(stream),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "GPU resource for the given stream was not found."));
     PADDLE_ENFORCE_EQ(
         paddle::ResourceManager::Instance().RefCount(stream),
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The reference count for the stream is expected to be 1, but got "
             "%d. This indicates that there may be an issue with resource "
             "management or stream handling.",
@@ -712,19 +713,19 @@ TEST(Predictor, Streams) {
         reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
     PADDLE_ENFORCE_NOT_NULL(
         paddle::ResourceManager::Instance().GetGPUResource(stream2),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "GPU resource for the given stream was not found."));
     PADDLE_ENFORCE_EQ(
         paddle::ResourceManager::Instance().RefCount(stream2),
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The reference count for the stream is expected to be 1, but got "
             "%d. This indicates that there may be an issue with resource "
             "management or stream handling.",
             paddle::ResourceManager::Instance().RefCount(stream2)));
     PADDLE_ENFORCE_NE(stream,
                       stream2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The two streams should not be equal. This indicates "
                           "that the streams "
                           "for two predictors should be different to avoid "
