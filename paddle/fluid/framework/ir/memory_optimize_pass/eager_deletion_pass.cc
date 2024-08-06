@@ -75,9 +75,9 @@ static int64_t GetMemorySize(
 }
 
 // Split all variables in the graph into phi::DenseTensor and
-// Non-phi::DenseTensor (e.g. SelectedRows, LoDTensorArray) Since partial GC is
-// based on static analysis of memory size of each variable So we should skip
-// SelectedRows and LoDTensorArray here
+// Non-phi::DenseTensor (e.g. SelectedRows, phi::TensorArray) Since partial GC
+// is based on static analysis of memory size of each variable So we should skip
+// SelectedRows and phi::TensorArray here
 static void SplitIntoLoDTensorAndNonLoDTensorVars(
     const OpToVarNameSetMap &m,
     const details::GraphVars &vars,
@@ -186,7 +186,7 @@ static OpToVarNameSetMap ShrinkGCVars(const OpToVarNameSetMap &m,
   }
 
   /**
-   * Step 4: Combine other vars (SelectedRows, LoDTensorArray)
+   * Step 4: Combine other vars (SelectedRows, phi::TensorArray)
    */
   if (!delete_lod_tensor_only) {
     for (auto &op_vars_pair : other_vars) {

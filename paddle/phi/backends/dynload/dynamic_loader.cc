@@ -337,7 +337,7 @@ static inline void* GetDsoHandleFromSearchPath(
     if (throw_on_error) {
       // NOTE: Special error report case, no need to change its format
       PADDLE_THROW(
-          phi::errors::PreconditionNotMet(error_msg, dso_name, errorno));
+          common::errors::PreconditionNotMet(error_msg, dso_name, errorno));
     } else {
       LOG(WARNING) << paddle::string::Sprintf(error_msg, dso_name, errorno);
     }
@@ -767,11 +767,12 @@ void* GetOpDsoHandle(const std::string& dso_name) {
 
 void* GetNvtxDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support Apple."));
+  PADDLE_THROW(common::errors::Unimplemented("Nvtx do not support Apple."));
 #elif defined(_WIN32)
-  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support Windows."));
+  PADDLE_THROW(common::errors::Unimplemented("Nvtx do not support Windows."));
 #elif !defined(PADDLE_WITH_CUDA)
-  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support without CUDA."));
+  PADDLE_THROW(
+      common::errors::Unimplemented("Nvtx do not support without CUDA."));
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
 #endif

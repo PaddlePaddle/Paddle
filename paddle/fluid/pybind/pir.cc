@@ -1566,7 +1566,7 @@ void BindInsertionPoint(pybind11::module *m) {
                   "The insertion point is already at the begin and can't call "
                   "prev()."));
             }
-            return *(self.value.second--);
+            return *(--self.value.second);
           },
           return_value_policy::reference)
       .def(

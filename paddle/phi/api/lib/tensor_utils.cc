@@ -44,8 +44,8 @@ phi::Place GetPlaceFromPtr(void* data) {
   }
 #else
   PADDLE_THROW(
-      phi::errors::Unimplemented("The GetPlaceFromPtr() method is only "
-                                 "supported when CUDA version >= 10.0."));
+      common::errors::Unimplemented("The GetPlaceFromPtr() method is only "
+                                    "supported when CUDA version >= 10.0."));
 #endif
 #else
   hipPointerAttribute_t attr = {};
@@ -67,11 +67,11 @@ PADDLE_API Tensor from_blob(void* data,
                             const phi::Place& place,
                             const Deleter& deleter) {
   PADDLE_ENFORCE_NOT_NULL(
-      data, phi::errors::InvalidArgument("data can not be nullptr."));
+      data, common::errors::InvalidArgument("data can not be nullptr."));
 
   PADDLE_ENFORCE_EQ(shape.FromTensor(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "shape cannot be constructed from a Tensor."));
 
   phi::Place data_place;
@@ -82,7 +82,7 @@ PADDLE_API Tensor from_blob(void* data,
     if (place.GetType() != phi::AllocationType::UNDEFINED) {
       PADDLE_ENFORCE_EQ(data_place,
                         place,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Specified place does not match place of data. ",
                             "Specified: %s, Expected: %s.",
                             data_place.DebugString(),
@@ -117,7 +117,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     const phi::distributed::TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE_EQ(input.is_dist_tensor(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input tensor of ReshardFunction should be "
                         "``phi::distributed::DistTensor``. "
                         "However it's %s",
@@ -135,7 +135,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
       PADDLE_ENFORCE_EQ(
           dist_tensor->initialized(),
           false,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Only "
               "uninitialized ``phi::distributed::DistTensor`` is allowed. "));
       VLOG(4) << "reshard tensor which is not in current mesh, just set its "

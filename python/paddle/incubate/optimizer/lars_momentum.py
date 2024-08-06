@@ -13,7 +13,7 @@
 # limitations under the License.
 import warnings
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops, pir
 from paddle.base import framework
 from paddle.framework import (
     in_dynamic_mode,
@@ -210,6 +210,8 @@ class LarsMomentumOptimizer(Optimizer):
                 self._rescale_grad,
             )
         elif in_pir_mode():
+            if isinstance(master_weight, pir.Value):
+                master_weight = [master_weight]
             _, _, _ = _C_ops.lars_momentum_(
                 [param_and_grad[0]],
                 [param_and_grad[1]],
