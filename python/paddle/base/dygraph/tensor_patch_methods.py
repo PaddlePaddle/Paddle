@@ -200,6 +200,8 @@ def monkey_patch_tensor():
                 ...     linear.weight.set_value(custom_weight)  # change existing weight
                 ...     out = linear(t)  # call with different weight
         """
+        if id(self) == id(value):
+            return
         assert isinstance(
             value, (np.ndarray, paddle.Tensor, dict, str)
         ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
