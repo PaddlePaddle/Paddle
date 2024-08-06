@@ -148,8 +148,9 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
           if (op_name.compare(paddle::dialect::ReduceScatterOp::name()) == 0 ||
               op_name.compare(paddle::dialect::Broadcast_Op::name()) == 0 ||
               op_name.compare(paddle::dialect::BroadcastOp::name()) == 0 ||
-              op_name.compare(paddle::dialect::AllGatherOp::name()))
-            == 0 { return dev_ctx; }
+              op_name.compare(paddle::dialect::AllGatherOp::name()) == 0) {
+            return dev_ctx;
+          }
         } else {
           VLOG(10) << "ring_id " << ring_id
                    << " not found in comm_context_manager for op " << op_name;
