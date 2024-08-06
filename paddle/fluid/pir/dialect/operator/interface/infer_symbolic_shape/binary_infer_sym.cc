@@ -567,17 +567,34 @@ bool MarginCrossEntropyOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &logits_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &labels_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
   std::vector<symbol::DimExpr> logits_dims = logits_shape_or_data.shape();
+  std::vector<symbol::DimExpr> labels_dims = labels_shape_or_data.shape();
 
   size_t logits_rank = logits_dims.size();
   auto axis = logits_rank - 1;
+
+  for (int i = 0; i < logits_rank; i++) {
+    if (i != axis && op->attribute<pir::BoolAttribute>("is_runtime").data()) {
+      infer_context->AddBroadcastableCstr(logits_dims[i], labels_dims[i]);
+    }
+  }
+
+  const auto one = symbol::DimExpr{1};
+
+  if (labels_dims.size() > 1) {
+    infer_context->AddEqualCstr(logits_dims[axis], labels_dims[1]);
+  }
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(logits_dims)});
+
   logits_dims[axis] = symbol::DimExpr(1);
+
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
