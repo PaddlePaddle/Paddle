@@ -45,8 +45,11 @@ using lang::Compute;
 #define HLIR_MKL_IMP_UNARY_PE(name__, ex_name__)                           \
   std::vector<ir::Tensor> name__##MKL(const Tensor& A,                     \
                                       const std::string& output_name) {    \
-    CHECK(A->type().is_float())                                            \
-        << "type should be float or double but get " << A->type();         \
+    PADDLE_ENFORCE_EQ(A->type().is_float(),                                \
+                      true,                                                \
+                      ::common::errors::InvalidArgument(                   \
+                          "The type should be float or double. "           \
+                          "Please provide a valid type."));                \
     std::string fn_name =                                                  \
         "cinn_mkl_" #ex_name__ "_v_fp" + std::to_string(A->type().bits()); \
     auto call = Compute(                                                   \
@@ -142,7 +145,7 @@ ir::Tensor Squeeze(const ir::Tensor& A,
       } else {
         PADDLE_ENFORCE_EQ(A->shape[idx],
                           Expr(1),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The dimension to squeeze must be 1."));
       }
     }
@@ -188,7 +191,7 @@ ir::Tensor ExpandDims(const ir::Tensor& A,
         }
         PADDLE_ENFORCE_EQ(idx.size(),
                           A->shape.size(),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The index size not equal with the input rank."));
         return A(idx);
       },
@@ -346,7 +349,7 @@ ir::Tensor Tril(const ir::Tensor& A,
       [=](const std::vector<Expr>& indice) {
         PADDLE_ENFORCE_GE(indice.size(),
                           size_t(2),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The Tril op input tensor must have a rank "
                               "greater than or equal to 2."));
         std::vector<Expr> new_indice(indice.end() - 2, indice.end());
@@ -431,7 +434,7 @@ ir::Tensor IsClose(const ir::Tensor& x,
     PADDLE_ENFORCE_EQ(
         indice.size(),
         y->shape.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The indice size should be equal to y's shape size."));
     return fnop(x(indice), y(indice));
   };

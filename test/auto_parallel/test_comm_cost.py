@@ -67,6 +67,8 @@ class TestCommOpCost(unittest.TestCase):
             op_desc=allreduce_sum_op_desc, comm_context=comm_context
         )
 
+        self.assertTrue(allreduce_sum_op_cost.time > 0)
+
         # Check AllgatherOpCost cost
         allgather_op_desc = build_comm_desc(
             "all_gather",

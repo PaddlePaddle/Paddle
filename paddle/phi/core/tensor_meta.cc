@@ -115,7 +115,7 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims) {
       p_strides[0] = p_strides[1] * p_dims[1];
       return strides;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.",
           dims.size()));
   }
@@ -214,9 +214,9 @@ bool DenseTensorMeta::valid() const noexcept {
 bool DenseTensorMeta::is_contiguous() const {
   bool is_contiguous = (strides == calc_strides(dims));
   if (!is_contiguous && !FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Not contiguous "
-                           "Tensor found, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Not contiguous "
+        "Tensor found, something wrong has happened!"));
   }
   return is_contiguous;
 }

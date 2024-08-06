@@ -102,7 +102,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       if (flag_varseqlen) {
         if (engine_->precision() == phi::DataType::FLOAT32) {
-          PADDLE_THROW(phi::errors::Fatal(
+          PADDLE_THROW(common::errors::Fatal(
               "use use_varseqlen must be int8 or half, not float32."));
         }
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
@@ -118,7 +118,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
                      "with_interleaved";
           if (!op_desc.HasAttr("Input_scale")) {
             PADDLE_THROW(
-                phi::errors::Fatal("use with_interleaved must be int8."));
+                common::errors::Fatal("use with_interleaved must be int8."));
           }
           nvinfer1::ILayer* fc_layer = nullptr;
           float dp_probs = 1.0 / 127.0;
@@ -132,7 +132,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("fc_out_threshold"),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "must have out_threshold in multihead layers in int8 mode"));
           float out_scale =
               PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
@@ -242,7 +242,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           if (op_desc.HasAttr("fc_out_threshold")) {
             PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
                               true,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "must have out threshold in multihead layers "
                                   "in int8 mode"));
             float out_scale =
@@ -307,7 +307,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
         PADDLE_ENFORCE_EQ(
             input->getDimensions().nbDims,
             3,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The Input dim of the SparseMultiheadMatMul should be 3, "
                 "but it's (%d) now.",
                 input->getDimensions().nbDims));
@@ -396,7 +396,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("fc_out_threshold"),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "must have out threshold in multihead layers in int8 mode"));
           float out_scale =
               PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
@@ -426,7 +426,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
       }
     } else {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "You are running the Ernie(Bert) model in static shape mode, which "
           "is not supported for the time being.\n"
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "

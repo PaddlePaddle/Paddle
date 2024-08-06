@@ -33,7 +33,8 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/cinn/operator_fusion/group_cluster.h"
+#include "paddle/cinn/operator_fusion/cluster_interface.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -109,6 +110,8 @@ struct GroupClusterNode {
   std::unordered_set<::pir::Value> GetOutsideInput() const {
     return GetListOutsideInput(ops);
   }
+
+  cinn::fusion::FusionTrackerPtr tracker;
 };
 
 std::vector<::pir::Value> GenerateOutputValue(
@@ -199,7 +202,7 @@ std::vector<pir::Type> BuildOutType(
   return vec_new_op_list;
 }
 
-::pir::Operation* ReplaceWithGroupOp(
+::pir::Operation* ReplaceWithFusionOp(
     pir::PatternRewriter* rewriter,
     const ::pir::GroupOpsVec& group_ops,
     const GroupClusterNode& node,
@@ -218,8 +221,8 @@ std::vector<pir::Type> BuildOutType(
   // step 2: Replace the old op with GroupOp.
 
   auto output_types = BuildOutType(output_value);
-  auto new_fusion_op =
-      rewriter->Build<cinn::dialect::FusionOp>(output_types, group_info);
+  auto new_fusion_op = rewriter->Build<cinn::dialect::FusionOp>(
+      output_types, group_info, node.tracker);
   pir::Block* fusion_block = new_fusion_op.block();
 
   for (auto op : vec_new_op_list) {
@@ -245,25 +248,33 @@ std::vector<pir::Type> BuildOutType(
 }
 
 std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
-  std::function<cinn::fusion::FrontendContent(pir::Operation*)> func =
-      [](pir::Operation* op) { return cinn::fusion::FrontendContent(op); };
+  std::function<cinn::fusion::PatternContent(pir::Operation*)> func =
+      [](pir::Operation* op) { return cinn::fusion::PatternContent(op); };
   const auto& contents = cinn::fusion::MapVector(group_op.GetOperators(), func);
   auto cluster_result = cinn::fusion::ClusterOps(contents, {});
-  std::vector<std::vector<pir::Operation*>> result;
-  std::transform(
-      cluster_result.begin(),
-      cluster_result.end(),
-      std::back_inserter(result),
-      [](const cinn::fusion::PatternNodePtr<cinn::fusion::FrontendStage> node) {
-        return cinn::fusion::GetOpsInPattern(node->stmt_pattern());
-      });
+  std::vector<std::vector<pir::Operation*>> op_sets;
+  std::vector<cinn::fusion::FusionTrackerPtr> trackers;
+  std::transform(cluster_result.begin(),
+                 cluster_result.end(),
+                 std::back_inserter(op_sets),
+                 [](const cinn::fusion::PatternNodePtr node) {
+                   return cinn::fusion::GetOpsInPattern(node->stmt_pattern());
+                 });
+  std::transform(cluster_result.begin(),
+                 cluster_result.end(),
+                 std::back_inserter(trackers),
+                 [](const cinn::fusion::PatternNodePtr node)
+                     -> cinn::fusion::FusionTrackerPtr {
+                   return cinn::fusion::GetFusionTracker(node->stmt_pattern());
+                 });
 
   // Each stmts corresponds to each fusion op(cluster node).
   // Concat all the ops of patterns in the stmts, and make them the op list of
   // cluster node.
   VLOG(4) << "Start Creating Cluster Nodes!";
   std::vector<GroupClusterNode> output_cluster_nodes;
-  for (const auto& op_set : result) {
+  for (int i = 0; i < op_sets.size(); i++) {
+    auto op_set = op_sets[i];
     GroupClusterNode cluster_node;
     for (const auto* op : op_set) {
       cluster_node.ops.push_back(const_cast<pir::Operation*>(op));
@@ -271,6 +282,8 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
       cluster_node.group_kind =
           cluster_node.group_kind > op_kind ? cluster_node.group_kind : op_kind;
     }
+    // Deep copy trackers to avoid shared tracker conflict in different node
+    cluster_node.tracker = trackers[i]->Clone();
     output_cluster_nodes.push_back(cluster_node);
   }
   VLOG(4) << "Finished Creating Cluster Nodes!";
@@ -320,6 +333,22 @@ std::unordered_map<::pir::Value, size_t> BuildValueOrderByYieldOp(
   return all_output_values;
 }
 
+void UpdateTracker(std::vector<pir::Operation*> uniq_ops,
+                   fusion::FusionTrackerPtr tracker) {
+  std::map<pir::Operation*, int> op2idx;
+  for (int i = 0; i < uniq_ops.size(); ++i) {
+    op2idx[uniq_ops[i]] = i;
+  }
+  for (const auto& t : tracker->instructions_) {
+    if (t->type() == fusion::T_InitPattern) {
+      auto init_instr =
+          cinn::fusion::dynamic_cast_instr_with_err<fusion::InitPatternInstr>(
+              t);
+      init_instr->set_idx(op2idx[init_instr->op_]);
+    }
+  }
+}
+
 }  // namespace
 
 class CinnGroupClusterPattern
@@ -349,7 +378,9 @@ class CinnGroupClusterPattern
       VLOG(4) << "cluster node output size: " << output_values.size();
       auto uniq_ops = SortByOriginalOrderAndUniq(group_op, node.ops);
 
-      auto new_group_op = ReplaceWithGroupOp(
+      UpdateTracker(uniq_ops, node.tracker);
+
+      auto new_group_op = ReplaceWithFusionOp(
           &rewriter, uniq_ops, node, output_values, &ir_mapping);
 
       // TODO(Hongqing-work): delete this after fix bug of

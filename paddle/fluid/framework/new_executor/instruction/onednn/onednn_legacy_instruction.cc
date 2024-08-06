@@ -59,7 +59,7 @@ static paddle::framework::Attribute ConvertPirAttribute2FrameworkAttribute(
     if (array_list.size() > 0) {
       PADDLE_ENFORCE_EQ(array_list[0].isa<pir::Int32Attribute>(),
                         true,
-                        phi::errors::Unimplemented(
+                        common::errors::Unimplemented(
                             "the 0th elementwise MUST be pir::Int32Attribute"));
       for (size_t i = 0; i < array_list.size(); ++i) {
         vec_res.push_back(array_list[i].dyn_cast<pir::Int32Attribute>().data());
@@ -77,14 +77,14 @@ static paddle::framework::Attribute ConvertPirAttribute2FrameworkAttribute(
         }
 
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
             attr_type_name));
       }
     }
     return vec_res;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
         attr_type_name));
   }
@@ -117,7 +117,7 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
   PADDLE_ENFORCE_NOT_NULL(
       yaml_interface,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", legacy_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(op_name),
