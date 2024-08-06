@@ -18,24 +18,29 @@
 #
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
+from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 
 def variable_length_memory_efficient_attention(
-    query,
-    key,
-    value,
-    seq_lens,
-    kv_seq_lens,
-    mask=None,
-    scale=None,
-    causal=False,
-    pre_cache_length=0,
-):
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    seq_lens: Tensor,
+    kv_seq_lens: Tensor,
+    mask: Tensor = None,
+    scale: float = None,
+    causal: bool = False,
+    pre_cache_length: int = 0,
+) -> Tensor:
     """
     Cutlass Memory Efficient Variable Attention.
     This method requires SM_ARCH in sm70, sm75, sm80.
@@ -87,7 +92,7 @@ def variable_length_memory_efficient_attention(
             ...     return result
 
             >>> out = naive_attention_impl(query, key, value, mask, scale)
-            >>> # equals to: out = variable_length_memory_efficient_attention(query, key, value, seq_lens, seq_lens, mask, scale, pre_cache_length)
+            >>> # equals to: out = variable_length_memory_efficient_attention(query, key, value, seq_lens, seq_lens, mask, scale, pre_cache_length) # type: ignore[operator]
 
             >>> out.shape # [batch, num_head, seq_len, head_size]
             [1, 8, 256, 32]
