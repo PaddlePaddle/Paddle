@@ -58,7 +58,7 @@ void llm_int8_compute(const Context& dev_ctx,
     phi::AddKernel<T, Context>(dev_ctx, *out, bias.get(), out);
   }
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "llm_int8_linear op needs paddle with cuda and cuda version >= 11.2"));
 #endif
 }

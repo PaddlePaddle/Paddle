@@ -88,7 +88,7 @@ void AccuracyKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       inference.dims().size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Rank(Input) of AccuracyOp must be 2, with shape "
           "[sample_number, class_dim], But received rank(Input) is %d",
           inference.dims().size()));
@@ -104,18 +104,18 @@ void AccuracyKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_GT(label.dims().size(),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Rank(Label) of AccuracyOp must greater than 0, "
                         "But received rank(Label) is %d",
                         label.dims().size()));
 
-  PADDLE_ENFORCE_GE(
-      label.dims()[0],
-      inference.dims()[0],
-      phi::errors::InvalidArgument("num_samples(%d) of Label should less than "
-                                   "or equal to num_samples(%d) of Input",
-                                   label.dims()[0],
-                                   num_samples));
+  PADDLE_ENFORCE_GE(label.dims()[0],
+                    inference.dims()[0],
+                    common::errors::InvalidArgument(
+                        "num_samples(%d) of Label should less than "
+                        "or equal to num_samples(%d) of Input",
+                        label.dims()[0],
+                        num_samples));
 
   if (num_samples == 0) {
     return;

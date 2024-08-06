@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/utils/test_macros.h"
@@ -133,7 +133,7 @@ phi::DenseTensor LodExpand(const phi::DenseTensor& source,
   PADDLE_ENFORCE_EQ(
       num_instances,
       lod_level.size() - 1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input phi::DenseTensor instance number should be equal to the "
           "LoD "
           "level size minus 1."

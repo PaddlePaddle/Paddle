@@ -83,8 +83,8 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
   PADDLE_ENFORCE_EQ(
       shape.size(),
       axis_len,
-      phi::errors::InvalidArgument("Internal Error: Tensor has different "
-                                   "shape and axis length in AstGen"));
+      ::common::errors::InvalidArgument("Internal Error: Tensor has different "
+                                        "shape and axis length in AstGen"));
   std::vector<ir::Expr> axis_exprs;
   for (const auto& a : axis) {
     axis_exprs.push_back(a);

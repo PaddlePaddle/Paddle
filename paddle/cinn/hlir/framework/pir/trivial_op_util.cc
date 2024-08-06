@@ -161,12 +161,12 @@ void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
                                       const ir::Expr& dest,
                                       ir::Expr* body) {
   VLOG(4) << "SubstitideExpr Start";
-  VLOG(4) << "Substitide Body : " << *body;
+  VLOG(5) << "Substitide Body : " << *body;
   VLOG(4) << "Substitide From : " << source;
   VLOG(4) << "Substitide To   : " << dest;
   MappingTargetExprToDestExprMutator mapper(source, dest);
   mapper(body);
-  VLOG(4) << "SubstitideExpr Result: " << *body;
+  VLOG(5) << "SubstitideExpr Result: " << *body;
 }
 
 ir::Expr SubstitudeIndexVector(const Expr& source,
@@ -281,6 +281,15 @@ ExprSetFinder ScheduleBlockRealizeIsInit = FilterMaker(
                       ->name.find("__reduce_init") != std::string::npos);
     },
     "ScheduleBlockRealizeIsInit");
+
+ExprSetFinder ScheduleBlockRealizeIsSplitTransform = FilterMaker(
+    [](const ir::Expr& e) -> bool {
+      return (e.As<ir::ScheduleBlockRealize>() &&
+              e.As<ir::ScheduleBlockRealize>()
+                      ->schedule_block.As<ir::ScheduleBlock>()
+                      ->name.find("_split_transform") != std::string::npos);
+    },
+    "ScheduleBlockRealizeIsSplitTransform");
 
 ExprSetFinder IsFor = FilterMaker(
     [](const ir::Expr& e) -> bool { return e.As<ir::For>(); }, "IsFor");

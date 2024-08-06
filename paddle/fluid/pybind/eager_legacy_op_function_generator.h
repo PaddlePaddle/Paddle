@@ -13,4 +13,4 @@
 // limitations under the License.
 #pragma once
 
-void run_legacy_generator(int argc, char* argv[]);
+int run_legacy_generator(int argc, char* argv[]);

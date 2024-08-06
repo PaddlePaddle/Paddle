@@ -89,34 +89,34 @@ class LockFreeOptimizePass : public Pass {
                                            ir::Node* downstream_node) const;
 
   inline bool IsOpNamed(ir::Node* node, const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(
-        node,
-        phi::errors::InvalidArgument("Input argument node cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            common::errors::InvalidArgument(
+                                "Input argument node cannot be nullptr."));
 
     return node->NodeType() == Node::Type::kOperation && node->Name() == name;
   }
 
   inline bool IsVarNamed(ir::Node* node, const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(
-        node,
-        phi::errors::InvalidArgument("Input argument node cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            common::errors::InvalidArgument(
+                                "Input argument node cannot be nullptr."));
 
     return node->NodeType() == Node::Type::kVariable && node->Name() == name;
   }
 
   inline bool IsVarNameEndsWith(ir::Node* node, const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(
-        node,
-        phi::errors::InvalidArgument("Input argument node cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            common::errors::InvalidArgument(
+                                "Input argument node cannot be nullptr."));
 
     return node->NodeType() == Node::Type::kVariable &&
            paddle::string::ends_with(node->Name(), name);
   }
 
   inline bool IsVarNameContains(ir::Node* node, const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(
-        node,
-        phi::errors::InvalidArgument("Input argument node cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            common::errors::InvalidArgument(
+                                "Input argument node cannot be nullptr."));
 
     return node->NodeType() == Node::Type::kVariable &&
            node->Name().find(name) != std::string::npos;
@@ -125,11 +125,11 @@ class LockFreeOptimizePass : public Pass {
   inline bool IsControlDepFrom(ir::Node* ctrl_dep_node, ir::Node* node) const {
     PADDLE_ENFORCE_NOT_NULL(
         ctrl_dep_node,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input argument ctrl_dep_node cannot be nullptr."));
-    PADDLE_ENFORCE_NOT_NULL(
-        node,
-        phi::errors::InvalidArgument("Input argument node cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            common::errors::InvalidArgument(
+                                "Input argument node cannot be nullptr."));
 
     return IsControlDepVar(*ctrl_dep_node) &&
            ctrl_dep_node->inputs.size() >= 1u &&

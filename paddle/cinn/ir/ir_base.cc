@@ -50,7 +50,7 @@ std::ostream &operator<<(std::ostream &os, IrNodeTy type) {
 #undef __m
 
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("unknown IrNodeTy found"));
+      PADDLE_THROW(::common::errors::InvalidArgument("unknown IrNodeTy found"));
   }
 
   return os;
@@ -234,7 +234,7 @@ const Expr &IrNode::operand(int i) {
   PADDLE_ENFORCE_LT(
       i,
       operands.size(),
-      phi::errors::InvalidArgument("The index %d is out of range", i));
+      ::common::errors::InvalidArgument("The index %d is out of range", i));
   return operands[i];
 }
 
@@ -246,7 +246,7 @@ void IrNode::replace(Expr old_op, Expr new_op) {
      << old_op.node_type() << ") should be replaced with new_op: ("
      << new_op.node_type() << ") but not Implemented";
 
-  PADDLE_THROW(phi::errors::Unimplemented(ss.str()));
+  PADDLE_THROW(::common::errors::Unimplemented(ss.str()));
 }
 
 void IrNode::convert_int32_to_int64() {

@@ -57,7 +57,7 @@ void Tree2ColUtil::construct_tree(const phi::DenseTensor &EdgeSet,
   const auto &edge_set_dims = EdgeSet.dims();
   PADDLE_ENFORCE_EQ(edge_set_dims[1],
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The second dimension of the EdgeSet shall be 2, but "
                         "got %ld != 2. Please check the input value.",
                         edge_set_dims[1]));

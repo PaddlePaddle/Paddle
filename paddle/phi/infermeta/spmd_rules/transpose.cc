@@ -57,18 +57,18 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
   // check perm size
   PADDLE_ENFORCE_EQ(
       x_ndim,
       perm.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and "
-                                   "perm size [%d] are not matched.",
-                                   x_ndim,
-                                   perm.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and "
+                                      "perm size [%d] are not matched.",
+                                      x_ndim,
+                                      perm.size()));
 
   // Step1: Build Einsum Notation
   std::string x_axes;
@@ -118,25 +118,25 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping.size()));
   PADDLE_ENFORCE_EQ(
       x_ndim,
       out_ndim,
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and "
-                                   "Out's rank [%d] are not matched.",
-                                   x_ndim,
-                                   out_ndim));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and "
+                                      "Out's rank [%d] are not matched.",
+                                      x_ndim,
+                                      out_ndim));
   // check perm size
   PADDLE_ENFORCE_EQ(
       out_ndim,
       perm.size(),
-      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and "
-                                   "perm size [%d] are not matched.",
-                                   out_ndim,
-                                   perm.size()));
+      common::errors::InvalidArgument("The Tensor Out's rank [%d] and "
+                                      "perm size [%d] are not matched.",
+                                      out_ndim,
+                                      perm.size()));
 
   // Step1: Build Einsum Notation
   std::string x_axes;
@@ -184,7 +184,7 @@ SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
   size_t out_grad_dims_mapping_size = out_grad_dims_mapping.size();
   PADDLE_ENFORCE_EQ(out_grad_ndim,
                     out_grad_dims_mapping_size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor Out_grad's rank [%d] and "
                         "Out_grad's dims_mapping size [%d] are not matched.",
                         out_grad_ndim,
@@ -192,7 +192,7 @@ SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
   size_t perm_size = perm.size();
   PADDLE_ENFORCE_EQ(out_grad_ndim,
                     perm_size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor Out_grad's rank [%d] and perm size "
                         "[%d] are not matched.",
                         out_grad_ndim,

@@ -35,8 +35,8 @@ static void CopyXCCLIDToVar(const std::vector<phi::ccl::CCLRootId>& xccl_ids,
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::NotFound("Variable with name %s is not found",
-                              var_name.c_str()));
+        common::errors::NotFound("Variable with name %s is not found",
+                                 var_name.c_str()));
     auto xccl_id = var->GetMutable<phi::ccl::CCLRootId>();
     *xccl_id = xccl_ids[i];
   }

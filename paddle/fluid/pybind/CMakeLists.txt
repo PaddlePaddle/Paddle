@@ -66,10 +66,6 @@ if(WITH_RPC)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
                   common)
 endif()
-if(WITH_GPU OR WITH_ROCM)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
-  set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
-endif()
 
 if(WITH_GPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_profiler)
@@ -81,10 +77,6 @@ endif()
 if(WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-endif()
-
-if(WITH_XPU)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_xpti)
 endif()
 
 if(WITH_XPU_BKCL)
@@ -580,7 +572,7 @@ if(WITH_PYTHON)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file}
                 ${eager_impl_file}
         COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
-        DEPENDS ${EAGER_OP_IMPL_DEPS})
+        DEPENDS ${EAGER_OP_IMPL_DEPS} legacy_eager_codegen)
     endif()
   else()
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
@@ -637,7 +629,7 @@ if(WITH_PYTHON)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file}
                 ${eager_impl_file}
         COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
-        DEPENDS ${EAGER_OP_IMPL_DEPS}
+        DEPENDS ${EAGER_OP_IMPL_DEPS} legacy_eager_codegen
         VERBATIM)
     endif()
   endif()
