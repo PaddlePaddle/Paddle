@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
-#include <experimental/filesystem>
+#include <filesystem>
 #include "paddle/phi/core/enforce.h"
-#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
 namespace pir {
 
 std::pair<std::string, std::string> getContentSplitByDot(
@@ -86,9 +85,10 @@ uint64_t GetPirVersion() {
   std::string patch_path =
       cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
   int version = 0;
-  VLOG(8) << "patch_path: " << patch_path;
-  std::experimental::filesystem::v1::path path(patch_path);
-  for (auto& v : std::experimental::filesystem::v1::directory_iterator(path)) {
+  std::filesystem::path path(patch_path.c_str());
+  // std::filesystem::path path = std::filesystem::current_path() / patch_path;
+  VLOG(8) << "patch_path: " << path;
+  for (auto& v : std::filesystem::directory_iterator(path)) {
     std::string filename = v.path().filename().string();
     std::string extension_name = v.path().extension().string();
     // 0.yaml for develop version
@@ -107,9 +107,10 @@ uint64_t GetMaxReleasePirVersion() {
   std::string patch_path =
       cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
   int version = 0;
-  VLOG(8) << "patch_path: " << patch_path;
-  std::experimental::filesystem::v1::path path(patch_path);
-  for (auto& v : std::experimental::filesystem::v1::directory_iterator(path)) {
+  std::filesystem::path path(patch_path.c_str());
+  // std::filesystem::path path = std::filesystem::current_path() / patch_path;
+  VLOG(8) << "patch_path: " << path;
+  for (auto& v : std::filesystem::directory_iterator(path)) {
     std::string filename = v.path().filename().string();
     std::string extension_name = v.path().extension().string();
     std::cout << filename << std::endl;

@@ -50,12 +50,10 @@ TEST(save_load_version_compat, op_patch_test) {
   pir::Program program(ctx);
   //   pir::Program *program = new pir::Program();
   EXPECT_EQ(program.block()->empty(), true);
-  const uint64_t pir_version = 0;
+  const uint64_t pir_version = 2;
   pir::PatchBuilder builder(pir_version);
   builder.SetFileVersion(1);
   std::string cur_file = std::string(__FILE__);
-  std::string patch_path =
-      cur_file.substr(0, cur_file.rfind('/')) +
-      "/../../../../paddle/fluid/pir/serialize_deserialize/patch/";
+  std::string patch_path = cur_file.substr(0, cur_file.rfind('/')) + "/patch/";
   builder.BuildPatch(patch_path);
 }
