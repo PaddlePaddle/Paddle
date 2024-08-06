@@ -2278,6 +2278,12 @@ bool AnalysisPredictor::ZeroCopyRun() {
                              config_.xpu_config_.l3_autotune_size,
                              place_);
   }
+
+  if (config_.use_xpu_ && infer_xpu_ctx != nullptr &&
+      config_.xpu_config_.l3_autotune_size > 0) {
+    infer_xpu_ctx->L3CacheAutotune();
+  }
+
 #endif
 
   if (config_.new_executor_enabled()) {
@@ -2286,12 +2292,6 @@ bool AnalysisPredictor::ZeroCopyRun() {
     executor_->Run();
   }
   inference::DisplayMemoryInfo(place_, "after run");
-
-#ifdef PADDLE_WITH_XPU
-  if (config_.use_xpu_ && !config_.use_lite_ && infer_xpu_ctx != nullptr) {
-    infer_xpu_ctx->L3CacheAutotune();
-  }
-#endif
 
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
