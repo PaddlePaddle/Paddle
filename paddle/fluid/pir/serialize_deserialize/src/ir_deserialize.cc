@@ -139,7 +139,7 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
 
   if (op_json->contains(OPDIST_ATTRS)) {
     Json& op_dist_attr = op_json->at(OPDIST_ATTRS);
-    attributes.insert("op_dist_attr", ReadAttribute(&op_dist_attr));
+    attributes.insert({"op_dist_attr", pir::parseAttr(&op_dist_attr)});
   }
 
   if (op_json->contains(OPRESULTS_ATTRS)) {
