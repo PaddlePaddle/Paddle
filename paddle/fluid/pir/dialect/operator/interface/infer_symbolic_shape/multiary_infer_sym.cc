@@ -651,18 +651,19 @@ bool CheckFiniteAndUnscaleOpInferSymbolicShape(
                                    xs_shapes.size(),
                                    op->num_results() - 1));
 
-  // Set the shape for each output
-  for (size_t i = 0; i < xs_shapes.size(); ++i) {
-    symbol::TensorShapeOrDataDimExprs output_shape(xs_shapes[i].shape());
-    infer_context->SetShapeOrDataForValue(
-        op->result(i), symbol::ShapeOrDataDimExprs{output_shape});
+  // Set the shapes for the output tensor list
+  symbol::TensorListShapeOrDataDimExprs outs_shapes;
+  outs_shapes.reserve(xs_shapes.size());
+  for (const auto &input_shape : xs_shapes) {
+    outs_shapes.emplace_back(input_shape.shape());
   }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{outs_shapes});
 
   // Set the shape for the found_infinite output
   symbol::TensorShapeOrDataDimExprs found_infinite_shape({symbol::DimExpr(1)});
   infer_context->SetShapeOrDataForValue(
-      op->result(op->num_results() - 1),
-      symbol::ShapeOrDataDimExprs{found_infinite_shape});
+      op->result(1), symbol::ShapeOrDataDimExprs{found_infinite_shape});
 
   return true;
 }
@@ -1333,7 +1334,6 @@ bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
 //   // pass
 //   return true;
 // }
-
 
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
