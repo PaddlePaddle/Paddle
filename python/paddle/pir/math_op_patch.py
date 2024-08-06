@@ -449,6 +449,14 @@ def monkey_patch_value():
                 self = other_var
                 other_var = tmp
 
+            if (
+                (op_type == "divide" or op_type == "elementwise_div")
+                and self.dtype in _supported_int_dtype_
+                and self.dtype == other_var.dtype
+            ):
+                self = astype(self, 'float32')
+                other_var = astype(other_var, 'float32')
+
             out = python_api(self, other_var)
             return out
 

@@ -48,6 +48,7 @@ class LayerCase(paddle.nn.Layer):
         # var_13 = paddle.tensor.search.masked_select(var_9, var_12)
         # var_14 = paddle.tensor.manipulation.reshape(var_13, shape=[-1, 128])
         # return var_8, var_14
+        var_12 = paddle.tensor.manipulation.cast(var_12, dtype=var_9.dtype)
         return var_9 + var_12
 
 
