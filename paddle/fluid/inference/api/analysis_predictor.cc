@@ -1638,7 +1638,7 @@ void AnalysisPredictor::MkldnnPostReset() {
               ->GetShapeBlobSize();
       PADDLE_ENFORCE_LE(shape_blob_size,
                         static_cast<size_t>(config_.mkldnn_cache_capacity_),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required shape_blob_size should be less than or "
                             "equal to config_.mkldnn_cache_capacity_. "));
     }

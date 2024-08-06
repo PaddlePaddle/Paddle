@@ -15,45 +15,34 @@
 #pragma once
 
 #include "paddle/cinn/operator_fusion/pattern_node.h"
+#include "paddle/cinn/operator_fusion/policy/anchor_search_policy.h"
+#include "paddle/cinn/operator_fusion/policy/general_topo_policy.h"
+#include "paddle/cinn/operator_fusion/policy/policy_base.h"
+#include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
 
 namespace cinn::fusion {
 
-template <typename T>
-class Policy {
- public:
-  virtual std::string Name() = 0;
-  virtual bool CanFuse(const PatternNodePtr<T>& upstream,
-                       const PatternNodePtr<T>& downstream) = 0;
-  virtual std::vector<size_t> GetFakeReduceIterIdx(
-      const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-    return {};
-  }
-};
-
-template <typename T>
-using PolicyPtr = std::shared_ptr<Policy<T>>;
-
-template <typename T>
 class PolicyManager {
  public:
-  explicit PolicyManager(const std::vector<PolicyPtr<T>>& policies)
-      : policies_(policies) {}
-  bool CanFuse(const PatternNodePtr<T>& upstream,
-               const PatternNodePtr<T>& downstream) const;
-  std::vector<size_t> GetFakeReduceIterIdx(
-      const PatternNodePtr<T>& upstream,
-      const PatternNodePtr<T>& downstream) const;
+  PolicyManager() = default;
 
-  PolicyPtr<T> find_policy(const std::string& name) const {
-    for (auto& p : policies_) {
-      VLOG(4) << "Find policy: " << p->Name();
-      if (p->Name() == name) return p;
-    }
-    return nullptr;
+  template <typename POLICY>
+  void SetPolicy(const std::shared_ptr<POLICY>& policy) {
+    auto key = POLICY::Kind;
+    policies[key] = std::static_pointer_cast<PolicyBase>(policy);
+  }
+
+  template <typename POLICY>
+  std::shared_ptr<POLICY> GetPolicy() const {
+    auto key = POLICY::Kind;
+    PADDLE_ENFORCE_NE(policies.find(key),
+                      policies.end(),
+                      phi::errors::NotFound("Policy %d Not Found", key));
+    return std::static_pointer_cast<POLICY>(policies.at(key));
   }
 
  private:
-  std::vector<PolicyPtr<T>> policies_;
+  PolicyMap policies;
 };
 
 }  // namespace cinn::fusion

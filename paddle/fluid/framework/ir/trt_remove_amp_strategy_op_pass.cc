@@ -65,7 +65,7 @@ void TrtRemoveAMPStrategyOpPass::ApplyImpl(Graph *graph) const {
     PADDLE_ENFORCE_EQ(
         op_node->IsOp(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The 'op_node' must be an operator node, but it is not."));
 
     auto *op_desc = op_node->Op();
