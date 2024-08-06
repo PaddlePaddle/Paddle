@@ -22,9 +22,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void CSyncCalcStreamKernel(const Context &dev_ctx,
-                           const DenseTensor &x,
-                           DenseTensor *out) {
+void SyncCalcStreamKernel(const Context &dev_ctx,
+                          const DenseTensor &x,
+                          DenseTensor *out) {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
   phi::backends::gpu::GpuStreamSync(dev_ctx.stream());
 #elif defined(PADDLE_WITH_XPU_BKCL)

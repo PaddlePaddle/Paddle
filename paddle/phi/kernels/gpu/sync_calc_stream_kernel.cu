@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/c_sync_calc_stream_kernel_impl.h"
+#include "paddle/phi/kernels/impl/sync_calc_stream_kernel_impl.h"
 
-PD_REGISTER_KERNEL(c_sync_calc_stream,
+PD_REGISTER_KERNEL(sync_calc_stream,
                    GPU,
                    ALL_LAYOUT,
-                   phi::CSyncCalcStreamKernel,
+                   phi::SyncCalcStreamKernel,
                    float,
                    double,
                    int,
