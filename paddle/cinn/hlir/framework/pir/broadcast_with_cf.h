@@ -18,7 +18,8 @@
 
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
-namespace cinn::dialect::ir::details {
+
+namespace cinn::hlir::framework::pir {
 std::optional<std::vector<OpLoweringGroupPtr>> GetBroadcastGroupListForOptimize(
     const OpLoweringGroupPtr& group);
-}  // namespace cinn::dialect::ir::details
+}  // namespace cinn::hlir::framework::pir
