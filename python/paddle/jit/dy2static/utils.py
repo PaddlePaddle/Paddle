@@ -26,6 +26,7 @@ import tempfile
 import textwrap
 import types
 from importlib.machinery import SourceFileLoader
+from typing import Any
 
 import numpy as np
 
@@ -272,7 +273,7 @@ def get_temp_dir():
     return temp_dir
 
 
-def wrap_as_closure(tree: gast.AST, closure_vars: list[str]):
+def wrap_as_closure(tree: gast.AST, closure_vars: list[str]) -> gast.AST:
     """
     Wrap a function to a closure function.
 
@@ -290,37 +291,52 @@ def wrap_as_closure(tree: gast.AST, closure_vars: list[str]):
         ...     return fn
         ... fn = create_fn()
     """
-    assert isinstance(tree, gast.Module)
-    assert len(tree.body) == 1
-    assert isinstance(tree.body[0], gast.FunctionDef)
+
+    def create_assign_node(name, value) -> gast.Assign:
+        return gast.Assign(
+            targets=[
+                gast.Name(
+                    id=name,
+                    ctx=gast.Store(),
+                    annotation=[],
+                    type_comment=[],
+                )
+            ],
+            value=value,
+        )
+
+    def create_wrppper_fn_def_node(name, body) -> gast.FunctionDef:
+        return gast.FunctionDef(
+            name=name,
+            args=gast.arguments(
+                args=[],
+                posonlyargs=[],
+                vararg=None,
+                kwonlyargs=[],
+                kw_defaults=[],
+                kwarg=None,
+                defaults=[],
+            ),
+            body=body,
+            decorator_list=[],
+            returns=None,
+            type_comment=None,
+        )
+
+    if not isinstance(tree, gast.Module):
+        return tree
+    if len(tree.body) != 1:
+        return tree
+    if not isinstance(tree.body[0], gast.FunctionDef):
+        return tree
     fn_node = tree.body[0]
     fn_name = fn_node.name
     wrapper_fn_name = f"create_{fn_name}"
-
-    wrapper_fn_def = gast.FunctionDef(
-        name=wrapper_fn_name,
-        args=gast.arguments(
-            args=[],
-            posonlyargs=[],
-            vararg=None,
-            kwonlyargs=[],
-            kw_defaults=[],
-            kwarg=None,
-            defaults=[],
-        ),
-        body=[
+    wrapper_fn_def_node = create_wrppper_fn_def_node(
+        wrapper_fn_name,
+        [
             *[
-                gast.Assign(
-                    targets=[
-                        gast.Name(
-                            id=var,
-                            ctx=gast.Store(),
-                            annotation=[],
-                            type_comment=[],
-                        )
-                    ],
-                    value=gast.Constant(value=None, kind=None),
-                )
+                create_assign_node(var, gast.Constant(value=None, kind=None))
                 for var in closure_vars
             ],
             fn_node,
@@ -330,18 +346,11 @@ def wrap_as_closure(tree: gast.AST, closure_vars: list[str]):
                 )
             ),
         ],
-        decorator_list=[],
-        returns=None,
-        type_comment=None,
     )
 
-    assign_node = gast.Assign(
-        targets=[
-            gast.Name(
-                id=fn_name, ctx=gast.Store(), annotation=[], type_comment=[]
-            )
-        ],
-        value=gast.Call(
+    assign_node = create_assign_node(
+        fn_name,
+        gast.Call(
             func=gast.Name(
                 id=wrapper_fn_name,
                 ctx=gast.Load(),
@@ -352,7 +361,15 @@ def wrap_as_closure(tree: gast.AST, closure_vars: list[str]):
             keywords=[],
         ),
     )
-    return gast.Module(body=[wrapper_fn_def, assign_node], type_ignores=[])
+    return gast.Module(body=[wrapper_fn_def_node, assign_node], type_ignores=[])
+
+
+def wrap_cell(var: Any) -> types.CellType:
+    def closure_fn():
+        return var
+
+    assert closure_fn.__closure__ is not None
+    return closure_fn.__closure__[0]
 
 
 def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
@@ -367,16 +384,39 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
             shutil.rmtree(dir_path)
 
     def func_prefix(func):
-        pre_fix = func.__name__
+        prefix = func.__name__
         if hasattr(func, '__self__'):
             try:
-                pre_fix = func.__self__.__class__.__name__ + '_' + func.__name__
+                prefix = f"{func.__self__.__class__.__name__}_{func.__name__}"
             except:
                 pass
-        return pre_fix
+        return prefix
 
-    closure_var_names = list(inspect.getclosurevars(dyfunc).nonlocals.keys())
-    ast_root = wrap_as_closure(ast_root, closure_var_names)
+    def get_new_closure(original_fn, generated_fn):
+        if generated_fn.__closure__ is None:
+            return None
+        assert original_fn.__closure__ is not None
+        original_closure_vars = inspect.getclosurevars(original_fn).nonlocals
+        generated_free_vars = generated_fn.__code__.co_freevars
+        return tuple(
+            wrap_cell(original_closure_vars[freevar_name])
+            for freevar_name in generated_free_vars
+        )
+
+    def get_new_globals(original_fn, generated_fn):
+        globals_attr_name = "__globals__"
+        original_fn_globals = getattr(original_fn, globals_attr_name, {})
+        generated_fn_globals = getattr(generated_fn, globals_attr_name, {})
+
+        original_fn_globals_exclude_builtin = {
+            k: v
+            for k, v in original_fn_globals.items()
+            if not (k.startswith('__') and k.endswith('__'))
+        }
+        return {**generated_fn_globals, **original_fn_globals_exclude_builtin}
+
+    dyfunc_closures = inspect.getclosurevars(dyfunc).nonlocals
+    ast_root = wrap_as_closure(ast_root, list(dyfunc_closures.keys()))
 
     source = ast_to_source_code(ast_root)
     source = _inject_import_statements() + source
@@ -417,15 +457,14 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
             f'Function: {func_name} doesn\'t exist in the Module transformed from AST.'
         )
     # After transform dygraph function into callable_func saved in tmp file,
-    # it lost the global variables from imported statements or defined in source file.
-    # Recovers the necessary variables by `__globals__`.
-    # recover_globals_attribute(dyfunc, callable_func)
+    # it lost the global and closure variables from imported statements or defined
+    # in source file. Recovers the necessary variables by `__globals__` and `__closure__`
     new_fn = types.FunctionType(
         code=callable_func.__code__,
-        globals={**dyfunc.__globals__, **callable_func.__globals__},
+        globals=get_new_globals(dyfunc, callable_func),
         name=func_name,
-        argdefs=dyfunc.__defaults__,
-        closure=dyfunc.__closure__,
+        argdefs=callable_func.__defaults__,
+        closure=get_new_closure(dyfunc, callable_func),
     )
 
     return new_fn, f.name
@@ -443,26 +482,6 @@ def _inject_import_statements():
         "warnings.filterwarnings('ignore', category=DeprecationWarning)",
     ]
     return '\n'.join(import_statements) + '\n'
-
-
-def recover_globals_attribute(src_obj, dst_obj):
-    attr_name = '__globals__'
-
-    src_globals = getattr(src_obj, attr_name, {})
-    dst_globals = getattr(dst_obj, attr_name, {})
-
-    for k, v in src_globals.items():
-        # ignore builtin attribute.
-        if not (k.startswith('__') and k.endswith('__')):
-            dst_globals[k] = v
-
-    # Inject source function closure into destination function globals
-    # Because the destination function is a standalone function, the original
-    # closure of the source function is compiled as LOAD_GLOBAL in the
-    # destination function.
-    src_closure = inspect.getclosurevars(src_obj)
-    for k, v in src_closure.nonlocals.items():
-        dst_globals[k] = v
 
 
 def func_to_source_code(function, dedent=True):
