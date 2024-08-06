@@ -149,7 +149,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
               op_name.compare(paddle::dialect::Broadcast_Op::name()) == 0) ||
               op_name.compare(paddle::dialect::BroadcastOp::name()) == 0 ||
               op_name.compare(paddle::dialect::AllGatherOp::name()) == 0) {
-            return dev_ctx;
+              return dev_ctx;
           }
         } else {
           VLOG(10) << "ring_id " << ring_id
