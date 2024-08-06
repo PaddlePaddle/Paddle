@@ -1728,12 +1728,26 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
 
   return true;
 }
-// bool SetValueWithTensorOpInferSymbolicShape(pir::Operation *op,
-//                                             pir::InferSymbolicShapeContext
-//                                             *infer_context) {
-//   // pass
-//   return true;
-// }
+
+bool SetValueOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  PADDLE_ENFORCE_LT(
+      input_shape_or_data.shape().size(),
+      7,
+      common::errors::InvalidArgument("The SetValueOp's rank of input should "
+                                      "be less than 7, but received %d.",
+                                      input_shape_or_data.shape().size()));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), input_shape_or_data);
+  return true;
+}
+
+bool SetValue_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return SetValueOpInferSymbolicShape(op, infer_context);
+}
 
 // bool TraceOpInferSymbolicShape(pir::Operation *op,
 //                                pir::InferSymbolicShapeContext *infer_context)
