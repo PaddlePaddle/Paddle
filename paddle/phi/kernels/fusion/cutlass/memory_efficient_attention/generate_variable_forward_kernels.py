@@ -226,7 +226,7 @@ void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ct
   }}
   status = fmha.run(ctx.stream());
   if (status != cutlass::Status::kSuccess) {{
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Failed to run CUTLASS Grouped FMHA kernel."));
   }}
 }}
