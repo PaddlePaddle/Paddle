@@ -110,9 +110,6 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
     op({&pat.Tensor("quantize_0"), &pat.Tensor("quantize_1")},
        {&pat.Tensor("out")});
 
-    const std::vector<std::string> permitted_input_names = {
-        "x", "y", "input", "residual_param"};
-
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
       if (mkldnn_data_type != "bfloat16") {
@@ -350,9 +347,6 @@ class CpuBfloat16PatternOne_one : public paddle::drr::DrrPatternBase {
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("quantize_0")}, {&pat.Tensor("out")});
 
-    const std::vector<std::string> permitted_input_names = {
-        "x", "y", "input", "residual_param"};
-
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
       if (mkldnn_data_type != "bfloat16") {
@@ -545,9 +539,6 @@ class CpuBfloat16Pattern2_2 : public paddle::drr::DrrPatternBase {
 
     op({&pat.Tensor("quantize_0"), &pat.Tensor("quantize_1")},
        {&pat.Tensor("out_0"), &pat.Tensor("out_1")});
-
-    const std::vector<std::string> permitted_input_names = {
-        "x", "y", "input", "residual_param"};
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
@@ -802,9 +793,6 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
         &pat.Tensor("quantize_1"),
         &pat.Tensor("quantize_2")},
        {&pat.Tensor("out")});
-
-    const std::vector<std::string> permitted_input_names = {
-        "x", "y", "input", "residual_param"};
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
@@ -1067,9 +1055,6 @@ class CpuBfloat16FusionGruPattern : public paddle::drr::DrrPatternBase {
         &pat.Tensor("out_2"),
         &pat.Tensor("out_3"),
         &pat.Tensor("out_4")});
-
-    const std::vector<std::string> permitted_input_names = {
-        "x", "y", "input", "residual_param"};
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
@@ -1421,9 +1406,6 @@ class CpuBfloat16LayerNormOpPattern : public paddle::drr::DrrPatternBase {
         &pat.Tensor("quantize_2")},
        {&pat.Tensor("out_0"), &pat.Tensor("out_1"), &pat.Tensor("out_2")});
 
-    const std::vector<std::string> permitted_input_names = {
-        "x", "y", "input", "residual_param"};
-
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
       if (mkldnn_data_type != "bfloat16") {
@@ -1703,9 +1685,6 @@ class CpuBfloat16PatternFour_one : public paddle::drr::DrrPatternBase {
         &pat.Tensor("quantize_2"),
         &pat.Tensor("quantize_3")},
        {&pat.Tensor("out")});
-
-    const std::vector<std::string> permitted_input_names = {
-        "x", "y", "input", "residual_param"};
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");

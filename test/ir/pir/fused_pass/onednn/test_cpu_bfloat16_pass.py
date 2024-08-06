@@ -761,5 +761,47 @@ class TestSqueezeOpBf16Pass(PassTest):
         self.check_pass_correct(atol=5e-3, rtol=5e-3)
 
 
+class TestpreluBf16Pass(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[2, 3, 4, 5], dtype='float32'
+                )
+                out = paddle.nn.PReLU(3)(x)
+                out = paddle.assign(out)
+                self.pass_attr_list = [
+                    {'onednn_placement_pass': {}},
+                    {'cpu_bfloat16_placement_pass': {}},
+                    {'cpu_bfloat16_pass': {}},
+                    {'cpu_bfloat16_type_placement_pass': {}},
+                ]
+
+                self.feeds = {
+                    "x": np.random.random((2, 3, 4, 5)).astype("float32"),
+                }
+
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "pd_op.prelu": 0,
+                    "onednn_op.prelu": 1,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+
+
 if __name__ == "__main__":
     unittest.main()
