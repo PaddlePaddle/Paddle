@@ -137,6 +137,11 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
                      pir::StrAttribute::get(
                          ctx, attrs_json.at(3).template get<std::string>())});
 
+  if (op_json->contains(OPDIST_ATTRS)) {
+    Json& op_dist_attr = op_json->at(OPDIST_ATTRS);
+    attributes.insert("op_dist_attr", ReadAttribute(&op_dist_attr))
+  }
+
   if (op_json->contains(OPRESULTS_ATTRS)) {
     Json& other_attrs_json = op_json->at(OPRESULTS_ATTRS);
     PADDLE_ENFORCE_EQ(other_attrs_json.size(),

@@ -171,7 +171,8 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
                                             "persistable",
                                             "stop_gradient",
                                             "trainable",
-                                            "op_callstack" /*no need*/};
+                                            "op_callstack",
+                                            "op_dist_attr" /*no need*/};
 
   for (auto attr : op.attributes()) {
     auto attr_name = attr.first;
@@ -194,6 +195,7 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
   // persistable; array(bool)
   // stop_gradient; array(bool)
   // trainable; array(bool)
+  // op_dist_attr; array(bool)
   Json op_json = Json::object();
   op_json[ID] = PARAMETEROP;
   // serialize opoperands
@@ -215,6 +217,10 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
                        "parameter_name not found in ParameterOp"));
   }
   op_json[ATTRS] = attrs_json;
+
+  if (op.attributes().count("op_dist_attr") > 0) {
+    op_json[OPDIST_ATTRS] = pir::writeAttr(op.attributes().at("op_dist_attr"));
+  }
 
   Json other_attrs_json = Json::array();
   OPTIONAL_CHECK(other_attrs_json, "persistable", 1)
