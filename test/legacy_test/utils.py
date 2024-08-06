@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 from functools import wraps
-from typing import Callable, List, Union
+from typing import Callable, Union
 
 import numpy as np
 
@@ -237,6 +239,7 @@ def get_places(
 ) -> List[PlaceType]:
     places: List[PlaceType] = []
     if paddle.is_compiled_with_cuda() and func(*args, **kwargs):
+
         places.append(paddle.CUDAPlace(0))
     if (
         os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
