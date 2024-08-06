@@ -34,6 +34,8 @@ class TestAdamWFP16XPU(unittest.TestCase):
         )
         if xpu_adamw_moment_dtype == "fp16":
             use_fp16 = True
+        else:
+            use_fp16 = False
         linear = paddle.nn.Linear(10, 10)
         inp = paddle.rand([10, 10], dtype="float32")
         out = linear(inp)
