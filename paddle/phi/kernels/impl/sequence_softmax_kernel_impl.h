@@ -99,7 +99,7 @@ void SequenceSoftmaxKernel(const Context &dev_ctx,
   auto dims = x->dims();
   PADDLE_ENFORCE_EQ(lod.empty(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(X) phi::DenseTensor of SequenceSoftmax "
                         "operator does not contain "
                         "LoD information."));
@@ -108,7 +108,7 @@ void SequenceSoftmaxKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       dims[0],
       static_cast<int64_t>(lod[level].back()),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The first dimension of Input(X) should be equal to the sum of all "
           "sequences' lengths. But the first dimension of Input(X) is %d, "
           "the sum of all sequences' lengths is %d.",
@@ -117,7 +117,7 @@ void SequenceSoftmaxKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       dims[0],
       x->numel(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The width of each timestep in Input(X) of SequenceSoftmax "
           "operator should be 1. But the first dimension of Input(X) is %d, "
           "the number of elements is %d.",

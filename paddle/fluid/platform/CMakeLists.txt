@@ -94,7 +94,7 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context phi common fluid_memory)
+  DEPS device_context phi common)
 
 #fluid_memory depends on device_context, here add deps individually for
 # avoiding cycle dependencies
@@ -103,7 +103,6 @@ cc_library(
   device_context
   SRCS device_context.cc
   DEPS simple_threadpool
-       allocator
        xxhash
        ${STREAM_CALLBACK_DEPS}
        eigen3
@@ -173,27 +172,27 @@ if(WITH_GPU)
     nv_library(
       cuda_graph_with_memory_pool
       SRCS cuda_graph_with_memory_pool.cc
-      DEPS ${DEVICE_EVENT_LIBS} device_event_custom_device device_context
-           allocator phi common)
+      DEPS ${DEVICE_EVENT_LIBS} device_event_custom_device device_context phi
+           common)
   else()
     nv_library(
       cuda_graph_with_memory_pool
       SRCS cuda_graph_with_memory_pool.cc
-      DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi common)
+      DEPS ${DEVICE_EVENT_LIBS} device_context phi common)
   endif()
   nv_test(
     device_context_test
     SRCS device_context_test.cu
-    DEPS device_context gpu_info)
+    DEPS device_context phi common)
   nv_test(
     device_context_test_cuda_graph
     SRCS device_context_test_cuda_graph.cu
-    DEPS device_context gpu_info cuda_graph_with_memory_pool)
+    DEPS device_context phi common cuda_graph_with_memory_pool)
 else()
   cc_library(
     cuda_graph_with_memory_pool
     SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator)
+    DEPS device_context phi common)
 endif()
 
 if(WITH_ROCM)
@@ -218,7 +217,7 @@ if(WITH_ROCM)
   hip_test(
     device_context_test
     SRCS device_context_test.cu
-    DEPS device_context gpu_info)
+    DEPS device_context phi common)
 endif()
 
 cc_library(timer SRCS timer.cc)
@@ -248,12 +247,12 @@ if(WITH_GPU)
   nv_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS phi common gpu_info op_proto_maker shape_inference)
+    DEPS phi common op_proto_maker shape_inference)
 elseif(WITH_ROCM)
   hip_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS phi common gpu_info op_proto_maker shape_inference)
+    DEPS phi common op_proto_maker shape_inference)
 elseif(WITH_XPU)
   cc_library(
     profiler
@@ -299,7 +298,7 @@ if(WITH_GPU)
   nv_test(
     test_limit_gpu_memory
     SRCS test_limit_gpu_memory.cu
-    DEPS gpu_info phi common)
+    DEPS phi common)
 endif()
 
 if(WITH_ROCM)
@@ -310,7 +309,7 @@ if(WITH_ROCM)
   hip_test(
     test_limit_gpu_memory
     SRCS test_limit_gpu_memory.cu
-    DEPS gpu_info phi common)
+    DEPS phi common)
 endif()
 
 if(NOT APPLE AND NOT WIN32)

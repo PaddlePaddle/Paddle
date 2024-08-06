@@ -20,8 +20,8 @@
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace framework {

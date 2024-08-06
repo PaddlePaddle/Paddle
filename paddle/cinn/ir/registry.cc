@@ -16,6 +16,7 @@
 
 #include <map>
 #include <mutex>  // NOLINT
+#include "paddle/common/enforce.h"
 
 namespace cinn::ir {
 struct Registry::Manager {
@@ -50,8 +51,12 @@ Registry::Registry(const std::string &name) : name_(name) {}
   auto *manager = Registry::Manager::Global();
   std::lock_guard<std::mutex> lock(manager->mu);
   if (manager->functions.count(name)) {
-    CHECK(can_override) << "Global PackedFunc[" << name
-                        << "] is already exists";
+    PADDLE_ENFORCE_EQ(
+        can_override,
+        true,
+        ::common::errors::AlreadyExists(
+            "Global PackedFunc[%s] already exists and cannot be overridden.",
+            name));
   }
 
   auto *r = new Registry(name);

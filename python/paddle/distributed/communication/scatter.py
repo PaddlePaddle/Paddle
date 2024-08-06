@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Sequence
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
+
 import numpy as np
 
 import paddle
@@ -25,7 +34,13 @@ from .serialization_utils import (
 )
 
 
-def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
+def scatter(
+    tensor: Tensor,
+    tensor_list: Sequence[Tensor] | None = None,
+    src: int = 0,
+    group: Group | None = None,
+    sync_op: bool = True,
+) -> task | None:
     """
 
     Scatter a tensor to all participators. As shown below, one process is started with a GPU and the source of the scatter
@@ -72,8 +87,11 @@ def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
 
 
 def scatter_object_list(
-    out_object_list, in_object_list=None, src=0, group=None
-):
+    out_object_list: list[Any],
+    in_object_list: list[Any] | None = None,
+    src: int = 0,
+    group: Group | None = None,
+) -> None:
     """
 
     Scatter picklable objects from the source to all others. Similiar to scatter(), but python object can be passed in.

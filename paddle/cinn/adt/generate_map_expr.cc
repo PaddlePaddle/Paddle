@@ -170,7 +170,11 @@ hlir::framework::OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
 bool CollectRewrittenReductionOpStmts(const OpStmt& op_stmt,
                                       List<OpStmt>* ret) {
   const auto& [op, inputs, outputs] = op_stmt.tuple();
-  CHECK(op.Has<const ::pir::Operation*>());
+  PADDLE_ENFORCE_EQ(
+      op.Has<const ::pir::Operation*>(),
+      true,
+      phi::errors::InvalidArgument(
+          "The op should have a value of type ::pir::Operation*"));
   if (GetOpPatternKind(op.Get<const ::pir::Operation*>()) ==
       hlir::framework::OpPatternKind::kReduction) {
     tReduceInit<const ::pir::Operation*> init_op{
@@ -234,7 +238,10 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
   std::vector<std::shared_ptr<IGroup>> ret{};
 
   List<OpStmt> op_stmts = MakeOpStmts(group);
-  CHECK(!op_stmts->empty());
+  PADDLE_ENFORCE_EQ(
+      !op_stmts->empty(),
+      true,
+      phi::errors::InvalidArgument("The op_stmts should not be empty"));
 
   PartitionIGroupOpStmts(op_stmts, [&](const auto& igroup_spec) {
     ret.push_back(MakeIGroup(igroup_spec));
@@ -271,9 +278,12 @@ std::unordered_map<Variable, const Value> MakeSdIterator2Iterator(
   std::unordered_map<Variable, const Value> ret{};
 
   for (std::size_t i = 0; i < igroup.loop_iterators()->size(); ++i) {
-    CHECK(ret.emplace(igroup.loop_iterators()->at(i),
-                      igroup.loop_iterators()->at(i))
-              .second);
+    PADDLE_ENFORCE_EQ(
+        ret.emplace(igroup.loop_iterators()->at(i),
+                    igroup.loop_iterators()->at(i))
+            .second,
+        true,
+        phi::errors::InvalidArgument("The loop iterator should be unique"));
   }
 
   return ret;
@@ -334,7 +344,10 @@ LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
   using Cache = std::unordered_map<Iterator, LoopDescriptor>;
   const auto& sd_iter2sd = std::make_shared<Cache>();
   for (std::size_t i = 0; i < loop_iters->size(); ++i) {
-    CHECK(sd_iter2sd->emplace(loop_iters->at(i), sd->at(i)).second);
+    PADDLE_ENFORCE_EQ(
+        sd_iter2sd->emplace(loop_iters->at(i), sd->at(i)).second,
+        true,
+        phi::errors::InvalidArgument("The loop iterator should be unique"));
   }
   return [sd_iter2sd](const auto& sd_iter) { return sd_iter2sd->at(sd_iter); };
 }
@@ -343,7 +356,10 @@ TreeMerger<Stmt> MakeTreeMerger(const MapIr& map_ir) {
   using Cache = std::unordered_map<OpStmt, LoopIterators>;
   auto cache = std::make_shared<Cache>();
   for (const auto& op_stmt : *(map_ir.op_stmts())) {
-    CHECK(cache->emplace(op_stmt, map_ir.loop_iterators()).second);
+    PADDLE_ENFORCE_EQ(
+        cache->emplace(op_stmt, map_ir.loop_iterators()).second,
+        true,
+        phi::errors::InvalidArgument("The op_stmt should be unique"));
   }
 
   TreeMerger<Stmt> tree_merger{};
@@ -365,7 +381,10 @@ MapStmt<Stmt> MakeMapStmt(const MapIrList& map_irs) {
       1UL,
       ::common::errors::InvalidArgument(
           "The size of stmts should be 1, but got %d.", stmts->size()));
-  CHECK(stmts->at(0).Has<MapStmt<Stmt>>());
+  PADDLE_ENFORCE_EQ(stmts->at(0).Has<MapStmt<Stmt>>(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The stmts should have a value of type MapStmt<Stmt>"));
   return stmts->at(0).Get<MapStmt<Stmt>>();
 }
 
