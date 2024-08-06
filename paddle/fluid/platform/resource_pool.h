@@ -75,7 +75,7 @@ class ResourcePool : public std::enable_shared_from_this<ResourcePool<T>> {
 
  private:
   static std::string TypePtrName() {
-    return platform::demangle(typeid(T *).name());  // NOLINT
+    return common::demangle(typeid(T *).name());  // NOLINT
   }
 
  private:
