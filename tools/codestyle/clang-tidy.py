@@ -427,16 +427,11 @@ def main():
             t.daemon = True
             t.start()
 
-        # # Fill the queue with files.
-        # with open('./tools/codestyle/diff_files.txt', 'r') as f:
-        #     files = f.read().splitlines()
-
-        #     for name in files:
-        #         task_queue.put(name)
-        
         # Fill the queue with files.
-        for name in files:
-            if file_name_re.search(name):
+        with open('./tools/codestyle/diff_files.txt', 'r') as f:
+            files = f.read().splitlines()
+
+            for name in files:
                 task_queue.put(name)
 
         # Wait for all threads to be done.
