@@ -57,6 +57,12 @@ void OperationFactory::RegisterManualOpCreator() {
                               pir::PatternRewriter& rewriter) {
                              return rewriter.Build<pir::CombineOp>(inputs);
                            });
+  RegisterOperationCreator("builtin.split",
+                           [](const std::vector<pir::Value>& inputs,
+                              const pir::AttributeMap& attrs,
+                              pir::PatternRewriter& rewriter) {
+                             return rewriter.Build<pir::SplitOp>(inputs[0]);
+                           });
   RegisterOperationCreator(
       "builtin.slice",
       [](const std::vector<pir::Value>& inputs,

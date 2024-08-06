@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -24,84 +23,184 @@ from paddle.base import core
 paddle.enable_static()
 
 
-class MatmulHorizontalFusePattern(PassTest):
-    r"""
-    q       k      v
-    |       |       |
- matmul    matmul   matmul
-    |       |       |
-    q_out   k_out   v_out
-
-    q       k      v
-    \       |       /
-         matmul
-    /      |       \
-    q_out   k_out   v_out
-    """
+class TestQKVFusePattern(PassTest):
+    r""" """
 
     def is_program_valid(self, program=None):
         return True
 
+    # def sample_program(self):
+    #   bsz = 2
+    #   seq_len = 16
+    #   num_head = 16
+    #   head_dim = 64
+    #   dim = num_head * head_dim
+    #   x_shape = [bsz*seq_len, dim]
+    #   wq_shape = [dim, num_head*head_dim]
+
+    #   with paddle.pir_utils.IrGuard():
+    #     start_prog = paddle.static.Program()
+    #     main_prog = paddle.static.Program()
+    #     with paddle.pir.core.program_guard(
+    #         main_prog, start_prog
+    #     ):
+    #         x = paddle.static.data(
+    #             name='x', shape=x_shape, dtype='float16'
+    #         )
+    #         wq = paddle.static.data(
+    #             name='wq', shape=wq_shape, dtype='float16'
+    #         )
+    #         wk = paddle.static.data(
+    #             name='wk', shape=wq_shape, dtype='float16'
+    #         )
+    #         wv = paddle.static.data(
+    #             name='wv', shape=wq_shape, dtype='float16'
+    #         )
+
+    #         w_qkv = paddle.concat([wq, wk, wv], axis=1)
+    #         x_qkv = paddle.matmul(x, w_qkv)
+    #         xq, xk, xv = paddle.split(x_qkv, num_or_sections=3, axis=-1)
+    #         xq = paddle.assign(xq)
+    #         xk = paddle.assign(xk)
+    #         xv = paddle.assign(xv)
+    #         self.pass_attr_list = [
+    #             {
+    #                 'qkv_fuse_pass': {}
+    #             }
+    #         ]
+    #         self.feeds = {
+    #             "x": np.random.random(x_shape).astype(
+    #                 "float16"
+    #             ),
+    #             "wq": np.random.random(wq_shape).astype(
+    #                 "float16"
+    #             ),
+    #             "wk": np.random.random(wq_shape).astype(
+    #                 "float16"
+    #             ),
+    #             "wv": np.random.random(wq_shape).astype(
+    #                 "float16"
+    #             ),
+    #         }
+    #         self.fetch_list = [xq, xk, xv]
+    #         self.valid_op_map = {
+    #             "pd_op.concat": 1,
+    #             "pd_op.matmul": 1,
+    #             "pd_op.split": 0,
+    #         }
+
+    #         yield [main_prog, start_prog], False
+
     def sample_program(self):
-        for x_shape in [[3, 2]]:
-            for q_shape in [[2, 2]]:
-                for k_shape in [[2, 2]]:
-                    for v_shape in [[2, 2]]:
-                        with paddle.pir_utils.IrGuard():
-                            main_prog = paddle.static.Program()
-                            start_prog = paddle.static.Program()
-                            with paddle.pir.core.program_guard(main_prog, start_prog):
-                                x = paddle.static.data(
-                                    name="x", shape=x_shape, dtype="float32"
-                                )
-                                q = paddle.static.data(
-                                    name="q", shape=q_shape, dtype="float32"
-                                )
-                                k = paddle.static.data(
-                                    name="k", shape=k_shape, dtype="float32"
-                                )
-                                v = paddle.static.data(
-                                    name="v", shape=v_shape, dtype="float32"
-                                )
-                                print(x)
-                                out_q = paddle.matmul(x, q)
-                                out_k = paddle.matmul(x, k)
-                                out_v = paddle.matmul(x, v)
-                                print(out_q)
-                                out_1 = paddle.assign(out_q)
-                                out_2 = paddle.assign(out_k)
-                                out_3 = paddle.assign(out_v)
-                                print("hahahhahahhahahhahahhahahhahha")
-                                self.pass_attr_list = [
-                                    {"matmul_horizontal_fuse_pass": {}}
-                                ]
-                                self.feeds = {
-                                    "x": np.random.random(x_shape).astype("float32"),
-                                    "q": np.random.random(q_shape).astype("float32"),
-                                    "k": np.random.random(k_shape).astype("float32"),
-                                    "v": np.random.random(v_shape).astype("float32"),
-                                }
-                                self.fetch_list = [out_1, out_2, out_3]
-                                # self.fetch_list = [out_1]
-                                self.valid_op_map = {
-                                    "pd_op.matmul": 1,
-                                    # "pd_op.slice": 1,
-                                    # "pd_op.concat": 1,
-                                }
-                                yield [main_prog, start_prog], False
+        bsz = 2
+        seq_len = 16
+        num_head = 16
+        head_dim = 64
+        dim = num_head * head_dim
+        x_shape = [bsz * seq_len, dim]
+        wq_shape = [dim, num_head * head_dim]
+
+        with paddle.pir_utils.IrGuard():
+            start_prog = paddle.static.Program()
+            main_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name="x", shape=x_shape, dtype="float16")
+                wq = paddle.static.data(name="wq", shape=wq_shape, dtype="float16")
+                wk = paddle.static.data(name="wk", shape=wq_shape, dtype="float16")
+                wv = paddle.static.data(name="wv", shape=wq_shape, dtype="float16")
+
+                xq = paddle.matmul(x, wq)
+                xk = paddle.matmul(x, wk)
+                xv = paddle.matmul(x, wv)
+                xq = paddle.assign(xq)
+                xk = paddle.assign(xk)
+                xv = paddle.assign(xv)
+                self.pass_attr_list = [{"matmul_horizontal_fuse_pass": {}}]
+                self.feeds = {
+                    "x": np.random.random(x_shape).astype("float16"),
+                    "wq": np.random.random(wq_shape).astype("float16"),
+                    "wk": np.random.random(wq_shape).astype("float16"),
+                    "wv": np.random.random(wq_shape).astype("float16"),
+                }
+                self.fetch_list = [xq, xk, xv]
+                self.valid_op_map = {
+                    "pd_op.concat": 1,
+                    "pd_op.matmul": 1,
+                    "pd_op.split": 1,
+                }
+
+                yield [main_prog, start_prog], False
+
+    # def sample_program(self):
+    #   bsz = 2
+    #   seq_len = 16
+    #   num_head = 16
+    #   head_dim = 64
+    #   dim = num_head * head_dim
+    #   x_shape = [bsz*seq_len, dim]
+    #   wq_shape = [dim, num_head*head_dim]
+
+    #   with paddle.pir_utils.IrGuard():
+    #     start_prog = paddle.static.Program()
+    #     main_prog = paddle.static.Program()
+    #     with paddle.pir.core.program_guard(
+    #         main_prog, start_prog
+    #     ):
+    #         x = paddle.static.data(
+    #             name='x', shape=x_shape, dtype='float16'
+    #         )
+    #         wq = paddle.static.data(
+    #             name='wq', shape=wq_shape, dtype='float16'
+    #         )
+    #         wk = paddle.static.data(
+    #             name='wk', shape=wq_shape, dtype='float16'
+    #         )
+    #         wv = paddle.static.data(
+    #             name='wv', shape=wq_shape, dtype='float16'
+    #         )
+
+    #         xq = paddle.matmul(x, wq)
+    #         xk = paddle.matmul(x, wk)
+    #         xv = paddle.matmul(x, wv)
+    #         x_qkv = paddle.concat([xq, xk, xv], axis=1)
+    #         x_qkv = paddle.assign(x_qkv)
+    #         # xq = paddle.assign(xq)
+    #         # xk = paddle.assign(xk)
+    #         # xv = paddle.assign(xv)
+    #         self.pass_attr_list = [
+    #             {
+    #                 'qkv_fuse_pass': {}
+    #             }
+    #         ]
+    #         self.feeds = {
+    #             "x": np.random.random(x_shape).astype(
+    #                 "float16"
+    #             ),
+    #             "wq": np.random.random(wq_shape).astype(
+    #                 "float16"
+    #             ),
+    #             "wk": np.random.random(wq_shape).astype(
+    #                 "float16"
+    #             ),
+    #             "wv": np.random.random(wq_shape).astype(
+    #                 "float16"
+    #             ),
+    #         }
+    #         self.fetch_list = [x_qkv]  # [xq, xk, xv]
+    #         self.valid_op_map = {
+    #             "pd_op.concat": 1,
+    #             "pd_op.matmul": 1,
+    #             "pd_op.split": 0,
+    #         }
+
+    #         yield [main_prog, start_prog], False
 
     def setUp(self):
-        if (
-            os.environ.get("FLAGS_CI_both_cpu_and_gpu", "False").lower()
-            in ["1", "true", "on"]
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct()
+        self.check_pass_correct(atol=2e-3, rtol=2e-3)
 
 
 if __name__ == "__main__":

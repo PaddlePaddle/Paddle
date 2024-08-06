@@ -94,8 +94,11 @@ class MatmulHorizontalPattern : public paddle::drr::DrrPatternBase {
     fused_matmul_op({&res.Tensor("x"), &res.Tensor("concat_out")},
                     {&res.Tensor("fused_matmul_out")});
 
-    split_op(
-        {&res.Tensor("fused_matmul_out")},
+    split_op({&res.Tensor("fused_matmul_out")}, {&res.Tensor("split_out")});
+
+    const auto &split_builtin = res.Op("builtin.split");
+    split_builtin(
+        {&res.Tensor("split_out")},
         {&res.Tensor("q_out"), &res.Tensor("k_out"), &res.Tensor("v_out")});
 
     std::cout << "test done" << std::endl;
