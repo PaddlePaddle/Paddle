@@ -487,7 +487,7 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
   for (auto j = 0; j < consumer.size(); ++j) {
     std::cerr << "consumer jj " << consumer[j] << std::endl;
 
-    std::cerr << "22 " << consumer[j].As<ir::Store>()->offset << std::endl;
+    std::cerr << "22 " << consumer[j].As<ir::Store>()->offset() << std::endl;
   }
 
   std::cerr << "test block " << test_block << std::endl;

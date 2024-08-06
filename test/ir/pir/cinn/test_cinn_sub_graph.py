@@ -81,6 +81,15 @@ class CINNSinSubGraphNet(paddle.nn.Layer):
         return out
 
 
+class CINNSumSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, axis=-1):
+        out = paddle.sum(x, axis=-1)
+        return out
+
+
 # class CINNLayerNormSubGraphNet(paddle.nn.Layer):
 #     def __init__(self, hidden_size):
 #         super().__init__()
@@ -140,7 +149,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape = [128, 128, 768]
+        self.shape = [128, 768]
         self.axis = -1
         self.x = paddle.uniform(self.shape, dtype="float32", min=-0.5, max=0.5)
         self.x.stop_gradient = False
@@ -153,11 +162,12 @@ class TestCinnSubGraphBase(unittest.TestCase):
 class TestCinnSin(TestCinnSubGraphBase):
     def train(self, use_cinn):
         paddle.seed(2022)
-        net = CINNSinSubGraphNet()
+        # net = CINNSinSubGraphNet()
+        net = CINNSumSubGraphNet()
 
         input_specs = [
             paddle.static.InputSpec(
-                shape=(128, 128, 768),
+                shape=(128, 768),
                 dtype=paddle.float32,
                 name=None,
                 stop_gradient=False,

@@ -495,7 +495,18 @@ void CodeGenCUDA_Dev::Visit(const ir::Load *op) {
   // overload this visit function to especially deal with the case when it
   // accesses element at a cuda built-in vector, others still resolve to
   // CodeGenC
-  if (!PrintBuiltinVectorAccess(op, op->offset, false)) {
+
+  auto offset = op->offset();
+  if (op->tensor.as_tensor_ref()->buffer.defined()) {
+    // std::cerr << "type " << op->tensor.as_tensor_ref()->buffer->memory_type
+    // << std::endl;
+    if (op->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::GPULocal) {
+      offset = op->index();
+    }
+  }
+
+  if (!PrintBuiltinVectorAccess(op, offset, false)) {
     CodeGenC::Visit(op);
   }
 }
@@ -506,8 +517,20 @@ void CodeGenCUDA_Dev::Visit(const ir::Store *op) {
   // CodeGenC
 
   std::cerr << "code gen " << op->index() << std::endl;
-  std::cerr << "code gen offset " << op->offset << std::endl;
-  if (PrintBuiltinVectorAccess(op, op->offset, true)) {
+
+  std::cerr << "tensor type !! " << op->value << std::endl;
+  std::cerr << "code gen offset " << op->offset() << std::endl;
+
+  auto offset = op->offset();
+  if (op->tensor.as_tensor_ref()->buffer.defined()) {
+    // std::cerr << "type " << op->tensor.as_tensor_ref()->buffer->memory_type
+    // << std::endl;
+    if (op->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::GPULocal) {
+      offset = op->index();
+    }
+  }
+  if (PrintBuiltinVectorAccess(op, offset, true)) {
     str_ += " = ";
     IrPrinter::Visit(op->value);
   } else {

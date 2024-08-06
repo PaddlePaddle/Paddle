@@ -486,7 +486,6 @@ class Vectorizer : public IRMutator<Expr *> {
     }
     *expr = Load::Make(node->tensor,
                        new_indices,
-                       node->offset,
                        node->loop_vars,
                        node->stride_info,
                        node->view_shape);
@@ -524,7 +523,6 @@ class Vectorizer : public IRMutator<Expr *> {
     *expr = Store::Make(node->tensor,
                         node->value,
                         new_indices,
-                        node->offset,
                         node->loop_vars,
                         node->stride_info,
                         node->view_shape);
@@ -710,7 +708,6 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
 
     *expr = Load::Make(node->tensor,
                        node->indices,
-                       node->offset,
                        node->loop_vars,
                        node->stride_info,
                        node->view_shape);
@@ -737,7 +734,6 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     *expr = Store::Make(node->tensor,
                         node->value,
                         node->indices,
-                        node->offset,
                         node->loop_vars,
                         node->stride_info,
                         node->view_shape);

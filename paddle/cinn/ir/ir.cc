@@ -405,7 +405,6 @@ std::vector<const Expr *> IfThenElse::expr_fields() const {
 Expr Store::Make(Expr tensor,
                  Expr value,
                  const std::vector<Expr> &indices,
-                 Expr offset,
                  const std::vector<Expr> &loop_vars,
                  const std::vector<Expr> &stride_info,
                  const std::vector<Expr> &view_shape) {
@@ -421,14 +420,8 @@ Expr Store::Make(Expr tensor,
         tensor->type().ElementOf().with_lanes(node->index().type().lanes()));
   }
 
-  if (offset == Expr(0)) {
-    std::cerr << "call new offset cal \n";
-    node->offset = node->index();
-  } else {
-    node->offset = offset;
-  }
-
   if (view_shape.size() == 0) {
+    std::cerr << "call new offset cal \n";
     node->loop_vars = node->indices;
     node->view_shape = tensor.as_tensor_ref()->shape;
     Expr base = Expr(1);
@@ -444,6 +437,10 @@ Expr Store::Make(Expr tensor,
   }
 
   return Expr(node);
+}
+
+Expr Store::offset() const {
+  return cinn::common::IndiceToAbsOffset(view_shape, loop_vars);
 }
 
 Expr Store::index() const {
@@ -691,7 +688,6 @@ Var &Var::operator=(const _Var_ *x) {
 
 Expr Load::Make(Expr tensor,
                 const std::vector<Expr> &origin_indices,
-                Expr offset,
                 const std::vector<Expr> &loop_vars,
                 const std::vector<Expr> &stride_info,
                 const std::vector<Expr> &view_shape) {
@@ -709,14 +705,8 @@ Expr Load::Make(Expr tensor,
   node->indices = indices;
   node->set_type(node->type());
 
-  if (offset == Expr(0)) {
-    std::cerr << "call init \n";
-    node->offset = node->index();
-  } else {
-    node->offset = offset;
-  }
-
   if (view_shape.size() == 0) {
+    std::cerr << "load call init " << tensor << std::endl;
     node->loop_vars = node->indices;
 
     if (tensor.as_tensor()) {
@@ -784,6 +774,10 @@ Expr Load::index() const {
                           "The indices size of Load node should be 1"));
     return indices[0];
   }
+}
+
+Expr Load::offset() const {
+  return cinn::common::IndiceToAbsOffset(view_shape, loop_vars);
 }
 
 const std::string &Load::name() const {

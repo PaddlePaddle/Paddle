@@ -34,8 +34,8 @@ void DynamicShapeGroupScheduler::Init() {
   InitBuckets();
   tactics_.emplace_back(CreateTileFirstGeneralTactic());
   VLOG(4) << "CreateTileFirstGeneralTactic End";
-  tactics_.emplace_back(CreateComputeInlineTactic());
-  VLOG(4) << "CreateTileCreateComputeInlineTactic End";
+  // tactics_.emplace_back(CreateComputeInlineTactic());
+  // VLOG(4) << "CreateTileCreateComputeInlineTactic End";
 }
 
 void DynamicShapeGroupScheduler::InitBuckets() {

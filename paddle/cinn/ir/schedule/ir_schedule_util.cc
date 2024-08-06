@@ -231,6 +231,7 @@ void ReplaceExpr(Expr* source,
     // If the Var to be replaced is equal to the candidate, we skip it.
     if (candidates[i].is_var() && candidates[i].as_var_ref() == replaced[i])
       continue;
+
     replacing_map[replaced[i]] = candidates[i];
   }
   MappingVarToExprMutator mapper(replacing_map);

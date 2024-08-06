@@ -209,7 +209,7 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
 
     for (auto j = 0; j < consumer.size(); ++j) {
       std::cerr << "split jj " << consumer[j] << std::endl;
-      std::cerr << "offset " << consumer[j].As<ir::Store>()->offset
+      std::cerr << "offset " << consumer[j].As<ir::Store>()->offset()
                 << std::endl;
     }
 

@@ -345,6 +345,13 @@ class LocalAxisVisitor : public ir::IRMutator<> {
         }
         indice = cinn::common::AutoSimplify(indice);
       }
+
+      for (auto &loop_var : store->loop_vars) {
+        for (auto axis : gpu_axis) {
+          optim::ReplaceVarWithExpr(&loop_var, ir::Var(axis), ir::Expr(0));
+        }
+        loop_var = cinn::common::AutoSimplify(loop_var);
+      }
     }
   }
 
@@ -365,6 +372,13 @@ class LocalAxisVisitor : public ir::IRMutator<> {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
         }
         indice = cinn::common::AutoSimplify(indice);
+      }
+
+      for (auto &loop_var : load->loop_vars) {
+        for (auto axis : gpu_axis) {
+          optim::ReplaceVarWithExpr(&loop_var, ir::Var(axis), ir::Expr(0));
+        }
+        loop_var = cinn::common::AutoSimplify(loop_var);
       }
     }
     ir::IRMutator<>::Visit(op, expr);

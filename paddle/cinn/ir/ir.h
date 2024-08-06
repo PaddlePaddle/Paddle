@@ -548,8 +548,6 @@ struct LoadStoreAddrMnger {
 struct Load : public ExprNode<Load>, public LoadStoreAddrMnger {
   std::vector<Expr> indices;
 
-  Expr offset;
-
   std::vector<Expr> loop_vars;
   std::vector<Expr> stride_info;
   std::vector<Expr> view_shape;
@@ -557,9 +555,10 @@ struct Load : public ExprNode<Load>, public LoadStoreAddrMnger {
   //! The abstract offset.
   Expr index() const;
 
+  Expr offset() const;
+
   static Expr Make(Expr tensor,
                    const std::vector<Expr>& indices,
-                   Expr offset = Expr(0),
                    const std::vector<Expr>& loop_vars = {},
                    const std::vector<Expr>& stride_info = {},
                    const std::vector<Expr>& view_shape = {});
@@ -584,7 +583,6 @@ struct Load : public ExprNode<Load>, public LoadStoreAddrMnger {
 struct Store : public ExprNode<Store>, public LoadStoreAddrMnger {
   Expr value;
   std::vector<Expr> indices;
-  Expr offset;
 
   std::vector<Expr> loop_vars;
   std::vector<Expr> stride_info;
@@ -593,7 +591,6 @@ struct Store : public ExprNode<Store>, public LoadStoreAddrMnger {
   static Expr Make(Expr tensor,
                    Expr value,
                    const std::vector<Expr>& indices,
-                   Expr offset = Expr(0),
                    const std::vector<Expr>& loop_vars = {},
                    const std::vector<Expr>& stride_info = {},
                    const std::vector<Expr>& view_shape = {});
@@ -610,6 +607,7 @@ struct Store : public ExprNode<Store>, public LoadStoreAddrMnger {
   Type type() const override;
 
   Expr index() const;
+  Expr offset() const;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Store;
 };

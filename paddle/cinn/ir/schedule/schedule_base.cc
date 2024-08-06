@@ -167,7 +167,7 @@ void ScheduleBase::UpdateMergeOffset(const std::string& block_name,
       auto block_name = expr->As<ir::ScheduleBlockRealize>()
                             ->schedule_block.As<ScheduleBlock>()
                             ->name;
-      if ((block_name != "root") && (block_name != block_name_)) {
+      if ((block_name.substr(0, 4) != "root") && (block_name != block_name_)) {
         std::cerr << "skip here !!!!!!! "
                   << expr->As<ir::ScheduleBlockRealize>()
                          ->schedule_block.As<ScheduleBlock>()
@@ -187,12 +187,7 @@ void ScheduleBase::UpdateMergeOffset(const std::string& block_name,
       UpdateInnerInfo(
           &(node->loop_vars), &(node->view_shape), &(node->stride_info));
 
-      std::cerr << "before merge info !! " << node->offset << std::endl;
-
-      node->offset =
-          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
-
-      std::cerr << "after merge info !! " << node->offset << std::endl;
+      std::cerr << "before merge info !! " << node->offset() << std::endl;
 
       ir::IRMutator<>::Visit(op, expr);
     }
@@ -203,14 +198,11 @@ void ScheduleBase::UpdateMergeOffset(const std::string& block_name,
 
       std::cerr << "load tensor info " << tensor->name << std::endl;
 
-      std::cerr << "before merge load info !! " << node->offset << std::endl;
+      std::cerr << "before merge load info !! " << node->offset() << std::endl;
       UpdateInnerInfo(
           &(node->loop_vars), &(node->view_shape), &(node->stride_info));
 
-      node->offset =
-          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
-
-      std::cerr << "after merge load info !! " << node->offset << std::endl;
+      std::cerr << "after merge load info !! " << node->offset() << std::endl;
 
       ir::IRMutator<>::Visit(op, expr);
     }
@@ -304,7 +296,7 @@ void ScheduleBase::UpdateSplitOffset(const std::string& block_id,
       auto block_name = expr->As<ir::ScheduleBlockRealize>()
                             ->schedule_block.As<ScheduleBlock>()
                             ->name;
-      if ((block_name != "root") && (block_name != block_id_)) {
+      if ((block_name.substr(0, 4) != "root") && (block_name != block_id_)) {
         std::cerr << "skip here !!!!!!! "
                   << expr->As<ir::ScheduleBlockRealize>()
                          ->schedule_block.As<ScheduleBlock>()
@@ -323,10 +315,7 @@ void ScheduleBase::UpdateSplitOffset(const std::string& block_id,
       UpdateInnerInfo(
           &(node->loop_vars), &(node->view_shape), &(node->stride_info));
 
-      node->offset =
-          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
-
-      std::cerr << "after split schedule !!!!!!!!  " << node->offset
+      std::cerr << "after split schedule !!!!!!!!  " << node->offset()
                 << std::endl;
 
       ir::IRMutator<>::Visit(op, expr);
@@ -339,12 +328,10 @@ void ScheduleBase::UpdateSplitOffset(const std::string& block_id,
       UpdateInnerInfo(
           &(node->loop_vars), &(node->view_shape), &(node->stride_info));
 
-      std::cerr << "before load split schedule !!!!!!!!  " << node->offset
+      std::cerr << "before load split schedule !!!!!!!!  " << node->offset()
                 << std::endl;
-      node->offset =
-          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
 
-      std::cerr << "after load split schedule !!!!!!!!" << node->offset
+      std::cerr << "after load split schedule !!!!!!!!" << node->offset()
                 << std::endl;
 
       ir::IRMutator<>::Visit(op, expr);
@@ -432,7 +419,7 @@ void ScheduleBase::UpdateReorderOffset(
       auto block_name = expr->As<ir::ScheduleBlockRealize>()
                             ->schedule_block.As<ScheduleBlock>()
                             ->name;
-      if ((block_name != "root") && (block_name != block_name_)) {
+      if ((block_name.substr(0, 4) != "root") && (block_name != block_name_)) {
         std::cerr << "skip here !!!!!!! "
                   << expr->As<ir::ScheduleBlockRealize>()
                          ->schedule_block.As<ScheduleBlock>()
@@ -451,10 +438,7 @@ void ScheduleBase::UpdateReorderOffset(
       UpdateInnerInfo(
           &(node->loop_vars), &(node->view_shape), &(node->stride_info));
 
-      std::cerr << "after replace " << node->offset << std::endl;
-
-      node->offset =
-          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
+      std::cerr << "after replace " << node->offset() << std::endl;
 
       ir::IRMutator<>::Visit(op, expr);
 
@@ -468,10 +452,7 @@ void ScheduleBase::UpdateReorderOffset(
       UpdateInnerInfo(
           &(node->loop_vars), &(node->view_shape), &(node->stride_info));
 
-      std::cerr << "after replace " << node->offset << std::endl;
-
-      node->offset =
-          cinn::common::IndiceToAbsOffset(node->view_shape, node->loop_vars);
+      std::cerr << "after replace " << node->offset() << std::endl;
 
       std::cerr << "node " << node->index() << std::endl;
 

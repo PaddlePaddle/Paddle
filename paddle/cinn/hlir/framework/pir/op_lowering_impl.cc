@@ -229,7 +229,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
     for (size_t j = 0; j < consumer.size(); ++j) {
       std::cerr << "jj  " << j << "\t" << consumer[j] << std::endl;
-      std::cerr << consumer[j].As<ir::Store>()->offset << std::endl;
+      std::cerr << consumer[j].As<ir::Store>()->offset() << std::endl;
     }
   }
   // =========== CodeGen And Optimizer ================
