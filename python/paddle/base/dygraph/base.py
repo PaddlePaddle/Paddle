@@ -40,7 +40,7 @@ from .tracer import Tracer
 if TYPE_CHECKING:
     from collections import OrderedDict
     from collections.abc import Generator, Sequence
-    from contextlib import AbstractAsyncContextManager
+    from contextlib import AbstractContextManager
     from types import TracebackType
 
     from typing_extensions import Self
