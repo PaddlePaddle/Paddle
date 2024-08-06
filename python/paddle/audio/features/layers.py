@@ -11,14 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from functools import partial
-from typing import Optional, Union
+from typing import TYPE_CHECKING
 
 import paddle
-from paddle import Tensor, nn
+from paddle import nn
 
 from ..functional import compute_fbank_matrix, create_dct, power_to_db
 from ..functional.window import get_window
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 class Spectrogram(nn.Layer):
@@ -60,8 +65,8 @@ class Spectrogram(nn.Layer):
     def __init__(
         self,
         n_fft: int = 512,
-        hop_length: Optional[int] = 512,
-        win_length: Optional[int] = None,
+        hop_length: int | None = 512,
+        win_length: int | None = None,
         window: str = 'hann',
         power: float = 1.0,
         center: bool = True,
@@ -146,17 +151,17 @@ class MelSpectrogram(nn.Layer):
         self,
         sr: int = 22050,
         n_fft: int = 2048,
-        hop_length: Optional[int] = 512,
-        win_length: Optional[int] = None,
+        hop_length: int | None = 512,
+        win_length: int | None = None,
         window: str = 'hann',
         power: float = 2.0,
         center: bool = True,
         pad_mode: str = 'reflect',
         n_mels: int = 64,
         f_min: float = 50.0,
-        f_max: Optional[float] = None,
+        f_max: float | None = None,
         htk: bool = False,
-        norm: Union[str, float] = 'slaney',
+        norm: str | float = 'slaney',
         dtype: str = 'float32',
     ) -> None:
         super().__init__()
@@ -249,20 +254,20 @@ class LogMelSpectrogram(nn.Layer):
         self,
         sr: int = 22050,
         n_fft: int = 512,
-        hop_length: Optional[int] = None,
-        win_length: Optional[int] = None,
+        hop_length: int | None = None,
+        win_length: int | None = None,
         window: str = 'hann',
         power: float = 2.0,
         center: bool = True,
         pad_mode: str = 'reflect',
         n_mels: int = 64,
         f_min: float = 50.0,
-        f_max: Optional[float] = None,
+        f_max: float | None = None,
         htk: bool = False,
-        norm: Union[str, float] = 'slaney',
+        norm: str | float = 'slaney',
         ref_value: float = 1.0,
         amin: float = 1e-10,
-        top_db: Optional[float] = None,
+        top_db: float | None = None,
         dtype: str = 'float32',
     ) -> None:
         super().__init__()
@@ -354,20 +359,20 @@ class MFCC(nn.Layer):
         sr: int = 22050,
         n_mfcc: int = 40,
         n_fft: int = 512,
-        hop_length: Optional[int] = None,
-        win_length: Optional[int] = None,
+        hop_length: int | None = None,
+        win_length: int | None = None,
         window: str = 'hann',
         power: float = 2.0,
         center: bool = True,
         pad_mode: str = 'reflect',
         n_mels: int = 64,
         f_min: float = 50.0,
-        f_max: Optional[float] = None,
+        f_max: float | None = None,
         htk: bool = False,
-        norm: Union[str, float] = 'slaney',
+        norm: str | float = 'slaney',
         ref_value: float = 1.0,
         amin: float = 1e-10,
-        top_db: Optional[float] = None,
+        top_db: float | None = None,
         dtype: str = 'float32',
     ) -> None:
         super().__init__()
