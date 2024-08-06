@@ -330,8 +330,6 @@ SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad) {
   std::vector<int64_t> out_grad_shape = common::vectorize(out_grad.dims());
   auto x_dist_tmp = x.dist_attr();
-  auto x_dims_mapping = x_dist_tmp.dims_mapping();
-  x_dist_tmp.set_dims_mapping(x_dims_mapping);
   auto tmp =
       ReshapeInferSpmd(DistMetaTensor(x.dims(), x_dist_tmp), out_grad_shape);
   // check no shard is needed
@@ -344,7 +342,7 @@ SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x,
       common::errors::InvalidArgument("x should not be re shared: [%s] => [%s]",
                                       x_dist_tmp.to_string(),
                                       x_dist_dst.to_string()));
-  return {{out_grad_dist_dst}, {x_dist_dst}};
+  return {{x_dist_tmp, out_grad_dist_dst}, {x_dist_dst}};
 }
 
 SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x,
