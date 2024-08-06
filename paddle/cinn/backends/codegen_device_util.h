@@ -134,7 +134,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
         },
         [&](common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
-          hip::CodeGenHIP_Dev codegen_dev(
+          hip::CodeGenHipDevice codegen_dev(
               cinn::common::DefaultHygonDcuHipTarget());
           codegen_dev.Compile(ir::LoweredFunc(func));
           shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();

@@ -28,9 +28,9 @@ namespace hip {
  * which finally similar to `__global__ void myadd(float* __restrict__ A, float*
  * __restrict__ B, int n);`
  */
-class CodeGenHIP_Dev : public CodeGenGPU_Dev {
+class CodeGenHipDevice : public CodeGenGpuDev {
  public:
-  explicit CodeGenHIP_Dev(Target target);
+  explicit CodeGenHipDevice(Target target);
   static const std::string& GetSourceHeader();
   void PrintIncludes() override;
 

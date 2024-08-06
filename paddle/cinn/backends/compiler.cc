@@ -280,7 +280,7 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
             SplitDeviceAndHostModule(module);  // NOLINT
         auto& host_module = std::get<0>(_host_module_device_module_);
         auto& device_module = std::get<1>(_host_module_device_module_);
-        hip::CodeGenHIP_Dev codegen(target_);
+        hip::CodeGenHipDevice codegen(target_);
         auto source_code = codegen.Compile(device_module);
         return source_code;
 #else
@@ -356,7 +356,7 @@ void Compiler::RegisterHipModuleSymbol() {
 #ifdef CINN_WITH_HIP
   hiprtc::Compiler compiler;
   std::string source_code =
-      hip::CodeGenHIP_Dev::GetSourceHeader() + device_fn_code_;
+      hip::CodeGenHipDevice::GetSourceHeader() + device_fn_code_;
   std::string hsaco = compiler(source_code);
   PADDLE_ENFORCE_EQ(
       !hsaco.empty(),
@@ -438,7 +438,7 @@ void Compiler::CompileHipModule(const Module& module, const std::string& code) {
     std::string file_path = FLAGS_cinn_debug_custom_code_path;
     source_code = GetFileContent(file_path);
   } else if (code.empty()) {
-    hip::CodeGenHIP_Dev codegen(target_);
+    hip::CodeGenHipDevice codegen(target_);
     source_code = codegen.Compile(device_module);
   } else {
     source_code = code;

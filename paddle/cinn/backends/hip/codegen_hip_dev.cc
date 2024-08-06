@@ -18,15 +18,17 @@ namespace cinn {
 namespace backends {
 namespace hip {
 
-const std::string CodeGenHIP_Dev::source_header_ =  // NOLINT
+const std::string CodeGenHipDevice::source_header_ =  // NOLINT
     R"(#include "cinn_hip_runtime_source.h"
 )";
 
-const std::string &CodeGenHIP_Dev::GetSourceHeader() { return source_header_; }
+const std::string &CodeGenHipDevice::GetSourceHeader() {
+  return source_header_;
+}
 
-CodeGenHIP_Dev::CodeGenHIP_Dev(Target target) : CodeGenGPU_Dev(target) {}
+CodeGenHipDevice::CodeGenHipDevice(Target target) : CodeGenGpuDev(target) {}
 
-void CodeGenHIP_Dev::PrintIncludes() { str_ += GetSourceHeader(); }
+void CodeGenHipDevice::PrintIncludes() { str_ += GetSourceHeader(); }
 
 }  // namespace hip
 }  // namespace backends
