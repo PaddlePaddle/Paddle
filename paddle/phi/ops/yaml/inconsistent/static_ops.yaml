@@ -92,6 +92,7 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
   optional : scale, bias, reserve_space
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : beam_search_decode
   args: (Tensor ids, Tensor scores, int beam_size, int end_id)
@@ -172,15 +173,6 @@
   kernel :
     func : reduce_scatter
     param: [x, nranks]
-
-- op : c_scatter
-  args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
-  output : Tensor(out)
-  infer_meta :
-    func : CScatterInferMeta
-    param : [x, nranks]
-  kernel :
-    func : c_scatter
 
 - op : c_split
   args : (Tensor x, int rank = 0, int nranks = 1, int ring_id = 0, bool use_calc_stream = false, bool use_model_parallel = true)

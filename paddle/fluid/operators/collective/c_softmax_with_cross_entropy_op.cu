@@ -16,9 +16,9 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -155,7 +155,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -166,7 +166,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 

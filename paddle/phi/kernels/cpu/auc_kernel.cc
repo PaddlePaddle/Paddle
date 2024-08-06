@@ -53,11 +53,11 @@ void statAuc(const DenseTensor &label,
           inference_data[i * inference_width + (inference_width - 1)];
       PADDLE_ENFORCE_LE(predict_data,
                         1,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The predict data must less or equal 1."));
       PADDLE_ENFORCE_GE(predict_data,
                         0,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The predict data must gather or equal 0."));
 
       uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
@@ -93,11 +93,11 @@ void statAuc(const DenseTensor &label,
         inference_data[i * inference_width + (inference_width - 1)];
     PADDLE_ENFORCE_LE(predict_data,
                       1,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The predict data must less or equal 1."));
     PADDLE_ENFORCE_GE(predict_data,
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The predict data must gather or equal 0."));
 
     uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
@@ -187,7 +187,7 @@ void AucKernel(const Context &dev_ctx,
         slide_steps);
     PADDLE_ENFORCE_LE(required_bytes,
                       max_bytes,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The number of bytes to be copied %d must be less "
                           "than or equal to the maximum number of bytes %d. ",
                           required_bytes,
@@ -206,7 +206,7 @@ void AucKernel(const Context &dev_ctx,
         slide_steps);
     PADDLE_ENFORCE_LE(required_bytes,
                       max_bytes,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The number of bytes to be copied %d must be less "
                           "than or equal to the maximum number of bytes %d. ",
                           required_bytes,

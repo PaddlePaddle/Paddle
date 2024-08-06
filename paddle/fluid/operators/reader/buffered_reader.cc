@@ -131,7 +131,7 @@ void BufferedReader::ReadAsync(size_t i) {
         PADDLE_ENFORCE_EQ(
             cuda.size(),
             cpu.size(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Input tensor number on GPU and CPU devices are not matched."));
       }
       if (pin_memory_) {
@@ -148,10 +148,9 @@ void BufferedReader::ReadAsync(size_t i) {
         phi::GPUPinnedPlace cuda_pinned_place;
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
-        platform::RecordEvent record_event(
-            "BufferedReader:MemoryCopy",
-            platform::TracerEventType::UserDefined,
-            1);
+        phi::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                      platform::TracerEventType::UserDefined,
+                                      1);
         // NODE(chenweihang): When we use CUDAPinned Memory, we need call
         // cudaHostAlloc, that is a CUDA API, calling CUDA API need load
         // cuda lib into device, it will cost hundreds of MB of GPU memory.
@@ -208,10 +207,9 @@ void BufferedReader::ReadAsync(size_t i) {
             cudaStreamWaitEvent(stream_.get(), events_[i].get(), 0));
 #endif
 
-        platform::RecordEvent record_event(
-            "BufferedReader:MemoryCopy",
-            platform::TracerEventType::UserDefined,
-            1);
+        phi::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                      platform::TracerEventType::UserDefined,
+                                      1);
         for (size_t i = 0; i < cpu.size(); ++i) {
           auto cpu_place = cpu[i].place();
           auto cpu_ptr = cpu[i].data();
@@ -254,7 +252,7 @@ void BufferedReader::ReadAsync(size_t i) {
         PADDLE_ENFORCE_EQ(
             xpu.size(),
             cpu.size(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Input tensor number on XPU and CPU devices are not matched. "
                 "The number on XPU is %d, on CPU is %d",
                 xpu.size(),
@@ -275,9 +273,9 @@ void BufferedReader::ReadAsync(size_t i) {
       r = xpu_stream_wait_event(stream_.get(), events_[i].get());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_stream_wait_event");
 
-      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
-                                         platform::TracerEventType::UserDefined,
-                                         1);
+      phi::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                    platform::TracerEventType::UserDefined,
+                                    1);
       for (size_t i = 0; i < cpu.size(); ++i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data();
@@ -312,7 +310,7 @@ void BufferedReader::ReadAsync(size_t i) {
       } else {
         PADDLE_ENFORCE_EQ(custom_device.size(),
                           cpu.size(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Input tensor number on CustomDevice and CPU "
                               "devices are not matched. "
                               "The number on CustomDevice is %d, on CPU is %d",
@@ -334,9 +332,9 @@ void BufferedReader::ReadAsync(size_t i) {
       phi::DeviceManager::GetDeviceWithPlace(place_)->StreamWaitEvent(
           custom_device_stream_.get(), custom_device_events_[i].get());
 
-      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
-                                         platform::TracerEventType::UserDefined,
-                                         1);
+      phi::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                    platform::TracerEventType::UserDefined,
+                                    1);
       for (size_t i = 0; i < cpu.size(); ++i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data();
@@ -373,7 +371,7 @@ void BufferedReader::StartImpl() {
   ReadTillBufferFullAsync();
 }
 
-void BufferedReader::ReadNextImpl(paddle::framework::LoDTensorArray *out) {
+void BufferedReader::ReadNextImpl(phi::TensorArray *out) {
   if (position_.empty()) {
     out->clear();
     return;

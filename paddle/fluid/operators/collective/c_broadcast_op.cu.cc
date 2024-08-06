@@ -18,8 +18,8 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #endif
 #include "paddle/phi/api/include/tensor.h"
 
@@ -90,7 +90,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     out->set_lod(x->lod());
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }

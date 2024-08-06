@@ -15,8 +15,8 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/init_default_kernel_signature_map.h"
-#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/core/memory/allocation/allocator_strategy.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 COMMON_DECLARE_bool(enable_gpu_memory_usage_log);

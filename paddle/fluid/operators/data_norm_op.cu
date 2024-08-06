@@ -20,10 +20,10 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
@@ -115,17 +115,17 @@ class DataNormKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         2,
-        phi::errors::PreconditionNotMet("The Input dim size should be 2"));
+        common::errors::PreconditionNotMet("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
 
     PADDLE_ENFORCE_LT(0,
                       N,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dims of Input(X) should be greater than 0."));
     PADDLE_ENFORCE_LT(0,
                       C,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dims of Input(X) should be greater than 0."));
 
     const T *batch_size_in =
@@ -174,7 +174,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         2,
-        phi::errors::PreconditionNotMet("The Input dim size should be 2"));
+        common::errors::PreconditionNotMet("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
 
@@ -226,7 +226,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             comm_context_manager.Has(std::to_string(rid)),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "You choose to use new communication library by "
                 "setting environment "
                 "variable FLAGS_dynamic_static_unified_comm True. "
@@ -238,7 +238,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
         PADDLE_ENFORCE_NE(
             comm_ctx,
             nullptr,
-            phi::errors::Unavailable(
+            common::errors::Unavailable(
                 "NCCLCommContext is nullptr, collective op should "
                 "has ring_id attr."));
       } else {
@@ -299,7 +299,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
       }
       phi::backends::gpu::GpuStreamSync(stream);
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU, and need_sync_stats connot be "
           "supported on windows now."));
 #endif

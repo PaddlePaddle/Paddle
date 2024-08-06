@@ -17,9 +17,9 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
@@ -46,7 +46,7 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -57,7 +57,7 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       auto stream = comm_ctx->GetStream();
@@ -82,7 +82,7 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
     }
 #else
     PADDLE_THROW(
-        phi::errors::Unavailable("PaddlePaddle should compile with NCCL."));
+        common::errors::Unavailable("PaddlePaddle should compile with NCCL."));
 #endif
   }
 };

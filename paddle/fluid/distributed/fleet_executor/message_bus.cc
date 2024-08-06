@@ -29,9 +29,10 @@ void MessageBus::Init(
     int64_t rank,
     const std::unordered_map<int64_t, std::string>& rank_to_addr,
     const std::string& addr) {
-  PADDLE_ENFORCE_EQ(is_init_,
-                    false,
-                    phi::errors::AlreadyExists("MessageBus is already init."));
+  PADDLE_ENFORCE_EQ(
+      is_init_,
+      false,
+      common::errors::AlreadyExists("MessageBus is already init."));
   rank_ = rank;
   is_init_ = true;
   rank_to_addr_ = rank_to_addr;
@@ -42,11 +43,11 @@ void MessageBus::Init(
     PADDLE_ENFORCE_EQ(
         addr,
         addr_,
-        phi::errors::Fatal("The current rank's addr is %s, while the "
-                           "message bus's addr is %s, which are different. "
-                           "Init error.",
-                           addr,
-                           addr_));
+        common::errors::Fatal("The current rank's addr is %s, while the "
+                              "message bus's addr is %s, which are different. "
+                              "Init error.",
+                              addr,
+                              addr_));
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
@@ -81,7 +82,7 @@ const std::string& MessageBus::GetAddr(int64_t rank) const {
   PADDLE_ENFORCE_NE(
       rank_to_addr_.find(rank),
       rank_to_addr_.end(),
-      phi::errors::NotFound("Cannot find addr rank id %lld.", rank));
+      common::errors::NotFound("Cannot find addr rank id %lld.", rank));
   return rank_to_addr_.at(rank);
 }
 
@@ -90,7 +91,7 @@ bool MessageBus::Send(int64_t dst_rank,
   PADDLE_ENFORCE_EQ(
       IsInit(),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Using message bus since it has not been initialized."));
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   int retry_time = 0;  // message bus will retry sending for 10 times
@@ -107,7 +108,7 @@ bool MessageBus::Send(int64_t dst_rank,
   VLOG(3) << "Message bus sends inter rank fail after 10 times retries.";
   return false;
 #else
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "Fleet executor does not support sending message between different "
       "ranks when Paddle isn't compiled with distributed for now."));
 #endif
@@ -181,7 +182,7 @@ void MessageBus::ListenPort() {
   PADDLE_ENFORCE_EQ(
       server_.AddService(&message_service_, brpc::SERVER_DOESNT_OWN_SERVICE),
       0,
-      phi::errors::Unavailable("Message bus: init brpc service error."));
+      common::errors::Unavailable("Message bus: init brpc service error."));
 
   // start the server
   const char* ip_for_brpc = addr_.c_str();
@@ -220,7 +221,7 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
   PADDLE_ENFORCE_EQ(
       channel.Init(dst_addr_for_brpc, &options),
       0,
-      phi::errors::Unavailable("Message bus: init brpc channel error."));
+      common::errors::Unavailable("Message bus: init brpc channel error."));
   MessageService_Stub stub(&channel);
   InterceptorResponse response;
   brpc::Controller ctrl;

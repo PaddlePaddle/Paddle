@@ -49,7 +49,7 @@ void SyncBatchNormKernel(const Context& ctx,
                          DenseTensor* reserve_space) {
   PADDLE_ENFORCE_EQ(use_global_stats,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "sync_batch_norm doesn't support "
                         "to set use_global_stats True. Please use batch_norm "
                         "in this case."));
@@ -61,11 +61,11 @@ void SyncBatchNormKernel(const Context& ctx,
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Input dim size should be larger than 1."));
   PADDLE_ENFORCE_LE(x_dims.size(),
                     5,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Input dim size should be less than 6."));
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);

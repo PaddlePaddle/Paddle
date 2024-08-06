@@ -17,9 +17,9 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
@@ -62,7 +62,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
       // Use New Communication Library
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -73,7 +73,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
@@ -93,7 +93,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     }
   }
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
       "parallel op."));
 #endif
@@ -127,7 +127,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
         sendbuff, recvbuff, count, dtype, ncclSum, comm->comm(), stream));
   }
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
       "parallel op."));
 #endif

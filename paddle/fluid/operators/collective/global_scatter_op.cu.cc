@@ -20,9 +20,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
@@ -42,11 +42,11 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     auto global_count_type =
         framework::TransToProtoVarType(global_count->dtype());
     if (local_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in local_count."));
     }
     if (global_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
     auto out = ctx.Output<phi::DenseTensor>("Out");
@@ -78,7 +78,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for global scatter op must be non-negative.",
             ring_id));
 
@@ -94,7 +94,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -105,7 +105,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
@@ -200,11 +200,12 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     }
 
 #else
-    PADDLE_THROW(phi::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+    PADDLE_THROW(
+        common::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
 #else
     PADDLE_THROW(
-        phi::errors::Unavailable("PaddlePaddle should compile with GPU."));
+        common::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };
@@ -222,11 +223,11 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     auto global_count_type =
         framework::TransToProtoVarType(global_count->dtype());
     if (local_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in local_count."));
     }
     if (global_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
     auto out = ctx.Output<phi::DenseTensor>("Out");
@@ -256,7 +257,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for global scatter op must be non-negative.",
             ring_id));
 
@@ -314,11 +315,12 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
 #endif
 
 #else
-    PADDLE_THROW(phi::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+    PADDLE_THROW(
+        common::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
 #else
     PADDLE_THROW(
-        phi::errors::Unavailable("PaddlePaddle should compile with GPU."));
+        common::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };

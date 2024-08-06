@@ -19,7 +19,7 @@
 namespace paddle {
 namespace framework {
 
-void ReaderBase::ReadNext(paddle::framework::LoDTensorArray *out) {
+void ReaderBase::ReadNext(phi::TensorArray *out) {
   std::lock_guard<std::mutex> lock(mu_);
   PADDLE_ENFORCE_EQ(status_,
                     ReaderStatus::kRunning,
