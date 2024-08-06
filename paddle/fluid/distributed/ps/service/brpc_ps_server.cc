@@ -180,7 +180,7 @@ int32_t BrpcPsServer::ReceiveFromPServer(int msg_type,
   }
   PADDLE_ENFORCE_EQ(ar.Cursor(),
                     ar.Finish(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected 'ar.Cursor()' to be equal to 'ar.Finish()', "
                         "but found they are not equal."));
   this->_shuffled_ins->Write(std::move(data));

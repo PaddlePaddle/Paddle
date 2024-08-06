@@ -246,7 +246,7 @@ bool BatchNormOpInferSymbolicShape(
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: the dimension of input "
           "X must greater than or equal to 2. But received: the shape of input "
           "X = [%s], the dimension of input X =[%d]",
@@ -255,7 +255,7 @@ bool BatchNormOpInferSymbolicShape(
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: the dimension of input X "
           "must smaller than or equal to 5. But received: the shape of input X "
           "= [%s], the dimension of input X = [%d]",
@@ -270,7 +270,7 @@ bool BatchNormOpInferSymbolicShape(
     std::vector<symbol::DimExpr> scale_dims = scale_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(scale_dims.size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the dimension of scale must equal to 1."
                           "But received: the dimension of scale is [%d]",
                           scale_dims.size()));
@@ -281,7 +281,7 @@ bool BatchNormOpInferSymbolicShape(
     std::vector<symbol::DimExpr> bias_dims = bias_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(bias_dims.size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the dimension of bias must equal to 1."
                           "But received: the dimension of bias is [%d]",
                           bias_dims.size()));
