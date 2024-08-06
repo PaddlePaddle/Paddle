@@ -102,8 +102,8 @@ class HorizontalFusePattern : public pir::RewritePattern {
   int getOpCntUseX(const pir::Value& x) const {
     // At least two same MatmulOp/GemmEpilogueOp/FcOp using x
     // MatmulOp/GemmEpilogueOp/FcOp mutually exclusive and don't appear at the
-    // same time All ops'attrs should also be exactly equal. if not, fusion is
-    // not performed
+    // same time. All ops'attrs should also be exactly equal. if not, fusion is
+    // not performed.
     int op_cnt_useX = 0;
     pir::Operation* op_example = nullptr;
     std::string op_example_name;
