@@ -112,9 +112,10 @@ struct SimplifyDotUndot {
         pre_index_undot = index_undot_value;
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(pre_index_undot.has_value(),
-                            ::common::errors::InvalidArgument(
-                                "pre_index_undot should not be null"));
+    PADDLE_ENFORCE_EQ(pre_index_undot.has_value(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "pre_index_undot should not be null"));
     const auto& [index_value, undot_dims] =
         pre_index_undot.value()
             .Get<IndexUnDotValue<Value, List<DimExpr>>>()
@@ -328,8 +329,9 @@ struct SimplifyDotDot {
   std::int64_t Product(const List<DimExpr>& dims) {
     std::int64_t ret = 1;
     for (const auto& dim : *dims) {
-      PADDLE_ENFORCE_NOT_NULL(
+      PADDLE_ENFORCE_EQ(
           dim.Has<std::int64_t>(),
+          true,
           ::common::errors::InvalidArgument("dim should have std::int64_t"));
       ret *= dim.Get<std::int64_t>();
     }
@@ -409,9 +411,10 @@ struct SymbolicDim_SimplifyDotUndot {
         pre_index_undot = index_undot_value;
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(pre_index_undot.has_value(),
-                            ::common::errors::InvalidArgument(
-                                "pre_index_undot should not be null"));
+    PADDLE_ENFORCE_EQ(pre_index_undot.has_value(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "pre_index_undot should not be null"));
     const auto& [index_value, undot_dims] =
         pre_index_undot.value()
             .Get<IndexUnDotValue<Value, List<DimExpr>>>()
@@ -459,6 +462,7 @@ struct SymbolicDim_SimplifyDotUndot_DimExpr {
       }
     }
     PADDLE_ENFORCE_NOT_NULL(pre_index_undot.has_value(),
+                            true,
                             ::common::errors::InvalidArgument(
                                 "pre_index_undot should not be null"));
     const auto& [index_value, undot_dims] =
