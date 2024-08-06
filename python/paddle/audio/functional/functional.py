@@ -15,19 +15,18 @@
 from __future__ import annotations
 
 import math
-from typing import (
-    Sequence,
-)
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 import paddle
 from paddle import Tensor
 from paddle.base.framework import Variable
 from paddle.pir import Value
 
+if TYPE_CHECKING:
+    _TensorOrFloat = TypeVar("_TensorOrFloat", Tensor, float)
 
-def hz_to_mel(
-    freq: Tensor | Value | Variable | float, htk: bool = False
-) -> Tensor | Value | Variable | float:
+
+def hz_to_mel(freq: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
     """Convert Hz to Mels.
 
     Args:
@@ -81,9 +80,7 @@ def hz_to_mel(
     return mels
 
 
-def mel_to_hz(
-    mel: Tensor | Value | Variable | float, htk: bool = False
-) -> Tensor | Value | Variable | float:
+def mel_to_hz(mel: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
     """Convert mel bin numbers to frequencies.
 
     Args:
@@ -132,7 +129,7 @@ def mel_frequencies(
     f_max: float = 11025.0,
     htk: bool = False,
     dtype: str = 'float32',
-) -> Tensor | Sequence[Tensor]:
+) -> Tensor:
     """Compute mel frequencies.
 
     Args:
@@ -196,7 +193,7 @@ def compute_fbank_matrix(
     f_min: float = 0.0,
     f_max: float | None = None,
     htk: bool = False,
-    norm: str | float = 'slaney',
+    norm: Literal['slaney'] | float = 'slaney',
     dtype: str = 'float32',
 ) -> Tensor:
     """Compute fbank matrix.
@@ -263,11 +260,11 @@ def compute_fbank_matrix(
 
 
 def power_to_db(
-    spect: Tensor | Variable | Value,
+    spect: Tensor,
     ref_value: float = 1.0,
     amin: float = 1e-10,
     top_db: float | None = 80.0,
-) -> Tensor | Variable | Value:
+) -> Tensor:
     """Convert a power spectrogram (amplitude squared) to decibel (dB) units. The function computes the scaling `10 * log10(x / ref)` in a numerically stable way.
 
     Args:
@@ -309,7 +306,7 @@ def power_to_db(
 def create_dct(
     n_mfcc: int,
     n_mels: int,
-    norm: str | None = 'ortho',
+    norm: Literal['ortho'] | None = 'ortho',
     dtype: str = 'float32',
 ) -> Tensor:
     """Create a discrete cosine transform(DCT) matrix.

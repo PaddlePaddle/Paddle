@@ -14,7 +14,9 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
+
+from typing_extensions import TypeAlias
 
 import paddle
 from paddle import nn
@@ -24,6 +26,20 @@ from ..functional.window import get_window
 
 if TYPE_CHECKING:
     from paddle import Tensor
+
+_WindowLiteral: TypeAlias = Literal[
+    'hamming',
+    'hann',
+    'kaiser',
+    'gaussian',
+    'exponential',
+    'triang',
+    'bohman',
+    'blackman',
+    'cosine',
+    'tukey',
+    'taylor',
+]
 
 
 class Spectrogram(nn.Layer):
@@ -62,15 +78,18 @@ class Spectrogram(nn.Layer):
             >>> feats = feature_extractor(waveform)
     """
 
+    power: float
+    fft_window: Tensor
+
     def __init__(
         self,
         n_fft: int = 512,
         hop_length: int | None = 512,
         win_length: int | None = None,
-        window: str = 'hann',
+        window: _WindowLiteral = 'hann',
         power: float = 1.0,
         center: bool = True,
-        pad_mode: str = 'reflect',
+        pad_mode: Literal['reflect'] = 'reflect',
         dtype: str = 'float32',
     ) -> None:
         super().__init__()
@@ -147,21 +166,28 @@ class MelSpectrogram(nn.Layer):
             >>> feats = feature_extractor(waveform)
     """
 
+    n_mels: int
+    f_min: float
+    f_max: float
+    htk: bool
+    norm: Literal['slaney'] | float
+    fbank_matrix: Tensor
+
     def __init__(
         self,
         sr: int = 22050,
         n_fft: int = 2048,
         hop_length: int | None = 512,
         win_length: int | None = None,
-        window: str = 'hann',
+        window: _WindowLiteral = 'hann',
         power: float = 2.0,
         center: bool = True,
-        pad_mode: str = 'reflect',
+        pad_mode: Literal['reflect'] = 'reflect',
         n_mels: int = 64,
         f_min: float = 50.0,
         f_max: float | None = None,
         htk: bool = False,
-        norm: str | float = 'slaney',
+        norm: Literal['slaney'] | float = 'slaney',
         dtype: str = 'float32',
     ) -> None:
         super().__init__()
@@ -250,21 +276,25 @@ class LogMelSpectrogram(nn.Layer):
             >>> feats = feature_extractor(waveform)
     """
 
+    ref_value: float
+    amin: float
+    top_db: float | None
+
     def __init__(
         self,
         sr: int = 22050,
         n_fft: int = 512,
         hop_length: int | None = None,
         win_length: int | None = None,
-        window: str = 'hann',
+        window: _WindowLiteral = 'hann',
         power: float = 2.0,
         center: bool = True,
-        pad_mode: str = 'reflect',
+        pad_mode: Literal['reflect'] = 'reflect',
         n_mels: int = 64,
         f_min: float = 50.0,
         f_max: float | None = None,
         htk: bool = False,
-        norm: str | float = 'slaney',
+        norm: Literal['slaney'] | float = 'slaney',
         ref_value: float = 1.0,
         amin: float = 1e-10,
         top_db: float | None = None,
@@ -354,6 +384,8 @@ class MFCC(nn.Layer):
             >>> feats = feature_extractor(waveform)
     """
 
+    dct_matrix: Tensor
+
     def __init__(
         self,
         sr: int = 22050,
@@ -361,15 +393,15 @@ class MFCC(nn.Layer):
         n_fft: int = 512,
         hop_length: int | None = None,
         win_length: int | None = None,
-        window: str = 'hann',
+        window: _WindowLiteral = 'hann',
         power: float = 2.0,
         center: bool = True,
-        pad_mode: str = 'reflect',
+        pad_mode: Literal['reflect'] = 'reflect',
         n_mels: int = 64,
         f_min: float = 50.0,
         f_max: float | None = None,
         htk: bool = False,
-        norm: str | float = 'slaney',
+        norm: Literal['slaney'] | float = 'slaney',
         ref_value: float = 1.0,
         amin: float = 1e-10,
         top_db: float | None = None,
