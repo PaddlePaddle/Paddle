@@ -774,7 +774,6 @@ bool MvOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-
 bool SearchsortedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // The shape of output is the same as input `values` (op->operand_source(1))
