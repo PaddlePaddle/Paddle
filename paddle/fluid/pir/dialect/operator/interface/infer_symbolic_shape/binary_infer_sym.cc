@@ -733,7 +733,7 @@ bool MarginCrossEntropyOpInferSymbolicShape(
   size_t logits_rank = logits_dims.size();
   auto axis = logits_rank - 1;
 
-  for (int i = 0; i < logits_rank; i++) {
+  for (size_t i = 0; i < logits_rank; i++) {
     if (i != axis && op->attribute<pir::BoolAttribute>("is_runtime").data()) {
       infer_context->AddBroadcastableCstr(logits_dims[i], labels_dims[i]);
     }
@@ -742,7 +742,7 @@ bool MarginCrossEntropyOpInferSymbolicShape(
   const auto one = symbol::DimExpr{1};
 
   if (labels_dims.size() > 1) {
-    infer_context->AddEqualCstr(logits_dims[axis], labels_dims[1]);
+    infer_context->AddEqualCstr(logits_dims[axis], one);
   }
 
   infer_context->SetShapeOrDataForValue(
@@ -759,7 +759,7 @@ bool MarginCrossEntropyOpInferSymbolicShape(
 
   return true;
 }
-  
+
 // bool PullBoxSparseOpInferSymbolicShape(pir::Operation *op,
 //                                        pir::InferSymbolicShapeContext
 //                                        *infer_context) {
@@ -780,7 +780,7 @@ bool MarginCrossEntropyOpInferSymbolicShape(
 //   // pass
 //   return true;
 // }
-  
+
 bool SearchsortedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // The shape of output is the same as input `values` (op->operand_source(1))
