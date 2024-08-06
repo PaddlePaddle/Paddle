@@ -1207,41 +1207,45 @@ bool MoeOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool MulticlassNMS3OpInferSymbolicShape(
+bool MulticlassNMSOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &bboxes_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &scores_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const auto &rois_num_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2));
-
-  const auto &bboxes_shape = bboxes_shape_or_data.shape();
-  const auto &scores_shape = scores_shape_or_data.shape();
-
-  PADDLE_ENFORCE_EQ(
-      scores_shape.size() == 2 || scores_shape.size() == 3,
-      true,
-      errors::InvalidArgument("The rank of Input(Scores) must be 2 or 3."));
+  const auto &bboxes_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &scores_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &rois_num_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
 
   PADDLE_ENFORCE_EQ(
       bboxes_shape.size(),
       3,
-      errors::InvalidArgument("The rank of Input(BBoxes) must be 3."));
+      common::errors::InvalidArgument(
+          "The rank of Input(BBoxes) must be 3. But received rank = %d",
+          bboxes_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      scores_shape.size() == 2 || scores_shape.size() == 3,
+      true,
+      common::errors::InvalidArgument(
+          "The rank of Input(Scores) must be 2 or 3. But received rank = %d",
+          scores_shape.size()));
 
   if (scores_shape.size() == 3) {
-    PADDLE_ENFORCE_EQ(
-        bboxes_shape[2] == 4 || bboxes_shape[2] == 8 || bboxes_shape[2] == 16 ||
-            bboxes_shape[2] == 24 || bboxes_shape[2] == 32,
-        true,
-        errors::InvalidArgument("The last dimension of Input(BBoxes) must be "
-                                "4, 8, 16, 24, or 32."));
+    PADDLE_ENFORCE_EQ(bboxes_shape[2] == 4 || bboxes_shape[2] == 8 ||
+                          bboxes_shape[2] == 16 || bboxes_shape[2] == 24 ||
+                          bboxes_shape[2] == 32,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The last dimension of Input(BBoxes) must be 4, 8, "
+                          "16, 24, or 32. But received dimension = %d",
+                          bboxes_shape[2]));
     infer_context->AddEqualCstr(bboxes_shape[1], scores_shape[2]);
   } else {
     PADDLE_ENFORCE_EQ(bboxes_shape[2],
                       4,
-                      errors::InvalidArgument(
-                          "The last dimension of Input(BBoxes) must be 4."));
+                      common::errors::InvalidArgument(
+                          "The last dimension of Input(BBoxes) must be 4. But "
+                          "received dimension = %d",
+                          bboxes_shape[2]));
     infer_context->AddEqualCstr(bboxes_shape[1], scores_shape[1]);
   }
 
