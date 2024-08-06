@@ -225,7 +225,7 @@ void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
 }
 
 void InferXPUContext::L3CacheAutotune() {
-  if (l3_autotune_size_ == 0) return;
+  if (l3_autotune_size_ == 0 || l3_blocks_.size() == 0) return;
   if (holder_map_.empty()) {
     l3_plan_.RunAutotune(l3_blocks_, l3_size_);
     auto* plan = l3_plan_.plan();
