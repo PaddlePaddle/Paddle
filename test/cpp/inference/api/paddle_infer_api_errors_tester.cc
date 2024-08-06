@@ -46,7 +46,7 @@ TEST(Status, pd_exception) {
   PADDLE_ENFORCE_EQ(
       status.code(),
       phi::ErrorCode::INVALID_ARGUMENT + 1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Required status.code() should be equal to INVALID_ARGUMENT + 1. "));
   LOG(INFO) << status.error_message();
 }

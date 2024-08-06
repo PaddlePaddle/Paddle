@@ -509,7 +509,7 @@ pir::Type AttrTypeReader::ReadPaddleOperatorType(const std::string type_name,
         paddle::dialect::SparseCsrTensorType>(type_json, ctx);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type %s for parse paddleoperator dialect type",
                        type_name));
     return pir::Type();

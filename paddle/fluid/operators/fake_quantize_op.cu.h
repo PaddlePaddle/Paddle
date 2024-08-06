@@ -18,9 +18,9 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/memory/memcpy.h"
 
 namespace paddle {
 namespace operators {

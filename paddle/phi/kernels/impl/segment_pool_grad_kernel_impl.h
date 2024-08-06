@@ -43,7 +43,7 @@ void SegmentPoolGradKernel(const Context& dev_ctx,
     phi::funcs::SegmentPoolGradFunctor<Context, T, int64_t> pool;
     pool(dev_ctx, x, out, out_grad, segment_ids, x_grad, summed_ids, pooltype);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported index type, Expected int, int64, but got %s.",
         index_type));
   }

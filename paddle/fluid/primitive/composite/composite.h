@@ -856,7 +856,7 @@ std::tuple<Tensor, Tensor> dropout_decomp(
       // train: out = input * mask / ( 1.0 - p )
       if (p.to<float>() == 1.0) {
         // Process p=1. for avoid divide zero error (x*mask/(1.0-p))
-        auto zero = full_scalar<T>(0.0, org_dtype);
+        auto zero = full_like_decomp<T>(x, 0.0, org_dtype, x.place());
         return std::make_tuple(x * zero, cast<T>(zero, DataType::UINT8));
       } else {
         auto ans = (x * mask) / ones_p;
