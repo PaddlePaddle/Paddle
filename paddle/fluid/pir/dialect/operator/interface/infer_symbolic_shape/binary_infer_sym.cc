@@ -510,11 +510,6 @@ bool LuUnpackOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
   int x_rank = x_dims.size();
 
-  const auto &pivots_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> &pivots_dims =
-      pivots_shape_or_data.shape();
-
   bool unpack_ludata =
       op->attribute<pir::BoolAttribute>("unpack_ludata").data();
   bool unpack_pivots =
