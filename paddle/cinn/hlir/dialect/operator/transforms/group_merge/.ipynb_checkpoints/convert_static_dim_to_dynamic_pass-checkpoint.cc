@@ -402,7 +402,7 @@ struct StaticDimToDynamicConverter {
     PADDLE_ENFORCE_EQ(
         map.has_value(),
         true,
-        common::errors::InvalidArgument("map is empty, it should have value"));
+        phi::errors::InvalidArgument("map is empty, it should have value"));
     for (const auto& [constant, symbol] : map.value()) {
       DoEach(constant, symbol);
     }

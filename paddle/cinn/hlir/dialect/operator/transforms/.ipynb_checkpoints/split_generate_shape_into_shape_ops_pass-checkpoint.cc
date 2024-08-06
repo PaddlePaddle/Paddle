@@ -349,10 +349,9 @@ std::vector<symbol::DimExpr> GetOutDimExprs(cinn::dialect::GenerateShapeOp op) {
   for (int i = 0; i < output_dim_exprs.size(); ++i) {
     const auto& attr = output_dim_exprs.at(i);
     const auto& opt_dim_expr = cinn::dialect::ConvertAttributeToDimExpr(attr);
-    PADDLE_ENFORCE_EQ(opt_dim_expr.has_value(),
-                      true,
-                      common::errors::InvalidArgument(
-                          "opt_dim_expr is empty, it should have value"));
+    PADDLE_ENFORCE(opt_dim_expr.has_value(),
+                   phi::errors::InvalidArgument(
+                       "opt_dim_expr is empty, it should have value"));
     ret.emplace_back(opt_dim_expr.value());
   }
   return ret;
