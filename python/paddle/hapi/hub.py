@@ -26,6 +26,7 @@ from paddle.utils.download import get_path_from_url
 
 if TYPE_CHECKING:
     import paddle
+    import builtins
 
 __all__ = []
 
