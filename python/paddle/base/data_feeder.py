@@ -35,7 +35,7 @@ from .framework import (
 )
 
 if TYPE_CHECKING:
-    from paddle._typing import DTypeLike
+    from paddle._typing import DTypeLike, ShapeLike
     from paddle._typing.dtype_like import _DTypeLiteral
 
 __all__ = []
@@ -215,12 +215,21 @@ def check_dtype(
 
 
 def check_shape(
-    shape,
-    op_name,
-    expected_shape_type=(list, tuple, Variable, Value),
-    expected_element_type=(int, Variable, Value),
-    expected_tensor_dtype=('int32', 'int64'),
-):
+    shape: ShapeLike,
+    op_name: str,
+    expected_shape_type: tuple[type[list | tuple | Variable | Value], ...] = (
+        list,
+        tuple,
+        Variable,
+        Value,
+    ),
+    expected_element_type: tuple[type[int | Variable | Value], ...] = (
+        int,
+        Variable,
+        Value,
+    ),
+    expected_tensor_dtype: tuple[_DTypeLiteral, ...] = ('int32', 'int64'),
+) -> None:
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
