@@ -56,6 +56,9 @@ class AllocatorFacade {
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place);
 
+  TEST_API const std::shared_ptr<Allocator>& GetAutoGrowthAllocator(
+      const phi::Place& place);
+
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
   const std::shared_ptr<Allocator>& GetZeroAllocator(const phi::Place& place);

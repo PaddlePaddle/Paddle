@@ -64,7 +64,7 @@ void __launch_bounds__(200) elementwise_mul(const float* __restrict__ A, const f
                         "Failed to open file: %s. Please check if the file "
                         "path is correct and the file is accessible.",
                         cuda_source_name));
-  file << CodeGenCUDA_Dev::GetSourceHeader();
+  file << CodeGenCudaDev::GetSourceHeader();
   file << cuda_source_code;
   file.close();
   LOG(WARNING) << "Output C source to file " << cuda_source_name;

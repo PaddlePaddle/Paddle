@@ -16,6 +16,7 @@ import hashlib
 import os
 import random
 import tempfile
+import time
 from functools import reduce
 
 import numpy as np
@@ -204,7 +205,7 @@ class TestLlamaAuto:
             lr_scheduler.step()
             if step == 2:
                 state_dict = dist_model.state_dict()
-                dist.save_state_dict(state_dict, tmp_ckpt_path)
+                dist.save_state_dict(state_dict, tmp_ckpt_path, async_save=True)
             if step > 2:
                 numpy_array = np.array(loss)
                 array_bytes = numpy_array.tobytes()
@@ -233,6 +234,7 @@ class TestLlamaAuto:
         self.check_program_equal(
             dist_model._engine._pir_dist_main_progs["train"], loaded_model
         )
+        time.sleep(10)
 
         loss_after_load = []
         for step, inputs in enumerate(dist_loader()):
