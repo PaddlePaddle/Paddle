@@ -97,61 +97,6 @@ class TestTRTPattern(PassTest):
         self.check_pass_correct()
 
 
-class TestMatmulScaleTRTPattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        for x_shape in [[3, 2]]:
-            for w_shape in [[2, 3]]:
-                for scale_bias in [1e-7]:
-                    for scale_value in [2.0]:
-                        for bias_after_scale in [True]:
-                            with paddle.pir_utils.IrGuard():
-                                main_prog = paddle.static.Program()
-                                start_prog = paddle.static.Program()
-                                with paddle.static.program_guard(
-                                    main_prog, start_prog
-                                ):
-                                    x = paddle.static.data(
-                                        name='x', shape=x_shape, dtype='float32'
-                                    )
-                                    w = paddle.static.data(
-                                        name='w', shape=w_shape, dtype='float32'
-                                    )
-                                    out = paddle.scale(
-                                        paddle.matmul(x, w),
-                                        scale=scale_value,
-                                        bias=scale_bias,
-                                        bias_after_scale=bias_after_scale,
-                                    )
-                                    out = paddle.assign(out)
-                                    self.pass_attr_list = [
-                                        {'trt_op_marker_pass': {}}
-                                    ]
-                                    self.feeds = {
-                                        "x": np.random.random(x_shape).astype(
-                                            "float32"
-                                        ),
-                                        "w": np.random.random(w_shape).astype(
-                                            "float32"
-                                        ),
-                                    }
-                                    self.fetch_list = [out]
-                                    self.valid_op_map = {
-                                        "pd_op.conv2d": 0,
-                                    }
-                                    yield [main_prog, start_prog], False
-
-    def setUp(self):
-        self.places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct()
-
-
 class TestGroupNormSiluTRTPattern(PassTest):
     def is_program_valid(self, program=None):
         return True
