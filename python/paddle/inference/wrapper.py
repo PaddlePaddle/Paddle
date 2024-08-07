@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import builtins
 import logging
 import os
 
@@ -83,7 +84,7 @@ def convert_to_mixed_precision(
     mixed_precision: PrecisionType,
     backend: PlaceType,
     keep_io_types: bool = True,
-    black_list: set[str] = set(),
+    black_list: builtins.set[str] = set(),
     **kwargs,
 ):
     '''
