@@ -30,7 +30,7 @@ import paddle
 class AttentionBias(ABC):
     @abstractmethod
     def materialize(self, shape, dtype=paddle.float32):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class LowerTriangularMask(AttentionBias):
@@ -119,7 +119,7 @@ class PaddedSeqLenInfo(SeqLenInfo):
         )
 
     def split(self, x, batch_sizes=None):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 @dataclass
