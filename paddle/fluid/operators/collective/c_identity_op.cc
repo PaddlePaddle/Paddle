@@ -17,6 +17,8 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/unary.h"
 
+#include "paddle/common/enforce.h"
+
 namespace paddle::operators {
 
 class CIdentityOp : public framework::OperatorWithKernel {
@@ -24,8 +26,18 @@ class CIdentityOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "c_identity");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "c_identity");
+    PADDLE_ENFORCE_EQ(strides.size(),
+                      2UL,
+                      phi::errors::InvalidArgument(
+                          "The 'strides' attribute in conv2d should be a "
+                          "vector of size 2, but received size %d.",
+                          strides.size()));
+    PADDLE_ENFORCE_EQ(dilations.size(),
+                      2UL,
+                      phi::errors::InvalidArgument(
+                          "The 'dilations' attribute in conv2d should be a "
+                          "vector of size 2, but received size %d.",
+                          dilations.size()));
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
         ring_id,

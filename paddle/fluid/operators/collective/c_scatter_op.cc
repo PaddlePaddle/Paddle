@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_scatter_op.h"
 
+#include "paddle/common/enforce.h"
+
 namespace paddle::operators {
 
 class CScatterOp : public framework::OperatorWithKernel {
@@ -21,8 +23,14 @@ class CScatterOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CScatter");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CScatter");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The input 'X' for CScatter must be provided."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The output 'Out' for CScatter must be provided."));
     int root_id = ctx->Attrs().Get<int>("root");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     int nranks = ctx->Attrs().Get<int>("nranks");
