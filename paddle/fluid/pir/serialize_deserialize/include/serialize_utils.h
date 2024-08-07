@@ -248,7 +248,8 @@ Json writeType(const pir::Type& type) {
     return AttrTypeWriter::WritePaddleDistType(type);
   } else {
     PADDLE_ENFORCE(
-        false, phi::errors::InvalidArgument("Unknown Type %s when write type"));
+        false,
+        common::errors::InvalidArgument("Unknown Type %s when write type"));
   }
   VLOG(8) << "Finish write Type ... ";
 
@@ -270,7 +271,8 @@ Json writeAttr(const pir::Attribute& attr) {
     return AttrTypeWriter::WritePaddleDistAttr(attr);
   } else {
     PADDLE_ENFORCE(
-        false, phi::errors::InvalidArgument("Unknown Attr %s when write attr"));
+        false,
+        common::errors::InvalidArgument("Unknown Attr %s when write attr"));
   }
 
   VLOG(8) << "Finish write attr ... ";
@@ -364,7 +366,7 @@ Json AttrTypeWriter::WriteBuiltInAttr(const pir::Attribute& attr) {
         attr.dyn_cast<pir::StrAttribute>());
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Attr %s when write Buitin dialect attr"));
   }
   return attr_json;
@@ -572,7 +574,7 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
         type.dyn_cast<pir::DenseTensorType>());
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type when write builtin dialect type"));
   }
   return type_json;
@@ -602,7 +604,7 @@ Json AttrTypeWriter::WritePaddleOperatorAttr(const pir::Attribute& attr) {
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s when write paddle.operatordialect attr"));
   }
   return Json::object();
@@ -632,7 +634,7 @@ Json AttrTypeWriter::WritePaddleOperatorType(const pir::Type& type) {
         type.dyn_cast<paddle::dialect::SparseCsrTensorType>());
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type when write paddle.operatordialect type"));
     return Json::object();
   }

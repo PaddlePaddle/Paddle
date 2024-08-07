@@ -172,7 +172,8 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
                                             "stop_gradient",
                                             "trainable",
                                             "op_callstack",
-                                            "op_dist_attr" /*no need*/};
+                                            "op_dist_attr",
+                                            "op_role" /*no need*/};
 
   for (auto attr : op.attributes()) {
     auto attr_name = attr.first;
@@ -223,7 +224,7 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
   }
 
   if (op.attributes().count("op_role") > 0) {
-    op_json["ROLE"] = pir::writeAttr(op.attributes().at("op_role"));
+    op_json["op_role"] = pir::writeAttr(op.attributes().at("op_role"));
   }
 
   Json other_attrs_json = Json::array();
@@ -274,6 +275,15 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
   // serialize attributes
   op_json[ATTRS] = WriteAttributesMapOpinfo(const_cast<pir::Operation*>(&op),
                                             op.attributes());
+
+  if (op.attributes().count("op_dist_attr") > 0) {
+    op_json[OPDIST_ATTRS] = pir::writeAttr(op.attributes().at("op_dist_attr"));
+  }
+
+  if (op.attributes().count("op_role") > 0) {
+    op_json["op_role"] = pir::writeAttr(op.attributes().at("op_role"));
+  }
+
   if (trainable_) {
     op_json[OPRESULTS_ATTRS] = WriteAttributesMapOther(op.attributes());
   }

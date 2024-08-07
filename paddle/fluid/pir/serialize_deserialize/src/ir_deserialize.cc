@@ -226,6 +226,15 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
     attributes = ReadAttributesMap(&attrs_json, &empty_json, attr_patch);
   }
 
+  if (op_json->contains(OPDIST_ATTRS)) {
+    Json& op_dist_attr = op_json->at(OPDIST_ATTRS);
+    attributes.insert({"op_dist_attr", pir::parseAttr(&op_dist_attr)});
+  }
+  if (op_json->contains("op_role")) {
+    Json& op_role_attr = op_json->at("op_role");
+    attributes.insert({"op_role", pir::parseAttr(&op_role_attr)});
+  }
+
   pir::IrContext* ctx_ = pir::IrContext::Instance();
   // prepare opinfo
   pir::OpInfo op_info = ctx_->GetRegisteredOpInfo(op_name);

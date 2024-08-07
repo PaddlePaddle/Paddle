@@ -154,7 +154,7 @@ pir::Attribute deserializeAttrFromJson_scalarAttr(Json* attr_json,
     scalar = phi::Scalar(data);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Invalid tensor data type `", dtype_, "`."));
   }
 
@@ -188,10 +188,13 @@ deserializeAttrFromJson<paddle::dialect::PlaceAttribute, int8_t>(
 paddle::dialect::ProcessMeshAttribute deserializeProcessMeshAttr(
     Json* attr_json, pir::IrContext* ctx) {
   Json data_json = attr_json->at(DATA);
+  VLOG(8) << "deserialize shape";
   std::vector<int64_t> shape =
       data_json.at(0).template get<std::vector<int64_t>>();
+  VLOG(8) << "deserialize process_ids";
   std::vector<int64_t> process_ids =
       data_json.at(1).template get<std::vector<int64_t>>();
+  VLOG(8) << "deserialize dim_names";
   std::vector<std::string> dim_names =
       data_json.at(2).template get<std::vector<std::string>>();
   return paddle::dialect::ProcessMeshAttribute::get(
@@ -204,10 +207,13 @@ paddle::dialect::ProcessMeshAttribute deserializeProcessMeshAttr(
 paddle::dialect::TensorDistAttribute deserializeTensorDistAttr(
     Json* attr_json, pir::IrContext* ctx) {
   Json data_json = attr_json->at(DATA);
+  VLOG(8) << "deserialize ProcessMeshAttr";
   paddle::dialect::ProcessMeshAttribute mesh =
       deserializeProcessMeshAttr(&(data_json.at(0)), ctx);
+  VLOG(8) << "deserialize dims_mapping";
   std::vector<int64_t> dims_mapping =
       data_json.at(1).template get<std::vector<int64_t>>();
+  VLOG(8) << "deserialize partial_status";
   paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
   Json map_json = data_json.at(2);
   for (const auto& item : map_json) {
@@ -238,7 +244,7 @@ pir::Type parseType(Json* type_json) {
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s for parse builtin dialect attr", type_name));
   }
 
@@ -270,7 +276,7 @@ pir::Attribute parseAttr(Json* attr_json) {
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s for parse builtin dialect attr", attr_name));
   }
 
@@ -358,7 +364,7 @@ pir::Attribute AttrTypeReader::ReadBuiltInAttr(const std::string attr_name,
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s for parse builtin dialect attr", attr_name));
   }
   return pir::Attribute();
@@ -385,7 +391,7 @@ pir::Attribute AttrTypeReader::ReadPaddleOperatorAttr(
                                         int8_t>(attr_json, ctx);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Attr %s for parse paddleoperator dialect attr",
                        attr_name));
   }
@@ -416,19 +422,25 @@ pir::Attribute AttrTypeReader::ReadPaddleDistAttr(const std::string attr_name,
 template <typename T>
 T deserializeTypeFromJsonIncludeParseType(Json* type_json,
                                           pir::IrContext* ctx) {
+  VLOG(8) << "parse densetensor ";
   Json data_json = type_json->at(DATA);
   pir::Type dtype = parseType(&(data_json.at(0)));
+  VLOG(8) << "done parse type ";
 
   std::vector<int64_t> dims =
       data_json.at(1).template get<std::vector<int64_t>>();
+  VLOG(8) << "done parse dims ";
   phi::DDim ddim = phi::make_ddim(dims);
   pir::DataLayout data_layout =
       common::StringToDataLayout(data_json.at(2).template get<std::string>());
+  VLOG(8) << "done parse data_layout ";
 
   std::vector<std::vector<size_t>> lod =
       data_json.at(3).template get<std::vector<std::vector<size_t>>>();
+  VLOG(8) << "done parse lod ";
 
   size_t offset = data_json.at(4).get<size_t>();
+  VLOG(8) << "done parse offset ";
   return T::get(ctx, dtype, ddim, data_layout, lod, offset);
 }
 
@@ -528,20 +540,23 @@ template <>
 paddle::dialect::DistDenseTensorType
 deserializeTypeFromJsonIncludeParseType<paddle::dialect::DistDenseTensorType>(
     Json* type_json, pir::IrContext* ctx) {
+  VLOG(8) << "deserialize DistDenseTensorType...";
   Json data_json = type_json->at(DATA);
 
   // deserialize pir::DenseTensorType dense_tensor_type;
+  VLOG(8) << "deserialize DenseTensorType";
   pir::DenseTensorType dense_tensor_type =
       deserializeTypeFromJsonIncludeParseType<pir::DenseTensorType>(
           &(data_json.at(0)), ctx);
-
+  VLOG(8) << "deserialize TensorDistAttribute";
   // deserialize TensorDistAttribute tensor_dist_attr;
   paddle::dialect::TensorDistAttribute tensor_dist_attr =
       deserializeTensorDistAttr(&(data_json.at(1)), ctx);
 
   // deserialize common::DDim local_ddim;
+  VLOG(8) << "deserialize local_ddim";
   std::vector<int64_t> dims =
-      data_json.at(1).template get<std::vector<int64_t>>();
+      data_json.at(2).template get<std::vector<int64_t>>();
   phi::DDim local_ddim = phi::make_ddim(dims);
 
   return paddle::dialect::DistDenseTensorType::get(
@@ -600,7 +615,7 @@ pir::Type AttrTypeReader::ReadBuiltInType(const std::string type_name,
         type_json, ctx);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type %s for parse builtintype", type_name));
     return pir::Type();
   }
@@ -627,7 +642,7 @@ pir::Type AttrTypeReader::ReadPaddleOperatorType(const std::string type_name,
         paddle::dialect::SparseCsrTensorType>(type_json, ctx);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type %s for parse paddleoperator dialect type",
                        type_name));
     return pir::Type();
