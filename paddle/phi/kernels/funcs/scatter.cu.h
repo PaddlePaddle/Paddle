@@ -132,15 +132,15 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
         1,
-        phi::errors::InvalidArgument("index.dims()[1] should be 1 when "
-                                     "index.dims().size() = 2 in scatter_op."
-                                     "But received value is [%d]",
-                                     index.dims()[1]));
+        common::errors::InvalidArgument("index.dims()[1] should be 1 when "
+                                        "index.dims().size() = 2 in scatter_op."
+                                        "But received value is [%d]",
+                                        index.dims()[1]));
   } else {
     PADDLE_ENFORCE_EQ(
         index.dims().size() == 1 || index.dims().size() == 0,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "index.dims().size() should be 0, 1 or 2 in scatter_op."
             "But received value is [%d]",
             index.dims().size()));

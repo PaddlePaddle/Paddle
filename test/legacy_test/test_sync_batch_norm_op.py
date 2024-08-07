@@ -31,6 +31,7 @@ from op_test import OpTest, _set_use_system_allocator, convert_float_to_uint16
 import paddle
 from paddle import base, nn
 from paddle.base import core
+from paddle.base.data_feeder import convert_dtype
 from paddle.base.framework import in_dygraph_mode
 from paddle.pir_utils import test_with_pir_api
 
@@ -110,10 +111,14 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         self.atol = 5e-3
         self.data_dir = tempfile.TemporaryDirectory()
         self.fleet_log_dir = tempfile.TemporaryDirectory()
+        # nn.Conv2d don't have dtype args to set the dtype of weight and bias
+        self.pre_dtype = paddle.get_default_dtype()
+        paddle.set_default_dtype(self.dtype)
 
     def tearDown(self) -> None:
         self.data_dir.cleanup()
         self.fleet_log_dir.cleanup()
+        paddle.set_default_dtype(self.pre_dtype)
 
     def multi_device_run(self, layout, fetch_list, only_forward=False):
         cmds = [
@@ -158,24 +163,31 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     shape=self.dshape,
                     dtype=self.dtype,
                 )
-                data.desc.set_need_check_feed(False)
-                conv = paddle.static.nn.conv2d(
-                    input=data,
-                    num_filters=32,
-                    filter_size=1,
-                    param_attr=base.ParamAttr(name='conv2d_weight'),
+                if not paddle.framework.use_pir_api():
+                    data.desc.set_need_check_feed(False)
+                conv_layer = paddle.nn.Conv2D(
+                    in_channels=data.shape[1],
+                    out_channels=32,
+                    kernel_size=1,
+                    weight_attr=base.ParamAttr(name='conv2d_weight'),
                     bias_attr=False,
-                    use_cudnn=use_cudnn,
                 )
-                bn = paddle.static.nn.batch_norm(
-                    conv,
+                conv_layer._use_cudnn = use_cudnn
+                conv = conv_layer(data)
+                bn = paddle.nn.BatchNorm(
+                    num_channels=conv.shape[1]
+                    if layout == "NCHW"
+                    else conv.shape[3],
                     param_attr=base.ParamAttr(name='bn_scale'),
                     bias_attr=base.ParamAttr(name='bn_bias'),
                     moving_mean_name='bn_moving_mean',
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
                     is_test=only_forward,
-                )
+                    dtype=convert_dtype(self.dtype)
+                    if self.dtype != np.uint16
+                    else "bfloat16",
+                )(conv)
                 if core.is_compiled_with_rocm():
                     bn = paddle.cast(bn, 'float32')
                 else:
@@ -184,10 +196,12 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 out = paddle.sum(sigmoid)
                 if not sync_bn:
                     out = out / core.get_cuda_device_count()
+                ops = base.default_main_program().global_block().ops
                 if not only_forward:
                     sgd_opt = paddle.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)
-        return main, startup, [out, conv, bn]
+                    ops = base.default_main_program().global_block().ops
+        return main, startup, [out, conv, bn, ops]
 
     @prog_scope()
     def _compare(self, place, layout, only_forward):
@@ -230,21 +244,41 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         )
         exe = base.Executor(place)
         exe.run(startup)
-        fetch_names = [v.name for v in outs] + [
-            'bn_moving_mean',
-            'bn_moving_variance',
-            'bn_scale',
-            'bn_bias',
-        ]
-        if not only_forward:
-            others = [
-                'batch_norm_0.tmp_0',
-                'batch_norm_0.tmp_1',
-                'bn_scale@GRAD',
-                'bn_bias@GRAD',
-                'batch_norm_0.tmp_3@GRAD',
-                'conv2d_0.tmp_0@GRAD',
+        (out, conv, bn, ops) = outs
+        fetch_names = [out, conv, bn]
+        if paddle.framework.use_pir_api():
+            fetch_names = fetch_names + [
+                ops[1].result(0),
+                ops[0].result(0),
+                ops[3].result(0),
+                ops[2].result(0),
             ]
+        else:
+            fetch_names = fetch_names + [
+                'bn_moving_mean',
+                'bn_moving_variance',
+                'bn_scale',
+                'bn_bias',
+            ]
+        if not only_forward:
+            if paddle.framework.in_pir_mode():
+                others = [
+                    ops[7].result(0),
+                    ops[7].result(1),
+                    ops[-2].result(0),
+                    ops[-2].result(1),
+                    ops[-2].result(2),
+                    ops[-1].result(1),
+                ]
+            else:
+                others = [
+                    'batch_norm_0.tmp_0',
+                    'batch_norm_0.tmp_1',
+                    'bn_scale@GRAD',
+                    'bn_bias@GRAD',
+                    'batch_norm_0.tmp_3@GRAD',
+                    'conv2d_0.tmp_0@GRAD',
+                ]
             fetch_names += others
         bn_fetches = exe.run(
             program=main, feed={'input': data}, fetch_list=fetch_names
@@ -254,28 +288,47 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         # Multi-GPUs, self.N / core.get_cuda_device_count() per GPU
         assert core.get_cuda_device_count() > 1
 
-        fetch_names = [
-            'bn_moving_mean',
-            'bn_moving_variance',
-            'bn_scale',
-            'bn_bias',
-        ]
-        if not only_forward:
-            others = [
-                'batch_norm_0.tmp_0',
-                'batch_norm_0.tmp_1',
-                'bn_scale@GRAD',
-                'bn_bias@GRAD',
-                'batch_norm_0.tmp_3@GRAD',
-                'conv2d_0.tmp_0@GRAD',
+        if paddle.framework.in_pir_mode():
+            # may be not like this in dist
+            fetch_names = [
+                ops[1].result(0),
+                ops[0].result(0),
+                ops[3].result(0),
+                ops[2].result(0),
             ]
+        else:
+            fetch_names = [
+                'bn_moving_mean',
+                'bn_moving_variance',
+                'bn_scale',
+                'bn_bias',
+            ]
+        if not only_forward:
+            if paddle.framework.in_pir_mode():
+                others = [
+                    ops[7].result(0),
+                    ops[7].result(1),
+                    ops[-2].result(0),
+                    ops[-2].result(1),
+                    ops[-2].result(2),
+                    ops[-1].result(1),
+                ]
+            else:
+                others = [
+                    'batch_norm_0.tmp_0',
+                    'batch_norm_0.tmp_1',
+                    'bn_scale@GRAD',
+                    'bn_bias@GRAD',
+                    'batch_norm_0.tmp_3@GRAD',
+                    'conv2d_0.tmp_0@GRAD',
+                ]
             fetch_names += others
 
         self.multi_device_run(
             layout, fetch_list=fetch_names, only_forward=only_forward
         )
 
-        fetch_names = [v.name for v in outs] + fetch_names
+        fetch_names = [out, conv, bn] + fetch_names
 
         for i in range(1, len(bn_fetches)):
             bn_val = bn_fetches[i]
@@ -291,16 +344,10 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 convert_numpy_array(sync_bn_val),
                 rtol=1e-04,
                 atol=self.atol,
-                err_msg='Output ('
-                + fetch_names[i]
-                + ') has diff. \n'
-                + '\nBN     '
-                + str(bn_val)
-                + '\n'
-                + 'Sync BN '
-                + str(sync_bn_val),
+                err_msg=f"Output ({fetch_names[i]}) has diff. \n\nBN     {bn_val}\nSync BN {sync_bn_val}",
             )
 
+    # @test_with_pir_api
     def test_train(self):
         """Test training."""
         if not core.is_compiled_with_cuda():
@@ -311,6 +358,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
             for layout in ["NHWC", "NCHW"]:
                 self._compare(place, layout, False)
 
+    # @test_with_pir_api
     def test_infer(self):
         """Test inference."""
         if not core.is_compiled_with_cuda():
@@ -336,6 +384,8 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
         self.atol = 5e-3
         self.data_dir = tempfile.TemporaryDirectory()
         self.fleet_log_dir = tempfile.TemporaryDirectory()
+        self.pre_dtype = paddle.get_default_dtype()
+        paddle.set_default_dtype(self.dtype)
 
 
 @unittest.skipIf(
@@ -357,9 +407,12 @@ class TestBF16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
         self.atol = 1e-2
         self.data_dir = tempfile.TemporaryDirectory()
         self.fleet_log_dir = tempfile.TemporaryDirectory()
+        self.pre_dtype = paddle.get_default_dtype()
+        paddle.set_default_dtype(self.dtype)
 
 
 class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         if not core.is_compiled_with_cuda():
             return
@@ -379,7 +432,8 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
             x2 = paddle.static.data(
                 name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
             )
-            x2.desc.set_need_check_feed(False)
+            if not paddle.framework.use_pir_api():
+                x2.desc.set_need_check_feed(False)
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
         cleanup()
 

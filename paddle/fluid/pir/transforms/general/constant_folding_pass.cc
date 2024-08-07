@@ -178,8 +178,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       auto* output_var = scope_->FindVar(output_var_name);
       PADDLE_ENFORCE_NOT_NULL(
           output_var,
-          phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
-                                       output_var_name));
+          common::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                          output_var_name));
 
       if (use_parameter_op) {
         if (output_var->IsType<phi::DenseTensor>()) {
@@ -307,8 +307,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     auto* var = scope_->FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::InvalidArgument("Persistable var [%s] not in scope.",
-                                     var_name));
+        common::errors::InvalidArgument("Persistable var [%s] not in scope.",
+                                        var_name));
     auto from_op =
         builder.Build<Op>(var_name, op->operand_source(index).type());
     if (op->operand_source(index).use_count() > 1) {
@@ -348,7 +348,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                       j, prev_op, builder, rewriter);
               combine_op_inputs.push_back(constant_op->result(0));
             } else {
-              PADDLE_THROW(phi::errors::Fatal(
+              PADDLE_THROW(common::errors::Fatal(
                   "Not support %s before builtin.combine op!",
                   prev_prev_op->name()));
             }
@@ -366,8 +366,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                   i, op, builder, rewriter);
           op_inputs.push_back(constant_op->result(0));
         } else {
-          PADDLE_THROW(phi::errors::Fatal("Not support %s before matched op!",
-                                          prev_op->name()));
+          PADDLE_THROW(common::errors::Fatal(
+              "Not support %s before matched op!", prev_op->name()));
         }
       } else {
         op_inputs.push_back(nullptr);
@@ -454,8 +454,8 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
       std::string output_var_name = output_var_names[i];
       PADDLE_ENFORCE_NOT_NULL(
           scope_->FindVar(output_var_name),
-          phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
-                                       output_var_name));
+          common::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                          output_var_name));
 
       auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
           output_var_name, op->result(i).type());
@@ -479,14 +479,14 @@ class ConstantFoldingPass : public pir::Pass {
     PADDLE_ENFORCE_EQ(
         Has(pir::Pass::kPlaceAttr),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, place attribute is required!"
             "Use Set method to set the place attribute."));
     PADDLE_ENFORCE_EQ(
         Has(pir::Pass::kParamScopeAttr),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
@@ -495,7 +495,7 @@ class ConstantFoldingPass : public pir::Pass {
     scope_ = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
 
     PADDLE_ENFORCE_NOT_NULL(
-        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
+        scope_, common::errors::InvalidArgument("scope can not be nullptr"));
 
     pir::RewritePatternSet ps(context);
 

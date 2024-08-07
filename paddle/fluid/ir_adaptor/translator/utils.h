@@ -99,7 +99,7 @@ inline DataType VarTypeToDataType(
     case paddle::framework::proto::VarType_Type::VarType_Type_PSTRING:
       return DataType::PSTRING;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported proto::VarType_Type `%s` when casting it into DataType.",
           var_type));
   }

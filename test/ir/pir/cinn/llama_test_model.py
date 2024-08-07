@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
 import sys
 from os.path import dirname
-from typing import Optional, Tuple
 
 import paddle
 import paddle.nn.functional as F
@@ -313,13 +314,13 @@ class LlamaAttention(nn.Layer):
     def forward(
         self,
         hidden_states,
-        position_ids: Optional[Tuple[paddle.Tensor]] = None,
-        past_key_value: Optional[Tuple[paddle.Tensor]] = None,
-        attention_mask: Optional[paddle.Tensor] = None,
+        position_ids: tuple[paddle.Tensor] | None = None,
+        past_key_value: tuple[paddle.Tensor] | None = None,
+        attention_mask: paddle.Tensor | None = None,
         output_attentions: bool = False,
         use_cache: bool = False,
-    ) -> Tuple[
-        paddle.Tensor, Optional[paddle.Tensor], Optional[Tuple[paddle.Tensor]]
+    ) -> tuple[
+        paddle.Tensor, paddle.Tensor | None, tuple[paddle.Tensor] | None
     ]:
         """Input shape: Batch x Time x Channel"""
         # [bs, seq_len, num_head * head_dim] -> [seq_len / n, bs, num_head * head_dim] (n is model parallelism)
@@ -398,12 +399,12 @@ class LlamaDecoderLayer(nn.Layer):
     def forward(
         self,
         hidden_states: paddle.Tensor,
-        position_ids: Optional[Tuple[paddle.Tensor]] = None,
-        attention_mask: Optional[paddle.Tensor] = None,
-        output_attentions: Optional[bool] = False,
-        past_key_value: Optional[Tuple[paddle.Tensor]] = None,
-        use_cache: Optional[bool] = False,
-    ) -> Tuple[paddle.Tensor, Optional[Tuple[paddle.Tensor, paddle.Tensor]]]:
+        position_ids: tuple[paddle.Tensor] | None = None,
+        attention_mask: paddle.Tensor | None = None,
+        output_attentions: bool | None = False,
+        past_key_value: tuple[paddle.Tensor] | None = None,
+        use_cache: bool | None = False,
+    ) -> tuple[paddle.Tensor, tuple[paddle.Tensor, paddle.Tensor] | None]:
         """
         Args:
             hidden_states (`paddle.Tensor`): input to the layer of shape `(batch, seq_len, embed_dim)`

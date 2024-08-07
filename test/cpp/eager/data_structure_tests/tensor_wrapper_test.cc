@@ -45,18 +45,18 @@ TEST(TensorWrapper, Basic) {
     PADDLE_ENFORCE_EQ(
         recover_et1.name(),
         std::string("et1@saved"),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Recovered tensor name should be 'et1@saved', but received %s.",
             recover_et1.name().c_str()));
   }
   PADDLE_ENFORCE_EQ(egr::EagerUtils::OutRankInfo(recover_et1).first,
                     egr::EagerUtils::OutRankInfo(et1).first,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The OutRankInfo first element of the recovered tensor "
                         "does not match the original tensor."));
   PADDLE_ENFORCE_EQ(egr::EagerUtils::OutRankInfo(recover_et1).second,
                     egr::EagerUtils::OutRankInfo(et1).second,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The OutRankInfo second element of the recovered "
                         "tensor does not match the original tensor."));
   VLOG(6) << "Test reconstruct";
@@ -83,18 +83,18 @@ TEST(TensorWrapper, Basic) {
     PADDLE_ENFORCE_EQ(
         recover_et2.name(),
         std::string("et2@Saved"),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Recovered tensor name should be 'et2@Saved', but received %s.",
             recover_et2.name().c_str()));
   }
   PADDLE_ENFORCE_EQ(egr::EagerUtils::OutRankInfo(recover_et2).first,
                     egr::EagerUtils::OutRankInfo(et2).first,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The OutRankInfo first element of the recovered tensor "
                         "does not match the original tensor."));
   PADDLE_ENFORCE_EQ(egr::EagerUtils::OutRankInfo(recover_et2).second,
                     egr::EagerUtils::OutRankInfo(et2).second,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The OutRankInfo second element of the recovered "
                         "tensor does not match the original tensor."));
   // Test Raw recover

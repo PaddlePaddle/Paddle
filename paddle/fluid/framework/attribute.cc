@@ -61,7 +61,7 @@ paddle::any GetAttrValue(const Attribute& attr) {
     default:
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported Attribute value type `%s` for phi.",
-          platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
   }
 }
 

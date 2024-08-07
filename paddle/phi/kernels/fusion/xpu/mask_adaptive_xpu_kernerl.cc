@@ -43,8 +43,8 @@ void MaskAdaptiveXPUKernel(const Context& ctx,
     PADDLE_ENFORCE_GT(
         cur_batch_seq_len,
         0,
-        phi::errors::InvalidArgument("cur_batch_seq_len [%d] is less than 0",
-                                     cur_batch_seq_len));
+        common::errors::InvalidArgument("cur_batch_seq_len [%d] is less than 0",
+                                        cur_batch_seq_len));
     cpu_seq_lod.push_back(cpu_seq_lod.back() + cur_batch_seq_len);
     cpu_seq_lens.push_back(cur_batch_seq_len);
   }

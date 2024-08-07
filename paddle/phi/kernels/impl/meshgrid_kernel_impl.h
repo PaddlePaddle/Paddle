@@ -29,7 +29,7 @@ void MeshgridForward(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       ins.size() > 1,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected at least 2 input tensors, but only received d%.",
           ins.size()));
 
@@ -45,7 +45,7 @@ void MeshgridForward(const Context& ctx,
         shape[i] = ins[i]->dims()[0];
         break;
       default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Expected scalar or 1D tensor in the tensor list but got tensor "
             "%d: ",
             i));
@@ -104,7 +104,7 @@ void MeshgridKernel(const Context& ctx,
       MeshgridForward<T, Context, 6>(ctx, inputs, outputs);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Excepted Tensor numbers between 1 and 6, but only received d% .",
           rank));
   }

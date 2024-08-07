@@ -76,7 +76,7 @@ struct DataRecord {
       split(line, ',', &data);
       PADDLE_ENFORCE_EQ(data.size(),
                         static_cast<size_t>(8),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The size of data should be euqal to 8. "));
       // load src_word
       std::vector<int64_t> src_word_data;
