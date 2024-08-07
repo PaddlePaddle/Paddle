@@ -183,7 +183,7 @@ def list(
     repo_dir: str,
     source: _Source = 'github',
     force_reload: bool = False,
-) -> list[str]:
+) -> builtins.list[str]:
     r"""
     List all entrypoints available in `github` hubconf.
 
