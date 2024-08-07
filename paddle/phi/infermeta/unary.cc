@@ -155,6 +155,32 @@ void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(dim);
 }
 
+void AnchorGeneratorInferMeta(const MetaTensor& input,
+                              const std::vector<float>& anchor_sizes,
+                              const std::vector<float>& aspect_ratios,
+                              const std::vector<float>& variances,
+                              const std::vector<float>& stride,
+                              float offset,
+                              MetaTensor* anchors,
+                              MetaTensor* variances_out) {
+  const auto& input_dims = input.dims();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("The layout of input is NCHW."));
+
+  size_t num_anchors = aspect_ratios.size() * anchor_sizes.size();
+  std::vector<int64_t> dim_vec(4);
+  dim_vec[0] = input_dims[2];
+  dim_vec[1] = input_dims[3];
+  dim_vec[2] = static_cast<int64_t>(num_anchors);
+  dim_vec[3] = 4;
+  anchors->set_dims(common::make_ddim(dim_vec));
+  anchors->set_dtype(input.dtype());
+  variances_out->set_dims(common::make_ddim(dim_vec));
+  variances_out->set_dtype(input.dtype());
+}
+
 void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(phi::DataType::INT64);
   out->set_dims(common::make_ddim({1}));
@@ -3894,14 +3920,14 @@ void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
       axis_data.size(),
       1,
       phi::errors::InvalidArgument(
-          "The size of axis must be 1 when the Input(X) is LoDTensorArray, "
+          "The size of axis must be 1 when the Input(X) is phi::TensorArray, "
           "but received %d.",
           axis_data.size()));
   PADDLE_ENFORCE_EQ(
       axis_data[0],
       0,
       phi::errors::InvalidArgument("The value of axis should be 1 when "
-                                   "the Input(X) is LoDTensorArray, "
+                                   "the Input(X) is phi::TensorArray, "
                                    "but received %d.",
                                    axis_data[0]));
 }

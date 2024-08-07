@@ -120,7 +120,7 @@ int HIPBackendAPI::get_device_property(DeviceProperty device_property,
     }
     default:
       PADDLE_THROW(
-          phi::errors::InvalidArgument("Not supported device property!"));
+          ::common::errors::InvalidArgument("Not supported device property!"));
   }
   return rv;
 }

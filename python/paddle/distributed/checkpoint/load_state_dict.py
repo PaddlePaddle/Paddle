@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import os
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -27,18 +29,22 @@ from .utils import (
     flatten_state_dict,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.distributed.collective import Group
+
 
 @dataclass(frozen=True)
 class ReadItem:
     local_tensor_index: LocalTensorIndex
     rank: int
     dtype: str
-    cur_offset: Tuple[int]
-    storage_offset: Tuple[int]
-    lengths: Tuple[int]
+    cur_offset: tuple[int, ...]
+    storage_offset: tuple[int, ...]
+    lengths: tuple[int, ...]
 
 
-PATH_TO_CHECKPOINT_FILES: Dict[str, Tuple[list, list]] = {}
+PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list[str], list[str]]] = {}
 
 
 def get_checkpoint_files(path, use_cache=True):
@@ -392,10 +398,10 @@ def get_read_items(path, state_dict, process_group, use_dist):
 
 
 def load_state_dict(
-    state_dict,
-    path,
-    process_group=None,
-    coordinator_rank=0,
+    state_dict: dict[str, Tensor],
+    path: str,
+    process_group: Group | None = None,
+    coordinator_rank: int = 0,
 ) -> None:
     """
     Load the state_dict inplace from a checkpoint path.
@@ -522,6 +528,7 @@ def load_state_dict(
                 assert (
                     item.local_tensor_index.tensor_key in flat_state_dict
                 ), f"item:{item}, state_dict:{flat_state_dict}"
+
                 cur_local_tensor = (
                     flat_state_dict[
                         item.local_tensor_index.tensor_key
@@ -532,6 +539,7 @@ def load_state_dict(
                     ].is_dist()
                     else flat_state_dict[item.local_tensor_index.tensor_key]
                 )
+
                 cur_offsets = item.cur_offset
                 cur_lengths = item.lengths
                 cur_ends = [
@@ -549,23 +557,26 @@ def load_state_dict(
                 else:
                     cur_chunk_tensor = cur_local_tensor
             else:
+                # Why we use item.dtype: In static mode, the state_dict maybe incomplete in pp, the dtype is stored in advance.
                 cur_chunk_tensor = paddle.zeros(
                     item.lengths,
                     item.dtype,
                 )
 
+            # Src_rank represents the rank of data read from ckpt, item_rank is the rank of the parameter of the data to be loaded.
             if src_rank == item.rank:
                 if src_rank == paddle.distributed.get_rank():
-                    # assign value locally
+                    # Assign value locally: in the case of src_rank is cur_rank, it means that the ckpt and the parameters to be loaded are both in the current node.
                     paddle.assign(storage_chunk_tensor, cur_chunk_tensor)
             else:
-                # assign value remotely
+                # Assign value remotely: src_rank broadcasts the ckpt, and the parameters to be loaded receive the data broadcast by src_rank.
                 if src_rank == paddle.distributed.get_rank():
                     storage_chunk_tensor = storage_chunk_tensor.contiguous()
                     paddle.distributed.broadcast(
                         storage_chunk_tensor, src=src_rank, group=process_group
                     )
                 else:
+                    # The memory hold by cur_chunk_tensor may be non-contiguous, and the broadcast API does not support this type of tensor.
                     tmp_tensor = paddle.assign(cur_chunk_tensor)
                     paddle.distributed.broadcast(
                         tmp_tensor, src=src_rank, group=process_group
@@ -574,4 +585,7 @@ def load_state_dict(
 
         for k, v in flat_state_dict.items():
             if k in state_dict_in_cpu:
-                state_dict[k] = v.cpu()
+                value = state_dict
+                for key in mapping[k]:
+                    value = value[key]
+                paddle.assign(v.cpu(), value)

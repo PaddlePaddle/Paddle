@@ -27,17 +27,30 @@ StmtPattern<BackendStage> ConvertToStmtPattern(
     const PatternContent<BackendStage>& content) {
   const auto& kind = GetOpPatternKind(content.op);
   if (kind == hlir::framework::kReduction) {
-    CHECK(content.expr.has_value());
+    PADDLE_ENFORCE_EQ(
+        content.expr.has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "The content.expr should have value in ConvertToStmtPattern."));
     return ReducePattern<BackendStage>({content.op},
                                        ReduceOp(content.expr.value()));
   } else if (kind == hlir::framework::kElementWise ||
              kind == hlir::framework::kBroadcast ||
              kind == hlir::framework::kInjective) {
-    CHECK(content.expr.has_value());
+    PADDLE_ENFORCE_EQ(
+        content.expr.has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "The content.expr should have value in ConvertToStmtPattern."));
     return TrivialPattern<BackendStage>(
         {content.op}, content.op, TrivialOp(content.expr.value()));
   } else {
-    CHECK(false);
+    PADDLE_ENFORCE_EQ(
+        false,
+        true,
+        phi::errors::InvalidArgument(
+            "The content.op should be one of the following kinds: "
+            "kReduction, kElementWise, kBroadcast, kInjective."));
     return UnsupportPattern<BackendStage>({content.op});
   }
 }
@@ -249,7 +262,11 @@ struct IrExprGetter {
 
   std::vector<ir::Expr> operator()(
       const UnsupportPattern<BackendStage>& pattern) {
-    CHECK(false) << "Not Implemented.";
+    PADDLE_ENFORCE_EQ(
+        false,
+        true,
+        phi::errors::InvalidArgument(
+            "The pattern is unsupported which leads to an error."));
   }
 };
 
@@ -354,7 +371,11 @@ std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
       }
     }
   }
-  CHECK_EQ(result.size(), op_exprs.size());
+  PADDLE_ENFORCE_EQ(
+      result.size(),
+      op_exprs.size(),
+      phi::errors::InvalidArgument(
+          "Required result.size() should be equal to op_exprs.size(). "));
   std::vector<ir::Expr> sorted_result;
   for (const auto& op : result) {
     sorted_result.push_back(*op);

@@ -118,7 +118,7 @@ bool TestMain(const phi::Place &place,
   PADDLE_ENFORCE_EQ(
       &out_tensor,
       input_names[0].tensor,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input and output vars should share tensor for In-place test"));
 
   // compare results

@@ -77,19 +77,19 @@ static void RunKernelFunc(
         auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
         PADDLE_ENFORCE_NE(vec_x.empty(),
                           true,
-                          phi::errors::NotFound(
+                          common::errors::NotFound(
                               "Input vector<tensor> (%s) is empty.", in_name));
         for (size_t i = 0; i < vec_x.size(); ++i) {
           auto* x = vec_x[i];
           PADDLE_ENFORCE_NOT_NULL(
               x,
-              phi::errors::NotFound(
+              common::errors::NotFound(
                   "The %d-th tensor in input vector<tensor> (%s) is nullptr.",
                   i,
                   in_name));
           PADDLE_ENFORCE_EQ(x->IsInitialized(),
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "The %d-th tensor in input vector<tensor> (%s) "
                                 "is not initialized.",
                                 i,
@@ -101,9 +101,9 @@ static void RunKernelFunc(
       } else {  // optional vector<Tensor> inputs.
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
-            phi::errors::NotFound("Your custom operator's KernelFunc cannot "
-                                  "find input parameter `%s`",
-                                  in_name));
+            common::errors::NotFound("Your custom operator's KernelFunc cannot "
+                                     "find input parameter `%s`",
+                                     in_name));
         VLOG(3) << "Custom Operator: KernelFunc's vector input " << in_name
                 << " is optional dtype with None input";
         // NOTE(HongyuJia): In dygraph mode, we can not distinguish Tensor and
@@ -118,11 +118,12 @@ static void RunKernelFunc(
       if (ctx.HasInput(in_name)) {  // general Tensor inputs
         auto* x = ctx.Input<phi::DenseTensor>(in_name);
         PADDLE_ENFORCE_NOT_NULL(
-            x, phi::errors::NotFound("Input tensor (%s) is nullptr.", in_name));
+            x,
+            common::errors::NotFound("Input tensor (%s) is nullptr.", in_name));
         PADDLE_ENFORCE_EQ(
             x->IsInitialized(),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Input tensor (%s) is not initialized.", in_name));
         paddle::Tensor custom_in;
         custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
@@ -141,9 +142,9 @@ static void RunKernelFunc(
       } else {  // optional Tensor inputs
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
-            phi::errors::NotFound("Your custom operator's KernelFunc cannot "
-                                  "find input parameter `%s`",
-                                  in_name));
+            common::errors::NotFound("Your custom operator's KernelFunc cannot "
+                                     "find input parameter `%s`",
+                                     in_name));
         VLOG(3) << "Custom Operator: KernelFunc's input " << in_name
                 << " is optional dtype with None input";
         kernel_ctx.EmplaceBackInput(paddle::Tensor());
@@ -174,7 +175,7 @@ static void RunKernelFunc(
     } else if (attr_type_str == "std::vector<std::string>") {
       kernel_ctx.EmplaceBackAttr(ctx.Attr<std::vector<std::string>>(attr_name));
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -194,7 +195,7 @@ static void RunKernelFunc(
             out_name)) {  // general/inplace vector<Tensor> outputs
       PADDLE_ENFORCE(
           !inplace_map.empty() || (i == 0UL && outputs.size() == 1UL),
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "If custom operator's outputs contains `paddle::Vec()` type "
               "without setting InplaceMap, it only can hold one output."));
       auto vec_out = ctx.MultiOutput<phi::DenseTensor>(out_name);
@@ -202,7 +203,7 @@ static void RunKernelFunc(
       if (vec_out.empty()) {
         PADDLE_ENFORCE(
             detail::IsOptionalVar(out_name) && !inplace_map.empty(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator couldn't find custom output for name %s. If "
                 "you "
                 "are using inplace optional inputs & outputs, please check "
@@ -223,7 +224,7 @@ static void RunKernelFunc(
         auto* out = vec_out[j];
         PADDLE_ENFORCE_NOT_NULL(
             out,
-            phi::errors::NotFound(
+            common::errors::NotFound(
                 "The %d-th tensor in output vector<tensor> (%s) is nullptr.",
                 j,
                 out_name));
@@ -239,7 +240,7 @@ static void RunKernelFunc(
       if (!ctx.HasOutput(out_name)) {
         PADDLE_ENFORCE(
             detail::IsOptionalVar(out_name) && !inplace_map.empty(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator couldn't find custom output for name %s. If "
                 "you "
                 "are using inplace optional inputs & outputs, please check "
@@ -258,7 +259,7 @@ static void RunKernelFunc(
       auto* out = ctx.Output<phi::DenseTensor>(out_name);
       PADDLE_ENFORCE_NOT_NULL(
           out,
-          phi::errors::NotFound("Output tensor (%s) is nullptr.", out_name));
+          common::errors::NotFound("Output tensor (%s) is nullptr.", out_name));
       true_out_ptrs.emplace_back(out);
       paddle::Tensor custom_out;
       // here only can copy the output tensor into context
@@ -287,7 +288,7 @@ static void RunKernelFunc(
     PADDLE_ENFORCE_EQ(
         true_out_ptrs.size(),
         calc_outs->size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of element in custom operator outputs is wrong, "
             "expected contains %d Tensors, but actually contains %d "
             "Tensors.",
@@ -301,7 +302,7 @@ static void RunKernelFunc(
       }
       PADDLE_ENFORCE(
           true_out != nullptr && calc_outs->at(i).defined(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The returned Tensor is not defined in the KernelFn or custom "
               "operator passes wrong output in static mode."));
       auto calc_out =
@@ -322,9 +323,9 @@ static void RunKernelFunc(
   } catch (platform::EnforceNotMet& exception) {
     throw exception;
   } catch (std::exception& ex) {
-    PADDLE_THROW(phi::errors::External("%s", ex.what()));
+    PADDLE_THROW(common::errors::External("%s", ex.what()));
   } catch (...) {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Custom operator raises an unknown exception in runtime."));
   }
 }
@@ -338,7 +339,7 @@ static void RunDefaultInferShapeFunc(
     PADDLE_ENFORCE_EQ(
         inputs.size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple inputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the InferShapeFn. "
@@ -349,7 +350,7 @@ static void RunDefaultInferShapeFunc(
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple outputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the InferShapeFn. "
@@ -364,7 +365,7 @@ static void RunDefaultInferShapeFunc(
     PADDLE_ENFORCE_EQ(
         inplace_map.size(),
         outputs.size(),
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator uses `SetInplaceMap` without setting the "
             "InferShapeFn. However, `Outputs` size = %d does not match the "
             "`InplaceMap` size = %d. Please check `SetInplaceMap` again or set "
@@ -378,7 +379,7 @@ static void RunDefaultInferShapeFunc(
         if (!ctx->HasOutputs(pair.second)) {
           PADDLE_ENFORCE(
               detail::IsOptionalVar(pair.second),
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Custom operator couldn't find custom output name for %s. If "
                   "you are using inplace optional inputs & outputs, please "
                   "check "
@@ -396,7 +397,7 @@ static void RunDefaultInferShapeFunc(
         if (!ctx->HasOutput(pair.second)) {
           PADDLE_ENFORCE(
               detail::IsOptionalVar(pair.second),
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Custom operator couldn't find custom output name for %s. If "
                   "you are using inplace optional inputs & outputs, please "
                   "check "
@@ -442,9 +443,9 @@ static void RunInferShapeFunc(
       } else {  // optional inputs, `vec_shape` is empty
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
-            phi::errors::NotFound("Your custom operator's InferShapeFunc "
-                                  "cannot find input parameter `%s`",
-                                  in_name));
+            common::errors::NotFound("Your custom operator's InferShapeFunc "
+                                     "cannot find input parameter `%s`",
+                                     in_name));
         VLOG(3) << "Custom Operator: InferShapeFunc's vector input " << in_name
                 << " is optional dtype with None input";
       }
@@ -456,9 +457,9 @@ static void RunInferShapeFunc(
       } else {  // optional inputs
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
-            phi::errors::NotFound("Your custom operator's InferShapeFunc "
-                                  "cannot find input parameter `%s`",
-                                  in_name));
+            common::errors::NotFound("Your custom operator's InferShapeFunc "
+                                     "cannot find input parameter `%s`",
+                                     in_name));
         input_shapes.emplace_back(std::vector<int64_t>());
         VLOG(3) << "Custom Operator: InferShapeFunc's input " << in_name
                 << " is optional dtype with None input";
@@ -495,7 +496,7 @@ static void RunInferShapeFunc(
       custom_attrs.emplace_back(
           ctx->Attrs().Get<std::vector<std::string>>(attr_name));
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -511,7 +512,7 @@ static void RunInferShapeFunc(
   if (inplace_map.empty()) {
     PADDLE_ENFORCE_EQ(outputs.size(),
                       output_shapes.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Your custom operator has set the InferShapeFn. "
                           "However, `Outputs` size = %d does not match the "
                           "returned vector size of InferShapeFn = %d. Please "
@@ -522,7 +523,7 @@ static void RunInferShapeFunc(
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         output_shapes.size() + inplace_map.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Your custom operator uses `SetInplaceMap` and sets the "
             "InferShapeFn. However, `Outputs` size = %d does not match the "
             "`InplaceMap size + InferShapeFn output size` = %d. Please check "
@@ -540,7 +541,7 @@ static void RunInferShapeFunc(
     if (detail::IsDuplicableVar(out_name)) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
@@ -552,7 +553,7 @@ static void RunInferShapeFunc(
       } else {
         PADDLE_ENFORCE(
             detail::IsOptionalVar(out_name),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator couldn't find custom output name for %s. If "
                 "you are using inplace optional inputs & outputs, please check "
                 "your InplaceMap and `Outputs` again and make sure %s is "
@@ -571,7 +572,7 @@ static void RunInferShapeFunc(
         } else {
           PADDLE_ENFORCE(
               detail::IsOptionalVar(out_name),
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Custom operator couldn't find custom output name for %s. If "
                   "you are using inplace optional inputs & outputs, please "
                   "check your InplaceMap and `Outputs` again and make sure %s "
@@ -599,7 +600,7 @@ static void RunDefaultInferDtypeFunc(
     PADDLE_ENFORCE_EQ(
         inputs.size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple inputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the InferDtypeFn. "
@@ -610,7 +611,7 @@ static void RunDefaultInferDtypeFunc(
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple outputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the InferDtypeFn. "
@@ -626,7 +627,7 @@ static void RunDefaultInferDtypeFunc(
     PADDLE_ENFORCE_EQ(
         inplace_map.size(),
         outputs.size(),
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator uses `SetInplaceMap` without setting the "
             "InferDtypeFn. However, `Outputs` size = %d does not match the "
             "`InplaceMap` size = %d. Please check `SetInplaceMap` again or set "
@@ -641,7 +642,7 @@ static void RunDefaultInferDtypeFunc(
       if (!ctx->HasOutput(pair.second)) {
         PADDLE_ENFORCE(
             detail::IsOptionalVar(pair.second),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator couldn't find custom output name for %s. If "
                 "you are using inplace optional inputs & outputs, please check "
                 "your InplaceMap and `Outputs` again and make sure %s is "
@@ -690,9 +691,9 @@ static void RunInferDtypeFunc(
       } else {  // optional inputs, `vec_custom_dtype` is empty
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
-            phi::errors::NotFound("Your custom operator's InferDtypeFn "
-                                  "cannot find input parameter `%s`",
-                                  in_name));
+            common::errors::NotFound("Your custom operator's InferDtypeFn "
+                                     "cannot find input parameter `%s`",
+                                     in_name));
         VLOG(3) << "Custom Operator: InferDtypeFn's vector input " << in_name
                 << " is optional dtype with None input";
       }
@@ -704,9 +705,9 @@ static void RunInferDtypeFunc(
       } else {  // optional inputs
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
-            phi::errors::NotFound("Your custom operator's InferDtypeFn "
-                                  "cannot find input parameter `%s`",
-                                  in_name));
+            common::errors::NotFound("Your custom operator's InferDtypeFn "
+                                     "cannot find input parameter `%s`",
+                                     in_name));
         input_dtypes.emplace_back(DataType::UNDEFINED);
         VLOG(3) << "Custom Operator: InferDtypeFn's input " << in_name
                 << " is optional dtype with None input";
@@ -746,7 +747,7 @@ static void RunInferDtypeFunc(
       custom_attrs.emplace_back(
           PADDLE_GET_CONST(std::vector<std::string>, ctx->GetAttr(attr_name)));
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -762,7 +763,7 @@ static void RunInferDtypeFunc(
   if (inplace_map.empty()) {
     PADDLE_ENFORCE_EQ(outputs.size(),
                       output_dtypes.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Your custom operator has set the InferDtypeFn. "
                           "However, `Outputs` size = %d does not match the "
                           "returned vector size of InferDtypeFn = %d. Please "
@@ -773,7 +774,7 @@ static void RunInferDtypeFunc(
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         output_dtypes.size() + inplace_map.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Your custom operator uses `SetInplaceMap` and sets the "
             "InferDtypeFn. However, `Outputs` size = %d does not match the "
             "`InplaceMap size + InferDtypeFn output size` = %d. Please check "
@@ -791,7 +792,7 @@ static void RunInferDtypeFunc(
     if (detail::IsDuplicableVar(out_name)) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
@@ -807,7 +808,7 @@ static void RunInferDtypeFunc(
       } else {
         PADDLE_ENFORCE(
             detail::IsOptionalVar(out_name),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator couldn't find custom output name for %s. If "
                 "you are using inplace optional inputs & outputs, please check "
                 "your InplaceMap and `Outputs` again and make sure %s is "
@@ -827,7 +828,7 @@ static void RunInferDtypeFunc(
         } else {
           PADDLE_ENFORCE(
               out_name.find(paddle::kOptionalSuffix) != std::string::npos,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Custom operator couldn't find custom output name for %s. If "
                   "you are using inplace optional inputs & outputs, please "
                   "check your InplaceMap and `Outputs` again and make sure %s "
@@ -929,7 +930,7 @@ static void RegisterOperatorKernel(
             << " with raw op kernel func";
     PADDLE_ENFORCE_NOT_NULL(
         dso_handle,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The dso handle must be provided if kernel_func is nullptr."));
     using OpKernelFuncPtr = void(const framework::ExecutionContext&);
     auto symbol_name = "PD_" + name + "_raw_op_kernel_func";
@@ -1011,7 +1012,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   PADDLE_ENFORCE_EQ(
       info.proto_->IsInitialized(),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Fail to initialize %s's OpProto, because %s is not initialized.",
           op_name,
           info.proto_->InitializationErrorString()));
@@ -1202,7 +1203,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
               PADDLE_ENFORCE_EQ(
                   grad_op_inputs.size() == 1UL && grad_op_outputs.size() == 1UL,
                   true,
-                  phi::errors::Unavailable(
+                  common::errors::Unavailable(
                       "Custom grad operator infershape error. "
                       "If a custom grad operator contains only one input and "
                       "only one output, the input shape will be directly set "
@@ -1409,7 +1410,7 @@ void PD_RegisterOperator(const char* kernel_name_cstr,
     PADDLE_ENFORCE_EQ(
         info.proto_->IsInitialized(),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Fail to initialize %s's OpProto, because %s is not initialized.",
             kernel_name,
             info.proto_->InitializationErrorString()));

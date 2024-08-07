@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -49,7 +50,12 @@ class TestNNSigmoidAPI(unittest.TestCase):
         exe = paddle.static.Executor(place)
         out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
         np.testing.assert_allclose(out[0], self.y, rtol=1e-05)
-        self.assertTrue(y.name.startswith("api_sigmoid"))
+
+        if paddle.framework.in_pir_mode():
+            y_name = y.get_defining_op().name()
+            self.assertTrue(y_name.startswith("pd_op.sigmoid"))
+        else:
+            self.assertTrue(y.name.startswith("api_sigmoid"))
 
     def check_dynamic_api(self, place):
         paddle.disable_static(place)
@@ -59,7 +65,13 @@ class TestNNSigmoidAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), self.y, rtol=1e-05)
 
     def test_check_api(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
@@ -96,7 +108,13 @@ class TestNNFunctionalSigmoidAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), self.y, rtol=1e-05)
 
     def test_check_api(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:

@@ -31,8 +31,14 @@ void CudaModuleTester::Compile(const ir::Module& m,
       backends::SplitDeviceAndHostModule(m);  // NOLINT
   auto& host_module = std::get<0>(_host_module_device_module_);
   auto& device_module = std::get<1>(_host_module_device_module_);
-  CHECK(!host_module.functions().empty());
-  CHECK(!device_module.functions().empty());
+  PADDLE_ENFORCE_EQ(host_module.functions().empty(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "host_module.functions() should not be empty"));
+  PADDLE_ENFORCE_EQ(device_module.functions().empty(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "device_module.functions() should not be empty"));
 
   backends::CodeGenCUDA_Dev codegen(DefaultHostTarget());
   auto source_code = codegen.Compile(device_module);
@@ -53,7 +59,10 @@ void CudaModuleTester::Compile(const ir::Module& m,
     std::string kernel_fn_name = fn->name;
     auto fn_kernel = reinterpret_cast<runtime::cuda::CUDAModule*>(cuda_module_)
                          ->GetFunction(0, kernel_fn_name);
-    CHECK(fn_kernel);
+    PADDLE_ENFORCE_EQ(
+        fn_kernel,
+        true,
+        phi::errors::InvalidArgument("%s should not be null", kernel_fn_name));
     kernel_handles_.push_back(fn_kernel);
 
     backends::GlobalSymbolRegistry::Global().RegisterFn(
@@ -68,7 +77,10 @@ void CudaModuleTester::Compile(const ir::Module& m,
 }
 
 void* CudaModuleTester::CreateDeviceBuffer(const cinn_buffer_t* host_buffer) {
-  CHECK(host_buffer->memory);
+  PADDLE_ENFORCE_EQ(
+      host_buffer->memory,
+      true,
+      phi::errors::InvalidArgument("host_buffer->memory should not be null"));
   int num_bytes = host_buffer->num_elements() * sizeof(float);
   CUdeviceptr data;
   cuMemAlloc(&data, num_bytes);

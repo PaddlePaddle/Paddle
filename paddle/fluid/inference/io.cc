@@ -57,7 +57,7 @@ void ReadBinaryFile(const std::string& filename, std::string* contents) {
   PADDLE_ENFORCE_EQ(
       fin.is_open(),
       true,
-      phi::errors::Unavailable("Failed to open file %s.", filename));
+      common::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();
   contents->resize(fin.tellg());
@@ -149,8 +149,8 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
   PADDLE_ENFORCE_EQ(
       framework::IsProgramVersionSupported(main_program->Version()),
       true,
-      phi::errors::Unavailable("Model version %ld is not supported.",
-                               main_program->Version()));
+      common::errors::Unavailable("Model version %ld is not supported.",
+                                  main_program->Version()));
 
   // model_from_memory is false in separate parameters.
   LoadPersistables(executor,
@@ -175,8 +175,8 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
   PADDLE_ENFORCE_EQ(
       framework::IsProgramVersionSupported(main_program->Version()),
       true,
-      phi::errors::Unavailable("Model version %ld is not supported.",
-                               main_program->Version()));
+      common::errors::Unavailable("Model version %ld is not supported.",
+                                  main_program->Version()));
   if (load_params) {
     LoadPersistables(executor,
                      scope,
@@ -198,8 +198,8 @@ std::unique_ptr<framework::ProgramDesc> LoadFromMemory(
   PADDLE_ENFORCE_EQ(
       framework::IsProgramVersionSupported(main_program->Version()),
       true,
-      phi::errors::Unavailable("Model version %ld is not supported.",
-                               main_program->Version()));
+      common::errors::Unavailable("Model version %ld is not supported.",
+                                  main_program->Version()));
 
   LoadPersistables(executor,
                    scope,
