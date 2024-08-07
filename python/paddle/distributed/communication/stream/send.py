@@ -48,7 +48,7 @@ def _send_in_dygraph(
 def _send_in_static_mode(
     tensor, dst_rank_in_group, group, sync_op, use_calc_stream
 ):
-    op_type = 'send_v2'
+    op_type = 'p_send'
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',
@@ -58,15 +58,17 @@ def _send_in_static_mode(
 
     ring_id = 0 if group is None else group.id
     helper = framework.LayerHelper(op_type, **locals())
-    helper.append_op(
+    op = helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
+        inputs={'x': [tensor]},
         attrs={
             'ring_id': ring_id,
             'peer': dst_rank_in_group,
-            'use_calc_stream': sync_op,
+            'dynamic_shape': True,
         },
     )
+    if sync_op:
+        op.dist_attr.execution_stream = "default"
 
 
 def send(
