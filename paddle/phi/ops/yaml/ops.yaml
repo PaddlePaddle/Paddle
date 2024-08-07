@@ -3836,6 +3836,7 @@
   inplace : (x -> out)
   view: (x -> out)
   backward: reshape_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reverse
   args : (Tensor x, IntArray axis)
