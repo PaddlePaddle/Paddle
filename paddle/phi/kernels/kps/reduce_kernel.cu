@@ -196,7 +196,7 @@ void SumRawKernel(const Context& dev_ctx,
   if (x.numel() > std::numeric_limits<int32_t>::max()) {
 #ifndef PADDLE_WITH_XPU_KP
     if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
           "sum for reduce_sum function. As a result, input dtype should be "
           "the same as out dtype"));
@@ -234,7 +234,7 @@ void SumRawKernel(const Context& dev_ctx,
       CALL_EIGEN_REDUCE_SUM_KERNEL(4);
       CALL_EIGEN_REDUCE_SUM_KERNEL(5);
       default:
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
             "sum for reduce_sum function. As a result, its dim should be <= "
             "5."));
@@ -242,7 +242,7 @@ void SumRawKernel(const Context& dev_ctx,
     }
 #undef CALL_EIGEN_REDUCE_SUM_KERNEL
 #else
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
         "sum for reduce_sum function. Such case is only supported on GPU "
         "now."));

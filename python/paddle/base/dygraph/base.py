@@ -21,8 +21,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    ContextManager,
-    Sequence,
     TypeVar,
     overload,
 )
@@ -41,8 +39,9 @@ from .tracer import Tracer
 
 if TYPE_CHECKING:
     from collections import OrderedDict
+    from collections.abc import Generator, Sequence
+    from contextlib import AbstractContextManager
     from types import TracebackType
-    from typing import Generator
 
     from typing_extensions import Self
 
@@ -299,7 +298,7 @@ def _switch_tracer_mode_guard_(
 
 
 @overload
-def no_grad(func: None = ...) -> ContextManager:
+def no_grad(func: None = ...) -> AbstractContextManager:
     ...
 
 

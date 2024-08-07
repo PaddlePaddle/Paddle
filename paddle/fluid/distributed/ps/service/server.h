@@ -100,7 +100,7 @@ class PSServer {
       int msg_type UNUSED,
       int to_pserver_id UNUSED,
       const std::string &msg UNUSED) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "NotImplementError: PSServer::send_pserver2pserver_msg"));
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -131,7 +131,7 @@ class PSServer {
   virtual int32_t ReceiveFromPServer(int msg_type UNUSED,
                                      int pserver_id UNUSED,
                                      const std::string &msg UNUSED) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "NotImplementError::PSServer::ReceiveFromPServer"));
     return -1;
   }

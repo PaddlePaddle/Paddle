@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import copy
 from types import MethodType
-from typing import Callable, List, Tuple, Union
+from typing import Callable
 
 import numpy as np
 
@@ -2641,9 +2643,9 @@ class ShardDataloader:
     def __init__(
         self,
         dataloader: paddle.io.DataLoader,
-        meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
-        input_keys: Union[List[str], Tuple[str]] = None,
-        shard_dims: Union[list, tuple, str, int] = None,
+        meshes: ProcessMesh | list[ProcessMesh] | tuple[ProcessMesh],
+        input_keys: list[str] | tuple[str] = None,
+        shard_dims: list | tuple | str | int = None,
         is_dataset_splitted: bool = False,
     ):
         # do some check
@@ -2895,9 +2897,9 @@ class ShardDataloader:
 
 def shard_dataloader(
     dataloader: paddle.io.DataLoader,
-    meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
-    input_keys: Union[List[str], Tuple[str]] = None,
-    shard_dims: Union[list, tuple, str, int] = None,
+    meshes: ProcessMesh | list[ProcessMesh] | tuple[ProcessMesh],
+    input_keys: list[str] | tuple[str] = None,
+    shard_dims: list | tuple | str | int = None,
     is_dataset_splitted: bool = False,
 ) -> ShardDataloader:
     """

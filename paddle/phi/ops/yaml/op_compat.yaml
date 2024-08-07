@@ -3102,10 +3102,6 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
 
-- op : reshape_grad (reshape2_grad)
-  inputs:
-    x : XShape
-
 - op : resnet_basic_block
   backward: resnet_basic_block_grad
   inputs:
@@ -4086,12 +4082,6 @@
   outputs :
     out: Out
 
-- op: c_sync_calc_stream
-  inputs :
-    x : X
-  outputs :
-    out : Out
-
 - op: c_sync_comm_stream
   inputs :
     x : X
@@ -4613,6 +4603,12 @@
   inputs:
     {x : X, window : Window}
   outputs:
+    out : Out
+
+- op: sync_calc_stream(c_sync_calc_stream)
+  inputs :
+    x : X
+  outputs :
     out : Out
 
 - op: temporal_shift

@@ -49,7 +49,7 @@ _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 
 if TYPE_CHECKING:
-    from typing import Generator, Sequence
+    from collections.abc import Generator, Sequence
 
     from paddle.static.amp.fp16_utils import AmpOptions
 

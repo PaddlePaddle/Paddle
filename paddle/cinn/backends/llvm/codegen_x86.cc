@@ -166,8 +166,11 @@ llvm::Value* CodeGenX86::Visit(const ir::For* op) {
     } else {
       Expr num_task = parallel_env_.num_task;
       Expr task_id = parallel_env_.task_id;
-      CHECK(!parallel_env_.in_parallel_loop)
-          << "Nested parallel loop is not supported, try to fuse them instead";
+      PADDLE_ENFORCE_EQ(
+          parallel_env_.in_parallel_loop,
+          false,
+          phi::errors::InvalidArgument("Nested parallel loop is not supported, "
+                                       "try to fuse them instead"));
       parallel_env_.in_parallel_loop = true;
       if (parallel_env_.stride_pattern) {
         auto new_for = ir::For::Make(op->loop_var,
@@ -178,7 +181,9 @@ llvm::Value* CodeGenX86::Visit(const ir::For* op) {
                                      op->body,
                                      op->vectorize_info());
         auto for_node = new_for.As<ir::For>();
-        CHECK(for_node);
+        PADDLE_ENFORCE_NOT_NULL(
+            for_node,
+            phi::errors::InvalidArgument("the node new_for can't be nullptr"));
         CreateSerialFor(for_node, num_task.as_int32());
       } else {
         Expr extent = op->extent;
@@ -193,7 +198,9 @@ llvm::Value* CodeGenX86::Visit(const ir::For* op) {
                                      op->body,
                                      op->vectorize_info());
         auto for_node = new_for.As<ir::For>();
-        CHECK(for_node);
+        PADDLE_ENFORCE_NOT_NULL(
+            for_node,
+            phi::errors::InvalidArgument("the node new_for can't be null"));
         CreateSerialFor(for_node);
       }
       parallel_env_.in_parallel_loop = false;

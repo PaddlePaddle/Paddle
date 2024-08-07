@@ -63,7 +63,7 @@ class CUDAStream {
     PADDLE_ENFORCE_EQ(
         priority <= least_priority && priority >= greatest_priority,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Cannot create a stream with priority = %d because stream priority "
             "must be inside the meaningful range [%d, %d].",
             priority,

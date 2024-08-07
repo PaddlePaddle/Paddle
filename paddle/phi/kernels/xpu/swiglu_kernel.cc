@@ -37,13 +37,13 @@ void SwiGluKernel(const Context& ctx,
     const auto& y_dims = y_tensor.dims();
     const auto* y_data = y_tensor.data<T>();
     y_ptr = reinterpret_cast<const XPUType*>(y_data);
-    PADDLE_ENFORCE_EQ(
-        y_dims,
-        dims,
-        phi::errors::InvalidArgument("The shape of Input(Y):[%s] must be equal "
-                                     "to the shape of Input(X):[%s].",
-                                     y_dims,
-                                     dims));
+    PADDLE_ENFORCE_EQ(y_dims,
+                      dims,
+                      common::errors::InvalidArgument(
+                          "The shape of Input(Y):[%s] must be equal "
+                          "to the shape of Input(X):[%s].",
+                          y_dims,
+                          dims));
   }
   int ret = xpu::swiglu(ctx.x_context(),
                         reinterpret_cast<const XPUType*>(x_data),

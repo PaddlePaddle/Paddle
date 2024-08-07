@@ -212,7 +212,12 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
   // read dir source
   std::string dir = "./source";
   if (access(dir.c_str(), 0) == -1) {
-    CHECK(mkdir(dir.c_str(), 7) != -1) << "Fail to mkdir " << dir;
+    PADDLE_ENFORCE_NE(
+        mkdir(dir.c_str(), 7),
+        -1,
+        phi::errors::PermissionDenied(
+            "Failed to create directory %s. Please check the permissions.",
+            dir.c_str()));
   }
 
   // get unique prefix name
@@ -220,7 +225,12 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
 
   auto cuda_c_file = prefix_name_ + ".cu";
   std::ofstream ofs(cuda_c_file, std::ios::out);
-  CHECK(ofs.is_open()) << "Fail to open file " << cuda_c_file;
+  PADDLE_ENFORCE_EQ(ofs.is_open(),
+                    true,
+                    phi::errors::Unavailable(
+                        "Failed to open file %s. Please check if the file path "
+                        "is correct and the file is accessible.",
+                        cuda_c_file.c_str()));
   ofs << cuda_c;
   ofs.close();
 
@@ -252,7 +262,12 @@ void Compiler::CompileToPtx() {
   options += " " + prefix_name_ + ".cu";
 
   VLOG(2) << "Nvcc Compile Options : " << options;
-  CHECK(system(options.c_str()) == 0) << options;
+  PADDLE_ENFORCE_EQ(
+      system(options.c_str()),
+      0,
+      phi::errors::InvalidArgument("Failed to execute command: %s. Please "
+                                   "check the command and try again.",
+                                   options.c_str()));
 }
 
 void Compiler::CompileToCubin() {
@@ -263,7 +278,12 @@ void Compiler::CompileToCubin() {
   options += " " + prefix_name_ + ".ptx";
 
   VLOG(2) << "Nvcc Compile Options : " << options;
-  CHECK(system(options.c_str()) == 0) << options;
+  PADDLE_ENFORCE_EQ(
+      system(options.c_str()),
+      0,
+      phi::errors::InvalidArgument("Failed to execute command: %s. Please "
+                                   "check the command and try again.",
+                                   options.c_str()));
 }
 
 std::string Compiler::GetDeviceArch() {
@@ -284,7 +304,12 @@ std::string Compiler::ReadFile(const std::string& file_name,
                                std::ios_base::openmode mode) {
   // open cubin file
   std::ifstream ifs(file_name, mode);
-  CHECK(ifs.is_open()) << "Fail to open file " << file_name;
+  PADDLE_ENFORCE_EQ(ifs.is_open(),
+                    true,
+                    phi::errors::Unavailable(
+                        "Failed to open file %s. Please check if the file path "
+                        "is correct and the file is accessible.",
+                        file_name.c_str()));
   ifs.seekg(std::ios::end);
   auto len = ifs.tellg();
   ifs.seekg(0);
