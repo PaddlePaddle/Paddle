@@ -106,30 +106,31 @@ bool AssignValue_OpInferSymbolicShape(
 bool CreateOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &shape_attr = op->attribute<pir::IntArrayAttribute>("shape");
-  const auto &shape = shape_attr.data();
-  DataType dtype = op->attribute<pir::DataTypeAttribute>("dtype").data();
+  const std::vector<int64_t> &shape_data = shape_attr.GetData();
 
-  std::vector<symbol::DimExpr> out_dims(shape.size());
-  bool shape_from_tensor = shape_attr.FromTensor();
+  for (size_t i = 0; i < shape_data.size(); ++i) {
+    PADDLE_ENFORCE_GE(
+        shape_data[i],
+        0,
+        common::errors::InvalidArgument(
+            "Each value of attribute 'shape' is expected to be no less "
+            "than 0. But received: shape[%u] = %d; shape = [%s].",
+            i,
+            shape_data[i],
+            common::make_ddim(shape_data)));
+  }
 
-  if (!shape_from_tensor) {
-    for (size_t i = 0; i < shape.size(); ++i) {
-      PADDLE_ENFORCE_GE(
-          shape[i],
-          0,
-          phi::errors::InvalidArgument(
-              "Each value of attribute 'shape' is expected to be no less "
-              "than 0. But received: shape[%u] = %d; shape = [%s].",
-              i,
-              shape[i],
-              common::make_ddim(shape)));
-      out_dims[i] = shape[i];
-    }
+  DataType dtype = op->attribute<pir::Int32Attribute>("dtype").data();
+
+  std::vector<symbol::DimExpr> output_shape;
+  for (const auto &dim : shape_data) {
+    output_shape.emplace_back(symbol::DimExpr(dim));
   }
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
 
   return true;
 }
