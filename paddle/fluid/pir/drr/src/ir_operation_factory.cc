@@ -467,45 +467,44 @@ void OperationFactory::RegisterManualOpCreator() {
                                                                  attrs);
       });
 
-  // RegisterOperationCreator(
-  //     "onednn_op.sum",
-  //     [](const std::vector<pir::Value>& inputs,
-  //        const pir::AttributeMap& attrs,
-  //        pir::PatternRewriter& rewriter) {
-  //       if (inputs.size() == 2) {
-  //         PADDLE_ENFORCE_EQ(attrs.find("mkldnn_data_type") != attrs.end(),
-  //                           true,
-  //                           phi::errors::InvalidArgument(
-  //                               "'mkldnn_data_type' Attribute is expected "
-  //                               "for SumOp. "));
-  //         std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
-  //                                            .dyn_cast<pir::StrAttribute>()
-  //                                            .AsString();
-  //         PADDLE_ENFORCE_EQ(
-  //             attrs.find("keepdim") != attrs.end(),
-  //             true,
-  //             phi::errors::InvalidArgument("'keepdim' Attribute is expected "
-  //                                          "for SumOp. "));
-  //         bool keepdim =
-  //             attrs.at("keepdim").dyn_cast<pir::BoolAttribute>().data();
+  RegisterOperationCreator(
+      "onednn_op.sum",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        if (inputs.size() == 2) {
+          PADDLE_ENFORCE_EQ(attrs.find("mkldnn_data_type") != attrs.end(),
+                            true,
+                            phi::errors::InvalidArgument(
+                                "'mkldnn_data_type' Attribute is expected "
+                                "for SumOp. "));
+          std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
+          PADDLE_ENFORCE_EQ(
+              attrs.find("keepdim") != attrs.end(),
+              true,
+              phi::errors::InvalidArgument("'keepdim' Attribute is expected "
+                                           "for SumOp. "));
+          bool keepdim =
+              attrs.at("keepdim").dyn_cast<pir::BoolAttribute>().data();
 
-  //         PADDLE_ENFORCE_EQ(
-  //             attrs.find("dtype") != attrs.end(),
-  //             true,
-  //             phi::errors::InvalidArgument("'dtype' Attribute is expected "
-  //                                          "for SumOp. "));
+          PADDLE_ENFORCE_EQ(
+              attrs.find("dtype") != attrs.end(),
+              true,
+              phi::errors::InvalidArgument("'dtype' Attribute is expected "
+                                           "for SumOp. "));
 
-  //         ::phi::DataType dtype =
-  //             attrs.at("dtype")
-  //                 .dyn_cast<paddle::dialect::DataTypeAttribute>()
-  //                 .data();
+          ::phi::DataType dtype =
+              attrs.at("dtype")
+                  .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                  .data();
 
-  //         return rewriter.Build<paddle::onednn::dialect::SumOp>(
-  //             inputs[0], inputs[1], dtype, keepdim, mkldnn_data_type);
-  //       }
-  //       return rewriter.Build<paddle::onednn::dialect::SumOp>(inputs[0],
-  //       attrs);
-  //     });
+          return rewriter.Build<paddle::onednn::dialect::SumOp>(
+              inputs[0], inputs[1], dtype, keepdim, mkldnn_data_type);
+        }
+        return rewriter.Build<paddle::onednn::dialect::SumOp>(inputs[0], attrs);
+      });
 
   RegisterOperationCreator(
       "onednn_op.slice",
