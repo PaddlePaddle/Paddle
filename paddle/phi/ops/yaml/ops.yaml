@@ -2548,6 +2548,7 @@
   kernel :
     func : inverse
   backward : inverse_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : is_empty
   args : (Tensor x)
