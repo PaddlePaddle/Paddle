@@ -18,15 +18,17 @@ import os
 import shutil
 import sys
 import zipfile
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
 from typing_extensions import TypeAlias
 
 from paddle.utils.download import get_path_from_url
 
 if TYPE_CHECKING:
-    import paddle
     import builtins
+    from typing import Any
+
+    import paddle
 
 __all__ = []
 
