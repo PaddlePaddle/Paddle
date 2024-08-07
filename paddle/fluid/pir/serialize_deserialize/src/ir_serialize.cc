@@ -219,12 +219,10 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
   }
   op_json[ATTRS] = attrs_json;
 
-  if (op.attributes().count("op_dist_attr") > 0) {
-    op_json[OPDIST_ATTRS] = pir::writeAttr(op.attributes().at("op_dist_attr"));
-  }
-
-  if (op.attributes().count("op_role") > 0) {
-    op_json["op_role"] = pir::writeAttr(op.attributes().at("op_role"));
+  for (auto key : GetOpDistAttr()) {
+    if (op.attributes().count(key) > 0) {
+      op_json[key] = pir::writeAttr(op.attributes().at(key));
+    }
   }
 
   Json other_attrs_json = Json::array();
@@ -276,12 +274,10 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
   op_json[ATTRS] = WriteAttributesMapOpinfo(const_cast<pir::Operation*>(&op),
                                             op.attributes());
 
-  if (op.attributes().count("op_dist_attr") > 0) {
-    op_json[OPDIST_ATTRS] = pir::writeAttr(op.attributes().at("op_dist_attr"));
-  }
-
-  if (op.attributes().count("op_role") > 0) {
-    op_json["op_role"] = pir::writeAttr(op.attributes().at("op_role"));
+  for (auto key : GetOpDistAttr()) {
+    if (op.attributes().count(key) > 0) {
+      op_json[key] = pir::writeAttr(op.attributes().at(key));
+    }
   }
 
   if (trainable_) {

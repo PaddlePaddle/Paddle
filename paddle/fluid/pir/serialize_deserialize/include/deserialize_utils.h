@@ -183,6 +183,68 @@ deserializeAttrFromJson<paddle::dialect::PlaceAttribute, int8_t>(
   return paddle::dialect::PlaceAttribute::get(ctx, place);
 }
 
+pir::Type parseType(Json* type_json) {
+  auto type_name = type_json->at(ID).template get<std::string>();
+
+  if (type_name == NULL_TYPE) {
+    return pir::Type();
+  }
+
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  std::pair<std::string, std::string> name = GetContentSplitByDot(type_name);
+
+  if (DECOMPRESS_DIALECT_ID(name.first) == pir::BuiltinDialect::name()) {
+    return AttrTypeReader::ReadBuiltInType(name.second, type_json, ctx);
+  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
+             paddle::dialect::OperatorDialect::name()) {
+    return AttrTypeReader::ReadPaddleOperatorType(name.second, type_json, ctx);
+  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
+             paddle::dialect::DistDialect::name()) {
+    return AttrTypeReader::ReadPaddleDistType(name.second, type_json, ctx);
+  } else {
+    PADDLE_ENFORCE(
+        false,
+        common::errors::InvalidArgument(
+            "Unknown Attr %s for parse builtin dialect attr", type_name));
+  }
+
+  VLOG(8) << "Finish Parse Type ... ";
+
+  return pir::Type();
+}
+
+template <>
+pir::TypeAttribute deserializeAttrFromJson<pir::TypeAttribute, pir::Type>(
+    Json* attr_json, pir::IrContext* ctx) {
+  pir::Type type = parseType(&(attr_json->at(DATA)));
+  return pir::TypeAttribute::get(ctx, type);
+}
+
+pir::Attribute parseAttr(Json* attr_json) {
+  std::string attr_name = attr_json->at(ID).template get<std::string>();
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  std::pair<std::string, std::string> name = GetContentSplitByDot(attr_name);
+
+  if (DECOMPRESS_DIALECT_ID(name.first) == pir::BuiltinDialect::name()) {
+    return AttrTypeReader::ReadBuiltInAttr(name.second, attr_json, ctx);
+  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
+             paddle::dialect::OperatorDialect::name()) {
+    return AttrTypeReader::ReadPaddleOperatorAttr(name.second, attr_json, ctx);
+  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
+             paddle::dialect::DistDialect::name()) {
+    return AttrTypeReader::ReadPaddleDistAttr(name.second, attr_json, ctx);
+  } else {
+    PADDLE_ENFORCE(
+        false,
+        common::errors::InvalidArgument(
+            "Unknown Attr %s for parse builtin dialect attr", attr_name));
+  }
+
+  VLOG(8) << "Finish Parse Attr ... ";
+
+  return pir::Attribute();
+}
+
 // ProcessMesh includes: std::vector<int64_t>& shape, std::vector<int64_t>&
 // process_ids, std::vector<std::string>& dim_names
 paddle::dialect::ProcessMeshAttribute deserializeProcessMeshAttr(
@@ -221,68 +283,6 @@ paddle::dialect::TensorDistAttribute deserializeTensorDistAttr(
   }
   return paddle::dialect::TensorDistAttribute::get(
       ctx, mesh, dims_mapping, partial_status);
-}
-
-pir::Type parseType(Json* type_json) {
-  auto type_name = type_json->at(ID).template get<std::string>();
-
-  if (type_name == NULL_TYPE) {
-    return pir::Type();
-  }
-
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  std::pair<std::string, std::string> name = getContentSplitByDot(type_name);
-
-  if (DECOMPRESS_DIALECT_ID(name.first) == pir::BuiltinDialect::name()) {
-    return AttrTypeReader::ReadBuiltInType(name.second, type_json, ctx);
-  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
-             paddle::dialect::OperatorDialect::name()) {
-    return AttrTypeReader::ReadPaddleOperatorType(name.second, type_json, ctx);
-  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
-             paddle::dialect::DistDialect::name()) {
-    return AttrTypeReader::ReadPaddleDistType(name.second, type_json, ctx);
-  } else {
-    PADDLE_ENFORCE(
-        false,
-        common::errors::InvalidArgument(
-            "Unknown Attr %s for parse builtin dialect attr", type_name));
-  }
-
-  VLOG(8) << "Finish Parse Type ... ";
-
-  return pir::Type();
-}
-
-template <>
-pir::TypeAttribute deserializeAttrFromJson<pir::TypeAttribute, pir::Type>(
-    Json* attr_json, pir::IrContext* ctx) {
-  pir::Type type = parseType(&(attr_json->at(DATA)));
-  return pir::TypeAttribute::get(ctx, type);
-}
-
-pir::Attribute parseAttr(Json* attr_json) {
-  std::string attr_name = attr_json->at(ID).template get<std::string>();
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  std::pair<std::string, std::string> name = getContentSplitByDot(attr_name);
-
-  if (DECOMPRESS_DIALECT_ID(name.first) == pir::BuiltinDialect::name()) {
-    return AttrTypeReader::ReadBuiltInAttr(name.second, attr_json, ctx);
-  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
-             paddle::dialect::OperatorDialect::name()) {
-    return AttrTypeReader::ReadPaddleOperatorAttr(name.second, attr_json, ctx);
-  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
-             paddle::dialect::DistDialect::name()) {
-    return AttrTypeReader::ReadPaddleDistAttr(name.second, attr_json, ctx);
-  } else {
-    PADDLE_ENFORCE(
-        false,
-        common::errors::InvalidArgument(
-            "Unknown Attr %s for parse builtin dialect attr", attr_name));
-  }
-
-  VLOG(8) << "Finish Parse Attr ... ";
-
-  return pir::Attribute();
 }
 
 // OperationDistAttribute includes: ProcessMeshAttribute mesh_attr,
@@ -422,25 +422,19 @@ pir::Attribute AttrTypeReader::ReadPaddleDistAttr(const std::string attr_name,
 template <typename T>
 T deserializeTypeFromJsonIncludeParseType(Json* type_json,
                                           pir::IrContext* ctx) {
-  VLOG(8) << "parse densetensor ";
   Json data_json = type_json->at(DATA);
   pir::Type dtype = parseType(&(data_json.at(0)));
-  VLOG(8) << "done parse type ";
 
   std::vector<int64_t> dims =
       data_json.at(1).template get<std::vector<int64_t>>();
-  VLOG(8) << "done parse dims ";
   phi::DDim ddim = phi::make_ddim(dims);
   pir::DataLayout data_layout =
       common::StringToDataLayout(data_json.at(2).template get<std::string>());
-  VLOG(8) << "done parse data_layout ";
 
   std::vector<std::vector<size_t>> lod =
       data_json.at(3).template get<std::vector<std::vector<size_t>>>();
-  VLOG(8) << "done parse lod ";
 
   size_t offset = data_json.at(4).get<size_t>();
-  VLOG(8) << "done parse offset ";
   return T::get(ctx, dtype, ddim, data_layout, lod, offset);
 }
 
@@ -540,21 +534,18 @@ template <>
 paddle::dialect::DistDenseTensorType
 deserializeTypeFromJsonIncludeParseType<paddle::dialect::DistDenseTensorType>(
     Json* type_json, pir::IrContext* ctx) {
-  VLOG(8) << "deserialize DistDenseTensorType...";
   Json data_json = type_json->at(DATA);
 
   // deserialize pir::DenseTensorType dense_tensor_type;
-  VLOG(8) << "deserialize DenseTensorType";
   pir::DenseTensorType dense_tensor_type =
       deserializeTypeFromJsonIncludeParseType<pir::DenseTensorType>(
           &(data_json.at(0)), ctx);
-  VLOG(8) << "deserialize TensorDistAttribute";
+
   // deserialize TensorDistAttribute tensor_dist_attr;
   paddle::dialect::TensorDistAttribute tensor_dist_attr =
       deserializeTensorDistAttr(&(data_json.at(1)), ctx);
 
   // deserialize common::DDim local_ddim;
-  VLOG(8) << "deserialize local_ddim";
   std::vector<int64_t> dims =
       data_json.at(2).template get<std::vector<int64_t>>();
   phi::DDim local_ddim = phi::make_ddim(dims);

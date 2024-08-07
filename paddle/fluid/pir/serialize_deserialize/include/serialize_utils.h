@@ -188,48 +188,6 @@ Json serializeAttrToJson<paddle::dialect::PlaceAttribute>(
   return json_obj;
 }
 
-// ProcessMesh includes: std::vector<int64_t>& shape, std::vector<int64_t>&
-// process_ids, std::vector<std::string>& dim_names
-template <>
-Json serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
-    const paddle::dialect::ProcessMeshAttribute& attr) {
-  Json json_obj;
-  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
-  Json content = Json::array();
-
-  content.push_back(attr.shape());
-  content.push_back(attr.process_ids());
-  content.push_back(attr.dim_names());
-
-  json_obj[DATA] = content;
-  return json_obj;
-}
-
-// TensorDistAttribute includes: ProcessMeshAttribute mesh_attr,
-// std::vector<int64_t> dims_mapping, flat_hash_map<int64_t, phi::ReduceType>
-// partial_status;
-template <>
-Json serializeAttrToJson<paddle::dialect::TensorDistAttribute>(
-    const paddle::dialect::TensorDistAttribute& attr) {
-  Json json_obj;
-  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
-  Json content = Json::array();
-
-  content.push_back(serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
-      attr.process_mesh_attr()));
-  content.push_back(attr.dims_mapping());
-
-  Json map_json = Json::array();
-  for (const auto& [key, value] : attr.partial_status()) {
-    map_json.push_back(
-        std::vector<int64_t>({key, static_cast<int64_t>(value)}));
-  }
-  content.push_back(map_json);
-
-  json_obj[DATA] = content;
-  return json_obj;
-}
-
 Json writeType(const pir::Type& type) {
   Json type_json = Json::object();
   if (!type) {
@@ -278,6 +236,48 @@ Json writeAttr(const pir::Attribute& attr) {
   VLOG(8) << "Finish write attr ... ";
 
   return Json::object();
+}
+
+// ProcessMesh includes: std::vector<int64_t>& shape, std::vector<int64_t>&
+// process_ids, std::vector<std::string>& dim_names
+template <>
+Json serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
+    const paddle::dialect::ProcessMeshAttribute& attr) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
+  Json content = Json::array();
+
+  content.push_back(attr.shape());
+  content.push_back(attr.process_ids());
+  content.push_back(attr.dim_names());
+
+  json_obj[DATA] = content;
+  return json_obj;
+}
+
+// TensorDistAttribute includes: ProcessMeshAttribute mesh_attr,
+// std::vector<int64_t> dims_mapping, flat_hash_map<int64_t, phi::ReduceType>
+// partial_status;
+template <>
+Json serializeAttrToJson<paddle::dialect::TensorDistAttribute>(
+    const paddle::dialect::TensorDistAttribute& attr) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
+  Json content = Json::array();
+
+  content.push_back(serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
+      attr.process_mesh_attr()));
+  content.push_back(attr.dims_mapping());
+
+  Json map_json = Json::array();
+  for (const auto& [key, value] : attr.partial_status()) {
+    map_json.push_back(
+        std::vector<int64_t>({key, static_cast<int64_t>(value)}));
+  }
+  content.push_back(map_json);
+
+  json_obj[DATA] = content;
+  return json_obj;
 }
 
 // OperationDistAttribute includes: ProcessMeshAttribute mesh_attr,

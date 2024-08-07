@@ -60,7 +60,6 @@ namespace pir {
 // which is json array with json object(NAME and ATTR_TYPE)
 #define ATTRS "A"
 #define OPRESULTS_ATTRS "OA"
-#define OPDIST_ATTRS "ODA"
 
 // value's key:
 //  value's type which should be pir::Type's json object(ID or ID and DATA).
@@ -82,8 +81,10 @@ namespace pir {
 
 #define PARAMETEROP "p"
 
-std::pair<std::string, std::string> getContentSplitByDot(
+std::pair<std::string, std::string> GetContentSplitByDot(
     const std::string& str);
+
+std::vector<std::string> GetOpDistAttr();
 
 void GetCompressOpName(std::string* op_name);
 
