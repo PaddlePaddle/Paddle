@@ -22,6 +22,8 @@ for example, you can run cpu version testing like this:
 
 """
 
+from __future__ import annotations
+
 import collections
 import functools
 import multiprocessing
@@ -176,7 +178,7 @@ class Directive:
 
     pattern: typing.Pattern
 
-    def parse_directive(self, docstring: str) -> typing.Tuple[str, typing.Any]:
+    def parse_directive(self, docstring: str) -> tuple[str, typing.Any]:
         pass
 
 
@@ -345,14 +347,12 @@ class DeprecatedRequired(BadStatement):
 class Xdoctester(DocTester):
     """A Xdoctest doctester."""
 
-    directives: typing.Dict[str, typing.Tuple[typing.Type[Directive], ...]] = {
+    directives: dict[str, tuple[type[Directive], ...]] = {
         'timeout': (TimeoutDirective, TEST_TIMEOUT),
         'solo': (SingleProcessDirective,),
     }
 
-    bad_statements: typing.Dict[
-        str, typing.Tuple[typing.Type[BadStatement], ...]
-    ] = {
+    bad_statements: dict[str, tuple[type[BadStatement], ...]] = {
         'fluid': (Fluid,),
         'skip': (SkipNoReason,),
         'require': (DeprecatedRequired,),
@@ -415,7 +415,7 @@ class Xdoctester(DocTester):
 
     def _parse_directive(
         self, docstring: str
-    ) -> typing.Tuple[str, typing.Dict[str, Directive]]:
+    ) -> tuple[str, dict[str, Directive]]:
         directives = {}
         for name, directive_cls in self.directives.items():
             docstring, direct = directive_cls[0](
@@ -462,7 +462,7 @@ class Xdoctester(DocTester):
 
         self._test_capacity = test_capacity
 
-    def _check_bad_statements(self, docstring: str) -> typing.Set[BadStatement]:
+    def _check_bad_statements(self, docstring: str) -> set[BadStatement]:
         bad_results = set()
         for _, statement_cls in self.bad_statements.items():
             bad_statement = statement_cls[0](*statement_cls[1:])
@@ -471,7 +471,7 @@ class Xdoctester(DocTester):
 
         return bad_results
 
-    def run(self, api_name: str, docstring: str) -> typing.List[TestResult]:
+    def run(self, api_name: str, docstring: str) -> list[TestResult]:
         """Run the xdoctest with a docstring."""
         # check bad statements
         bad_results = self._check_bad_statements(docstring)

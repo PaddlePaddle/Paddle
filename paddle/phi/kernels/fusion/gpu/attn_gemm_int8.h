@@ -91,9 +91,9 @@ class AttnMatmulINT8 {
       PADDLE_ENFORCE_EQ(
           cudaGetLastError(),
           cudaSuccess,
-          phi::errors::Fatal("cuda error occurred after computing bias. "
-                             "But it does not mean this error is caused by "
-                             "bias computing"));
+          common::errors::Fatal("cuda error occurred after computing bias. "
+                                "But it does not mean this error is caused by "
+                                "bias computing"));
     }
   }
 
@@ -145,9 +145,9 @@ class AttnMatmulINT8 {
       PADDLE_ENFORCE_EQ(
           cudaGetLastError(),
           cudaSuccess,
-          phi::errors::Fatal("cuda error occurred after computing bias. "
-                             "But it does not mean this error is caused by "
-                             "bias computing"));
+          common::errors::Fatal("cuda error occurred after computing bias. "
+                                "But it does not mean this error is caused by "
+                                "bias computing"));
     }
   }
 

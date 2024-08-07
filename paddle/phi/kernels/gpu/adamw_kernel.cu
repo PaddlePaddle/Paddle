@@ -171,6 +171,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
 
   const auto grad_type = grad.dtype();
 
+  VLOG(4) << "multi_precision: " << multi_precision;
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
   MPDType coeff_ = static_cast<MPDType>(coeff);
@@ -239,7 +240,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
-    if (grad_type == phi::DataType::FLOAT32)
+    if (grad_type == phi::DataType::FLOAT32) {
       AdamWKernelREG<T, float, MPDType>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
               beta1_,
@@ -260,9 +261,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
               master_in_data,
               master_out_data,
               param.numel());
-
-    else
-
+    } else {
       AdamWKernelREG<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
@@ -282,6 +281,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
           master_in_data,
           master_out_data,
           param.numel());
+    }
     if (!use_global_beta_pow) {
       // Cpu update
       dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =
@@ -290,7 +290,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
           beta2_ * beta2_pow.data<MPDType>()[0];
     }
   } else {
-    if (grad_type == phi::DataType::FLOAT32)
+    if (grad_type == phi::DataType::FLOAT32) {
       AdamWKernelMEM<T, float, MPDType>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
               beta1_,
@@ -311,7 +311,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
               master_in_data,
               master_out_data,
               param.numel());
-    else
+    } else {
       AdamWKernelMEM<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
@@ -331,6 +331,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
           master_in_data,
           master_out_data,
           param.numel());
+    }
     if (!use_global_beta_pow) {
       // Update with gpu
       UpdateAdamWBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(

@@ -114,7 +114,12 @@ class Pool3dOpConverter : public OpConverter {
     nvinfer1::Dims3 nv_paddings(paddings[0], paddings[1], paddings[2]);
     nvinfer1::ILayer *layer = nullptr;
     if (op_desc.HasAttr("enable_int8")) {
-      CHECK(op_desc.HasAttr("Input_scale"));
+      PADDLE_ENFORCE_EQ(op_desc.HasAttr("Input_scale"),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Expected attribute 'Input_scale' to be "
+                            "present when 'enable_int8' is set."));
+
       float input_scale =
           PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input1, input_scale);
@@ -173,7 +178,7 @@ class Pool3dOpConverter : public OpConverter {
             engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
         PADDLE_ENFORCE_NOT_NULL(
             pool_layer,
-            platform::errors::Fatal(
+            common::errors::Fatal(
                 "trt pool layer in converter could not be created."));
         pool_layer->setStrideNd(nv_strides);
         pool_layer->setPaddingNd(nv_paddings);
@@ -195,7 +200,7 @@ class Pool3dOpConverter : public OpConverter {
         auto *pool_layer = engine_->AddPluginV2Ext(&input1, 1, plugin);
         PADDLE_ENFORCE_NOT_NULL(
             pool_layer,
-            platform::errors::Fatal(
+            common::errors::Fatal(
                 "trt pool3d plugin layer in converter could not be created."));
         layer = pool_layer;
       }
@@ -217,7 +222,7 @@ class Pool3dOpConverter : public OpConverter {
       auto *pool_layer = engine_->AddPluginV2Ext(&input1, 1, plugin);
       PADDLE_ENFORCE_NOT_NULL(
           pool_layer,
-          platform::errors::Fatal(
+          common::errors::Fatal(
               "trt pool3d plugin layer in converter could not be created."));
       layer = pool_layer;
     }

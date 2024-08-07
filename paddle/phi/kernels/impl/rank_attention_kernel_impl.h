@@ -30,6 +30,6 @@ void RankAttentionKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
-      phi::errors::Unimplemented("Rank Attention only supports GPU now."));
+      common::errors::Unimplemented("Rank Attention only supports GPU now."));
 }
 }  // namespace phi

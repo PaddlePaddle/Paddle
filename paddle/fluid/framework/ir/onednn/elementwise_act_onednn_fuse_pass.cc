@@ -40,7 +40,7 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     const std::string &elt_type,
     const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(elt_type + "_" + act_type + "_onednn_fuse_pass", graph);
 
   GraphPatternDetector gpd;

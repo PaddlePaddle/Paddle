@@ -36,13 +36,13 @@ void SequenceConvKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   PADDLE_ENFORCE_EQ(in->lod().empty(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(X) phi::DenseTensor of SequenceConvOp "
                         "does not contain LoD information."));
   PADDLE_ENFORCE_EQ(
       in->lod().size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Only support input sequence with lod level equal to 1 at "
           "present. But received: lod level %u.",
           in->lod().size()));
@@ -102,7 +102,7 @@ void SequenceConvGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       in->lod().size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Only support input sequence with lod level equal to 1 at "
           "present. But received: lod level %u.",
           in->lod().size()));

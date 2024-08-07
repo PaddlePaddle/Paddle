@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/platform/device_event_base.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -172,7 +172,7 @@ struct OpFuncNode {
   int stream_priority_{0};  // lower value, higher priority
   // fit for phi kernel
   phi::Kernel* phi_kernel_{nullptr};  // not owned
-  platform::DeviceContext* dev_ctx_;  // not owned
+  phi::DeviceContext* dev_ctx_;       // not owned
 
   std::map<int, int> inplace_back_map;
 
@@ -205,7 +205,7 @@ class Instruction {
  public:
   Instruction(size_t id,
               OpFuncNode&& op_func_node,
-              const platform::DeviceContext& dev_ctx);
+              const phi::DeviceContext& dev_ctx);
 
   bool IsArtificial() const { return is_artificial_; }
 
@@ -293,7 +293,7 @@ class Instruction {
 
   std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
 
-  const platform::DeviceContext& DeviceContext() const;
+  const phi::DeviceContext& DeviceContext() const;
 
   const std::vector<std::pair<const Variable*, Variable*>>& InplaceInfo() const;
 
@@ -331,7 +331,7 @@ class Instruction {
   std::vector<EventInter> events_to_wait_;
 
   OpFuncNode op_func_node_;
-  const platform::DeviceContext& dev_ctx_;  // not owned
+  const phi::DeviceContext& dev_ctx_;  // not owned
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;

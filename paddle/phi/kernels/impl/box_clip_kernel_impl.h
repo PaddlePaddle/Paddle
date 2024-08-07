@@ -34,7 +34,7 @@ void BoxClipKernel(const Context& dev_ctx,
   if (input_box->lod().size()) {
     PADDLE_ENFORCE_EQ(input_box->lod().size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input(Input) of BoxClip only supports 1 level "
                           "of LoD. But received the "
                           "level = %d",

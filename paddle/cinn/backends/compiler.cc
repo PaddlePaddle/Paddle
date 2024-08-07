@@ -227,30 +227,28 @@ void SourceCodePrint::write(const std::string& source_code) {
   }
 }
 
-void Compiler::Build(const Module& module,
-                     const std::string& code,
-                     const bool end) {
-  auto PatternMatch = adt::match{
+void Compiler::Build(const Module& module, const std::string& code) {
+  target_.arch.Match(
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { CompileX86Module(module); },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) { CompileCudaModule(module, code); },
-      [&](common::HygonDCUArchHIP) { CompileHipModule(module, code); }};
-  std::visit(PatternMatch, target_.arch.variant());
-  if (end) {
-    RegisterDeviceModuleSymbol();
-    engine_->AddSelfModule();
-  }
+      [&](common::HygonDCUArchHIP) { CompileHipModule(module, code); });
 }
 
-void Compiler::AppendCX86(const Module& module, const bool end) {
+void Compiler::AppendCX86(const Module& module) {
   VLOG(3) << "Start Compiler::BuildCX86" << module;
   CompileX86Module(module);
-  if (end) {
-    RegisterDeviceModuleSymbol();
-    engine_->AddSelfModule();
-  }
   VLOG(3) << "Over Compiler::BuildCX86";
+}
+
+void Compiler::AppendBroadcastSwitchModule(const ir::Module& module) {
+  engine_->Link<CodeGenSwitchHost>(module);
+}
+
+void Compiler::EndCompile() {
+  RegisterDeviceModuleSymbol();
+  engine_->AddSelfModule();
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
@@ -264,7 +262,7 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
             SplitDeviceAndHostModule(module);  // NOLINT
         auto& host_module = std::get<0>(_host_module_device_module_);
         auto& device_module = std::get<1>(_host_module_device_module_);
-        CodeGenCUDA_Dev codegen(target_);
+        CodeGenCudaDev codegen(target_);
         auto source_code = codegen.Compile(device_module);
         return source_code;
 #else
@@ -272,7 +270,7 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #endif
       },
       [&](common::HygonDCUArchHIP) -> std::string {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(::common::errors::Unimplemented(
             "CINN todo: new hardware HygonDCUArchHIP"));
       });
 }
@@ -305,20 +303,18 @@ std::string GetFileContent(const std::string& path) {
 }  // namespace
 
 void Compiler::RegisterDeviceModuleSymbol() {
-  auto PatternMatch =
-      adt::match{[&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                 [&](common::X86Arch) { return; },
-                 [&](common::ARMArch) { return; },
-                 [&](common::NVGPUArch) { RegisterCudaModuleSymbol(); },
-                 [&](common::HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED; }};
-  return std::visit(PatternMatch, target_.arch.variant());
+  return target_.arch.Match(
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { return; },
+      [&](common::ARMArch) { return; },
+      [&](common::NVGPUArch) { RegisterCudaModuleSymbol(); },
+      [&](common::HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED; });
 }
 
 void Compiler::RegisterCudaModuleSymbol() {
 #ifdef CINN_WITH_CUDA
   nvrtc::Compiler compiler;
-  std::string source_code =
-      CodeGenCUDA_Dev::GetSourceHeader() + device_fn_code_;
+  std::string source_code = CodeGenCudaDev::GetSourceHeader() + device_fn_code_;
   auto ptx = compiler(source_code);
   CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n"
                       << source_code;
@@ -358,7 +354,7 @@ void Compiler::CompileCudaModule(const Module& module,
     std::string file_path = FLAGS_cinn_debug_custom_code_path;
     source_code = GetFileContent(file_path);
   } else if (code.empty()) {
-    CodeGenCUDA_Dev codegen(target_);
+    CodeGenCudaDev codegen(target_);
     source_code = codegen.Compile(device_module);
   } else {
     source_code = code;
@@ -375,7 +371,7 @@ void Compiler::CompileCudaModule(const Module& module,
     std::string kernel_fn_name = fn->name;
     device_fn_name_.emplace_back(kernel_fn_name);
   }
-  engine_->Link<CodeGenCUDA_Host>(host_module);
+  engine_->Link<CodeGenCudaHost>(host_module);
 
 #else
   CINN_NOT_IMPLEMENTED
@@ -383,8 +379,8 @@ void Compiler::CompileCudaModule(const Module& module,
 }
 
 void Compiler::CompileHipModule(const Module& module, const std::string& code) {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("CINN todo: new hardware HygonDCUArchHIP"));
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "CINN todo: new hardware HygonDCUArchHIP"));
 }
 
 void Compiler::CompileX86Module(const Module& module) {

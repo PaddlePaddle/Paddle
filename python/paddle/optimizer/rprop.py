@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.tensor.creation import to_tensor
 
 from ..base import framework
@@ -155,14 +155,15 @@ class Rprop(Optimizer):
         self._sign = True
 
     def _to_tensor(self, block, dtype):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         self._learning_rate_range = to_tensor(
             self._learning_rate_range, dtype=dtype
         )
         self._etas = to_tensor(self._etas, dtype=dtype)
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
