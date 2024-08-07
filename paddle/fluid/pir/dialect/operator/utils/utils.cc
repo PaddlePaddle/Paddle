@@ -73,7 +73,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PullBoxSparseOp::name(),
     PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
-    PartialSendOp::name(),
     PartialRecvOp::name(),
     SendAndRecvOp::name()};
 
