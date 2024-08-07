@@ -14,6 +14,4 @@
 
 from .converter import PaddleToTensorRTConverter
 
-__all__ = [
-    'PaddleToTensorRTConverter'
-]
+__all__ = ['PaddleToTensorRTConverter']
