@@ -58,6 +58,20 @@ DY2ST_PRIM_GT = [
     10.313587188720703,
 ]
 
+# IN V100, 16G, CUDA 12.0, the results are as follows:
+DY2ST_PRIM_GT_CUDA12 = [
+    5.847333908081055,
+    8.3687105178833,
+    4.985745429992676,
+    8.541460037231445,
+    8.071022033691406,
+    7.55848503112793,
+    9.568965911865234,
+    8.42477798461914,
+    8.469220161437988,
+    10.190813064575195,
+]
+
 if core.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
@@ -204,7 +218,10 @@ class TestResnet(unittest.TestCase):
     )
     def test_prim(self):
         dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
-        np.testing.assert_allclose(dy2st_prim, DY2ST_PRIM_GT, rtol=1e-5)
+        standard_prim = DY2ST_PRIM_GT
+        if paddle.version.cuda() == "12.0":
+            standard_prim = DY2ST_PRIM_GT_CUDA12
+        np.testing.assert_allclose(dy2st_prim, standard_prim, rtol=1e-5)
 
 
 if __name__ == '__main__':
