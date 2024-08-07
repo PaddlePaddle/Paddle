@@ -30,7 +30,7 @@ def pir_fc(hidden, size, activation, param_attr, bias_attr):
         input_shape = input.shape
         num_flatten_dims = len(input_shape) - 1
         param_shape = [
-            *reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1),
+            reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1),
             size,
         ]
 
