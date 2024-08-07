@@ -228,9 +228,14 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
   }();
 
   const auto shape_data = [&]() -> symbol::TensorShapeOrDataDimExprs {
-    // NOTE(Aurelius84): to<int64_t> is a risky operation when Scalar's dtype is
-    // not int32/int64. However, we found Full's Value could be like '3.0' but
-    // used as int.
+    const auto &data_type = attributes.at("dtype")
+                                .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                                .data();
+    if (data_type != paddle::DataType::INT32 &&
+        data_type != paddle::DataType::INT64) {
+      return symbol::TensorShapeOrDataDimExprs(shape);
+    }
+
     const int64_t value = attributes.at("value")
                               .dyn_cast<paddle::dialect::ScalarAttribute>()
                               .data()
