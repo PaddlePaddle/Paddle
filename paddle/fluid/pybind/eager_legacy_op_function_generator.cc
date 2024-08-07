@@ -130,7 +130,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   }
 })";
 
-const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)())%s, METH_VARARGS | METH_KEYWORDS, "C++ interface function for %s in dygraph."},)";
+const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, METH_VARARGS | METH_KEYWORDS, "C++ interface function for %s in dygraph."},)";
 
 // These operators will skip automatical code generation and
 // need to be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE
@@ -503,15 +503,14 @@ int run_legacy_generator(int argc, char* argv[]) {
   auto op_funcs = GenerateOpFunctions();
   auto core_ops_infos = GenerateCoreOpsInfoMap();
   std::string core_ops_infos_registry =
-      "  {\"get_core_ops_args_info\", "
-      "(PyCFunction)(void(*)())eager_get_core_ops_args_info, METH_NOARGS, "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, "
       "\"C++ interface function for eager_get_core_ops_args_info.\"},\n"
       "  {\"get_core_ops_args_type_info\", "
-      "(PyCFunction)(void(*)())eager_get_core_ops_args_type_info, "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info, "
       "METH_NOARGS, "
       "\"C++ interface function for eager_get_core_ops_args_type_info.\"},\n"
       "  {\"get_core_ops_returns_info\", "
-      "(PyCFunction)(void(*)())eager_get_core_ops_returns_info, "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_returns_info, "
       "METH_NOARGS, \"C++ interface function for "
       "eager_get_core_ops_returns_info.\"},\n";
 
