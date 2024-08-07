@@ -53,33 +53,33 @@ void ExecuteFlatten(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FlattenInferKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        int start_axis,
-                        int stop_axis,
-                        DenseTensor* out) {
+void FlattenKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int start_axis,
+                   int stop_axis,
+                   DenseTensor* out) {
   auto x_dims = x.dims();
   auto out_dims = out->dims();
   ExecuteFlatten<T, Context>(dev_ctx, x, x_dims, out_dims, out);
 }
 
 template <typename T, typename Context>
-void FlattenKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   int start_axis,
-                   int stop_axis,
-                   DenseTensor* out,
-                   DenseTensor* xshape UNUSED) {
-  FlattenInferKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
+void FlattenWithXShapeKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             int start_axis,
+                             int stop_axis,
+                             DenseTensor* out,
+                             DenseTensor* xshape UNUSED) {
+  FlattenKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL(flatten_infer,
-                   OneDNN,
-                   ONEDNN,
-                   phi::FlattenInferKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
-
 PD_REGISTER_KERNEL(
     flatten, OneDNN, ONEDNN, phi::FlattenKernel, float, phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(flatten_with_xshape,
+                   OneDNN,
+                   ONEDNN,
+                   phi::FlattenWithXShapeKernel,
+                   float,
+                   phi::dtype::bfloat16) {}

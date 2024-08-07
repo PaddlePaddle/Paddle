@@ -188,15 +188,11 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
-SpmdInfo FlattenGradInferSpmd(const DistMetaTensor& xshape,
+SpmdInfo FlattenGradInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad) {
-  // TODO(jeff41404): when ReshapeInferSpmd and ReshapeGradInferSpmd can deliver
-  // distributed attribute of xshape, we will use ReshapeGradInferSpmd directly
-  // in future return ReshapeGradInferSpmd(xshape, out_grad);
-  auto shape = phi::vectorize(xshape.dims());
-  shape = std::vector<int64_t>(shape.begin() + 1, shape.end());
+  auto shape = phi::vectorize(x.dims());
   const auto& spmd = ReshapeInferSpmd(out_grad, shape);
-  return {{xshape.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
+  return {{x.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }
 
 }  // namespace phi::distributed
