@@ -81,10 +81,10 @@ class DistPassTestBase(unittest.TestCase):
         pass
 
     def get_model(self, place, **kwargs):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def apply_passes(self, main_prog, startup_prog):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def check_main(self, model=None, gpus=None, **kwargs):
         pass_rets = self._distributed_launch(
@@ -269,7 +269,7 @@ class PassConflictChecker(DistPassTestBase):
         super().setUp()
 
     def pass_config(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def apply_passes(self, main_prog, startup_prog):
         passes = self.pass_config()
