@@ -18,7 +18,13 @@
 
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
-namespace cinn::dialect::ir::details {
+
+namespace cinn::hlir::framework::pir {
+// The optimized information for a broadcast group consists of a list of groups,
+// where each group maintains the same structure as the original group but
+// differs in shape information. In these groups, broadcast shapes have been
+// eliminated, and we utilize broadcast shape conditions to determine which
+// group to execute.
 std::optional<std::vector<OpLoweringGroupPtr>> GetBroadcastGroupListForOptimize(
     const OpLoweringGroupPtr& group);
-}  // namespace cinn::dialect::ir::details
+}  // namespace cinn::hlir::framework::pir
