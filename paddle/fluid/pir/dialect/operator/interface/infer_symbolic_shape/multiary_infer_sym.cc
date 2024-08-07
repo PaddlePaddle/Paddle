@@ -796,17 +796,18 @@ bool FakeQuantizeRangeAbsMaxOpInferSymbolicShape(
                         "'bit_length' should be between 1 and 16, but "
                         "the received is %d",
                         bit_length));
-
+  auto out_scale = symbol::DimExpr(1);
+  auto out_scales = symbol::DimExpr(window_size);
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(1)})});
+          symbol::TensorShapeOrDataDimExprs(out_scale)});
   if (op->result(2)) {
     infer_context->SetShapeOrDataForValue(
         op->result(2),
         symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(window_size)})});
+            symbol::TensorShapeOrDataDimExprs(out_scales)});
   }
 
   return true;

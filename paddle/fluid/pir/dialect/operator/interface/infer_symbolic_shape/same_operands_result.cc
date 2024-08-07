@@ -72,6 +72,7 @@ OP_SAME_OPERANDS_AND_RESULT(Exp_)
 OP_SAME_OPERANDS_AND_RESULT(Expm1)
 OP_SAME_OPERANDS_AND_RESULT(Expm1_)
 OP_SAME_OPERANDS_AND_RESULT(Exponential_)
+OP_SAME_OPERANDS_AND_RESULT(FakeDequantizeMaxAbsOp)
 OP_SAME_OPERANDS_AND_RESULT(Fill)
 OP_SAME_OPERANDS_AND_RESULT(Fill_)
 OP_SAME_OPERANDS_AND_RESULT(Fetch)
@@ -221,14 +222,6 @@ bool ArgsortOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   infer_context->SetShapeOrDataForValue(op->result(1), operand_shape_or_data);
-  return true;
-}
-
-bool FakeDequantizeMaxAbsOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   return true;
 }
 
