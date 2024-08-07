@@ -59,14 +59,14 @@ class Conv3DTestCase(unittest.TestCase):
         if self.channel_last:
             input_shape = (
                 self.batch_size,
-                self.spatial_shape,
+                *self.spatial_shape,
                 self.num_channels,
             )
         else:
             input_shape = (
                 self.batch_size,
                 self.num_channels,
-                self.spatial_shape,
+                *self.spatial_shape,
             )
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
@@ -77,7 +77,7 @@ class Conv3DTestCase(unittest.TestCase):
         self.weight_shape = weight_shape = (
             self.num_filters,
             self.num_channels // self.groups,
-            tuple(filter_size),
+            *tuple(filter_size),
         )
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
