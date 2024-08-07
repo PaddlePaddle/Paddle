@@ -473,14 +473,15 @@ void OperationFactory::RegisterManualOpCreator() {
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {
         if (inputs.size() == 2) {
-          PADDLE_ENFORCE_EQ(attrs.find("mkldnn_data_type") != attrs.end(),
-                            true,
-                            phi::errors::InvalidArgument(
-                                "'mkldnn_data_type' Attribute is expected "
-                                "for SumOp. "));
-          std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
-                                             .dyn_cast<pir::StrAttribute>()
-                                             .AsString();
+          // Add after mkldnn_data_type add in sum op
+          // PADDLE_ENFORCE_EQ(attrs.find("mkldnn_data_type") != attrs.end(),
+          //                   true,
+          //                   phi::errors::InvalidArgument(
+          //                       "'mkldnn_data_type' Attribute is expected "
+          //                       "for SumOp. "));
+          // std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
+          //                                    .dyn_cast<pir::StrAttribute>()
+          //                                    .AsString();
           PADDLE_ENFORCE_EQ(
               attrs.find("keepdim") != attrs.end(),
               true,
@@ -501,7 +502,7 @@ void OperationFactory::RegisterManualOpCreator() {
                   .data();
 
           return rewriter.Build<paddle::onednn::dialect::SumOp>(
-              inputs[0], inputs[1], dtype, keepdim, mkldnn_data_type);
+              inputs[0], inputs[1], dtype, keepdim);
         }
         return rewriter.Build<paddle::onednn::dialect::SumOp>(inputs[0], attrs);
       });

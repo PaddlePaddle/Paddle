@@ -302,7 +302,6 @@
 
 - op : sum
   dynamic_fallback : True
-  extra_args : str mkldnn_data_type="float32"
 
 - op : sum_grad
   dynamic_fallback : True
