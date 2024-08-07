@@ -820,8 +820,8 @@ bool EditDistanceOpInferSymbolicShape(
     infer_context->AddEqualCstr(refslength_shape_or_data.shape()[0],
                                 refs_dims[0]);
 
-    infer_context->AddEqualCstr(hypslength_shape_or_data,
-                                refslength_shape_or_data);
+    infer_context->AddEqualCstr(hypslength_shape_or_data.shape()[0],
+                                refslength_shape_or_data.shape()[0]);
   } else {
     symbol::DimExpr one = symbol::DimExpr(1);
 
