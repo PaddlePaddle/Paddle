@@ -12,13 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <optional>
-#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
+#include <iostream>
+#include "paddle/fluid/pybind/eager_generator.h"
+#include "paddle/fluid/pybind/eager_legacy_op_function_generator.h"
 
-using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
-using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
-namespace cinn::dialect::ir::details {
-std::optional<std::vector<OpLoweringGroupPtr>> GetBroadcastGroupListForOptimize(
-    const OpLoweringGroupPtr& group);
-}  // namespace cinn::dialect::ir::details
+int main(int argc, char* argv[]) {
+  if (argc == 2) {
+    // make eager_legacy_op_function_generator.cc
+    return run_legacy_generator(argc, argv);
+  } else if (argc == 3) {
+    // make eager_generator.cc
+    return run_generator(argc, argv);
+  } else {
+    std::cerr << "argc must be 2 or 3" << std::endl;
+    return -1;
+  }
+
+  return 0;
+}

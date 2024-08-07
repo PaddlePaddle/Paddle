@@ -48,7 +48,7 @@ void InlinedVectorCheck(size_t n) {
 
     PADDLE_ENFORCE_EQ(std_vec.size(),
                       vec.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The sizes of std_vec and vec should be equal, but "
                           "received std_vec.size() = %d and vec.size() = %d.",
                           std_vec.size(),
@@ -56,7 +56,7 @@ void InlinedVectorCheck(size_t n) {
     PADDLE_ENFORCE_EQ(
         std_vec.back(),
         vec.back(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The last elements of std_vec and vec should be equal, but "
             "received std_vec.back() = %d and vec.back() = %d.",
             std_vec.back(),
@@ -64,7 +64,7 @@ void InlinedVectorCheck(size_t n) {
 
     PADDLE_ENFORCE_EQ(vec.back(),
                       value,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The last element of vec should be equal to value, "
                           "but received vec.back() = %d and value = %d.",
                           vec.back(),
@@ -76,13 +76,13 @@ void InlinedVectorCheck(size_t n) {
   PADDLE_ENFORCE_EQ(
       is_equal,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The std_vec and vec should be equal, but they are not."));
 
   for (size_t i = 0; i < n; ++i) {
     PADDLE_ENFORCE_EQ(std_vec.size(),
                       vec.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The sizes of std_vec and vec should be equal, but "
                           "received std_vec.size() = %d and vec.size() = %d.",
                           std_vec.size(),
@@ -90,7 +90,7 @@ void InlinedVectorCheck(size_t n) {
     PADDLE_ENFORCE_EQ(
         std_vec.back(),
         vec.back(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The last elements of std_vec and vec should be equal, but "
             "received std_vec.back() = %d and vec.back() = %d.",
             std_vec.back(),
@@ -99,7 +99,7 @@ void InlinedVectorCheck(size_t n) {
     vec.pop_back();
     PADDLE_ENFORCE_EQ(std_vec.size(),
                       vec.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The sizes of std_vec and vec should be equal, but "
                           "received std_vec.size() = %d and vec.size() = %d.",
                           std_vec.size(),
@@ -108,7 +108,7 @@ void InlinedVectorCheck(size_t n) {
 
   PADDLE_ENFORCE_EQ(std_vec.size(),
                     vec.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The sizes of std_vec and vec should be equal, but "
                         "received std_vec.size() = %d and vec.size() = %d.",
                         std_vec.size(),
@@ -116,7 +116,7 @@ void InlinedVectorCheck(size_t n) {
   PADDLE_ENFORCE_EQ(
       vec.size(),
       static_cast<size_t>(0),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of vec should be 0, but received vec.size() = %d.",
           vec.size()));
 }

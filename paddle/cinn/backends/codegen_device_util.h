@@ -115,7 +115,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     ir::Var kernel_stream(KERNEL_STREAM, type_of<void*>());
 
     // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
-    // however, this make CodeGenCUDA_Dev before spliting the host and device
+    // however, this make CodeGenCudaDev before spliting the host and device
     // module Maybe we could reorder the process.
     std::optional<Expr> shared_mem_bytes;
     cinn::common::DefaultDeviceTarget().arch.Match(
@@ -124,7 +124,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-          CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
+          CodeGenCudaDev codegen_dev(cinn::common::DefaultNVGPUTarget());
           codegen_dev.Compile(ir::LoweredFunc(func));
           shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
 #endif

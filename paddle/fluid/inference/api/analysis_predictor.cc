@@ -1638,7 +1638,7 @@ void AnalysisPredictor::MkldnnPostReset() {
               ->GetShapeBlobSize();
       PADDLE_ENFORCE_LE(shape_blob_size,
                         static_cast<size_t>(config_.mkldnn_cache_capacity_),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required shape_blob_size should be less than or "
                             "equal to config_.mkldnn_cache_capacity_. "));
     }
@@ -3610,6 +3610,7 @@ USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(lookup_table_v2)
 USE_TRT_CONVERTER(expand_v2)
 USE_TRT_CONVERTER(expand_as_v2)
+USE_TRT_CONVERTER(argsort)
 USE_TRT_CONVERTER(take_along_axis)
 USE_TRT_CONVERTER(skip_groupnorm_act)
 USE_TRT_CONVERTER(preln_groupnorm_act)
