@@ -461,7 +461,7 @@ struct SymbolicDim_SimplifyDotUndot_DimExpr {
         pre_index_undot = index_undot_value;
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(
+    PADDLE_ENFORCE_EQ(
         pre_index_undot.has_value(),
         true,
         phi::errors::InvalidArgument("pre_index_undot should not be null"));
