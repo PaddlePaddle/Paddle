@@ -489,6 +489,12 @@ void OperationFactory::RegisterManualOpCreator() {
           bool keepdim =
               attrs.at("keepdim").dyn_cast<pir::BoolAttribute>().data();
 
+          PADDLE_ENFORCE_EQ(
+              attrs.find("dtype") != attrs.end(),
+              true,
+              phi::errors::InvalidArgument("'dtype' Attribute is expected "
+                                           "for SumOp. "));
+
           ::phi::DataType dtype =
               attrs.at("dtype")
                   .dyn_cast<paddle::dialect::DataTypeAttribute>()
