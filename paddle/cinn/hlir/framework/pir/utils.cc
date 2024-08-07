@@ -643,8 +643,9 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
     return hlir::framework::kElementWise;
   }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
-  PADDLE_ENFORCE_NOT_NULL(
+  PADDLE_ENFORCE_EQ(
       op_pattern_dict.Find(cinn_op),
+      true,
       phi::errors::PreconditionNotMet("The CINN operation pattern for %s must be found in the dictionary.", cinn_op.c_str()));
   auto kind = op_pattern_dict[cinn_op];
   if (kind == hlir::framework::kBroadcast) {
