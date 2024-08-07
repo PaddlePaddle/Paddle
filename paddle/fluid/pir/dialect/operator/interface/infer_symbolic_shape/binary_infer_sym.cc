@@ -888,8 +888,10 @@ bool TopPSamplingOpInferSymbolicShape(
 bool GammainccOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // Get the symbolic shape of the input tensors
-  auto x_dims = infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  auto y_dims = infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  auto x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto y_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
   int max_dim = std::max(x_dims.size(), y_dims.size());
   int x_offset = max_dim - x_dims.size();
@@ -912,7 +914,9 @@ bool GammainccOpInferSymbolicShape(
   }
 
   // Set the symbolic shape of the output tensor
-  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
 
   return true;
 }
@@ -920,8 +924,10 @@ bool GammainccOpInferSymbolicShape(
 bool HeavisideOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // Get the symbolic shape of the input tensors
-  auto x_dims = infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  auto y_dims = infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  auto x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto y_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
   int max_dim = std::max(x_dims.size(), y_dims.size());
   int x_offset = max_dim - x_dims.size();
@@ -944,7 +950,9 @@ bool HeavisideOpInferSymbolicShape(
   }
 
   // Set the symbolic shape of the output tensor
-  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
 
   return true;
 }
@@ -952,8 +960,10 @@ bool HeavisideOpInferSymbolicShape(
 bool NextafterOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // Get the symbolic shape of the input tensors
-  auto x_dims = infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  auto y_dims = infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  auto x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto y_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
   int max_dim = std::max(x_dims.size(), y_dims.size());
   int x_offset = max_dim - x_dims.size();
@@ -976,7 +986,9 @@ bool NextafterOpInferSymbolicShape(
   }
 
   // Set the symbolic shape of the output tensor
-  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
 
   return true;
 }
