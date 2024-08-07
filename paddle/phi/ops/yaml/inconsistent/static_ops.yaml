@@ -171,8 +171,7 @@
     func : ReduceScatterInferMeta
     param: [x, nranks]
   kernel :
-    func : reduce_scatter
-    param: [x, nranks]
+    func : c_reducescatter
 
 - op : c_split
   args : (Tensor x, int rank = 0, int nranks = 1, int ring_id = 0, bool use_calc_stream = false, bool use_model_parallel = true)
@@ -349,6 +348,7 @@
     func : UnchangedInferMeta
   kernel:
     func: get_tensor_from_selected_rows {selected_rows -> dense}
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : global_gather
   args : (Tensor x, Tensor local_count, Tensor global_count, int ring_id = 0, bool use_calc_stream=false)
@@ -811,6 +811,7 @@
   kernel:
     func: shadow_feed
     param: [x]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shadow_feed_tensors
   args : (Tensor[] x)
@@ -833,6 +834,7 @@
     param: [x]
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : soft_relu
   args : (Tensor x, float threshold = 20.0f)

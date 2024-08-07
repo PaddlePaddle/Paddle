@@ -26,15 +26,23 @@ using CustomSpmdInferAttrArg = paddle::any;
 template <typename T>
 struct SpmdInferHelperTypeEnd {};
 
-#define PD_INFER_SPMD_CHECK_INPUTS_SIZE_GT(inputs, size_bound) \
-  PD_CHECK(inputs.size() > size_bound,                         \
-           #inputs,                                            \
-           " size must be great than ",                        \
-           size_bound)
+#define PD_INFER_SPMD_CHECK_INPUTS_SIZE_GT(inputs, size_bound)                 \
+  PADDLE_ENFORCE_GT(inputs.size(),                                             \
+                    size_bound,                                                \
+                    phi::errors::PreconditionNotMet(                           \
+                        "The size of %s must be greater than %d, but got %d.", \
+                        #inputs,                                               \
+                        size_bound,                                            \
+                        inputs.size()))
 
-#define PD_INFER_SPMD_CHECK_INPUTS_SIZE_EQ(inputs, size_bound) \
-  PD_CHECK(                                                    \
-      inputs.size() == size_bound, #inputs, " size must be eq ", size_bound)
+#define PD_INFER_SPMD_CHECK_INPUTS_SIZE_EQ(inputs, size_bound)             \
+  PADDLE_ENFORCE_EQ(inputs.size(),                                         \
+                    size_bound,                                            \
+                    phi::errors::PreconditionNotMet(                       \
+                        "The size of %s must be equal to %d, but got %d.", \
+                        #inputs,                                           \
+                        size_bound,                                        \
+                        inputs.size()))
 
 #define PD_SPECIALIZE_SpmdInferHelper_FOR_AttrType(attr_type)              \
   template <typename... Tail>                                              \
