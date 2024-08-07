@@ -916,7 +916,7 @@ bool IndexSelectOpInferSymbolicShape(
   std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
   std::vector<symbol::DimExpr> index_dims = index_shape_or_data.shape();
 
-  int dim = op->attribute<pir::Int32Attribute>("dim").data();
+  auto dim = op->attribute<pir::Int32Attribute>("dim").data();
 
   auto input_rank = x_dims.size();
   auto index_rank = index_dims.size();
@@ -962,8 +962,8 @@ bool IndexSelectOpInferSymbolicShape(
 
 bool IndexSelect_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-      return IndexSelectOpInferSymbolicShape(op, infer_context);
-    }
+  return IndexSelectOpInferSymbolicShape(op, infer_context);
+}
 
 }  // namespace paddle::dialect
 
