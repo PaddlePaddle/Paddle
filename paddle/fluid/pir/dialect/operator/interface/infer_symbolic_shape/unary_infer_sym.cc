@@ -1220,8 +1220,8 @@ bool NumelOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool P_NormOpInferSymbolicShape(pir::Operation *op,
-                                pir::InferSymbolicShapeContext *infer_context) {
+bool PNormOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
   auto x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
