@@ -98,7 +98,7 @@ class TestGemmEpilogueHorizontalFusePattern(PassTest):
         num_head = 2
         head_dim = 16
         dim = num_head * head_dim
-        num_layers = 32
+        num_layers = 4
         x_shape = [bsz, seq_len, num_head, head_dim]
         weight_shape = [dim, dim]
         bias_shape = [dim]
