@@ -259,4 +259,4 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         elif name == 'asp':
             strategy.asp = True
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
