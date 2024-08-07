@@ -756,7 +756,7 @@ bool MarginCrossEntropyOpInferSymbolicShape(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(logits_dims)});
-  
+
   return true;
 }
 
