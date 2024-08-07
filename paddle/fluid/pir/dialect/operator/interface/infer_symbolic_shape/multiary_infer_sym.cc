@@ -1179,7 +1179,7 @@ bool QuantizeLinearOpInferSymbolicShape(
         op->result(2), symbol::TensorShapeOrDataDimExprs(in_accum_shape));
   }
 
-  if (op->result(3)) {  // out_state
+  if (op->result(3)) {
     infer_context->SetShapeOrDataForValue(
         op->result(3), symbol::TensorShapeOrDataDimExprs(in_state_shape));
   }
