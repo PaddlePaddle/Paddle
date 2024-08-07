@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 import paddle
@@ -26,9 +30,12 @@ from paddle.nn.layer.transformer import (
     _convert_param_attr_to_list,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 
 # for distributed tensor model parallel
-def _set_var_distributed(var):
+def _set_var_distributed(var) -> None:
     if var is None:
         return
 
@@ -42,7 +49,7 @@ def _set_var_distributed(var):
         main_block._find_var_recursive(var.name).is_distributed = True
 
 
-def _to_dtype(t, dtype):
+def _to_dtype(t: Tensor, dtype: np.dtype | str) -> Tensor | None:
     # this function is a prune of Layer._transform function to fix fused op under amp.decorator(O2)
     if not paddle.is_floating_point(t):
         return t
