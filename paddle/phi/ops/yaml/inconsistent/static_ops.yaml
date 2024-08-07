@@ -362,6 +362,7 @@
     func : UnchangedInferMeta
   kernel:
     func: get_tensor_from_selected_rows {selected_rows -> dense}
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : global_gather
   args : (Tensor x, Tensor local_count, Tensor global_count, int ring_id = 0, bool use_calc_stream=false)
@@ -726,9 +727,9 @@
   output : Tensor(out)
   infer_meta :
     func : ReshapeInferMeta
-    spmd_rule : ReshapeInferSpmdDynamic
+    spmd_rule : ReshapeInferSpmd
   kernel :
-    func : reshape_infer
+    func : reshape
   inplace : (x -> out)
   view: (x -> out)
   backward: reshape_grad

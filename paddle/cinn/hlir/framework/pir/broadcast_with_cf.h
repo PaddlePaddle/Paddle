@@ -13,30 +13,18 @@
 // limitations under the License.
 
 #pragma once
-#include <unordered_map>
+#include <optional>
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
-namespace cinn::dialect::ir::details {
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
-using GroupInfoMap = std::unordered_map<::pir::Operation*, OpLoweringGroupPtr>;
 
-class FusionOpAnalysis final {
- public:
-  FusionOpAnalysis(GroupInfoMap* group_infos, bool is_dy_shape)
-      : group_infos_(group_infos), is_dy_shape_(is_dy_shape) {}
-  void Run(pir::Operation* module_op) {
-    RunImpl(module_op);
-    PreCompileGroup();
-  }
-
- protected:
-  void RunImpl(pir::Operation* op);
-  void GatherGroup(pir::Operation* fusion_op);
-  void PreCompileGroup();
-
- private:
-  GroupInfoMap* group_infos_;  // not_owned
-  bool is_dy_shape_;
-};
-}  // namespace cinn::dialect::ir::details
+namespace cinn::hlir::framework::pir {
+// The optimized information for a broadcast group consists of a list of groups,
+// where each group maintains the same structure as the original group but
+// differs in shape information. In these groups, broadcast shapes have been
+// eliminated, and we utilize broadcast shape conditions to determine which
+// group to execute.
+std::optional<std::vector<OpLoweringGroupPtr>> GetBroadcastGroupListForOptimize(
+    const OpLoweringGroupPtr& group);
+}  // namespace cinn::hlir::framework::pir

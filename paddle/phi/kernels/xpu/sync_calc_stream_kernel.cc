@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/impl/sync_calc_stream_kernel_impl.h"
 
-#include <string>
-#include "paddle/common/enforce.h"
-namespace cinn::adt {
-
-class LoopDescriptor;
-
-std::string ToTxtString(const LoopDescriptor& loop_descriptor);
-
-}  // namespace cinn::adt
+PD_REGISTER_KERNEL(sync_calc_stream,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SyncCalcStreamKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}

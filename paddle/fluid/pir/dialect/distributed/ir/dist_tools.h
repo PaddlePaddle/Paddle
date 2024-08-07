@@ -41,6 +41,10 @@ std::vector<phi::distributed::DistMetaTensor> CvtToDistMetaTensor(
     pir::VectorType type);
 pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr);
 
+// When the input is a vector of Value, get all its dist
+// attributes and converts them to a ''pir::Attribute'' type.
+pir::Attribute GetTensorDistAttrArray(pir::VectorType x_vec_type);
+
 pir::Attribute CreateReplicatedDistAttr(pir::Type prim_type,
                                         ProcessMeshAttribute mesh);
 

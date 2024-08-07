@@ -12,13 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <optional>
-#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
+#ifdef PADDLE_WITH_XPU_KP
 
-using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
-using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
-namespace cinn::dialect::ir::details {
-std::optional<std::vector<OpLoweringGroupPtr>> GetBroadcastGroupListForOptimize(
-    const OpLoweringGroupPtr& group);
-}  // namespace cinn::dialect::ir::details
+// Please do not modify the following code
+#if defined(__CUDA_ARCH__)
+#undef __CUDA_ARCH__
+#endif
+
+#if defined(__CUDACC__)
+#undef __CUDACC__
+#endif
+
+#if defined(__CUDA__)
+#undef __CUDA__
+#endif
+
+#if defined(__NVCC__)
+#undef __NVCC__
+#endif
+
+#include "paddle/phi/kernels/impl/sync_calc_stream_kernel_impl.h"
+
+PD_REGISTER_KERNEL(
+    sync_calc_stream, KPS, ALL_LAYOUT, phi::SyncCalcStreamKernel, float) {}
+#endif

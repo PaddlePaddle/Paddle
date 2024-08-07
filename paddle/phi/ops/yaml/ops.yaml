@@ -2527,6 +2527,7 @@
     func : index_select_strided
     data_type : x
   backward : index_select_strided_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : instance_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon=1e-5)
@@ -2548,6 +2549,7 @@
   kernel :
     func : inverse
   backward : inverse_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : is_empty
   args : (Tensor x)
@@ -4209,7 +4211,7 @@
   kernel :
     func : silu
   backward : silu_grad
-  interfaces : paddle::dialect::LayoutTransformationInterface
+  interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
 
 - op : sin
   args : (Tensor x)
@@ -4352,6 +4354,7 @@
            sqrt_sr {selected_rows -> selected_rows}
   inplace : (x -> out)
   backward : sqrt_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : square
   args : (Tensor x)
@@ -4493,6 +4496,16 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
   optional : reserve_space
+
+- op : sync_calc_stream
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : sync_calc_stream
+  inplace : (x -> out)
 
 - op : take_along_axis
   args : (Tensor arr, Tensor indices, int axis)
@@ -4879,6 +4892,7 @@
     data_type : input
   backward : view_dtype_grad
   no_need_buffer : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : view_shape
   args : (Tensor input, int64_t[] dims = {})
