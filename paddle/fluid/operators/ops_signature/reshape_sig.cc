@@ -41,7 +41,8 @@ KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReshapeGradOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("reshape_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
+  return KernelSignature(
+      "reshape_grad", {"XShape", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature ReshapeDoubleGradOpArgumentMapping(
