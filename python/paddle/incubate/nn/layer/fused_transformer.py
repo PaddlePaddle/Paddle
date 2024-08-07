@@ -985,10 +985,10 @@ class FusedTransformer(Layer):
         custom_decoder=None,
     ):
         super().__init__()
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def forward(self, src, tgt, src_mask=None, tgt_mask=None, memory_mask=None):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class FusedMultiTransformer(Layer):

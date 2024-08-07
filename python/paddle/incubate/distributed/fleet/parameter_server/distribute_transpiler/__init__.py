@@ -851,10 +851,10 @@ class ParameterServerOptimizer(DistributedOptimizer):
         no_grad_set=None,
         callbacks=None,
     ):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def apply_gradients(self, params_grads):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _build_trainer_programs(self, compiled_config):
         _main = fleet._origin_main_program.clone()
