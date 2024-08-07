@@ -32,6 +32,20 @@ if TYPE_CHECKING:
     level=1,
     reason="paddle.incubate.graph_sample_neighbors will be removed in future",
 )
+@overload
+def graph_sample_neighbors(
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    eids: Tensor | None = None,
+    perm_buffer: Tensor | None = None,
+    sample_size: int = -1,
+    return_eids: bool = True,
+    flag_perm_buffer: bool = False,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
+    
+@overload
 def graph_sample_neighbors(
     row: Tensor,
     colptr: Tensor,
@@ -42,7 +56,7 @@ def graph_sample_neighbors(
     return_eids: bool = False,
     flag_perm_buffer: bool = False,
     name: str | None = None,
-) -> tuple[Tensor, Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """
 
     Graph Sample Neighbors API.

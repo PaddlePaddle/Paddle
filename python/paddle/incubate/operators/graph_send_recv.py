@@ -47,8 +47,8 @@ def graph_send_recv(
     x: Tensor,
     src_index: Tensor,
     dst_index: Tensor,
-    pool_type: str = "sum",
-    out_size=None,
+    pool_type: Literal["sum", "mean", "max", "min"] = "sum",
+    out_size: int | Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
