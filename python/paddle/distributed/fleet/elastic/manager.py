@@ -406,7 +406,7 @@ class ElasticManager:
 
         return int(self.etcd.get(self.prefix)[0]) == 1
 
-    def _match(self, host_list: list = None):
+    def _match(self, host_list: list | None = None):
         if host_list:
             self.hosts = host_list
         else:

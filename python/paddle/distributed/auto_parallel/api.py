@@ -721,9 +721,9 @@ def reshard(dist_tensor, mesh, placements):
 def shard_layer(
     layer: nn.Layer,
     process_mesh: ProcessMesh,
-    shard_fn: Callable = None,
-    input_fn: Callable = None,
-    output_fn: Callable = None,
+    shard_fn: Callable | None = None,
+    input_fn: Callable | None = None,
+    output_fn: Callable | None = None,
 ) -> nn.Layer:
     """
     Converts all layer's parameters to DistTensor parameters according to
@@ -2642,8 +2642,8 @@ class ShardDataloader:
         self,
         dataloader: paddle.io.DataLoader,
         meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
-        input_keys: Union[List[str], Tuple[str]] = None,
-        shard_dims: Union[list, tuple, str, int] = None,
+        input_keys: Union[List[str], Tuple[str]] | None = None,
+        shard_dims: Union[list, tuple, str, int] | None = None,
         is_dataset_splitted: bool = False,
     ):
         # do some check
@@ -2896,8 +2896,8 @@ class ShardDataloader:
 def shard_dataloader(
     dataloader: paddle.io.DataLoader,
     meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
-    input_keys: Union[List[str], Tuple[str]] = None,
-    shard_dims: Union[list, tuple, str, int] = None,
+    input_keys: Union[List[str], Tuple[str]] | None = None,
+    shard_dims: Union[list, tuple, str, int] | None = None,
     is_dataset_splitted: bool = False,
 ) -> ShardDataloader:
     """

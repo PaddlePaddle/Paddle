@@ -36,7 +36,7 @@ class AudioClassificationDataset(paddle.io.Dataset):
         files: List[str],
         labels: List[int],
         feat_type: str = 'raw',
-        sample_rate: int = None,
+        sample_rate: int | None = None,
         **kwargs,
     ):
         """
