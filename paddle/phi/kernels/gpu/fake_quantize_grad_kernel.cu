@@ -29,9 +29,6 @@ void FakeQuantizeDequantizeLSQGradKernel(const Context& dev_ctx,
                                          const int round_type,
                                          DenseTensor* x_grad,
                                          DenseTensor* scale_grad) {
-  dev_ctx.template Alloc<T>(x_grad);
-  dev_ctx.template Alloc<T>(scale_grad);
-
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
 
   phi::funcs::FakeQuantizeDequantizeGradLSQFunctor<Context, T>()(

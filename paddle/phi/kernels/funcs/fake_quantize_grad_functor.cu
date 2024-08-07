@@ -63,7 +63,7 @@ __global__ void QuantizeDequantizeGradLSQKernel(const T *in,
         x_grad_data[i] = static_cast<T>(y_grad);
     }
     ComputeDataType x_quant_round = x;
-    ComputeDataType x_quant = inv_s * x;
+    ComputeDataType x_quant = x * inv_s;
     if (round_type == 0) {
       ComputeDataType x_0 = roundWithTiesToEven(x_quant);
       x_0 = x_0 > max_bound ? max_bound : x_0;
@@ -107,14 +107,13 @@ void FakeQuantizeDequantizeGradLSQFunctor<Context, T>::operator()(const Context 
 
   T *x_grad_data = dev_ctx.template Alloc<T>(x_grad);
 
-  DenseTensor* scale_grad_elem = new DenseTensor();
-  scale_grad_elem->Resize({x.dims()});
-  T *scale_grad_elem_data = dev_ctx.template Alloc<T>(scale_grad_elem);
+  DenseTensor scale_grad_elem;
+  scale_grad_elem.Resize({x.dims()});
+  T *scale_grad_elem_data = dev_ctx.template Alloc<T>(&scale_grad_elem, scale_grad_elem.numel() * sizeof(T));
 
   QuantizeDequantizeGradLSQKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
     in_data, scale_data, out_grad_data, lsq_factor, bin_cnt, round_type, num, x_grad_data, scale_grad_elem_data);
 
-  cudaDeviceSynchronize();
   dev_ctx.template Alloc<T>(scale_grad);
 
   std::vector<int> v_dims(x.dims().size());
@@ -122,7 +121,7 @@ void FakeQuantizeDequantizeGradLSQFunctor<Context, T>::operator()(const Context 
   IntArray reduce_dims(v_dims);
 
   phi::SumKernel<T, Context>(
-    dev_ctx, *scale_grad_elem, reduce_dims, x.dtype(), 0, scale_grad);
+    dev_ctx, scale_grad_elem, reduce_dims, x.dtype(), 0, scale_grad);
   scale_grad->Resize(scale.dims());
 }
 

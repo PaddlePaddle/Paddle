@@ -237,7 +237,6 @@ void FakeQuantizeDequantizeLSQKernel(const Context& dev_ctx,
                                int bit_length,
                                int round_type,
                                DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
   phi::funcs::FakeQuantizeDequantizeLSQFunctor<Context, T>()(
     dev_ctx, x, scale, lsq_factor, bin_cnt, round_type, out
