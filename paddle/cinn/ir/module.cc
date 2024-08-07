@@ -19,6 +19,7 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/optimize.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
@@ -59,8 +60,12 @@ std::optional<int> GetDataAlignment(common::Arch arch) {
 }
 
 void Module::Builder::AddBuffer(ir::Buffer buffer) {
-  CHECK(buffer->target.defined())
-      << "buffer [" << buffer->name << "]'s target is undefined";
+  PADDLE_ENFORCE_EQ(
+      buffer->target.defined(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The target of buffer [%s] is undefined. Please define the target.",
+          buffer->name));
   if (std::find_if(
           module_->buffers.begin(), module_->buffers.end(), [&](const Expr &x) {
             return x.as_buffer()->name == buffer->name;

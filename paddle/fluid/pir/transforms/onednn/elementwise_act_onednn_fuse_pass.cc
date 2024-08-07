@@ -32,7 +32,8 @@ std::string GetFusedElement(const std::string &elementwise_type) {
   if (it != fused_ops.end()) {
     return it->second;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("The op type is not supported."));
+    PADDLE_THROW(
+        common::errors::Unimplemented("The op type is not supported."));
   }
 }
 class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
@@ -229,13 +230,22 @@ class ElementwiseClipFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
     std::string fused_elementwise_type = GetFusedElement(elementwise_type_);
 
+    const auto &fuse_alpha = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("full_1_value");
+        });
+    const auto &fuse_beta = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("full_2_value");
+        });
+
     const auto &fused_elementwise =
         res.Op(fused_elementwise_type,
                {{
                    {"axis", res.Int32Attr(-1)},
                    {"fuse_activation", res.StrAttr("clip")},
-                   {"fuse_alpha", pat.Attr("full_1_value")},
-                   {"fuse_beta", pat.Attr("full_2_value")},
+                   {"fuse_alpha", fuse_alpha},
+                   {"fuse_beta", fuse_beta},
                    {"fused_output_scale", res.Float32Attr(1.0f)},
                    {"fused_unsqueeze2_axes", res.VectorInt32Attr({})},
                    {"scale_x", res.Float32Attr(1.0f)},

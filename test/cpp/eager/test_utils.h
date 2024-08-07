@@ -19,11 +19,11 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/utils.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace eager_test {
@@ -58,10 +58,9 @@ bool CompareGradTensorWithValue(const paddle::Tensor& target, T value) {
   T* ptr = grad_dense->data<T>();
 
   std::vector<T> host_data(grad_dense->numel());
-  if (paddle::platform::is_gpu_place(grad_dense->place())) {
+  if (phi::is_gpu_place(grad_dense->place())) {
 #ifdef PADDLE_WITH_CUDA
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
     auto stream = dev_ctx->stream();
 
@@ -77,7 +76,7 @@ bool CompareGradTensorWithValue(const paddle::Tensor& target, T value) {
   VLOG(6) << "CompareGradTensorWithValue";
   for (int i = 0; i < grad_dense->numel(); i++) {
     PADDLE_ENFORCE(value == ptr[i],
-                   paddle::platform::errors::PreconditionNotMet(
+                   common::errors::PreconditionNotMet(
                        "Numerical Error in Compare Grad Variable With Value of "
                        "%d, we expected got value: %f, but got: %f instead. "
                        "Please check it later.",
@@ -95,10 +94,9 @@ bool CompareTensorWithValue(const paddle::Tensor& target, T value) {
   T* ptr = dense_t->data<T>();
 
   std::vector<T> host_data(dense_t->numel());
-  if (paddle::platform::is_gpu_place(dense_t->place())) {
+  if (phi::is_gpu_place(dense_t->place())) {
 #ifdef PADDLE_WITH_CUDA
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
     auto stream = dev_ctx->stream();
 
@@ -115,7 +113,7 @@ bool CompareTensorWithValue(const paddle::Tensor& target, T value) {
   VLOG(6) << "CompareTensorWithValue";
   for (int i = 0; i < dense_t->numel(); i++) {
     PADDLE_ENFORCE(value == ptr[i],
-                   paddle::platform::errors::PreconditionNotMet(
+                   common::errors::PreconditionNotMet(
                        "Numerical Error in Compare Grad Variable With Value of "
                        "%d, we expected got value: %f, but got: %f instead. "
                        "Please check it later.",

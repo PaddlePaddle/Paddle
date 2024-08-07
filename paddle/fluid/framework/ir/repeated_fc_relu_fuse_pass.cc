@@ -330,12 +330,11 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
                           const PDPattern& pat) -> Node* {
     PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)),
                       0,
-                      platform::errors::NotFound(
-                          "Pattern has no node called %s.", name.c_str()));
+                      common::errors::NotFound("Pattern has no node called %s.",
+                                               name.c_str()));
     Node* p = subgraph.at(pat.RetrieveNode(name));
     PADDLE_ENFORCE_NOT_NULL(
-        p,
-        platform::errors::NotFound("Subgraph has no node %s.", name.c_str()));
+        p, common::errors::NotFound("Subgraph has no node %s.", name.c_str()));
     return p;
   };
 
@@ -427,7 +426,7 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
 
 void RepeatedFCReluFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = 0;

@@ -1343,12 +1343,9 @@ class BatchNorm2D(_BatchNormBase):
     """
 
     def _check_data_format(self, input: DataLayout2D) -> None:
-        if input == 'NCHW':
-            self._data_format = input
-        elif input == "NHWC":
-            self._data_format = input
-        else:
+        if input not in ["NCHW", "NHWC"]:
             raise ValueError('expected NCHW or NHWC for data_format input')
+        self._data_format = input
 
     def _check_input_dim(self, input: Tensor) -> None:
         if len(input.shape) != 4:

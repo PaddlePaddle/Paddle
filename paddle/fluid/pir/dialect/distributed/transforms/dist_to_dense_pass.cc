@@ -29,7 +29,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -93,7 +93,7 @@ void ProcessDistBlock(pir::Block* block) {
       auto array_attr = prev_op->attribute<pir::ArrayAttribute>("value");
       PADDLE_ENFORCE_EQ(array_attr.size(),
                         local_dims.size(),
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The reshape's shape inputs element's size must "
                             "equal to result's dim size."));
       std::vector<pir::Attribute> new_dims;
@@ -134,7 +134,7 @@ void VerifyDenseBlock(pir::Block* block) {
       PADDLE_ENFORCE_EQ(
           IsDistType(result.type()),
           false,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "Block op [%s] still contain dist type.", op_item->name()));
     }
 

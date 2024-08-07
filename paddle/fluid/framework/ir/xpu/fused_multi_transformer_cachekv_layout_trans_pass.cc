@@ -92,7 +92,7 @@ FusedMultiTransformerGatherPattern::FusedMultiTransformerGatherPattern(
 void FusedMultiTransformerCacheKVLayoutTransPass::FillConstantReshapePass(
     ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   GraphPatternDetector gpd;
   patterns::FusedMultiTransformerFillConstantPattern pattern(
       gpd.mutable_pattern(), name_scope_);
@@ -141,7 +141,7 @@ void FusedMultiTransformerCacheKVLayoutTransPass::FillConstantReshapePass(
 int FusedMultiTransformerCacheKVLayoutTransPass::
     CountFillConstantReshapePattern(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   GraphPatternDetector gpd;
   patterns::FusedMultiTransformerFillConstantPattern pattern(
       gpd.mutable_pattern(), name_scope_);
@@ -166,7 +166,7 @@ int FusedMultiTransformerCacheKVLayoutTransPass::
 void FusedMultiTransformerCacheKVLayoutTransPass::GatherReshapePass(
     ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   GraphPatternDetector gpd;
   patterns::FusedMultiTransformerGatherPattern pattern(gpd.mutable_pattern(),
                                                        name_scope_);
@@ -211,7 +211,7 @@ void FusedMultiTransformerCacheKVLayoutTransPass::GatherReshapePass(
 int FusedMultiTransformerCacheKVLayoutTransPass::CountGatherReshapePattern(
     ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   GraphPatternDetector gpd;
   patterns::FusedMultiTransformerGatherPattern pattern(gpd.mutable_pattern(),
                                                        name_scope_);
@@ -238,7 +238,7 @@ int FusedMultiTransformerCacheKVLayoutTransPass::CountGatherReshapePattern(
 void FusedMultiTransformerCacheKVLayoutTransPass::ApplyImpl(
     ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   if (!graph->IsMainGraph()) {
     VLOG(3) << "'fused_multi_transformer_cachekv_layout_pass' needs info in "
                "all graphs, so it should be applied in the main graph.";

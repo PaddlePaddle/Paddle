@@ -37,7 +37,7 @@ struct ExceptionHandler {
   void operator()() const {
     auto ex = this->future_.get();
     if (ex != nullptr) {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "The exception is thrown inside the thread pool. You "
           "should use RunAndGetException to handle the exception."
           "The exception is:\n %s.",
@@ -79,7 +79,7 @@ class ThreadPool {
         return std::unique_ptr<common::enforce::EnforceNotMet>(
             new common::enforce::EnforceNotMet(ex));
       } catch (const std::exception& e) {
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "Unexpected exception is caught in thread pool. All "
             "throwable exception in Paddle should be an EnforceNotMet."
             "The exception is:\n %s.",
@@ -92,7 +92,7 @@ class ThreadPool {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (!running_) {
-        PADDLE_THROW(phi::errors::Unavailable(
+        PADDLE_THROW(common::errors::Unavailable(
             "Task is enqueued into stopped ThreadPool."));
       }
       tasks_.push(std::move(task));

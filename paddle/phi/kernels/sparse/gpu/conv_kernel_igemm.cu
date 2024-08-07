@@ -41,11 +41,11 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       subm,
       true,
-      phi::errors::InvalidArgument("The subm must be true, but received %s.",
-                                   subm ? "true" : "false"));
+      common::errors::InvalidArgument("The subm must be true, but received %s.",
+                                      subm ? "true" : "false"));
   PADDLE_ENFORCE_EQ(groups,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The group must be 1, but received %d.", groups));
 
   const auto& x_dims = x.dims();
@@ -56,20 +56,20 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         (kernel_dims.size() == 4),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "For 2D case, the size of kernel_dims must be 4, but received %d.",
             kernel_dims.size()));
     PADDLE_ENFORCE_EQ(
         (strides.size() == 2 && strides[0] == 1 && strides[1] == 1),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The strides must be 1, but received %d, %d.",
             strides[0],
             strides[1]));
     PADDLE_ENFORCE_EQ(
         (dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The dilations must be 1, but received %d, %d.",
             dilations[0],
             dilations[1]));
@@ -78,13 +78,13 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         (kernel_dims.size() == 5),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "For 3D case, the size of kernel_dims must be 5, but received %d.",
             kernel_dims.size()));
     PADDLE_ENFORCE_EQ((strides.size() == 3 && strides[0] == 1 &&
                        strides[1] == 1 && strides[2] == 1),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The strides must be 1, but received %d, %d, %d.",
                           strides[0],
                           strides[1],
@@ -92,7 +92,7 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ((dilations.size() == 3 && dilations[0] == 1 &&
                        dilations[1] == 1 && dilations[2] == 1),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dilations must be 1, but received %d, %d, %d.",
                           dilations[0],
                           dilations[1],
@@ -133,7 +133,7 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
     phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &out_indices);
     out->SetMember(out_indices, out_values, out_dims, false);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The subm must be true, but received %s.", subm ? "true" : "false"));
   }
 
@@ -161,7 +161,7 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
                                   out_channels,
                                   *(out->mutable_values()));
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "conv_forward_implicit_gemm_cuda is only supported on CUDA."));
 #endif
 }
@@ -200,7 +200,7 @@ void Conv3dImplicitGemmKernel(const Context& dev_ctx,
                                                 out);
       }));
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Conv3dImplicitGemmKernel is only supported on CUDA."));
 #endif
 }

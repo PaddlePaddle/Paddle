@@ -45,10 +45,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        if self.attrs['axis'] == -1:
-            self.check_output(check_pir=True)
-        else:
-            self.check_output(check_pir=True)
+        self.check_output(check_pir=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -102,10 +99,7 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
         self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def test_check_output(self):
-        if self.attrs['axis'] == -1:
-            self.check_output(check_pir=True)
-        else:
-            self.check_output(check_pir=True)
+        self.check_output(check_pir=True)
 
 
 @unittest.skipIf(
@@ -121,10 +115,7 @@ class TestElementwiseModFP16Op(TestElementwiseModOp):
         self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def test_check_output(self):
-        if self.attrs['axis'] == -1:
-            self.check_output(check_pir=True)
-        else:
-            self.check_output(check_pir=True)
+        self.check_output(check_pir=True)
 
 
 class TestElementwiseModFP16Op_ZeroDim1(TestElementwiseModFP16Op):

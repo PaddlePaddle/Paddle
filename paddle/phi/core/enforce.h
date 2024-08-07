@@ -187,7 +187,7 @@ void ThrowWarnInternal(const std::string& message);
   (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \
     auto* __ptr = (__PTR);                                              \
     if (UNLIKELY(nullptr == __ptr)) {                                   \
-      auto __summary__ = phi::errors::NotFound(                         \
+      auto __summary__ = common::errors::NotFound(                      \
           "Unable to get %s data of %s %s in operator %s. "             \
           "Possible reasons are:\n"                                     \
           "  1. The %s is not the %s of operator %s;\n"                 \
@@ -250,7 +250,7 @@ namespace details {
     } catch (paddle::bad_variant_access const&) {                            \
       HANDLE_THE_ERROR                                                       \
       throw ::common::enforce::EnforceNotMet(                                \
-          phi::errors::InvalidArgument(                                      \
+          common::errors::InvalidArgument(                                   \
               "paddle::get failed, cannot get value "                        \
               "(%s) by type %s, its type is %s.",                            \
               expression,                                                    \
@@ -437,7 +437,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
         ::phi::enforce::details::ExternalApiType<            \
             __CUDA_STATUS_TYPE__>::kSuccess;                 \
     if (UNLIKELY(__cond__ != __success_type__)) {            \
-      auto __summary__ = phi::errors::External(              \
+      auto __summary__ = common::errors::External(           \
           ::phi::enforce::build_nvidia_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);                 \
     }                                                        \
@@ -456,14 +456,14 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
     }                                                        \
   } while (0)
 
-#define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                              \
-  do {                                                                      \
-    auto res = cudaGetLastError();                                          \
-    if (UNLIKELY(res != cudaSuccess)) {                                     \
-      auto msg = ::phi::enforce::build_nvidia_error_msg(res);               \
-      PADDLE_THROW(                                                         \
-          phi::errors::Fatal("CUDA error after kernel (%s): %s", OP, msg)); \
-    }                                                                       \
+#define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                                 \
+  do {                                                                         \
+    auto res = cudaGetLastError();                                             \
+    if (UNLIKELY(res != cudaSuccess)) {                                        \
+      auto msg = ::phi::enforce::build_nvidia_error_msg(res);                  \
+      PADDLE_THROW(                                                            \
+          common::errors::Fatal("CUDA error after kernel (%s): %s", OP, msg)); \
+    }                                                                          \
   } while (0)
 
 inline void retry_sleep(unsigned milliseconds) {
@@ -496,7 +496,7 @@ inline void retry_sleep(unsigned milliseconds) {
       ++retry_count;                                                    \
     }                                                                   \
     if (UNLIKELY(__cond__ != __success_type__)) {                       \
-      auto __summary__ = phi::errors::External(                         \
+      auto __summary__ = common::errors::External(                      \
           ::phi::enforce::build_nvidia_error_msg(__cond__));            \
       __THROW_ERROR_INTERNAL__(__summary__);                            \
     }                                                                   \
@@ -656,7 +656,7 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
         ::phi::enforce::details::ExternalApiType<          \
             __CUDA_STATUS_TYPE__>::kSuccess;               \
     if (UNLIKELY(__cond__ != __success_type__)) {          \
-      auto __summary__ = phi::errors::External(            \
+      auto __summary__ = common::errors::External(         \
           ::phi::enforce::build_rocm_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);               \
     }                                                      \
@@ -697,7 +697,7 @@ inline void retry_sleep(unsigned millisecond) {
       ++retry_count;                                                    \
     }                                                                   \
     if (UNLIKELY(__cond__ != __success_type__)) {                       \
-      auto __summary__ = phi::errors::External(                         \
+      auto __summary__ = common::errors::External(                      \
           ::phi::enforce::build_rocm_error_msg(__cond__));              \
       __THROW_ERROR_INTERNAL__(__summary__);                            \
     }                                                                   \

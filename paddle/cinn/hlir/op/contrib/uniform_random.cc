@@ -26,7 +26,6 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -41,6 +40,7 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -57,7 +57,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForUniformRandom(
     const Target &target) {
   framework::CINNCompute uniform_random_compute(
       [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(attrs.attr_store.count("shape"));
+        PADDLE_ENFORCE_GE(
+            attrs.attr_store.count("shape"),
+            1,
+            ::common::errors::NotFound("The attribute 'shape' is not found in "
+                                       "attr_store. Please ensure it is set."));
         ir::Tensor shape_tensor;
         std::string tensor_name = "uniform_random_out";
         auto out = pe::Identity(shape_tensor, tensor_name).front();

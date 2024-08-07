@@ -1504,6 +1504,14 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'interface.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/serialize_deserialize/include',
+                recursive=True,
+            )
+        )
     )
 
     jit_layer_headers = [
@@ -1584,6 +1592,7 @@ def get_setup_parameters():
         'paddle.incubate.tensor',
         'paddle.incubate.multiprocessing',
         'paddle.incubate.nn',
+        'paddle.incubate.jit',
         'paddle.incubate.asp',
         'paddle.incubate.passes',
         'paddle.incubate.framework',
@@ -1669,6 +1678,7 @@ def get_setup_parameters():
         'paddle.text.datasets',
         'paddle.incubate',
         'paddle.incubate.nn',
+        'paddle.incubate.jit',
         'paddle.incubate.nn.functional',
         'paddle.incubate.nn.layer',
         'paddle.incubate.optimizer.functional',

@@ -346,15 +346,19 @@ class TestSGDOpBF16API(unittest.TestCase):
             label = paddle.static.data(
                 name='Y', shape=[-1] + y_shape, dtype='uint16'
             )
-            emb = paddle.static.nn.embedding(
-                input=x,
-                size=self.w_shape,
-                param_attr=base.ParamAttr(
+            pre_dtype = paddle.get_default_dtype()
+            paddle.set_default_dtype("uint16")
+            emb = paddle.nn.Embedding(
+                num_embeddings=self.w_shape[0],
+                embedding_dim=self.w_shape[1],
+                sparse=False,
+                weight_attr=base.ParamAttr(
                     name="emb_weight", initializer=self.initializer
                 ),
-                is_sparse=False,
-                dtype="uint16",
+            )(
+                x
             )  # bfloat16
+            paddle.set_default_dtype(pre_dtype)
             cost = paddle.add(emb, label)
             avg_cost = paddle.mean(cost)
 

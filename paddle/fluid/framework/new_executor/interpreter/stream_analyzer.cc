@@ -30,7 +30,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace paddle::framework::interpreter {
 
-using DeviceContext = platform::DeviceContext;
+using DeviceContext = phi::DeviceContext;
 using DeviceEvent = platform::DeviceEvent;
 
 inline std::string RunTypeToString(DownstreamRunType run_type) {
@@ -130,11 +130,11 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
     if (op_func_node->force_record_event_ &&
         instruction.EventToRecord() == nullptr) {
       auto place = instruction.DeviceContext().GetPlace();
-      if (platform::is_gpu_place(place)) {
+      if (phi::is_gpu_place(place)) {
         PADDLE_ENFORCE_NE(
             op_func_node->event_to_record_,
             "default",
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "If the attribute 'force_record_event_' of one "
                 "operator is 'true', the 'event_to_record_' of this "
                 "operator can not be 'default'. But the "
@@ -144,7 +144,7 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
             (*program_force_events_to_wait_)
                 .find(op_func_node->event_to_record_),
             (*program_force_events_to_wait_).end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The program_force_events_to_wait_ had the event "
                 "that belongs to the operator : %s before the operator create "
                 "the event, "
@@ -166,7 +166,7 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
         PADDLE_ENFORCE_NE(
             (*program_force_events_to_wait_).find(event_name),
             (*program_force_events_to_wait_).end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The program_force_events_to_wait_ don't have the event %s "
                 "for the operator: %s to wait. The event should had been "
                 "created by the operator "
@@ -197,7 +197,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
 
   // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
-  if (platform::is_gpu_place(place_) || platform::is_custom_place(place_)) {
+  if (phi::is_gpu_place(place_) || phi::is_custom_place(place_)) {
     VLOG(6) << "Parse DeviceContext for " << op_type
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {
@@ -243,7 +243,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
       if (FLAGS_dynamic_static_unified_comm) {
         const auto& comm_context_manager =
             phi::distributed::CommContextManager::GetInstance();
-        dev_ctx = static_cast<platform::DeviceContext*>(
+        dev_ctx = static_cast<phi::DeviceContext*>(
             static_cast<phi::distributed::NCCLCommContext*>(
                 comm_context_manager.Get(std::to_string(ring_id)))
                 ->GetDevContext());
@@ -333,13 +333,13 @@ DownstreamRunType analyse_run_type_for_two_instructions(T* cur_instr,
                                                         T* next_instr,
                                                         const Place& place) {
   // xpu&ipu memcpy kerenl is synchronous.
-  if (platform::is_ipu_place(place) || platform::is_xpu_place(place)) {
+  if (phi::is_ipu_place(place) || phi::is_xpu_place(place)) {
     return DownstreamRunType::kDirectRun;
   }
 
   // npu d2h kernel is asynchronous.
-  if (platform::is_custom_place(place)) {
-    if (platform::is_cpu_place(cur_instr->DeviceContext().GetPlace()) ||
+  if (phi::is_custom_place(place)) {
+    if (phi::is_cpu_place(cur_instr->DeviceContext().GetPlace()) ||
         interpreter::IsMemcpyH2D(next_instr)) {
       return DownstreamRunType::kDirectRun;
     }
@@ -655,9 +655,9 @@ platform::DeviceType StreamAnalyzer::GetWaiterType(
   if (instr.KernelType() == OpFuncType::kCpuSync) {
     return platform::kCPU;
   } else {
-    if (platform::is_xpu_place(place_)) {
+    if (phi::is_xpu_place(place_)) {
       return platform::kXPU;
-    } else if (platform::is_custom_place(place_)) {
+    } else if (phi::is_custom_place(place_)) {
       return platform::kCUSTOM_DEVICE;
     }
     return platform::kCUDA;
@@ -770,11 +770,11 @@ void PirStreamAnalyzer::ConstructEvents(
     // create extra event to record
     if (instr->IsForceRecordEvent() && instr->EventToRecord() == nullptr) {
       auto place = instr->DeviceContext().GetPlace();
-      if (platform::is_gpu_place(place)) {
+      if (phi::is_gpu_place(place)) {
         PADDLE_ENFORCE_NE(
             instr->EventToRecordInfo(),
             "default",
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "If the attribute 'force_record_event_' of one "
                 "operator is 'true', the 'event_to_record_' of this "
                 "operator can not be 'default'. But the "
@@ -783,7 +783,7 @@ void PirStreamAnalyzer::ConstructEvents(
         PADDLE_ENFORCE_EQ(
             (*program_force_events_to_wait_).find(instr->EventToRecordInfo()),
             (*program_force_events_to_wait_).end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The program_force_events_to_wait_ had the event "
                 "that belongs to the operator : %s before the operator create "
                 "the event, "
@@ -805,7 +805,7 @@ void PirStreamAnalyzer::ConstructEvents(
         PADDLE_ENFORCE_NE(
             (*program_force_events_to_wait_).find(event_name),
             (*program_force_events_to_wait_).end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The program_force_events_to_wait_ don't have the event %s "
                 "for the operator: %s to wait. The event should had been "
                 "created by the operator "
@@ -850,9 +850,9 @@ platform::DeviceType PirStreamAnalyzer::GetWaiterType(
   if (instr->KernelType() == OpFuncType::kCpuSync) {
     return platform::kCPU;
   } else {
-    if (platform::is_xpu_place(place_)) {
+    if (phi::is_xpu_place(place_)) {
       return platform::kXPU;
-    } else if (platform::is_custom_place(place_)) {
+    } else if (phi::is_custom_place(place_)) {
       return platform::kCUSTOM_DEVICE;
     }
     return platform::kCUDA;

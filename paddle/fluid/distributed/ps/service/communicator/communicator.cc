@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -95,20 +96,20 @@ int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
                                 int table_id,
                                 Scope *scope) {  // pserver_scope_
-  platform::RecordEvent record_event("Communicator->RpcRecvDense",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("Communicator->RpcRecvDense",
+                                platform::TracerEventType::Communication,
+                                1);
   std::vector<::paddle::distributed::Region> regions;
   regions.reserve(varnames.size());
   for (auto &t : varnames) {
     Variable *var = scope->Var(t);
     phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
-    if (platform::is_gpu_place(tensor->place())) {
+    if (phi::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       Variable *temp_var = xpu_temp_scope_->Var(t);
       phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       temp_tensor->Resize(tensor->dims());
-      float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
+      float *temp_data = temp_tensor->mutable_data<float>(phi::CPUPlace());
       ::paddle::distributed::Region reg(temp_data, tensor->numel());
       regions.emplace_back(std::move(reg));
       VLOG(1) << "Communicator::RpcRecvDense Var " << t << " table_id "
@@ -129,18 +130,18 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
     Variable *var = scope->FindVar(t);
     phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
     VLOG(3) << "Communicator::RecvNoBarrier Var " << t << " On gpu? "
-            << platform::is_gpu_place(tensor->place());
+            << phi::is_gpu_place(tensor->place());
 
-    float *temp_recv_data = tensor->mutable_data<float>(platform::CPUPlace());
+    float *temp_recv_data = tensor->mutable_data<float>(phi::CPUPlace());
     VLOG(3) << "Communicator::RpcRecvDense Var " << t << " table_id "
             << table_id << " Temp_data[0] " << temp_recv_data[0]
             << " Temp_data[-1] " << temp_recv_data[tensor->numel() - 1];
-    if (platform::is_gpu_place(tensor->place())) {
+    if (phi::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       phi::DenseTensor *temp_tensor =
           xpu_temp_scope_->FindVar(t)->GetMutable<phi::DenseTensor>();
       framework::TensorCopy(*temp_tensor, tensor->place(), tensor);
-      float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
+      float *temp_data = temp_tensor->mutable_data<float>(phi::CPUPlace());
       VLOG(1) << "Communicator::RpcRecvDense Var " << t << " table_id "
               << table_id << " Temp_data[0] " << temp_data[0]
               << " Temp_data[-1] " << temp_data[tensor->numel() - 1];
@@ -154,22 +155,25 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
 void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
                                      int table_id,
                                      const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendDenseParam",
-                                     platform::TracerEventType::Communication,
-                                     1);
-  auto place = platform::CPUPlace();
+  phi::RecordEvent record_event("Communicator->RpcSendDenseParam",
+                                platform::TracerEventType::Communication,
+                                1);
+  auto place = phi::CPUPlace();
   std::vector<::paddle::distributed::Region> regions;
   for (auto &t : varnames) {
     Variable *var = scope.FindVar(t);
-    CHECK(var != nullptr) << "var[" << t << "] not found";
+    PADDLE_ENFORCE_NE(
+        var,
+        nullptr,
+        common::errors::InvalidArgument("Param var should not be NULL!"));
     phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
-    if (platform::is_gpu_place(tensor->place())) {
+    if (phi::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       Variable *temp_var = xpu_temp_scope_->Var(t);
       phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       temp_tensor->Resize(tensor->dims());
-      float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
-      framework::TensorCopy(*tensor, platform::CPUPlace(), temp_tensor);
+      float *temp_data = temp_tensor->mutable_data<float>(phi::CPUPlace());
+      framework::TensorCopy(*tensor, phi::CPUPlace(), temp_tensor);
       ::paddle::distributed::Region reg(temp_data, tensor->numel());
       regions.emplace_back(std::move(reg));
       VLOG(1) << "rpc_send_dense_param Var " << t << " table_id " << table_id
@@ -194,9 +198,9 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
 
 void Communicator::RpcSendDense(const CommContext &ctx,
                                 const Scope &scope) {  // delta_scope_
-  platform::RecordEvent record_event("Communicator->RpcSendDense",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("Communicator->RpcSendDense",
+                                platform::TracerEventType::Communication,
+                                1);
   auto &var_names = ctx.origin_varnames;
   auto &table_id = ctx.table_id;
   auto dense_data = std::make_shared<std::vector<float>>();
@@ -212,9 +216,13 @@ void Communicator::RpcSendDense(const CommContext &ctx,
         scope.FindVar(var_name)->Get<phi::DenseTensor>();
     size_t count = static_cast<size_t>(tensor.numel());
     const float *g = tensor.data<float>();
-    CHECK(pos + count <= dense_data->size())
-        << "invalid dense size, cur pos[" << pos << "]"
-        << " data_num[" << count << "] size[" << dense_data->size() << "]";
+    PADDLE_ENFORCE_LE(
+        pos + count,
+        dense_data->size(),
+        phi ::errors::InvalidArgument("Param pos add count should be less than "
+                                      "or equal to %d, but got %d.",
+                                      dense_data->size(),
+                                      pos + count));
     memcpy(data + pos, g, count * sizeof(float));
     pos += count;
   }
@@ -242,9 +250,9 @@ void Communicator::RpcSendDense(const CommContext &ctx,
 void Communicator::RpcSendSparseParam(const std::string &varname,
                                       int table_id,
                                       const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendSparseParam",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("Communicator->RpcSendSparseParam",
+                                platform::TracerEventType::Communication,
+                                1);
   size_t request_call_num = _worker_ptr->GetServerNums();
   std::vector<float *> push_g_vec;
 
@@ -284,9 +292,9 @@ void Communicator::RpcSendSparseParam(const std::string &varname,
 void Communicator::RpcSendSparse(const std::string &var_name,
                                  int table_id,
                                  const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendSparse",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("Communicator->RpcSendSparse",
+                                platform::TracerEventType::Communication,
+                                1);
   size_t request_call_num = _worker_ptr->GetServerNums();
   std::vector<uint64_t> sparse_push_keys;
   std::vector<float *> push_g_vec;
@@ -342,9 +350,9 @@ void Communicator::RpcSendSparse(const std::string &var_name,
 void Communicator::RpcRecvSparse(const std::string &varname,
                                  int table_id,
                                  Scope *scope) {
-  platform::RecordEvent record_event("Communicator->RpcRecvSparse",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("Communicator->RpcRecvSparse",
+                                platform::TracerEventType::Communication,
+                                1);
   auto *send_var = scope->Var(varname);
   auto *tensor = send_var->GetMutable<phi::DenseTensor>();
   auto dim = tensor->dims()[1];
@@ -416,16 +424,16 @@ void Communicator::SendGlobalStep(const CommContext &ctx,
   if (batches == 0) {
     return;
   }
-  platform::RecordEvent record_event("Communicator->SendGlobalStep",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("Communicator->SendGlobalStep",
+                                platform::TracerEventType::Communication,
+                                1);
   auto &table_id = ctx.table_id;
   size_t request_call_num = _worker_ptr->GetServerNums();
 
   auto &var_name = STEP_COUNTER;
   auto *out_var = send_scope->Var(var_name);
   auto *out_t = out_var->GetMutable<phi::DenseTensor>();
-  auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
+  auto *data = out_t->mutable_data<int64_t>({1}, phi::CPUPlace());
   data[0] = static_cast<int64_t>(batches);
   VLOG(3) << "Communicator::SendGlobalStep send: " << batches;
   DownpourBrpcClosure *closure =
@@ -480,8 +488,8 @@ void AsyncCommunicator::RecvNoBarrier() {
       Variable *var = recv_scope_->FindVar(t);
       phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
       VLOG(3) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
-              << platform::is_gpu_place(tensor->place());
-      if (platform::is_gpu_place(tensor->place())) {
+              << phi::is_gpu_place(tensor->place());
+      if (phi::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
         phi::DenseTensor *temp_tensor =
             xpu_temp_scope_->FindVar(t)->GetMutable<phi::DenseTensor>();
@@ -546,7 +554,7 @@ void AsyncCommunicator::SendByCommunicator() {
         PADDLE_ENFORCE_EQ(
             varnames.size(),
             1,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "sparse variables can only be merged by one variables"));
         RpcSendSparse(varnames[0], table_id, *send_scope_);
       } else {
@@ -614,13 +622,28 @@ void AsyncCommunicator::PullSparseToTensorSync(
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
       if (!output || output_len == size_t(output->numel())) {
         ++output_index;
-        CHECK(output_index < outputs->size());  // NOLINT
+        PADDLE_ENFORCE_LT(
+            output_index,
+            outputs->size(),
+            common::errors::InvalidArgument(
+                "The output index should be less than %d, but got %d.",
+                outputs->size(),
+                output_index));  // NOLINT
         output = outputs->at(output_index);
         output->set_lod(tensor->lod());
         output_data = output->mutable_data<float>(place);
         output_len = 0;
-        CHECK(output->numel() % fea_dim == 0);  // NOLINT
-        CHECK(output_data != nullptr);          // NOLINT
+        PADDLE_ENFORCE_EQ(output->numel() % fea_dim,
+                          0,
+                          common::errors::InvalidArgument(
+                              "The 'output->numel() % fea_dim' "
+                              "should be equal to 0, but got %d.",
+                              output->numel() % fea_dim));  // NOLINT
+        PADDLE_ENFORCE_NE(
+            output_data,
+            nullptr,
+            common::errors::InvalidArgument(
+                "The output data should not be NULL!"));  // NOLINT
       }
       uint64_t real_id = static_cast<uint64_t>(ids[i]);
       if (real_id == padding_id) {
@@ -663,21 +686,41 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else if (batch_size != cur_batch_size) {
-      // CHECK(batch_size == cur_batch_size);  // NOLINT
       batch_size_consist = false;
       break;
     }
   }
-  CHECK(batch_size > 0);  // NOLINT
+  PADDLE_ENFORCE_GT(batch_size,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The batch size should be greater than 0, but got %d.",
+                        batch_size));  // NOLINT
 
   int show_size =
       !shows->lod().empty() ? shows->lod()[0].size() - 1 : shows->dims()[0];
-  CHECK(show_size == batch_size || show_size == 1);
+  PADDLE_ENFORCE_EQ(
+      show_size == batch_size || show_size == 1,
+      true,
+      common::errors::InvalidArgument("The show size should be equal to batch "
+                                      "size or equal to 1, but got %d.",
+                                      show_size));
   int clk_size =
       !clks->lod().empty() ? clks->lod()[0].size() - 1 : clks->dims()[0];
-  CHECK(clk_size == batch_size || clk_size == 1);
+  PADDLE_ENFORCE_EQ(clk_size == batch_size || clk_size == 1,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The clk size should be equal to batch size "
+                        "or equal to 1, but got %d.",
+                        clk_size));
 
-  CHECK(outputs->size() == inputs->size());
+  PADDLE_ENFORCE_EQ(
+      outputs->size(),
+      inputs->size(),
+      common::errors::InvalidArgument(
+          "The size of outputs should be equal to inputs, but the size of "
+          "outputs is %d, the size of inputs is %d",
+          outputs->size(),
+          inputs->size()));
   std::vector<uint64_t> push_keys;
   push_keys.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<std::vector<float>> push_values;
@@ -758,7 +801,13 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
         ++input_idx;
       }
     }
-    CHECK(static_cast<int64_t>(output_len) == g_tensor->numel());
+    PADDLE_ENFORCE_EQ(
+        static_cast<int64_t>(output_len),
+        g_tensor->numel(),
+        common::errors::InvalidArgument(
+            "The output length should be equal to %d, but got %d.",
+            g_tensor->numel(),
+            static_cast<int64_t>(output_len)));
   }
 
   std::vector<float *> push_g_vec(input_idx, nullptr);
@@ -770,7 +819,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   PADDLE_ENFORCE_EQ(
       this->Check(table_id),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "can not find table: %s, please check your config", table_id));
   auto status = _worker_ptr->PushSparse(table_id,
                                         push_keys.data(),
@@ -868,7 +917,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
   PADDLE_ENFORCE_EQ(
       var_tables.size(),
       1,
-      phi::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
+      common::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
 
   auto table_name = var_tables[0];
   if (send_varname_to_ctx_.find(table_name) == send_varname_to_ctx_.end()) {
@@ -879,7 +928,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<phi::DenseTensor>();
     tensor->Resize(common::make_ddim({1}));
-    auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
+    auto *out_d = tensor->mutable_data<int64_t>(phi::CPUPlace());
     out_d[0] = 1;
     send_varname_to_queue_[table_name]->Push(tmp_var);
   }
@@ -986,7 +1035,7 @@ void HalfAsyncCommunicator::SendByCommunicator() {
         PADDLE_ENFORCE_EQ(
             varnames.size(),
             1,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "sparse variables can only be merged by one variables"));
         RpcSendSparse(varnames[0], table_id, *send_scope_);
       } else {
@@ -1022,7 +1071,7 @@ void SyncCommunicator::BarrierRecv() {
 void GeoCommunicator::Send(
     const std::vector<std::string> &var_names,
     const framework::Scope &scope) {  // last op in program
-  platform::RecordEvent record_event(
+  phi::RecordEvent record_event(
       "GeoCommunicator->Send", platform::TracerEventType::Communication, 1);
   waiting_ = false;
   auto before_send = GetCurrentUS();
@@ -1043,7 +1092,7 @@ void GeoCommunicator::Send(
 
   PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Only need to send Sparse Grad in Geo mode."));
   auto &rows = var->Get<phi::SelectedRows>().rows();
 
@@ -1181,9 +1230,9 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
 }
 
 void GeoCommunicator::SendDense(const CommContext &send_ctx) {
-  platform::RecordEvent record_event("GeoCommunicator->SendDense",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("GeoCommunicator->SendDense",
+                                platform::TracerEventType::Communication,
+                                1);
   auto &var_names = send_ctx.origin_varnames;
   auto &table_id = send_ctx.table_id;
   for (auto &varname : var_names) {
@@ -1193,11 +1242,11 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
 
     PADDLE_ENFORCE_EQ(var_latest->IsInitialized(),
                       true,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "%s is not initialized, please check", param_name));
     PADDLE_ENFORCE_EQ(var_timestamp->IsInitialized(),
                       true,
-                      phi::errors::Unavailable(
+                      common::errors::Unavailable(
                           "%s is not initialized, please check", param_name));
 
     auto &t_latest = var_latest->Get<phi::DenseTensor>();
@@ -1228,9 +1277,9 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
 }
 
 void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
-  platform::RecordEvent record_event("GeoCommunicator->RecvDense",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("GeoCommunicator->RecvDense",
+                                platform::TracerEventType::Communication,
+                                1);
   auto &table_id = send_ctx.table_id;
   auto &varnames = recv_varname_to_ctx_.at(table_id);
   // 1. recv from pserver
@@ -1292,9 +1341,9 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
 
 std::vector<int64_t> GeoCommunicator::MergeSparseIds(
     const std::string &send_varname) {
-  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("GeoCommunicator->MergeSparseIds",
+                                platform::TracerEventType::Communication,
+                                1);
   size_t merge_num = 0, wait_times = 0;
   std::unordered_set<int64_t> sparse_ids;
   while (merge_num <
@@ -1328,9 +1377,9 @@ void GeoCommunicator::SendSparse(const std::string &varname,
                                  std::vector<int64_t> &sparse_ids,
                                  int table_id,
                                  int ep_idx) {
-  platform::RecordEvent record_event("GeoCommunicator->SendSparse",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("GeoCommunicator->SendSparse",
+                                platform::TracerEventType::Communication,
+                                1);
   if (sparse_ids.empty()) {
     return;
   }
@@ -1344,11 +1393,11 @@ void GeoCommunicator::SendSparse(const std::string &varname,
 
   PADDLE_ENFORCE_EQ(var_latest->IsInitialized(),
                     true,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "%s is not initialized, please check", param_name));
   PADDLE_ENFORCE_EQ(var_old->IsInitialized(),
                     true,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "%s is not initialized, please check", param_name));
 
   auto &t_latest = var_latest->Get<phi::DenseTensor>();
@@ -1414,9 +1463,9 @@ void GeoCommunicator::SendSparse(const std::string &varname,
 void GeoCommunicator::RecvSparse(const std::string &varname,
                                  int table_id,
                                  int ep_idx) {
-  platform::RecordEvent record_event("GeoCommunicator->RecvSparse",
-                                     platform::TracerEventType::Communication,
-                                     1);
+  phi::RecordEvent record_event("GeoCommunicator->RecvSparse",
+                                platform::TracerEventType::Communication,
+                                1);
   // 1. recv from pserver
   std::vector<uint64_t> keys;
   std::vector<float> values;
@@ -1481,7 +1530,7 @@ void GeoCommunicator::MainThread() {
         PADDLE_ENFORCE_EQ(
             varnames.size(),
             1,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "sparse variables can only be merged by one variables"));
         int pserver_num = static_cast<int>(ctx.epmap.size());
         for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {

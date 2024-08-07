@@ -32,7 +32,7 @@ TEST(TensorUtils, Test) {
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor t = eager_test::CreateTensorWithValue(ddim,
@@ -50,7 +50,10 @@ TEST(TensorUtils, Test) {
                                         1.0 /*value*/,
                                         false /*is_leaf*/);
 
-  CHECK_EQ(EagerUtils::IsLeafTensor(t), true);
+  PADDLE_ENFORCE_EQ(
+      EagerUtils::IsLeafTensor(t),
+      true,
+      common::errors::InvalidArgument("The tensor t is not a leaf tensor."));
 
   // Test Utils
   eager_test::CompareTensorWithValue<float>(t, 5.0);

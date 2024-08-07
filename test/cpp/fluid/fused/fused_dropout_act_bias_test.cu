@@ -66,7 +66,7 @@ struct TestFusedDropoutActBias {
     is_upscale_in_train = false;
     is_test = false;
     has_bias = true;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
@@ -84,7 +84,7 @@ struct TestFusedDropoutActBias {
     is_upscale_in_train = is_upscale_in_train_;
     is_test = is_test_;
     has_bias = true;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
@@ -346,7 +346,7 @@ TEST(FusedDropout, GPUFusedDropoutActBiasDouble) {
 
 // test fp16, For inference, check_grad is not required. ref: test_dropout_op.py
 TEST(FusedDropout, GPUFusedDropoutActBiasFp16) {
-  using fp16 = platform::float16;
+  using fp16 = phi::dtype::float16;
   BaseTest<fp16,
            phi::funcs::ReluFunctor<fp16>,
            phi::funcs::ReluGradFunctor<fp16>>(true);

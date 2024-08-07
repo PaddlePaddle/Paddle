@@ -22,15 +22,15 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 PD_DECLARE_bool(use_system_allocator);
 
 namespace paddle {
 namespace framework {
 
-static std::vector<platform::Place> CreatePlaceList() {
-  std::vector<platform::Place> places;
+static std::vector<phi::Place> CreatePlaceList() {
+  std::vector<phi::Place> places;
   places.emplace_back(phi::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   places.emplace_back(phi::GPUPlace(0));
@@ -70,8 +70,8 @@ static bool CopySameTensorTestMain(const DDim &dims,
       TensorCopySync(src_tensor, dst_place, &src_tensor);
     } else {
       paddle::framework::TensorCopy(src_tensor, dst_place, &src_tensor);
-      platform::DeviceContextPool::Instance().Get(src_place)->Wait();
-      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+      phi::DeviceContextPool::Instance().Get(src_place)->Wait();
+      phi::DeviceContextPool::Instance().Get(dst_place)->Wait();
     }
 
     // Get the result cpu tensor

@@ -123,7 +123,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_matmul_op_static_build$|\
 ^test_matmul_v2_op_static_build$|\
 ^test_image_classification$|\
-^test_apply_pass_to_program$|\
+^test_apply_pass_to_program_deprecated$|\
 ^test_mobile_net$|\
 ^test_IntermediateLayerGetter$|\
 ^test_pad3d_op$|\
