@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
@@ -43,8 +43,9 @@ def graph_sample_neighbors(
     return_eids: bool = True,
     flag_perm_buffer: bool = False,
     name: str | None = None,
-) -> tuple[Tensor, Tensor, Tensor]:
-    
+) -> tuple[Tensor, Tensor, Tensor]: ...
+
+
 @overload
 def graph_sample_neighbors(
     row: Tensor,
@@ -56,7 +57,20 @@ def graph_sample_neighbors(
     return_eids: bool = False,
     flag_perm_buffer: bool = False,
     name: str | None = None,
-) -> tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]: ...
+
+
+def graph_sample_neighbors(
+    row,
+    colptr,
+    input_nodes,
+    eids=None,
+    perm_buffer=None,
+    sample_size=-1,
+    return_eids=False,
+    flag_perm_buffer=False,
+    name=None,
+):
     """
 
     Graph Sample Neighbors API.
