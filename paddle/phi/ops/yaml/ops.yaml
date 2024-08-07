@@ -2366,6 +2366,7 @@
   optional : weight
   kernel :
     func : histogram
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hsigmoid_loss
   args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse)
@@ -2963,6 +2964,7 @@
   optional: h0, c0
   intermediate: batch_gate, batch_cell_pre_act
   backward: lstm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : lstsq
   args : (Tensor x, Tensor y, Scalar rcond=0.0f, str driver="gels")
@@ -2973,6 +2975,7 @@
     func : lstsq
     data_type : x
   optional : residuals
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : lu
   args : (Tensor x, bool pivot = true)
