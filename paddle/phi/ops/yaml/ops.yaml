@@ -2136,6 +2136,7 @@
     func : gammaincc
   inplace: (x -> out)
   backward : gammaincc_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gammaln
   args : (Tensor x)
@@ -2347,6 +2348,7 @@
   kernel :
     func : heaviside
   backward : heaviside_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hinge_loss
   args: (Tensor logits, Tensor labels)
@@ -3335,6 +3337,7 @@
     func : nextafter
     data_type : x
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : nll_loss
   args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index = -100, str reduction = "mean")
