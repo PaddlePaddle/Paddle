@@ -188,7 +188,8 @@ static std::vector<ExprPromise> InitExprPromiseImpl(
 template <typename PATTERN>
 std::vector<ExprPromise> InitExprPromiseImpl(const PATTERN& pattern,
                                              pir::Value anchor) {
-  PADDLE_THROW("Can not Init ExprPromise");
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "Can not Init ExprPromise with Unsupport Pattern."));
 }
 
 static std::vector<ExprPromise> InitExprPromise(const StmtPattern& pattern,
@@ -247,10 +248,12 @@ static std::vector<pir::Operation*> GetOutputOpsInPattern(
       return {pattern.sink_op()};
     }
     std::vector<pir::Operation*> operator()(const UnsupportPattern& pattern) {
-      PADDLE_THROW("not implement!");
+      PADDLE_THROW(::common::errors::Unimplemented(
+          "Get output ops in UnsupportPattern is not implement!"));
     }
     std::vector<pir::Operation*> operator()(const AnchorPattern& pattern) {
-      PADDLE_THROW("not implement!");
+      PADDLE_THROW(::common::errors::Unimplemented(
+          "Can't get output ops in AnchorPattern Currently."));
     }
     std::vector<pir::Operation*> operator()(const ReduceTreePattern& pattern) {
       return this->operator()(pattern.GetRootPattern());

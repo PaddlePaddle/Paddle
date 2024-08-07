@@ -22,6 +22,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.base.data_feeder import convert_dtype
 from paddle.distributed import fleet
 from paddle.static import Executor, Program, program_guard
 
@@ -37,24 +38,31 @@ def get_program(args):
                 shape=args.dshape,
                 dtype=args.dtype,
             )
-            data.desc.set_need_check_feed(False)
-            conv = paddle.static.nn.conv2d(
-                input=data,
-                num_filters=32,
-                filter_size=1,
-                param_attr=base.ParamAttr(name='conv2d_weight'),
+            if not paddle.framework.in_pir_mode():
+                data.desc.set_need_check_feed(False)
+            conv_layer = paddle.nn.Conv2D(
+                in_channels=data.shape[1],
+                out_channels=32,
+                kernel_size=1,
+                weight_attr=base.ParamAttr(name='conv2d_weight'),
                 bias_attr=False,
-                use_cudnn=args.use_cudnn,
             )
-            bn = paddle.static.nn.batch_norm(
-                conv,
+            conv_layer._use_cudnn = args.use_cudnn
+            conv = conv_layer(data)
+            bn = paddle.nn.BatchNorm(
+                num_channels=conv.shape[1]
+                if args.layout == "NCHW"
+                else conv.shape[3],
                 param_attr=base.ParamAttr(name='bn_scale'),
                 bias_attr=base.ParamAttr(name='bn_bias'),
                 moving_mean_name='bn_moving_mean',
                 moving_variance_name='bn_moving_variance',
                 data_layout=args.layout,
                 is_test=args.only_forward,
-            )
+                dtype=convert_dtype(args.dtype)
+                if args.dtype != np.uint16
+                else "bfloat16",
+            )(conv)
             if core.is_compiled_with_rocm():
                 bn = paddle.cast(bn, 'float32')
             else:
@@ -133,4 +141,8 @@ if __name__ == '__main__':
     np.random.seed(0)
     random.seed(0)
 
+    # nn.Conv2d don't have dtype args to set the dtype of weight and bias
+    pre_dtype = paddle.get_default_dtype()
+    paddle.set_default_dtype(args.dtype)
     train(args)
+    paddle.set_default_dtype(pre_dtype)
