@@ -388,7 +388,7 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
       std::vector<pir::Value> x_tmp =
           CastPyArg2VectorOfValue(x_obj, "array_to_tensor", 0, false);
       if (x_tmp.size() != 1) {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Input x expects only one input, but %d are given.",
             x_tmp.size()));  // NOLINT
       }
@@ -542,7 +542,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   const auto &meta_info_map = OpMetaInfoMap::Instance().GetMap();
   PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
                     meta_info_map.end(),
-                    phi::errors::NotFound(
+                    common::errors::NotFound(
                         "Can't find %s in Eager OpMetaInfoMap which should be "
                         "created by LoadOpMetaInfoAndRegisterOp, please make "
                         "sure you registered your op first and try again. ",
@@ -733,7 +733,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
           attr_name_and_type[0],
           pir::ArrayAttribute::get(pir::IrContext::Instance(), array_attr));
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -772,7 +772,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       PADDLE_ENFORCE_NE(
           inplace_reverse_map.find(output),
           inplace_reverse_map.end(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Only support vector output that is set for inplace, Please use "
               "`SetInplaceMap` in your output when registry custom operator."));
       const auto &input = inplace_reverse_map.at(output);
@@ -796,7 +796,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   PADDLE_ENFORCE_EQ(
       output_shapes.size(),
       all_values_num,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of output shapes after running custom operator's "
           "InferShapeFunc is wrong, "
           "expected contains %d Tensors' shape, but actually contains %d "
@@ -807,7 +807,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   PADDLE_ENFORCE_EQ(
       output_dtypes.size(),
       all_values_num,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of output dtypes after running custom operator's "
           "InferDtypeFunc is wrong, "
           "expected contains %d Tensors' dtype, but actually contains %d "
@@ -996,7 +996,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
 
     PyObject *param_obj = PyTuple_GET_ITEM(args, 1);
     if (!PyObject_TypeCheck(param_obj, g_tensorrt_engine_params_pytype)) {
-      PADDLE_THROW(phi::errors::InvalidType(
+      PADDLE_THROW(common::errors::InvalidType(
           "tensorrt_engine(): argument (position %d) must be "
           "EngineParams, but got %s",
           2,
@@ -1021,7 +1021,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
         outputs_shape.emplace_back(CastPyArg2VectorOfInt64(item, 4));
       }
     } else {
-      PADDLE_THROW(phi::errors::InvalidType(
+      PADDLE_THROW(common::errors::InvalidType(
           "argument (position %d) must be "
           "list but got %s",
           5,
@@ -1040,7 +1040,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
             CastPyArg2DataTypeDirectly(item, "tensorrt_engine", 5));
       }
     } else {
-      PADDLE_THROW(phi::errors::InvalidType(
+      PADDLE_THROW(common::errors::InvalidType(
           "argument (position %d) must be "
           "list but got %s",
           6,

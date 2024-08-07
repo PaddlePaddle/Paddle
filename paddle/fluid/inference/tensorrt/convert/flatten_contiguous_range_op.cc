@@ -39,12 +39,12 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
       for (int i = 0, j = 0; i < dims; ++i) {
         if (start_axis <= i + 1 && i + 1 <= stop_axis) {
           int dim_i = input_dim.d[i];
-          PADDLE_ENFORCE_GT(
-              dim_i,
-              0,
-              phi::errors::InvalidArgument("flatten_contiguous_range input dim "
-                                           "should be > 0, but got %d.",
-                                           dim_i));
+          PADDLE_ENFORCE_GT(dim_i,
+                            0,
+                            common::errors::InvalidArgument(
+                                "flatten_contiguous_range input dim "
+                                "should be > 0, but got %d.",
+                                dim_i));
           dim_prod *= dim_i;
           if (i + 1 == stop_axis) {
             flatten_dim.d[j++] = dim_prod;

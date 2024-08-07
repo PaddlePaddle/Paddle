@@ -273,7 +273,7 @@ std::string GenSqueeze2AttrKey(Node* squeeze2_op_node) {
 
 void DeleteRepeatedOpsPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   int repeat_time = 0;
   int total_delete_op_count = 0;

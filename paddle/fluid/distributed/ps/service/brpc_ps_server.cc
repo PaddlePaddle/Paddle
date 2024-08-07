@@ -140,7 +140,7 @@ std::future<int32_t> BrpcPsServer::SendPServer2PServerMsg(
     std::stringstream ss;
     ss << "to_pserver_id is out of range pservers, which size is "
        << _pserver_channels.size();
-    PADDLE_THROW(phi::errors::Fatal(ss.str()));
+    PADDLE_THROW(common::errors::Fatal(ss.str()));
     promise->set_value(-1);
     return fut;
   }
@@ -178,7 +178,11 @@ int32_t BrpcPsServer::ReceiveFromPServer(int msg_type,
   while (ar.Cursor() < ar.Finish()) {
     data.push_back(ar.Get<std::pair<uint64_t, std::string>>());
   }
-  CHECK(ar.Cursor() == ar.Finish());
+  PADDLE_ENFORCE_EQ(ar.Cursor(),
+                    ar.Finish(),
+                    phi::errors::InvalidArgument(
+                        "Expected 'ar.Cursor()' to be equal to 'ar.Finish()', "
+                        "but found they are not equal."));
   this->_shuffled_ins->Write(std::move(data));
   return 0;
 }

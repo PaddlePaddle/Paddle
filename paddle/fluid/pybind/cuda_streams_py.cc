@@ -55,8 +55,8 @@ void BindCudaStream(py::module *m_ptr) {
         return platform::get_current_stream(deviceId);
 #else
         PADDLE_THROW(
-            phi::errors::Unavailable("Paddle is not compiled with CUDA. "
-                                     "Cannot visit device synchronize."));
+            common::errors::Unavailable("Paddle is not compiled with CUDA. "
+                                        "Cannot visit device synchronize."));
 #endif
       },
       py::return_value_policy::reference);
@@ -68,8 +68,8 @@ void BindCudaStream(py::module *m_ptr) {
         return platform::set_current_stream(stream);
 #else
         PADDLE_THROW(
-            phi::errors::Unavailable("Paddle is not compiled with CUDA. "
-                                     "Cannot visit device synchronize."));
+            common::errors::Unavailable("Paddle is not compiled with CUDA. "
+                                        "Cannot visit device synchronize."));
 #endif
       },
       py::return_value_policy::reference);
@@ -89,7 +89,7 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
     paddle::platform::SetDeviceId(curr_device_id);
 #else
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Paddle is not compiled with CUDA. Cannot visit device synchronize."));
 #endif
   });
@@ -250,7 +250,7 @@ void BindCudaStream(py::module *m_ptr) {
           [](phi::CUDAStream &self, phi::GPUPlace *place, int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             if (priority != 1 && priority != 2) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "Priority should be 1(high) or 2(normal) "));
             }
 
@@ -265,7 +265,7 @@ void BindCudaStream(py::module *m_ptr) {
               new (&self) phi::CUDAStream(*place, priority - 2, stream_flag);
             }
 #else
-            PADDLE_THROW(phi::errors::Unavailable(
+            PADDLE_THROW(common::errors::Unavailable(
         "Class CUDAStream can only be initialized on the GPU platform."));
 #endif
           },
@@ -276,7 +276,7 @@ void BindCudaStream(py::module *m_ptr) {
           [](phi::CUDAStream &self, int device, int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             if (priority != 1 && priority != 2) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "Priority should be 1(high) or 2(normal) "));
             }
 
@@ -285,7 +285,7 @@ void BindCudaStream(py::module *m_ptr) {
               device = platform::GetCurrentDeviceId();
             }
             if (device >= device_count) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "The device id  must be inside [0, %d), but input device=%d.",
                   device_count,
                   device));
@@ -297,7 +297,7 @@ void BindCudaStream(py::module *m_ptr) {
             new (&self) phi::CUDAStream(
                 phi::GPUPlace(device), priority - 2, stream_flag);
 #else
-            PADDLE_THROW(phi::errors::Unavailable(
+            PADDLE_THROW(common::errors::Unavailable(
         "Class CUDAStream can only be initialized on the GPU platform."));
 #endif
           },
@@ -310,7 +310,7 @@ void BindCudaStream(py::module *m_ptr) {
         new (&self) phi::CUDAStream(
             phi::GPUPlace(device_id), /*priority=*/0, stream_flag);
 #else
-            PADDLE_THROW(phi::errors::Unavailable(
+            PADDLE_THROW(common::errors::Unavailable(
         "Class CUDAStream can only be initialized on the GPU platform."));
 #endif
       });
@@ -403,7 +403,7 @@ void BindCudaStream(py::module *m_ptr) {
                 enable_timing, blocking, interprocess);
             new (&self) phi::CudaEvent(flags);
 #else
-            PADDLE_THROW(phi::errors::Unavailable(
+            PADDLE_THROW(common::errors::Unavailable(
                 "Class CUDAEvent can only be initialized on the GPU "
                 "platform."));
 

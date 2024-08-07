@@ -369,11 +369,11 @@ TEST(float16, typeid) {
   PADDLE_ENFORCE_EQ(
       functor(a),
       true,
-      phi::errors::Unavailable("The float16 support in GPU failed."));
+      common::errors::Unavailable("The float16 support in GPU failed."));
   PADDLE_ENFORCE_EQ(
       functor2(b),
       false,
-      phi::errors::Unavailable("The float16 support in GPU failed."));
+      common::errors::Unavailable("The float16 support in GPU failed."));
 }
 
 // GPU test

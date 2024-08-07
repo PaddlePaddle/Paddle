@@ -32,7 +32,7 @@ namespace poly {
 std::string TimeSchedule::__str__() const {
   PADDLE_ENFORCE_LE(time_dims_.size(),
                     kMaxDims,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "time_dims_.size() should be less than %d, but got %d",
                         kMaxDims,
                         time_dims_.size()));
@@ -82,14 +82,17 @@ TimeSchedule::TimeSchedule(const std::string &id,
                            const std::vector<std::string> &dims) {
   PADDLE_ENFORCE_LE(dims.size(),
                     kMaxDims,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "dims.size() should be less than %d, but got %d",
                         kMaxDims,
                         dims.size()));
   id_ = id;
   domain_dims = dims;
   for (auto &dim : domain_dims) {
-    CHECK(!dim.empty());
+    PADDLE_ENFORCE_EQ(!dim.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The dim should not be empty! Please check."));
     time_dims_.emplace_back(dim, 0);
   }
 }
@@ -97,19 +100,22 @@ TimeSchedule::TimeSchedule(const std::string &id,
 void TimeSchedule::OrderAfter(const TimeSchedule &other, int level) {
   PADDLE_ENFORCE_EQ(space_size(),
                     other.space_size(),
-                    phi::errors::InvalidArgument("space not match"));
-  PADDLE_ENFORCE_LT(
-      level,
-      other.space_size(),
-      phi::errors::InvalidArgument("level should be less than %d, but got %d",
-                                   other.space_size(),
-                                   level));
+                    ::common::errors::InvalidArgument("space not match"));
+  PADDLE_ENFORCE_LT(level,
+                    other.space_size(),
+                    ::common::errors::InvalidArgument(
+                        "level should be less than %d, but got %d",
+                        other.space_size(),
+                        level));
   PADDLE_ENFORCE_GE(
       level,
       0,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "level should be greater than or equal to 0, but got %d", level));
-  CHECK(!time_dims_.empty());
+  PADDLE_ENFORCE_EQ(!time_dims_.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The time dims should not be empty! Please check."));
 
   root_time_ = std::max(root_time_, other.root_time_);
 
@@ -132,7 +138,10 @@ isl::map TimeSchedule::to_isl(isl::ctx ctx) const {
 }
 
 const std::string &TimeSchedule::id() const {
-  CHECK(!id_.empty());
+  PADDLE_ENFORCE_EQ(!id_.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The id should not be empty! Please check."));
   return id_;
 }
 
@@ -140,7 +149,7 @@ void TimeSchedule::ResizeTimeSpace(int size) {
   PADDLE_ENFORCE_LE(
       size,
       kMaxDims,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "size should be less than %d, but got %d", kMaxDims, size));
   for (int i = time_dims_.size(); i < size; i++) {
     time_dims_.emplace_back("0", 0);
@@ -159,7 +168,8 @@ std::unique_ptr<Schedule> CreateSchedule(
     const std::vector<Stage *> &stages,
     ScheduleKind schedule_kind,
     const std::vector<std::pair<std::string, std::string>> &extra_links) {
-  CHECK(!stages.empty());
+  PADDLE_ENFORCE_EQ(
+      !stages.empty(), true, "The stages should not be empty! Please check.");
   for (auto &stage : stages) {
     VLOG(4) << "stage: " << stage->domain();
   }
@@ -184,7 +194,9 @@ std::map<std::string, isl::map> CollectScheduleMapFromGroup(
 
   std::vector<Stage *> stages;
   for (auto &node : group.nodes) {
-    CHECK(node->stage);
+    PADDLE_ENFORCE_NOT_NULL(
+        node->stage,
+        phi::errors::NotFound("The stage is not exist in node! Please check."));
     stages.push_back(node->stage);
   }
 
@@ -195,7 +207,10 @@ std::map<std::string, isl::map> CollectScheduleMapFromGroup(
 }
 
 void SchedulerBase::AddStage(const Stage &x) {
-  CHECK(!registration_finalized_) << "element registration has been finalized.";
+  PADDLE_ENFORCE_EQ(
+      !registration_finalized_,
+      true,
+      phi::errors::InvalidArgument("element registration has been finalized."));
   space_size_ =
       std::max(space_size_, isl_map_dim(x.transform().get(), isl_dim_out));
   VLOG(3) << "space_size: " << space_size_;
@@ -221,7 +236,7 @@ void SchedulerBase::AddStage(const Stage &x) {
   } else {
     PADDLE_ENFORCE_EQ(ctx_.get(),
                       x.domain().ctx().get(),
-                      phi::errors::InvalidArgument("ctx not match"));
+                      ::common::errors::InvalidArgument("ctx not match"));
   }
 }
 
@@ -243,9 +258,11 @@ void SchedulerBase::FinishStageAdd() {
     }
   }
 
-  CHECK(!schedule_graph_.nodes().empty())
-      << "No node is registered to the graph, use RegisterElement to collect "
-         "some elements";
+  PADDLE_ENFORCE_EQ(!schedule_graph_.nodes().empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "No node is registered to the graph, use "
+                        "RegisterElement to collect some elements."));
   registration_finalized_ = true;
 
   for (auto &item : schedule_graph_.nodes()) {
@@ -273,14 +290,20 @@ SchedulerBase &SchedulerBase::After(const Stage &a, const Stage &b, int level) {
   PADDLE_ENFORCE_LT(
       level,
       space_size_,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "level should be less than %d, but got %d", space_size_, level));
   auto *a_node =
       schedule_graph_.RetrieveNode(a.id())->safe_as<ScheduleGraphNode>();
   auto *b_node =
       schedule_graph_.RetrieveNode(b.id())->safe_as<ScheduleGraphNode>();
-  CHECK(a_node) << "no node called " << a.id() << " registered in the graph";
-  CHECK(b_node) << "no node called " << b.id() << " registered in the graph";
+  PADDLE_ENFORCE_NOT_NULL(
+      a_node,
+      phi::errors::NotFound("no node called %s registered in the graph",
+                            a.id()));
+  PADDLE_ENFORCE_NOT_NULL(
+      b_node,
+      phi::errors::NotFound("no node called %s registered in the graph",
+                            b.id()));
 
   auto _a_edge_b_edge_ = a_node->LinkTo<ScheduleGraphEdge>(b_node);  // NOLINT
   auto &a_edge = std::get<0>(_a_edge_b_edge_);

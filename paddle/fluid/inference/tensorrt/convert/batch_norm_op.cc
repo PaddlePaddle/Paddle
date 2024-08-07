@@ -40,19 +40,19 @@ class BatchNormOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Y").front();
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Variable of Bias of batch_norm TRT converter is not found."));
     PADDLE_ENFORCE_NOT_NULL(
         Mean_v,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Variable of Mean of batch_norm TRT converter is not found."));
     PADDLE_ENFORCE_NOT_NULL(
         Scale_v,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Variable of Scale of batch_norm TRT converter is not found."));
     PADDLE_ENFORCE_NOT_NULL(
         Variance_v,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Variable of Variance of batch_norm TRT converter is not found."));
 
     // get tensor

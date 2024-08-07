@@ -15,6 +15,7 @@
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
 
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
@@ -125,7 +126,58 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         [&](const std::vector<IndicesAndExtent>& indice_and_extent) -> bool {
       if (indice_and_extent.size() <= 1) return false;
       if (IndiceContainsLoad(indice_and_extent[0])) return false;
+      if (contains_select_) return false;
       return AllIndiceAndExtentEqual(indice_and_extent);
+    };
+
+    const auto GetIterVarNames =
+        [](const std::vector<ir::Expr>& indices) -> std::set<std::string> {
+      std::set<std::string> iter_var_names;
+      for (const ir::Expr& e : indices) {
+        ir::ir_utils::CollectIRNodes(e, [&](const ir::Expr* x) {
+          if (x->as_var() && !x->as_var()->is_symbolic_constant) {
+            iter_var_names.insert(x->as_var()->name);
+          }
+          return false;
+        });
+      }
+      return iter_var_names;
+    };
+
+    auto CalculateBufferSize =
+        [&](const std::vector<ir::Expr>& indices) -> ir::Expr {
+      ir::Expr buffer_size(1);
+      std::set<std::string> iter_var_names = GetIterVarNames(indices);
+      for (const auto& iter_var_name : iter_var_names) {
+        if (iter_var_name_to_extent_.find(iter_var_name) ==
+            iter_var_name_to_extent_.end()) {
+          continue;
+        }
+        VLOG(6) << "Iter var name: " << iter_var_name << " with extent: "
+                << iter_var_name_to_extent_.at(iter_var_name);
+        buffer_size = cinn::common::AutoSimplify(ir::Mul::Make(
+            buffer_size, iter_var_name_to_extent_.at(iter_var_name)));
+      }
+      return buffer_size;
+    };
+
+    auto LocalBufferSizeLimit =
+        [&](const std::unordered_set<std::string>& global_buffer_name) -> bool {
+      ir::Expr size(0);
+      for (const auto& name : global_buffer_name) {
+        const std::vector<IndicesAndExtent>& indices_and_extent =
+            buffer_to_indice_and_extent_.at(name);
+        const ir::Expr buffer_size =
+            CalculateBufferSize(indices_and_extent[0].indices);
+        VLOG(6) << "Global buffer name: " << name
+                << " with size: " << buffer_size;
+        size = cinn::common::AutoSimplify(ir::Add::Make(size, buffer_size));
+      }
+      VLOG(6) << "Total buffer size: " << size;
+      common::cas_intervals_t var_intervals;
+      common::SymbolicExprAnalyzer analyzer(var_intervals);
+      std::optional<bool> prove_gt = analyzer.ProveGT(size, ir::Expr(128));
+      return prove_gt.value_or(false);
     };
 
     std::unordered_set<std::string> global_buffer_name;
@@ -140,13 +192,23 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         global_buffer_name.insert(buffer_name);
       }
     }
+    // When local buffer size too large, it will cause
+    // out of memory error, use global buffer instead.
+    // Fuse for loop will relax this constraints.
+    if (LocalBufferSizeLimit(global_buffer_name)) {
+      VLOG(6) << "Local buffer size too large, use global instead.\n";
+      global_buffer_name.clear();
+    }
     return global_buffer_name;
   }
 
  private:
   void Visit(const ir::ScheduleBlockRealize* op, ir::Expr* expr) override {
     const auto* sbr_node = expr->As<ir::ScheduleBlockRealize>();
-    CHECK(sbr_node);
+    PADDLE_ENFORCE_NOT_NULL(
+        sbr_node,
+        phi::errors::InvalidArgument(
+            "The input expr should be a ScheduleBlockRealize"));
     const auto& iter_values = sbr_node->iter_values;
     const auto* sb_node = sbr_node->schedule_block.As<ir::ScheduleBlock>();
     const auto& iter_vars = sb_node->iter_vars;
@@ -165,16 +227,22 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::For* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::For>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        node, phi::errors::InvalidArgument("The input expr should be a For"));
     for_var_extents_.push_back(
         {node->loop_var, ir::ir_utils::IRCopy(node->extent)});
+    if (!node->is_binded()) {
+      iter_var_name_to_extent_[node->loop_var->name] = node->extent;
+    }
     ir::IRMutator<>::Visit(op, expr);
     for_var_extents_.pop_back();
   }
 
   void Visit(const ir::Load* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::Load>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        node, phi::errors::InvalidArgument("The input expr should be a Load"));
+
     const auto& load_buffer = node->tensor.as_tensor_ref()->buffer;
     if (load_buffer->memory_type == ir::MemoryType::Heap) {
       std::vector<ir::Expr> tensor_indices;
@@ -192,18 +260,27 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::Store* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::Store>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        node, phi::errors::InvalidArgument("The input expr should be a Store"));
     const auto& store_buffer = node->tensor.as_tensor_ref()->buffer;
     if (store_buffer->memory_type == ir::MemoryType::Heap) {
       global_store_buffer_names_.insert(store_buffer->name);
     }
+    ir::IRMutator<>::Visit(op, expr);
+  }
+
+  void Visit(const ir::Select* op, ir::Expr* expr) override {
+    contains_select_ = true;
+    ir::IRMutator<>::Visit(op, expr);
   }
 
   std::vector<ForVarExtent> for_var_extents_;
   std::unordered_map<ir::Var, ir::Expr> var_to_sb_expr_;
+  std::unordered_map<std::string, ir::Expr> iter_var_name_to_extent_;
   std::unordered_map<std::string, std::vector<IndicesAndExtent>>
       buffer_to_indice_and_extent_;
   std::unordered_set<std::string> global_store_buffer_names_;
+  bool contains_select_ = false;
 };
 
 struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
@@ -216,21 +293,26 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
  private:
   void Visit(const ir::Block* op, Expr* expr) override {
     auto* node = expr->As<ir::Block>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        node, phi::errors::InvalidArgument("The input expr should be a Block"));
     current_block_ = node;
     IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
     auto* node = expr->As<ir::ScheduleBlockRealize>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        node,
+        phi::errors::InvalidArgument(
+            "The input expr should be a ScheduleBlockRealize"));
     current_sbr_ = node;
     IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::Load* op, Expr* expr) override {
     auto* node = expr->As<ir::Load>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        node, phi::errors::InvalidArgument("The input expr should be a Load"));
     const auto& buffer_name = node->tensor.as_tensor_ref()->buffer->name;
     if (eliminate_buffer_names_.count(buffer_name) == 0) {
       return;
@@ -246,8 +328,10 @@ struct CommonGlobalMemoryEliminator : public ir::IRMutator<Expr*> {
                               const std::string& buffer_name) {
     ir::Expr sb = ir::ir_utils::IRCopy(current_sbr_->schedule_block);
     ir::ScheduleBlock* sb_node = sb.As<ir::ScheduleBlock>();
-    CHECK(sb_node);
-
+    PADDLE_ENFORCE_NOT_NULL(
+        sb_node,
+        phi::errors::InvalidArgument(
+            "The input expr should be a ScheduleBlockRealize"));
     const auto& old_tensor = load_node->tensor.as_tensor_ref();
     ir::Expr new_tensor =
         ir::_Tensor_::Make(old_tensor->name + "_local",

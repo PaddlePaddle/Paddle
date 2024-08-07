@@ -24,7 +24,7 @@ namespace ir {
 void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
     Graph *graph, const std::string &transpose_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope, graph);
 
   GraphPatternDetector gpd;
@@ -102,7 +102,7 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
 void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
     Graph *graph, const std::string &transpose_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope, graph);
 
   GraphPatternDetector gpd;

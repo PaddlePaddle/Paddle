@@ -101,7 +101,7 @@ void Copy<phi::CustomPlace, phi::CustomPlace>(phi::CustomPlace dst_place,
           dst_place, dst, src, num, &stream_wrapper);
     }
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Copy between %s and %s is not supported.", src_type, dst_type));
   }
 }
