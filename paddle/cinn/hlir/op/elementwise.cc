@@ -480,31 +480,29 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
         phi::errors::InvalidArgument("The input argument of fill_constant "
                                      "compute is empty! Please check."));
     bool force_cpu = false;
-    PADDLE_ENFORCE_EQ(
-        attrs.attr_store.count("shape"),
-        true,
-        phi::errors::InvalidArgument(
-            "The attribute \"shape\" of \"fill_constant\" is not found! "
-            "Please check."));
+    PADDLE_ENFORCE_EQ(attrs.attr_store.count("shape"),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The attribute shape of fill_constant is not found! "
+                          "Please check."));
     auto shape = absl::get<std::vector<int>>(attrs.attr_store.at("shape"));
-    PADDLE_ENFORCE_EQ(
-        attrs.attr_store.count("value"),
-        true,
-        phi::errors::InvalidArgument(
-            "The attribute \"value\" of \"fill_constant\" is not found! "
-            "Please check."));
+    PADDLE_ENFORCE_EQ(attrs.attr_store.count("value"),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The attribute value of fill_constant is not found! "
+                          "Please check."));
     auto value = GetScalarExpr(attrs.attr_store.at("value"));
     PADDLE_ENFORCE_EQ(
         attrs.attr_store.count("force_cpu"),
         true,
         phi::errors::InvalidArgument(
-            "The attribute \"force_cpu\" of \"fill_constant\" is not found! "
+            "The attribute force_cpu of fill_constant is not found! "
             "Please check."));
     force_cpu = absl::get<bool>(attrs.attr_store.at("force_cpu"));
 
     if (force_cpu && target != cinn::common::DefaultHostTarget()) {
-      LOG(WARNING) << "The attribute \"force_cpu\" of \"fill_constant\" "
-                      "not supported in CINN! The \"fill_constant\"'s "
+      LOG(WARNING) << "The attribute force_cpu of fill_constant "
+                      "not supported in CINN! The fill_constant's "
                       "output tensor will placed on "
                    << target;
     }
@@ -564,22 +562,22 @@ std::shared_ptr<OpStrategy> StrategyForFillConstantSymbolic(
                           "is empty! Please check."));
     bool force_cpu = false;
     auto shape = output_shapes[0];
-    PADDLE_ENFORCE_EQ(attrs.attr_store.count("value"),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The attribute \"value\" of \"fill_constant\" "
-                          "is not found! Please check."));
+    PADDLE_ENFORCE_EQ(
+        attrs.attr_store.count("value"),
+        true,
+        phi::errors::InvalidArgument("The attribute value of fill_constant "
+                                     "is not found! Please check."));
     auto value = GetScalarExpr(attrs.attr_store.at("value"));
-    PADDLE_ENFORCE_EQ(attrs.attr_store.count("force_cpu"),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The attribute \"force_cpu\" of \"fill_constant\" "
-                          "is not found! Please check."));
+    PADDLE_ENFORCE_EQ(
+        attrs.attr_store.count("force_cpu"),
+        true,
+        phi::errors::InvalidArgument("The attribute force_cpu of fill_constant "
+                                     "is not found! Please check."));
     force_cpu = absl::get<bool>(attrs.attr_store.at("force_cpu"));
 
     if (force_cpu && target != cinn::common::DefaultHostTarget()) {
-      LOG(WARNING) << "The attribute \"force_cpu\" of \"fill_constant\" "
-                      "not supported in CINN! The \"fill_constant\"'s "
+      LOG(WARNING) << "The attribute force_cpu of fill_constant "
+                      "not supported in CINN! The fill_constant's "
                       "output tensor will placed on "
                    << target;
     }
@@ -645,12 +643,11 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
                       phi::errors::InvalidArgument(
                           "The input argument of assign_value compute is "
                           "empty! Please check."));
-    PADDLE_ENFORCE_EQ(
-        attrs.attr_store.count("values"),
-        true,
-        phi::errors::InvalidArgument(
-            "The attribute \"values\" of \"assign_value\" is not found! "
-            "Please check."));
+    PADDLE_ENFORCE_EQ(attrs.attr_store.count("values"),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The attributevalues of assign_value is not found! "
+                          "Please check."));
     const auto &value = attrs.attr_store.at("values");
 
     CINNValuePack arg_pack = args[0];
