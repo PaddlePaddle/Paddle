@@ -3823,6 +3823,20 @@
     data_type : x
   backward: repeat_interleave_with_tensor_index_grad
 
+- op : reshape
+  args : (Tensor x, IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+    spmd_rule : ReshapeInferSpmd
+    local_shape: shape
+    global_shape: out
+  kernel :
+    func : reshape
+  inplace : (x -> out)
+  view: (x -> out)
+  backward: reshape_grad
+
 - op : reverse
   args : (Tensor x, IntArray axis)
   output : Tensor
