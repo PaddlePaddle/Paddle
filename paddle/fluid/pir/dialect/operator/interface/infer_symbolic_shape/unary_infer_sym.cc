@@ -1169,7 +1169,6 @@ bool NormOpInferSymbolicShape(pir::Operation *op,
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
-  float epsilon = op->attribute<pir::FloatAttribute>("epsilon").data();
   bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
 
   if (!is_test) {
@@ -1227,9 +1226,7 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape = x_shape_or_data.shape();
   auto x_rank = x_shape.size();
 
-  float porder = op->attribute<pir::FloatAttribute>("porder").data();
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
-  float epsilon = op->attribute<pir::FloatAttribute>("epsilon").data();
   bool keepdim = op->attribute<pir::BoolAttribute>("keepdim").data();
   bool asvector = op->attribute<pir::BoolAttribute>("asvector").data();
 
