@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import typing
-from typing import TYPE_CHECKING, Callable, TypeVar, overload
+from typing import TYPE_CHECKING, Callable, TypeVar, Tuple, overload
 
 import paddle
 from paddle.base import framework
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import TensorOrTensors
 
-    _OutputT = TypeVar("_OutputT", Tensor, tuple[Tensor, ...])
+    _OutputT = TypeVar("_OutputT", Tensor, Tuple[Tensor, ...])
 
 
 @overload
