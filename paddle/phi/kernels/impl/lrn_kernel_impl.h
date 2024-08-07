@@ -73,21 +73,21 @@ void LRNKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GE(
       alpha,
       0UL,
-      phi::errors::InvalidArgument("Argument(alpha) should >= 0.0, "
-                                   "but received alpha(%d) less than 0",
-                                   alpha));
+      common::errors::InvalidArgument("Argument(alpha) should >= 0.0, "
+                                      "but received alpha(%d) less than 0",
+                                      alpha));
   PADDLE_ENFORCE_GE(
       beta,
       0UL,
-      phi::errors::InvalidArgument("Argument(beta) should >= 0.0, "
-                                   "but received beta(%d) less than 0",
-                                   beta));
+      common::errors::InvalidArgument("Argument(beta) should >= 0.0, "
+                                      "but received beta(%d) less than 0",
+                                      beta));
   PADDLE_ENFORCE_GE(
       k,
       0UL,
-      phi::errors::InvalidArgument("Argument(k) should >= 0.0, "
-                                   "but received k(%d) less than 0",
-                                   k));
+      common::errors::InvalidArgument("Argument(k) should >= 0.0, "
+                                      "but received k(%d) less than 0",
+                                      k));
 
   LRNFunctor<Context, T> f;
   f(dev_ctx, x, out, mid, N, C, H, W, n, k, alpha, beta, data_layout);

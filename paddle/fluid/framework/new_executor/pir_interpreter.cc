@@ -472,8 +472,8 @@ void PirInterpreter::CheckCUDAGraphBeforeRun(
 void PirInterpreter::ClearLoDTensorArrayInLocalScope() {
   auto vars = local_scope_->LocalVars();
   for (auto var : vars) {
-    if (var->IsType<LoDTensorArray>()) {
-      auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+    if (var->IsType<phi::TensorArray>()) {
+      auto* lod_tensor_arr = var->GetMutable<phi::TensorArray>();
       lod_tensor_arr->clear();
     }
   }
@@ -1100,7 +1100,7 @@ void PirInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node->EventsToWait()) {
-      platform::RecordEvent record(
+      phi::RecordEvent record(
           "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
       VLOG(3) << "Record event on default stream in jit_input_var at op: "
               << instr_node->Name();
@@ -1122,7 +1122,7 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
       phi::AllocationType::CUSTOM) {
     return;
   }
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
   gpuStream_t stream =
@@ -1219,8 +1219,8 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
     } else if (var->IsType<phi::SelectedRows>()) {
       TensorRecordStream(
           *(var->GetMutable<phi::SelectedRows>()->mutable_value()));
-    } else if (var->IsType<LoDTensorArray>()) {
-      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+    } else if (var->IsType<phi::TensorArray>()) {
+      auto* tensor_arr = var->GetMutable<phi::TensorArray>();
       for (auto& tensor : *tensor_arr) {
         TensorRecordStream(tensor);
       }
@@ -1248,7 +1248,7 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
 }
 
 void PirInterpreter::CheckGC(InstructionBase* instr) {
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1321,7 +1321,7 @@ void PirInterpreter::CalculateLastLiveOps() {
           common::errors::NotFound("Var(id=%d) should not be nullptr.",
                                    static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
-          var->IsType<LoDTensorArray>() ||
+          var->IsType<phi::TensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
           var->IsType<phi::SparseCsrTensor>()) {
         last_live_ops_[var_id].insert(op_idx);
@@ -1826,7 +1826,7 @@ void PirInterpreter::RunInstructionBaseAsync(size_t instr_id) {
 
 void PirInterpreter::RunNextInstructions(InstructionBase* instr,
                                          SchedulingQueue* reserved_next_ops) {
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
 
   auto IsReady = [this](size_t next_id) {
@@ -1851,7 +1851,7 @@ void PirInterpreter::RunNextInstructions(InstructionBase* instr,
 }
 
 void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
-  platform::RecordEvent instruction_event(
+  phi::RecordEvent instruction_event(
       instr_node->Name(), platform::TracerEventType::Operator, 1);
 
   auto cur_place = instr_node->DeviceContext().GetPlace();
@@ -1897,7 +1897,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
     if (!instr_node->IsArtificial()) {
       {
-        platform::RecordEvent record(
+        phi::RecordEvent record(
             "InstrRun", platform::TracerEventType::UserDefined, 10);
         instr_node->Run();
       }
@@ -1953,13 +1953,13 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     framework::InsertCallStackInfo(op->name(), op_callstack_attr, &ex);
     LOG(WARNING) << " OP id:" << instr_node->Id() << " " << instr_node->Name()
                  << " raises an EnforceNotMet exception "
-                 << platform::demangle(typeid(ex).name());
+                 << common::demangle(typeid(ex).name());
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
   } catch (platform::EOFException&) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
     LOG(WARNING) << instr_node->Name() << " raises an exception "
-                 << platform::demangle(typeid(ex).name());
+                 << common::demangle(typeid(ex).name());
     exception_holder_.Catch(std::current_exception());
   } catch (...) {
     LOG(WARNING) << instr_node->Name() << " raises an unknown exception";

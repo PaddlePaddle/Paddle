@@ -175,7 +175,7 @@ void SumCsrKernel(const Context& dev_ctx,
   } else {
     PADDLE_ENFORCE_EQ(axis[0],
                       -1,
-                      phi::errors::Unimplemented(
+                      common::errors::Unimplemented(
                           "`axis` of SumCsrKernel only support None or -1 now."
                           "More number will be supported in the future."));
     out_crows = EmptyLike<int64_t, Context>(dev_ctx, x.crows());

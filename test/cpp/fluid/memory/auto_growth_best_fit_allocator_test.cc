@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
+#include "paddle/phi/core/memory/allocation/auto_growth_best_fit_allocator.h"
 
 #include <cstdlib>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/phi/core/memory/allocation/aligned_allocator.h"
 
 PD_DECLARE_bool(free_idle_chunk);
 PD_DECLARE_bool(free_when_no_cache_hit);

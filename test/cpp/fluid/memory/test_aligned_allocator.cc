@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/phi/core/memory/allocation/aligned_allocator.h"
 
 namespace paddle {
 namespace memory {

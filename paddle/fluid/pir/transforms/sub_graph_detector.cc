@@ -95,10 +95,10 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
   PADDLE_ENFORCE_EQ(
       block->size(),
       sort_ops.size(),
-      phi::errors::InvalidArgument("sort_ops.size() must be equal to "
-                                   "block.size(), but received %d != %d",
-                                   block->size(),
-                                   sort_ops.size()));
+      common::errors::InvalidArgument("sort_ops.size() must be equal to "
+                                      "block.size(), but received %d != %d",
+                                      block->size(),
+                                      sort_ops.size()));
 
   return sort_ops;
 }
@@ -119,7 +119,7 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
       producers.insert(source_op);
       PADDLE_ENFORCE(
           op2id.count(source_op),
-          phi::errors::PreconditionNotMet("source op MUST in op2id map"));
+          common::errors::PreconditionNotMet("source op MUST in op2id map"));
       vec_res.emplace_back(source_op);
     }
   }
@@ -574,7 +574,10 @@ void SubgraphDetector::DoOpFusion() {
 void SubgraphDetector::BuildSubGraph() {
   std::unordered_set<SubGraph*> subgraph_set;
   for (auto* op : sort_ops_) {
-    CHECK(subgraph_map_.count(op));
+    PADDLE_ENFORCE_EQ(
+        subgraph_map_.count(op),
+        true,
+        common::errors::InvalidArgument("subgraph_map_ MUST contain op"));
     auto& subgraph = subgraph_map_[op];
     if (subgraph_set.count(subgraph.get())) {
       continue;
@@ -586,7 +589,10 @@ void SubgraphDetector::BuildSubGraph() {
 
   for (auto& subgraph : subgraph_list_) {
     for (auto& input_op : subgraph->input_ops) {
-      CHECK(subgraph_map_.count(input_op));
+      PADDLE_ENFORCE_EQ(
+          subgraph_map_.count(input_op),
+          true,
+          common::errors::InvalidArgument("subgraph_map_ MUST contain op"));
       auto& producer = subgraph_map_[input_op];
       subgraph->producers.insert(producer);
       producer->consumers.insert(subgraph);
@@ -799,8 +805,10 @@ namespace {
 
 struct IncrementalOrder {
   bool operator()(const pir::Operation* lhs, const pir::Operation* rhs) const {
-    CHECK(lhs->GetParent() == rhs->GetParent())
-        << "lhs and rhs should have same parent block.";
+    PADDLE_ENFORCE_EQ(lhs->GetParent() == rhs->GetParent(),
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "lhs and rhs should have same parent block."));
     auto lhs_iter = lhs->operator Block::ConstIterator();
     auto rhs_iter = rhs->operator Block::ConstIterator();
     auto end_iter = lhs->GetParent()->end();
@@ -809,8 +817,10 @@ struct IncrementalOrder {
       if (lhs_iter == rhs_iter) return true;
       if (lhs_iter == end_iter) return false;
     }
-    CHECK(false) << "rhs " << rhs->id() << " is not reachable from lhs "
-                 << lhs->id();
+    PADDLE_ENFORCE_EQ(
+        false,
+        true,
+        common::errors::InvalidArgument("rhs is not reachable from lhs."));
     return false;
   }
 };

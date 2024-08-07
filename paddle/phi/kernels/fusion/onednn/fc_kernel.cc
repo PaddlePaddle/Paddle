@@ -220,7 +220,7 @@ class FCOneDNNHandler
     PADDLE_ENFORCE_NE(
         activation_type,
         activation_map.end(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Activation '%s' not found in oneDNN algorithms mapper",
             fuse_activation));
 
@@ -374,7 +374,7 @@ void RecomputeOutputDims(const int in_num_col_dims,
                          phi::DenseTensor* out) {
   PADDLE_ENFORCE_EQ(padding_weights,
                     false,
-                    phi::errors::PermissionDenied(
+                    common::errors::PermissionDenied(
                         "Weight padding in fc can not be used in oneDNN."));
   std::vector<int64_t> output_dims;
   phi::funcs::FCOutputSize(x->dims(),
@@ -604,20 +604,20 @@ void FCKernel(const Context& dev_ctx,
           : false;
   std::vector<std::string> mkldnn_data_type_list = {
       "float32", "int8", "bfloat16"};
-  PADDLE_ENFORCE_EQ(
-      std::find(mkldnn_data_type_list.begin(),
-                mkldnn_data_type_list.end(),
-                mkldnn_data_type) != mkldnn_data_type_list.end(),
-      true,
-      phi::errors::InvalidArgument("The mkldnn_data_type should be [float32, "
-                                   "int8, bfloat16], but found %s.",
-                                   mkldnn_data_type.c_str()));
+  PADDLE_ENFORCE_EQ(std::find(mkldnn_data_type_list.begin(),
+                              mkldnn_data_type_list.end(),
+                              mkldnn_data_type) != mkldnn_data_type_list.end(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The mkldnn_data_type should be [float32, "
+                        "int8, bfloat16], but found %s.",
+                        mkldnn_data_type.c_str()));
   auto in_dims = input.dims();
   if (use_mkldnn) {
     PADDLE_ENFORCE_EQ(
         in_dims.size() >= 2 && in_dims.size() <= 4,
         true,
-        phi::errors::Unimplemented(
+        common::errors::Unimplemented(
             "The Input of fc is expected to be a 2-D, 3-D or 4-D tensor when "
             "use_mkldnn is set. But received the number of Input's "
             "dimensions is %d, Input's shape is %s.",
