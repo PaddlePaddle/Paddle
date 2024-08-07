@@ -1218,7 +1218,7 @@ bool LstmOpInferSymbolicShape(pir::Operation *op,
     infer_context->AddEqualCstr(bias_shape[1], frame_size * symbol::DimExpr{4});
   }
 
-  const std::vector<symbol::DimExpr> out_dims;
+  std::vector<symbol::DimExpr> out_dims;
   out_dims.push_back(input_shape[0]);
   out_dims.push_back(frame_size);
   symbol::ShapeOrDataDimExprs shape_data{

@@ -648,7 +648,7 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
           ndim_x,
           ndim_y));
 
-  const std::vector<symbol::DimExpr> batch_dims;
+  std::vector<symbol::DimExpr> batch_dims;
 
   for (size_t i = 0; i < ndim_x - 2; ++i) {
     infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
