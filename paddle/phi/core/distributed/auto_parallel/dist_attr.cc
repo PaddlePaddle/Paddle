@@ -110,12 +110,12 @@ void TensorDistAttr::set_partial_status(const std::vector<int64_t>& dims,
                                         const ReduceType& type) {
   for (const auto& dim : dims) {
     if (partial_status_.count(dim) != 0) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Trying to Set dim %d as Partial which is already a Partial dim.",
           dim));
     }
     if (std::count(dims_mapping_.begin(), dims_mapping_.end(), dim)) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Trying to Set dim %d as Partial which is a Sharding dim.", dim));
     }
     partial_status_.emplace(dim, type);
@@ -127,7 +127,7 @@ void TensorDistAttr::clean_partial_status() { partial_status_.clear(); }
 void TensorDistAttr::clean_partial_dims(const std::vector<int64_t>& dims) {
   for (const auto& dim : dims) {
     if (partial_status_.count(dim) == 0) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Trying to clean Partial on dim %d but it is not Partial.", dim));
     } else {
       partial_status_.erase(dim);

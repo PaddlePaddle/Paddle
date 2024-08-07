@@ -38,7 +38,11 @@ class LeakyReluOpConverter : public OpConverter {
 
     bool enable_int8 = op_desc.HasAttr("enable_int8");
     if (enable_int8) {
-      CHECK(op_desc.HasAttr("Input_scale"));
+      PADDLE_ENFORCE_EQ(
+          op_desc.HasAttr("Input_scale"),
+          true,
+          phi::errors::InvalidArgument(
+              "Operator description does not has attribute Input_scale!!!"));
       float in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input, in_scale);
     }

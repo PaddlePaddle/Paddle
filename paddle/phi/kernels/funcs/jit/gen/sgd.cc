@@ -116,7 +116,7 @@ class SgdCreator : public JitCodeCreator<sgd_attr_t> {
       const sgd_attr_t& attr) const override {
     PADDLE_ENFORCE_EQ(attr.param_width,
                       attr.grad_width,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The attribute param_width of Sgd should be "
                           "equal to the attribute grad_width. But param_width "
                           "is %d and grad_width is %d.",
@@ -124,7 +124,7 @@ class SgdCreator : public JitCodeCreator<sgd_attr_t> {
                           attr.grad_width));
     PADDLE_ENFORCE_LE(attr.selected_rows_size,
                       attr.grad_height,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The attribute selected_rows_size of Sgd should be "
                           "equal to or less than the attribute grad_height. "
                           "But selected_rows_size is %d and grad_height is %d.",
@@ -133,7 +133,7 @@ class SgdCreator : public JitCodeCreator<sgd_attr_t> {
     PADDLE_ENFORCE_GE(
         attr.selected_rows_size,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The attribute selected_rows_size of Sgd should be "
             "equal to or larger than 0. But selected_rows_size is %d.",
             attr.selected_rows_size));

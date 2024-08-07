@@ -44,7 +44,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
-#include "paddle/fluid/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/allocation/spin_lock.h"
 
 namespace paddle {
 namespace framework {

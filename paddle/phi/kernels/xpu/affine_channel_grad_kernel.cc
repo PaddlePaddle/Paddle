@@ -77,37 +77,37 @@ void AffineChannelGradXPUKernel(const Context& dev_ctx,
   int r = 0;
   if (dscale_d && dbias_d) {
     r = xpu::reduce_sum<T>(dev_ctx.x_context(), dy_d, dbias_d, x_shape, rdims);
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::Error_t::SUCCESS,
-        phi::errors::External("The reduce_sum XPU OP return wrong value[%d %s]",
-                              r,
-                              XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
+                      common::errors::External(
+                          "The reduce_sum XPU OP return wrong value[%d %s]",
+                          r,
+                          XPUAPIErrorMsg[r]));
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     T* tmp = RAII_GUARD.alloc_l3_or_gm<T>(dy->numel());
-    PADDLE_ENFORCE_NOT_NULL(tmp,
-                            phi::errors::External("XPU has no enough memory"));
+    PADDLE_ENFORCE_NOT_NULL(
+        tmp, common::errors::External("XPU has no enough memory"));
 
     r = xpu::mul<T>(dev_ctx.x_context(), dy_d, x->data<T>(), tmp, dy->numel());
     PADDLE_ENFORCE_EQ(
         r,
         xpu::Error_t::SUCCESS,
-        phi::errors::External(
+        common::errors::External(
             "The mul XPU OP return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
     r = xpu::reduce_sum<T>(dev_ctx.x_context(), tmp, dscale_d, x_shape, rdims);
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::Error_t::SUCCESS,
-        phi::errors::External("The reduce_sum XPU OP return wrong value[%d %s]",
-                              r,
-                              XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
+                      common::errors::External(
+                          "The reduce_sum XPU OP return wrong value[%d %s]",
+                          r,
+                          XPUAPIErrorMsg[r]));
   }
   if (dx_d) {
     r = xpu::broadcast_mul(
         dev_ctx.x_context(), dy_d, scale_d, dx_d, x_shape, b_shape);
     PADDLE_ENFORCE_EQ(r,
                       xpu::Error_t::SUCCESS,
-                      phi::errors::External(
+                      common::errors::External(
                           "The broadcast_mul XPU OP return wrong value[%d %s]",
                           r,
                           XPUAPIErrorMsg[r]));

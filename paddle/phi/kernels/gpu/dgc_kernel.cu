@@ -34,9 +34,9 @@ inline float get_period_sparcity(const std::vector<float>& sparsity,
   PADDLE_ENFORCE_GE(
       static_cast<int>(cur_step),
       0,
-      phi::errors::InvalidArgument("DGC current step=%d, but it must >= 0, "
-                                   "please submit issue in github",
-                                   static_cast<int>(cur_step)));
+      common::errors::InvalidArgument("DGC current step=%d, but it must >= 0, "
+                                      "please submit issue in github",
+                                      static_cast<int>(cur_step)));
 
   size_t idx = static_cast<int>(cur_step * sparsity.size() / rampup_steps);
   if (idx >= sparsity.size()) {
@@ -46,7 +46,7 @@ inline float get_period_sparcity(const std::vector<float>& sparsity,
   PADDLE_ENFORCE_LT(
       idx,
       sparsity.size(),
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "sparsity index out of bounds. idx=%d >= sparsity.size=%d",
           idx,
           sparsity.size()));
@@ -78,7 +78,7 @@ void DGCKernel(const Context& dev_ctx,
   const int nranks = static_cast<int>(*nranks_tensor.data<float>());
   PADDLE_ENFORCE_GT(nranks,
                     1,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "DGC is not useful when num_trainers <= 1. Please "
                         "use multi card or multi machine GPU"));
 
@@ -96,7 +96,7 @@ void DGCKernel(const Context& dev_ctx,
   // accuracy of coeff/nranks will be too low.
   PADDLE_ENFORCE_EQ(regular_type >= 0 && regular_type <= 2,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "DGC only support one of None|L1Decay|L2Decay "
                         "Regularization for now."));
   if (regular_type == 0) {
@@ -126,9 +126,13 @@ void DGCKernel(const Context& dev_ctx,
                         static_cast<float>(*current_step - rampup_begin_step),
                         rampup_step);
   PADDLE_ENFORCE_GE(
-      ratio, 0.0, phi::errors::InvalidArgument("DGC sparsity ratio must >= 0"));
+      ratio,
+      0.0,
+      common::errors::InvalidArgument("DGC sparsity ratio must >= 0"));
   PADDLE_ENFORCE_LT(
-      ratio, 1.0, phi::errors::InvalidArgument("DGC sparsity ratio must < 1"));
+      ratio,
+      1.0,
+      common::errors::InvalidArgument("DGC sparsity ratio must < 1"));
   int k = static_cast<int>(grad.numel() * ratio);
 
   VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov
@@ -206,7 +210,7 @@ void DGCKernel(const Context& dev_ctx,
           dev_ctx.stream(),
           u_out_data)) {
     // TODO(weihang): owner should polish this error message
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "V_out numel error, V_out numel is %d.", v_out->numel()));
   }
 

@@ -221,7 +221,7 @@ void CorrelationCUDAGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(
       is_gpu_place,
       true,
-      phi::errors::InvalidArgument("Correlation only supports GPU now."));
+      common::errors::InvalidArgument("Correlation only supports GPU now."));
   const auto *grad_output = &out_grad;
 
   auto *grad_input1 = input1_grad;
