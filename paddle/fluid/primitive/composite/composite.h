@@ -1406,7 +1406,6 @@ Tensor mean_all_decomp(const Tensor& x) {
   Tensor ans;
   if (has_dynamic_shape(x_shape)) {
     Tensor x_shape_tensor = shape<T>(x_cast);
-
     Tensor value = prod<T>(x_shape_tensor, {0}, false, true);
     value = reshape<T>(value, {});
     ans = sum<T>(x_cast) / cast<T>(value, x_cast.dtype());
